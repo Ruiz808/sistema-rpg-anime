@@ -1,7 +1,7 @@
 {
   "build": {
     "beforeBuildCommand": "",
-    "beforeDevCommand": "node .vscode/servidor.js",
+    "beforeDevCommand": "node tools/servidor.js",
     "devPath": "http://localhost:3000",
     "distDir": "../app"
   },
