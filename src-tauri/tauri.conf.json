@@ -1,0 +1,57 @@
+{
+  "build": {
+    "beforeBuildCommand": "",
+    "beforeDevCommand": "node .vscode/servidor.js",
+    "devPath": "http://localhost:3000",
+    "distDir": "../app"
+  },
+  "package": {
+    "productName": "Sistema RPG Anime",
+    "version": "2.0.0"
+  },
+  "tauri": {
+    "allowlist": {
+      "all": false,
+      "shell": {
+        "all": false,
+        "open": true
+      }
+    },
+    "bundle": {
+      "active": true,
+      "category": "Game",
+      "copyright": "",
+      "deb": { "depends": [] },
+      "externalBin": [],
+      "icon": ["icons/icon.ico"],
+      "identifier": "com.rpg.sistema-anime",
+      "longDescription": "Sistema de combate e fichas para RPG de anime com sincronização em nuvem via Firebase.",
+      "macOS": { "frameworks": [], "exceptionDomain": "", "signingIdentity": null, "entitlements": null },
+      "resources": [],
+      "shortDescription": "RPG Anime System",
+      "targets": "all",
+      "windows": {
+        "certificateThumbprint": null,
+        "digestAlgorithm": "sha256",
+        "timestampUrl": ""
+      }
+    },
+    "security": {
+      "csp": null
+    },
+    "updater": {
+      "active": false
+    },
+    "windows": [
+      {
+        "fullscreen": false,
+        "height": 900,
+        "resizable": true,
+        "title": "Sistema RPG Anime — Forja Definitiva",
+        "width": 1400,
+        "minWidth": 1000,
+        "minHeight": 700
+      }
+    ]
+  }
+}

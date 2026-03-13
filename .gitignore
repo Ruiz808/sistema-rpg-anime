@@ -1,0 +1,33 @@
+# Node
+node_modules/
+npm-debug.log*
+
+# Rust / Tauri build artifacts
+src-tauri/target/
+
+# Environment / secrets
+.env
+.env.*
+firebase-config.js
+
+# Save files com dados de usuário
+.vscode/ficha_save.json
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# VS Code extensions (não são código do projeto)
+.vscode/extensions/
+
+# Binários compilados
+.vscode/*.exe
+
+# VS Code internal
+.vscode/argv.json
+.vscode/settings.json
+
+# Editor
+*.suo
+*.user
