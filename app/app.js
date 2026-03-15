@@ -149,6 +149,7 @@ try {
 // Firebase
 if (db) {
     carregarFichaDoFirebase(meuNome).then(function (dados) {
+        console.log('[FIREBASE LOAD] keys:', dados ? Object.keys(dados).length : 'null', 'vida.base:', dados && dados.vida ? dados.vida.base : 'N/A');
         if (dados && Object.keys(dados).length > 2) carregarDadosFicha(dados);
         carregarConfigAtaqueInicial();
         inicializarAtuais();
