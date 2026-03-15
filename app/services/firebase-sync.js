@@ -6,6 +6,10 @@ import { minhaFicha, meuNome } from '../state/store.js';
 
 let _saveTimer = null;
 
+function fichaLimpa() {
+    return JSON.parse(JSON.stringify(minhaFicha));
+}
+
 export function salvarFichaSilencioso() {
     try {
         localStorage.setItem("rpgFicha_" + meuNome, JSON.stringify(minhaFicha));
@@ -13,7 +17,7 @@ export function salvarFichaSilencioso() {
     clearTimeout(_saveTimer);
     _saveTimer = setTimeout(function () {
         if (db && meuNome) {
-            db.ref('personagens/' + meuNome).set(minhaFicha)
+            db.ref('personagens/' + meuNome).set(fichaLimpa())
                 .catch(function (e) { console.warn('Firebase save error:', e); });
         }
     }, 500);
@@ -26,7 +30,7 @@ export function salvarFirebaseImediato() {
     clearTimeout(_saveTimer);
     console.log('[FIREBASE SAVE] nome:', meuNome, 'db:', !!db, 'vida.base:', minhaFicha.vida.base);
     if (db && meuNome) {
-        return db.ref('personagens/' + meuNome).set(minhaFicha)
+        return db.ref('personagens/' + meuNome).set(fichaLimpa())
             .then(function () { console.log('[FIREBASE SAVE] OK!'); })
             .catch(function (e) { console.warn('[FIREBASE SAVE] ERRO:', e); });
     }
