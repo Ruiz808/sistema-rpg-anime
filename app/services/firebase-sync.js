@@ -28,11 +28,9 @@ export function salvarFirebaseImediato() {
         localStorage.setItem("rpgFicha_" + meuNome, JSON.stringify(minhaFicha));
     } catch (e) { }
     clearTimeout(_saveTimer);
-    console.log('[FIREBASE SAVE] nome:', meuNome, 'db:', !!db, 'vida.base:', minhaFicha.vida.base);
     if (db && meuNome) {
         return db.ref('personagens/' + meuNome).set(fichaLimpa())
-            .then(function () { console.log('[FIREBASE SAVE] OK!'); })
-            .catch(function (e) { console.warn('[FIREBASE SAVE] ERRO:', e); });
+            .catch(function (e) { console.warn('Firebase save error:', e); });
     }
     return Promise.resolve();
 }
