@@ -43,7 +43,6 @@ function moverJogadorPara(x, y) {
     minhaFicha.posicao.y = y;
 
     renderPlayer();
-    console.log(`[MAPA] Jogador moveu-se para a coordenada (${x}, ${y})`);
 }
 
 export function renderPlayer() {
