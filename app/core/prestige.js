@@ -67,18 +67,27 @@ export function getRank(valPrestigio, ascBase) {
     let v = Math.floor(valPrestigio);
     let ascExtra = 0;
     let resto = v;
+    
     if (v >= 100) {
         ascExtra = Math.floor(v / 100);
         resto = v % 100;
+        // Quando bate exatamente na quebra (ex: 100, 200), mantém o resto em 100 para o Rank EX
         if (resto === 0 && v > 0) { ascExtra -= 1; resto = 100; }
-    } else if (v < 0) { resto = 0; }
+    } else if (v < 0) { 
+        resto = 0; 
+    }
 
     let ascTotal = (parseInt(ascBase) || 1) + Math.max(0, ascExtra);
-    let l = 'D', c = '#ff003c';
-    if (resto >= 90) { l = 'EX'; c = '#f0f'; }
-    else if (resto >= 70) { l = 'S'; c = '#ffcc00'; }
-    else if (resto >= 50) { l = 'A'; c = '#00ff88'; }
-    else if (resto >= 30) { l = 'B'; c = '#0088ff'; }
-    else if (resto >= 10) { l = 'C'; c = '#ccc'; }
+    
+    // O Rank D é a base, que cobre do 0 ao 19
+    let l = 'D', c = '#ff003c'; 
+    
+    // Os novos patamares de Rank
+    if (resto === 100) { l = 'EX'; c = '#f0f'; }
+    else if (resto >= 80) { l = 'S'; c = '#ffcc00'; }
+    else if (resto >= 60) { l = 'A'; c = '#00ff88'; }
+    else if (resto >= 40) { l = 'B'; c = '#0088ff'; }
+    else if (resto >= 20) { l = 'C'; c = '#ccc'; }
+    
     return { l: l, c: c, a: ascTotal, r: resto };
 }
