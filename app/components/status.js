@@ -12,6 +12,7 @@ export function inicializarAtuais() {
     for (let i = 0; i < vitais.length; i++) {
         let k = vitais[i]; let maxBruto = getMaximo(k); let maxFinal = maxBruto;
         if (k === 'vida') { let ptsMax = Math.max(0, contarDigitos(maxBruto) - 8); if (ptsMax > 0) maxFinal = Math.floor(maxBruto / Math.pow(10, ptsMax)); }
+        else { let ptsMax = Math.max(0, contarDigitos(maxBruto) - 9); if (ptsMax > 0) maxFinal = Math.floor(maxBruto / Math.pow(10, ptsMax)); }
         if (!minhaFicha[k]) minhaFicha[k] = { atual: maxFinal }; let valAtual = parseFloat(minhaFicha[k].atual);
         if (isNaN(valAtual) || valAtual === null) { minhaFicha[k].atual = maxFinal; }
     }
@@ -82,6 +83,7 @@ export function atualizarBarrasVisuais() {
     for (let i = 0; i < confs.length; i++) {
         let conf = confs[i]; let st = minhaFicha[conf.k]; let mx = getMaximo(conf.k); let p = 0;
         if (conf.k === 'vida') { p = Math.max(0, contarDigitos(mx) - 8); if (p > 0) mx = Math.floor(mx / Math.pow(10, p)); }
+        else { p = Math.max(0, contarDigitos(mx) - 9); if (p > 0) mx = Math.floor(mx / Math.pow(10, p)); }
         if (st) { st.atual = parseFloat(st.atual); if (isNaN(st.atual) || st.atual > mx) st.atual = mx; if (st.atual < 0) st.atual = 0; }
         let pct = mx > 0 ? ((st ? st.atual : 0) / mx) * 100 : 0;
         let b = document.getElementById('bar-' + conf.k); let t = document.getElementById('txt-' + conf.k);
@@ -110,6 +112,7 @@ export function curarTudo() {
     for (let i = 0; i < vitais.length; i++) {
         let k = vitais[i]; let mx = getMaximo(k);
         if (k === 'vida') { let p = Math.max(0, contarDigitos(mx) - 8); if (p > 0) mx = Math.floor(mx / Math.pow(10, p)); }
+        else { let p = Math.max(0, contarDigitos(mx) - 9); if (p > 0) mx = Math.floor(mx / Math.pow(10, p)); }
         minhaFicha[k].atual = mx;
     }
     atualizarBarrasVisuais(); salvarFichaSilencioso();
