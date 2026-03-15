@@ -5,7 +5,7 @@ import { minhaFicha } from '../state/store.js';
 import { contarDigitos } from '../core/utils.js';
 import { getMaximo, getRawBase } from '../core/attributes.js';
 import { getPrestigioReal } from '../core/prestige.js';
-import { salvarFichaSilencioso } from '../services/firebase-sync.js';
+import { salvarFichaSilencioso, salvarFirebaseImediato } from '../services/firebase-sync.js';
 
 export function carregarAtributoNaTela() {
     let s = document.getElementById('sel-atributo').value;
@@ -96,6 +96,9 @@ export function aplicarPrestigioNaFicha() {
 export function salvarTabelaAoServidor() {
     aplicarPrestigioNaFicha();
     window.curarTudo();
-    salvarFichaSilencioso();
-    alert("💾 Tabela de Prestígio salva na nuvem!");
+    salvarFirebaseImediato().then(function () {
+        alert("💾 Tabela de Prestígio salva na nuvem!");
+    }).catch(function () {
+        alert("⚠️ Erro ao salvar no Firebase. Dados salvos localmente.");
+    });
 }
