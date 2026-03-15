@@ -196,6 +196,7 @@
         <button class="nav-btn" onclick="window.mudarAba('aba-arsenal', this)" title="Forja Física">🎒</button>
         <button class="nav-btn" onclick="window.mudarAba('aba-ficha', this)" title="Ficha Base">📝</button>
         <button class="nav-btn" onclick="window.mudarAba('aba-log', this)" title="Feed de Combate">📡</button>
+        <button class="nav-btn" onclick="window.mudarAba('aba-mapa', this)" title="Mapa de Combate">🗺️</button>
     </div>
 
     <div class="main-content">
@@ -833,6 +834,15 @@
         <div id="aba-log" class="glass-panel">
             <h2>> FEED DO SERVIDOR</h2>
             <div id="feed-combate"><p style="color: #888;">Aguardando relatórios...</p></div>
+        </div>
+        <div id="aba-mapa" class="glass-panel">
+            <h2 style="color: #00ffcc;">> CAMPO DE BATALHA TÁTICO (30x30)</h2>
+            <p style="color: #aaa; margin-bottom: 20px;">Clique em qualquer quadrícula para mover a sua entidade pelo mapa.</p>
+            
+            <div class="map-scroll-container">
+                <div id="combat-grid" class="combat-map">
+                    </div>
+            </div>
         </div>
     </div>
 
