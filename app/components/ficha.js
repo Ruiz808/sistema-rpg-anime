@@ -36,7 +36,9 @@ export function salvarAtributo() {
         minhaFicha[c].base = v.b; minhaFicha[c].mBase = v.mb; minhaFicha[c].mGeral = v.mg; minhaFicha[c].mFormas = v.mf;
         minhaFicha[c].mUnico = v.mu; minhaFicha[c].mAbsoluto = v.ma; minhaFicha[c].reducaoCusto = v.rc; minhaFicha[c].regeneracao = v.rg;
         if (c === 'vida' || c === 'mana' || c === 'aura' || c === 'chakra' || c === 'corpo') {
-            let mx = getMaximo(c); if (c === 'vida') { let p = Math.max(0, contarDigitos(mx) - 8); if (p > 0) mx = Math.floor(mx / Math.pow(10, p)); }
+            let mx = getMaximo(c);
+            if (c === 'vida') { let p = Math.max(0, contarDigitos(mx) - 8); if (p > 0) mx = Math.floor(mx / Math.pow(10, p)); }
+            else { let p = Math.max(0, contarDigitos(mx) - 9); if (p > 0) mx = Math.floor(mx / Math.pow(10, p)); }
             minhaFicha[c].atual = mx;
         }
     }
