@@ -8,7 +8,7 @@ src-tauri/target/
 # Environment / secrets
 .env
 .env.*
-firebase-config.js
+
 
 # Save files com dados de usuário
 .vscode/ficha_save.json
