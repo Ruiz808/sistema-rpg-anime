@@ -26,7 +26,7 @@ import { declararEvasiva, declararResistencia, declararReducao } from './compone
 import { rolarAcerto } from './components/acerto.js';
 import { inicializarAtuais, desenharRadar, atualizarBarrasVisuais, alterarHP, curarTudo, aplicarRegeneracaoTurno } from './components/status.js';
 import { carregarAtributoNaTela, salvarAtributo, atualizarDivisores, carregarTabelaPrestigio, aplicarPrestigioNaFicha, salvarTabelaAoServidor } from './components/ficha.js';
-import { initMap, renderPlayer } from './components/map.js';
+import { initMap, atualizarMapa } from './components/map.js';
 
 // ==========================================
 // EXPOR NO WINDOW (onclick do HTML)
@@ -130,7 +130,7 @@ window.salvarTabelaAoServidor = salvarTabelaAoServidor;
 
 // Mapa
 window.initMap = initMap;
-window.renderPlayer = renderPlayer;
+window.atualizarMapa = atualizarMapa;
 
 // ==========================================
 // INICIALIZAÇÃO
@@ -166,6 +166,7 @@ if (db) {
     });
 
     iniciarListenerPersonagens(function (dados) {
+        atualizarMapa(dados);
         let lista = Object.keys(dados);
         let div = document.getElementById('lista-personagens-mestre');
         if (!div) return;
