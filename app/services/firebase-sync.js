@@ -19,6 +19,18 @@ export function salvarFichaSilencioso() {
     }, 500);
 }
 
+export function salvarFirebaseImediato() {
+    try {
+        localStorage.setItem("rpgFicha_" + meuNome, JSON.stringify(minhaFicha));
+    } catch (e) { }
+    clearTimeout(_saveTimer);
+    if (db && meuNome) {
+        return db.ref('personagens/' + meuNome).set(minhaFicha)
+            .catch(function (e) { console.warn('Firebase save error:', e); });
+    }
+    return Promise.resolve();
+}
+
 export function carregarFichaDoFirebase(nome) {
     if (!db) return Promise.resolve(null);
     return db.ref('personagens/' + nome).once('value').then(function (snapshot) {
