@@ -200,14 +200,14 @@ input:focus, select:focus { border-color: #0ff; box-shadow: 0 0 10px rgba(0, 255
     box-shadow: 0 0 10px #00ffcc;
 }
 
-/* O Token do Jogador */
+/* Tokens dos Jogadores */
 .player-token {
     width: 25px;
     height: 25px;
     border-radius: 50%;
-    background: #ffcc00;
-    box-shadow: 0 0 15px #ffcc00, inset 0 0 5px #000;
-    border: 2px solid #fff;
+    background: #888;
+    box-shadow: 0 0 10px rgba(255,255,255,0.3), inset 0 0 5px #000;
+    border: 2px solid rgba(255,255,255,0.5);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -215,11 +215,19 @@ input:focus, select:focus { border-color: #0ff; box-shadow: 0 0 10px rgba(0, 255
     font-weight: bold;
     font-family: 'Rajdhani', sans-serif;
     font-size: 14px;
-    pointer-events: none; /* Para que o clique passe através do token para a célula */
+    pointer-events: none;
+    cursor: default;
+    position: relative;
+    z-index: 2;
+}
+
+.player-token.my-token {
+    border-color: #fff;
+    box-shadow: 0 0 15px rgba(255,255,255,0.6), inset 0 0 5px #000;
     animation: pulsarToken 2s infinite alternate;
 }
 
 @keyframes pulsarToken {
-    0% { transform: scale(0.95); box-shadow: 0 0 10px #ffcc00; }
-    100% { transform: scale(1.05); box-shadow: 0 0 20px #ffcc00, 0 0 30px #ff9900; }
+    0% { transform: scale(0.95); }
+    100% { transform: scale(1.05); box-shadow: 0 0 20px rgba(255,255,255,0.8), inset 0 0 5px #000; }
 }
