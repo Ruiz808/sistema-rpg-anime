@@ -45,7 +45,6 @@ export function setPersonagemParaDeletar(n) { personagemParaDeletar = n; }
 
 export function carregarDadosFicha(dados) {
     if (!dados) return;
-    console.log('[FICHA LOAD] dados.vida:', dados.vida, 'dados.forca:', dados.forca, 'dados.ascensaoBase:', dados.ascensaoBase);
     let chaves = Object.keys(fichaPadrao);
     if (dados.ascensaoBase !== undefined) minhaFicha.ascensaoBase = parseInt(dados.ascensaoBase) || 1;
     if (dados.divisores) minhaFicha.divisores = Object.assign({}, fichaPadrao.divisores, dados.divisores);
