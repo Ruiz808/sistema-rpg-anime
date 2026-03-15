@@ -21,5 +21,6 @@ export function mudarAba(idAba, el) {
             window.atualizarInputsDeDano();
         }
         if (idAba === 'aba-perfil' || idAba === 'aba-mestre') window.renderizarListaPersonagensLocal();
+        if (idAba === 'aba-mapa') window.initMap();
     } catch (e) { }
 }
