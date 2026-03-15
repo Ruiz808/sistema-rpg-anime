@@ -12,7 +12,7 @@ import { fichaPadrao, minhaFicha, meuNome, setMeuNome, carregarDadosFicha } from
 
 // === SERVICES ===
 import { db } from './services/firebase-config.js';
-import { salvarFichaSilencioso, carregarFichaDoFirebase, iniciarListenerPersonagens, iniciarListenerFeed, enviarParaFeed } from './services/firebase-sync.js';
+import { salvarFichaSilencioso, salvarFirebaseImediato, carregarFichaDoFirebase, iniciarListenerPersonagens, iniciarListenerFeed, enviarParaFeed } from './services/firebase-sync.js';
 
 // === COMPONENTS ===
 import { mudarAba } from './components/tabs.js';
