@@ -58,8 +58,6 @@ export function atualizarDivisores() {
 export function carregarTabelaPrestigio() {
     let sFisicos = ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao']; let m = 0;
     for (let i = 0; i < sFisicos.length; i++) { m += getRawBase(sFisicos[i]); }
-    console.log('[PRESTIGE LOAD] bases:', { vida: minhaFicha.vida.base, forca: minhaFicha.forca.base, mana: minhaFicha.mana.base, asc: minhaFicha.ascensaoBase });
-    console.log('[PRESTIGE LOAD] display:', { vida: getPrestigioReal('vida', getRawBase('vida')), status: Math.floor((m / 8) / 1000), mana: getPrestigioReal('mana', getRawBase('mana')) });
     let elAsc = document.getElementById('pres-asc'); if (elAsc) elAsc.value = minhaFicha.ascensaoBase || 1;
     let elVid = document.getElementById('pres-vida'); if (elVid) elVid.value = getPrestigioReal('vida', getRawBase('vida'));
     let elSt = document.getElementById('pres-status'); if (elSt) elSt.value = Math.floor((m / 8) / 1000);
@@ -86,16 +84,12 @@ export function aplicarPrestigioNaFicha() {
     let elCh = document.getElementById('pres-chakra'); let v5 = elCh ? Math.max(0, parseInt(elCh.value) || 0) : 0;
     let elCo = document.getElementById('pres-corpo'); let v6 = elCo ? Math.max(0, parseInt(elCo.value) || 0) : 0;
 
-    console.log('[PRESTIGE SAVE] inputs:', { asc: ascB, vida: v1, status: v2, mana: v3, aura: v4, chakra: v5, corpo: v6 });
-
     minhaFicha.ascensaoBase = ascB;
     minhaFicha.vida.base = v1 * 1000000; minhaFicha.mana.base = v3 * 1000000;
     minhaFicha.aura.base = v4 * 1000000; minhaFicha.chakra.base = v5 * 1000000; minhaFicha.corpo.base = v6 * 1000000;
 
     let stBase = v2 * 1000; let sFisicos = ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'];
     for (let i = 0; i < sFisicos.length; i++) minhaFicha[sFisicos[i]].base = stBase;
-
-    console.log('[PRESTIGE SAVE] bases:', { vida: minhaFicha.vida.base, forca: minhaFicha.forca.base, mana: minhaFicha.mana.base });
     window.atualizarBarrasVisuais();
 }
 
