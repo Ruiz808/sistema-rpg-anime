@@ -26,6 +26,7 @@ import { declararEvasiva, declararResistencia, declararReducao } from './compone
 import { rolarAcerto } from './components/acerto.js';
 import { inicializarAtuais, desenharRadar, atualizarBarrasVisuais, alterarHP, curarTudo, aplicarRegeneracaoTurno } from './components/status.js';
 import { carregarAtributoNaTela, salvarAtributo, atualizarDivisores, carregarTabelaPrestigio, aplicarPrestigioNaFicha, salvarTabelaAoServidor } from './components/ficha.js';
+import { initMap, renderPlayer } from './components/map.js';
 
 // ==========================================
 // EXPOR NO WINDOW (onclick do HTML)
@@ -126,6 +127,10 @@ window.atualizarDivisores = atualizarDivisores;
 window.carregarTabelaPrestigio = carregarTabelaPrestigio;
 window.aplicarPrestigioNaFicha = aplicarPrestigioNaFicha;
 window.salvarTabelaAoServidor = salvarTabelaAoServidor;
+
+// Mapa
+window.initMap = initMap;
+window.renderPlayer = renderPlayer;
 
 // ==========================================
 // INICIALIZAÇÃO
