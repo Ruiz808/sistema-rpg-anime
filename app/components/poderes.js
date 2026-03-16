@@ -33,18 +33,20 @@ export function renderizarEfeitosTemp() {
 export function salvarNovoPoder() {
     try {
         let n = document.getElementById('novo-pod-nome').value.trim();
+        let imgForma = document.getElementById('novo-pod-imagem') ? document.getElementById('novo-pod-imagem').value.trim() : "";
         if (!n || !efeitosTemp.length) { alert("Falta nome ou efeitos!"); return; }
         if (!minhaFicha.poderes) minhaFicha.poderes = [];
 
         if (poderEditandoId) {
             let ix = -1; for (let i = 0; i < minhaFicha.poderes.length; i++) { if (minhaFicha.poderes[i].id === poderEditandoId) ix = i; }
-            if (ix !== -1) { minhaFicha.poderes[ix].nome = n; minhaFicha.poderes[ix].efeitos = efeitosTemp.slice(); }
+            if (ix !== -1) { minhaFicha.poderes[ix].nome = n; minhaFicha.poderes[ix].efeitos = efeitosTemp.slice(); minhaFicha.poderes[ix].imagemUrl = imgForma; }
             cancelarEdicaoPoder();
         } else {
-            minhaFicha.poderes.push({ id: Date.now(), nome: n, ativa: false, efeitos: efeitosTemp.slice() });
+            minhaFicha.poderes.push({ id: Date.now(), nome: n, ativa: false, efeitos: efeitosTemp.slice(), imagemUrl: imgForma });
         }
         efeitosTemp.length = 0;
         document.getElementById('novo-pod-nome').value = '';
+        if (document.getElementById('novo-pod-imagem')) document.getElementById('novo-pod-imagem').value = '';
 
         window.atualizarBarrasVisuais(); renderizarEfeitosTemp(); renderizarListaPoderes(); salvarFichaSilencioso();
         window.atualizarInputsDeDano();
@@ -58,6 +60,7 @@ export function editarPoder(idStr) {
     if (p.ativa) { togglePoder(idStr); alert(`⚠️ A habilidade [${p.nome}] foi DESATIVADA temporariamente para edição.`); }
     setPoderEditandoId(p.id);
     document.getElementById('novo-pod-nome').value = p.nome;
+    if (document.getElementById('novo-pod-imagem')) document.getElementById('novo-pod-imagem').value = p.imagemUrl || "";
     let copied = JSON.parse(JSON.stringify(p.efeitos || []));
     efeitosTemp.length = 0;
     for (let i = 0; i < copied.length; i++) efeitosTemp.push(copied[i]);
@@ -70,6 +73,7 @@ export function editarPoder(idStr) {
 export function cancelarEdicaoPoder() {
     setPoderEditandoId(null);
     document.getElementById('novo-pod-nome').value = "";
+    if (document.getElementById('novo-pod-imagem')) document.getElementById('novo-pod-imagem').value = "";
     efeitosTemp.length = 0;
     document.getElementById('titulo-poder-form').innerText = "➕ CRIAR NOVO PODER";
     document.getElementById('btn-cancelar-edit').style.display = 'none';
@@ -89,6 +93,7 @@ export function togglePoder(idStr) {
         if (isNaN(minhaFicha[k].atual) || minhaFicha[k].atual < 0 || minhaFicha[k].atual > nMax) minhaFicha[k].atual = nMax;
     }
     window.atualizarBarrasVisuais(); salvarFichaSilencioso(); renderizarListaPoderes(); window.atualizarInputsDeDano();
+    if (window.renderPlayer) window.renderPlayer();
 }
 
 export function deletarPoder(idStr) {
