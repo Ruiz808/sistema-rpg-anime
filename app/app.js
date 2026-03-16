@@ -200,5 +200,14 @@ window.addEventListener('DOMContentLoaded', function () {
         renderizarElementos();
         atualizarInputsDeDano();
         renderizarListaPersonagensLocal();
+
+        window.salvarImagemBase = function() {
+    let url = document.getElementById('perfil-imagem').value.trim();
+    if (!minhaFicha.avatar) minhaFicha.avatar = {};
+    minhaFicha.avatar.base = url;
+    window.salvarFichaSilencioso();
+    if(window.renderPlayer) window.renderPlayer(); // Atualiza o mapa na hora
+    alert("✅ Imagem Base do personagem salva!");
+};
     }, 300);
 });
