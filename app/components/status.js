@@ -7,6 +7,20 @@ import { getMaximo, getBuffs, getRawBase } from '../core/attributes.js';
 import { getPrestigioReal, calcPAtual, getRank } from '../core/prestige.js';
 import { salvarFichaSilencioso } from '../services/firebase-sync.js';
 
+export function initStatusListeners() {
+    var btnDano = document.getElementById('btn-receber-dano');
+    if (btnDano) btnDano.addEventListener('click', function() { alterarHP('dano'); });
+
+    var btnCura = document.getElementById('btn-curar-hp');
+    if (btnCura) btnCura.addEventListener('click', function() { alterarHP('cura'); });
+
+    var btnRegen = document.getElementById('btn-regeneracao');
+    if (btnRegen) btnRegen.addEventListener('click', function() { aplicarRegeneracaoTurno(); });
+
+    var btnCurarTudo = document.getElementById('btn-curar-tudo');
+    if (btnCurarTudo) btnCurarTudo.addEventListener('click', function() { curarTudo(); });
+}
+
 export function inicializarAtuais() {
     let vitais = ['vida', 'mana', 'aura', 'chakra', 'corpo'];
     for (let i = 0; i < vitais.length; i++) {

@@ -4,9 +4,6 @@
     <meta charset="UTF-8">
     <title>RPG Anime System - Forja Definitiva</title>
     <link rel="stylesheet" href="css/styles.css">
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&display=swap');
-    </style>
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -20,47 +17,47 @@
             <div id="delete-char-name" class="modal-char-highlight"></div>
             <p class="modal-warning-text">Esta ação apagará todos os dados e <strong class="text-danger">NÃO</strong> poderá ser desfeita.</p>
             <div class="flex-row-gap-20">
-                <button class="btn-neon btn-silver flex-1" onclick="window.fecharModalDelete()">CANCELAR</button>
-                <button class="btn-neon btn-red flex-1" onclick="window.confirmarDelecao()">💀 SIM, APAGAR</button>
+                <button id="btn-cancelar-delete" class="btn-neon btn-silver flex-1">CANCELAR</button>
+                <button id="btn-confirmar-delete" class="btn-neon btn-red flex-1">💀 SIM, APAGAR</button>
             </div>
         </div>
     </div>
 
     <div class="sidebar">
-        <button class="nav-btn" onclick="window.mudarAba('aba-perfil', this)" title="Sessão">👤</button>
-        <button id="btn-mestre" class="nav-btn btn-coroa hidden" onclick="window.mudarAba('aba-mestre', this)" title="Painel do Mestre">👑</button>
-        <button class="nav-btn ativo" onclick="window.mudarAba('aba-status', this)" title="Monitor Vital">❤️</button>
-        <button class="nav-btn" onclick="window.mudarAba('aba-ataque', this)" title="Rolar Dano">⚔️</button>
-        <button class="nav-btn" onclick="window.mudarAba('aba-acerto', this)" title="Rolar Acerto">🎯</button>
-        <button class="nav-btn" onclick="window.mudarAba('aba-defesa', this)" title="Ações Defensivas">🛡️</button>
-        <button class="nav-btn" onclick="window.mudarAba('aba-poderes', this)" title="Poderes & Transformações">⚡</button>
-        <button class="nav-btn" onclick="window.mudarAba('aba-elementos', this)" title="Grimório Elemental">☄️</button>
-        <button class="nav-btn" onclick="window.mudarAba('aba-arsenal', this)" title="Forja Física">🎒</button>
-        <button class="nav-btn" onclick="window.mudarAba('aba-ficha', this)" title="Ficha Base">📝</button>
-        <button class="nav-btn" onclick="window.mudarAba('aba-log', this)" title="Feed de Combate">📡</button>
-        <button class="nav-btn" onclick="window.mudarAba('aba-mapa', this)" title="Mapa de Combate">🗺️</button>
+        <button class="nav-btn" data-aba="aba-perfil" title="Sessão">👤</button>
+        <button id="btn-mestre" class="nav-btn btn-coroa hidden" data-aba="aba-mestre" title="Painel do Mestre">👑</button>
+        <button class="nav-btn ativo" data-aba="aba-status" title="Monitor Vital">❤️</button>
+        <button class="nav-btn" data-aba="aba-ataque" title="Rolar Dano">⚔️</button>
+        <button class="nav-btn" data-aba="aba-acerto" title="Rolar Acerto">🎯</button>
+        <button class="nav-btn" data-aba="aba-defesa" title="Ações Defensivas">🛡️</button>
+        <button class="nav-btn" data-aba="aba-poderes" title="Poderes & Transformações">⚡</button>
+        <button class="nav-btn" data-aba="aba-elementos" title="Grimório Elemental">☄️</button>
+        <button class="nav-btn" data-aba="aba-arsenal" title="Forja Física">🎒</button>
+        <button class="nav-btn" data-aba="aba-ficha" title="Ficha Base">📝</button>
+        <button class="nav-btn" data-aba="aba-log" title="Feed de Combate">📡</button>
+        <button class="nav-btn" data-aba="aba-mapa" title="Mapa de Combate">🗺️</button>
     </div>
 
     <div class="main-content">
         <div class="title">SISTEMA DE CULTIVAÇÃO RPG</div>
-        
+
         <div id="aba-perfil" class="glass-panel">
             <h2 class="text-gold">> SESSÃO DE USUÁRIO</h2>
             <div class="input-group mb-5">
                 <label class="text-gold">CRIAR NOVO OU LOGAR (DIGITE O NOME EXATO AQUI)</label>
                 <div class="flex-row-gap-15">
                     <input type="text" id="perfil-nome" placeholder="Digite o nome do seu personagem..." class="flex-2">
-                    <button class="btn-neon btn-gold margin-0-flex-1" onclick="window.trocarPersonagem()">✅ ENTRAR / CRIAR</button>
+                    <button id="btn-trocar-personagem" class="btn-neon btn-gold margin-0-flex-1">✅ ENTRAR / CRIAR</button>
                 </div>
             </div>
-            
+
             <h3 class="section-title section-title-cyan-spaced">> MEUS PERSONAGENS SALVOS</h3>
             <p class="hint-text">Clique em CARREGAR para resgatar os poderes e itens das suas sessões anteriores.</p>
             <div id="lista-personagens-jogador" class="char-list"><p class="text-loading">Carregando...</p></div>
 
             <div class="checkbox-group master-checkbox-container">
                 <label class="checkbox-label text-gold-bold">
-                    <input type="checkbox" id="chk-mestre" onchange="window.toggleMestre()"> 👑 ACESSAR COMO MESTRE DA CAMPANHA
+                    <input type="checkbox" id="chk-mestre"> 👑 ACESSAR COMO MESTRE DA CAMPANHA
                 </label>
                 <p class="hint-text-full-width">Ao ativar o Modo Mestre, um novo botão dourado aparecerá na barra lateral para gerenciar todos os jogadores.</p>
             </div>
@@ -83,17 +80,17 @@
             <div class="flex-row-controls">
                 <div class="input-group flex-2-m0-min200"><label>VALOR (HP/ENERGIA)</label><input type="number" id="val-dano-cura" placeholder="Ex: 24500000"></div>
                 <div class="input-group flex-1-m0-min150"><label class="text-gold">💀 LETALIDADE</label><input type="number" id="val-letalidade" value="0" min="0"></div>
-                <button class="btn-neon btn-red btn-flex-2-padded" onclick="window.alterarHP('dano')">🩸 RECEBER DANO</button>
-                <button class="btn-neon btn-green btn-flex-2-padded" onclick="window.alterarHP('cura')">💊 CURAR HP</button>
+                <button id="btn-receber-dano" class="btn-neon btn-red btn-flex-2-padded">🩸 RECEBER DANO</button>
+                <button id="btn-curar-hp" class="btn-neon btn-green btn-flex-2-padded">💊 CURAR HP</button>
             </div>
             <div class="flex-row-gap-15">
-                <button class="btn-neon btn-green mt-20-flex-1" onclick="window.aplicarRegeneracaoTurno()">✨ APLICAR REGENERAÇÃO</button>
-                <button class="btn-neon btn-green mt-20-flex-1-cyan" onclick="window.curarTudo()">💚 RESTABELECER TUDO (100%)</button>
+                <button id="btn-regeneracao" class="btn-neon btn-green mt-20-flex-1">✨ APLICAR REGENERAÇÃO</button>
+                <button id="btn-curar-tudo" class="btn-neon btn-green mt-20-flex-1-cyan">💚 RESTABELECER TUDO (100%)</button>
             </div>
 
             <h3 class="section-title section-title-mint-spaced">> ANÁLISE DE PODER E CULTIVAÇÃO</h3>
             <div class="analise-grid">
-                
+
                 <div class="analise-col">
                     <div class="radar-container radar-container-base-border">
                         <div class="text-center-mb-5">
@@ -106,8 +103,8 @@
                             <polygon points="250,108 312.4,144 312.4,216 250,252 187.6,216 187.6,144" class="radar-grid"/>
                             <polygon points="250,132 291.6,156 291.6,204 250,228 208.4,204 208.4,156" class="radar-grid"/>
                             <polygon points="250,156 270.8,168 270.8,192 250,204 229.2,192 229.2,168" class="radar-grid"/>
-                            <line x1="250" y1="180" x2="250" y2="60" class="radar-axis"/> <line x1="250" y1="180" x2="353.9" y2="120" class="radar-axis"/> <line x1="250" y1="180" x2="353.9" y2="240" class="radar-axis"/> 
-                            <line x1="250" y1="180" x2="250" y2="300" class="radar-axis"/> <line x1="250" y1="180" x2="146.1" y2="240" class="radar-axis"/> <line x1="250" y1="180" x2="146.1" y2="120" class="radar-axis"/> 
+                            <line x1="250" y1="180" x2="250" y2="60" class="radar-axis"/> <line x1="250" y1="180" x2="353.9" y2="120" class="radar-axis"/> <line x1="250" y1="180" x2="353.9" y2="240" class="radar-axis"/>
+                            <line x1="250" y1="180" x2="250" y2="300" class="radar-axis"/> <line x1="250" y1="180" x2="146.1" y2="240" class="radar-axis"/> <line x1="250" y1="180" x2="146.1" y2="120" class="radar-axis"/>
                             <text id="lbl-base-vida" x="250" y="45" class="radar-text" text-anchor="middle" fill="#fff">VIDA</text>
                             <text id="lbl-base-mana" x="365" y="125" class="radar-text" text-anchor="start" fill="#fff">MANA</text>
                             <text id="lbl-base-aura" x="365" y="245" class="radar-text" text-anchor="start" fill="#fff">AURA</text>
@@ -122,17 +119,17 @@
                         <h3 class="prestige-title-base">⚙️ TABELA DE PRESTÍGIO BASE</h3>
                         <div class="input-group prestige-ascension-box">
                             <label class="text-white-md">🌟 ASCENSÃO BASE DO PERSONAGEM</label>
-                            <input type="number" id="pres-asc" min="1" value="1" onchange="window.aplicarPrestigioNaFicha()" class="prestige-input-base">
+                            <input type="number" id="pres-asc" min="1" value="1" class="prestige-input-base">
                         </div>
                         <div class="grid-2col">
-                            <div class="input-group margin-0"><label class="text-danger">VIDA</label><input type="number" id="pres-vida" min="0" onchange="window.aplicarPrestigioNaFicha()"></div>
-                            <div class="input-group margin-0"><label class="text-green">STATUS</label><input type="number" id="pres-status" min="0" onchange="window.aplicarPrestigioNaFicha()"></div>
-                            <div class="input-group margin-0"><label class="text-blue">MANA</label><input type="number" id="pres-mana" min="0" onchange="window.aplicarPrestigioNaFicha()"></div>
-                            <div class="input-group margin-0"><label class="text-yellow">AURA</label><input type="number" id="pres-aura" min="0" onchange="window.aplicarPrestigioNaFicha()"></div>
-                            <div class="input-group margin-0"><label class="text-cyan">CHAKRA</label><input type="number" id="pres-chakra" min="0" onchange="window.aplicarPrestigioNaFicha()"></div>
-                            <div class="input-group margin-0"><label class="text-magenta">CORPO</label><input type="number" id="pres-corpo" min="0" onchange="window.aplicarPrestigioNaFicha()"></div>
+                            <div class="input-group margin-0"><label class="text-danger">VIDA</label><input type="number" id="pres-vida" min="0"></div>
+                            <div class="input-group margin-0"><label class="text-green">STATUS</label><input type="number" id="pres-status" min="0"></div>
+                            <div class="input-group margin-0"><label class="text-blue">MANA</label><input type="number" id="pres-mana" min="0"></div>
+                            <div class="input-group margin-0"><label class="text-yellow">AURA</label><input type="number" id="pres-aura" min="0"></div>
+                            <div class="input-group margin-0"><label class="text-cyan">CHAKRA</label><input type="number" id="pres-chakra" min="0"></div>
+                            <div class="input-group margin-0"><label class="text-magenta">CORPO</label><input type="number" id="pres-corpo" min="0"></div>
                         </div>
-                        <button class="btn-neon btn-save-prestige" onclick="window.salvarTabelaAoServidor()">💾 SALVAR PRESTÍGIO NA NUVEM</button>
+                        <button id="btn-salvar-prestigio" class="btn-neon btn-save-prestige">💾 SALVAR PRESTÍGIO NA NUVEM</button>
                     </div>
                 </div>
 
@@ -148,12 +145,12 @@
                             <polygon points="250,108 312.4,144 312.4,216 250,252 187.6,216 187.6,144" class="radar-grid"/>
                             <polygon points="250,132 291.6,156 291.6,204 250,228 208.4,204 208.4,156" class="radar-grid"/>
                             <polygon points="250,156 270.8,168 270.8,192 250,204 229.2,192 229.2,168" class="radar-grid"/>
-                            <line x1="250" y1="180" x2="250" y2="60" class="radar-axis"/> 
-                            <line x1="250" y1="180" x2="353.9" y2="120" class="radar-axis"/> 
-                            <line x1="250" y1="180" x2="353.9" y2="240" class="radar-axis"/> 
-                            <line x1="250" y1="180" x2="250" y2="300" class="radar-axis"/> 
-                            <line x1="250" y1="180" x2="146.1" y2="240" class="radar-axis"/> 
-                            <line x1="250" y1="180" x2="146.1" y2="120" class="radar-axis"/> 
+                            <line x1="250" y1="180" x2="250" y2="60" class="radar-axis"/>
+                            <line x1="250" y1="180" x2="353.9" y2="120" class="radar-axis"/>
+                            <line x1="250" y1="180" x2="353.9" y2="240" class="radar-axis"/>
+                            <line x1="250" y1="180" x2="250" y2="300" class="radar-axis"/>
+                            <line x1="250" y1="180" x2="146.1" y2="240" class="radar-axis"/>
+                            <line x1="250" y1="180" x2="146.1" y2="120" class="radar-axis"/>
                             <text id="lbl-atual-vida" x="250" y="45" class="radar-text" text-anchor="middle" fill="#fff">VIDA</text>
                             <text id="lbl-atual-mana" x="365" y="125" class="radar-text" text-anchor="start" fill="#fff">MANA</text>
                             <text id="lbl-atual-aura" x="365" y="245" class="radar-text" text-anchor="start" fill="#fff">AURA</text>
@@ -170,41 +167,41 @@
                             <label class="text-white-md">🌟 ASCENSÃO ATUAL (MÉDIA)</label>
                             <div id="txt-atual-asc" class="prestige-display-atual">1</div>
                         </div>
-                        
+
                         <div class="grid-2col">
                             <div class="input-group margin-0">
                                 <label class="label-divisor label-color-vida">
-                                    VIDA <input type="number" id="div-vida" value="1" title="Divisor da Forma" onchange="window.atualizarDivisores()" class="divisor-mini-input">
+                                    VIDA <input type="number" id="div-vida" value="1" title="Divisor da Forma" class="divisor-mini-input">
                                 </label>
                                 <div id="txt-atual-vida" class="display-box">0</div>
                             </div>
                             <div class="input-group margin-0">
                                 <label class="label-divisor label-color-status">
-                                    STATUS <input type="number" id="div-status" value="1" title="Divisor da Forma" onchange="window.atualizarDivisores()" class="divisor-mini-input">
+                                    STATUS <input type="number" id="div-status" value="1" title="Divisor da Forma" class="divisor-mini-input">
                                 </label>
                                 <div id="txt-atual-status" class="display-box">0</div>
                             </div>
                             <div class="input-group margin-0">
                                 <label class="label-divisor label-color-mana">
-                                    MANA <input type="number" id="div-mana" value="1" title="Divisor da Forma" onchange="window.atualizarDivisores()" class="divisor-mini-input">
+                                    MANA <input type="number" id="div-mana" value="1" title="Divisor da Forma" class="divisor-mini-input">
                                 </label>
                                 <div id="txt-atual-mana" class="display-box">0</div>
                             </div>
                             <div class="input-group margin-0">
                                 <label class="label-divisor label-color-aura">
-                                    AURA <input type="number" id="div-aura" value="1" title="Divisor da Forma" onchange="window.atualizarDivisores()" class="divisor-mini-input">
+                                    AURA <input type="number" id="div-aura" value="1" title="Divisor da Forma" class="divisor-mini-input">
                                 </label>
                                 <div id="txt-atual-aura" class="display-box">0</div>
                             </div>
                             <div class="input-group margin-0">
                                 <label class="label-divisor label-color-chakra">
-                                    CHAKRA <input type="number" id="div-chakra" value="1" title="Divisor da Forma" onchange="window.atualizarDivisores()" class="divisor-mini-input">
+                                    CHAKRA <input type="number" id="div-chakra" value="1" title="Divisor da Forma" class="divisor-mini-input">
                                 </label>
                                 <div id="txt-atual-chakra" class="display-box">0</div>
                             </div>
                             <div class="input-group margin-0">
                                 <label class="label-divisor label-color-corpo">
-                                    CORPO <input type="number" id="div-corpo" value="1" title="Divisor da Forma" onchange="window.atualizarDivisores()" class="divisor-mini-input">
+                                    CORPO <input type="number" id="div-corpo" value="1" title="Divisor da Forma" class="divisor-mini-input">
                                 </label>
                                 <div id="txt-atual-corpo" class="display-box">0</div>
                             </div>
@@ -217,10 +214,10 @@
         <div id="aba-elementos" class="glass-panel">
             <h2 class="text-fire">> GRIMÓRIO ELEMENTAL E MAGIAS</h2>
             <p class="text-muted-mb-25">Crie ataques baseados nas Entidades do seu universo. Selecione um Painel abaixo para forjar e filtrar as suas magias por Afinidade.</p>
-            
+
             <div class="def-box border-fire" id="form-elem-box">
                 <h3 id="titulo-elem-form" class="form-title-fire">🔥 FORJAR MAGIA / ATAQUE ELEMENTAL</h3>
-                
+
                 <div class="input-group">
                     <label>NOME DA MAGIA</label>
                     <input type="text" id="novo-elem-nome" placeholder="Ex: Esfera Colapsadora">
@@ -229,72 +226,72 @@
                 <div class="input-group mt-25">
                     <label class="elem-filter-label">> SELECIONE A AFINIDADE ELEMENTAL E FILTRE O GRIMÓRIO <</label>
                     <input type="hidden" id="novo-elem-tipo" value="Neutro">
-                    
+
                     <div class="elem-grid">
-                        
+
                         <div class="box-classificacao border-mint">
                             <h4 class="text-mint">BÁSICOS</h4>
                             <div class="text-center">
-                                <div class="badge-elem" data-elem="Fogo" onclick="window.setElemento('Fogo', this, '#ff4d4d')">🔥 Fogo</div>
-                                <div class="badge-elem" data-elem="Água" onclick="window.setElemento('Água', this, '#4dffff')">💧 Água</div>
-                                <div class="badge-elem" data-elem="Raio" onclick="window.setElemento('Raio', this, '#ffff4d')">⚡ Raio</div>
-                                <div class="badge-elem" data-elem="Terra" onclick="window.setElemento('Terra', this, '#d2a679')">🪨 Terra</div>
-                                <div class="badge-elem" data-elem="Vento" onclick="window.setElemento('Vento', this, '#4dff88')">🌪️ Vento</div>
+                                <div class="badge-elem" data-elem="Fogo" data-color="#ff4d4d">🔥 Fogo</div>
+                                <div class="badge-elem" data-elem="Água" data-color="#4dffff">💧 Água</div>
+                                <div class="badge-elem" data-elem="Raio" data-color="#ffff4d">⚡ Raio</div>
+                                <div class="badge-elem" data-elem="Terra" data-color="#d2a679">🪨 Terra</div>
+                                <div class="badge-elem" data-elem="Vento" data-color="#4dff88">🌪️ Vento</div>
                             </div>
                         </div>
 
                         <div class="box-classificacao border-red-true">
                             <h4 class="text-red-true">BÁSICOS VERDADEIROS</h4>
                             <div class="text-center">
-                                <div class="badge-elem" data-elem="Fogo Verdadeiro" onclick="window.setElemento('Fogo Verdadeiro', this, '#ff0000')">🔥 Fogo Ver.</div>
-                                <div class="badge-elem" data-elem="Água Verdadeira" onclick="window.setElemento('Água Verdadeira', this, '#00e6e6')">💧 Água Ver.</div>
-                                <div class="badge-elem" data-elem="Raio Verdadeiro" onclick="window.setElemento('Raio Verdadeiro', this, '#ffff00')">⚡ Raio Ver.</div>
-                                <div class="badge-elem" data-elem="Terra Verdadeira" onclick="window.setElemento('Terra Verdadeira', this, '#d48846')">🪨 Terra Ver.</div>
-                                <div class="badge-elem" data-elem="Vento Verdadeiro" onclick="window.setElemento('Vento Verdadeiro', this, '#00ff40')">🌪️ Vento Ver.</div>
+                                <div class="badge-elem" data-elem="Fogo Verdadeiro" data-color="#ff0000">🔥 Fogo Ver.</div>
+                                <div class="badge-elem" data-elem="Água Verdadeira" data-color="#00e6e6">💧 Água Ver.</div>
+                                <div class="badge-elem" data-elem="Raio Verdadeiro" data-color="#ffff00">⚡ Raio Ver.</div>
+                                <div class="badge-elem" data-elem="Terra Verdadeira" data-color="#d48846">🪨 Terra Ver.</div>
+                                <div class="badge-elem" data-elem="Vento Verdadeiro" data-color="#00ff40">🌪️ Vento Ver.</div>
                             </div>
                         </div>
 
                         <div class="box-classificacao border-sky">
                             <h4 class="text-sky">AVANÇADOS</h4>
                             <div class="text-center">
-                                <div class="badge-elem" data-elem="Solar" onclick="window.setElemento('Solar', this, '#ffb366')">☀️ Solar</div>
-                                <div class="badge-elem" data-elem="Gelo" onclick="window.setElemento('Gelo', this, '#99ffff')">❄️ Gelo</div>
-                                <div class="badge-elem" data-elem="Natureza" onclick="window.setElemento('Natureza', this, '#66ff66')">🌿 Natureza</div>
-                                <div class="badge-elem" data-elem="Energia" onclick="window.setElemento('Energia', this, '#ff66ff')">💫 Energia</div>
-                                <div class="badge-elem" data-elem="Vácuo" onclick="window.setElemento('Vácuo', this, '#999999')">🕳️ Vácuo</div>
+                                <div class="badge-elem" data-elem="Solar" data-color="#ffb366">☀️ Solar</div>
+                                <div class="badge-elem" data-elem="Gelo" data-color="#99ffff">❄️ Gelo</div>
+                                <div class="badge-elem" data-elem="Natureza" data-color="#66ff66">🌿 Natureza</div>
+                                <div class="badge-elem" data-elem="Energia" data-color="#ff66ff">💫 Energia</div>
+                                <div class="badge-elem" data-elem="Vácuo" data-color="#999999">🕳️ Vácuo</div>
                             </div>
                         </div>
 
                         <div class="box-classificacao border-magenta">
                             <h4 class="text-magenta">AVANÇADOS VERDADEIROS</h4>
                             <div class="text-center">
-                                <div class="badge-elem" data-elem="Solar Verdadeiro" onclick="window.setElemento('Solar Verdadeiro', this, '#ff6600')">☀️ Solar Ver.</div>
-                                <div class="badge-elem" data-elem="Gelo Verdadeiro" onclick="window.setElemento('Gelo Verdadeiro', this, '#00ffff')">❄️ Gelo Ver.</div>
-                                <div class="badge-elem" data-elem="Natureza Verdadeira" onclick="window.setElemento('Natureza Verdadeira', this, '#00ff00')">🌿 Nature Ver.</div>
-                                <div class="badge-elem" data-elem="Energia Verdadeira" onclick="window.setElemento('Energia Verdadeira', this, '#ff00ff')">💫 Energia Ver.</div>
-                                <div class="badge-elem" data-elem="Vácuo Verdadeiro" onclick="window.setElemento('Vácuo Verdadeiro', this, '#ffffff')">🕳️ Vácuo Ver.</div>
+                                <div class="badge-elem" data-elem="Solar Verdadeiro" data-color="#ff6600">☀️ Solar Ver.</div>
+                                <div class="badge-elem" data-elem="Gelo Verdadeiro" data-color="#00ffff">❄️ Gelo Ver.</div>
+                                <div class="badge-elem" data-elem="Natureza Verdadeira" data-color="#00ff00">🌿 Nature Ver.</div>
+                                <div class="badge-elem" data-elem="Energia Verdadeira" data-color="#ff00ff">💫 Energia Ver.</div>
+                                <div class="badge-elem" data-elem="Vácuo Verdadeiro" data-color="#ffffff">🕳️ Vácuo Ver.</div>
                             </div>
                         </div>
 
                         <div class="box-classificacao elem-box-fullwidth-mana">
                             <h4 class="elem-header-mana">💧 MANA</h4>
-                            
+
                             <h5 class="elem-subheader-mana">> Magias Ancestrais</h5>
                             <div class="badge-container">
-                                <div class="badge-elem" data-elem="Magia de Osso" onclick="window.setElemento('Magia de Osso', this, '#e6e6e6')">🦴 M. de Osso</div>
-                                <div class="badge-elem" data-elem="Magia de Sangue" onclick="window.setElemento('Magia de Sangue', this, '#ff0000')">🩸 M. de Sangue</div>
-                                <div class="badge-elem" data-elem="Magia de Borracha" onclick="window.setElemento('Magia de Borracha', this, '#ff99cc')">🎈 M. de Borracha</div>
-                                <div class="badge-elem" data-elem="Magia de Sal" onclick="window.setElemento('Magia de Sal', this, '#fdfdfd')">🧂 M. de Sal</div>
-                                <div class="badge-elem" data-elem="Magia da Alma" onclick="window.setElemento('Magia da Alma', this, '#33cccc')">👻 M. da Alma</div>
-                                <div class="badge-elem" data-elem="Magia de Tremor" onclick="window.setElemento('Magia de Tremor', this, '#cc9966')">🫨 M. de Tremor</div>
-                                <div class="badge-elem" data-elem="Magia de Gravidade" onclick="window.setElemento('Magia de Gravidade', this, '#6600cc')">🌌 M. de Gravidade</div>
-                                <div class="badge-elem" data-elem="Magia de Equipamento" onclick="window.setElemento('Magia de Equipamento', this, '#b3b3b3')">⚙️ M. de Equipamento</div>
-                                <div class="badge-elem" data-elem="Magia de Tempo" onclick="window.setElemento('Magia de Tempo', this, '#ffd700')">⏳ M. de Tempo</div>
-                                <div class="badge-elem" data-elem="Magia Draconica" onclick="window.setElemento('Magia Draconica', this, '#ff5500')">🐉 M. Draconica</div>
-                                <div class="badge-elem" data-elem="Magia de Espelho" onclick="window.setElemento('Magia de Espelho', this, '#ccffff')">🪞 M. de Espelho</div>
-                                <div class="badge-elem" data-elem="Magia de Explosão" onclick="window.setElemento('Magia de Explosão', this, '#ff3300')">💥 M. de Explosão</div>
-                                <div class="badge-elem" data-elem="Magia Espacial" onclick="window.setElemento('Magia Espacial', this, '#000066')">🌀 M. Espacial</div>
-                                <div class="badge-elem" data-elem="Magia de Metamorfose" onclick="window.setElemento('Magia de Metamorfose', this, '#ff66b3')">🎭 M. de Metamorfose</div>
+                                <div class="badge-elem" data-elem="Magia de Osso" data-color="#e6e6e6">🦴 M. de Osso</div>
+                                <div class="badge-elem" data-elem="Magia de Sangue" data-color="#ff0000">🩸 M. de Sangue</div>
+                                <div class="badge-elem" data-elem="Magia de Borracha" data-color="#ff99cc">🎈 M. de Borracha</div>
+                                <div class="badge-elem" data-elem="Magia de Sal" data-color="#fdfdfd">🧂 M. de Sal</div>
+                                <div class="badge-elem" data-elem="Magia da Alma" data-color="#33cccc">👻 M. da Alma</div>
+                                <div class="badge-elem" data-elem="Magia de Tremor" data-color="#cc9966">🫨 M. de Tremor</div>
+                                <div class="badge-elem" data-elem="Magia de Gravidade" data-color="#6600cc">🌌 M. de Gravidade</div>
+                                <div class="badge-elem" data-elem="Magia de Equipamento" data-color="#b3b3b3">⚙️ M. de Equipamento</div>
+                                <div class="badge-elem" data-elem="Magia de Tempo" data-color="#ffd700">⏳ M. de Tempo</div>
+                                <div class="badge-elem" data-elem="Magia Draconica" data-color="#ff5500">🐉 M. Draconica</div>
+                                <div class="badge-elem" data-elem="Magia de Espelho" data-color="#ccffff">🪞 M. de Espelho</div>
+                                <div class="badge-elem" data-elem="Magia de Explosão" data-color="#ff3300">💥 M. de Explosão</div>
+                                <div class="badge-elem" data-elem="Magia Espacial" data-color="#000066">🌀 M. Espacial</div>
+                                <div class="badge-elem" data-elem="Magia de Metamorfose" data-color="#ff66b3">🎭 M. de Metamorfose</div>
                             </div>
 
                             <div class="magia-subsections">
@@ -302,7 +299,7 @@
                                     <h5 class="magia-subheader-arcana">> Magia Arcana / Negra</h5>
                                     <p class="magia-ciclo-hint">(1º ao 10º Ciclo)</p>
                                     <div class="text-center">
-                                        <div class="badge-elem" data-elem="Magia Arcana/Negra" onclick="window.setElemento('Magia Arcana/Negra', this, '#9900cc')">🔮 Magia Arcana/Negra</div>
+                                        <div class="badge-elem" data-elem="Magia Arcana/Negra" data-color="#9900cc">🔮 Magia Arcana/Negra</div>
                                     </div>
                                 </div>
 
@@ -310,7 +307,7 @@
                                     <h5 class="magia-subheader-ciclo">> Magia de Ciclo</h5>
                                     <p class="magia-ciclo-hint">(1º ao 10º Ciclo)</p>
                                     <div class="text-center">
-                                        <div class="badge-elem" data-elem="Magia de Ciclo" onclick="window.setElemento('Magia de Ciclo', this, '#00cc99')">🔄 Magia de Ciclo</div>
+                                        <div class="badge-elem" data-elem="Magia de Ciclo" data-color="#00cc99">🔄 Magia de Ciclo</div>
                                     </div>
                                 </div>
                             </div>
@@ -318,57 +315,57 @@
 
                         <div class="box-classificacao elem-box-fullwidth-chakra">
                             <h4 class="elem-header-chakra">🌀 CHAKRA</h4>
-                            
+
                             <h5 class="elem-subheader-chakra">> Kekkei Genkai</h5>
                             <div class="badge-container">
-                                <div class="badge-elem" data-elem="Elemento Madeira" onclick="window.setElemento('Elemento Madeira', this, '#8b5a2b')">🪵 El. Madeira</div>
-                                <div class="badge-elem" data-elem="Elemento Mineral" onclick="window.setElemento('Elemento Mineral', this, '#e6e6fa')">💎 El. Mineral</div>
-                                <div class="badge-elem" data-elem="Elemento Cinzas" onclick="window.setElemento('Elemento Cinzas', this, '#808080')">🌫️ El. Cinzas</div>
-                                <div class="badge-elem" data-elem="Elemento Ígneo" onclick="window.setElemento('Elemento Ígneo', this, '#ff4500')">☄️ El. Ígneo</div>
-                                <div class="badge-elem" data-elem="Elemento Lava" onclick="window.setElemento('Elemento Lava', this, '#ff0000')">🌋 El. Lava</div>
-                                <div class="badge-elem" data-elem="Elemento Vapor" onclick="window.setElemento('Elemento Vapor', this, '#ffb6c1')">♨️ El. Vapor</div>
-                                <div class="badge-elem" data-elem="Elemento Névoa" onclick="window.setElemento('Elemento Névoa', this, '#b0e0e6')">🌫️ El. Névoa</div>
-                                <div class="badge-elem" data-elem="Elemento Tempestade" onclick="window.setElemento('Elemento Tempestade', this, '#ccccff')">🌩️ El. Tempestade</div>
-                                <div class="badge-elem" data-elem="Elemento Areia" onclick="window.setElemento('Elemento Areia', this, '#f4a460')">🏜️ El. Areia</div>
-                                <div class="badge-elem" data-elem="Elemento Tufão" onclick="window.setElemento('Elemento Tufão', this, '#98fb98')">🌪️ El. Tufão</div>
+                                <div class="badge-elem" data-elem="Elemento Madeira" data-color="#8b5a2b">🪵 El. Madeira</div>
+                                <div class="badge-elem" data-elem="Elemento Mineral" data-color="#e6e6fa">💎 El. Mineral</div>
+                                <div class="badge-elem" data-elem="Elemento Cinzas" data-color="#808080">🌫️ El. Cinzas</div>
+                                <div class="badge-elem" data-elem="Elemento Ígneo" data-color="#ff4500">☄️ El. Ígneo</div>
+                                <div class="badge-elem" data-elem="Elemento Lava" data-color="#ff0000">🌋 El. Lava</div>
+                                <div class="badge-elem" data-elem="Elemento Vapor" data-color="#ffb6c1">♨️ El. Vapor</div>
+                                <div class="badge-elem" data-elem="Elemento Névoa" data-color="#b0e0e6">🌫️ El. Névoa</div>
+                                <div class="badge-elem" data-elem="Elemento Tempestade" data-color="#ccccff">🌩️ El. Tempestade</div>
+                                <div class="badge-elem" data-elem="Elemento Areia" data-color="#f4a460">🏜️ El. Areia</div>
+                                <div class="badge-elem" data-elem="Elemento Tufão" data-color="#98fb98">🌪️ El. Tufão</div>
                             </div>
 
                             <h5 class="elem-subheader-chakra-tota">> Kekkei Tōta</h5>
                             <div class="badge-container">
-                                <div class="badge-elem" data-elem="Elemento Velocidade" onclick="window.setElemento('Elemento Velocidade', this, '#e6ffff')">💨 El. Velocidade</div>
-                                <div class="badge-elem" data-elem="Elemento Poeira" onclick="window.setElemento('Elemento Poeira', this, '#d9d9d9')">🔲 El. Poeira</div>
-                                <div class="badge-elem" data-elem="Elemento Calor" onclick="window.setElemento('Elemento Calor', this, '#ff6600')">🌡️ El. Calor</div>
-                                <div class="badge-elem" data-elem="Elemento Cal" onclick="window.setElemento('Elemento Cal', this, '#e6ccb3')">⬜ El. Cal</div>
-                                <div class="badge-elem" data-elem="Elemento Carbono" onclick="window.setElemento('Elemento Carbono', this, '#595959')">⬛ El. Carbono</div>
-                                <div class="badge-elem" data-elem="Elemento Veneno" onclick="window.setElemento('Elemento Veneno', this, '#9933ff')">☣️ El. Veneno</div>
-                                <div class="badge-elem" data-elem="Elemento Magnetismo" onclick="window.setElemento('Elemento Magnetismo', this, '#4169e1')">🧲 El. Magnetismo</div>
+                                <div class="badge-elem" data-elem="Elemento Velocidade" data-color="#e6ffff">💨 El. Velocidade</div>
+                                <div class="badge-elem" data-elem="Elemento Poeira" data-color="#d9d9d9">🔲 El. Poeira</div>
+                                <div class="badge-elem" data-elem="Elemento Calor" data-color="#ff6600">🌡️ El. Calor</div>
+                                <div class="badge-elem" data-elem="Elemento Cal" data-color="#e6ccb3">⬜ El. Cal</div>
+                                <div class="badge-elem" data-elem="Elemento Carbono" data-color="#595959">⬛ El. Carbono</div>
+                                <div class="badge-elem" data-elem="Elemento Veneno" data-color="#9933ff">☣️ El. Veneno</div>
+                                <div class="badge-elem" data-elem="Elemento Magnetismo" data-color="#4169e1">🧲 El. Magnetismo</div>
                             </div>
                         </div>
 
                         <div class="box-classificacao border-primordial">
                             <h4 class="text-primordial">PRIMORDIAIS</h4>
                             <div class="text-center">
-                                <div class="badge-elem" data-elem="Luz" onclick="window.setElemento('Luz', this, '#ffffff')">✨ Luz</div>
-                                <div class="badge-elem" data-elem="Trevas" onclick="window.setElemento('Trevas', this, '#800080')">🌑 Trevas</div>
-                                <div class="badge-elem" data-elem="Ether" title="Fusão: Luz + Trevas" onclick="window.setElemento('Ether', this, '#b366ff')">🌌 Ether</div>
+                                <div class="badge-elem" data-elem="Luz" data-color="#ffffff">✨ Luz</div>
+                                <div class="badge-elem" data-elem="Trevas" data-color="#800080">🌑 Trevas</div>
+                                <div class="badge-elem" data-elem="Ether" title="Fusão: Luz + Trevas" data-color="#b366ff">🌌 Ether</div>
                             </div>
                         </div>
 
                         <div class="box-classificacao border-primordial-true">
                             <h4 class="text-primordial-true">PRIMORDIAIS VERDADEIROS</h4>
                             <div class="text-center">
-                                <div class="badge-elem" data-elem="Celestial" onclick="window.setElemento('Celestial', this, '#ffffcc')">🌟 Celestial</div>
-                                <div class="badge-elem" data-elem="Infernal" onclick="window.setElemento('Infernal', this, '#cc0000')">🌋 Infernal</div>
-                                <div class="badge-elem" data-elem="Caos" title="Fusão: Celestial + Infernal" onclick="window.setElemento('Caos', this, '#ff3399')">🌀 Caos</div>
+                                <div class="badge-elem" data-elem="Celestial" data-color="#ffffcc">🌟 Celestial</div>
+                                <div class="badge-elem" data-elem="Infernal" data-color="#cc0000">🌋 Infernal</div>
+                                <div class="badge-elem" data-elem="Caos" title="Fusão: Celestial + Infernal" data-color="#ff3399">🌀 Caos</div>
                             </div>
                         </div>
 
                         <div class="box-classificacao border-primordial-abs">
                             <h4 class="text-primordial-abs">PRIMORDIAIS ABSOLUTOS</h4>
                             <div class="text-center">
-                                <div class="badge-elem" data-elem="Criação" onclick="window.setElemento('Criação', this, '#00ffcc')">🎇 Criação</div>
-                                <div class="badge-elem" data-elem="Destruição" onclick="window.setElemento('Destruição', this, '#8b0000')">💥 Destruição</div>
-                                <div class="badge-elem" data-elem="Cosmos" title="Fusão: Criação + Destruição" onclick="window.setElemento('Cosmos', this, '#4d0099')">♾️ Cosmos</div>
+                                <div class="badge-elem" data-elem="Criação" data-color="#00ffcc">🎇 Criação</div>
+                                <div class="badge-elem" data-elem="Destruição" data-color="#8b0000">💥 Destruição</div>
+                                <div class="badge-elem" data-elem="Cosmos" title="Fusão: Criação + Destruição" data-color="#4d0099">♾️ Cosmos</div>
                             </div>
                         </div>
 
@@ -376,16 +373,16 @@
                             <div class="box-classificacao border-white-flex-1">
                                 <h4 class="text-white">ASTRAIS</h4>
                                 <div class="text-center">
-                                    <div class="badge-elem" data-elem="Vida" onclick="window.setElemento('Vida', this, '#33ff77')">🌺 Vida</div>
-                                    <div class="badge-elem" data-elem="Morte" onclick="window.setElemento('Morte', this, '#4d4d4d')">💀 Morte</div>
-                                    <div class="badge-elem" data-elem="Vazio" onclick="window.setElemento('Vazio', this, '#1a1a1a')">⬛ Vazio</div>
+                                    <div class="badge-elem" data-elem="Vida" data-color="#33ff77">🌺 Vida</div>
+                                    <div class="badge-elem" data-elem="Morte" data-color="#4d4d4d">💀 Morte</div>
+                                    <div class="badge-elem" data-elem="Vazio" data-color="#1a1a1a">⬛ Vazio</div>
                                 </div>
                             </div>
-                            
+
                             <div class="box-classificacao border-gray">
                                 <h4 class="text-muted">SEM AFINIDADE</h4>
                                 <div class="text-center">
-                                    <div class="badge-elem ativo badge-neutro-active" data-elem="Neutro" onclick="window.setElemento('Neutro', this, '#cccccc')">⚪ Neutro</div>
+                                    <div class="badge-elem ativo badge-neutro-active" data-elem="Neutro" data-color="#cccccc">⚪ Neutro</div>
                                 </div>
                             </div>
                         </div>
@@ -425,11 +422,11 @@
                 </div>
 
                 <div class="flex-row-gap-15">
-                    <button class="btn-neon btn-silver hidden-flex-1" id="btn-cancelar-edit-elem" onclick="window.cancelarEdicaoElem()">❌ CANCELAR</button>
-                    <button class="btn-neon btn-red btn-flex-2-fire" onclick="window.salvarNovoElem()">💾 GUARDAR NO GRIMÓRIO</button>
+                    <button class="btn-neon btn-silver hidden-flex-1" id="btn-cancelar-edit-elem">❌ CANCELAR</button>
+                    <button id="btn-salvar-elem" class="btn-neon btn-red btn-flex-2-fire">💾 GUARDAR NO GRIMÓRIO</button>
                 </div>
             </div>
-            
+
             <h3 class="section-title mt-40">> SEU GRIMÓRIO (FILTRADO POR AFINIDADE)</h3>
             <div id="lista-elementos-salvos"></div>
         </div>
@@ -437,10 +434,10 @@
         <div id="aba-arsenal" class="glass-panel">
             <h2 class="text-silver">> EQUIPAMENTOS (FORJA FÍSICA)</h2>
             <p class="text-muted-mb-25">Forje suas Armas e Armaduras puramente físicas. Equipamentos concedem bônus reais e passivos nas rolagens.</p>
-            
+
             <div class="def-box border-silver" id="form-item-box">
                 <h3 id="titulo-item-form" class="form-title-silver">🔨 FORJAR NOVO EQUIPAMENTO</h3>
-                
+
                 <div class="flex-row-wrap-mb-15">
                     <div class="input-group flex-2-m0-min200">
                         <label>NOME DO EQUIPAMENTO</label>
@@ -480,11 +477,11 @@
                 </div>
 
                 <div class="flex-row-gap-15">
-                    <button class="btn-neon btn-silver hidden-flex-1" id="btn-cancelar-edit-item" onclick="window.cancelarEdicaoItem()">❌ CANCELAR</button>
-                    <button class="btn-neon btn-silver flex-2" onclick="window.salvarNovoItem()">💾 GUARDAR EQUIPAMENTO</button>
+                    <button class="btn-neon btn-silver hidden-flex-1" id="btn-cancelar-edit-item">❌ CANCELAR</button>
+                    <button id="btn-salvar-item" class="btn-neon btn-silver flex-2">💾 GUARDAR EQUIPAMENTO</button>
                 </div>
             </div>
-            
+
             <h3 class="section-title">> SEU INVENTÁRIO FÍSICO</h3>
             <div id="lista-inventario-salvos"></div>
         </div>
@@ -492,7 +489,7 @@
         <div id="aba-poderes" class="glass-panel">
             <h2 class="text-yellow">> ARSENAL: PODERES E FORMAS</h2>
             <p class="text-muted-mb-25">Crie habilidades. O multiplicador atua livremente no Combate. O Prestígio Atual obedece à Verdadeira Fórmula de Ascensão: <strong>(Base Pura * Multiplicador) / Divisor</strong>.</p>
-            
+
             <div class="def-box border-yellow" id="form-poder-box">
                 <h3 id="titulo-poder-form" class="form-title-yellow">➕ CRIAR NOVO PODER</h3>
                 <div class="input-group"><label>NOME DO PODER / FORMA</label><input type="text" id="novo-pod-nome" placeholder="Ex: Modo Sábio"></div>
@@ -521,12 +518,12 @@
                             </select>
                         </div>
                         <div class="input-group flex-1-m0-min100"><label>VALOR</label><input type="number" step="0.1" id="novo-pod-val" value="2"></div>
-                        <button class="btn-neon btn-blue btn-small btn-add-effect" onclick="window.addEfeitoTemp()">+ ADD</button>
+                        <button id="btn-add-efeito" class="btn-neon btn-blue btn-small btn-add-effect">+ ADD</button>
                     </div>
                 </div>
                 <div class="flex-row-gap-15">
-                    <button class="btn-neon btn-silver hidden-flex-1" id="btn-cancelar-edit" onclick="window.cancelarEdicaoPoder()">❌ CANCELAR</button>
-                    <button class="btn-neon btn-gold flex-2" onclick="window.salvarNovoPoder()">💾 SALVAR PODER</button>
+                    <button class="btn-neon btn-silver hidden-flex-1" id="btn-cancelar-edit">❌ CANCELAR</button>
+                    <button id="btn-salvar-poder" class="btn-neon btn-gold flex-2">💾 SALVAR PODER</button>
                 </div>
             </div>
             <div id="lista-poderes-salvos"></div>
@@ -535,61 +532,61 @@
         <div id="aba-ataque" class="glass-panel">
             <h2>> AURA OFENSIVA (DANO) E CONJURAÇÃO MÁGICA</h2>
             <div class="checkbox-group">
-                <label class="checkbox-label"><input type="checkbox" class="chk-stat" value="inteligencia" onchange="window.salvarConfigAtaque(true)"> Inteligência</label>
-                <label class="checkbox-label"><input type="checkbox" class="chk-stat" value="energiaEsp" onchange="window.salvarConfigAtaque(true)"> Energia Esp.</label>
-                <label class="checkbox-label"><input type="checkbox" class="chk-stat" value="stamina" onchange="window.salvarConfigAtaque(true)"> Stamina</label>
-                <label class="checkbox-label"><input type="checkbox" class="chk-stat" value="forca" checked onchange="window.salvarConfigAtaque(true)"> Força</label>
-                <label class="checkbox-label"><input type="checkbox" class="chk-stat" value="destreza" onchange="window.salvarConfigAtaque(true)"> Destreza</label>
+                <label class="checkbox-label"><input type="checkbox" class="chk-stat" value="inteligencia"> Inteligência</label>
+                <label class="checkbox-label"><input type="checkbox" class="chk-stat" value="energiaEsp"> Energia Esp.</label>
+                <label class="checkbox-label"><input type="checkbox" class="chk-stat" value="stamina"> Stamina</label>
+                <label class="checkbox-label"><input type="checkbox" class="chk-stat" value="forca" checked> Força</label>
+                <label class="checkbox-label"><input type="checkbox" class="chk-stat" value="destreza"> Destreza</label>
             </div>
-            
+
             <h3 class="section-title">> DADOS DE ATAQUE</h3>
             <p class="hint-text">Os dados da sua magia são injetados automaticamente. Use o campo Extra para combagens infinitas!</p>
             <div class="flex-row-gap-20">
-                <div class="input-group flex-1"><label>DADOS (BASE)</label><input type="number" id="atk-dados" value="1" onchange="window.salvarConfigAtaque(true)"></div>
+                <div class="input-group flex-1"><label>DADOS (BASE)</label><input type="number" id="atk-dados" value="1"></div>
                 <div class="input-group flex-1"><label class="text-fire">+ DADOS (MAGIA)</label><input type="number" id="atk-dados-magia" value="0" readonly class="input-readonly-fire"></div>
-                <div class="input-group flex-1"><label class="text-cyan">+ DADOS (EXTRA ILIMITADO)</label><input type="number" id="atk-dados-extra" value="0" onchange="window.salvarConfigAtaque(true)"></div>
-                <div class="input-group flex-1"><label>FACES (Ex: d20)</label><input type="number" id="atk-faces" value="20" onchange="window.salvarConfigAtaque(true)"></div>
+                <div class="input-group flex-1"><label class="text-cyan">+ DADOS (EXTRA ILIMITADO)</label><input type="number" id="atk-dados-extra" value="0"></div>
+                <div class="input-group flex-1"><label>FACES (Ex: d20)</label><input type="number" id="atk-faces" value="20"></div>
             </div>
-            
+
             <h3 class="section-title text-fuchsia">> ⚙️ MOTOR DE ENERGIA E COMBUSTÃO MÁGICA</h3>
             <p class="hint-text-gold">A energia selecionada gera Dano Bruto e paga as suas Magias. Mais de uma energia ativada divide o custo mágico igualmente (Sinergia)!</p>
             <div class="checkbox-group border-fuchsia-faint">
-                <label class="checkbox-label"><input type="checkbox" class="chk-energia" value="mana" checked onchange="window.salvarConfigAtaque(true)"> Mana</label>
-                <label class="checkbox-label"><input type="checkbox" class="chk-energia" value="aura" onchange="window.salvarConfigAtaque(true)"> Aura</label>
-                <label class="checkbox-label"><input type="checkbox" class="chk-energia" value="chakra" onchange="window.salvarConfigAtaque(true)"> Chakra</label>
-                <label class="checkbox-label"><input type="checkbox" class="chk-energia" value="corpo" onchange="window.salvarConfigAtaque(true)"> Corpo</label>
+                <label class="checkbox-label"><input type="checkbox" class="chk-energia" value="mana" checked> Mana</label>
+                <label class="checkbox-label"><input type="checkbox" class="chk-energia" value="aura"> Aura</label>
+                <label class="checkbox-label"><input type="checkbox" class="chk-energia" value="chakra"> Chakra</label>
+                <label class="checkbox-label"><input type="checkbox" class="chk-energia" value="corpo"> Corpo</label>
             </div>
             <div class="flex-row-gap-15-wrap">
-                <div class="input-group flex-1"><label class="text-fuchsia">% GASTO (DRENO BASE)</label><input type="number" id="atk-perc-energia" value="10" min="0" max="100" onchange="window.salvarConfigAtaque(true)"></div>
+                <div class="input-group flex-1"><label class="text-fuchsia">% GASTO (DRENO BASE)</label><input type="number" id="atk-perc-energia" value="10" min="0" max="100"></div>
                 <div class="input-group flex-1"><label class="text-fire">% CUSTO (MAGIA)</label><input type="number" id="atk-perc-magia" value="0" readonly class="input-readonly-fire"></div>
-                <div class="input-group flex-1"><label class="text-fuchsia">REDUÇÃO EXTRA (%)</label><input type="number" id="atk-red-custo" value="0" min="0" max="100" onchange="window.salvarConfigAtaque(true)"></div>
-                <div class="input-group flex-1"><label class="text-fuchsia">MULT COMBUSTÃO (x)</label><input type="number" step="0.1" id="atk-mEnergia" value="1.0" onchange="window.salvarConfigAtaque(true)"></div>
+                <div class="input-group flex-1"><label class="text-fuchsia">REDUÇÃO EXTRA (%)</label><input type="number" id="atk-red-custo" value="0" min="0" max="100"></div>
+                <div class="input-group flex-1"><label class="text-fuchsia">MULT COMBUSTÃO (x)</label><input type="number" step="0.1" id="atk-mEnergia" value="1.0"></div>
             </div>
-            
+
             <div class="flex-row-gap-20-mt-20">
-                <div class="input-group flex-1"><label>DANO BRUTO FIXO (+)</label><input type="number" id="atk-bruto" value="0" onchange="window.salvarConfigAtaque(true)"></div>
-                <div class="input-group flex-1"><label>MULT. BRUTO FIXO (x)</label><input type="number" step="0.1" id="atk-mBruto" value="1.0" onchange="window.salvarConfigAtaque(true)"></div>
+                <div class="input-group flex-1"><label>DANO BRUTO FIXO (+)</label><input type="number" id="atk-bruto" value="0"></div>
+                <div class="input-group flex-1"><label>MULT. BRUTO FIXO (x)</label><input type="number" step="0.1" id="atk-mBruto" value="1.0"></div>
             </div>
-            
+
             <h3 class="section-title section-title-green-flex">
                 <span>> MULTIPLICADORES EXTRAS DO ATAQUE</span>
             </h3>
             <p class="hint-text-gold-spaced">Os valores que você digita na caixa são eternos. As Formas aparecem como um Holograma Verde!</p>
-            
+
             <div class="flex-row-gap-15-wrap">
-                <div class="input-group flex-1"><label>EXTRA BASE <span id="lbl-buff-base" class="buff-label"></span></label><input type="number" step="0.1" id="atk-dBase" value="1.0" onchange="window.desativarSync()"></div>
-                <div class="input-group flex-1"><label>EXTRA GERAL <span id="lbl-buff-geral" class="buff-label"></span></label><input type="number" step="0.1" id="atk-dGeral" value="1.0" onchange="window.desativarSync()"></div>
-                <div class="input-group flex-1"><label>EXTRA FORMAS <span id="lbl-buff-formas" class="buff-label"></span></label><input type="number" step="0.1" id="atk-dFormas" value="1.0" onchange="window.desativarSync()"></div>
-                <div class="input-group flex-1"><label>EXTRA ABSOLUTO <span id="lbl-buff-abs" class="buff-label"></span></label><input type="number" step="0.1" id="atk-dAbsoluto" value="1.0" onchange="window.desativarSync()"></div>
+                <div class="input-group flex-1"><label>EXTRA BASE <span id="lbl-buff-base" class="buff-label"></span></label><input type="number" step="0.1" id="atk-dBase" value="1.0"></div>
+                <div class="input-group flex-1"><label>EXTRA GERAL <span id="lbl-buff-geral" class="buff-label"></span></label><input type="number" step="0.1" id="atk-dGeral" value="1.0"></div>
+                <div class="input-group flex-1"><label>EXTRA FORMAS <span id="lbl-buff-formas" class="buff-label"></span></label><input type="number" step="0.1" id="atk-dFormas" value="1.0"></div>
+                <div class="input-group flex-1"><label>EXTRA ABSOLUTO <span id="lbl-buff-abs" class="buff-label"></span></label><input type="number" step="0.1" id="atk-dAbsoluto" value="1.0"></div>
             </div>
             <div class="flex-row-gap-15">
-                <div class="input-group flex-1"><label class="text-green">POTENCIAL LIVRE (x)</label><input type="number" step="0.1" id="atk-dPotencial" value="1.0" onchange="window.salvarConfigAtaque(true)"></div>
-                <div class="input-group flex-1"><label>MULT. ÚNICOS <span id="lbl-buff-uni" class="buff-label"></span></label><input type="text" id="atk-dUnico" value="1.0" onchange="window.desativarSync()"></div>
+                <div class="input-group flex-1"><label class="text-green">POTENCIAL LIVRE (x)</label><input type="number" step="0.1" id="atk-dPotencial" value="1.0"></div>
+                <div class="input-group flex-1"><label>MULT. ÚNICOS <span id="lbl-buff-uni" class="buff-label"></span></label><input type="text" id="atk-dUnico" value="1.0"></div>
             </div>
             <div class="flex-end-compact">
-                <button id="btn-save-atk" class="btn-neon btn-gold btn-small btn-compact" onclick="window.salvarConfigAtaque()">💾 FORÇAR SALVAMENTO (OPCIONAL)</button>
+                <button id="btn-save-atk" class="btn-neon btn-gold btn-small btn-compact">💾 FORÇAR SALVAMENTO (OPCIONAL)</button>
             </div>
-            <button class="btn-neon" onclick="window.rolarDano()">💥 EXECUTAR ATAQUE (DANO)</button>
+            <button id="btn-rolar-dano" class="btn-neon">💥 EXECUTAR ATAQUE (DANO)</button>
         </div>
 
         <div id="aba-acerto" class="glass-panel">
@@ -612,7 +609,7 @@
                 <div class="input-group flex-1"><label class="text-orange">PROFICIÊNCIA (+)</label><input type="number" id="act-prof" value="0"></div>
                 <div class="input-group flex-1"><label class="text-orange">BÔNUS FIXO (+)</label><input type="number" id="act-bonus" value="0"></div>
             </div>
-            <button class="btn-neon btn-orange" onclick="window.rolarAcerto()">🎯 ROLAR ACERTO</button>
+            <button id="btn-rolar-acerto" class="btn-neon btn-orange">🎯 ROLAR ACERTO</button>
         </div>
 
         <div id="aba-defesa" class="glass-panel">
@@ -623,7 +620,7 @@
                     <div class="input-group flex-1"><label>PROFICIÊNCIA (+)</label><input type="number" id="def-eva-prof" value="0"></div>
                     <div class="input-group flex-1"><label>BÔNUS FIXO (+)</label><input type="number" id="def-eva-bonus" value="0"></div>
                 </div>
-                <button class="btn-neon btn-blue" onclick="window.declararEvasiva()">💨 DECLARAR ESQUIVA</button>
+                <button id="btn-evasiva" class="btn-neon btn-blue">💨 DECLARAR ESQUIVA</button>
             </div>
             <div class="def-box def-box-silver">
                 <h3 class="form-title-silver">🛡️ RESISTÊNCIA (Armor Class de Bloqueio)</h3>
@@ -631,7 +628,7 @@
                     <div class="input-group flex-1"><label>PROFICIÊNCIA (+)</label><input type="number" id="def-res-prof" value="0"></div>
                     <div class="input-group flex-1"><label>BÔNUS FIXO (+)</label><input type="number" id="def-res-bonus" value="0"></div>
                 </div>
-                <button class="btn-neon btn-silver" onclick="window.declararResistencia()">🛡️ DECLARAR BLOQUEIO</button>
+                <button id="btn-resistencia" class="btn-neon btn-silver">🛡️ DECLARAR BLOQUEIO</button>
             </div>
             <div class="def-box def-box-fuchsia">
                 <h3 class="def-title-fuchsia">✨ REDUÇÃO DE DANO (Escudo de Energia)</h3>
@@ -643,7 +640,7 @@
                     <div class="input-group flex-1"><label class="text-fuchsia">% DE SACRIFÍCIO</label><input type="number" id="def-red-perc" value="10"></div>
                     <div class="input-group flex-1"><label class="text-fuchsia">MULT. BASE DO ESCUDO (x)</label><input type="number" step="0.1" id="def-red-mult" value="1.0"></div>
                 </div>
-                <button class="btn-neon btn-purple" onclick="window.declararReducao()">✨ GERAR ESCUDO</button>
+                <button id="btn-reducao" class="btn-neon btn-purple">✨ GERAR ESCUDO</button>
             </div>
         </div>
 
@@ -651,7 +648,7 @@
             <h2>> BANCO DE DADOS (FICHA BASE)</h2>
             <div class="input-group">
                 <label>EDITAR</label>
-                <select id="sel-atributo" onchange="window.carregarAtributoNaTela()">
+                <select id="sel-atributo">
                     <optgroup label="Ações Rápidas (Lote)" style="color: #0ff;"><option value="todos_status">Todos os 8 Status Físicos/Mentais</option><option value="todas_energias">Todas as 4 Energias</option></optgroup>
                     <optgroup label="Status Vitais" style="color: #ff4d4d;"><option value="vida">Vida (HP)</option></optgroup>
                     <optgroup label="Atributos Individuais"><option value="forca" selected>Força</option><option value="destreza">Destreza</option><option value="inteligencia">Inteligência</option><option value="sabedoria">Sabedoria</option><option value="energiaEsp">Energia Espiritual</option><option value="carisma">Carisma</option><option value="stamina">Stamina</option><option value="constituicao">Constituição</option></optgroup>
@@ -670,7 +667,7 @@
                 <div class="input-group flex-1-min150"><label class="text-fuchsia">RED. CUSTO PASSIVA (%) (+)</label><input type="number" id="fch-redCusto" value="0"></div>
                 <div class="input-group flex-1-min150"><label class="text-green">REGENERAÇÃO PASSIVA (+)</label><input type="number" id="fch-regen" value="0"></div>
             </div>
-            <button class="btn-neon btn-green-border" onclick="window.salvarAtributo()">💾 SALVAR MODIFICAÇÕES NO BANCO DE DADOS</button>
+            <button id="btn-salvar-atributo" class="btn-neon btn-green-border">💾 SALVAR MODIFICAÇÕES NO BANCO DE DADOS</button>
         </div>
 
         <div id="aba-log" class="glass-panel">

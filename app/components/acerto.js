@@ -5,6 +5,11 @@ import { minhaFicha, meuNome } from '../state/store.js';
 import { calcularAcerto } from '../core/engine.js';
 import { enviarParaFeed } from '../services/firebase-sync.js';
 
+export function initAcertoListeners() {
+    var btnRolar = document.getElementById('btn-rolar-acerto');
+    if (btnRolar) btnRolar.addEventListener('click', function() { rolarAcerto(); });
+}
+
 export function rolarAcerto() {
     let qD = parseInt(document.getElementById('act-dados').value) || 1;
     let fD = parseInt(document.getElementById('act-faces').value) || 20;
