@@ -72,7 +72,7 @@ function renderTodosJogadores(dados) {
     // Inclui o jogador local (sempre atualizado)
     let jogadores = {};
     if (meuNome && minhaFicha.posicao && minhaFicha.posicao.x !== undefined) {
-        jogadores[meuNome] = { posicao: minhaFicha.posicao };
+        jogadores[meuNome] = minhaFicha;
     }
 
     // Adiciona os outros jogadores do Firebase
@@ -99,6 +99,28 @@ function renderTodosJogadores(dados) {
             token.innerText = nome.charAt(0).toUpperCase();
             token.title = nome;
             token.style.backgroundColor = corDoJogador(nome);
+            // --- LÓGICA DO AVATAR DINÂMICO (MULTIPLAYER) ---
+            let fichaDoJogador = jogadores[nome];
+            let imgAtual = fichaDoJogador.avatar ? fichaDoJogador.avatar.base : "";
+            
+            // O sistema vasculha os poderes do jogador atual do loop
+            if (fichaDoJogador.poderes) {
+                for (let j = 0; j < fichaDoJogador.poderes.length; j++) {
+                    let p = fichaDoJogador.poderes[j];
+                    if (p.ativa && p.imagemUrl && p.imagemUrl.trim() !== "") {
+                        imgAtual = p.imagemUrl; // A Transformação toma o controle!
+                    }
+                }
+            }
+
+            // Aplica a imagem se existir
+            if (imgAtual && imgAtual !== "") {
+                token.style.backgroundImage = `url('${imgAtual}')`;
+                token.style.backgroundSize = "cover";
+                token.style.backgroundPosition = "center";
+                token.innerText = ""; // Limpa a letra já que tem imagem
+            }
+            // ------------------------------------------------
             cell.appendChild(token);
         }
     }
