@@ -234,7 +234,7 @@ window.addEventListener('DOMContentLoaded', function () {
 });
 
 // Cole isto solto no arquivo, para ficar disponível globalmente no HTML:
-window.salvarImagemBase = function() {
+/*window.salvarImagemBase = function() {
     let inputImg = document.getElementById('perfil-imagem');
     if (!inputImg) return;
     
@@ -252,4 +252,4 @@ window.salvarImagemBase = function() {
         // Se você tiver a função atualizarMapa ou initMap importada, chame-a aqui.
         // Ex: initMap(); 
     }
-};
+};*/
