@@ -42,6 +42,10 @@
         <div class="title">SISTEMA DE CULTIVAÇÃO RPG</div>
 
         <div id="aba-perfil" class="glass-panel">
+            <div class="input-group" style="margin-top: 15px;">
+                <label style="color: #0ff;">🖼️ URL DA IMAGEM DO PERSONAGEM (BASE)</label>
+                <input type="text" id="perfil-imagem" placeholder="Cole o link direto da imagem (jpg, png, gif)..." onchange="window.salvarImagemBase()">
+            </div>
             <h2 class="text-gold">> SESSÃO DE USUÁRIO</h2>
             <div class="input-group mb-5">
                 <label class="text-gold">CRIAR NOVO OU LOGAR (DIGITE O NOME EXATO AQUI)</label>
@@ -493,6 +497,10 @@
             <div class="def-box border-yellow" id="form-poder-box">
                 <h3 id="titulo-poder-form" class="form-title-yellow">➕ CRIAR NOVO PODER</h3>
                 <div class="input-group"><label>NOME DO PODER / FORMA</label><input type="text" id="novo-pod-nome" placeholder="Ex: Modo Sábio"></div>
+                <div class="input-group">
+                    <label style="color: #ffcc00;">🖼️ URL DO AVATAR DA FORMA (Opcional)</label>
+                    <input type="text" id="novo-pod-imagem" placeholder="Se preenchido, o token do mapa muda ao ligar este poder...">
+                </div>
                 <div class="effects-container">
                     <div id="efeitos-temp-list" class="mb-15"></div>
                     <div class="flex-row-gap-10-end">
