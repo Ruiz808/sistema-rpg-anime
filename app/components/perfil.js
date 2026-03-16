@@ -63,6 +63,11 @@ export function trocarPersonagem() {
             window.renderizarElementos();
             window.atualizarInputsDeDano();
             window.renderizarListaPersonagensLocal();
+            // Preenche a caixa visual da Imagem Base
+    let inputImg = document.getElementById('perfil-imagem');
+    if (inputImg) {
+    inputImg.value = (minhaFicha.avatar && minhaFicha.avatar.base) ? minhaFicha.avatar.base : "";
+}
         });
     }
     window.carregarConfigAtaqueInicial();
