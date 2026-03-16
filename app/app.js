@@ -185,6 +185,29 @@ if (db) {
 }
 
 // DOMContentLoaded
+// ==========================================
+// FUNÇÕES GLOBAIS DE INTERFACE
+// ==========================================
+
+window.salvarImagemBase = function() {
+    let inputImg = document.getElementById('perfil-imagem');
+    if (!inputImg) return;
+    
+    let url = inputImg.value.trim();
+    if (!minhaFicha.avatar) minhaFicha.avatar = { base: "" };
+    minhaFicha.avatar.base = url;
+    
+    salvarFichaSilencioso(); // Salva no banco de dados
+    
+    alert("✅ Imagem Base do personagem salva!");
+    
+    // Recarrega o mapa para a imagem aparecer na hora
+    initMap(); 
+};
+
+// ==========================================
+// DOMContentLoaded (Início do Sistema)
+// ==========================================
 window.addEventListener('DOMContentLoaded', function () {
     setTimeout(function () {
         let isM = localStorage.getItem("rpgIsMestre") === "sim";
@@ -201,14 +224,12 @@ window.addEventListener('DOMContentLoaded', function () {
         atualizarInputsDeDano();
         renderizarListaPersonagensLocal();
 
-        window.salvarImagemBase = function() {
-    let url = document.getElementById('perfil-imagem').value.trim();
-    if (!minhaFicha.avatar) minhaFicha.avatar = {};
-    minhaFicha.avatar.base = url;
-    window.salvarFichaSilencioso();
-    if(window.renderPlayer) window.renderPlayer(); // Atualiza o mapa na hora
-    alert("✅ Imagem Base do personagem salva!");
-};
+        // Preenche o campo da imagem com o que está salvo no banco
+        let inputImg = document.getElementById('perfil-imagem');
+        if (inputImg && minhaFicha.avatar) {
+            inputImg.value = minhaFicha.avatar.base || "";
+        }
+
     }, 300);
 });
 
