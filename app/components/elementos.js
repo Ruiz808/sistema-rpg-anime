@@ -171,6 +171,21 @@ function renderMagia(p) {
             </div></div></div>`;
 }
 
+export function initElementosListeners() {
+    var badges = document.querySelectorAll('.badge-elem[data-elem][data-color]');
+    for (var i = 0; i < badges.length; i++) {
+        badges[i].addEventListener('click', function() {
+            setElemento(this.getAttribute('data-elem'), this, this.getAttribute('data-color'));
+        });
+    }
+
+    var btnCancelar = document.getElementById('btn-cancelar-edit-elem');
+    if (btnCancelar) btnCancelar.addEventListener('click', function() { cancelarEdicaoElem(); });
+
+    var btnSalvar = document.getElementById('btn-salvar-elem');
+    if (btnSalvar) btnSalvar.addEventListener('click', function() { salvarNovoElem(); });
+}
+
 export function renderizarElementos() {
     try {
         let d = document.getElementById('lista-elementos-salvos');

@@ -7,6 +7,31 @@ import { getMaximo, getRawBase } from '../core/attributes.js';
 import { getPrestigioReal } from '../core/prestige.js';
 import { salvarFichaSilencioso, salvarFirebaseImediato } from '../services/firebase-sync.js';
 
+export function initFichaListeners() {
+    var selAtributo = document.getElementById('sel-atributo');
+    if (selAtributo) selAtributo.addEventListener('change', function() { carregarAtributoNaTela(); });
+
+    var btnSalvar = document.getElementById('btn-salvar-atributo');
+    if (btnSalvar) btnSalvar.addEventListener('click', function() { salvarAtributo(); });
+
+    // Prestigio inputs
+    var presInputs = ['pres-asc', 'pres-vida', 'pres-status', 'pres-mana', 'pres-aura', 'pres-chakra', 'pres-corpo'];
+    for (var i = 0; i < presInputs.length; i++) {
+        var el = document.getElementById(presInputs[i]);
+        if (el) el.addEventListener('change', function() { aplicarPrestigioNaFicha(); });
+    }
+
+    var btnPrestigio = document.getElementById('btn-salvar-prestigio');
+    if (btnPrestigio) btnPrestigio.addEventListener('click', function() { salvarTabelaAoServidor(); });
+
+    // Divisores
+    var divInputs = ['div-vida', 'div-status', 'div-mana', 'div-aura', 'div-chakra', 'div-corpo'];
+    for (var i = 0; i < divInputs.length; i++) {
+        var el = document.getElementById(divInputs[i]);
+        if (el) el.addEventListener('change', function() { atualizarDivisores(); });
+    }
+}
+
 export function carregarAtributoNaTela() {
     let s = document.getElementById('sel-atributo').value;
     let k = (s === 'todos_status') ? 'forca' : (s === 'todas_energias') ? 'mana' : s;
