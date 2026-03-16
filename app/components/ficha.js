@@ -87,8 +87,8 @@ export function aplicarPrestigioNaFicha() {
     let elCo = document.getElementById('pres-corpo'); let v6 = elCo ? Math.max(0, parseInt(elCo.value) || 0) : 0;
 
     minhaFicha.ascensaoBase = ascB;
-    minhaFicha.vida.base = v1 * 1000000; minhaFicha.mana.base = v3 * 1000000;
-    minhaFicha.aura.base = v4 * 1000000; minhaFicha.chakra.base = v5 * 1000000; minhaFicha.corpo.base = v6 * 1000000;
+    minhaFicha.vida.base = v1 * 1000000; minhaFicha.mana.base = v3 * 10000000;
+    minhaFicha.aura.base = v4 * 10000000; minhaFicha.chakra.base = v5 * 10000000; minhaFicha.corpo.base = v6 * 10000000;
 
     let stBase = v2 * 1000; let sFisicos = ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'];
     for (let i = 0; i < sFisicos.length; i++) minhaFicha[sFisicos[i]].base = stBase;
