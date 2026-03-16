@@ -115,9 +115,11 @@ export function alterarHP(tipo) {
     let el = document.getElementById('val-dano-cura'); let v = parseInt(el.value);
     if (isNaN(v) || v <= 0) return alert("⚠️ Digite um número maior que zero!");
     let letalidade = parseInt(document.getElementById('val-letalidade').value) || 0;
-    let mx = getMaximo('vida'); let p = Math.max(0, contarDigitos(mx) - 8); let dif = letalidade - p;
-    let ef = v; if (dif > 0) ef = v * Math.pow(10, dif); else if (dif < 0) ef = Math.floor(v / Math.pow(10, Math.abs(dif)));
-    if (tipo === 'dano') minhaFicha.vida.atual -= ef; else minhaFicha.vida.atual += ef;
+    let mx = getMaximo('vida'); let p = Math.max(0, contarDigitos(mx) - 8);
+    let vidaExpandida = minhaFicha.vida.atual * Math.pow(10, p);
+    let ef = v * Math.pow(10, letalidade);
+    if (tipo === 'dano') vidaExpandida -= ef; else vidaExpandida += ef;
+    minhaFicha.vida.atual = Math.floor(vidaExpandida / Math.pow(10, p));
     atualizarBarrasVisuais(); salvarFichaSilencioso(); el.value = ''; document.getElementById('val-letalidade').value = '0';
 }
 
