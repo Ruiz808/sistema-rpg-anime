@@ -24,3 +24,12 @@ export function mudarAba(idAba, el) {
         if (idAba === 'aba-mapa') window.initMap();
     } catch (e) { }
 }
+
+export function initTabsListeners() {
+    var navBtns = document.querySelectorAll('.nav-btn[data-aba]');
+    for (var i = 0; i < navBtns.length; i++) {
+        navBtns[i].addEventListener('click', function() {
+            mudarAba(this.getAttribute('data-aba'), this);
+        });
+    }
+}

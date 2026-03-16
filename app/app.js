@@ -15,24 +15,24 @@ import { db } from './services/firebase-config.js';
 import { salvarFichaSilencioso, salvarFirebaseImediato, carregarFichaDoFirebase, iniciarListenerPersonagens, iniciarListenerFeed, enviarParaFeed } from './services/firebase-sync.js';
 
 // === COMPONENTS ===
-import { mudarAba } from './components/tabs.js';
+import { mudarAba, initTabsListeners } from './components/tabs.js';
 import { renderizarFeed } from './components/feed.js';
-import { renderizarListaPersonagensLocal, toggleMestre, trocarPersonagem, carregarPersonagemExistente, abrirModalDelete, fecharModalDelete, confirmarDelecao } from './components/perfil.js';
-import { setElemento, salvarNovoElem, editarElem, cancelarEdicaoElem, toggleEquiparElem, deletarElem, renderizarElementos } from './components/elementos.js';
-import { salvarNovoItem, editarItem, cancelarEdicaoItem, toggleEquiparItem, deletarItem, renderizarInventario } from './components/arsenal.js';
-import { addEfeitoTemp, removerEfeitoTemp, renderizarEfeitosTemp, salvarNovoPoder, editarPoder, cancelarEdicaoPoder, togglePoder, deletarPoder, renderizarListaPoderes } from './components/poderes.js';
-import { desativarSync, salvarConfigAtaque, carregarConfigAtaqueInicial, atualizarInputsDeDano, rolarDano } from './components/ataque.js';
-import { declararEvasiva, declararResistencia, declararReducao } from './components/defesa.js';
-import { rolarAcerto } from './components/acerto.js';
-import { inicializarAtuais, desenharRadar, atualizarBarrasVisuais, alterarHP, curarTudo, aplicarRegeneracaoTurno } from './components/status.js';
-import { carregarAtributoNaTela, salvarAtributo, atualizarDivisores, carregarTabelaPrestigio, aplicarPrestigioNaFicha, salvarTabelaAoServidor } from './components/ficha.js';
+import { renderizarListaPersonagensLocal, toggleMestre, trocarPersonagem, carregarPersonagemExistente, abrirModalDelete, fecharModalDelete, confirmarDelecao, initPerfilListeners } from './components/perfil.js';
+import { setElemento, salvarNovoElem, editarElem, cancelarEdicaoElem, toggleEquiparElem, deletarElem, renderizarElementos, initElementosListeners } from './components/elementos.js';
+import { salvarNovoItem, editarItem, cancelarEdicaoItem, toggleEquiparItem, deletarItem, renderizarInventario, initArsenalListeners } from './components/arsenal.js';
+import { addEfeitoTemp, removerEfeitoTemp, renderizarEfeitosTemp, salvarNovoPoder, editarPoder, cancelarEdicaoPoder, togglePoder, deletarPoder, renderizarListaPoderes, initPoderesListeners } from './components/poderes.js';
+import { desativarSync, salvarConfigAtaque, carregarConfigAtaqueInicial, atualizarInputsDeDano, rolarDano, initAtaqueListeners } from './components/ataque.js';
+import { declararEvasiva, declararResistencia, declararReducao, initDefesaListeners } from './components/defesa.js';
+import { rolarAcerto, initAcertoListeners } from './components/acerto.js';
+import { inicializarAtuais, desenharRadar, atualizarBarrasVisuais, alterarHP, curarTudo, aplicarRegeneracaoTurno, initStatusListeners } from './components/status.js';
+import { carregarAtributoNaTela, salvarAtributo, atualizarDivisores, carregarTabelaPrestigio, aplicarPrestigioNaFicha, salvarTabelaAoServidor, initFichaListeners } from './components/ficha.js';
 import { initMap, atualizarMapa } from './components/map.js';
 
 // ==========================================
-// EXPOR NO WINDOW (onclick do HTML)
+// EXPOR NO WINDOW (usados por outros módulos JS via window.*)
 // ==========================================
 
-// Core
+// Core (used by other JS modules)
 window.contarDigitos = contarDigitos;
 window.tratarUnico = tratarUnico;
 window.pegarDoisPrimeirosDigitos = pegarDoisPrimeirosDigitos;
@@ -51,84 +51,53 @@ window.getPrestigioReal = getPrestigioReal;
 window.calcPAtual = calcPAtual;
 window.getRank = getRank;
 
-// Services
+// Services (used by other JS modules)
 window.salvarFichaSilencioso = salvarFichaSilencioso;
 
-// Tabs
+// Tabs (used by perfil.js, ataque.js, defesa.js, acerto.js)
 window.mudarAba = mudarAba;
 
-// Feed
+// Feed (used by ataque.js, defesa.js, acerto.js)
 window.renderizarFeed = renderizarFeed;
 
-// Perfil
+// Perfil (used by tabs.js, perfil.js dynamic HTML, app.js listener)
 window.renderizarListaPersonagensLocal = renderizarListaPersonagensLocal;
-window.toggleMestre = toggleMestre;
-window.trocarPersonagem = trocarPersonagem;
 window.carregarPersonagemExistente = carregarPersonagemExistente;
 window.abrirModalDelete = abrirModalDelete;
-window.fecharModalDelete = fecharModalDelete;
-window.confirmarDelecao = confirmarDelecao;
 
-// Elementos
-window.setElemento = setElemento;
-window.salvarNovoElem = salvarNovoElem;
-window.editarElem = editarElem;
-window.cancelarEdicaoElem = cancelarEdicaoElem;
+// Elementos (used by elementos.js dynamic HTML)
 window.toggleEquiparElem = toggleEquiparElem;
+window.editarElem = editarElem;
 window.deletarElem = deletarElem;
 window.renderizarElementos = renderizarElementos;
 
-// Arsenal
-window.salvarNovoItem = salvarNovoItem;
-window.editarItem = editarItem;
-window.cancelarEdicaoItem = cancelarEdicaoItem;
+// Arsenal (used by arsenal.js dynamic HTML)
 window.toggleEquiparItem = toggleEquiparItem;
+window.editarItem = editarItem;
 window.deletarItem = deletarItem;
 window.renderizarInventario = renderizarInventario;
 
-// Poderes
-window.addEfeitoTemp = addEfeitoTemp;
+// Poderes (used by poderes.js dynamic HTML)
 window.removerEfeitoTemp = removerEfeitoTemp;
-window.renderizarEfeitosTemp = renderizarEfeitosTemp;
-window.salvarNovoPoder = salvarNovoPoder;
-window.editarPoder = editarPoder;
-window.cancelarEdicaoPoder = cancelarEdicaoPoder;
 window.togglePoder = togglePoder;
+window.editarPoder = editarPoder;
 window.deletarPoder = deletarPoder;
 window.renderizarListaPoderes = renderizarListaPoderes;
 
-// Ataque
-window.desativarSync = desativarSync;
-window.salvarConfigAtaque = salvarConfigAtaque;
+// Ataque (used by tabs.js, perfil.js, poderes.js, elementos.js, status.js)
 window.carregarConfigAtaqueInicial = carregarConfigAtaqueInicial;
 window.atualizarInputsDeDano = atualizarInputsDeDano;
-window.rolarDano = rolarDano;
 
-// Defesa
-window.declararEvasiva = declararEvasiva;
-window.declararResistencia = declararResistencia;
-window.declararReducao = declararReducao;
-
-// Acerto
-window.rolarAcerto = rolarAcerto;
-
-// Status
+// Status (used by tabs.js, perfil.js, ficha.js, ataque.js, defesa.js, poderes.js)
 window.inicializarAtuais = inicializarAtuais;
-window.desenharRadar = desenharRadar;
 window.atualizarBarrasVisuais = atualizarBarrasVisuais;
-window.alterarHP = alterarHP;
 window.curarTudo = curarTudo;
-window.aplicarRegeneracaoTurno = aplicarRegeneracaoTurno;
 
-// Ficha
+// Ficha (used by tabs.js, status.js)
 window.carregarAtributoNaTela = carregarAtributoNaTela;
-window.salvarAtributo = salvarAtributo;
-window.atualizarDivisores = atualizarDivisores;
 window.carregarTabelaPrestigio = carregarTabelaPrestigio;
-window.aplicarPrestigioNaFicha = aplicarPrestigioNaFicha;
-window.salvarTabelaAoServidor = salvarTabelaAoServidor;
 
-// Mapa
+// Mapa (used by tabs.js)
 window.initMap = initMap;
 window.atualizarMapa = atualizarMapa;
 
@@ -184,7 +153,6 @@ if (db) {
     });
 }
 
-// DOMContentLoaded
 // ==========================================
 // FUNÇÕES GLOBAIS DE INTERFACE
 // ==========================================
@@ -192,23 +160,35 @@ if (db) {
 window.salvarImagemBase = function() {
     let inputImg = document.getElementById('perfil-imagem');
     if (!inputImg) return;
-    
+
     let url = inputImg.value.trim();
     if (!minhaFicha.avatar) minhaFicha.avatar = { base: "" };
     minhaFicha.avatar.base = url;
-    
+
     salvarFichaSilencioso(); // Salva no banco de dados
-    
+
     alert("✅ Imagem Base do personagem salva!");
-    
+
     // Recarrega o mapa para a imagem aparecer na hora
-    initMap(); 
+    initMap();
 };
 
 // ==========================================
 // DOMContentLoaded (Início do Sistema)
 // ==========================================
 window.addEventListener('DOMContentLoaded', function () {
+    // Inicializar todos os listeners de componentes
+    initTabsListeners();
+    initPerfilListeners();
+    initStatusListeners();
+    initFichaListeners();
+    initElementosListeners();
+    initArsenalListeners();
+    initPoderesListeners();
+    initAtaqueListeners();
+    initAcertoListeners();
+    initDefesaListeners();
+
     setTimeout(function () {
         let isM = localStorage.getItem("rpgIsMestre") === "sim";
         let elChk = document.getElementById('chk-mestre');
@@ -232,24 +212,3 @@ window.addEventListener('DOMContentLoaded', function () {
 
     }, 300);
 });
-
-// Cole isto solto no arquivo, para ficar disponível globalmente no HTML:
-window.salvarImagemBase = function() {
-    let inputImg = document.getElementById('perfil-imagem');
-    if (!inputImg) return;
-    
-    let url = inputImg.value.trim();
-    if (!minhaFicha.avatar) minhaFicha.avatar = {};
-    minhaFicha.avatar.base = url;
-    
-    salvarFichaSilencioso(); // Usa a sua função importada do firebase/store
-    
-    alert("✅ Imagem Base do personagem salva!");
-    
-    // Força o mapa a atualizar a imagem na hora
-    let abaMapa = document.getElementById('aba-mapa');
-    if (abaMapa && abaMapa.classList.contains('ativo')) {
-        // Se você tiver a função atualizarMapa ou initMap importada, chame-a aqui.
-        // Ex: initMap(); 
-    }
-};

@@ -109,3 +109,17 @@ export function confirmarDelecao() {
     fecharModalDelete();
     renderizarListaPersonagensLocal();
 }
+
+export function initPerfilListeners() {
+    var btnTrocar = document.getElementById('btn-trocar-personagem');
+    if (btnTrocar) btnTrocar.addEventListener('click', function() { trocarPersonagem(); });
+
+    var chkMestre = document.getElementById('chk-mestre');
+    if (chkMestre) chkMestre.addEventListener('change', function() { toggleMestre(); });
+
+    var btnCancelarDelete = document.getElementById('btn-cancelar-delete');
+    if (btnCancelarDelete) btnCancelarDelete.addEventListener('click', function() { fecharModalDelete(); });
+
+    var btnConfirmarDelete = document.getElementById('btn-confirmar-delete');
+    if (btnConfirmarDelete) btnConfirmarDelete.addEventListener('click', function() { confirmarDelecao(); });
+}

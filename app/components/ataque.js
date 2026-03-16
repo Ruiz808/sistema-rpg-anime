@@ -121,6 +121,42 @@ export function atualizarInputsDeDano() {
     } catch (e) { }
 }
 
+export function initAtaqueListeners() {
+    // Checkboxes de status
+    var chkStats = document.querySelectorAll('.chk-stat');
+    for (var i = 0; i < chkStats.length; i++) {
+        chkStats[i].addEventListener('change', function() { salvarConfigAtaque(true); });
+    }
+
+    // Checkboxes de energia
+    var chkEnergias = document.querySelectorAll('.chk-energia');
+    for (var i = 0; i < chkEnergias.length; i++) {
+        chkEnergias[i].addEventListener('change', function() { salvarConfigAtaque(true); });
+    }
+
+    // Inputs que salvam config ao mudar
+    var configInputs = ['atk-dados', 'atk-dados-extra', 'atk-faces', 'atk-perc-energia', 'atk-red-custo', 'atk-mEnergia', 'atk-bruto', 'atk-mBruto', 'atk-dPotencial'];
+    for (var i = 0; i < configInputs.length; i++) {
+        var el = document.getElementById(configInputs[i]);
+        if (el) el.addEventListener('change', function() { salvarConfigAtaque(true); });
+    }
+
+    // Inputs que desativam sync
+    var syncInputs = ['atk-dBase', 'atk-dGeral', 'atk-dFormas', 'atk-dAbsoluto', 'atk-dUnico'];
+    for (var i = 0; i < syncInputs.length; i++) {
+        var el = document.getElementById(syncInputs[i]);
+        if (el) el.addEventListener('change', function() { desativarSync(); });
+    }
+
+    // Botao forcar salvamento
+    var btnSave = document.getElementById('btn-save-atk');
+    if (btnSave) btnSave.addEventListener('click', function() { salvarConfigAtaque(); });
+
+    // Botao rolar dano
+    var btnRolar = document.getElementById('btn-rolar-dano');
+    if (btnRolar) btnRolar.addEventListener('click', function() { rolarDano(); });
+}
+
 export function rolarDano() {
     salvarConfigAtaque(true);
 
