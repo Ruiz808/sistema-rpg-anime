@@ -47,6 +47,7 @@ export function setPersonagemParaDeletar(n) { personagemParaDeletar = n; }
 export function carregarDadosFicha(dados) {
     if (!dados) return;
     let chaves = Object.keys(fichaPadrao);
+    
     if (dados.ascensaoBase !== undefined) minhaFicha.ascensaoBase = parseInt(dados.ascensaoBase) || 1;
     if (dados.divisores) minhaFicha.divisores = Object.assign({}, fichaPadrao.divisores, dados.divisores);
     if (dados.inventario) minhaFicha.inventario = dados.inventario; else minhaFicha.inventario = [];
@@ -54,9 +55,14 @@ export function carregarDadosFicha(dados) {
     if (dados.ataquesElementais) minhaFicha.ataquesElementais = dados.ataquesElementais; else minhaFicha.ataquesElementais = [];
     if (dados.ataqueConfig) minhaFicha.ataqueConfig = Object.assign({}, fichaPadrao.ataqueConfig, dados.ataqueConfig);
 
+    // AQUI ESTÁ A MAGIA: Salva a string da imagem sem tentar converter para número!
+    if (dados.avatar) minhaFicha.avatar = Object.assign({}, fichaPadrao.avatar, dados.avatar);
+    else minhaFicha.avatar = { base: "" };
+
     for (let i = 0; i < chaves.length; i++) {
         let ch = chaves[i];
-        if (dados[ch] !== undefined && ch !== 'ascensaoBase' && ch !== 'poderes' && ch !== 'divisores' && ch !== 'inventario' && ch !== 'ataquesElementais' && ch !== 'ataqueConfig') {
+        // ADICIONAMOS 'avatar' NA LISTA DE EXCEÇÕES ABAIXO:
+        if (dados[ch] !== undefined && ch !== 'ascensaoBase' && ch !== 'poderes' && ch !== 'divisores' && ch !== 'inventario' && ch !== 'ataquesElementais' && ch !== 'ataqueConfig' && ch !== 'avatar') {
             if (typeof fichaPadrao[ch] === 'object' && !Array.isArray(fichaPadrao[ch])) {
                 minhaFicha[ch] = Object.assign({}, fichaPadrao[ch], dados[ch]);
                 let numF = ['base', 'mBase', 'mGeral', 'mFormas', 'mAbsoluto', 'reducaoCusto', 'regeneracao', 'atual'];
