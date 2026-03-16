@@ -81,6 +81,14 @@ export function deletarItem(idStr) {
     }
 }
 
+export function initArsenalListeners() {
+    var btnCancelar = document.getElementById('btn-cancelar-edit-item');
+    if (btnCancelar) btnCancelar.addEventListener('click', function() { cancelarEdicaoItem(); });
+
+    var btnSalvar = document.getElementById('btn-salvar-item');
+    if (btnSalvar) btnSalvar.addEventListener('click', function() { salvarNovoItem(); });
+}
+
 export function renderizarInventario() {
     try {
         let d = document.getElementById('lista-inventario-salvos');

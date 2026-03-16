@@ -5,6 +5,17 @@ import { minhaFicha, meuNome } from '../state/store.js';
 import { calcularEvasiva, calcularResistencia, calcularReducao } from '../core/engine.js';
 import { salvarFichaSilencioso, enviarParaFeed } from '../services/firebase-sync.js';
 
+export function initDefesaListeners() {
+    var btnEvasiva = document.getElementById('btn-evasiva');
+    if (btnEvasiva) btnEvasiva.addEventListener('click', function() { declararEvasiva(); });
+
+    var btnResistencia = document.getElementById('btn-resistencia');
+    if (btnResistencia) btnResistencia.addEventListener('click', function() { declararResistencia(); });
+
+    var btnReducao = document.getElementById('btn-reducao');
+    if (btnReducao) btnReducao.addEventListener('click', function() { declararReducao(); });
+}
+
 export function declararEvasiva() {
     let prof = parseInt(document.getElementById('def-eva-prof').value) || 0;
     let bonus = parseInt(document.getElementById('def-eva-bonus').value) || 0;

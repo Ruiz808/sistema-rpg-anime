@@ -106,6 +106,17 @@ export function deletarPoder(idStr) {
     }
 }
 
+export function initPoderesListeners() {
+    var btnAdd = document.getElementById('btn-add-efeito');
+    if (btnAdd) btnAdd.addEventListener('click', function() { addEfeitoTemp(); });
+
+    var btnCancelar = document.getElementById('btn-cancelar-edit');
+    if (btnCancelar) btnCancelar.addEventListener('click', function() { cancelarEdicaoPoder(); });
+
+    var btnSalvar = document.getElementById('btn-salvar-poder');
+    if (btnSalvar) btnSalvar.addEventListener('click', function() { salvarNovoPoder(); });
+}
+
 export function renderizarListaPoderes() {
     try {
         let d = document.getElementById('lista-poderes-salvos');
