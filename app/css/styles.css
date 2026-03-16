@@ -231,3 +231,25 @@ input:focus, select:focus { border-color: #0ff; box-shadow: 0 0 10px rgba(0, 255
     0% { transform: scale(0.95); }
     100% { transform: scale(1.05); box-shadow: 0 0 20px rgba(255,255,255,0.8), inset 0 0 5px #000; }
 }
+.player-token {
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    background-color: #ffcc00; /* Cor de fundo caso não tenha imagem */
+    /* Adicione estas 3 linhas abaixo: */
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    
+    box-shadow: 0 0 15px #ffcc00, inset 0 0 5px #000;
+    border: 2px solid #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #000;
+    font-weight: bold;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+    pointer-events: none;
+    animation: pulsarToken 2s infinite alternate;
+}
