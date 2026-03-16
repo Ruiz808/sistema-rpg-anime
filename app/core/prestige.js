@@ -16,7 +16,8 @@ export function getDivisorPara(statKey) {
 }
 
 export function getPrestigioReal(statKey, valRaw) {
-    if (statKey === 'vida' || isEnergia(statKey)) return Math.floor(valRaw / 1000000);
+    if (statKey === 'vida') return Math.floor(valRaw / 1000000);
+    if (isEnergia(statKey)) return Math.floor(valRaw / 10000000);
     return Math.floor(valRaw / 1000);
 }
 
