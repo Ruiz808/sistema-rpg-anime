@@ -215,7 +215,10 @@
                     <button class="btn-neon btn-gold" style="margin: 0; flex: 1;" onclick="window.trocarPersonagem()">✅ ENTRAR / CRIAR</button>
                 </div>
             </div>
-            
+            <div class="input-group" style="margin-top: 25px;">
+                <label style="color: #0ff;">🖼️ URL DA IMAGEM DO PERSONAGEM (BASE)</label>
+                <input type="text" id="perfil-imagem" placeholder="Cole o link direto da imagem (jpg, png, gif)..." onchange="window.salvarImagemBase()">
+            </div>
             <h3 class="section-title" style="color: #0ff; margin-top: 40px;">> MEUS PERSONAGENS SALVOS</h3>
             <p style="color: #aaa; font-size: 0.9em; margin-top: -10px;">Clique em CARREGAR para resgatar os poderes e itens das suas sessões anteriores.</p>
             <div id="lista-personagens-jogador" class="char-list"><p style="color: #888;">Carregando...</p></div>
@@ -658,6 +661,10 @@
             <div class="def-box" style="border-color: #ffff00;" id="form-poder-box">
                 <h3 id="titulo-poder-form" style="margin-top: 0; color: #ffff00;">➕ CRIAR NOVO PODER</h3>
                 <div class="input-group"><label>NOME DO PODER / FORMA</label><input type="text" id="novo-pod-nome" placeholder="Ex: Modo Sábio"></div>
+                <div class="input-group">
+                    <label style="color: #ffcc00;">🖼️ URL DO AVATAR DA FORMA (Opcional)</label>
+                    <input type="text" id="novo-pod-imagem" placeholder="Se preenchido, o token muda ao ligar este poder...">
+                </div>
                 <div class="input-group">
     <label style="color: #ffcc00;">🖼️ URL DO AVATAR DA FORMA (Opcional)</label>
     <input type="text" id="novo-pod-imagem" placeholder="Se preenchido, o token do mapa muda ao ligar este poder...">
