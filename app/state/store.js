@@ -4,6 +4,7 @@
 
 export const fichaPadrao = {
     ascensaoBase: 1, poderes: [], inventario: [], ataquesElementais: [],
+    avatar: { base: "" },
     ataqueConfig: { dadosBase: 1, faces: 20, dExtra: 0, bruto: 0, mBruto: 1.0, mBase: 1.0, mGeral: 1.0, mFormas: 1.0, mAbsoluto: 1.0, mPotencial: 1.0, mUnico: "1.0", percEnergia: 10, redCusto: 0, mEnergia: 1.0, statusSelecionados: ['forca'], energiasSelecionadas: ['mana'] },
     divisores: { vida: 1, status: 1, mana: 1, aura: 1, chakra: 1, corpo: 1 },
     vida: { base: 100000000, mBase: 1.0, mGeral: 1.0, mFormas: 1.0, mUnico: "1.0", mAbsoluto: 1.0, reducaoCusto: 0, regeneracao: 0, atual: 100000000 },

@@ -211,3 +211,24 @@ window.addEventListener('DOMContentLoaded', function () {
 };
     }, 300);
 });
+
+// Cole isto solto no arquivo, para ficar disponível globalmente no HTML:
+window.salvarImagemBase = function() {
+    let inputImg = document.getElementById('perfil-imagem');
+    if (!inputImg) return;
+    
+    let url = inputImg.value.trim();
+    if (!minhaFicha.avatar) minhaFicha.avatar = {};
+    minhaFicha.avatar.base = url;
+    
+    salvarFichaSilencioso(); // Usa a sua função importada do firebase/store
+    
+    alert("✅ Imagem Base do personagem salva!");
+    
+    // Força o mapa a atualizar a imagem na hora
+    let abaMapa = document.getElementById('aba-mapa');
+    if (abaMapa && abaMapa.classList.contains('ativo')) {
+        // Se você tiver a função atualizarMapa ou initMap importada, chame-a aqui.
+        // Ex: initMap(); 
+    }
+};
