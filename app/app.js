@@ -447,9 +447,12 @@ window.renderizarBioEPassivas = function() {
 // SISTEMA DE SALVAMENTO DA FICHA NARRATIVA E FEEDBACK
 // ==========================================
 
+// ==========================================
+// SISTEMA DA FICHA NARRATIVA E PASSIVAS (ATUALIZADO COM 5 MULTIPLICADORES)
+// ==========================================
+
 window.salvarBio = function() {
     let fichaAtual = typeof minhaFicha !== "undefined" ? minhaFicha : window.minhaFicha;
-    
     if (!fichaAtual) {
         console.error("ERRO: Nenhuma ficha carregada para salvar a Bio!");
         return;
@@ -467,9 +470,12 @@ window.salvarBio = function() {
     fichaAtual.bio.afiliacao = document.getElementById('bio-afiliacao') ? document.getElementById('bio-afiliacao').value : "";
     fichaAtual.bio.dinheiro = document.getElementById('bio-dinheiro') ? document.getElementById('bio-dinheiro').value : "";
     
+    // Capturando todos os 5 multiplicadores das Anotações
     fichaAtual.notas.base = document.getElementById('nota-base') ? document.getElementById('nota-base').value : "";
     fichaAtual.notas.geral = document.getElementById('nota-geral') ? document.getElementById('nota-geral').value : "";
+    fichaAtual.notas.formas = document.getElementById('nota-formas') ? document.getElementById('nota-formas').value : "";
     fichaAtual.notas.abs = document.getElementById('nota-abs') ? document.getElementById('nota-abs').value : "";
+    fichaAtual.notas.unico = document.getElementById('nota-unico') ? document.getElementById('nota-unico').value : "";
     
     if (typeof window.salvarFichaSilencioso === "function") {
         window.salvarFichaSilencioso();
@@ -478,12 +484,10 @@ window.salvarBio = function() {
     }
 };
 
-// A Função que o Botão HTML chama para dar o Feedback Visual
+// A Função que o Botão HTML chama para dar o Feedback Visual (Piscar Verde)
 window.salvarBioComFeedback = function(botaoElemento) {
-    // 1. Salva os dados
     window.salvarBio();
     
-    // 2. Animação de Sucesso
     let textoOriginal = botaoElemento.innerText;
     let corOriginal = botaoElemento.style.backgroundColor;
     
@@ -492,11 +496,100 @@ window.salvarBioComFeedback = function(botaoElemento) {
     botaoElemento.style.borderColor = "#00ffcc";
     botaoElemento.style.color = "#fff";
     
-    // 3. Volta ao normal após 2 segundos
     setTimeout(() => {
         botaoElemento.innerText = textoOriginal;
         botaoElemento.style.backgroundColor = corOriginal;
         botaoElemento.style.borderColor = ""; 
         botaoElemento.style.color = "";
     }, 2000);
+};
+
+// O Cérebro que Desenha a Tela e Cria o Relatório de Combos
+window.renderizarBioEPassivas = function() {
+    if (!minhaFicha) return;
+
+    // 1. Preenche as Caixas Manuais
+    if (minhaFicha.bio) {
+        document.getElementById('bio-raca').value = minhaFicha.bio.raca || "";
+        document.getElementById('bio-classe').value = minhaFicha.bio.classe || "";
+        document.getElementById('bio-idade').value = minhaFicha.bio.idade || "";
+        document.getElementById('bio-fisico').value = minhaFicha.bio.fisico || "";
+        document.getElementById('bio-sangue').value = minhaFicha.bio.sangue || "";
+        document.getElementById('bio-alinhamento').value = minhaFicha.bio.alinhamento || "";
+        document.getElementById('bio-afiliacao').value = minhaFicha.bio.afiliacao || "";
+        document.getElementById('bio-dinheiro').value = minhaFicha.bio.dinheiro || "";
+    }
+    if (minhaFicha.notas) {
+        if(document.getElementById('nota-base')) document.getElementById('nota-base').value = minhaFicha.notas.base || "";
+        if(document.getElementById('nota-geral')) document.getElementById('nota-geral').value = minhaFicha.notas.geral || "";
+        if(document.getElementById('nota-formas')) document.getElementById('nota-formas').value = minhaFicha.notas.formas || "";
+        if(document.getElementById('nota-abs')) document.getElementById('nota-abs').value = minhaFicha.notas.abs || "";
+        if(document.getElementById('nota-unico')) document.getElementById('nota-unico').value = minhaFicha.notas.unico || "";
+    }
+
+    // 2. Preenche a Lista de Passivas Visual
+    let container = document.getElementById('lista-passivas');
+    if (container) {
+        if (!minhaFicha.passivas || minhaFicha.passivas.length === 0) {
+            container.innerHTML = '<p style="color: #888; text-align: center; font-style: italic;">Nenhuma habilidade listada.</p>';
+        } else {
+            let html = '';
+            for (let i = 0; i < minhaFicha.passivas.length; i++) {
+                let p = minhaFicha.passivas[i];
+                let corTag = p.tipo === "Vantagem" ? "#ffcc00" : "#33ff77";
+                let badgesEfeitos = '';
+                if (p.efeitos && p.efeitos.length > 0) {
+                    for(let ef of p.efeitos) {
+                        badgesEfeitos += `<span style="display:inline-block; font-size:0.7em; background:rgba(0,0,0,0.8); border:1px solid #555; padding:2px 5px; border-radius:4px; margin-right:4px; margin-top:4px; color:#aaa;">${ef.propriedade.toUpperCase()} (${ef.atributo.toUpperCase()}): ${ef.valor}</span>`;
+                    }
+                }
+                html += `
+                    <div style="background: rgba(0,0,0,0.6); padding: 10px 12px; border-left: 3px solid ${corTag}; border-radius: 4px; display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                        <div>
+                            <div><span style="color: ${corTag}; font-size: 0.7em; text-transform: uppercase; font-weight: bold; margin-right: 5px;">[${p.tipo}]</span><span style="color: white; font-weight: bold; font-size: 1.1em;">${p.nome}</span></div>
+                            <div>${badgesEfeitos}</div>
+                        </div>
+                        <button onclick="window.removerPassiva(${i})" style="background: transparent; border: none; color: #ff4d4d; cursor: pointer; font-size: 1.2em;" title="Remover">🗑️</button>
+                    </div>`;
+            }
+            container.innerHTML = html;
+        }
+    }
+
+    // 3. GERA O RELATÓRIO AUTOMÁTICO DE COMBOS (A MÁGICA)
+    let autoPainel = document.getElementById('painel-auditoria-auto');
+    if (autoPainel) {
+        if (!minhaFicha.passivas || minhaFicha.passivas.length === 0) {
+            autoPainel.innerHTML = '<span style="color: #888; font-style: italic;">Nenhum efeito de passiva ativo.</span>';
+        } else {
+            let mapaEfeitos = { mbase: [], mgeral: [], mformas: [], mabs: [], munico: [], base: [], especial: [] };
+            let nomesProps = { mbase: "MULT BASE (x)", mgeral: "MULT GERAL (x)", mformas: "MULT FORMA (x)", mabs: "MULT ABSOLUTO (x)", munico: "MULT ÚNICO (x)", base: "VALOR BRUTO (+)" };
+
+            // Lê todas as passivas e agrupa
+            minhaFicha.passivas.forEach(p => {
+                if (p.efeitos) {
+                    p.efeitos.forEach(ef => {
+                        let txt = `<span style="color:#fff;">${p.nome}</span> <span style="color:#555;">(${ef.atributo.toUpperCase()}: ${ef.valor})</span>`;
+                        // Filtra e agrupa pela propriedade mecânica
+                        if (mapaEfeitos[ef.propriedade]) mapaEfeitos[ef.propriedade].push(txt);
+                        else mapaEfeitos.especial.push(txt);
+                    });
+                }
+            });
+
+            // Monta o texto visual do painel
+            let relatorio = '';
+            for (let prop in nomesProps) {
+                if (mapaEfeitos[prop].length > 0) {
+                    relatorio += `<div style="margin-bottom: 6px;"><strong style="color: #f0f;">${nomesProps[prop]}:</strong> ${mapaEfeitos[prop].join(' <strong style="color:#f0f;">+</strong> ')}</div>`;
+                }
+            }
+            if (mapaEfeitos.especial.length > 0) {
+                relatorio += `<div style="margin-bottom: 6px;"><strong style="color: #0ff;">OUTROS EFEITOS:</strong> ${mapaEfeitos.especial.join(' <strong style="color:#0ff;">+</strong> ')}</div>`;
+            }
+
+            if (relatorio === '') relatorio = '<span style="color: #888; font-style: italic;">As passivas não possuem modificadores mecânicos configurados.</span>';
+            autoPainel.innerHTML = relatorio;
+        }
+    }
 };

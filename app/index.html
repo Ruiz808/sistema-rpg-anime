@@ -778,24 +778,22 @@
                     </div>
 
                     <div class="def-box border-fuchsia" style="padding: 15px;">
-                        <h3 class="text-fuchsia" style="margin-top: 0;">🧠 AUDITORIA DE MULTIPLICADORES</h3>
-                        <p class="hint-text" style="margin-bottom: 15px;">Anote aqui de onde vêm os seus combos para não esquecer (Isto não altera a matemática, é só para leitura).</p>
+                        <h3 class="text-fuchsia" style="margin-top: 0;">🧠 AUDITORIA DE COMBOS</h3>
+                        <p class="hint-text" style="margin-bottom: 10px;">Resumo dos efeitos mecânicos das suas Passivas e suas anotações manuais.</p>
                         
-                        <div class="input-group">
-                            <label class="text-fuchsia">DANO BASE</label>
-                            <input type="text" id="nota-base" onchange="window.salvarBio()" placeholder="Ex: Fênix Normal (x50) + Nível (x5)">
+                        <div id="painel-auditoria-auto" style="background: rgba(255,0,255,0.05); border: 1px dashed rgba(255,0,255,0.3); border-radius: 5px; padding: 10px; margin-bottom: 15px; font-size: 0.9em; min-height: 40px;">
+                            <span style="color: #888; font-style: italic;">Sincronizando combos automáticos...</span>
                         </div>
-                        <div class="input-group">
-                            <label class="text-fuchsia">DANO GERAL</label>
-                            <input type="text" id="nota-geral" onchange="window.salvarBio()" placeholder="Ex: Instinto (x50) + Angra (x50) + Demogorgon (x30)...">
-                        </div>
-                        <div class="input-group">
-                            <label class="text-fuchsia">ABSOLUTO</label>
-                            <input type="text" id="nota-abs" onchange="window.salvarBio()" placeholder="Ex: Fênix Negra (x40)">
-                        </div>
-                        <button class="btn-neon btn-purple" style="margin-top: 15px; width: 100%; padding: 8px; font-weight: bold;" onclick="window.salvarBioComFeedback(this)">💾 SALVAR ANOTAÇÕES DE COMBOS</button>
-                    </div>
 
+                        <p class="hint-text" style="margin-bottom: 5px; color: #ff99ff;">📝 Anotações Manuais (Opcional):</p>
+                        <div class="input-group"><label class="text-fuchsia">MULT BASE (Anotação)</label><input type="text" id="nota-base" onchange="window.salvarBio()" placeholder="Ex: Fênix Normal (x50) + Nível (x5)"></div>
+                        <div class="input-group"><label class="text-fuchsia">MULT GERAL (Anotação)</label><input type="text" id="nota-geral" onchange="window.salvarBio()" placeholder="Ex: Instinto (x50) + Angra (x50)..."></div>
+                        <div class="input-group"><label class="text-fuchsia">MULT FORMA (Anotação)</label><input type="text" id="nota-formas" onchange="window.salvarBio()" placeholder="Ex: Transformação X (x10)"></div>
+                        <div class="input-group"><label class="text-fuchsia">MULT ABSOLUTO (Anotação)</label><input type="text" id="nota-abs" onchange="window.salvarBio()" placeholder="Ex: Fênix Negra (x40)"></div>
+                        <div class="input-group"><label class="text-fuchsia">MULT ÚNICO (Anotação)</label><input type="text" id="nota-unico" onchange="window.salvarBio()" placeholder="Ex: Dano Final (x2)"></div>
+                        
+                        <button class="btn-neon btn-purple" style="margin-top: 10px; width: 100%; padding: 8px; font-weight: bold;" onclick="window.salvarBioComFeedback(this)">💾 SALVAR ANOTAÇÕES DE COMBOS</button>
+                    </div>
                 </div>
 
                 <div style="flex: 1; min-width: 280px;" class="def-box border-silver">
