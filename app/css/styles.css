@@ -166,30 +166,28 @@ input:focus, select:focus { border-color: #0ff; box-shadow: 0 0 10px rgba(0, 255
    ========================================== */
 .map-scroll-container {
     width: 100%;
-    max-height: 65vh; /* Evita que o mapa ultrapasse a tela */
-    overflow: auto; /* Permite rolar o mapa se a tela for pequena */
-    background: rgba(0, 0, 0, 0.5);
-    border: 1px solid rgba(0, 255, 204, 0.3);
-    border-radius: 10px;
+    height: 600px; /* Ou a altura que preferir */
+    overflow: auto; /* Esta é a magia que cria a barra de rolagem! */
+    border: 2px solid #00ffcc;
+    border-radius: 8px;
+    background: #000;
     padding: 10px;
 }
 
 .combat-map {
-   .combat-map {
     display: grid;
-    grid-template-columns: repeat(30, var(--map-zoom));
-    grid-template-rows: repeat(30, var(--map-zoom));
+    /* O ,35px garante que, se a variável falhar no início, ele trava em 35px e mantém as 30 colunas! */
+    grid-template-columns: repeat(30, var(--map-zoom, 35px));
+    grid-template-rows: repeat(30, var(--map-zoom, 35px));
     gap: 1px;
     background: rgba(0, 255, 204, 0.1); 
-    width: max-content;
-}
+    width: max-content; /* Impede que o mapa seja esmagado pela tela */
 }
 
 .map-cell {
-    width: var(--map-zoom);
-    height: var(--map-zoom);
-    /* ... mantenha o resto do código da map-cell como estava ... */
-    background: rgba(10, 10, 20, 0.8);
+width: var(--map-zoom, 35px);
+    height: var(--map-zoom, 35px);
+    border: 1px solid rgba(0, 255, 204, 0.2);
     display: flex;
     align-items: center;
     justify-content: center;
