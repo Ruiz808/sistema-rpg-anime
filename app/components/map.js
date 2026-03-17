@@ -219,13 +219,15 @@ function desenharTurnoAtivo() {
     let destaque = document.getElementById('turno-destaque');
     let nomeDestaque = document.getElementById('turno-nome');
     let formaDestaque = document.getElementById('turno-forma');
-    if (!destaque || !nomeDestaque || !formaDestaque) return;
+    let statusCombate = document.getElementById('status-combate'); // O nosso novo painel de barras!
+
+    if (!destaque || !nomeDestaque || !formaDestaque || !statusCombate) return;
 
     if (ordemIniciativa.length > 0 && ordemIniciativa[turnoAtualIndex]) {
         let jogadorDaVez = ordemIniciativa[turnoAtualIndex];
         let info = getAvatarInfo(jogadorDaVez.ficha);
+        let f = jogadorDaVez.ficha; // Puxamos a ficha completa do jogador!
         
-        // Se tiver imagem (retrato ou forma), mostramos o painel lateral!
         if (info.img) {
             destaque.style.backgroundImage = `url('${info.img}')`;
             destaque.style.display = 'block'; 
@@ -237,8 +239,46 @@ function desenharTurnoAtivo() {
             } else {
                 formaDestaque.style.display = 'none';
             }
+
+            // --- MAGIA DO HUD DE STATUS ---
+            // Função rápida para colocar pontos nos números (Ex: 24000 vira 24.000)
+            const fmt = (n) => Number(n || 0).toLocaleString('pt-BR');
+
+            // Criamos o display de vidro com as energias em cores Neon
+            let htmlStatus = `
+                <div style="display: flex; flex-direction: column; gap: 6px; width: 190px; margin-left: auto; background: rgba(0,0,0,0.7); padding: 12px; border-radius: 8px; border: 1px solid rgba(0,255,204,0.3); box-shadow: inset 0 0 15px rgba(0,0,0,0.8);">
+                    
+                    <div style="display: flex; justify-content: space-between; color: #ff4d4d; font-weight: bold; text-shadow: 1px 1px 2px black;">
+                        <span style="font-size: 0.8em; align-self: center;">❤️ HP</span>
+                        <span style="font-size: 1.1em;">${fmt(f.vida?.atual)}</span>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; color: #4dffff; font-weight: bold; text-shadow: 1px 1px 2px black;">
+                        <span style="font-size: 0.8em; align-self: center;">💧 MP</span>
+                        <span style="font-size: 1.1em;">${fmt(f.mana?.atual)}</span>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; color: #ffff4d; font-weight: bold; text-shadow: 1px 1px 2px black;">
+                        <span style="font-size: 0.8em; align-self: center;">✨ AU</span>
+                        <span style="font-size: 1.1em;">${fmt(f.aura?.atual)}</span>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; color: #00ffcc; font-weight: bold; text-shadow: 1px 1px 2px black;">
+                        <span style="font-size: 0.8em; align-self: center;">🌀 CK</span>
+                        <span style="font-size: 1.1em;">${fmt(f.chakra?.atual)}</span>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; color: #ff66ff; font-weight: bold; text-shadow: 1px 1px 2px black;">
+                        <span style="font-size: 0.8em; align-self: center;">💪 CP</span>
+                        <span style="font-size: 1.1em;">${fmt(f.corpo?.atual)}</span>
+                    </div>
+                    
+                </div>
+            `;
+            
+            statusCombate.innerHTML = htmlStatus; // Injeta no ecrã!
+
         } else {
-            // Se não tiver imagem, escondemos o painel para o mapa ter 100% da largura
             destaque.style.display = 'none'; 
         }
     } else {
