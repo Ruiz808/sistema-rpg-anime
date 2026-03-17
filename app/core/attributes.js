@@ -6,6 +6,10 @@ import { isFisico, isEnergia, tratarUnico } from './utils.js';
 
 export function getBuffs(statKey) {
     let buffs = { base: 0, mbase: 0, mgeral: 0, mformas: 0, mabs: 0, munico: [], reducaoCusto: 0, regeneracao: 0 };
+    if (buffs.mbase === 0) buffs.mbase = 1.0;
+    if (buffs.mgeral === 0) buffs.mgeral = 1.0;
+    if (buffs.mformas === 0) buffs.mformas = 1.0;
+    if (buffs.mabs === 0) buffs.mabs = 1.0;
     if (!minhaFicha || !minhaFicha.poderes) return buffs;
 
     let sK = statKey.toLowerCase();
@@ -103,10 +107,11 @@ export function getMultiplicadorTotal(k) {
     let b = getBuffs(k);
 
     // Função interna inteligente: Soma os buffs com a base da ficha
+    // Função interna inteligente: Soma os buffs com a base da ficha
     const calcAdd = (fichaVal, buffSum) => {
         let v = parseFloat(fichaVal) || 1.0;
-        if (buffSum === 0) return v; // Se não tem buff dessa categoria, mantém a base normal
-        return (v === 1.0 ? 0 : v) + buffSum; // Se a base for 1.0, ignora ela para dar o número exato dos buffs!
+        if (buffSum === 1.0) return v; // Se o buff for 1.0 (vazio), mantém a base normal
+        return (v === 1.0 ? 0 : v) + buffSum; 
     };
 
     let mB = calcAdd(s.mBase, b.mbase);
