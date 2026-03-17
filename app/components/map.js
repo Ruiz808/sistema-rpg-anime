@@ -218,26 +218,27 @@ function renderizarOrdemTurnos(dadosJogadores) {
 function desenharTurnoAtivo() {
     let destaque = document.getElementById('turno-destaque');
     let nomeDestaque = document.getElementById('turno-nome');
-    let formaDestaque = document.getElementById('turno-forma'); // O novo campo de texto
+    let formaDestaque = document.getElementById('turno-forma');
     if (!destaque || !nomeDestaque || !formaDestaque) return;
 
     if (ordemIniciativa.length > 0 && ordemIniciativa[turnoAtualIndex]) {
         let jogadorDaVez = ordemIniciativa[turnoAtualIndex];
         let info = getAvatarInfo(jogadorDaVez.ficha);
         
+        // Se tiver imagem (retrato ou forma), mostramos o painel lateral!
         if (info.img) {
             destaque.style.backgroundImage = `url('${info.img}')`;
             destaque.style.display = 'block'; 
             nomeDestaque.innerText = jogadorDaVez.nome;
             
-            // Se tiver uma forma ativa, mostra o subtítulo em dourado!
             if (info.forma) {
                 formaDestaque.innerText = "⚡ " + info.forma;
                 formaDestaque.style.display = 'block';
             } else {
-                formaDestaque.style.display = 'none'; // Esconde se for a imagem base
+                formaDestaque.style.display = 'none';
             }
         } else {
+            // Se não tiver imagem, escondemos o painel para o mapa ter 100% da largura
             destaque.style.display = 'none'; 
         }
     } else {

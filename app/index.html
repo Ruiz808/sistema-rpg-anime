@@ -683,31 +683,44 @@
             <div id="feed-combate"><p class="text-loading">Aguardando relatórios...</p></div>
         </div>
 
-<div id="aba-mapa" class="glass-panel">
-            <h2 style="color: #00ffcc;">> CAMPO DE BATALHA</h2>
+<div id="aba-mapa" class="glass-panel" style="padding: 0; display: flex; flex-direction: row; height: 75vh; overflow: hidden;">
             
-            <p style="color: #aaa; font-size: 0.9em;">Seu token é gerado automaticamente. Clique na grade para se mover.</p>
+            <div style="flex: 2; display: flex; flex-direction: column; border-right: 2px solid #00ffcc;">
+                
+                <div style="padding: 10px 15px;">
+                    <h2 style="color: #00ffcc; margin: 0;">> CAMPO DE BATALHA</h2>
+                    <p style="color: #aaa; font-size: 0.8em; margin: 5px 0;">Token automático. Clique para mover.</p>
+                </div>
 
-            <div class="def-box" style="border-color: #ffcc00; margin-bottom: 15px; padding: 10px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                    <h3 style="margin: 0; color: #ffcc00;">⏳ ORDEM DE TURNO</h3>
-                    <div style="display: flex; gap: 10px; align-items: center;">
-                        <input type="number" id="minha-iniciativa" placeholder="Sua Iniciativa" style="width: 100px; background: #000; color: #ffcc00; border: 1px solid #ffcc00; text-align: center;">
-                        <button class="btn-neon btn-gold btn-small" style="margin: 0;" onclick="window.setMinhaIniciativa()">ATUALIZAR INICIATIVA</button>
-                        <button class="btn-neon btn-small" style="margin: 0; border-color: #0ff; color: #0ff;" onclick="window.avancarTurno()">⏭️ PASSAR TURNO</button>
+                <div id="lista-turnos" style="display: flex; gap: 8px; overflow-x: auto; padding: 5px 15px; background: rgba(0,0,0,0.4); border-top: 1px solid #00ffcc; border-bottom: 1px solid #00ffcc;">
                     </div>
-                </div>
-                <div id="lista-turnos" style="display: flex; gap: 10px; overflow-x: auto; margin-top: 15px; padding-bottom: 5px; min-height: 50px;">
-                    <p style="color: #888; font-size: 0.8em; margin: 0;">Nenhum jogador rolou iniciativa ainda.</p>
+
+                <div class="map-scroll-container" style="flex: 1; position: relative; width: 100%; overflow: auto; background: #051010;">
+                    
+                    <div style="position: sticky; top: 10px; left: 10px; z-index: 100; display: flex; gap: 5px; background: rgba(0,0,0,0.8); padding: 5px; border-radius: 8px; border: 1px solid #00ffcc;">
+                        <button class="btn-neon" style="margin: 0; padding: 5px 10px; font-size: 1.2em;" onclick="window.alterarZoom(1)">➕</button>
+                        <button class="btn-neon" style="margin: 0; padding: 5px 10px; font-size: 1.2em;" onclick="window.alterarZoom(-1)">➖</button>
+                    </div>
+
+                    <div id="combat-grid" class="combat-map">
+                        </div>
                 </div>
             </div>
 
-            <div id="turno-destaque" style="position: fixed; bottom: 30px; right: 30px; width: 280px; height: 420px; border-radius: 12px; border: 3px solid #00ffcc; box-shadow: -10px 10px 40px rgba(0, 255, 204, 0.4); background-size: cover; background-position: top center; display: none; z-index: 9999; overflow: hidden;">
-                <div style="position: absolute; bottom: 0; left: 0; width: 100%; background: linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.7) 60%, transparent 100%); padding: 50px 15px 15px 15px; text-align: right; box-sizing: border-box;">
-                    <div id="turno-nome" style="color: #fff; font-size: 1.6em; font-weight: 900; text-transform: uppercase; text-shadow: 2px 2px 0px #000, -1px -1px 10px #00ffcc;">Nome</div>
-                    <div id="turno-forma" style="color: #ffcc00; font-size: 1.1em; font-weight: bold; text-shadow: 1px 1px 3px #000; margin-top: 5px; display: none;">⚡ Nome da Forma</div>
+            <div id="turno-destaque" style="flex: 1; position: relative; background-size: cover; background-position: top center; background-repeat: no-repeat; display: none;">
+                
+                <div style="position: absolute; bottom: 0; left: 0; width: 100%; height: 60%; background: linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.8) 70%, transparent 100%);"></div>
+
+                <div style="position: absolute; bottom: 0; left: 0; width: 100%; padding: 25px 20px; box-sizing: border-box; text-align: right; z-index: 10;">
+                    
+                    <div id="status-combate" style="margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px;">
+                        </div>
+
+                    <div id="turno-nome" style="color: #fff; font-size: 2em; font-weight: 900; text-transform: uppercase; text-shadow: 2px 2px 0px #000, -1px -1px 15px #00ffcc;">Nome</div>
+                    <div id="turno-forma" style="color: #ffcc00; font-size: 1.2em; font-weight: bold; text-shadow: 1px 1px 3px #000; margin-top: 5px; display: none;">⚡ Nome da Forma</div>
                 </div>
             </div>
+        </div>
 
             <div class="map-scroll-container" style="position: relative; width: 100%; height: 65vh; overflow: auto; border: 2px solid #00ffcc; border-radius: 8px; background: #051010;">
                 
