@@ -619,6 +619,22 @@
             </div>
             <button id="btn-rolar-acerto" class="btn-neon btn-orange">🎯 ROLAR ACERTO</button>
         </div>
+        <h3 class="section-title text-orange" style="margin-top: 30px;">> ⚙️ CONFIGURAÇÃO DE CRÍTICOS (MAPA)</h3>
+            <p class="hint-text">Defina a margem dos seus críticos. Estes valores comandam o holograma no Campo de Batalha!</p>
+            <div class="flex-row-gap-20">
+                <div class="input-group flex-1">
+                    <label style="color: #ff4d4d;">💥 ERRO CRÍTICO (<=)</label>
+                    <input type="number" id="conf-erro" value="1" title="Valores menores ou iguais a este dão falha">
+                </div>
+                <div class="input-group flex-1">
+                    <label style="color: #ffcc00;">✨ CRÍTICO NORMAL (>=)</label>
+                    <input type="number" id="conf-crit" value="18" title="Ex: 18 pra cima">
+                </div>
+                <div class="input-group flex-1">
+                    <label style="color: #ff00ff;">💀 CRÍTICO FATAL (>=)</label>
+                    <input type="number" id="conf-fatal" value="19" title="Ex: 19 e 20">
+                </div>
+            </div>
 
         <div id="aba-defesa" class="glass-panel">
             <h2 class="text-white">> PROTOCOLOS DE DEFESA</h2>
@@ -653,29 +669,105 @@
         </div>
 
         <div id="aba-ficha" class="glass-panel">
-            <h2>> BANCO DE DADOS (FICHA BASE)</h2>
-            <div class="input-group">
-                <label>EDITAR</label>
-                <select id="sel-atributo">
-                    <optgroup label="Ações Rápidas (Lote)" style="color: #0ff;"><option value="todos_status">Todos os 8 Status Físicos/Mentais</option><option value="todas_energias">Todas as 4 Energias</option></optgroup>
-                    <optgroup label="Status Vitais" style="color: #ff4d4d;"><option value="vida">Vida (HP)</option></optgroup>
-                    <optgroup label="Atributos Individuais"><option value="forca" selected>Força</option><option value="destreza">Destreza</option><option value="inteligencia">Inteligência</option><option value="sabedoria">Sabedoria</option><option value="energiaEsp">Energia Espiritual</option><option value="carisma">Carisma</option><option value="stamina">Stamina</option><option value="constituicao">Constituição</option></optgroup>
-                    <optgroup label="Energias Individuais" style="color: #f0f;"><option value="mana">Mana</option><option value="aura">Aura</option><option value="chakra">Chakra</option><option value="corpo">Corpo</option></optgroup>
-                </select>
+            <h2 class="text-gold">> 📜 FICHA DE PERSONAGEM DEFINITIVA</h2>
+            
+            <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-top: 15px;">
+                
+                <div style="flex: 2; min-width: 320px; display: flex; flex-direction: column; gap: 20px;">
+                    
+                    <div class="def-box border-cyan" style="padding: 15px;">
+                        <h3 class="text-cyan" style="margin-top: 0;">👤 DADOS DE IDENTIDADE</h3>
+                        
+                        <div class="flex-row-gap-15-wrap" style="margin-bottom: 10px;">
+                            <div class="input-group flex-1-m0"><label>RAÇA / LINHAGEM</label><input type="text" id="bio-raca" onchange="window.salvarBio()" placeholder="Ex: Demônio"></div>
+                            <div class="input-group flex-1-m0"><label>CLASSE / CAMINHO</label><input type="text" id="bio-classe" onchange="window.salvarBio()" placeholder="Ex: Avenger"></div>
+                        </div>
+
+                        <div class="flex-row-gap-15-wrap" style="margin-bottom: 10px;">
+                            <div class="input-group flex-1-m0"><label>IDADE / ANIVERSÁRIO</label><input type="text" id="bio-idade" onchange="window.salvarBio()" placeholder="Ex: 22.268 (27/08)"></div>
+                            <div class="input-group flex-1-m0"><label>ALTURA / PESO</label><input type="text" id="bio-fisico" onchange="window.salvarBio()" placeholder="Ex: 1,85 m / 82 kg"></div>
+                            <div class="input-group flex-1-m0"><label>TIPO SANGUÍNEO</label><input type="text" id="bio-sangue" onchange="window.salvarBio()" placeholder="Ex: O-"></div>
+                        </div>
+
+                        <div class="flex-row-gap-15-wrap">
+                            <div class="input-group flex-2-m0"><label>ALINHAMENTO</label><input type="text" id="bio-alinhamento" onchange="window.salvarBio()" placeholder="Ex: True Neutral"></div>
+                            <div class="input-group flex-2-m0"><label>AFILIAÇÃO</label><input type="text" id="bio-afiliacao" onchange="window.salvarBio()" placeholder="Ex: Lótus Dourada"></div>
+                            <div class="input-group flex-1-m0"><label class="text-gold">PO / PP (Dinheiro)</label><input type="text" id="bio-dinheiro" onchange="window.salvarBio()" placeholder="PO - 5600 | PP - 5000"></div>
+                        </div>
+                    </div>
+
+                    <div class="def-box border-green" style="padding: 15px;">
+                        <h3 class="text-green" style="margin-top: 0;">✨ PASSIVAS E VANTAGENS</h3>
+                        
+                        <div style="display: flex; gap: 10px; align-items: flex-end; margin-bottom: 15px; flex-wrap: wrap;">
+                            <div class="input-group flex-1" style="margin: 0;">
+                                <label style="color: #33ff77;">NOME DA HABILIDADE</label>
+                                <input type="text" id="nova-passiva-nome" placeholder="Ex: Instinto Superior, Zenkai...">
+                            </div>
+                            <div class="input-group flex-1" style="margin: 0;">
+                                <label style="color: #33ff77;">TIPO</label>
+                                <select id="nova-passiva-tipo">
+                                    <option value="Passiva">Passiva</option>
+                                    <option value="Vantagem">Vantagem</option>
+                                </select>
+                            </div>
+                            <button class="btn-neon btn-green btn-small" style="margin: 0; padding: 10px 15px;" onclick="window.adicionarPassiva()">➕ ADICIONAR</button>
+                        </div>
+
+                        <div id="lista-passivas" style="display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; padding-right: 5px;">
+                            <p style="color: #888; text-align: center; font-style: italic;">Nenhuma habilidade listada.</p>
+                        </div>
+                    </div>
+
+                    <div class="def-box border-fuchsia" style="padding: 15px;">
+                        <h3 class="text-fuchsia" style="margin-top: 0;">🧠 AUDITORIA DE MULTIPLICADORES</h3>
+                        <p class="hint-text" style="margin-bottom: 15px;">Anote aqui de onde vêm os seus combos para não esquecer (Isto não altera a matemática, é só para leitura).</p>
+                        
+                        <div class="input-group">
+                            <label class="text-fuchsia">DANO BASE</label>
+                            <input type="text" id="nota-base" onchange="window.salvarBio()" placeholder="Ex: Fênix Normal (x50) + Nível (x5)">
+                        </div>
+                        <div class="input-group">
+                            <label class="text-fuchsia">DANO GERAL</label>
+                            <input type="text" id="nota-geral" onchange="window.salvarBio()" placeholder="Ex: Instinto (x50) + Angra (x50) + Demogorgon (x30)...">
+                        </div>
+                        <div class="input-group">
+                            <label class="text-fuchsia">ABSOLUTO</label>
+                            <input type="text" id="nota-abs" onchange="window.salvarBio()" placeholder="Ex: Fênix Negra (x40)">
+                        </div>
+                    </div>
+
+                </div>
+
+                <div style="flex: 1; min-width: 280px;" class="def-box border-silver">
+                    <h3 class="text-silver" style="margin-top: 0; font-size: 1.1em;">⚙️ MOTOR DE ATRIBUTOS</h3>
+                    <p class="hint-text" style="font-size: 0.8em; margin-bottom: 15px;">Use este painel para injetar os números reais no sistema.</p>
+                    
+                    <div class="input-group">
+                        <label>EDITAR ATRIBUTO</label>
+                        <select id="sel-atributo">
+                            <optgroup label="Ações Rápidas (Lote)" style="color: #0ff;"><option value="todos_status">Todos os 8 Status Físicos/Mentais</option><option value="todas_energias">Todas as 4 Energias</option></optgroup>
+                            <optgroup label="Status Vitais" style="color: #ff4d4d;"><option value="vida">Vida (HP)</option></optgroup>
+                            <optgroup label="Atributos Individuais"><option value="forca" selected>Força</option><option value="destreza">Destreza</option><option value="inteligencia">Inteligência</option><option value="sabedoria">Sabedoria</option><option value="energiaEsp">Energia Espiritual</option><option value="carisma">Carisma</option><option value="stamina">Stamina</option><option value="constituicao">Constituição</option></optgroup>
+                            <optgroup label="Energias Individuais" style="color: #f0f;"><option value="mana">Mana</option><option value="aura">Aura</option><option value="chakra">Chakra</option><option value="corpo">Corpo</option></optgroup>
+                        </select>
+                    </div>
+                    <div class="input-group"><label>VALOR BASE BRUTO (+)</label><input type="number" id="fch-base" value="10"></div>
+                    <div class="flex-row-gap-20-wrap">
+                        <div class="input-group flex-1-min150"><label>MULT BASE (x)</label><input type="number" step="0.1" id="fch-mbase" value="1.0"></div>
+                        <div class="input-group flex-1-min150"><label>MULT GERAL (x)</label><input type="number" step="0.1" id="fch-mgeral" value="1.0"></div>
+                        <div class="input-group flex-1-min150"><label>MULT FORMA (x)</label><input type="number" step="0.1" id="fch-mformas" value="1.0"></div>
+                        <div class="input-group flex-1-min150"><label>MULT ABSOLUTO (x)</label><input type="number" step="0.1" id="fch-mabs" value="1.0"></div>
+                    </div>
+                    <div class="flex-row-gap-15-wrap">
+                        <div class="input-group flex-1-min150"><label>MULT ÚNICO (x)</label><input type="text" id="fch-munico" value="1.0"></div>
+                        <div class="input-group flex-1-min150"><label class="text-fuchsia">RED. CUSTO (%) (+)</label><input type="number" id="fch-redCusto" value="0"></div>
+                        <div class="input-group flex-1-min150"><label class="text-green">REGENERAÇÃO (+)</label><input type="number" id="fch-regen" value="0"></div>
+                    </div>
+                    <button id="btn-salvar-atributo" class="btn-neon btn-silver" style="font-size: 0.9em; padding: 10px;">💾 SALVAR ATRIBUTO NO BANCO</button>
+                </div>
+                
             </div>
-            <div class="input-group"><label>VALOR BASE BRUTO (+)</label><input type="number" id="fch-base" value="10"></div>
-            <div class="flex-row-gap-20-wrap">
-                <div class="input-group flex-1-min150"><label>MULT BASE (x)</label><input type="number" step="0.1" id="fch-mbase" value="1.0"></div>
-                <div class="input-group flex-1-min150"><label>MULT GERAL (x)</label><input type="number" step="0.1" id="fch-mgeral" value="1.0"></div>
-                <div class="input-group flex-1-min150"><label>MULT FORMA (x)</label><input type="number" step="0.1" id="fch-mformas" value="1.0"></div>
-                <div class="input-group flex-1-min150"><label>MULT ABSOLUTO (x)</label><input type="number" step="0.1" id="fch-mabs" value="1.0"></div>
-            </div>
-            <div class="flex-row-gap-15-wrap">
-                <div class="input-group flex-1-min150"><label>MULT ÚNICO (x)</label><input type="text" id="fch-munico" value="1.0"></div>
-                <div class="input-group flex-1-min150"><label class="text-fuchsia">RED. CUSTO PASSIVA (%) (+)</label><input type="number" id="fch-redCusto" value="0"></div>
-                <div class="input-group flex-1-min150"><label class="text-green">REGENERAÇÃO PASSIVA (+)</label><input type="number" id="fch-regen" value="0"></div>
-            </div>
-            <button id="btn-salvar-atributo" class="btn-neon btn-green-border">💾 SALVAR MODIFICAÇÕES NO BANCO DE DADOS</button>
         </div>
 
         <div id="aba-log" class="glass-panel">
@@ -684,16 +776,72 @@
         </div>
 
         <div id="aba-mapa" class="glass-panel">
-            <h2 class="text-mint">> CAMPO DE BATALHA TÁTICO (30x30)</h2>
-            <p class="text-muted-mb-20">Clique em qualquer quadrícula para mover a sua entidade pelo mapa.</p>
-            <div class="map-scroll-container">
-                <div id="combat-grid" class="combat-map"></div>
-            </div>
+            <div style="display: flex; flex-direction: row; height: 70vh; width: 100%; gap: 15px;">
+                
+                <div style="flex: 2; display: flex; flex-direction: column; border: 2px solid #00ffcc; border-radius: 8px; overflow: hidden; background: #051010;">
+                    
+                    <div style="padding: 10px 15px; flex-shrink: 0; background: rgba(0,0,0,0.6); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; border-bottom: 1px solid #00ffcc;">
+                        <div>
+                            <h2 style="color: #00ffcc; margin: 0;">> CAMPO DE BATALHA</h2>
+                            <p style="color: #aaa; font-size: 0.8em; margin: 5px 0;">Token automático. Clique para mover.</p>
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="number" id="minha-iniciativa" placeholder="Iniciativa" style="width: 90px; background: #000; color: #ffcc00; border: 1px solid #ffcc00; text-align: center; padding: 5px; border-radius: 5px; font-weight: bold;">
+                            <button class="btn-neon btn-gold" style="margin: 0; padding: 5px 15px; font-size: 0.9em;" onclick="window.atualizarMinhaIniciativa()">ATUALIZAR INICIATIVA</button>
+                            <button class="btn-neon" style="margin: 0; padding: 5px 15px; font-size: 0.9em; border-color: #0ff; color: #0ff;" onclick="window.avancarTurno()">⏭️ PASSAR TURNO</button>
+                        </div>
+                    </div>
+
+                    <div id="lista-turnos" style="display: flex; gap: 8px; overflow-x: auto; padding: 10px 15px; background: rgba(0,0,0,0.4); border-bottom: 1px solid #00ffcc; min-height: 50px; align-items: center; flex-shrink: 0;">
+                        <p style="color: #888; font-size: 0.8em; margin: 0;">Nenhum jogador rolou iniciativa ainda.</p>
+                    </div>
+
+                    <div class="map-scroll-container" style="flex: 1; position: relative; width: 100%; overflow: auto;">
+                        <div style="position: sticky; top: 10px; left: 10px; z-index: 100; display: inline-flex; gap: 5px; background: rgba(0,0,0,0.8); padding: 5px; border-radius: 8px; border: 1px solid #00ffcc; width: fit-content;">
+                            <button class="btn-neon" style="margin: 0; padding: 5px 15px; font-size: 1.2em;" onclick="window.alterarZoom(1)">➕</button>
+                            <button class="btn-neon" style="margin: 0; padding: 5px 15px; font-size: 1.2em;" onclick="window.alterarZoom(-1)">➖</button>
+                        </div>
+                        <div id="combat-grid" class="combat-map"></div>
+                    </div>
+                </div>
+
+               <div id="turno-destaque" style="flex: 1; position: relative; border-radius: 8px; border: 2px solid #00ffcc; background-size: cover; background-position: top center; background-repeat: no-repeat; display: none; overflow: hidden; box-shadow: 0 0 20px rgba(0,255,204,0.2);">
+                    
+                    <div style="position: absolute; bottom: 0; left: 0; width: 100%; height: 60%; background: linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.8) 50%, transparent 100%); pointer-events: none;"></div>
+
+                    <div id="holograma-dado" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 50; transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: none;">
+                        
+                        <div id="tipo-resultado" style="font-size: 2em; font-weight: 900; text-transform: uppercase; margin-bottom: -5px; text-shadow: 2px 2px 4px #000; z-index: 2; text-align: center;">CRÍTICO!</div>
+                        
+                        <div style="position: relative; width: 180px; height: 180px; display: flex; align-items: center; justify-content: center; filter: drop-shadow(0 0 15px currentColor);">
+                            <svg viewBox="0 0 100 100" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; color: inherit;">
+                                <polygon points="50,5 95,25 95,75 50,95 5,75 5,25" fill="rgba(0,0,0,0.8)" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                                <polyline points="50,5 50,25" stroke="currentColor" stroke-width="1.5"/>
+                                <polyline points="5,25 25,45" stroke="currentColor" stroke-width="1.5"/>
+                                <polyline points="95,25 75,45" stroke="currentColor" stroke-width="1.5"/>
+                                <polyline points="5,75 25,60" stroke="currentColor" stroke-width="1.5"/>
+                                <polyline points="95,75 75,60" stroke="currentColor" stroke-width="1.5"/>
+                                <polyline points="50,95 50,80" stroke="currentColor" stroke-width="1.5"/>
+                                <polygon points="50,25 75,45 75,60 50,80 25,60 25,45" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                            </svg>
+                            <span id="resultado-centro" style="position: relative; font-size: 4em; font-weight: 900; text-shadow: 2px 2px 0 #000; z-index: 2;">20</span>
+                        </div>
+                    </div>
+
+                    <div style="position: absolute; bottom: 0; left: 0; width: 100%; padding: 25px 20px; box-sizing: border-box; display: flex; justify-content: space-between; align-items: flex-end; z-index: 10;">
+                        
+                        <div id="status-combate"></div>
+
+                        <div style="text-align: right; margin-bottom: 5px;">
+                            <button class="btn-neon btn-orange" style="margin-bottom: 10px; padding: 8px 15px; font-size: 1.1em; font-weight: bold; width: 100%; letter-spacing: 1px;" onclick="window.rolarAcertoRapido()">🎯 ROLAR D20</button>
+                            
+                            <div id="turno-nome" style="color: #fff; font-size: 2em; font-weight: 900; text-transform: uppercase; text-shadow: 2px 2px 0px #000, -1px -1px 15px #00ffcc;">Nome</div>
+                            <div id="turno-forma" style="color: #ffcc00; font-size: 1.2em; font-weight: bold; text-shadow: 1px 1px 3px #000; margin-top: 5px; display: none;">⚡ Nome da Forma</div>
+                        </div>
+                    </div>
+                </div>
         </div>
-    </div>
 
-
-    <!-- Módulos do sistema -->
-    <script type="module" src="app.js"></script>
+    </div> <script type="module" src="app.js"></script>
 </body>
 </html>
