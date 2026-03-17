@@ -1,7 +1,7 @@
 // ==========================================
 // COMPONENTE: Perfil, Sessão e Painel do Mestre
 // ==========================================
-import { minhaFicha, meuNome, fichaPadrao, personagemParaDeletar, setMeuNome, setPersonagemParaDeletar, carregarDadosFicha } from '../state/store.js';
+import { minhaFicha, meuNome, fichaPadrao, personagemParaDeletar, setMeuNome, setPersonagemParaDeletar, sanitizarNome, carregarDadosFicha } from '../state/store.js';
 import { db } from '../services/firebase-config.js';
 import { carregarFichaDoFirebase, deletarPersonagem } from '../services/firebase-sync.js';
 
@@ -44,8 +44,8 @@ export function toggleMestre() {
 }
 
 export function trocarPersonagem() {
-    let n = document.getElementById('perfil-nome').value.trim();
-    if (n === "") return;
+    let n = sanitizarNome(document.getElementById('perfil-nome').value);
+    if (n === "Jogador" && document.getElementById('perfil-nome').value.trim() === "") return;
     setMeuNome(n);
     localStorage.setItem("rpgNome", n);
     Object.assign(minhaFicha, JSON.parse(JSON.stringify(fichaPadrao)));
