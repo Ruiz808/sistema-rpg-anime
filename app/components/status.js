@@ -24,7 +24,7 @@ export function initStatusListeners() {
 export function inicializarAtuais() {
     let vitais = ['vida', 'mana', 'aura', 'chakra', 'corpo'];
     for (let i = 0; i < vitais.length; i++) {
-        let k = vitais[i]; let maxBruto = getMaximo(k); let maxFinal = maxBruto;
+        let k = vitais[i]; let maxBruto = getMaximo(minhaFicha, k); let maxFinal = maxBruto;
         if (k === 'vida') { let ptsMax = Math.max(0, contarDigitos(maxBruto) - 8); if (ptsMax > 0) maxFinal = Math.floor(maxBruto / Math.pow(10, ptsMax)); }
         else { let ptsMax = Math.max(0, contarDigitos(maxBruto) - 9); if (ptsMax > 0) maxFinal = Math.floor(maxBruto / Math.pow(10, ptsMax)); }
         if (!minhaFicha[k]) minhaFicha[k] = { atual: maxFinal }; let valAtual = parseFloat(minhaFicha[k].atual);
@@ -36,10 +36,10 @@ export function desenharRadar() {
     let sFisicos = ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'];
     let ascBase = minhaFicha.ascensaoBase || 1;
 
-    let sb = 0; for (let i = 0; i < sFisicos.length; i++) sb += getPrestigioReal(sFisicos[i], getRawBase(sFisicos[i]));
+    let sb = 0; for (let i = 0; i < sFisicos.length; i++) sb += getPrestigioReal(sFisicos[i], getRawBase(minhaFicha, sFisicos[i]));
     let valStatusPres = Math.floor(sb / 8);
 
-    let vBase = [getPrestigioReal('vida', getRawBase('vida')), getPrestigioReal('mana', getRawBase('mana')), getPrestigioReal('aura', getRawBase('aura')), getPrestigioReal('chakra', getRawBase('chakra')), getPrestigioReal('corpo', getRawBase('corpo')), valStatusPres];
+    let vBase = [getPrestigioReal('vida', getRawBase(minhaFicha, 'vida')), getPrestigioReal('mana', getRawBase(minhaFicha, 'mana')), getPrestigioReal('aura', getRawBase(minhaFicha, 'aura')), getPrestigioReal('chakra', getRawBase(minhaFicha, 'chakra')), getPrestigioReal('corpo', getRawBase(minhaFicha, 'corpo')), valStatusPres];
 
     let tgts = ['vida', 'mana', 'aura', 'chakra', 'corpo', 'status'];
     for (let i = 0; i < vBase.length; i++) {
@@ -58,12 +58,24 @@ export function desenharRadar() {
     }
     let pol1 = document.getElementById('radar-data-base'); if (pol1) pol1.setAttribute('points', pts1.join(" "));
 
-    let pAtualStatus = calcPAtual('status', valStatusPres);
-    let vAtual = [
-        calcPAtual('vida', vBase[0]), calcPAtual('mana', vBase[1]),
-        calcPAtual('aura', vBase[2]), calcPAtual('chakra', vBase[3]),
-        calcPAtual('corpo', vBase[4]), pAtualStatus
-    ];
+    let resStatus = calcPAtual(minhaFicha, 'status', valStatusPres);
+    let pAtualStatus = resStatus.valor;
+    if (resStatus.divisorAtualizado) {
+        let elBox = document.getElementById('div-' + resStatus.uiKey);
+        if (elBox) elBox.value = minhaFicha.divisores[resStatus.uiKey];
+    }
+
+    let vAtual = [];
+    let tgtsCalc = ['vida', 'mana', 'aura', 'chakra', 'corpo'];
+    for (let i = 0; i < tgtsCalc.length; i++) {
+        let res = calcPAtual(minhaFicha, tgtsCalc[i], vBase[i]);
+        vAtual.push(res.valor);
+        if (res.divisorAtualizado) {
+            let elBox = document.getElementById('div-' + res.uiKey);
+            if (elBox) elBox.value = minhaFicha.divisores[res.uiKey];
+        }
+    }
+    vAtual.push(pAtualStatus);
 
     for (let i = 0; i < vAtual.length; i++) {
         let r = getRank(vAtual[i], ascBase); let e = document.getElementById('lbl-atual-' + tgts[i]);
@@ -95,7 +107,7 @@ export function desenharRadar() {
 export function atualizarBarrasVisuais() {
     let confs = [{ k: 'vida', c: '#ff003c' }, { k: 'mana', c: '#0088ff' }, { k: 'aura', c: '#ffff00' }, { k: 'chakra', c: '#00ffff' }, { k: 'corpo', c: '#ff00ff' }];
     for (let i = 0; i < confs.length; i++) {
-        let conf = confs[i]; let st = minhaFicha[conf.k]; let mx = getMaximo(conf.k); let p = 0;
+        let conf = confs[i]; let st = minhaFicha[conf.k]; let mx = getMaximo(minhaFicha, conf.k); let p = 0;
         if (conf.k === 'vida') { p = Math.max(0, contarDigitos(mx) - 8); if (p > 0) mx = Math.floor(mx / Math.pow(10, p)); }
         else { p = Math.max(0, contarDigitos(mx) - 9); if (p > 0) mx = Math.floor(mx / Math.pow(10, p)); }
         if (st) { st.atual = parseFloat(st.atual); if (isNaN(st.atual) || st.atual > mx) st.atual = mx; if (st.atual < 0) st.atual = 0; }
@@ -115,8 +127,8 @@ export function alterarHP(tipo) {
     let el = document.getElementById('val-dano-cura'); let v = parseInt(el.value);
     if (isNaN(v) || v <= 0) return alert("⚠️ Digite um número maior que zero!");
     let letalidade = parseInt(document.getElementById('val-letalidade').value) || 0;
-    let mx = getMaximo('vida'); let p = Math.max(0, contarDigitos(mx) - 8);
-    let prestigio = getPrestigioReal('vida', getRawBase('vida'));
+    let mx = getMaximo(minhaFicha, 'vida'); let p = Math.max(0, contarDigitos(mx) - 8);
+    let prestigio = getPrestigioReal('vida', getRawBase(minhaFicha, 'vida'));
     let totalExp = prestigio + p;
     let dif = letalidade - totalExp;
     let ef;
@@ -130,7 +142,7 @@ export function alterarHP(tipo) {
 export function curarTudo() {
     let vitais = ['vida', 'mana', 'aura', 'chakra', 'corpo'];
     for (let i = 0; i < vitais.length; i++) {
-        let k = vitais[i]; let mx = getMaximo(k);
+        let k = vitais[i]; let mx = getMaximo(minhaFicha, k);
         if (k === 'vida') { let p = Math.max(0, contarDigitos(mx) - 8); if (p > 0) mx = Math.floor(mx / Math.pow(10, p)); }
         else { let p = Math.max(0, contarDigitos(mx) - 9); if (p > 0) mx = Math.floor(mx / Math.pow(10, p)); }
         minhaFicha[k].atual = mx;
@@ -142,7 +154,7 @@ export function aplicarRegeneracaoTurno() {
     let vitais = ['vida', 'mana', 'aura', 'chakra', 'corpo'];
     for (let i = 0; i < vitais.length; i++) {
         let k = vitais[i]; let r = parseFloat(minhaFicha[k] ? minhaFicha[k].regeneracao : 0) || 0;
-        let b = getBuffs(k);
+        let b = getBuffs(minhaFicha, k);
         minhaFicha[k].atual += r + b.regeneracao;
     }
     atualizarBarrasVisuais(); salvarFichaSilencioso(); alert("✨ Regeneração aplicada!");
