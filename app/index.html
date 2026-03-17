@@ -522,6 +522,10 @@
                                     <option value="bonus_evasiva" style="color:#0088ff;">Bônus na Evasiva (+)</option>
                                     <option value="bonus_resistencia" style="color:#ccc;">Bônus na Resistência (+)</option>
                                     <option value="mult_escudo" style="color:#f0f;">Multiplicador de Escudo (+)</option>
+                                    <optgroup label="Combate Direto" style="color: #ff9900;">
+                                            <option value="dano">⚔️ Dano (Ofensiva)</option>
+                                            <option value="defesa">🛡️ Defesa / Armadura</option>
+                                        </optgroup>
                                 </optgroup>
                             </select>
                         </div>
@@ -712,6 +716,9 @@
                                 <select id="nova-passiva-tipo">
                                     <option value="Passiva">Passiva</option>
                                     <option value="Vantagem">Vantagem</option>
+                                    <optgroup label="Combate Direto" style="color: #ff9900;">
+                                            <option value="dano">⚔️ Dano (Ofensiva)</option>
+                                            <option value="defesa">🛡️ Defesa / Armadura</option>
                                 </select>
                             </div>
                         </div>
@@ -804,6 +811,9 @@
                         <label>EDITAR ATRIBUTO</label>
                         <select id="sel-atributo" onchange="if(typeof window.calcularBuffsMotor === 'function') window.calcularBuffsMotor()">
                             <optgroup label="Ações Rápidas (Lote)" style="color: #0ff;"><option value="todos_status">Todos os 8 Status Físicos/Mentais</option><option value="todas_energias">Todas as 4 Energias</option></optgroup>
+                            <optgroup label="Combate Direto" style="color: #ff9900;">
+                             <option value="dano">⚔️ Dano (Ofensiva)</option>
+                            <option value="defesa">🛡️ Defesa / Armadura</option>
                             <optgroup label="Status Vitais" style="color: #ff4d4d;"><option value="vida">Vida (HP)</option></optgroup>
                             <optgroup label="Atributos Individuais"><option value="forca" selected>Força</option><option value="destreza">Destreza</option><option value="inteligencia">Inteligência</option><option value="sabedoria">Sabedoria</option><option value="energiaEsp">Energia Espiritual</option><option value="carisma">Carisma</option><option value="stamina">Stamina</option><option value="constituicao">Constituição</option></optgroup>
                             <optgroup label="Energias Individuais" style="color: #f0f;"><option value="mana">Mana</option><option value="aura">Aura</option><option value="chakra">Chakra</option><option value="corpo">Corpo</option></optgroup>
