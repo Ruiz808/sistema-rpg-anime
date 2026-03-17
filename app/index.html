@@ -683,19 +683,19 @@
             <div id="feed-combate"><p class="text-loading">Aguardando relatórios...</p></div>
         </div>
 
-<div id="aba-mapa" class="glass-panel" style="padding: 0; display: flex; flex-direction: row; height: 75vh; overflow: hidden;">
+<div id="aba-mapa" class="glass-panel" style="padding: 0; display: flex; flex-direction: row; height: 75vh; overflow: hidden; display: none;">
             
-            <div style="flex: 2; display: flex; flex-direction: column; border-right: 2px solid #00ffcc; overflow: hidden;">
+            <div style="flex: 2; display: flex; flex-direction: column; border-right: 2px solid #00ffcc; overflow: hidden; background: #051010;">
                 
-                <div style="padding: 10px 15px;">
+                <div style="padding: 10px 15px; flex-shrink: 0;">
                     <h2 style="color: #00ffcc; margin: 0;">> CAMPO DE BATALHA</h2>
                     <p style="color: #aaa; font-size: 0.8em; margin: 5px 0;">Token automático. Clique para mover.</p>
                 </div>
 
-                <div id="lista-turnos" style="display: flex; gap: 8px; overflow-x: auto; padding: 5px 15px; background: rgba(0,0,0,0.4); border-top: 1px solid #00ffcc; border-bottom: 1px solid #00ffcc; min-height: 60px; align-items: center;">
+                <div id="lista-turnos" style="display: flex; gap: 8px; overflow-x: auto; padding: 5px 15px; background: rgba(0,0,0,0.4); border-top: 1px solid #00ffcc; border-bottom: 1px solid #00ffcc; min-height: 60px; align-items: center; flex-shrink: 0;">
                     </div>
 
-                <div class="map-scroll-container" style="flex: 1; position: relative; width: 100%; overflow: auto; background: #051010;">
+                <div class="map-scroll-container" style="flex: 1; position: relative; width: 100%; overflow: auto;">
                     
                     <div style="position: sticky; top: 10px; left: 10px; z-index: 100; display: inline-flex; gap: 5px; background: rgba(0,0,0,0.8); padding: 5px; border-radius: 8px; border: 1px solid #00ffcc; width: fit-content;">
                         <button class="btn-neon" style="margin: 0; padding: 5px 15px; font-size: 1.2em; width: auto; flex: none;" onclick="window.alterarZoom(1)">➕</button>
@@ -709,7 +709,7 @@
 
             <div id="turno-destaque" style="flex: 1; position: relative; background-size: cover; background-position: top center; background-repeat: no-repeat; display: none;">
                 
-                <div style="position: absolute; bottom: 0; left: 0; width: 100%; height: 60%; background: linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.8) 70%, transparent 100%);"></div>
+                <div style="position: absolute; bottom: 0; left: 0; width: 100%; height: 60%; background: linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.8) 70%, transparent 100%); pointer-events: none;"></div>
 
                 <div style="position: absolute; bottom: 0; left: 0; width: 100%; padding: 25px 20px; box-sizing: border-box; text-align: right; z-index: 10;">
                     
@@ -719,21 +719,6 @@
                     <div id="turno-nome" style="color: #fff; font-size: 2em; font-weight: 900; text-transform: uppercase; text-shadow: 2px 2px 0px #000, -1px -1px 15px #00ffcc;">Nome</div>
                     <div id="turno-forma" style="color: #ffcc00; font-size: 1.2em; font-weight: bold; text-shadow: 1px 1px 3px #000; margin-top: 5px; display: none;">⚡ Nome da Forma</div>
                 </div>
-            </div>
-        </div>
-
-    </div>
-
-            <div class="map-scroll-container" style="position: relative; width: 100%; height: 65vh; overflow: auto; border: 2px solid #00ffcc; border-radius: 8px; background: #051010;">
-                
-                <div style="position: sticky; top: 10px; left: 10px; z-index: 100; display: flex; gap: 5px; width: fit-content; background: rgba(0,0,0,0.8); padding: 5px; border-radius: 8px; border: 1px solid #00ffcc;">
-                    <button class="btn-neon" style="margin: 0; padding: 5px 10px; font-size: 1.2em;" onclick="window.alterarZoom(1)">➕</button>
-                    <button class="btn-neon" style="margin: 0; padding: 5px 10px; font-size: 1.2em;" onclick="window.alterarZoom(-1)">➖</button>
-                </div>
-
-                <div id="combat-grid" class="combat-map">
-                    </div>
-                
             </div>
         </div>
 
