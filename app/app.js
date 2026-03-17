@@ -440,3 +440,28 @@ window.renderizarBioEPassivas = function() {
     }
     container.innerHTML = html;
 };
+// Função de Salvar com Feedback Visual Elegante
+window.salvarBioComFeedback = function(botaoElemento) {
+    // Primeiro, salva tudo no banco de dados usando a sua função original
+    if (typeof window.salvarBio === "function") {
+        window.salvarBio();
+    }
+    
+    // Agora, a magia visual
+    let textoOriginal = botaoElemento.innerText;
+    let corOriginal = botaoElemento.style.backgroundColor;
+    
+    botaoElemento.innerText = "✅ SALVO COM SUCESSO!";
+    botaoElemento.style.backgroundColor = "rgba(0, 255, 100, 0.2)"; // Fundo esverdeado
+    botaoElemento.style.borderColor = "#00ffcc";
+    botaoElemento.style.color = "#fff";
+    
+    // Depois de 2 segundos, volta ao normal
+    setTimeout(() => {
+        botaoElemento.innerText = textoOriginal;
+        botaoElemento.style.backgroundColor = corOriginal;
+        // Remove a cor forçada para voltar a usar a classe CSS original
+        botaoElemento.style.borderColor = ""; 
+        botaoElemento.style.color = "";
+    }, 2000);
+};
