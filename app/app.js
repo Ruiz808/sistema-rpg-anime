@@ -26,7 +26,7 @@ import { declararEvasiva, declararResistencia, declararReducao, initDefesaListen
 import { rolarAcerto, initAcertoListeners } from './components/acerto.js';
 import { inicializarAtuais, desenharRadar, atualizarBarrasVisuais, alterarHP, curarTudo, aplicarRegeneracaoTurno, initStatusListeners } from './components/status.js';
 import { carregarAtributoNaTela, salvarAtributo, atualizarDivisores, carregarTabelaPrestigio, aplicarPrestigioNaFicha, salvarTabelaAoServidor, initFichaListeners } from './components/ficha.js';
-import { initMap, atualizarMapa } from './components/map.js';
+// import { initMap, atualizarMapa } from './components/map.js';
 
 // Onde você importa o mapa no topo do app.js:
 import { initMap, atualizarMapa, alterarZoom } from './components/map.js';
