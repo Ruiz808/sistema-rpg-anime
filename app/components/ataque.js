@@ -92,7 +92,7 @@ export function atualizarInputsDeDano() {
         let main = sels[0];
         if (!minhaFicha || !minhaFicha[main]) return;
 
-        let b = getBuffs(main);
+        let b = getBuffs(minhaFicha, main);
 
         let elB = document.getElementById('lbl-buff-base'); if (elB) elB.innerText = b.mbase > 1 ? `(Forma: x${b.mbase.toFixed(2)})` : "";
         let elG = document.getElementById('lbl-buff-geral'); if (elG) elG.innerText = b.mgeral > 1 ? `(Forma: x${b.mgeral.toFixed(2)})` : "";
@@ -196,6 +196,13 @@ export function rolarDano() {
     });
 
     if (result.erro) return alert('⚠️ ' + result.erro);
+
+    // Aplicar drenos de energia retornados pelo engine
+    if (result.drenos) {
+        for (let i = 0; i < result.drenos.length; i++) {
+            minhaFicha[result.drenos[i].key].atual -= result.drenos[i].valor;
+        }
+    }
 
     window.atualizarBarrasVisuais(); salvarFichaSilencioso();
 

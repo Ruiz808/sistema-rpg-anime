@@ -85,10 +85,10 @@ export function togglePoder(idStr) {
     let p = null; for (let i = 0; i < minhaFicha.poderes.length; i++) { if (minhaFicha.poderes[i].id === id) p = minhaFicha.poderes[i]; }
     if (!p) return;
     let vitais = ['vida', 'mana', 'aura', 'chakra', 'corpo']; let oldM = {};
-    for (let i = 0; i < vitais.length; i++) { oldM[vitais[i]] = getMaximo(vitais[i]) || 1; }
+    for (let i = 0; i < vitais.length; i++) { oldM[vitais[i]] = getMaximo(minhaFicha, vitais[i]) || 1; }
     p.ativa = !p.ativa;
     for (let i = 0; i < vitais.length; i++) {
-        let k = vitais[i]; let nMax = getMaximo(k) || 1; let atu = parseFloat(minhaFicha[k].atual);
+        let k = vitais[i]; let nMax = getMaximo(minhaFicha, k) || 1; let atu = parseFloat(minhaFicha[k].atual);
         if (isNaN(atu)) atu = nMax; minhaFicha[k].atual = Math.floor(atu * (nMax / oldM[k]));
         if (isNaN(minhaFicha[k].atual) || minhaFicha[k].atual < 0 || minhaFicha[k].atual > nMax) minhaFicha[k].atual = nMax;
     }
