@@ -1,4 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&display=swap');
+:root {
+    --map-zoom: 35px; /* Tamanho inicial de cada quadrado */
+}
 
 body { margin: 0; padding: 0; background: radial-gradient(circle at center, #1a1a2e 0%, #0f0f1a 100%); color: #fff; font-family: 'Rajdhani', sans-serif; display: flex; height: 100vh; overflow: hidden; }
 body::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px); background-size: 30px 30px; z-index: -1; }
@@ -163,28 +166,28 @@ input:focus, select:focus { border-color: #0ff; box-shadow: 0 0 10px rgba(0, 255
    ========================================== */
 .map-scroll-container {
     width: 100%;
-    max-height: 65vh; /* Evita que o mapa ultrapasse a tela */
-    overflow: auto; /* Permite rolar o mapa se a tela for pequena */
-    background: rgba(0, 0, 0, 0.5);
-    border: 1px solid rgba(0, 255, 204, 0.3);
-    border-radius: 10px;
+    height: 600px; /* Ou a altura que preferir */
+    overflow: auto; /* Esta é a magia que cria a barra de rolagem! */
+    border: 2px solid #00ffcc;
+    border-radius: 8px;
+    background: #000;
     padding: 10px;
 }
 
 .combat-map {
     display: grid;
-    /* Cria 30 colunas e 30 linhas de 35px cada */
-    grid-template-columns: repeat(30, 35px);
-    grid-template-rows: repeat(30, 35px);
-    gap: 1px; /* Linha de separação do grid */
+    /* O ,35px garante que, se a variável falhar no início, ele trava em 35px e mantém as 30 colunas! */
+    grid-template-columns: repeat(30, var(--map-zoom, 35px));
+    grid-template-rows: repeat(30, var(--map-zoom, 35px));
+    gap: 1px;
     background: rgba(0, 255, 204, 0.1); 
-    width: max-content;
+    width: max-content; /* Impede que o mapa seja esmagado pela tela */
 }
 
 .map-cell {
-    width: 35px;
-    height: 35px;
-    background: rgba(10, 10, 20, 0.8);
+width: var(--map-zoom, 35px);
+    height: var(--map-zoom, 35px);
+    border: 1px solid rgba(0, 255, 204, 0.2);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -202,8 +205,8 @@ input:focus, select:focus { border-color: #0ff; box-shadow: 0 0 10px rgba(0, 255
 
 /* Tokens dos Jogadores */
 .player-token {
-    width: 25px;
-    height: 25px;
+    width: 80%;
+    height: 80%;
     border-radius: 50%;
     background: #888;
     box-shadow: 0 0 10px rgba(255,255,255,0.3), inset 0 0 5px #000;
