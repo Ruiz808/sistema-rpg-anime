@@ -240,3 +240,108 @@ window.addEventListener('DOMContentLoaded', function () {
 
     }, 300);
 });
+
+// ==========================================
+// SISTEMA DA FICHA NARRATIVA (BIO E PASSIVAS)
+// ==========================================
+
+// Salvar todas as caixas de texto (Bio, Raça, Notas de Combo)
+window.salvarBio = function() {
+    if (!minhaFicha) return;
+    
+    // Garante que o objeto bio existe na ficha
+    if (!minhaFicha.bio) minhaFicha.bio = {};
+    
+    minhaFicha.bio.raca = document.getElementById('bio-raca').value;
+    minhaFicha.bio.classe = document.getElementById('bio-classe').value;
+    minhaFicha.bio.idade = document.getElementById('bio-idade').value;
+    minhaFicha.bio.fisico = document.getElementById('bio-fisico').value;
+    minhaFicha.bio.sangue = document.getElementById('bio-sangue').value;
+    minhaFicha.bio.alinhamento = document.getElementById('bio-alinhamento').value;
+    minhaFicha.bio.afiliacao = document.getElementById('bio-afiliacao').value;
+    minhaFicha.bio.dinheiro = document.getElementById('bio-dinheiro').value;
+    
+    // Auditoria de Combos
+    if (!minhaFicha.notas) minhaFicha.notas = {};
+    minhaFicha.notas.base = document.getElementById('nota-base').value;
+    minhaFicha.notas.geral = document.getElementById('nota-geral').value;
+    minhaFicha.notas.abs = document.getElementById('nota-abs').value;
+    
+    window.salvarFichaSilencioso(); // Salva na nuvem
+};
+
+// Adicionar uma nova Passiva/Vantagem
+window.adicionarPassiva = function() {
+    if (!minhaFicha) return;
+    
+    let nome = document.getElementById('nova-passiva-nome').value.trim();
+    let tipo = document.getElementById('nova-passiva-tipo').value;
+    
+    if (nome === "") return alert("Digite o nome da passiva ou vantagem!");
+    
+    if (!minhaFicha.passivas) minhaFicha.passivas = [];
+    
+    minhaFicha.passivas.push({ nome: nome, tipo: tipo });
+    
+    document.getElementById('nova-passiva-nome').value = ""; // Limpa a caixa
+    
+    window.salvarFichaSilencioso();
+    window.renderizarBioEPassivas(); // Atualiza a tela
+};
+
+// Remover uma Passiva
+window.removerPassiva = function(index) {
+    if (!minhaFicha || !minhaFicha.passivas) return;
+    minhaFicha.passivas.splice(index, 1);
+    window.salvarFichaSilencioso();
+    window.renderizarBioEPassivas();
+};
+
+// Desenhar as Passivas e preencher as caixas de texto ao carregar a página
+window.renderizarBioEPassivas = function() {
+    if (!minhaFicha) return;
+
+    // Preenche as caixas de texto com o que veio do Banco de Dados
+    if (minhaFicha.bio) {
+        document.getElementById('bio-raca').value = minhaFicha.bio.raca || "";
+        document.getElementById('bio-classe').value = minhaFicha.bio.classe || "";
+        document.getElementById('bio-idade').value = minhaFicha.bio.idade || "";
+        document.getElementById('bio-fisico').value = minhaFicha.bio.fisico || "";
+        document.getElementById('bio-sangue').value = minhaFicha.bio.sangue || "";
+        document.getElementById('bio-alinhamento').value = minhaFicha.bio.alinhamento || "";
+        document.getElementById('bio-afiliacao').value = minhaFicha.bio.afiliacao || "";
+        document.getElementById('bio-dinheiro').value = minhaFicha.bio.dinheiro || "";
+    }
+    
+    if (minhaFicha.notas) {
+        document.getElementById('nota-base').value = minhaFicha.notas.base || "";
+        document.getElementById('nota-geral').value = minhaFicha.notas.geral || "";
+        document.getElementById('nota-abs').value = minhaFicha.notas.abs || "";
+    }
+
+    // Desenha a lista de Passivas
+    let container = document.getElementById('lista-passivas');
+    if (!container) return;
+
+    if (!minhaFicha.passivas || minhaFicha.passivas.length === 0) {
+        container.innerHTML = '<p style="color: #888; text-align: center; font-style: italic;">Nenhuma habilidade listada.</p>';
+        return;
+    }
+
+    let html = '';
+    for (let i = 0; i < minhaFicha.passivas.length; i++) {
+        let p = minhaFicha.passivas[i];
+        let corTag = p.tipo === "Vantagem" ? "#ffcc00" : "#33ff77";
+        
+        html += `
+            <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.6); padding: 8px 12px; border-left: 3px solid ${corTag}; border-radius: 4px;">
+                <div>
+                    <span style="color: ${corTag}; font-size: 0.7em; text-transform: uppercase; font-weight: bold; margin-right: 5px;">[${p.tipo}]</span>
+                    <span style="color: white; font-weight: bold;">${p.nome}</span>
+                </div>
+                <button onclick="window.removerPassiva(${i})" style="background: transparent; border: none; color: #ff4d4d; cursor: pointer; font-size: 1.2em;" title="Remover">🗑️</button>
+            </div>
+        `;
+    }
+    container.innerHTML = html;
+};
