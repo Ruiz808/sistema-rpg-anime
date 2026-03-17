@@ -108,6 +108,25 @@ window.atualizarMapa = atualizarMapa;
 window.setMinhaIniciativa = setMinhaIniciativa;
 window.avancarTurno = avancarTurno;
 
+// --- FUNÇÃO PARA SALVAR A INICIATIVA ---
+window.atualizarMinhaIniciativa = function() {
+    let valor = parseInt(document.getElementById('minha-iniciativa').value) || 0;
+    
+    // Atualiza a ficha atual
+    if (minhaFicha) {
+        minhaFicha.iniciativa = valor;
+        
+        // Usa a função de salvar que já existe no seu sistema para subir pro Firebase!
+        if (typeof window.salvarFichaSilencioso === "function") {
+            window.salvarFichaSilencioso();
+        } else if (typeof window.salvarFichaBase === "function") {
+            window.salvarFichaBase();
+        }
+        
+        console.log("Iniciativa salva com sucesso: " + valor);
+    }
+};
+
 // ==========================================
 // INICIALIZAÇÃO
 // ==========================================
