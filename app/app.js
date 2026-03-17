@@ -551,8 +551,11 @@ window.calcularBuffsMotor = function() {
                 }
 
                 // 2. Lógica para a AUDITORIA MANUAL (Imagem 2)
+                // 2. Lógica para a AUDITORIA MANUAL (Imagem 2)
                 if (anotacoes[ef.propriedade] !== undefined) {
-                    anotacoes[ef.propriedade].push(`${p.nome} (x${ef.valor})`);
+                    // Agora ele escreve ex: "Instinto Superior [DANO] (+50)"
+                    let alvoFormatado = ef.atributo.toUpperCase().replace('_', ' ');
+                    anotacoes[ef.propriedade].push(`${p.nome} [${alvoFormatado}] (+${ef.valor})`);
                 }
             });
         }
