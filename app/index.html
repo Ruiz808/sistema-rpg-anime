@@ -683,19 +683,22 @@
             <div id="feed-combate"><p class="text-loading">Aguardando relatórios...</p></div>
         </div>
 
-        <div id="aba-mapa" class="glass-panel">
-            <h2 class="text-mint">> CAMPO DE BATALHA TÁTICO (30x30)</h2>
-            <p class="text-muted-mb-20">Clique em qualquer quadrícula para mover a sua entidade pelo mapa.</p>
-            <div class="map-scroll-container">
-                <div class="map-scroll-container" style="position: relative;">
+            <div id="aba-mapa" class="glass-panel" style="display: none;">
+            <h2 style="color: #00ffcc;">> CAMPO DE BATALHA</h2>
             
-            <div style="position: sticky; top: 10px; left: 10px; z-index: 100; display: flex; gap: 5px; width: fit-content; background: rgba(0,0,0,0.8); padding: 5px; border-radius: 8px; border: 1px solid #00ffcc;">
-                <button class="btn-neon" style="margin: 0; padding: 5px 10px; font-size: 1.2em;" onclick="window.alterarZoom(1)">➕</button>
-                <button class="btn-neon" style="margin: 0; padding: 5px 10px; font-size: 1.2em;" onclick="window.alterarZoom(-1)">➖</button>
-            </div>
+            <p style="color: #aaa; font-size: 0.9em;">Seu token é gerado automaticamente. Clique na grade para se mover.</p>
 
-            <div id="combat-grid" class="combat-map">
+            <div class="map-scroll-container" style="position: relative; width: 100%; height: 65vh; overflow: auto; border: 2px solid #00ffcc; border-radius: 8px; background: #051010;">
+                
+                <div style="position: sticky; top: 10px; left: 10px; z-index: 100; display: flex; gap: 5px; width: fit-content; background: rgba(0,0,0,0.8); padding: 5px; border-radius: 8px; border: 1px solid #00ffcc;">
+                    <button class="btn-neon" style="margin: 0; padding: 5px 10px; font-size: 1.2em;" onclick="window.alterarZoom(1)">➕</button>
+                    <button class="btn-neon" style="margin: 0; padding: 5px 10px; font-size: 1.2em;" onclick="window.alterarZoom(-1)">➖</button>
                 </div>
+
+                <div id="combat-grid" class="combat-map">
+                    </div>
+                
+            </div>
         </div>
                 <div id="combat-grid" class="combat-map"></div>
             </div>
