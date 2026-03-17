@@ -13,9 +13,7 @@ import { fichaPadrao, minhaFicha, meuNome, setMeuNome, sanitizarNome, carregarDa
 // === SERVICES ===
 import { db } from './services/firebase-config.js';
 import { salvarFichaSilencioso, salvarFirebaseImediato, carregarFichaDoFirebase, iniciarListenerPersonagens, iniciarListenerFeed, enviarParaFeed } from './services/firebase-sync.js';
-if (typeof window.renderizarBioEPassivas === "function") {
-    window.renderizarBioEPassivas();
-}
+
 // === COMPONENTS ===
 import { mudarAba, initTabsListeners } from './components/tabs.js';
 import { renderizarFeed } from './components/feed.js';
@@ -39,23 +37,23 @@ window.alterarZoom = alterarZoom;
 // EXPOR NO WINDOW (usados por outros módulos JS via window.*)
 // ==========================================
 
-// Core (used by other JS modules)
+// Core (wrappers que injetam minhaFicha automaticamente)
 window.contarDigitos = contarDigitos;
 window.tratarUnico = tratarUnico;
 window.pegarDoisPrimeirosDigitos = pegarDoisPrimeirosDigitos;
 window.isFisico = isFisico;
 window.isEnergia = isEnergia;
-window.getBuffs = getBuffs;
-window.getRawBase = getRawBase;
-window.getEfetivoBase = getEfetivoBase;
-window.getMultiplicadorTotal = getMultiplicadorTotal;
-window.getMaximo = getMaximo;
-window.isStatBuffed = isStatBuffed;
-window.getPoderesDefesa = getPoderesDefesa;
-window.getPoderTotalDaAbaPoderes = getPoderTotalDaAbaPoderes;
-window.getDivisorPara = getDivisorPara;
+window.getBuffs = (statKey) => getBuffs(minhaFicha, statKey);
+window.getRawBase = (statKey) => getRawBase(minhaFicha, statKey);
+window.getEfetivoBase = (statKey) => getEfetivoBase(minhaFicha, statKey);
+window.getMultiplicadorTotal = (k) => getMultiplicadorTotal(minhaFicha, k);
+window.getMaximo = (k) => getMaximo(minhaFicha, k);
+window.isStatBuffed = (statKey) => isStatBuffed(minhaFicha, statKey);
+window.getPoderesDefesa = (tipo) => getPoderesDefesa(minhaFicha, tipo);
+window.getPoderTotalDaAbaPoderes = (statKey) => getPoderTotalDaAbaPoderes(minhaFicha, statKey);
+window.getDivisorPara = (statKey) => getDivisorPara(minhaFicha, statKey);
 window.getPrestigioReal = getPrestigioReal;
-window.calcPAtual = calcPAtual;
+window.calcPAtual = (k, valBasePres) => calcPAtual(minhaFicha, k, valBasePres).valor;
 window.getRank = getRank;
 
 // Services (used by other JS modules)
@@ -162,6 +160,9 @@ if (db) {
         renderizarInventario();
         renderizarElementos();
         atualizarInputsDeDano();
+        if (typeof window.renderizarBioEPassivas === "function") {
+            window.renderizarBioEPassivas();
+        }
     });
 
     iniciarListenerPersonagens(function (dados) {
@@ -234,6 +235,11 @@ window.addEventListener('DOMContentLoaded', function () {
         atualizarInputsDeDano();
         renderizarListaPersonagensLocal();
 
+        // Renderiza Bio e Passivas
+        if (typeof window.renderizarBioEPassivas === "function") {
+            window.renderizarBioEPassivas();
+        }
+
         // Preenche o campo da imagem com o que está salvo no banco
         let inputImg = document.getElementById('perfil-imagem');
         if (inputImg && minhaFicha.avatar) {
@@ -244,86 +250,8 @@ window.addEventListener('DOMContentLoaded', function () {
 });
 
 // ==========================================
-// SISTEMA DA FICHA NARRATIVA (BIO E PASSIVAS)
-// ==========================================
-
-// Salvar todas as caixas de texto (Bio, Raça, Notas de Combo)
-window.salvarBio = function() {
-    if (!minhaFicha) return;
-    
-    // Garante que o objeto bio existe na ficha
-    if (!minhaFicha.bio) minhaFicha.bio = {};
-    
-    minhaFicha.bio.raca = document.getElementById('bio-raca').value;
-    minhaFicha.bio.classe = document.getElementById('bio-classe').value;
-    minhaFicha.bio.idade = document.getElementById('bio-idade').value;
-    minhaFicha.bio.fisico = document.getElementById('bio-fisico').value;
-    minhaFicha.bio.sangue = document.getElementById('bio-sangue').value;
-    minhaFicha.bio.alinhamento = document.getElementById('bio-alinhamento').value;
-    minhaFicha.bio.afiliacao = document.getElementById('bio-afiliacao').value;
-    minhaFicha.bio.dinheiro = document.getElementById('bio-dinheiro').value;
-    
-    // Auditoria de Combos
-    if (!minhaFicha.notas) minhaFicha.notas = {};
-    minhaFicha.notas.base = document.getElementById('nota-base').value;
-    minhaFicha.notas.geral = document.getElementById('nota-geral').value;
-    minhaFicha.notas.abs = document.getElementById('nota-abs').value;
-    
-    window.salvarFichaSilencioso(); // Salva na nuvem
-};
-
-// Adicionar uma nova Passiva/Vantagem
-window.adicionarPassiva = function() {
-    if (!minhaFicha) return;
-    
-    let nome = document.getElementById('nova-passiva-nome').value.trim();
-    let tipo = document.getElementById('nova-passiva-tipo').value;
-    
-    if (nome === "") return alert("Digite o nome da passiva ou vantagem!");
-    
-    if (!minhaFicha.passivas) minhaFicha.passivas = [];
-    
-    minhaFicha.passivas.push({ nome: nome, tipo: tipo });
-    
-    document.getElementById('nova-passiva-nome').value = ""; // Limpa a caixa
-    
-    window.salvarFichaSilencioso();
-    window.renderizarBioEPassivas(); // Atualiza a tela
-};
-
-// Remover uma Passiva
-window.removerPassiva = function(index) {
-    if (!minhaFicha || !minhaFicha.passivas) return;
-    minhaFicha.passivas.splice(index, 1);
-    window.salvarFichaSilencioso();
-    window.renderizarBioEPassivas();
-};
-
-// Desenhar as Passivas e preencher as caixas de texto ao carregar a página
-// ==========================================
 // SISTEMA DA FICHA NARRATIVA E PASSIVAS MECÂNICAS
 // ==========================================
-
-window.salvarBio = function() {
-    if (!minhaFicha) return;
-    if (!minhaFicha.bio) minhaFicha.bio = {};
-    
-    minhaFicha.bio.raca = document.getElementById('bio-raca').value;
-    minhaFicha.bio.classe = document.getElementById('bio-classe').value;
-    minhaFicha.bio.idade = document.getElementById('bio-idade').value;
-    minhaFicha.bio.fisico = document.getElementById('bio-fisico').value;
-    minhaFicha.bio.sangue = document.getElementById('bio-sangue').value;
-    minhaFicha.bio.alinhamento = document.getElementById('bio-alinhamento').value;
-    minhaFicha.bio.afiliacao = document.getElementById('bio-afiliacao').value;
-    minhaFicha.bio.dinheiro = document.getElementById('bio-dinheiro').value;
-    
-    if (!minhaFicha.notas) minhaFicha.notas = {};
-    minhaFicha.notas.base = document.getElementById('nota-base').value;
-    minhaFicha.notas.geral = document.getElementById('nota-geral').value;
-    minhaFicha.notas.abs = document.getElementById('nota-abs').value;
-    
-    window.salvarFichaSilencioso();
-};
 
 // --- O MOTOR DE EFEITOS DAS PASSIVAS ---
 window.efeitosTempPassiva = [];
