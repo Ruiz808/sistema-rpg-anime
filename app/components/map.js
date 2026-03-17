@@ -286,37 +286,52 @@ function desenharTurnoAtivo() {
     }
 }
 window.rolarAcertoRapido = function() {
-    // 1. Aqui rolamos um 1d20 limpo (futuramente podemos ligar aos atributos!)
+    // Rola 1d20 limpo
     let resultadoDado = Math.floor(Math.random() * 20) + 1;
     
-    // 2. Pegamos o holograma central do HTML
-    let painel = document.getElementById('resultado-centro');
-    if (!painel) return;
+    // Captura os elementos da tela
+    let container = document.getElementById('holograma-dado');
+    let painelNum = document.getElementById('resultado-centro');
+    let painelTexto = document.getElementById('tipo-resultado');
     
-    // 3. Modificamos o texto
-    painel.innerText = resultadoDado;
-    painel.style.display = 'block';
+    if (!container || !painelNum || !painelTexto) return;
+
+    // Lê os valores que o utilizador configurou nas caixinhas (com padrões de segurança)
+    let valErro = parseInt(document.getElementById('conf-erro').value) || 1;
+    let valCrit = parseInt(document.getElementById('conf-crit').value) || 19;
+    let valFatal = parseInt(document.getElementById('conf-fatal').value) || 20;
     
-    // 4. Cores Dinâmicas: Dourado para Crítico (20), Vermelho para Falha (1), Ciano pro resto.
-    if (resultadoDado === 20) {
-        painel.style.color = '#ffcc00';
-        painel.style.textShadow = '0 0 20px #ffcc00, 0 0 50px #ffcc00, 4px 4px 0 #000';
-    } else if (resultadoDado === 1) {
-        painel.style.color = '#ff4d4d';
-        painel.style.textShadow = '0 0 20px #ff4d4d, 0 0 50px #ff4d4d, 4px 4px 0 #000';
+    // Atualiza o número
+    painelNum.innerText = resultadoDado;
+    
+    // Prepara a caixa para a animação
+    container.style.display = 'flex';
+    container.style.transform = 'translate(-50%, -50%) scale(0)';
+    
+    // --- O SISTEMA DE JULGAMENTO ---
+    // Repare no truque do "currentColor": ele pinta o dado, o número e o brilho ao mesmo tempo!
+    if (resultadoDado <= valErro) {
+        container.style.color = '#ff4d4d'; // Vermelho Neon
+        painelTexto.innerText = "💥 FALHA CRÍTICA";
+    } else if (resultadoDado >= valFatal) {
+        container.style.color = '#ff00ff'; // Magenta Neon
+        painelTexto.innerText = "💀 CRÍTICO FATAL!!!";
+    } else if (resultadoDado >= valCrit) {
+        container.style.color = '#ffcc00'; // Dourado
+        painelTexto.innerText = "✨ CRÍTICO";
     } else {
-        painel.style.color = '#fff';
-        painel.style.textShadow = '0 0 20px #0ff, 0 0 40px #0ff, 3px 3px 0 #000';
+        container.style.color = '#00ffcc'; // Ciano Normal
+        painelTexto.innerText = "🎯 NORMAL";
     }
     
-    // 5. O Efeito de "Pulo" (Animação)
+    // Dispara o Pulo na tela
     setTimeout(() => {
-        painel.style.transform = 'translate(-50%, -50%) scale(1)';
-    }, 10); // Um pequeno atraso para o navegador processar
+        container.style.transform = 'translate(-50%, -50%) scale(1)';
+    }, 10);
     
-    // 6. O número desaparece como fumo depois de 2.5 segundos
+    // O holograma some após 3 segundos para não atrapalhar o combate
     setTimeout(() => {
-        painel.style.transform = 'translate(-50%, -50%) scale(0)';
-        setTimeout(() => { painel.style.display = 'none'; }, 200);
-    }, 2500);
+        container.style.transform = 'translate(-50%, -50%) scale(0)';
+        setTimeout(() => { container.style.display = 'none'; }, 200);
+    }, 3000);
 }
