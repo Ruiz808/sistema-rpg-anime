@@ -298,10 +298,96 @@ window.removerPassiva = function(index) {
 };
 
 // Desenhar as Passivas e preencher as caixas de texto ao carregar a página
+// ==========================================
+// SISTEMA DA FICHA NARRATIVA E PASSIVAS MECÂNICAS
+// ==========================================
+
+window.salvarBio = function() {
+    if (!minhaFicha) return;
+    if (!minhaFicha.bio) minhaFicha.bio = {};
+    
+    minhaFicha.bio.raca = document.getElementById('bio-raca').value;
+    minhaFicha.bio.classe = document.getElementById('bio-classe').value;
+    minhaFicha.bio.idade = document.getElementById('bio-idade').value;
+    minhaFicha.bio.fisico = document.getElementById('bio-fisico').value;
+    minhaFicha.bio.sangue = document.getElementById('bio-sangue').value;
+    minhaFicha.bio.alinhamento = document.getElementById('bio-alinhamento').value;
+    minhaFicha.bio.afiliacao = document.getElementById('bio-afiliacao').value;
+    minhaFicha.bio.dinheiro = document.getElementById('bio-dinheiro').value;
+    
+    if (!minhaFicha.notas) minhaFicha.notas = {};
+    minhaFicha.notas.base = document.getElementById('nota-base').value;
+    minhaFicha.notas.geral = document.getElementById('nota-geral').value;
+    minhaFicha.notas.abs = document.getElementById('nota-abs').value;
+    
+    window.salvarFichaSilencioso();
+};
+
+// --- O MOTOR DE EFEITOS DAS PASSIVAS ---
+window.efeitosTempPassiva = [];
+
+window.addEfeitoPassiva = function() {
+    let atr = document.getElementById('nova-passiva-atr').value;
+    let prop = document.getElementById('nova-passiva-prop').value;
+    let val = parseFloat(document.getElementById('nova-passiva-val').value) || 0;
+
+    window.efeitosTempPassiva.push({ atributo: atr, propriedade: prop, valor: val });
+    window.renderizarEfeitosTempPassiva();
+};
+
+window.renderizarEfeitosTempPassiva = function() {
+    let div = document.getElementById('efeitos-passiva-list');
+    if (!div) return;
+    let html = '';
+    for (let i = 0; i < window.efeitosTempPassiva.length; i++) {
+        let ef = window.efeitosTempPassiva[i];
+        html += `<span style="display:inline-block; background:#000; border:1px solid #33ff77; padding:3px 10px; border-radius:15px; font-size:0.8em; color:#33ff77; margin-right:5px; margin-bottom:5px; box-shadow: 0 0 5px rgba(51,255,119,0.3);">
+            ${ef.atributo.toUpperCase()} -> ${ef.propriedade}: ${ef.valor} 
+            <span style="color:#ff4d4d; cursor:pointer; margin-left:8px; font-weight:bold;" onclick="window.removerEfeitoTempPassiva(${i})">X</span>
+        </span>`;
+    }
+    div.innerHTML = html;
+};
+
+window.removerEfeitoTempPassiva = function(i) {
+    window.efeitosTempPassiva.splice(i, 1);
+    window.renderizarEfeitosTempPassiva();
+};
+
+// Salvando a Passiva Definitiva com as Habilidades
+window.adicionarPassiva = function() {
+    if (!minhaFicha) return;
+    
+    let nome = document.getElementById('nova-passiva-nome').value.trim();
+    let tipo = document.getElementById('nova-passiva-tipo').value;
+    
+    if (nome === "") return alert("Digite o nome da habilidade!");
+    if (!minhaFicha.passivas) minhaFicha.passivas = [];
+    
+    // Clona os efeitos e guarda dentro da passiva
+    let efeitos = JSON.parse(JSON.stringify(window.efeitosTempPassiva));
+    
+    minhaFicha.passivas.push({ nome: nome, tipo: tipo, efeitos: efeitos });
+    
+    document.getElementById('nova-passiva-nome').value = "";
+    window.efeitosTempPassiva = []; // Limpa o construtor
+    window.renderizarEfeitosTempPassiva();
+    
+    window.salvarFichaSilencioso();
+    window.renderizarBioEPassivas();
+};
+
+window.removerPassiva = function(index) {
+    if (!minhaFicha || !minhaFicha.passivas) return;
+    minhaFicha.passivas.splice(index, 1);
+    window.salvarFichaSilencioso();
+    window.renderizarBioEPassivas();
+};
+
+// Desenhando a lista com os efeitos embutidos
 window.renderizarBioEPassivas = function() {
     if (!minhaFicha) return;
 
-    // Preenche as caixas de texto com o que veio do Banco de Dados
     if (minhaFicha.bio) {
         document.getElementById('bio-raca').value = minhaFicha.bio.raca || "";
         document.getElementById('bio-classe').value = minhaFicha.bio.classe || "";
@@ -312,14 +398,12 @@ window.renderizarBioEPassivas = function() {
         document.getElementById('bio-afiliacao').value = minhaFicha.bio.afiliacao || "";
         document.getElementById('bio-dinheiro').value = minhaFicha.bio.dinheiro || "";
     }
-    
     if (minhaFicha.notas) {
         document.getElementById('nota-base').value = minhaFicha.notas.base || "";
         document.getElementById('nota-geral').value = minhaFicha.notas.geral || "";
         document.getElementById('nota-abs').value = minhaFicha.notas.abs || "";
     }
 
-    // Desenha a lista de Passivas
     let container = document.getElementById('lista-passivas');
     if (!container) return;
 
@@ -333,11 +417,22 @@ window.renderizarBioEPassivas = function() {
         let p = minhaFicha.passivas[i];
         let corTag = p.tipo === "Vantagem" ? "#ffcc00" : "#33ff77";
         
+        // Renderiza os efeitos da passiva como tags pequenas
+        let badgesEfeitos = '';
+        if (p.efeitos && p.efeitos.length > 0) {
+            for(let ef of p.efeitos) {
+                badgesEfeitos += `<span style="display:inline-block; font-size:0.7em; background:rgba(0,0,0,0.8); border:1px solid #555; padding:2px 5px; border-radius:4px; margin-right:4px; margin-top:4px; color:#aaa;">${ef.atributo}: +${ef.valor}</span>`;
+            }
+        }
+        
         html += `
-            <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.6); padding: 8px 12px; border-left: 3px solid ${corTag}; border-radius: 4px;">
+            <div style="background: rgba(0,0,0,0.6); padding: 10px 12px; border-left: 3px solid ${corTag}; border-radius: 4px; display: flex; justify-content: space-between; align-items: flex-start;">
                 <div>
-                    <span style="color: ${corTag}; font-size: 0.7em; text-transform: uppercase; font-weight: bold; margin-right: 5px;">[${p.tipo}]</span>
-                    <span style="color: white; font-weight: bold;">${p.nome}</span>
+                    <div>
+                        <span style="color: ${corTag}; font-size: 0.7em; text-transform: uppercase; font-weight: bold; margin-right: 5px;">[${p.tipo}]</span>
+                        <span style="color: white; font-weight: bold; font-size: 1.1em;">${p.nome}</span>
+                    </div>
+                    <div>${badgesEfeitos}</div>
                 </div>
                 <button onclick="window.removerPassiva(${i})" style="background: transparent; border: none; color: #ff4d4d; cursor: pointer; font-size: 1.2em;" title="Remover">🗑️</button>
             </div>
