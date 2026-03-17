@@ -164,6 +164,22 @@ input:focus, select:focus { border-color: #0ff; box-shadow: 0 0 10px rgba(0, 255
 /* ==========================================
    MAPA DE COMBATE
    ========================================== */
+
+/* Aba do mapa ocupa a tela toda — sem padding do glass-panel */
+#aba-mapa {
+    padding: 0;
+    background: none;
+    border: none;
+    border-radius: 0;
+    /* Cancela o padding do main-content nas laterais e em baixo */
+    margin-left: -40px;
+    margin-right: -40px;
+    margin-bottom: -40px;
+}
+#aba-mapa.ativo {
+    display: flex;
+    flex-direction: column;
+}
 .map-scroll-container {
     width: 100%;
     height: auto; /* Altura controlada pelo flex do container pai */
