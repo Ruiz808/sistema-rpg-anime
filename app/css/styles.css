@@ -13,9 +13,10 @@ body::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; he
 .btn-coroa:hover, .btn-coroa.ativo { background: rgba(255, 204, 0, 0.1); border-color: #ffcc00; box-shadow: 0 0 15px rgba(255, 204, 0, 0.5); }
 
 .main-content { flex: 1; min-width: 0; padding: 40px; display: grid; grid-template-rows: auto 1fr; overflow-y: auto; scroll-behavior: smooth; }
-/* Modo tela cheia para o mapa — remove título e padding */
+/* Modo tela cheia para o mapa — remove título, padding e sidebar */
 .main-content.modo-mapa { padding: 0; grid-template-rows: 1fr; }
 .main-content.modo-mapa > .title { display: none; }
+body.modo-mapa .sidebar { display: none; }
 .title { font-size: 3em; font-weight: 700; color: #0ff; text-shadow: 0 0 10px rgba(0, 255, 255, 0.5); margin-bottom: 20px; }
 
 .glass-panel { background: rgba(25, 25, 40, 0.6); backdrop-filter: blur(15px); border: 1px solid rgba(0, 255, 255, 0.2); border-radius: 15px; padding: 30px; display: none; animation: fadeIn 0.3s ease-in-out; }
