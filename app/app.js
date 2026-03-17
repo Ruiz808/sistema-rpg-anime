@@ -441,8 +441,11 @@ window.renderizarBioEPassivas = function() {
     container.innerHTML = html;
 };
 // Função de Salvar com Feedback Visual Elegante
+// ==========================================
+// SISTEMA DE SALVAMENTO DA FICHA NARRATIVA E FEEDBACK
+// ==========================================
+
 window.salvarBio = function() {
-    // 1. Tenta encontrar a ficha globalmente para não dar erro
     let fichaAtual = typeof minhaFicha !== "undefined" ? minhaFicha : window.minhaFicha;
     
     if (!fichaAtual) {
@@ -450,11 +453,9 @@ window.salvarBio = function() {
         return;
     }
     
-    // 2. Garante que os objetos existem antes de gravar
     if (!fichaAtual.bio) fichaAtual.bio = {};
     if (!fichaAtual.notas) fichaAtual.notas = {};
     
-    // 3. Captura tudo com segurança (se a caixa não existir, grava vazio)
     fichaAtual.bio.raca = document.getElementById('bio-raca') ? document.getElementById('bio-raca').value : "";
     fichaAtual.bio.classe = document.getElementById('bio-classe') ? document.getElementById('bio-classe').value : "";
     fichaAtual.bio.idade = document.getElementById('bio-idade') ? document.getElementById('bio-idade').value : "";
@@ -468,12 +469,32 @@ window.salvarBio = function() {
     fichaAtual.notas.geral = document.getElementById('nota-geral') ? document.getElementById('nota-geral').value : "";
     fichaAtual.notas.abs = document.getElementById('nota-abs') ? document.getElementById('nota-abs').value : "";
     
-    // 4. Força a gravação usando a função principal do seu sistema
     if (typeof window.salvarFichaSilencioso === "function") {
         window.salvarFichaSilencioso();
     } else if (typeof window.salvarFichaBase === "function") {
         window.salvarFichaBase();
     }
+};
+
+// A Função que o Botão HTML chama para dar o Feedback Visual
+window.salvarBioComFeedback = function(botaoElemento) {
+    // 1. Salva os dados
+    window.salvarBio();
     
-    console.log("✅ Bio e Notas salvas com sucesso no Firebase!", fichaAtual.bio);
+    // 2. Animação de Sucesso
+    let textoOriginal = botaoElemento.innerText;
+    let corOriginal = botaoElemento.style.backgroundColor;
+    
+    botaoElemento.innerText = "✅ SALVO COM SUCESSO!";
+    botaoElemento.style.backgroundColor = "rgba(0, 255, 100, 0.2)"; 
+    botaoElemento.style.borderColor = "#00ffcc";
+    botaoElemento.style.color = "#fff";
+    
+    // 3. Volta ao normal após 2 segundos
+    setTimeout(() => {
+        botaoElemento.innerText = textoOriginal;
+        botaoElemento.style.backgroundColor = corOriginal;
+        botaoElemento.style.borderColor = ""; 
+        botaoElemento.style.color = "";
+    }, 2000);
 };
