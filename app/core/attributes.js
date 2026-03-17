@@ -5,7 +5,7 @@ import { minhaFicha } from '../state/store.js';
 import { isFisico, isEnergia, tratarUnico } from './utils.js';
 
 export function getBuffs(statKey) {
-    let buffs = { base: 0, mbase: 1.0, mgeral: 1.0, mformas: 1.0, mabs: 1.0, munico: [], reducaoCusto: 0, regeneracao: 0 };
+    let buffs = { base: 0, mbase: 0, mgeral: 0, mformas: 0, mabs: 0, munico: [], reducaoCusto: 0, regeneracao: 0 };
     if (!minhaFicha || !minhaFicha.poderes) return buffs;
 
     let sK = statKey.toLowerCase();
@@ -30,10 +30,10 @@ export function getBuffs(statKey) {
 
                 if (afeta) {
                     if (prop === 'base') buffs.base += val;
-                    if (prop === 'mbase') buffs.mbase *= val;
-                    if (prop === 'mgeral') buffs.mgeral *= val;
-                    if (prop === 'mformas') buffs.mformas *= val;
-                    if (prop === 'mabs') buffs.mabs *= val;
+                   if (prop === 'mbase') buffs.mbase += val;
+                    if (prop === 'mgeral') buffs.mgeral += val;
+                    if (prop === 'mformas') buffs.mformas += val;
+                    if (prop === 'mabs') buffs.mabs += val;
                     if (prop === 'munico') buffs.munico.push(val);
                     if (prop === 'reducaocusto') buffs.reducaoCusto += val;
                     if (prop === 'regeneracao') buffs.regeneracao += val;
@@ -64,7 +64,14 @@ export function getPoderTotalDaAbaPoderes(statKey) {
     let b = getBuffs(statKey);
     let mU = 1.0;
     for (let i = 0; i < b.munico.length; i++) mU *= b.munico[i];
-    return b.mbase * b.mgeral * b.mformas * b.mabs * mU;
+    
+    // Se a soma for 0 (sem buffs), tratamos como 1.0 para não zerar a multiplicação
+    let mB = b.mbase > 0 ? b.mbase : 1.0;
+    let mG = b.mgeral > 0 ? b.mgeral : 1.0;
+    let mF = b.mformas > 0 ? b.mformas : 1.0;
+    let mA = b.mabs > 0 ? b.mabs : 1.0;
+
+    return mB * mG * mF * mA * mU;
 }
 
 export function isStatBuffed(statKey) {
@@ -95,10 +102,17 @@ export function getMultiplicadorTotal(k) {
     let s = minhaFicha[k] || {};
     let b = getBuffs(k);
 
-    let mB = (parseFloat(s.mBase) || 1.0) * b.mbase;
-    let mG = (parseFloat(s.mGeral) || 1.0) * b.mgeral;
-    let mF = (parseFloat(s.mFormas) || 1.0) * b.mformas;
-    let mA = (parseFloat(s.mAbsoluto) || 1.0) * b.mabs;
+    // Função interna inteligente: Soma os buffs com a base da ficha
+    const calcAdd = (fichaVal, buffSum) => {
+        let v = parseFloat(fichaVal) || 1.0;
+        if (buffSum === 0) return v; // Se não tem buff dessa categoria, mantém a base normal
+        return (v === 1.0 ? 0 : v) + buffSum; // Se a base for 1.0, ignora ela para dar o número exato dos buffs!
+    };
+
+    let mB = calcAdd(s.mBase, b.mbase);
+    let mG = calcAdd(s.mGeral, b.mgeral);
+    let mF = calcAdd(s.mFormas, b.mformas);
+    let mA = calcAdd(s.mAbsoluto, b.mabs);
     let u1 = tratarUnico(s.mUnico || "1.0");
     let uniFicha = 1.0;
     for (let i = 0; i < u1.length; i++) { uniFicha *= u1[i]; }
