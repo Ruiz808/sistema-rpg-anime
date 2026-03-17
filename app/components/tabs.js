@@ -11,6 +11,8 @@ export function mudarAba(idAba, el) {
         let aba = document.getElementById(idAba);
         if (aba) aba.classList.add('ativo');
         if (el) el.classList.add('ativo');
+        let mainContent = document.querySelector('.main-content');
+        if (mainContent) mainContent.classList.toggle('modo-mapa', idAba === 'aba-mapa');
         if (idAba === 'aba-ficha') window.carregarAtributoNaTela();
         if (idAba === 'aba-status') window.atualizarBarrasVisuais();
         if (idAba === 'aba-poderes') window.renderizarListaPoderes();
