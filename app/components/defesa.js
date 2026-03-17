@@ -43,6 +43,14 @@ export function declararReducao() {
     let itensEquipados = minhaFicha.inventario ? minhaFicha.inventario.filter(i => i.equipado) : [];
     let result = calcularReducao({ energiaKey: k, perc, multBase: mb, minhaFicha, itensEquipados, rE: 0 });
     if (result.erro) return alert('⚠️ ' + result.erro);
+
+    // Aplicar drenos de energia retornados pelo engine
+    if (result.drenos) {
+        for (let i = 0; i < result.drenos.length; i++) {
+            minhaFicha[result.drenos[i].key].atual -= result.drenos[i].valor;
+        }
+    }
+
     window.atualizarBarrasVisuais(); salvarFichaSilencioso();
     let feedRenderedLocal = enviarParaFeed({ tipo: 'escudo', nome: meuNome, ...result });
     if (feedRenderedLocal) window.renderizarFeed({ tipo: 'escudo', nome: meuNome, ...result });
