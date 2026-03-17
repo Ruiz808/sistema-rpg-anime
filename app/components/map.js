@@ -63,6 +63,7 @@ export function atualizarMapa(dadosTodosPersonagens) {
     window._ultimoDadosMapa = dadosTodosPersonagens;
     if (!mapInitialized) return;
     renderTodosJogadores(dadosTodosPersonagens);
+    renderizarOrdemTurnos(dadosTodosPersonagens);
 }
 
 function renderTodosJogadores(dados) {
@@ -140,4 +141,97 @@ export function alterarZoom(direcao) {
 
     // Aplica a variável no CSS global
     document.documentElement.style.setProperty('--map-zoom', tamanhoCelulaAtual + 'px');
+}
+
+// --- SISTEMA DE INICIATIVA E TURNOS ---
+let ordemIniciativa = [];
+let turnoAtualIndex = 0;
+
+// Função Mágica: Descobre a imagem atual do personagem (Base ou Transformação)
+export function getAvatarDinamico(ficha) {
+    if (!ficha) return "";
+    let img = ficha.avatar ? ficha.avatar.base : "";
+    if (ficha.poderes) {
+        for (let j = 0; j < ficha.poderes.length; j++) {
+            let p = ficha.poderes[j];
+            if (p.ativa && p.imagemUrl && p.imagemUrl.trim() !== "") {
+                img = p.imagemUrl; // A Transformação toma o controle!
+            }
+        }
+    }
+    return img;
+}
+
+export function setMinhaIniciativa() {
+    let val = parseInt(document.getElementById('minha-iniciativa').value) || 0;
+    minhaFicha.iniciativa = val;
+    window.salvarFichaSilencioso(); // Salva no banco e avisa os outros!
+}
+
+export function avancarTurno() {
+    if (ordemIniciativa.length === 0) return;
+    turnoAtualIndex++;
+    if (turnoAtualIndex >= ordemIniciativa.length) turnoAtualIndex = 0;
+    desenharTurnoAtivo();
+}
+
+function renderizarOrdemTurnos(dadosJogadores) {
+    let jogadores = [];
+    let nomes = Object.keys(dadosJogadores);
+    
+    // Pega todo mundo que tem iniciativa maior que 0
+    for (let i = 0; i < nomes.length; i++) {
+        let n = nomes[i];
+        let f = dadosJogadores[n];
+        if (f && f.iniciativa !== undefined && f.iniciativa > 0) {
+            jogadores.push({ nome: n, ficha: f, iniciativa: f.iniciativa });
+        }
+    }
+
+    // Ordena do maior para o menor (Quem tirou mais, ataca primeiro)
+    jogadores.sort((a, b) => b.iniciativa - a.iniciativa);
+    ordemIniciativa = jogadores;
+
+    let container = document.getElementById('lista-turnos');
+    if (!container) return;
+
+    if (jogadores.length === 0) {
+        container.innerHTML = '<p style="color: #888; font-size: 0.8em; margin: 0;">Nenhum jogador rolou iniciativa ainda.</p>';
+        document.getElementById('turno-destaque').style.display = 'none';
+        return;
+    }
+
+    // Desenha as bolinhas da ordem de turno
+    let html = '';
+    for (let i = 0; i < jogadores.length; i++) {
+        let j = jogadores[i];
+        let img = getAvatarDinamico(j.ficha);
+        let isActive = (i === turnoAtualIndex);
+        let border = isActive ? 'border: 3px solid #00ffcc;' : 'border: 2px solid #444; opacity: 0.5;';
+        
+        html += `<div style="width: 50px; height: 50px; border-radius: 50%; ${border} background-image: url('${img}'); background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.7em; color: white; text-shadow: 1px 1px 2px black;" title="${j.nome} (${j.iniciativa})">${img ? '' : j.nome.charAt(0)}</div>`;
+    }
+    container.innerHTML = html;
+    desenharTurnoAtivo();
+}
+
+function desenharTurnoAtivo() {
+    let destaque = document.getElementById('turno-destaque');
+    let nomeDestaque = document.getElementById('turno-nome');
+    if (!destaque || !nomeDestaque) return;
+
+    if (ordemIniciativa.length > 0 && ordemIniciativa[turnoAtualIndex]) {
+        let jogadorDaVez = ordemIniciativa[turnoAtualIndex];
+        let img = getAvatarDinamico(jogadorDaVez.ficha);
+        
+        if (img) {
+            destaque.style.backgroundImage = `url('${img}')`;
+            destaque.style.display = 'block'; // Mostra o holograma!
+            nomeDestaque.innerText = jogadorDaVez.nome;
+        } else {
+            destaque.style.display = 'none'; // Esconde se não tiver imagem
+        }
+    } else {
+        destaque.style.display = 'none';
+    }
 }

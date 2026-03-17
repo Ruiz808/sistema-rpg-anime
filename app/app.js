@@ -27,9 +27,9 @@ import { rolarAcerto, initAcertoListeners } from './components/acerto.js';
 import { inicializarAtuais, desenharRadar, atualizarBarrasVisuais, alterarHP, curarTudo, aplicarRegeneracaoTurno, initStatusListeners } from './components/status.js';
 import { carregarAtributoNaTela, salvarAtributo, atualizarDivisores, carregarTabelaPrestigio, aplicarPrestigioNaFicha, salvarTabelaAoServidor, initFichaListeners } from './components/ficha.js';
 // import { initMap, atualizarMapa } from './components/map.js';
-
+import { initMap, atualizarMapa, alterarZoom, setMinhaIniciativa, avancarTurno } from './components/map.js';
 // Onde você importa o mapa no topo do app.js:
-import { initMap, atualizarMapa, alterarZoom } from './components/map.js';
+//import { initMap, atualizarMapa, alterarZoom } from './components/map.js';
 
 // Mais para baixo, onde você expõe para o window:
 window.alterarZoom = alterarZoom;
@@ -105,6 +105,8 @@ window.carregarTabelaPrestigio = carregarTabelaPrestigio;
 // Mapa (used by tabs.js)
 window.initMap = initMap;
 window.atualizarMapa = atualizarMapa;
+window.setMinhaIniciativa = setMinhaIniciativa;
+window.avancarTurno = avancarTurno;
 
 // ==========================================
 // INICIALIZAÇÃO
