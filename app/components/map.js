@@ -197,7 +197,6 @@ function renderizarOrdemTurnos(dadosJogadores) {
 
     if (jogadores.length === 0) {
         container.innerHTML = '<p style="color: #888; font-size: 0.8em; margin: 0;">Nenhum jogador rolou iniciativa ainda.</p>';
-        document.getElementById('turno-destaque').style.display = 'none';
         return;
     }
 
@@ -227,10 +226,9 @@ function desenharTurnoAtivo() {
         let jogadorDaVez = ordemIniciativa[turnoAtualIndex];
         let info = getAvatarInfo(jogadorDaVez.ficha);
         let f = jogadorDaVez.ficha; // Puxamos a ficha completa do jogador!
-        
+
         if (info.img) {
             destaque.style.backgroundImage = `url('${info.img}')`;
-            destaque.style.display = 'block'; 
             nomeDestaque.innerText = jogadorDaVez.nome;
             
             if (info.forma) {
@@ -279,10 +277,16 @@ function desenharTurnoAtivo() {
             statusCombate.innerHTML = htmlStatus; // Injeta no ecrã!
 
         } else {
-            destaque.style.display = 'none'; 
+            destaque.style.backgroundImage = 'none';
+            nomeDestaque.innerText = jogadorDaVez.nome;
+            formaDestaque.style.display = 'none';
+            statusCombate.innerHTML = '';
         }
     } else {
-        destaque.style.display = 'none';
+        destaque.style.backgroundImage = 'none';
+        nomeDestaque.innerText = '';
+        formaDestaque.style.display = 'none';
+        statusCombate.innerHTML = '';
     }
 }
 window.rolarAcertoRapido = function() {
