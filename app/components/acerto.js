@@ -27,3 +27,4 @@ export function rolarAcerto() {
     if (feedRenderedLocal) window.renderizarFeed(feedData);
     window.mudarAba('aba-log');
 }
+

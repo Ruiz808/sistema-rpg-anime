@@ -286,36 +286,31 @@ function desenharTurnoAtivo() {
     }
 }
 window.rolarAcertoRapido = function() {
-    // Rola 1d20 limpo
     let resultadoDado = Math.floor(Math.random() * 20) + 1;
     
-    // Captura os elementos da tela
     let container = document.getElementById('holograma-dado');
     let painelNum = document.getElementById('resultado-centro');
     let painelTexto = document.getElementById('tipo-resultado');
     
     if (!container || !painelNum || !painelTexto) return;
 
-    // Lê os valores que o utilizador configurou nas caixinhas (com padrões de segurança)
-    let valErro = parseInt(document.getElementById('conf-erro').value) || 1;
-    let valCrit = parseInt(document.getElementById('conf-crit').value) || 19;
-    let valFatal = parseInt(document.getElementById('conf-fatal').value) || 20;
+    // Busca os valores lá da aba de Acerto (ou usa padrões de segurança)
+    let valErro = parseInt(document.getElementById('conf-erro')?.value) || 1;
+    let valCrit = parseInt(document.getElementById('conf-crit')?.value) || 18;
+    let valFatal = parseInt(document.getElementById('conf-fatal')?.value) || 19;
     
-    // Atualiza o número
     painelNum.innerText = resultadoDado;
     
-    // Prepara a caixa para a animação
     container.style.display = 'flex';
     container.style.transform = 'translate(-50%, -50%) scale(0)';
     
-    // --- O SISTEMA DE JULGAMENTO ---
-    // Repare no truque do "currentColor": ele pinta o dado, o número e o brilho ao mesmo tempo!
+    // O Sistema de Julgamento Automático
     if (resultadoDado <= valErro) {
-        container.style.color = '#ff4d4d'; // Vermelho Neon
+        container.style.color = '#ff4d4d'; // Vermelho
         painelTexto.innerText = "💥 FALHA CRÍTICA";
     } else if (resultadoDado >= valFatal) {
-        container.style.color = '#ff00ff'; // Magenta Neon
-        painelTexto.innerText = "💀 CRÍTICO FATAL!!!";
+        container.style.color = '#ff00ff'; // Magenta (19 e 20)
+        painelTexto.innerText = "💀 CRÍTICO FATAL!!";
     } else if (resultadoDado >= valCrit) {
         container.style.color = '#ffcc00'; // Dourado
         painelTexto.innerText = "✨ CRÍTICO";
@@ -324,12 +319,12 @@ window.rolarAcertoRapido = function() {
         painelTexto.innerText = "🎯 NORMAL";
     }
     
-    // Dispara o Pulo na tela
+    // Animação de Entrada
     setTimeout(() => {
         container.style.transform = 'translate(-50%, -50%) scale(1)';
     }, 10);
     
-    // O holograma some após 3 segundos para não atrapalhar o combate
+    // Animação de Saída (Fica 3 segundos na tela para todos lerem)
     setTimeout(() => {
         container.style.transform = 'translate(-50%, -50%) scale(0)';
         setTimeout(() => { container.style.display = 'none'; }, 200);

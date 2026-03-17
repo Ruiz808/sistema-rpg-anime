@@ -619,6 +619,22 @@
             </div>
             <button id="btn-rolar-acerto" class="btn-neon btn-orange">🎯 ROLAR ACERTO</button>
         </div>
+        <h3 class="section-title text-orange" style="margin-top: 30px;">> ⚙️ CONFIGURAÇÃO DE CRÍTICOS (MAPA)</h3>
+            <p class="hint-text">Defina a margem dos seus críticos. Estes valores comandam o holograma no Campo de Batalha!</p>
+            <div class="flex-row-gap-20">
+                <div class="input-group flex-1">
+                    <label style="color: #ff4d4d;">💥 ERRO CRÍTICO (<=)</label>
+                    <input type="number" id="conf-erro" value="1" title="Valores menores ou iguais a este dão falha">
+                </div>
+                <div class="input-group flex-1">
+                    <label style="color: #ffcc00;">✨ CRÍTICO NORMAL (>=)</label>
+                    <input type="number" id="conf-crit" value="18" title="Ex: 18 pra cima">
+                </div>
+                <div class="input-group flex-1">
+                    <label style="color: #ff00ff;">💀 CRÍTICO FATAL (>=)</label>
+                    <input type="number" id="conf-fatal" value="19" title="Ex: 19 e 20">
+                </div>
+            </div>
 
         <div id="aba-defesa" class="glass-panel">
             <h2 class="text-white">> PROTOCOLOS DE DEFESA</h2>
@@ -713,15 +729,26 @@
                     </div>
                 </div>
 
-                <div id="turno-destaque" style="flex: 1; position: relative; border-radius: 8px; border: 2px solid #00ffcc; background-size: cover; background-position: top center; background-repeat: no-repeat; display: none; overflow: hidden; box-shadow: 0 0 20px rgba(0,255,204,0.2);">
+               <div id="turno-destaque" style="flex: 1; position: relative; border-radius: 8px; border: 2px solid #00ffcc; background-size: cover; background-position: top center; background-repeat: no-repeat; display: none; overflow: hidden; box-shadow: 0 0 20px rgba(0,255,204,0.2);">
                     
                     <div style="position: absolute; bottom: 0; left: 0; width: 100%; height: 60%; background: linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.8) 50%, transparent 100%); pointer-events: none;"></div>
 
                     <div id="holograma-dado" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 50; transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: none;">
-                        <div id="tipo-resultado" style="font-size: 1.8em; font-weight: 900; text-transform: uppercase; margin-bottom: -15px; text-shadow: 2px 2px 4px #000; z-index: 2;">CRÍTICO!</div>
-                        <div style="display: flex; align-items: center; gap: 15px;">
-                            <span style="font-size: 5em; filter: drop-shadow(0 0 15px currentColor);">🎲</span>
-                            <span id="resultado-centro" style="font-size: 7em; font-weight: 900; text-shadow: 0 0 20px currentColor, 0 0 40px currentColor, 4px 4px 0 #000;">20</span>
+                        
+                        <div id="tipo-resultado" style="font-size: 2em; font-weight: 900; text-transform: uppercase; margin-bottom: -5px; text-shadow: 2px 2px 4px #000; z-index: 2; text-align: center;">CRÍTICO!</div>
+                        
+                        <div style="position: relative; width: 180px; height: 180px; display: flex; align-items: center; justify-content: center; filter: drop-shadow(0 0 15px currentColor);">
+                            <svg viewBox="0 0 100 100" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; color: inherit;">
+                                <polygon points="50,5 95,25 95,75 50,95 5,75 5,25" fill="rgba(0,0,0,0.8)" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                                <polyline points="50,5 50,25" stroke="currentColor" stroke-width="1.5"/>
+                                <polyline points="5,25 25,45" stroke="currentColor" stroke-width="1.5"/>
+                                <polyline points="95,25 75,45" stroke="currentColor" stroke-width="1.5"/>
+                                <polyline points="5,75 25,60" stroke="currentColor" stroke-width="1.5"/>
+                                <polyline points="95,75 75,60" stroke="currentColor" stroke-width="1.5"/>
+                                <polyline points="50,95 50,80" stroke="currentColor" stroke-width="1.5"/>
+                                <polygon points="50,25 75,45 75,60 50,80 25,60 25,45" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                            </svg>
+                            <span id="resultado-centro" style="position: relative; font-size: 4em; font-weight: 900; text-shadow: 2px 2px 0 #000; z-index: 2;">20</span>
                         </div>
                     </div>
 
@@ -729,24 +756,8 @@
                         
                         <div id="status-combate"></div>
 
-                        <div style="text-align: right;">
-                            
-                            <div style="display: flex; gap: 5px; justify-content: flex-end; margin-bottom: 8px;">
-                                <div style="background: rgba(0,0,0,0.8); padding: 5px; border-radius: 5px; border: 1px solid #ff4d4d; text-align: center;" title="Erro Crítico ou Menor">
-                                    <div style="font-size: 0.6em; color: #ff4d4d; font-weight: bold;">ERRO (<=)</div>
-                                    <input type="number" id="conf-erro" value="1" style="width: 35px; background: transparent; color: white; border: none; text-align: center; font-weight: bold; outline: none; padding: 0;">
-                                </div>
-                                <div style="background: rgba(0,0,0,0.8); padding: 5px; border-radius: 5px; border: 1px solid #ffcc00; text-align: center;" title="Crítico Normal ou Maior">
-                                    <div style="font-size: 0.6em; color: #ffcc00; font-weight: bold;">CRIT (>=)</div>
-                                    <input type="number" id="conf-crit" value="19" style="width: 35px; background: transparent; color: white; border: none; text-align: center; font-weight: bold; outline: none; padding: 0;">
-                                </div>
-                                <div style="background: rgba(0,0,0,0.8); padding: 5px; border-radius: 5px; border: 1px solid #ff00ff; text-align: center;" title="Crítico Fatal ou Maior">
-                                    <div style="font-size: 0.6em; color: #ff00ff; font-weight: bold;">FATAL (>=)</div>
-                                    <input type="number" id="conf-fatal" value="20" style="width: 35px; background: transparent; color: white; border: none; text-align: center; font-weight: bold; outline: none; padding: 0;">
-                                </div>
-                            </div>
-
-                            <button class="btn-neon btn-orange" style="margin-bottom: 10px; padding: 8px 15px; font-size: 1em; width: 100%; font-weight: bold;" onclick="window.rolarAcertoRapido()">🎯 ROLAR ACERTO</button>
+                        <div style="text-align: right; margin-bottom: 5px;">
+                            <button class="btn-neon btn-orange" style="margin-bottom: 10px; padding: 8px 15px; font-size: 1.1em; font-weight: bold; width: 100%; letter-spacing: 1px;" onclick="window.rolarAcertoRapido()">🎯 ROLAR D20</button>
                             
                             <div id="turno-nome" style="color: #fff; font-size: 2em; font-weight: 900; text-transform: uppercase; text-shadow: 2px 2px 0px #000, -1px -1px 15px #00ffcc;">Nome</div>
                             <div id="turno-forma" style="color: #ffcc00; font-size: 1.2em; font-weight: bold; text-shadow: 1px 1px 3px #000; margin-top: 5px; display: none;">⚡ Nome da Forma</div>
