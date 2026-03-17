@@ -13,7 +13,9 @@ import { fichaPadrao, minhaFicha, meuNome, setMeuNome, sanitizarNome, carregarDa
 // === SERVICES ===
 import { db } from './services/firebase-config.js';
 import { salvarFichaSilencioso, salvarFirebaseImediato, carregarFichaDoFirebase, iniciarListenerPersonagens, iniciarListenerFeed, enviarParaFeed } from './services/firebase-sync.js';
-
+if (typeof window.renderizarBioEPassivas === "function") {
+    window.renderizarBioEPassivas();
+}
 // === COMPONENTS ===
 import { mudarAba, initTabsListeners } from './components/tabs.js';
 import { renderizarFeed } from './components/feed.js';
