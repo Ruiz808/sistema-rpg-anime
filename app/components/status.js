@@ -116,10 +116,12 @@ export function alterarHP(tipo) {
     if (isNaN(v) || v <= 0) return alert("⚠️ Digite um número maior que zero!");
     let letalidade = parseInt(document.getElementById('val-letalidade').value) || 0;
     let mx = getMaximo('vida'); let p = Math.max(0, contarDigitos(mx) - 8);
-    let vidaExpandida = minhaFicha.vida.atual * Math.pow(10, p);
-    let ef = v * Math.pow(10, letalidade);
-    if (tipo === 'dano') vidaExpandida -= ef; else vidaExpandida += ef;
-    minhaFicha.vida.atual = Math.floor(vidaExpandida / Math.pow(10, p));
+    let dif = letalidade - p;
+    let ef;
+    if (dif >= 0) ef = v * Math.pow(10, dif);
+    else ef = v / Math.pow(10, -dif);
+    if (tipo === 'dano') minhaFicha.vida.atual -= ef; else minhaFicha.vida.atual += ef;
+    minhaFicha.vida.atual = Math.floor(minhaFicha.vida.atual);
     atualizarBarrasVisuais(); salvarFichaSilencioso(); el.value = ''; document.getElementById('val-letalidade').value = '0';
 }
 
