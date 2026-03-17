@@ -6,7 +6,7 @@ import { getMaximo, getBuffs, getRawBase, getPoderesDefesa } from './attributes.
 
 /**
  * Calcula o dano final. Recebe todos os parâmetros já lidos do DOM.
- * Retorna objeto puro com resultado (sem side effects).
+ * Retorna objeto puro com resultado e drenos a aplicar (sem side effects).
  */
 export function calcularDano({
     qDBase, qDExtra, qDMagia, fD,
@@ -55,13 +55,13 @@ export function calcularDano({
     for (let i = 0; i < engs.length; i++) {
         let eKey = engs[i];
         let eng = minhaFicha[eKey];
-        let mx = getMaximo(eKey);
+        let mx = getMaximo(minhaFicha, eKey);
 
         let gtDrenoBase = Math.floor(mx * (gastoPercentualPorEnergia / 100));
         let gtDrenoMagia = Math.floor(mx * (gastoMagiaPorEnergia / 100));
 
         let redBase = (eng && eng.reducaoCusto) ? parseFloat(eng.reducaoCusto) : 0;
-        let bEnergia = getBuffs(eKey);
+        let bEnergia = getBuffs(minhaFicha, eKey);
         let red = Math.min(100, redBase + bEnergia.reducaoCusto + rE);
 
         let crDreno = Math.floor(gtDrenoBase * (1 - (red / 100)));
@@ -76,11 +76,12 @@ export function calcularDano({
         if (crTotal > 0) custoTxt.push(`${crTotal.toLocaleString('pt-BR')} ${eKey.toUpperCase()}`);
     }
 
-    // Drenar energia
+    // Coletar drenos para o caller aplicar
+    let drenos = [];
     let gtBase = 0;
     let cTotal = 0;
     for (let i = 0; i < chkCustos.length; i++) {
-        minhaFicha[chkCustos[i].k].atual -= chkCustos[i].cr;
+        drenos.push({ key: chkCustos[i].k, valor: chkCustos[i].cr });
         cTotal += chkCustos[i].cr;
         gtBase += chkCustos[i].p;
     }
@@ -100,7 +101,7 @@ export function calcularDano({
 
     // Status total
     let powerStatus = 0;
-    for (let i = 0; i < sels.length; i++) { powerStatus += getMaximo(sels[i]); }
+    for (let i = 0; i < sels.length; i++) { powerStatus += getMaximo(minhaFicha, sels[i]); }
 
     // Cálculo base
     let eCal = Math.floor(gtBase * mE);
@@ -112,7 +113,7 @@ export function calcularDano({
     let uni = 1.0;
     for (let i = 0; i < uArr.length; i++) uni *= uArr[i];
 
-    let bFora = getBuffs(sels[0]);
+    let bFora = getBuffs(minhaFicha, sels[0]);
 
     let multArr = [];
     let totalGer = m1 * bFora.mgeral; if (totalGer !== 1) multArr.push(`x${totalGer.toFixed(2)}(Ger)`);
@@ -169,6 +170,7 @@ export function calcularDano({
         detalheEnergia: txtEng,
         armaStr: armaStr,
         detalheConta: detalheConta,
+        drenos: drenos,
         energiaDrenada: true
     };
 }
@@ -197,11 +199,11 @@ export function calcularAcerto({ qD, fD, prof, bonus, sels, minhaFicha, itensEqu
 
     let vSt = 0;
     for (let i = 0; i < sels.length; i++) {
-        let baseVal = getRawBase(sels[i]);
+        let baseVal = getRawBase(minhaFicha, sels[i]);
         vSt += pegarDoisPrimeirosDigitos(baseVal);
     }
 
-    let bp = getPoderesDefesa('bonus_acerto');
+    let bp = getPoderesDefesa(minhaFicha, 'bonus_acerto');
     let atrNames = [];
     for (let i = 0; i < sels.length; i++) atrNames.push(minhaFicha[sels[i]].nome || sels[i].toUpperCase());
 
@@ -227,9 +229,9 @@ export function calcularEvasiva({ prof, bonus, minhaFicha, itensEquipados }) {
         if (item.tipo === 'armadura') nomesArmaduras.push(item.nome);
     });
 
-    let baseVal = getRawBase('destreza');
+    let baseVal = getRawBase(minhaFicha, 'destreza');
     let baseD = pegarDoisPrimeirosDigitos(baseVal);
-    let bp = getPoderesDefesa('bonus_evasiva');
+    let bp = getPoderesDefesa(minhaFicha, 'bonus_evasiva');
 
     let strArmadura = nomesArmaduras.length ? ` equipado com <strong>${nomesArmaduras.join(' e ')}</strong>` : '';
 
@@ -251,9 +253,9 @@ export function calcularResistencia({ prof, bonus, minhaFicha, itensEquipados })
         if (item.tipo === 'armadura') nomesArmaduras.push(item.nome);
     });
 
-    let baseVal = getRawBase('forca');
+    let baseVal = getRawBase(minhaFicha, 'forca');
     let baseD = pegarDoisPrimeirosDigitos(baseVal);
-    let bp = getPoderesDefesa('bonus_resistencia');
+    let bp = getPoderesDefesa(minhaFicha, 'bonus_resistencia');
 
     let strArmadura = nomesArmaduras.length ? ` equipado com <strong>${nomesArmaduras.join(' e ')}</strong>` : '';
 
@@ -265,7 +267,7 @@ export function calcularResistencia({ prof, bonus, minhaFicha, itensEquipados })
 }
 
 /**
- * Calcula escudo/redução. Retorna resultado puro ou erro.
+ * Calcula escudo/redução. Retorna resultado puro com drenos.
  */
 export function calcularReducao({ energiaKey, perc, multBase, minhaFicha, itensEquipados, rE }) {
     let iMultEscudo = 0;
@@ -282,23 +284,25 @@ export function calcularReducao({ energiaKey, perc, multBase, minhaFicha, itensE
 
     for (let i = 0; i < keys.length; i++) {
         let e = keys[i];
-        let mMax = getMaximo(e);
+        let mMax = getMaximo(minhaFicha, e);
         let gt = Math.floor(mMax * (perc / 100));
         let redBase = (minhaFicha[e] && minhaFicha[e].reducaoCusto) ? parseFloat(minhaFicha[e].reducaoCusto) : 0;
-        let bEnergia = getBuffs(e);
+        let bEnergia = getBuffs(minhaFicha, e);
         let red = Math.min(100, redBase + bEnergia.reducaoCusto);
         let cr = Math.floor(gt * (1 - (red / 100)));
         if ((minhaFicha[e].atual || 0) < cr) return { erro: 'Sem energia!' };
         chk.push({ e: e, cr: cr, bb: gt });
     }
 
+    // Coletar drenos para o caller aplicar
+    let drenos = [];
     for (let i = 0; i < chk.length; i++) {
-        minhaFicha[chk[i].e].atual -= chk[i].cr;
+        drenos.push({ key: chk[i].e, valor: chk[i].cr });
         cReal += chk[i].cr;
         bBruto += chk[i].bb;
     }
 
-    let pM = getPoderesDefesa('mult_escudo');
+    let pM = getPoderesDefesa(minhaFicha, 'mult_escudo');
     let multFinal = multBase + pM + iMultEscudo;
 
     let total = Math.floor(bBruto * multFinal);
@@ -313,6 +317,7 @@ export function calcularReducao({ energiaKey, perc, multBase, minhaFicha, itensE
         vitalidade: pVit,
         detalhe: 'Drenou ' + perc + '% de ' + nDef + ' (Gasto: ' + cReal.toLocaleString('pt-BR') + ')' + (pM > 0 ? ' | Buff Forma: +' + pM + 'x' : '') + (iMultEscudo > 0 ? ' | Armadura: +' + iMultEscudo + 'x' : ''),
         armaStr: strArmadura,
+        drenos: drenos,
         energiaDrenada: true
     };
 }
