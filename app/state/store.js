@@ -4,7 +4,12 @@
 
 export const fichaPadrao = {
     ascensaoBase: 1, poderes: [], inventario: [], ataquesElementais: [],
+    passivas: [],
     avatar: { base: "" },
+    bio: { raca: "", classe: "", idade: "", fisico: "", sangue: "", alinhamento: "", afiliacao: "", dinheiro: "" },
+    notas: { base: "", geral: "", abs: "" },
+    posicao: { x: 0, y: 0 },
+    iniciativa: 0,
     ataqueConfig: { dadosBase: 1, faces: 20, dExtra: 0, bruto: 0, mBruto: 1.0, mBase: 1.0, mGeral: 1.0, mFormas: 1.0, mAbsoluto: 1.0, mPotencial: 1.0, mUnico: "1.0", percEnergia: 10, redCusto: 0, mEnergia: 1.0, statusSelecionados: ['forca'], energiasSelecionadas: ['mana'] },
     divisores: { vida: 1, status: 1, mana: 1, aura: 1, chakra: 1, corpo: 1 },
     vida: { base: 100000000, mBase: 1.0, mGeral: 1.0, mFormas: 1.0, mUnico: "1.0", mAbsoluto: 1.0, reducaoCusto: 0, regeneracao: 0, atual: 100000000 },
@@ -65,14 +70,20 @@ export function carregarDadosFicha(dados) {
     if (dados.ataquesElementais) minhaFicha.ataquesElementais = dados.ataquesElementais; else minhaFicha.ataquesElementais = [];
     if (dados.ataqueConfig) minhaFicha.ataqueConfig = Object.assign({}, fichaPadrao.ataqueConfig, dados.ataqueConfig);
 
-    // AQUI ESTÁ A MAGIA: Salva a string da imagem sem tentar converter para número!
+    // Salva a string da imagem sem tentar converter para número
     if (dados.avatar) minhaFicha.avatar = Object.assign({}, fichaPadrao.avatar, dados.avatar);
     else minhaFicha.avatar = { base: "" };
 
+    // Campos narrativos (bio, notas, passivas, posicao, iniciativa)
+    if (dados.bio) minhaFicha.bio = Object.assign({}, fichaPadrao.bio, dados.bio);
+    if (dados.notas) minhaFicha.notas = Object.assign({}, fichaPadrao.notas, dados.notas);
+    if (dados.passivas) minhaFicha.passivas = dados.passivas; else minhaFicha.passivas = [];
+    if (dados.posicao) minhaFicha.posicao = Object.assign({}, fichaPadrao.posicao, dados.posicao);
+    if (dados.iniciativa !== undefined) minhaFicha.iniciativa = parseInt(dados.iniciativa) || 0;
+
     for (let i = 0; i < chaves.length; i++) {
         let ch = chaves[i];
-        // ADICIONAMOS 'avatar' NA LISTA DE EXCEÇÕES ABAIXO:
-        if (dados[ch] !== undefined && ch !== 'ascensaoBase' && ch !== 'poderes' && ch !== 'divisores' && ch !== 'inventario' && ch !== 'ataquesElementais' && ch !== 'ataqueConfig' && ch !== 'avatar') {
+        if (dados[ch] !== undefined && ch !== 'ascensaoBase' && ch !== 'poderes' && ch !== 'divisores' && ch !== 'inventario' && ch !== 'ataquesElementais' && ch !== 'ataqueConfig' && ch !== 'avatar' && ch !== 'bio' && ch !== 'notas' && ch !== 'passivas' && ch !== 'posicao' && ch !== 'iniciativa') {
             if (typeof fichaPadrao[ch] === 'object' && !Array.isArray(fichaPadrao[ch])) {
                 minhaFicha[ch] = Object.assign({}, fichaPadrao[ch], dados[ch]);
                 let numF = ['base', 'mBase', 'mGeral', 'mFormas', 'mAbsoluto', 'reducaoCusto', 'regeneracao', 'atual'];

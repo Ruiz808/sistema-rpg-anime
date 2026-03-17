@@ -61,7 +61,7 @@ export function salvarAtributo() {
         minhaFicha[c].base = v.b; minhaFicha[c].mBase = v.mb; minhaFicha[c].mGeral = v.mg; minhaFicha[c].mFormas = v.mf;
         minhaFicha[c].mUnico = v.mu; minhaFicha[c].mAbsoluto = v.ma; minhaFicha[c].reducaoCusto = v.rc; minhaFicha[c].regeneracao = v.rg;
         if (c === 'vida' || c === 'mana' || c === 'aura' || c === 'chakra' || c === 'corpo') {
-            let mx = getMaximo(c);
+            let mx = getMaximo(minhaFicha, c);
             if (c === 'vida') { let p = Math.max(0, contarDigitos(mx) - 8); if (p > 0) mx = Math.floor(mx / Math.pow(10, p)); }
             else { let p = Math.max(0, contarDigitos(mx) - 9); if (p > 0) mx = Math.floor(mx / Math.pow(10, p)); }
             minhaFicha[c].atual = mx;
@@ -84,14 +84,14 @@ export function atualizarDivisores() {
 
 export function carregarTabelaPrestigio() {
     let sFisicos = ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao']; let m = 0;
-    for (let i = 0; i < sFisicos.length; i++) { m += getRawBase(sFisicos[i]); }
+    for (let i = 0; i < sFisicos.length; i++) { m += getRawBase(minhaFicha, sFisicos[i]); }
     let elAsc = document.getElementById('pres-asc'); if (elAsc) elAsc.value = minhaFicha.ascensaoBase || 1;
-    let elVid = document.getElementById('pres-vida'); if (elVid) elVid.value = getPrestigioReal('vida', getRawBase('vida'));
+    let elVid = document.getElementById('pres-vida'); if (elVid) elVid.value = getPrestigioReal('vida', getRawBase(minhaFicha, 'vida'));
     let elSt = document.getElementById('pres-status'); if (elSt) elSt.value = Math.floor((m / 8) / 1000);
-    let elMa = document.getElementById('pres-mana'); if (elMa) elMa.value = getPrestigioReal('mana', getRawBase('mana'));
-    let elAu = document.getElementById('pres-aura'); if (elAu) elAu.value = getPrestigioReal('aura', getRawBase('aura'));
-    let elCh = document.getElementById('pres-chakra'); if (elCh) elCh.value = getPrestigioReal('chakra', getRawBase('chakra'));
-    let elCo = document.getElementById('pres-corpo'); if (elCo) elCo.value = getPrestigioReal('corpo', getRawBase('corpo'));
+    let elMa = document.getElementById('pres-mana'); if (elMa) elMa.value = getPrestigioReal('mana', getRawBase(minhaFicha, 'mana'));
+    let elAu = document.getElementById('pres-aura'); if (elAu) elAu.value = getPrestigioReal('aura', getRawBase(minhaFicha, 'aura'));
+    let elCh = document.getElementById('pres-chakra'); if (elCh) elCh.value = getPrestigioReal('chakra', getRawBase(minhaFicha, 'chakra'));
+    let elCo = document.getElementById('pres-corpo'); if (elCo) elCo.value = getPrestigioReal('corpo', getRawBase(minhaFicha, 'corpo'));
 
     if (!minhaFicha.divisores) minhaFicha.divisores = { vida: 1, status: 1, mana: 1, aura: 1, chakra: 1, corpo: 1 };
     let dV = document.getElementById('div-vida'); if (dV) dV.value = minhaFicha.divisores.vida;

@@ -1,15 +1,14 @@
 // ==========================================
 // MOTOR DE ATRIBUTOS — Cálculos sobre a ficha
 // ==========================================
-import { minhaFicha } from '../state/store.js';
 import { isFisico, isEnergia, tratarUnico } from './utils.js';
 
-export function getBuffs(statKey) {
+export function getBuffs(ficha, statKey) {
     let buffs = { base: 0, mbase: 0, mgeral: 0, mformas: 0, mabs: 0, munico: [], reducaoCusto: 0, regeneracao: 0 };
     // Rastreador: O personagem ativou algum poder destas categorias?
     let hasBuff = { mbase: false, mgeral: false, mformas: false, mabs: false };
 
-    if (!minhaFicha || !minhaFicha.poderes) {
+    if (!ficha || !ficha.poderes) {
         buffs.mbase = 1.0; buffs.mgeral = 1.0; buffs.mformas = 1.0; buffs.mabs = 1.0;
         return buffs;
     }
@@ -18,8 +17,8 @@ export function getBuffs(statKey) {
     let isStatFisico = isFisico(sK);
     let isStatEnergia = isEnergia(sK);
 
-    for (let i = 0; i < minhaFicha.poderes.length; i++) {
-        let p = minhaFicha.poderes[i];
+    for (let i = 0; i < ficha.poderes.length; i++) {
+        let p = ficha.poderes[i];
         if (p && p.ativa && p.efeitos) {
             for (let j = 0; j < p.efeitos.length; j++) {
                 let e = p.efeitos[j];
@@ -60,11 +59,11 @@ export function getBuffs(statKey) {
     return buffs;
 }
 
-export function getPoderesDefesa(tipo) {
+export function getPoderesDefesa(ficha, tipo) {
     let t = 0;
-    if (!minhaFicha.poderes) return 0;
-    for (let i = 0; i < minhaFicha.poderes.length; i++) {
-        let p = minhaFicha.poderes[i];
+    if (!ficha.poderes) return 0;
+    for (let i = 0; i < ficha.poderes.length; i++) {
+        let p = ficha.poderes[i];
         if (p && p.ativa && p.efeitos) {
             for (let j = 0; j < p.efeitos.length; j++) {
                 if (p.efeitos[j] && (p.efeitos[j].propriedade || '').toLowerCase() === tipo) {
@@ -76,11 +75,11 @@ export function getPoderesDefesa(tipo) {
     return t;
 }
 
-export function getPoderTotalDaAbaPoderes(statKey) {
-    let b = getBuffs(statKey);
+export function getPoderTotalDaAbaPoderes(ficha, statKey) {
+    let b = getBuffs(ficha, statKey);
     let mU = 1.0;
     for (let i = 0; i < b.munico.length; i++) mU *= b.munico[i];
-    
+
     // Mostra exatamente o valor somado da categoria sem invenções matemáticas
     let mB = b._hasBuff.mbase ? b.mbase : 1.0;
     let mG = b._hasBuff.mgeral ? b.mgeral : 1.0;
@@ -90,33 +89,33 @@ export function getPoderTotalDaAbaPoderes(statKey) {
     return mB * mG * mF * mA * mU;
 }
 
-export function isStatBuffed(statKey) {
+export function isStatBuffed(ficha, statKey) {
     if (statKey === 'status') {
         let sFisicos = ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'];
         for (let i = 0; i < sFisicos.length; i++) {
-            if (getPoderTotalDaAbaPoderes(sFisicos[i]) > 1.0) return true;
+            if (getPoderTotalDaAbaPoderes(ficha, sFisicos[i]) > 1.0) return true;
         }
         return false;
     } else {
-        return getPoderTotalDaAbaPoderes(statKey) > 1.0;
+        return getPoderTotalDaAbaPoderes(ficha, statKey) > 1.0;
     }
 }
 
-export function getRawBase(statKey) {
-    let s = minhaFicha[statKey];
+export function getRawBase(ficha, statKey) {
+    let s = ficha[statKey];
     return (s && s.base) ? parseFloat(s.base) : 0;
 }
 
-export function getEfetivoBase(statKey) {
-    let s = minhaFicha[statKey];
+export function getEfetivoBase(ficha, statKey) {
+    let s = ficha[statKey];
     let rawBase = (s && s.base) ? parseFloat(s.base) : 0;
     if (isNaN(rawBase)) rawBase = 0;
-    return rawBase + getBuffs(statKey).base;
+    return rawBase + getBuffs(ficha, statKey).base;
 }
 
-export function getMultiplicadorTotal(k) {
-    let s = minhaFicha[k] || {};
-    let b = getBuffs(k);
+export function getMultiplicadorTotal(ficha, k) {
+    let s = ficha[k] || {};
+    let b = getBuffs(ficha, k);
 
     // Função inteligente blindada: Só soma se o rastreador confirmar que há buff!
     const calcAdd = (fichaVal, buffSum, hasBuffFlag) => {
@@ -129,20 +128,20 @@ export function getMultiplicadorTotal(k) {
     let mG = calcAdd(s.mGeral, b.mgeral, b._hasBuff.mgeral);
     let mF = calcAdd(s.mFormas, b.mformas, b._hasBuff.mformas);
     let mA = calcAdd(s.mAbsoluto, b.mabs, b._hasBuff.mabs);
-    
+
     let u1 = tratarUnico(s.mUnico || "1.0");
     let uniFicha = 1.0;
     for (let i = 0; i < u1.length; i++) { uniFicha *= u1[i]; }
-    
+
     let mU = 1.0;
     for (let i = 0; i < b.munico.length; i++) mU *= b.munico[i];
 
     return mB * mG * mF * mA * uniFicha * mU;
 }
 
-export function getMaximo(k) {
-    let b = getEfetivoBase(k);
-    let mult = getMultiplicadorTotal(k);
+export function getMaximo(ficha, k) {
+    let b = getEfetivoBase(ficha, k);
+    let mult = getMultiplicadorTotal(ficha, k);
     let mx = Math.floor(b * mult);
     return isNaN(mx) ? 0 : mx;
 }
