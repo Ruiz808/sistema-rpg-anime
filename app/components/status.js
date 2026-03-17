@@ -116,7 +116,9 @@ export function alterarHP(tipo) {
     if (isNaN(v) || v <= 0) return alert("⚠️ Digite um número maior que zero!");
     let letalidade = parseInt(document.getElementById('val-letalidade').value) || 0;
     let mx = getMaximo('vida'); let p = Math.max(0, contarDigitos(mx) - 8);
-    let dif = letalidade - p;
+    let prestigio = getPrestigioReal('vida', getRawBase('vida'));
+    let totalExp = prestigio + p;
+    let dif = letalidade - totalExp;
     let ef;
     if (dif >= 0) ef = v * Math.pow(10, dif);
     else ef = v / Math.pow(10, -dif);
