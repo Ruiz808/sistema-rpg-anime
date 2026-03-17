@@ -148,18 +148,20 @@ let ordemIniciativa = [];
 let turnoAtualIndex = 0;
 
 // Função Mágica: Descobre a imagem atual do personagem (Base ou Transformação)
-export function getAvatarDinamico(ficha) {
-    if (!ficha) return "";
-    let img = ficha.avatar ? ficha.avatar.base : "";
+export function getAvatarInfo(ficha) {
+    if (!ficha) return { img: "", forma: null };
+    let result = { img: ficha.avatar ? ficha.avatar.base : "", forma: null };
+    
     if (ficha.poderes) {
         for (let j = 0; j < ficha.poderes.length; j++) {
             let p = ficha.poderes[j];
             if (p.ativa && p.imagemUrl && p.imagemUrl.trim() !== "") {
-                img = p.imagemUrl; // A Transformação toma o controle!
+                result.img = p.imagemUrl;
+                result.forma = p.nome; // Captura o nome do poder/forma!
             }
         }
     }
-    return img;
+    return result;
 }
 
 export function setMinhaIniciativa() {
@@ -179,7 +181,6 @@ function renderizarOrdemTurnos(dadosJogadores) {
     let jogadores = [];
     let nomes = Object.keys(dadosJogadores);
     
-    // Pega todo mundo que tem iniciativa maior que 0
     for (let i = 0; i < nomes.length; i++) {
         let n = nomes[i];
         let f = dadosJogadores[n];
@@ -188,7 +189,6 @@ function renderizarOrdemTurnos(dadosJogadores) {
         }
     }
 
-    // Ordena do maior para o menor (Quem tirou mais, ataca primeiro)
     jogadores.sort((a, b) => b.iniciativa - a.iniciativa);
     ordemIniciativa = jogadores;
 
@@ -201,15 +201,15 @@ function renderizarOrdemTurnos(dadosJogadores) {
         return;
     }
 
-    // Desenha as bolinhas da ordem de turno
     let html = '';
     for (let i = 0; i < jogadores.length; i++) {
         let j = jogadores[i];
-        let img = getAvatarDinamico(j.ficha);
+        let info = getAvatarInfo(j.ficha); // Lê a nova função
         let isActive = (i === turnoAtualIndex);
         let border = isActive ? 'border: 3px solid #00ffcc;' : 'border: 2px solid #444; opacity: 0.5;';
         
-        html += `<div style="width: 50px; height: 50px; border-radius: 50%; ${border} background-image: url('${img}'); background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.7em; color: white; text-shadow: 1px 1px 2px black;" title="${j.nome} (${j.iniciativa})">${img ? '' : j.nome.charAt(0)}</div>`;
+        // A bolinha pequena continua redonda na linha do tempo
+        html += `<div style="min-width: 50px; height: 50px; border-radius: 50%; ${border} background-image: url('${info.img}'); background-size: cover; background-position: top center; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.7em; color: white; text-shadow: 1px 1px 2px black;" title="${j.nome} (${j.iniciativa})">${info.img ? '' : j.nome.charAt(0)}</div>`;
     }
     container.innerHTML = html;
     desenharTurnoAtivo();
@@ -218,18 +218,27 @@ function renderizarOrdemTurnos(dadosJogadores) {
 function desenharTurnoAtivo() {
     let destaque = document.getElementById('turno-destaque');
     let nomeDestaque = document.getElementById('turno-nome');
-    if (!destaque || !nomeDestaque) return;
+    let formaDestaque = document.getElementById('turno-forma'); // O novo campo de texto
+    if (!destaque || !nomeDestaque || !formaDestaque) return;
 
     if (ordemIniciativa.length > 0 && ordemIniciativa[turnoAtualIndex]) {
         let jogadorDaVez = ordemIniciativa[turnoAtualIndex];
-        let img = getAvatarDinamico(jogadorDaVez.ficha);
+        let info = getAvatarInfo(jogadorDaVez.ficha);
         
-        if (img) {
-            destaque.style.backgroundImage = `url('${img}')`;
-            destaque.style.display = 'block'; // Mostra o holograma!
+        if (info.img) {
+            destaque.style.backgroundImage = `url('${info.img}')`;
+            destaque.style.display = 'block'; 
             nomeDestaque.innerText = jogadorDaVez.nome;
+            
+            // Se tiver uma forma ativa, mostra o subtítulo em dourado!
+            if (info.forma) {
+                formaDestaque.innerText = "⚡ " + info.forma;
+                formaDestaque.style.display = 'block';
+            } else {
+                formaDestaque.style.display = 'none'; // Esconde se for a imagem base
+            }
         } else {
-            destaque.style.display = 'none'; // Esconde se não tiver imagem
+            destaque.style.display = 'none'; 
         }
     } else {
         destaque.style.display = 'none';
