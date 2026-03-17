@@ -246,7 +246,7 @@ function desenharTurnoAtivo() {
 
             // Criamos o display de vidro com as energias em cores Neon
             let htmlStatus = `
-                <div style="display: flex; flex-direction: column; gap: 6px; width: 190px; margin-left: auto; background: rgba(0,0,0,0.7); padding: 12px; border-radius: 8px; border: 1px solid rgba(0,255,204,0.3); box-shadow: inset 0 0 15px rgba(0,0,0,0.8);">
+                <div style="display: flex; flex-direction: column; gap: 6px; width: 190px; background: rgba(0,0,0,0.7); padding: 12px; border-radius: 8px; border: 1px solid rgba(0,255,204,0.3); box-shadow: inset 0 0 15px rgba(0,0,0,0.8);">
                     
                     <div style="display: flex; justify-content: space-between; color: #ff4d4d; font-weight: bold; text-shadow: 1px 1px 2px black;">
                         <span style="font-size: 0.8em; align-self: center;">❤️ HP</span>
@@ -284,4 +284,39 @@ function desenharTurnoAtivo() {
     } else {
         destaque.style.display = 'none';
     }
+}
+window.rolarAcertoRapido = function() {
+    // 1. Aqui rolamos um 1d20 limpo (futuramente podemos ligar aos atributos!)
+    let resultadoDado = Math.floor(Math.random() * 20) + 1;
+    
+    // 2. Pegamos o holograma central do HTML
+    let painel = document.getElementById('resultado-centro');
+    if (!painel) return;
+    
+    // 3. Modificamos o texto
+    painel.innerText = resultadoDado;
+    painel.style.display = 'block';
+    
+    // 4. Cores Dinâmicas: Dourado para Crítico (20), Vermelho para Falha (1), Ciano pro resto.
+    if (resultadoDado === 20) {
+        painel.style.color = '#ffcc00';
+        painel.style.textShadow = '0 0 20px #ffcc00, 0 0 50px #ffcc00, 4px 4px 0 #000';
+    } else if (resultadoDado === 1) {
+        painel.style.color = '#ff4d4d';
+        painel.style.textShadow = '0 0 20px #ff4d4d, 0 0 50px #ff4d4d, 4px 4px 0 #000';
+    } else {
+        painel.style.color = '#fff';
+        painel.style.textShadow = '0 0 20px #0ff, 0 0 40px #0ff, 3px 3px 0 #000';
+    }
+    
+    // 5. O Efeito de "Pulo" (Animação)
+    setTimeout(() => {
+        painel.style.transform = 'translate(-50%, -50%) scale(1)';
+    }, 10); // Um pequeno atraso para o navegador processar
+    
+    // 6. O número desaparece como fumo depois de 2.5 segundos
+    setTimeout(() => {
+        painel.style.transform = 'translate(-50%, -50%) scale(0)';
+        setTimeout(() => { painel.style.display = 'none'; }, 200);
+    }, 2500);
 }
