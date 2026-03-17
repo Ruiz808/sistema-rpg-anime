@@ -521,3 +521,68 @@ window.renderizarBioEPassivas = function() {
         }
     }
 };
+// ==========================================
+// RADAR DE BUFFS (LIGA AS PASSIVAS AO MOTOR E À AUDITORIA)
+// ==========================================
+
+window.calcularBuffsMotor = function() {
+    let motorAtributoAtual = document.getElementById('sel-atributo');
+    if (!motorAtributoAtual || !minhaFicha || !minhaFicha.passivas) return;
+
+    let atributoAlvo = motorAtributoAtual.value;
+    
+    // Zera os contadores
+    let buffs = { mbase: 0, mgeral: 0, mformas: 0, mabs: 0, munico: 0, base: 0, reducaoCusto: 0, regeneracao: 0 };
+    let anotacoes = { mbase: [], mgeral: [], mformas: [], mabs: [], munico: [] };
+
+    // Analisa TODAS as passivas
+    minhaFicha.passivas.forEach(p => {
+        if (p.efeitos) {
+            p.efeitos.forEach(ef => {
+                // 1. Lógica para o MOTOR DE ATRIBUTOS (Imagem 3)
+                let aplicaNesteAtributo = false;
+                if (ef.atributo === atributoAlvo) aplicaNesteAtributo = true;
+                if (ef.atributo === 'geral') aplicaNesteAtributo = true;
+                if (ef.atributo === 'todos_status' && ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'].includes(atributoAlvo)) aplicaNesteAtributo = true;
+                if (ef.atributo === 'todas_energias' && ['mana', 'aura', 'chakra', 'corpo'].includes(atributoAlvo)) aplicaNesteAtributo = true;
+
+                if (aplicaNesteAtributo && buffs[ef.propriedade] !== undefined) {
+                    buffs[ef.propriedade] += parseFloat(ef.valor) || 0;
+                }
+
+                // 2. Lógica para a AUDITORIA MANUAL (Imagem 2)
+                if (anotacoes[ef.propriedade] !== undefined) {
+                    anotacoes[ef.propriedade].push(`${p.nome} (x${ef.valor})`);
+                }
+            });
+        }
+    });
+
+    // Acende as Luzes Verdes no Motor de Atributos!
+    for (let prop in buffs) {
+        let spanMotor = document.getElementById(`buff-${prop}`);
+        if (spanMotor) {
+            if (buffs[prop] > 0) {
+                spanMotor.innerText = `[+${buffs[prop]} PASSIVA]`;
+                spanMotor.style.textShadow = "0 0 10px #33ff77";
+            } else {
+                spanMotor.innerText = ""; // Limpa se não tiver buff
+            }
+        }
+    }
+
+    // Auto-preenche as caixas de texto da Auditoria de Combos!
+    if(document.getElementById('nota-base') && anotacoes.mbase.length > 0) document.getElementById('nota-base').value = anotacoes.mbase.join(' + ');
+    if(document.getElementById('nota-geral') && anotacoes.mgeral.length > 0) document.getElementById('nota-geral').value = anotacoes.mgeral.join(' + ');
+    if(document.getElementById('nota-formas') && anotacoes.mformas.length > 0) document.getElementById('nota-formas').value = anotacoes.mformas.join(' + ');
+    if(document.getElementById('nota-abs') && anotacoes.mabs.length > 0) document.getElementById('nota-abs').value = anotacoes.mabs.join(' + ');
+    if(document.getElementById('nota-unico') && anotacoes.munico.length > 0) document.getElementById('nota-unico').value = anotacoes.munico.join(' + ');
+};
+
+// Precisamos chamar esse radar sempre que a ficha carregar!
+// Procure a sua função `window.renderizarBioEPassivas` e coloque isto no finalzinho dela:
+let oldRenderizarBio = window.renderizarBioEPassivas;
+window.renderizarBioEPassivas = function() {
+    if(typeof oldRenderizarBio === 'function') oldRenderizarBio();
+    window.calcularBuffsMotor(); // Chama o radar depois de desenhar a tela
+};
