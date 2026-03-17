@@ -441,27 +441,39 @@ window.renderizarBioEPassivas = function() {
     container.innerHTML = html;
 };
 // Função de Salvar com Feedback Visual Elegante
-window.salvarBioComFeedback = function(botaoElemento) {
-    // Primeiro, salva tudo no banco de dados usando a sua função original
-    if (typeof window.salvarBio === "function") {
-        window.salvarBio();
+window.salvarBio = function() {
+    // 1. Tenta encontrar a ficha globalmente para não dar erro
+    let fichaAtual = typeof minhaFicha !== "undefined" ? minhaFicha : window.minhaFicha;
+    
+    if (!fichaAtual) {
+        console.error("ERRO: Nenhuma ficha carregada para salvar a Bio!");
+        return;
     }
     
-    // Agora, a magia visual
-    let textoOriginal = botaoElemento.innerText;
-    let corOriginal = botaoElemento.style.backgroundColor;
+    // 2. Garante que os objetos existem antes de gravar
+    if (!fichaAtual.bio) fichaAtual.bio = {};
+    if (!fichaAtual.notas) fichaAtual.notas = {};
     
-    botaoElemento.innerText = "✅ SALVO COM SUCESSO!";
-    botaoElemento.style.backgroundColor = "rgba(0, 255, 100, 0.2)"; // Fundo esverdeado
-    botaoElemento.style.borderColor = "#00ffcc";
-    botaoElemento.style.color = "#fff";
+    // 3. Captura tudo com segurança (se a caixa não existir, grava vazio)
+    fichaAtual.bio.raca = document.getElementById('bio-raca') ? document.getElementById('bio-raca').value : "";
+    fichaAtual.bio.classe = document.getElementById('bio-classe') ? document.getElementById('bio-classe').value : "";
+    fichaAtual.bio.idade = document.getElementById('bio-idade') ? document.getElementById('bio-idade').value : "";
+    fichaAtual.bio.fisico = document.getElementById('bio-fisico') ? document.getElementById('bio-fisico').value : "";
+    fichaAtual.bio.sangue = document.getElementById('bio-sangue') ? document.getElementById('bio-sangue').value : "";
+    fichaAtual.bio.alinhamento = document.getElementById('bio-alinhamento') ? document.getElementById('bio-alinhamento').value : "";
+    fichaAtual.bio.afiliacao = document.getElementById('bio-afiliacao') ? document.getElementById('bio-afiliacao').value : "";
+    fichaAtual.bio.dinheiro = document.getElementById('bio-dinheiro') ? document.getElementById('bio-dinheiro').value : "";
     
-    // Depois de 2 segundos, volta ao normal
-    setTimeout(() => {
-        botaoElemento.innerText = textoOriginal;
-        botaoElemento.style.backgroundColor = corOriginal;
-        // Remove a cor forçada para voltar a usar a classe CSS original
-        botaoElemento.style.borderColor = ""; 
-        botaoElemento.style.color = "";
-    }, 2000);
+    fichaAtual.notas.base = document.getElementById('nota-base') ? document.getElementById('nota-base').value : "";
+    fichaAtual.notas.geral = document.getElementById('nota-geral') ? document.getElementById('nota-geral').value : "";
+    fichaAtual.notas.abs = document.getElementById('nota-abs') ? document.getElementById('nota-abs').value : "";
+    
+    // 4. Força a gravação usando a função principal do seu sistema
+    if (typeof window.salvarFichaSilencioso === "function") {
+        window.salvarFichaSilencioso();
+    } else if (typeof window.salvarFichaBase === "function") {
+        window.salvarFichaBase();
+    }
+    
+    console.log("✅ Bio e Notas salvas com sucesso no Firebase!", fichaAtual.bio);
 };
