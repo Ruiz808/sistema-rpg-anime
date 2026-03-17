@@ -6,11 +6,13 @@ import { isFisico, isEnergia, tratarUnico } from './utils.js';
 
 export function getBuffs(statKey) {
     let buffs = { base: 0, mbase: 0, mgeral: 0, mformas: 0, mabs: 0, munico: [], reducaoCusto: 0, regeneracao: 0 };
-    if (buffs.mbase === 0) buffs.mbase = 1.0;
-    if (buffs.mgeral === 0) buffs.mgeral = 1.0;
-    if (buffs.mformas === 0) buffs.mformas = 1.0;
-    if (buffs.mabs === 0) buffs.mabs = 1.0;
-    if (!minhaFicha || !minhaFicha.poderes) return buffs;
+    // Rastreador: O personagem ativou algum poder destas categorias?
+    let hasBuff = { mbase: false, mgeral: false, mformas: false, mabs: false };
+
+    if (!minhaFicha || !minhaFicha.poderes) {
+        buffs.mbase = 1.0; buffs.mgeral = 1.0; buffs.mformas = 1.0; buffs.mabs = 1.0;
+        return buffs;
+    }
 
     let sK = statKey.toLowerCase();
     let isStatFisico = isFisico(sK);
@@ -34,10 +36,10 @@ export function getBuffs(statKey) {
 
                 if (afeta) {
                     if (prop === 'base') buffs.base += val;
-                   if (prop === 'mbase') buffs.mbase += val;
-                    if (prop === 'mgeral') buffs.mgeral += val;
-                    if (prop === 'mformas') buffs.mformas += val;
-                    if (prop === 'mabs') buffs.mabs += val;
+                    if (prop === 'mbase') { buffs.mbase += val; hasBuff.mbase = true; }
+                    if (prop === 'mgeral') { buffs.mgeral += val; hasBuff.mgeral = true; }
+                    if (prop === 'mformas') { buffs.mformas += val; hasBuff.mformas = true; }
+                    if (prop === 'mabs') { buffs.mabs += val; hasBuff.mabs = true; }
                     if (prop === 'munico') buffs.munico.push(val);
                     if (prop === 'reducaocusto') buffs.reducaoCusto += val;
                     if (prop === 'regeneracao') buffs.regeneracao += val;
@@ -45,6 +47,16 @@ export function getBuffs(statKey) {
             }
         }
     }
+
+    // Se a categoria NÃO teve nenhum poder ativado, recebe 1.0 para não zerar a multiplicação final
+    if (!hasBuff.mbase) buffs.mbase = 1.0;
+    if (!hasBuff.mgeral) buffs.mgeral = 1.0;
+    if (!hasBuff.mformas) buffs.mformas = 1.0;
+    if (!hasBuff.mabs) buffs.mabs = 1.0;
+
+    // Guardamos o rastreador para a próxima etapa da máquina ler
+    buffs._hasBuff = hasBuff;
+
     return buffs;
 }
 
@@ -69,11 +81,11 @@ export function getPoderTotalDaAbaPoderes(statKey) {
     let mU = 1.0;
     for (let i = 0; i < b.munico.length; i++) mU *= b.munico[i];
     
-    // Se a soma for 0 (sem buffs), tratamos como 1.0 para não zerar a multiplicação
-    let mB = b.mbase > 0 ? b.mbase : 1.0;
-    let mG = b.mgeral > 0 ? b.mgeral : 1.0;
-    let mF = b.mformas > 0 ? b.mformas : 1.0;
-    let mA = b.mabs > 0 ? b.mabs : 1.0;
+    // Mostra exatamente o valor somado da categoria sem invenções matemáticas
+    let mB = b._hasBuff.mbase ? b.mbase : 1.0;
+    let mG = b._hasBuff.mgeral ? b.mgeral : 1.0;
+    let mF = b._hasBuff.mformas ? b.mformas : 1.0;
+    let mA = b._hasBuff.mabs ? b.mabs : 1.0;
 
     return mB * mG * mF * mA * mU;
 }
@@ -106,21 +118,22 @@ export function getMultiplicadorTotal(k) {
     let s = minhaFicha[k] || {};
     let b = getBuffs(k);
 
-    // Função interna inteligente: Soma os buffs com a base da ficha
-    // Função interna inteligente: Soma os buffs com a base da ficha
-    const calcAdd = (fichaVal, buffSum) => {
+    // Função inteligente blindada: Só soma se o rastreador confirmar que há buff!
+    const calcAdd = (fichaVal, buffSum, hasBuffFlag) => {
         let v = parseFloat(fichaVal) || 1.0;
-        if (buffSum === 1.0) return v; // Se o buff for 1.0 (vazio), mantém a base normal
-        return (v === 1.0 ? 0 : v) + buffSum; 
+        if (!hasBuffFlag) return v; // Se não tem poder ativado, usa a base da ficha (1.0)
+        return (v === 1.0 ? 0 : v) + buffSum; // Se tem poder, anula a base e retorna SÓ o valor exato da soma (120!)
     };
 
-    let mB = calcAdd(s.mBase, b.mbase);
-    let mG = calcAdd(s.mGeral, b.mgeral);
-    let mF = calcAdd(s.mFormas, b.mformas);
-    let mA = calcAdd(s.mAbsoluto, b.mabs);
+    let mB = calcAdd(s.mBase, b.mbase, b._hasBuff.mbase);
+    let mG = calcAdd(s.mGeral, b.mgeral, b._hasBuff.mgeral);
+    let mF = calcAdd(s.mFormas, b.mformas, b._hasBuff.mformas);
+    let mA = calcAdd(s.mAbsoluto, b.mabs, b._hasBuff.mabs);
+    
     let u1 = tratarUnico(s.mUnico || "1.0");
     let uniFicha = 1.0;
     for (let i = 0; i < u1.length; i++) { uniFicha *= u1[i]; }
+    
     let mU = 1.0;
     for (let i = 0; i < b.munico.length; i++) mU *= b.munico[i];
 
