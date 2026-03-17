@@ -31,9 +31,19 @@ export let itemEditandoId = null;
 export let elemEditandoId = null;
 export let personagemParaDeletar = "";
 
+// Sanitização de nomes — remove caracteres proibidos pelo Firebase (. $ # [ ] /)
+const CARACTERES_PROIBIDOS = /[.\$#\[\]\/]/g;
+const TAMANHO_MAX_NOME = 50;
+
+export function sanitizarNome(n) {
+    if (typeof n !== 'string') return "Jogador";
+    let limpo = n.replace(CARACTERES_PROIBIDOS, '').trim().slice(0, TAMANHO_MAX_NOME);
+    return limpo || "Jogador";
+}
+
 // Setters para variáveis que precisam ser reatribuídas
 export function setMinhaFicha(f) { minhaFicha = f; }
-export function setMeuNome(n) { meuNome = n; }
+export function setMeuNome(n) { meuNome = sanitizarNome(n); }
 export function setEfeitosTemp(arr) { efeitosTemp = arr; }
 export function setPoderEditandoId(id) { poderEditandoId = id; }
 export function setItemEditandoId(id) { itemEditandoId = id; }
