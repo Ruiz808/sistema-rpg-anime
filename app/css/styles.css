@@ -1,4 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&display=swap');
+:root {
+    --map-zoom: 35px; /* Tamanho inicial de cada quadrado */
+}
 
 body { margin: 0; padding: 0; background: radial-gradient(circle at center, #1a1a2e 0%, #0f0f1a 100%); color: #fff; font-family: 'Rajdhani', sans-serif; display: flex; height: 100vh; overflow: hidden; }
 body::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px); background-size: 30px 30px; z-index: -1; }
@@ -172,18 +175,20 @@ input:focus, select:focus { border-color: #0ff; box-shadow: 0 0 10px rgba(0, 255
 }
 
 .combat-map {
+   .combat-map {
     display: grid;
-    /* Cria 30 colunas e 30 linhas de 35px cada */
-    grid-template-columns: repeat(30, 35px);
-    grid-template-rows: repeat(30, 35px);
-    gap: 1px; /* Linha de separação do grid */
+    grid-template-columns: repeat(30, var(--map-zoom));
+    grid-template-rows: repeat(30, var(--map-zoom));
+    gap: 1px;
     background: rgba(0, 255, 204, 0.1); 
     width: max-content;
 }
+}
 
 .map-cell {
-    width: 35px;
-    height: 35px;
+    width: var(--map-zoom);
+    height: var(--map-zoom);
+    /* ... mantenha o resto do código da map-cell como estava ... */
     background: rgba(10, 10, 20, 0.8);
     display: flex;
     align-items: center;
@@ -202,8 +207,8 @@ input:focus, select:focus { border-color: #0ff; box-shadow: 0 0 10px rgba(0, 255
 
 /* Tokens dos Jogadores */
 .player-token {
-    width: 25px;
-    height: 25px;
+    width: 80%;
+    height: 80%;
     border-radius: 50%;
     background: #888;
     box-shadow: 0 0 10px rgba(255,255,255,0.3), inset 0 0 5px #000;

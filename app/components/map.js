@@ -6,6 +6,7 @@ import { salvarFichaSilencioso } from '../services/firebase-sync.js';
 
 const MAP_SIZE = 30;
 let mapInitialized = false;
+let tamanhoCelulaAtual = 35; // Começa em 35px
 
 // Cores fixas por jogador (para diferenciar tokens)
 let coresJogadores = {};
@@ -124,4 +125,19 @@ function renderTodosJogadores(dados) {
             cell.appendChild(token);
         }
     }
+}
+
+export function alterarZoom(direcao) {
+    if (direcao > 0) {
+        tamanhoCelulaAtual += 5; // Aproxima
+    } else {
+        tamanhoCelulaAtual -= 5; // Afasta
+    }
+
+    // Limites para não quebrar o mapa (Mínimo de 15px, Máximo de 80px)
+    if (tamanhoCelulaAtual < 15) tamanhoCelulaAtual = 15;
+    if (tamanhoCelulaAtual > 80) tamanhoCelulaAtual = 80;
+
+    // Aplica a variável no CSS global
+    document.documentElement.style.setProperty('--map-zoom', tamanhoCelulaAtual + 'px');
 }
