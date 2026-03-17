@@ -8,7 +8,7 @@ import { getBuffs, getRawBase, getEfetivoBase, getMultiplicadorTotal, getMaximo,
 import { getDivisorPara, getPrestigioReal, calcPAtual, getRank } from './core/prestige.js';
 
 // === STATE ===
-import { fichaPadrao, minhaFicha, meuNome, setMeuNome, carregarDadosFicha } from './state/store.js';
+import { fichaPadrao, minhaFicha, meuNome, setMeuNome, sanitizarNome, carregarDadosFicha } from './state/store.js';
 
 // === SERVICES ===
 import { db } from './services/firebase-config.js';
@@ -113,7 +113,9 @@ window.atualizarMapa = atualizarMapa;
 // Nome do jogador
 let _meuNome = "";
 try { _meuNome = localStorage.getItem("rpgNome"); } catch (e) { }
-if (!_meuNome) { _meuNome = prompt("Seu nome:") || "Caçador"; try { localStorage.setItem("rpgNome", _meuNome); } catch (e) { } }
+if (!_meuNome) { _meuNome = prompt("Seu nome:") || "Caçador"; }
+_meuNome = sanitizarNome(_meuNome);
+try { localStorage.setItem("rpgNome", _meuNome); } catch (e) { }
 setMeuNome(_meuNome);
 
 let elPerfil = document.getElementById('perfil-nome');
