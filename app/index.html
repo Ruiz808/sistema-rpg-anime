@@ -687,6 +687,16 @@
             <h2 class="text-mint">> CAMPO DE BATALHA TÁTICO (30x30)</h2>
             <p class="text-muted-mb-20">Clique em qualquer quadrícula para mover a sua entidade pelo mapa.</p>
             <div class="map-scroll-container">
+                <div class="map-scroll-container" style="position: relative;">
+            
+            <div style="position: sticky; top: 10px; left: 10px; z-index: 100; display: flex; gap: 5px; width: fit-content; background: rgba(0,0,0,0.8); padding: 5px; border-radius: 8px; border: 1px solid #00ffcc;">
+                <button class="btn-neon" style="margin: 0; padding: 5px 10px; font-size: 1.2em;" onclick="window.alterarZoom(1)">➕</button>
+                <button class="btn-neon" style="margin: 0; padding: 5px 10px; font-size: 1.2em;" onclick="window.alterarZoom(-1)">➖</button>
+            </div>
+
+            <div id="combat-grid" class="combat-map">
+                </div>
+        </div>
                 <div id="combat-grid" class="combat-map"></div>
             </div>
         </div>

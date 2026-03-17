@@ -28,6 +28,11 @@ import { inicializarAtuais, desenharRadar, atualizarBarrasVisuais, alterarHP, cu
 import { carregarAtributoNaTela, salvarAtributo, atualizarDivisores, carregarTabelaPrestigio, aplicarPrestigioNaFicha, salvarTabelaAoServidor, initFichaListeners } from './components/ficha.js';
 import { initMap, atualizarMapa } from './components/map.js';
 
+// Onde você importa o mapa no topo do app.js:
+import { initMap, atualizarMapa, alterarZoom } from './components/map.js';
+
+// Mais para baixo, onde você expõe para o window:
+window.alterarZoom = alterarZoom;
 // ==========================================
 // EXPOR NO WINDOW (usados por outros módulos JS via window.*)
 // ==========================================
