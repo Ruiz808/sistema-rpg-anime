@@ -1,9 +1,25 @@
 @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&display=swap');
+/* 1. Variáveis Globais (Mantemos o :root com dois pontos) */
 :root {
-    --map-zoom: 35px; /* Tamanho inicial de cada quadrado */
+    --map-zoom: 35px;
 }
 
-body { margin: 0; padding: 0; background: radial-gradient(circle at center, #1a1a2e 0%, #0f0f1a 100%); color: #fff; font-family: 'Rajdhani', sans-serif; display: flex; height: 100vh; overflow: hidden; }
+/* 2. O Alicerce do React (Usamos #root com hashtag) */
+#root {
+    display: flex;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* 3. A Estética do Fundo (Mantemos as cores do body, mas tiramos o flex) */
+body { 
+    margin: 0; 
+    padding: 0; 
+    background: radial-gradient(circle at center, #1a1a2e 0%, #0f0f1a 100%); 
+    color: #fff; 
+    font-family: 'Rajdhani', sans-serif; 
+}
 body::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px); background-size: 30px 30px; z-index: -1; }
 
 .sidebar { width: 80px; background: rgba(15, 15, 26, 0.8); backdrop-filter: blur(10px); border-right: 1px solid rgba(0, 255, 255, 0.2); display: flex; flex-direction: column; align-items: center; padding-top: 20px; overflow-y: auto; }
