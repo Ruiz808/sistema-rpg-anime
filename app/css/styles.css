@@ -1,6 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&display=swap');
 
-/* 0. CORREÇÃO GLOBAL (A CHAVE DO SUCESSO) */
+/* ==========================================
+   0. CORREÇÃO GLOBAL (A CHAVE DO SUCESSO)
+   ========================================== */
 * {
     box-sizing: border-box !important;
 }
@@ -9,7 +11,9 @@
     --map-zoom: 35px; /* Tamanho inicial de cada quadrado */
 }
 
-/* 1. ALICERCE INDESTRUTÍVEL */
+/* ==========================================
+   1. ALICERCE INDESTRUTÍVEL DO SITE
+   ========================================== */
 html, body, #root {
     margin: 0 !important;
     padding: 0 !important;
@@ -23,7 +27,7 @@ body {
     background: radial-gradient(circle at center, #1a1a2e 0%, #0f0f1a 100%); 
     color: #fff; 
     font-family: 'Rajdhani', sans-serif; 
-    display: block !important; /* Tiramos o flex daqui */
+    display: block !important; /* Desligamos o flex do body */
 }
 
 body::before { 
@@ -32,13 +36,19 @@ body::before {
     background-size: 30px 30px; z-index: -1; 
 }
 
-#root {
+/* A NOVA CAIXA-FORTE DO REACT (Envolve a Sidebar e o Main Content) */
+.app-layout {
     display: flex !important;
     flex-direction: row !important;
     flex-wrap: nowrap !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    overflow: hidden !important;
 }
 
-/* 2. SIDEBAR FIXA */
+/* ==========================================
+   2. SIDEBAR FIXA
+   ========================================== */
 .sidebar { 
     width: 80px !important; 
     min-width: 80px !important;
@@ -60,27 +70,29 @@ body::before {
 .btn-coroa { border-color: #ffcc00; color: #ffcc00; }
 .btn-coroa:hover, .btn-coroa.ativo { background: rgba(255, 204, 0, 0.1); border-color: #ffcc00; box-shadow: 0 0 15px rgba(255, 204, 0, 0.5); }
 
-/* 3. CONTEÚDO PRINCIPAL DOMADO */
+/* ==========================================
+   3. CONTEÚDO PRINCIPAL DOMADO (Encaixa ao lado)
+   ========================================== */
 .main-content { 
-    width: calc(100vw - 80px) !important;
-    max-width: calc(100vw - 80px) !important;
-    flex: none !important;
+    flex: 1 1 0% !important; /* O 0% é a mágica que impede de explodir a largura */
+    min-width: 0 !important;
     height: 100vh !important;
     padding: 40px; 
     display: grid; 
     grid-template-rows: auto 1fr; 
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
+    overflow-y: auto !important; /* Barra de rolagem apenas AQUI */
+    overflow-x: hidden !important; /* Proíbe o site de rolar para os lados */
     scroll-behavior: smooth; 
 }
 
-/* Modo tela cheia para o mapa */
+/* Modo tela cheia para o mapa — remove título e padding */
 .main-content.modo-mapa { padding: 0; grid-template-rows: 1fr; }
 .main-content.modo-mapa > .title { display: none; }
 .title { font-size: 3em; font-weight: 700; color: #0ff; text-shadow: 0 0 10px rgba(0, 255, 255, 0.5); margin-bottom: 20px; }
 
-/* ... MANTENHA O RESTO DO SEU CÓDIGO INTACTO DAQUI PARA BAIXO (.glass-panel, etc) ... */
-
+/* ==========================================
+   4. RESTANTE DO SISTEMA (ABAS, INPUTS, BOTÕES)
+   ========================================== */
 .glass-panel { background: rgba(25, 25, 40, 0.6); backdrop-filter: blur(15px); border: 1px solid rgba(0, 255, 255, 0.2); border-radius: 15px; padding: 30px; display: none; animation: fadeIn 0.3s ease-in-out; }
 .glass-panel.ativo { display: block; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -142,7 +154,9 @@ input:focus, select:focus { border-color: #0ff; box-shadow: 0 0 10px rgba(0, 255
 .lethality { color: #ffcc00; font-size: 1.2em; text-shadow: 0 0 10px rgba(255, 204, 0, 0.8); margin: 0;}
 .log-details { font-size: 0.9em; color: #aaa; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; line-height: 1.5;}
 
-/* CSS DOS ELEMENTOS */
+/* ==========================================
+   CSS DOS ELEMENTOS GRIMÓRIO
+   ========================================== */
 .elem-fogo { color: #ff4d4d; text-shadow: 0 0 5px #ff4d4d; }
 .elem-agua { color: #4dffff; text-shadow: 0 0 5px #4dffff; }
 .elem-terra { color: #d2a679; text-shadow: 0 0 5px #d2a679; }
@@ -227,6 +241,7 @@ input:focus, select:focus { border-color: #0ff; box-shadow: 0 0 10px rgba(0, 255
 .badge-elem { display: inline-flex; align-items: center; justify-content: center; padding: 6px 12px; margin: 4px; background: rgba(0,0,0,0.6); border: 1px solid #444; border-radius: 5px; cursor: pointer; transition: all 0.2s; font-size: 1em; color: #aaa; user-select: none; font-family: 'Rajdhani', sans-serif;}
 .badge-elem:hover { filter: brightness(1.3); transform: scale(1.05); }
 .badge-elem.ativo { border-width: 2px; transform: scale(1.05); font-weight: bold; background: rgba(255,255,255,0.1);}
+
 /* ==========================================
    MAPA DE COMBATE
    ========================================== */
@@ -263,7 +278,7 @@ input:focus, select:focus { border-color: #0ff; box-shadow: 0 0 10px rgba(0, 255
 }
 
 .map-cell {
-width: var(--map-zoom, 35px);
+    width: var(--map-zoom, 35px);
     height: var(--map-zoom, 35px);
     border: 1px solid rgba(0, 255, 204, 0.2);
     display: flex;
@@ -283,12 +298,15 @@ width: var(--map-zoom, 35px);
 
 /* Tokens dos Jogadores */
 .player-token {
-    width: 80%;
-    height: 80%;
+    width: 25px;
+    height: 25px;
     border-radius: 50%;
-    background: #888;
-    box-shadow: 0 0 10px rgba(255,255,255,0.3), inset 0 0 5px #000;
-    border: 2px solid rgba(255,255,255,0.5);
+    background-color: #ffcc00; 
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    box-shadow: 0 0 15px #ffcc00, inset 0 0 5px #000;
+    border: 2px solid #fff;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -297,7 +315,7 @@ width: var(--map-zoom, 35px);
     font-family: 'Rajdhani', sans-serif;
     font-size: 14px;
     pointer-events: none;
-    cursor: default;
+    animation: pulsarToken 2s infinite alternate;
     position: relative;
     z-index: 2;
 }
@@ -312,31 +330,9 @@ width: var(--map-zoom, 35px);
     0% { transform: scale(0.95); }
     100% { transform: scale(1.05); box-shadow: 0 0 20px rgba(255,255,255,0.8), inset 0 0 5px #000; }
 }
-.player-token {
-    width: 25px;
-    height: 25px;
-    border-radius: 50%;
-    background-color: #ffcc00; /* Cor de fundo caso não tenha imagem */
-    /* Adicione estas 3 linhas abaixo: */
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    
-    box-shadow: 0 0 15px #ffcc00, inset 0 0 5px #000;
-    border: 2px solid #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #000;
-    font-weight: bold;
-    font-family: 'Rajdhani', sans-serif;
-    font-size: 14px;
-    pointer-events: none;
-    animation: pulsarToken 2s infinite alternate;
-}
 
 /* ==========================================
-   EXTRACTED INLINE STYLES
+   EXTRACTED INLINE STYLES E CLASSES AUXILIARES
    ========================================== */
 
 .modal-critical-title { color: #ff003c; margin-top: 0; font-size: 2.5em; }

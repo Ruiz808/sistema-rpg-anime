@@ -143,8 +143,8 @@ export default function App() {
 
     const isMapMode = abaAtiva === 'aba-mapa'
 
-    return (
-        <>
+return (
+        <div className="app-layout">
             <Sidebar />
 
             <div className={`main-content${isMapMode ? ' modo-mapa' : ''}`}>
@@ -166,6 +166,6 @@ export default function App() {
             </div>
 
             <ModalConfirm />
-        </>
+        </div>
     )
 }
