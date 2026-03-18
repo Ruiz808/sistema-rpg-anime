@@ -508,6 +508,7 @@
                             <label>ALVO DO EFEITO</label>
                             <select id="novo-pod-atr">
                                 <optgroup label="Ações em Lote"><option value="geral">Combate / Defesas (Geral)</option><option value="todos_status">Todos os 8 Status Fís/Men</option><option value="todas_energias">Todas as 4 Energias</option></optgroup>
+                                <optgroup label="Combate Direto" style="color: #ff9900;"><option value="dano">⚔️ Dano (Ofensiva)</option><option value="defesa">🛡️ Defesa / Armadura</option></optgroup>
                                 <optgroup label="Específico"><option value="vida">Vida (HP)</option><option value="mana">Mana</option><option value="aura">Aura</option><option value="chakra">Chakra</option><option value="corpo">Corpo</option><option value="forca">Força</option><option value="destreza">Destreza</option><option value="inteligencia">Inteligência</option><option value="sabedoria">Sabedoria</option><option value="energiaEsp">Energia Espiritual</option><option value="carisma">Carisma</option><option value="stamina">Stamina</option><option value="constituicao">Constituição</option></optgroup>
                             </select>
                         </div>
@@ -582,28 +583,11 @@
             <p class="hint-text-gold-spaced">Os valores que você digita na caixa são eternos. As Formas aparecem como um Holograma Verde!</p>
 
             <div class="flex-row-gap-15-wrap">
-    
-    <div class="input-group flex-1">
-        <label>EXTRA BASE <span id="lbl-buff-base" class="buff-label"></span><span id="passiva-atk-mbase" class="text-green" style="font-weight:bold; margin-left:5px;"></span></label>
-        <input type="number" step="0.1" id="seu-id-original-base" value="1">
-    </div>
-
-    <div class="input-group flex-1">
-        <label>EXTRA GERAL <span id="lbl-buff-geral" class="buff-label"></span><span id="passiva-atk-mgeral" class="text-green" style="font-weight:bold; margin-left:5px;"></span></label>
-        <input type="number" step="0.1" id="seu-id-original-geral" value="1">
-    </div>
-
-    <div class="input-group flex-1">
-        <label>EXTRA FORMAS <span id="lbl-buff-formas" class="buff-label"></span><span id="passiva-atk-mformas" class="text-green" style="font-weight:bold; margin-left:5px;"></span></label>
-        <input type="number" step="0.1" id="seu-id-original-formas" value="1">
-    </div>
-
-    <div class="input-group flex-1">
-        <label>EXTRA ABSOLUTO <span id="lbl-buff-abs" class="buff-label"></span><span id="passiva-atk-mabs" class="text-green" style="font-weight:bold; margin-left:5px;"></span></label>
-        <input type="number" step="0.1" id="seu-id-original-abs" value="1">
-    </div>
-
-</div>
+                <label>EXTRA BASE <span id="lbl-buff-base" class="buff-label"></span><span id="passiva-atk-mbase" class="text-green" style="font-weight:bold; margin-left:5px;"></span></label>
+                <label>EXTRA GERAL <span id="lbl-buff-geral" class="buff-label"></span><span id="passiva-atk-mgeral" class="text-green" style="font-weight:bold; margin-left:5px;"></span></label>
+                <label>EXTRA FORMAS <span id="lbl-buff-formas" class="buff-label"></span><span id="passiva-atk-mformas" class="text-green" style="font-weight:bold; margin-left:5px;"></span></label>
+                <label>EXTRA ABSOLUTO <span id="lbl-buff-abs" class="buff-label"></span><span id="passiva-atk-mabs" class="text-green" style="font-weight:bold; margin-left:5px;"></span></label>
+            </div>
             <div class="flex-row-gap-15">
                 <div class="input-group flex-1"><label class="text-green">POTENCIAL LIVRE (x)</label><input type="number" step="0.1" id="atk-dPotencial" value="1.0"></div>
                 <label>MULT. ÚNICOS <span id="lbl-buff-unico" class="buff-label"></span><span id="passiva-atk-munico" class="text-green" style="font-weight:bold; margin-left:5px;"></span></label>
@@ -746,6 +730,11 @@
                                             <option value="geral">Combate / Defesas (Geral)</option>
                                             <option value="todos_status">Todos os 8 Status</option>
                                             <option value="todas_energias">Todas as 4 Energias</option>
+                                        </optgroup>
+                                        <optgroup label="Combate Direto" style="color: #ff9900;">
+                                            <option value="dano">⚔️ Dano (Ofensiva)</option>
+                                            <option value="defesa">🛡️ Defesa / Armadura</option>
+                                        </optgroup>
                                         <optgroup label="Específico">
                                             <option value="vida">Vida (HP)</option>
                                             <option value="forca">Força</option>
@@ -822,6 +811,10 @@
                             <optgroup label="Ações Rápidas (Lote)" style="color: #0ff;">
                                 <option value="todos_status">Todos os 8 Status Físicos/Mentais</option>
                                 <option value="todas_energias">Todas as 4 Energias</option>
+                            </optgroup>
+                            <optgroup label="Combate Direto" style="color: #ff9900;">
+                                <option value="dano">⚔️ Dano (Ofensiva)</option>
+                                <option value="defesa">🛡️ Defesa / Armadura</option>
                             </optgroup>
                             <optgroup label="Status Vitais" style="color: #ff4d4d;"><option value="vida">Vida (HP)</option></optgroup>
                             <optgroup label="Atributos Individuais"><option value="forca" selected>Força</option><option value="destreza">Destreza</option><option value="inteligencia">Inteligência</option><option value="sabedoria">Sabedoria</option><option value="energiaEsp">Energia Espiritual</option><option value="carisma">Carisma</option><option value="stamina">Stamina</option><option value="constituicao">Constituição</option></optgroup>

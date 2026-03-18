@@ -5,7 +5,10 @@
 export function mudarAba(idAba, el) {
     try {
         let panels = document.querySelectorAll('.glass-panel');
-        for (let i = 0; i < panels.length; i++) panels[i].classList.remove('ativo');
+        for (let i = 0; i < panels.length; i++) {
+            panels[i].classList.remove('ativo');
+            panels[i].style.display = '';
+        }
         let btns = document.querySelectorAll('.nav-btn');
         for (let i = 0; i < btns.length; i++) btns[i].classList.remove('ativo');
         let aba = document.getElementById(idAba);
