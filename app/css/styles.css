@@ -15,9 +15,23 @@
     margin: 0;
     padding: 0;
 }
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden; /* Corta o mal pela raiz: o body nunca terá scroll */
+}
+
+/* O fundo mantém-se no body */
+body { 
+    background: radial-gradient(circle at center, #1a1a2e 0%, #0f0f1a 100%); 
+    color: #fff; 
+    font-family: 'Rajdhani', sans-serif; 
+}
 
 /* 3. A Estética do Fundo (Mantemos as cores do body, mas tiramos o flex) */
-body { 
+/*body { 
     margin: 0; 
     padding: 0; 
     background: radial-gradient(circle at center, #1a1a2e 0%, #0f0f1a 100%); 
@@ -25,6 +39,7 @@ body {
     font-family: 'Rajdhani', sans-serif;
     overflow: hidden; 
 }
+*/
 body::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px); background-size: 30px 30px; z-index: -1; }
 
 .sidebar { width: 80px; height: 100vh; min-width: 80px; background: rgba(15, 15, 26, 0.8); backdrop-filter: blur(10px); border-right: 1px solid rgba(0, 255, 255, 0.2); display: flex; flex-direction: column; align-items: center; padding-top: 20px; overflow-y: auto; flex-shrink: 0; }
