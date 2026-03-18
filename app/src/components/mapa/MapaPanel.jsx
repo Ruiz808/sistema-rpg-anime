@@ -1,0 +1,354 @@
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import useStore from '../../stores/useStore';
+import { salvarFichaSilencioso } from '../../services/firebase-sync';
+
+const MAP_SIZE = 30;
+const PALETA = ['#ff003c', '#0088ff', '#00ff88', '#ffcc00', '#ff00ff', '#00ffff', '#ff8800', '#88ff00'];
+
+export default function MapaPanel() {
+    const minhaFicha = useStore(s => s.minhaFicha);
+    const meuNome = useStore(s => s.meuNome);
+    const personagens = useStore(s => s.personagens);
+    const updateFicha = useStore(s => s.updateFicha);
+
+    const [tamanhoCelula, setTamanhoCelula] = useState(35);
+    const [iniciativaInput, setIniciativaInput] = useState(minhaFicha.iniciativa || 0);
+    const [turnoAtualIndex, setTurnoAtualIndex] = useState(0);
+
+    const coresJogadoresRef = useRef({});
+    const corIndexRef = useRef(0);
+
+    function corDoJogador(nome) {
+        if (!coresJogadoresRef.current[nome]) {
+            coresJogadoresRef.current[nome] = PALETA[corIndexRef.current % PALETA.length];
+            corIndexRef.current++;
+        }
+        return coresJogadoresRef.current[nome];
+    }
+
+    function getAvatarInfo(ficha) {
+        if (!ficha) return { img: '', forma: null };
+        const result = { img: ficha.avatar ? ficha.avatar.base : '', forma: null };
+        if (ficha.poderes) {
+            for (let j = 0; j < ficha.poderes.length; j++) {
+                const p = ficha.poderes[j];
+                if (p.ativa && p.imagemUrl && p.imagemUrl.trim() !== '') {
+                    result.img = p.imagemUrl;
+                    result.forma = p.nome;
+                }
+            }
+        }
+        return result;
+    }
+
+    // Build cells array
+    const cells = useMemo(() => {
+        const arr = [];
+        for (let y = 0; y < MAP_SIZE; y++) {
+            for (let x = 0; x < MAP_SIZE; x++) {
+                arr.push({ x, y });
+            }
+        }
+        return arr;
+    }, []);
+
+    // Gather all players
+    const jogadores = useMemo(() => {
+        const result = {};
+        if (meuNome && minhaFicha.posicao && minhaFicha.posicao.x !== undefined) {
+            result[meuNome] = minhaFicha;
+        }
+        if (personagens) {
+            const nomes = Object.keys(personagens);
+            for (let i = 0; i < nomes.length; i++) {
+                const nome = nomes[i];
+                if (nome === meuNome) continue;
+                const ficha = personagens[nome];
+                if (ficha && ficha.posicao && ficha.posicao.x !== undefined) {
+                    result[nome] = ficha;
+                }
+            }
+        }
+        return result;
+    }, [meuNome, minhaFicha, personagens]);
+
+    // Initiative order
+    const ordemIniciativa = useMemo(() => {
+        const lista = [];
+        if (personagens) {
+            const nomes = Object.keys(personagens);
+            for (let i = 0; i < nomes.length; i++) {
+                const n = nomes[i];
+                const f = personagens[n];
+                if (f && f.iniciativa !== undefined && f.iniciativa > 0) {
+                    lista.push({ nome: n, ficha: f, iniciativa: f.iniciativa });
+                }
+            }
+        }
+        lista.sort((a, b) => b.iniciativa - a.iniciativa);
+        return lista;
+    }, [personagens]);
+
+    function moverJogadorPara(x, y) {
+        updateFicha((ficha) => {
+            if (!ficha.posicao) ficha.posicao = {};
+            ficha.posicao.x = x;
+            ficha.posicao.y = y;
+        });
+        salvarFichaSilencioso();
+    }
+
+    function alterarZoom(direcao) {
+        setTamanhoCelula(prev => {
+            let novo = prev + (direcao > 0 ? 5 : -5);
+            if (novo < 15) novo = 15;
+            if (novo > 80) novo = 80;
+            return novo;
+        });
+    }
+
+    function setMinhaIniciativa() {
+        const val = parseInt(iniciativaInput) || 0;
+        updateFicha((ficha) => {
+            ficha.iniciativa = val;
+        });
+        salvarFichaSilencioso();
+    }
+
+    function avancarTurno() {
+        if (ordemIniciativa.length === 0) return;
+        setTurnoAtualIndex(prev => {
+            let next = prev + 1;
+            if (next >= ordemIniciativa.length) next = 0;
+            return next;
+        });
+    }
+
+    // Build token map for efficient lookup
+    const tokenMap = useMemo(() => {
+        const map = {};
+        const nomes = Object.keys(jogadores);
+        for (let i = 0; i < nomes.length; i++) {
+            const nome = nomes[i];
+            const pos = jogadores[nome].posicao;
+            if (pos && pos.x !== undefined) {
+                const key = `${pos.x},${pos.y}`;
+                if (!map[key]) map[key] = [];
+                map[key].push({ nome, ficha: jogadores[nome] });
+            }
+        }
+        return map;
+    }, [jogadores]);
+
+    // Current turn info
+    const jogadorDaVez = ordemIniciativa.length > 0 ? ordemIniciativa[turnoAtualIndex % ordemIniciativa.length] : null;
+    const infoDaVez = jogadorDaVez ? getAvatarInfo(jogadorDaVez.ficha) : null;
+    const fmt = (n) => Number(n || 0).toLocaleString('pt-BR');
+
+    return (
+        <div className="mapa-panel">
+            {/* Zoom controls */}
+            <div style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'center' }}>
+                <button className="btn-neon" onClick={() => alterarZoom(-1)} style={{ padding: '5px 15px' }}>-</button>
+                <span style={{ color: '#aaa' }}>Zoom: {tamanhoCelula}px</span>
+                <button className="btn-neon" onClick={() => alterarZoom(1)} style={{ padding: '5px 15px' }}>+</button>
+            </div>
+
+            {/* Grid */}
+            <div
+                id="combat-grid"
+                style={{
+                    display: 'grid',
+                    gridTemplateColumns: `repeat(${MAP_SIZE}, ${tamanhoCelula}px)`,
+                    gap: 1,
+                    overflow: 'auto',
+                    maxHeight: '60vh',
+                    background: 'rgba(0,0,0,0.3)',
+                    padding: 5,
+                    borderRadius: 5
+                }}
+            >
+                {cells.map((cell) => {
+                    const key = `${cell.x},${cell.y}`;
+                    const tokens = tokenMap[key] || [];
+
+                    return (
+                        <div
+                            key={key}
+                            className="map-cell"
+                            data-x={cell.x}
+                            data-y={cell.y}
+                            onClick={() => moverJogadorPara(cell.x, cell.y)}
+                            style={{
+                                width: tamanhoCelula,
+                                height: tamanhoCelula,
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                position: 'relative',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            {tokens.map((tk) => {
+                                const info = getAvatarInfo(tk.ficha);
+                                const isMe = tk.nome === meuNome;
+                                const style = {
+                                    position: 'absolute',
+                                    top: 2,
+                                    left: 2,
+                                    width: tamanhoCelula - 4,
+                                    height: tamanhoCelula - 4,
+                                    borderRadius: '50%',
+                                    backgroundColor: corDoJogador(tk.nome),
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: '#fff',
+                                    fontSize: '0.7em',
+                                    fontWeight: 'bold',
+                                    border: isMe ? '2px solid #00ffcc' : '1px solid rgba(255,255,255,0.3)',
+                                    backgroundImage: info.img ? `url('${info.img}')` : 'none',
+                                    backgroundSize: 'cover',
+                                    backgroundPosition: 'center'
+                                };
+                                return (
+                                    <div
+                                        key={tk.nome}
+                                        className={`player-token${isMe ? ' my-token' : ''}`}
+                                        title={tk.nome}
+                                        style={style}
+                                    >
+                                        {!info.img && tk.nome.charAt(0).toUpperCase()}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* Initiative */}
+            <div className="def-box" style={{ marginTop: 15 }}>
+                <h3 style={{ color: '#00ffcc', marginBottom: 10 }}>Sistema de Iniciativa</h3>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <input
+                        className="input-neon"
+                        type="number"
+                        id="minha-iniciativa"
+                        value={iniciativaInput}
+                        onChange={e => setIniciativaInput(e.target.value)}
+                        style={{ width: 80 }}
+                    />
+                    <button className="btn-neon btn-gold" onClick={setMinhaIniciativa}>
+                        Definir Iniciativa
+                    </button>
+                    <button className="btn-neon" onClick={avancarTurno} style={{ borderColor: '#00ffcc', color: '#00ffcc' }}>
+                        Avancar Turno
+                    </button>
+                </div>
+
+                {/* Turn order display */}
+                <div id="lista-turnos" style={{ display: 'flex', gap: 8, marginTop: 15, overflowX: 'auto', paddingBottom: 5 }}>
+                    {ordemIniciativa.length === 0 ? (
+                        <p style={{ color: '#888', fontSize: '0.8em', margin: 0 }}>Nenhum jogador rolou iniciativa ainda.</p>
+                    ) : (
+                        ordemIniciativa.map((j, i) => {
+                            const info = getAvatarInfo(j.ficha);
+                            const isActive = (i === turnoAtualIndex % ordemIniciativa.length);
+                            return (
+                                <div
+                                    key={j.nome}
+                                    title={`${j.nome} (${j.iniciativa})`}
+                                    style={{
+                                        minWidth: 50,
+                                        height: 50,
+                                        borderRadius: '50%',
+                                        border: isActive ? '3px solid #00ffcc' : '2px solid #444',
+                                        opacity: isActive ? 1 : 0.5,
+                                        backgroundImage: info.img ? `url('${info.img}')` : 'none',
+                                        backgroundSize: 'cover',
+                                        backgroundPosition: 'top center',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontWeight: 'bold',
+                                        fontSize: '0.7em',
+                                        color: 'white',
+                                        textShadow: '1px 1px 2px black'
+                                    }}
+                                >
+                                    {!info.img && j.nome.charAt(0)}
+                                </div>
+                            );
+                        })
+                    )}
+                </div>
+
+                {/* Turn highlight */}
+                {jogadorDaVez && (
+                    <div style={{ marginTop: 15, display: 'flex', gap: 15, alignItems: 'center' }}>
+                        <div
+                            id="turno-destaque"
+                            style={{
+                                width: 80,
+                                height: 80,
+                                borderRadius: '50%',
+                                border: '3px solid #00ffcc',
+                                backgroundImage: infoDaVez && infoDaVez.img ? `url('${infoDaVez.img}')` : 'none',
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '1.5em',
+                                fontWeight: 'bold',
+                                color: '#fff'
+                            }}
+                        >
+                            {(!infoDaVez || !infoDaVez.img) && jogadorDaVez.nome.charAt(0)}
+                        </div>
+                        <div>
+                            <div id="turno-nome" style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.2em' }}>
+                                {jogadorDaVez.nome}
+                            </div>
+                            {infoDaVez && infoDaVez.forma && (
+                                <div id="turno-forma" style={{ color: '#00ffcc', fontSize: '0.9em' }}>
+                                    {infoDaVez.forma}
+                                </div>
+                            )}
+                            {/* Status HUD */}
+                            <div id="status-combate" style={{ marginTop: 8 }}>
+                                {jogadorDaVez.ficha && (
+                                    <div style={{
+                                        display: 'flex', flexDirection: 'column', gap: 6, width: 190,
+                                        background: 'rgba(0,0,0,0.7)', padding: 12, borderRadius: 8,
+                                        border: '1px solid rgba(0,255,204,0.3)', boxShadow: 'inset 0 0 15px rgba(0,0,0,0.8)'
+                                    }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ff4d4d', fontWeight: 'bold', textShadow: '1px 1px 2px black' }}>
+                                            <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>HP</span>
+                                            <span style={{ fontSize: '1.1em' }}>{fmt(jogadorDaVez.ficha.vida?.atual)}</span>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#4dffff', fontWeight: 'bold', textShadow: '1px 1px 2px black' }}>
+                                            <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>MP</span>
+                                            <span style={{ fontSize: '1.1em' }}>{fmt(jogadorDaVez.ficha.mana?.atual)}</span>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ffff4d', fontWeight: 'bold', textShadow: '1px 1px 2px black' }}>
+                                            <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>AU</span>
+                                            <span style={{ fontSize: '1.1em' }}>{fmt(jogadorDaVez.ficha.aura?.atual)}</span>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#00ffcc', fontWeight: 'bold', textShadow: '1px 1px 2px black' }}>
+                                            <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>CK</span>
+                                            <span style={{ fontSize: '1.1em' }}>{fmt(jogadorDaVez.ficha.chakra?.atual)}</span>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ff66ff', fontWeight: 'bold', textShadow: '1px 1px 2px black' }}>
+                                            <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>CP</span>
+                                            <span style={{ fontSize: '1.1em' }}>{fmt(jogadorDaVez.ficha.corpo?.atual)}</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
