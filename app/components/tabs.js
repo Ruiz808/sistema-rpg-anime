@@ -7,12 +7,15 @@ export function mudarAba(idAba, el) {
         let panels = document.querySelectorAll('.glass-panel');
         for (let i = 0; i < panels.length; i++) {
             panels[i].classList.remove('ativo');
-            panels[i].style.display = '';
+            panels[i].style.display = 'none';
         }
         let btns = document.querySelectorAll('.nav-btn');
         for (let i = 0; i < btns.length; i++) btns[i].classList.remove('ativo');
         let aba = document.getElementById(idAba);
-        if (aba) aba.classList.add('ativo');
+        if (aba) {
+            aba.classList.add('ativo');
+            aba.style.display = '';
+        }
         if (el) el.classList.add('ativo');
         let isMapa = idAba === 'aba-mapa';
         let mainContent = document.querySelector('.main-content');
