@@ -144,10 +144,16 @@ export default function App() {
     const isMapMode = abaAtiva === 'aba-mapa'
 
 return (
-        <div className="app-layout">
+        /* 1. CAIXA FORTE INJETADA DIRETAMENTE NO REACT */
+        <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', width: '100vw', height: '100vh', overflow: 'hidden' }}>
+            
             <Sidebar />
 
-            <div className={`main-content${isMapMode ? ' modo-mapa' : ''}`}>
+            /* 2. CONTEÚDO PRINCIPAL COM LARGURA DINÂMICA TRAVADA */
+            <div 
+                className={`main-content${isMapMode ? ' modo-mapa' : ''}`}
+                style={{ flex: '1 1 0%', minWidth: 0, maxWidth: 'calc(100vw - 80px)', height: '100vh', overflowY: 'auto', overflowX: 'hidden' }}
+            >
                 {!isMapMode && <h1 className="title">RPG Anime System</h1>}
 
                 <TabPanel id="aba-perfil"><PerfilPanel /></TabPanel>
