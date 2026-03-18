@@ -14,7 +14,10 @@
 /* ==========================================
    1. ALICERCE INDESTRUTÍVEL DO SITE
    ========================================== */
-html, body, #root {
+/* ==========================================
+   1. ALICERCE INDESTRUTÍVEL DO SITE
+   ========================================== */
+html, body {
     margin: 0 !important;
     padding: 0 !important;
     width: 100vw !important;
@@ -27,13 +30,23 @@ body {
     background: radial-gradient(circle at center, #1a1a2e 0%, #0f0f1a 100%); 
     color: #fff; 
     font-family: 'Rajdhani', sans-serif; 
-    display: block !important; /* Desligamos o flex do body */
+    display: block !important; 
 }
 
 body::before { 
     content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
     background-image: linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px); 
     background-size: 30px 30px; z-index: -1; 
+}
+
+/* 🔒 A CAIXA-FORTE DIRETA NO ROOT (Força tudo a ficar lado a lado) */
+#root {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    overflow: hidden !important;
 }
 
 /* A NOVA CAIXA-FORTE DO REACT (Envolve a Sidebar e o Main Content) */
