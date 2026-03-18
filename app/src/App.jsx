@@ -75,6 +75,24 @@ export default function App() {
 
             setPronto(true)
         }
+        // MOTOR DE ARRANQUE DA FORJA (Vanilla JS)
+    useEffect(() => {
+        // Só tenta ligar o motor antigo se o React já carregou a tela (pronto)
+        if (pronto) {
+            setTimeout(() => {
+                // Chama as funções antigas que estão no window
+                if (window.initTabsListeners) window.initTabsListeners();
+                if (window.inicializarAtuais) window.inicializarAtuais();
+                if (window.atualizarBarrasVisuais) window.atualizarBarrasVisuais();
+                if (window.carregarConfigAtaqueInicial) window.carregarConfigAtaqueInicial();
+                
+                // Liga o Mapa
+                if (window.initMap) window.initMap();
+                
+                console.log("🔥 Motor da Forja Iniciado via React!");
+            }, 500); // 500ms dá tempo para o React desenhar os inputs na tela
+        }
+    }, [pronto]);
     }, [setMeuNome, carregarDadosFicha])
 
     // Firebase listeners (real hook)

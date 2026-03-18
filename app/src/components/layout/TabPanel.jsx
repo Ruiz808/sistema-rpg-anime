@@ -1,17 +1,20 @@
-import React from 'react';
-import useStore from '../../stores/useStore';
+import React from 'react'
+import useStore from '../../stores/useStore'
 
 export default function TabPanel({ id, children }) {
-    const abaAtiva = useStore((s) => s.abaAtiva);
-    const isActive = abaAtiva === id;
+    const abaAtiva = useStore(s => s.abaAtiva)
+    
+    // O segredo: se não for a aba ativa, escondemos com display: none, 
+    // mas MANTEMOS o HTML lá para o app.js antigo não quebrar!
+    const estilo = {
+        display: abaAtiva === id ? 'block' : 'none',
+        height: '100%',
+        width: '100%'
+    }
 
     return (
-        <div
-            className={`glass-panel${isActive ? ' ativo' : ''}`}
-            id={id}
-            style={{ display: isActive ? 'block' : 'none' }}
-        >
+        <div id={id} className="glass-panel" style={estilo}>
             {children}
         </div>
-    );
+    )
 }
