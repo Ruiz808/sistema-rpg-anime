@@ -75,7 +75,9 @@ export default function App() {
 
             setPronto(true)
         }
-        // MOTOR DE ARRANQUE DA FORJA (Vanilla JS)
+    }, [setMeuNome, carregarDadosFicha])
+
+    // MOTOR DE ARRANQUE DA FORJA (Vanilla JS)
     useEffect(() => {
         // Só tenta ligar o motor antigo se o React já carregou a tela (pronto)
         if (pronto) {
@@ -85,15 +87,14 @@ export default function App() {
                 if (window.inicializarAtuais) window.inicializarAtuais();
                 if (window.atualizarBarrasVisuais) window.atualizarBarrasVisuais();
                 if (window.carregarConfigAtaqueInicial) window.carregarConfigAtaqueInicial();
-                
+
                 // Liga o Mapa
                 if (window.initMap) window.initMap();
-                
+
                 console.log("🔥 Motor da Forja Iniciado via React!");
             }, 500); // 500ms dá tempo para o React desenhar os inputs na tela
         }
-    }, [pronto]);
-    }, [setMeuNome, carregarDadosFicha])
+    }, [pronto])
 
     // Firebase listeners (real hook)
     const { loading } = useFirebase()
@@ -144,16 +145,12 @@ export default function App() {
     const isMapMode = abaAtiva === 'aba-mapa'
 
 return (
-        /* 1. CAIXA FORTE INJETADA DIRETAMENTE NO REACT */
-        <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', width: '100vw', height: '100vh', overflow: 'hidden' }}>
-            
+        <div className="app-layout">
+
             <Sidebar />
 
-            /* 2. CONTEÚDO PRINCIPAL COM LARGURA DINÂMICA TRAVADA */
-            <div 
-                className={`main-content${isMapMode ? ' modo-mapa' : ''}`}
-                style={{ flex: '1 1 0%', minWidth: 0, maxWidth: 'calc(100vw - 80px)', height: '100vh', overflowY: 'auto', overflowX: 'hidden' }}
-            >
+            {/* Conteúdo principal */}
+            <div className={`main-content${isMapMode ? ' modo-mapa' : ''}`}>
                 {!isMapMode && <h1 className="title">RPG Anime System</h1>}
 
                 <TabPanel id="aba-perfil"><PerfilPanel /></TabPanel>
