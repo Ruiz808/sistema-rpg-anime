@@ -689,7 +689,7 @@
             </div>
         </div>
 
-        <div id="aba-ficha" class="glass-panel">
+ <div id="aba-ficha" class="glass-panel" style="display: none;">
             <h2 class="text-gold">> 📜 FICHA DE PERSONAGEM DEFINITIVA</h2>
             
             <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-top: 15px;">
@@ -714,7 +714,6 @@
                             <div class="input-group flex-2-m0"><label>ALINHAMENTO</label><input type="text" id="bio-alinhamento" onchange="window.salvarBio()" placeholder="Ex: True Neutral"></div>
                             <div class="input-group flex-2-m0"><label>AFILIAÇÃO</label><input type="text" id="bio-afiliacao" onchange="window.salvarBio()" placeholder="Ex: Lótus Dourada"></div>
                             <div class="input-group flex-1-m0"><label class="text-gold">PO / PP (Dinheiro)</label><input type="text" id="bio-dinheiro" onchange="window.salvarBio()" placeholder="PO - 5600 | PP - 5000"></div>
-                        </div>
                         </div>
                         
                         <button class="btn-neon btn-cyan" style="margin-top: 15px; width: 100%; padding: 8px; font-weight: bold;" onclick="window.salvarBioComFeedback(this)">💾 SALVAR DADOS DE IDENTIDADE</button>
@@ -750,6 +749,7 @@
                                             <option value="geral">Combate / Defesas (Geral)</option>
                                             <option value="todos_status">Todos os 8 Status</option>
                                             <option value="todas_energias">Todas as 4 Energias</option>
+                                        </optgroup>
                                         <optgroup label="Combate Direto" style="color: #ff9900;">
                                             <option value="dano">⚔️ Dano (Ofensiva)</option>
                                             <option value="defesa">🛡️ Defesa / Armadura</option>
@@ -792,7 +792,6 @@
                                 <button class="btn-neon btn-green btn-small" style="margin: 0; padding: 5px 10px;" onclick="window.addEfeitoPassiva()">+ ADD EFEITO</button>
                             </div>
                         </div>
-                        </div>
 
                         <button class="btn-neon btn-green" style="margin: 0 0 15px 0; padding: 10px 15px; width: 100%; font-weight: bold; font-size: 1.1em;" onclick="window.adicionarPassiva()">💾 SALVAR HABILIDADE NA FICHA</button>
 
@@ -818,24 +817,8 @@
                         
                         <button class="btn-neon btn-purple" style="margin-top: 10px; width: 100%; padding: 8px; font-weight: bold;" onclick="window.salvarBioComFeedback(this)">💾 SALVAR ANOTAÇÕES DE COMBOS</button>
                     </div>
-                </div>
-                    <div class="input-group"><label>VALOR BASE BRUTO (+) <span id="buff-base" class="text-green" style="font-weight:bold; margin-left:5px;"></span></label><input type="number" id="fch-base" value="10"></div>
-                    <div class="flex-row-gap-20-wrap">
-                        <div class="input-group flex-1-min150"><label>MULT BASE (x) <span id="buff-mbase" class="text-green" style="font-weight:bold; margin-left:5px;"></span></label><input type="number" step="0.1" id="fch-mbase" value="1.0"></div>
-                        <div class="input-group flex-1-min150"><label>MULT GERAL (x) <span id="buff-mgeral" class="text-green" style="font-weight:bold; margin-left:5px;"></span></label><input type="number" step="0.1" id="fch-mgeral" value="1.0"></div>
-                        <div class="input-group flex-1-min150"><label>MULT FORMA (x) <span id="buff-mformas" class="text-green" style="font-weight:bold; margin-left:5px;"></span></label><input type="number" step="0.1" id="fch-mformas" value="1.0"></div>
-                        <div class="input-group flex-1-min150"><label>MULT ABSOLUTO (x) <span id="buff-mabs" class="text-green" style="font-weight:bold; margin-left:5px;"></span></label><input type="number" step="0.1" id="fch-mabs" value="1.0"></div>
-                    </div>
-                    <div class="flex-row-gap-15-wrap">
-                        <div class="input-group flex-1-min150"><label>MULT ÚNICO (x) <span id="buff-munico" class="text-green" style="font-weight:bold; margin-left:5px;"></span></label><input type="text" id="fch-munico" value="1.0"></div>
-                        <div class="input-group flex-1-min150"><label class="text-fuchsia">RED. CUSTO (%) (+) <span id="buff-reducaoCusto" class="text-green" style="font-weight:bold; margin-left:5px;"></span></label><input type="number" id="fch-redCusto" value="0"></div>
-                        <div class="input-group flex-1-min150"><label class="text-green">REGENERAÇÃO (+) <span id="buff-regeneracao" class="text-green" style="font-weight:bold; margin-left:5px;"></span></label><input type="number" id="fch-regen" value="0"></div>
-                    </div>
-                    <button id="btn-salvar-atributo" class="btn-neon btn-silver" style="font-size: 0.9em; padding: 10px;">💾 SALVAR ATRIBUTO NO BANCO</button>
-                </div>
-            </div>
-        </div>
-         <div style="flex: 1; min-width: 280px;" class="def-box border-silver">
+
+                </div> <div style="flex: 1; min-width: 280px;" class="def-box border-silver">
                     <h3 class="text-silver" style="margin-top: 0; font-size: 1.1em;">⚙️ MOTOR DE ATRIBUTOS</h3>
                     <p class="hint-text" style="font-size: 0.8em; margin-bottom: 15px;">Use este painel para injetar os números reais no sistema.</p>
                     
@@ -855,13 +838,28 @@
                             <optgroup label="Energias Individuais" style="color: #f0f;"><option value="mana">Mana</option><option value="aura">Aura</option><option value="chakra">Chakra</option><option value="corpo">Corpo</option></optgroup>
                         </select>
                     </div>
+                    
+                    <div class="input-group"><label>VALOR BASE BRUTO (+) <span id="buff-base" class="text-green" style="font-weight:bold; margin-left:5px;"></span></label><input type="number" id="fch-base" value="10"></div>
+                    <div class="flex-row-gap-20-wrap">
+                        <div class="input-group flex-1-min150"><label>MULT BASE (x) <span id="buff-mbase" class="text-green" style="font-weight:bold; margin-left:5px;"></span></label><input type="number" step="0.1" id="fch-mbase" value="1.0"></div>
+                        <div class="input-group flex-1-min150"><label>MULT GERAL (x) <span id="buff-mgeral" class="text-green" style="font-weight:bold; margin-left:5px;"></span></label><input type="number" step="0.1" id="fch-mgeral" value="1.0"></div>
+                        <div class="input-group flex-1-min150"><label>MULT FORMA (x) <span id="buff-mformas" class="text-green" style="font-weight:bold; margin-left:5px;"></span></label><input type="number" step="0.1" id="fch-mformas" value="1.0"></div>
+                        <div class="input-group flex-1-min150"><label>MULT ABSOLUTO (x) <span id="buff-mabs" class="text-green" style="font-weight:bold; margin-left:5px;"></span></label><input type="number" step="0.1" id="fch-mabs" value="1.0"></div>
+                    </div>
+                    <div class="flex-row-gap-15-wrap">
+                        <div class="input-group flex-1-min150"><label>MULT ÚNICO (x) <span id="buff-munico" class="text-green" style="font-weight:bold; margin-left:5px;"></span></label><input type="text" id="fch-munico" value="1.0"></div>
+                        <div class="input-group flex-1-min150"><label class="text-fuchsia">RED. CUSTO (%) (+) <span id="buff-reducaoCusto" class="text-green" style="font-weight:bold; margin-left:5px;"></span></label><input type="number" id="fch-redCusto" value="0"></div>
+                        <div class="input-group flex-1-min150"><label class="text-green">REGENERAÇÃO (+) <span id="buff-regeneracao" class="text-green" style="font-weight:bold; margin-left:5px;"></span></label><input type="number" id="fch-regen" value="0"></div>
+                    </div>
+                    <button id="btn-salvar-atributo" class="btn-neon btn-silver" style="font-size: 0.9em; padding: 10px;">💾 SALVAR ATRIBUTO NO BANCO</button>
 
-        <div id="aba-log" class="glass-panel">
+                </div> </div> </div> 
+        <div id="aba-log" class="glass-panel" style="display: none;">
             <h2>> FEED DO SERVIDOR</h2>
             <div id="feed-combate"><p class="text-loading">Aguardando relatórios...</p></div>
         </div>
 
-        <div id="aba-mapa" class="glass-panel">
+        <div id="aba-mapa" class="glass-panel" style="display: none; min-height: 85vh; width: 100%;">
             <div style="display: flex; flex-direction: row; flex: 1; width: 100%; gap: 15px;">
                 
                 <div style="flex: 2; display: flex; flex-direction: column; border: 2px solid #00ffcc; border-radius: 8px; overflow: hidden; background: #051010;">
@@ -915,17 +913,15 @@
                     </div>
 
                     <div style="position: absolute; bottom: 0; left: 0; width: 100%; padding: 25px 20px; box-sizing: border-box; display: flex; justify-content: space-between; align-items: flex-end; z-index: 10;">
-                        
                         <div id="status-combate"></div>
-
                         <div style="text-align: right; margin-bottom: 5px;">
                             <button class="btn-neon btn-orange" style="margin-bottom: 10px; padding: 8px 15px; font-size: 1.1em; font-weight: bold; width: 100%; letter-spacing: 1px;" onclick="window.rolarAcertoRapido()">🎯 ROLAR D20</button>
-                            
                             <div id="turno-nome" style="color: #fff; font-size: 2em; font-weight: 900; text-transform: uppercase; text-shadow: 2px 2px 0px #000, -1px -1px 15px #00ffcc;">Nome</div>
                             <div id="turno-forma" style="color: #ffcc00; font-size: 1.2em; font-weight: bold; text-shadow: 1px 1px 3px #000; margin-top: 5px; display: none;">⚡ Nome da Forma</div>
                         </div>
                     </div>
                 </div>
+            </div>
         </div>
 
     </div> <script type="module" src="app.js"></script>
