@@ -120,6 +120,9 @@ function StatusPanelCore() {
     const [inputDano, setInputDano] = useState('');
     const [inputLetalidade, setInputLetalidade] = useState('0');
     
+    // Estado do Botão Inteligente
+    const [statusBotao, setStatusBotao] = useState('idle'); // 'idle' | 'saving' | 'saved'
+    
     const inicializado = useRef(false);
 
     const vitalsBars = useMemo(() => [
@@ -186,6 +189,20 @@ function StatusPanelCore() {
         });
         salvarFichaSilencioso();
     }, [updateFicha, vitalsBars]);
+
+    // Função Robusta de Salvar com Feedback Visual
+    const handleSalvarPrestigio = async () => {
+        setStatusBotao('saving');
+        try {
+            await salvarFichaSilencioso();
+            setStatusBotao('saved');
+            // Volta ao botão azul original após 2.5 segundos
+            setTimeout(() => setStatusBotao('idle'), 2500);
+        } catch (error) {
+            console.error("Falha ao salvar no Firebase:", error);
+            setStatusBotao('idle');
+        }
+    };
 
     if (!ficha) return <div style={{ color: '#888', textAlign: 'center', marginTop: '50px' }}>Carregando dados vitais...</div>;
 
@@ -274,7 +291,7 @@ function StatusPanelCore() {
                                                 const val = e.target.value;
                                                 updateFicha(f => { 
                                                     if(!f[attrKey]) f[attrKey] = {};
-                                                    f[attrKey].divisorCustom = val ? Number(val) : undefined;
+                                                    f[attrKey].divisorCustom = val ? Number(val) : null;
                                                 });
                                             }}
                                         /></span>
@@ -287,7 +304,7 @@ function StatusPanelCore() {
                                             const val = e.target.value;
                                             updateFicha(f => {
                                                 if(!f[attrKey]) f[attrKey] = {};
-                                                f[attrKey].prestigioBase = val === '' ? undefined : Number(val);
+                                                f[attrKey].prestigioBase = val === '' ? null : Number(val);
                                             });
                                         }}
                                     />
@@ -327,13 +344,16 @@ function StatusPanelCore() {
                 </div>
             </div>
 
-            {/* BOTÃO DE SALVAR PRESTÍGIOS */}
+            {/* BOTÃO INTELIGENTE DE SALVAR */}
             <button 
-                className="btn-neon btn-blue" 
-                onClick={() => salvarFichaSilencioso()} 
-                style={{ width: '100%', marginBottom: '30px', height: '50px' }}
+                className={`btn-neon ${statusBotao === 'saved' ? 'btn-green' : 'btn-blue'}`} 
+                onClick={handleSalvarPrestigio} 
+                disabled={statusBotao === 'saving'}
+                style={{ width: '100%', marginBottom: '30px', height: '50px', transition: 'all 0.3s ease' }}
             >
-                💾 SALVAR ALTERAÇÕES DE PRESTÍGIO
+                {statusBotao === 'idle' && '💾 SALVAR ALTERAÇÕES DE PRESTÍGIO'}
+                {statusBotao === 'saving' && '⏳ ENVIANDO PARA A FORJA (FIREBASE)...'}
+                {statusBotao === 'saved' && '✅ PRESTÍGIOS SALVOS COM SUCESSO!'}
             </button>
 
             {/* --- BLOCO 4: ANÁLISE DE PODER E CULTIVAÇÃO --- */}
@@ -352,7 +372,7 @@ function StatusPanelCore() {
     );
 }
 
-// O componente final exportado é blindado contra tela branca
+// O componente final exportado
 export default function StatusPanel() {
     return (
         <StatusErrorBoundary>
