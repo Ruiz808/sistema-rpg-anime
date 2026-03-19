@@ -4,6 +4,7 @@ import { contarDigitos } from '../../core/utils';
 import { getMaximo, getRawBase } from '../../core/attributes';
 import { getPrestigioReal } from '../../core/prestige';
 import { salvarFichaSilencioso, salvarFirebaseImediato } from '../../services/firebase-sync';
+import TabelaPrestigio from './TabelaPrestigio';
 
 const STATS = ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'];
 const ENERGIAS = ['mana', 'aura', 'chakra', 'corpo'];
@@ -318,6 +319,7 @@ export default function FichaPanel() {
                     </div>
                 </div>
             </div>
+            <TabelaPrestigio />
         </div>
     );
 }
