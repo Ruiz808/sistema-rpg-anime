@@ -26,18 +26,26 @@ const MULTIPLICADORES = {
     chakra: 10000000, corpo: 10000000, status: 1000
 };
 
-// --- A REGRA DE OURO DAS FORMAS (Sua Matemática Exata) ---
-function calcularPrestAtual(ficha, attrKey, baseP) {
-    // Status e Vida leem a forma a partir do atributo principal de combate
-    const anchor = attrKey === 'status' ? 'forca' : attrKey;
-    const mFormas = parseFloat(ficha[anchor]?.mFormas) || 1;
-    
-    // Multiplica pela Forma / 10 (mínimo de 1x para não diminuir se estiver sem forma)
+// --- AURA UNIVERSAL (Acha a maior forma ativa no personagem) ---
+function getHighestForma(ficha) {
+    let maxF = 1;
+    // Varre os atributos principais para ver se o personagem está transformado
+    const keys = ['forca', 'vida', 'mana', 'aura', 'chakra', 'corpo'];
+    for (let k of keys) {
+        const val = parseFloat(ficha[k]?.mFormas) || 1;
+        if (val > maxF) maxF = val;
+    }
+    return maxF;
+}
+
+// --- REGRA DE OURO: Atual = Base * (Forma / 10) ---
+function calcularPrestAtual(ficha, baseP) {
+    const mFormas = getHighestForma(ficha);
     const multForma = Math.max(1, mFormas / 10);
     return Math.floor(baseP * multForma);
 }
 
-// LÓGICA DO BASE
+// LÓGICA DO BASE PURO
 const getBasePFor = (ficha, k) => {
     if (k === 'status') {
         let m = 0;
@@ -143,10 +151,10 @@ export default function TabelaPrestigio() {
                         {VITALS_KEYS.map((attrKey, i) => {
                             const calcBaseP = getBasePFor(ficha, attrKey);
                             
-                            // Calcula o PAtual matematicamente perfeito
-                            const pAtualValor = calcularPrestAtual(ficha, attrKey, calcBaseP);
+                            // Matemática de Ouro Injetada!
+                            const pAtualValor = calcularPrestAtual(ficha, calcBaseP);
                             
-                            // O motor do getRank calcula a ascensão sozinho em cima do valor gigante
+                            // Motor de Rank descobre o Ascensao sozinho com base no valor escalado
                             const rankInfo = safeGetRank(pAtualValor, ficha.ascensaoBase || 1);
 
                             return (
@@ -156,7 +164,7 @@ export default function TabelaPrestigio() {
                                         <span style={{ color: rankInfo.c || '#fff', fontWeight: 'bold' }}>Rank {rankInfo.l || 'F'} [A{rankInfo.a || 1}]</span>
                                     </div>
                                     <div className="prestige-display-atual">
-                                        {pAtualValor.toLocaleString('pt-BR')}
+                                        {Math.floor(pAtualValor || 0).toLocaleString('pt-BR')}
                                     </div>
                                 </div>
                             );

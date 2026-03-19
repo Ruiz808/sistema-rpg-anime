@@ -50,11 +50,20 @@ function radarPoint(cx, cy, r, idx, frac) {
     return [cx + r * safeFrac * Math.cos(a), cy + r * safeFrac * Math.sin(a)];
 }
 
-// --- REGRA DE OURO INJETADA NO GRÁFICO ---
-function calcularPrestAtual(ficha, attrKey, baseP) {
-    const anchor = attrKey === 'status' ? 'forca' : attrKey;
-    const mFormas = parseFloat(ficha[anchor]?.mFormas) || 1;
-    const multForma = Math.max(1, mFormas / 10);
+// --- AURA UNIVERSAL NO GRÁFICO ---
+function getHighestForma(ficha) {
+    let maxF = 1;
+    const keys = ['forca', 'vida', 'mana', 'aura', 'chakra', 'corpo'];
+    for (let k of keys) {
+        const val = parseFloat(ficha[k]?.mFormas) || 1;
+        if (val > maxF) maxF = val;
+    }
+    return maxF;
+}
+
+function calcularPrestAtual(ficha, baseP) {
+    const maxF = getHighestForma(ficha);
+    const multForma = Math.max(1, maxF / 10);
     return Math.floor(baseP * multForma);
 }
 
@@ -74,7 +83,7 @@ function RadarChart({ ficha, isAtual }) {
         const baseP = getBasePFor(ficha, k);
         if (!isAtual) return baseP;
         
-        return calcularPrestAtual(ficha, k, baseP);
+        return calcularPrestAtual(ficha, baseP);
     });
 
     const dataPoints = chartValues.map((v, i) => radarPoint(CX, CY, R, i, Math.min((v || 0) / LIMIT, 1)));
@@ -82,7 +91,7 @@ function RadarChart({ ficha, isAtual }) {
 
     const rankInfos = VITALS_RADAR.map((k) => {
         const baseP = getBasePFor(ficha, k);
-        const pAtualValor = isAtual ? calcularPrestAtual(ficha, k, baseP) : baseP;
+        const pAtualValor = isAtual ? calcularPrestAtual(ficha, baseP) : baseP;
         
         return safeGetRank(pAtualValor, ficha?.ascensaoBase || 1);
     });
