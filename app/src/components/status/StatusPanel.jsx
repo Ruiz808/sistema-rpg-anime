@@ -22,7 +22,7 @@ class StatusErrorBoundary extends React.Component {
     }
 }
 
-// --- SAFE MATH HELPERS (Blinda o motor matemático) ---
+// --- SAFE MATH HELPERS ---
 const safeFn = (fn, fallback) => (...args) => {
     if (typeof fn !== 'function') return fallback;
     try { 
@@ -32,16 +32,15 @@ const safeFn = (fn, fallback) => (...args) => {
 };
 
 const safeGetMaximo = safeFn(getMaximo, 1);
-const safeGetEfetivoBase = safeFn(getEfetivoBase, 1);
 const safeGetPrestigioReal = safeFn(getPrestigioReal, 0);
 const safeCalcPAtual = safeFn(calcPAtual, { valor: 0 });
 const safeGetRank = safeFn(getRank, { l: 'F', c: '#ffffff', a: 1 });
 const safeGetDivisorPara = safeFn(getDivisorPara, 'Padrão');
 
-// ---------- EIXOS DO GRÁFICO (INTERLIGADO À TABELA) ----------
+// ---------- EIXOS DO GRÁFICO (AGORA COM STATUS) ----------
 const CX = 100, CY = 100, R = 70;
-const VITALS_RADAR = ['vida', 'mana', 'aura', 'chakra', 'corpo', 'alma'];
-const VITALS_LABELS = ['VIDA', 'MANA', 'AURA', 'CHAKRA', 'CORPO', 'ALMA'];
+const VITALS_RADAR = ['vida', 'mana', 'aura', 'chakra', 'corpo', 'status'];
+const VITALS_LABELS = ['VIDA', 'MANA', 'AURA', 'CHAKRA', 'CORPO', 'STATUS'];
 const ANGLES = VITALS_RADAR.map((_, i) => (Math.PI * 2 * i) / 6 - Math.PI / 2);
 
 function hexPoints(cx, cy, r) {
@@ -54,22 +53,30 @@ function radarPoint(cx, cy, r, idx, frac) {
     return [cx + r * safeFrac * Math.cos(a), cy + r * safeFrac * Math.sin(a)];
 }
 
-// ---------- Componente do Gráfico Radar ----------
+// ---------- Componente do Gráfico Radar (COM LIMITE DE 100) ----------
 function RadarChart({ ficha, isAtual }) {
-    const maxVals = VITALS_RADAR.map((k) => safeGetMaximo(ficha, k));
-    const baseVals = VITALS_RADAR.map((k) => safeGetEfetivoBase(ficha, k));
-    const globalMax = Math.max(...maxVals, ...baseVals, 1);
+    const LIMIT = 100; // Limite fixo forçado a 100%
 
-    const dataPoints = isAtual 
-        ? maxVals.map((v, i) => radarPoint(CX, CY, R, i, v / globalMax))
-        : baseVals.map((v, i) => radarPoint(CX, CY, R, i, Math.min(v / globalMax, 1)));
+    const chartValues = VITALS_RADAR.map((k) => {
+        const rawMax = safeGetMaximo(ficha, k);
+        const calcBaseP = safeGetPrestigioReal(k, rawMax);
+        const baseP = ficha[k]?.prestigioBase !== undefined ? Number(ficha[k].prestigioBase) : calcBaseP;
+        
+        if (!isAtual) return baseP;
+        
+        const pAtual = safeCalcPAtual(ficha, k, baseP);
+        return pAtual.valor;
+    });
 
+    const dataPoints = chartValues.map((v, i) => radarPoint(CX, CY, R, i, Math.min((v || 0) / LIMIT, 1)));
     const dataPoly = dataPoints.map((p) => `${p[0] || 0},${p[1] || 0}`).join(' ');
 
     const rankInfos = VITALS_RADAR.map((k) => {
-        const raw = isAtual ? safeGetMaximo(ficha, k) : safeGetEfetivoBase(ficha, k);
-        const pRes = safeGetPrestigioReal(k, raw);
-        const pAtual = safeCalcPAtual(ficha, k, pRes);
+        const rawMax = safeGetMaximo(ficha, k);
+        const calcBaseP = safeGetPrestigioReal(k, rawMax);
+        const baseP = ficha[k]?.prestigioBase !== undefined ? Number(ficha[k].prestigioBase) : calcBaseP;
+        
+        const pAtual = safeCalcPAtual(ficha, k, baseP) || { valor: baseP };
         return safeGetRank(pAtual.valor, ficha?.ascensaoBase || 0);
     });
 
@@ -88,7 +95,6 @@ function RadarChart({ ficha, isAtual }) {
             {ANGLES.map((a, i) => (
                 <line key={i} x1={CX} y1={CY} x2={CX + R * Math.cos(a)} y2={CY + R * Math.sin(a)} stroke="rgba(255,255,255,0.15)" strokeWidth="1" strokeDasharray="4" />
             ))}
-            {/* O SEGREDO DA INTERATIVIDADE: transition suavizada */}
             <polygon points={dataPoly} fill={polyColor} stroke={strokeColor} strokeWidth="2" style={{ transition: 'all 0.4s ease-out' }} />
             {dataPoints.map(([x, y], i) => (
                 <circle key={i} cx={x || 0} cy={y || 0} r="3" fill={strokeColor} style={{ transition: 'all 0.4s ease-out' }} />
@@ -98,7 +104,7 @@ function RadarChart({ ficha, isAtual }) {
                 const rk = rankInfos[i];
                 return (
                     <text key={i} x={lx || 0} y={ly || 0} textAnchor="middle" dominantBaseline="central" fill={rk.c || '#fff'} fontSize="10" fontWeight="bold" style={{ textShadow: '0 0 5px #000' }}>
-                        [{rk.l || 'F'}{rk.a > 1 ? ` A${rk.a}` : ''}] {lbl}
+                        [{rk.l || 'F'}] A{rk.a || 1} {lbl}
                     </text>
                 );
             })}
@@ -116,7 +122,7 @@ function StatusPanelCore() {
     
     const inicializado = useRef(false);
 
-    // As barras visíveis de combate (exclui a Alma, pois Alma não tem HP)
+    // As barras visíveis na interface (O Status entra apenas nos gráficos e tabela, não como barra de HP)
     const vitalsBars = useMemo(() => [
         { key: 'vida',   label: 'VIDA (HP)', color: '#ff4d4d', classColor: 'label-color-vida' },
         { key: 'mana',   label: 'MANA',      color: '#00ffff', classColor: 'label-color-mana' },
@@ -255,7 +261,8 @@ function StatusPanelCore() {
                     <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                         {VITALS_RADAR.map((attrKey, i) => {
                             const rawMax = safeGetMaximo(ficha, attrKey);
-                            const baseP = safeGetPrestigioReal(attrKey, rawMax); 
+                            const calcBaseP = safeGetPrestigioReal(attrKey, rawMax); 
+                            const baseP = ficha[attrKey]?.prestigioBase !== undefined ? ficha[attrKey].prestigioBase : calcBaseP;
                             return (
                                 <div key={attrKey}>
                                     <div className="label-divisor" style={{ marginBottom: '5px' }}>
@@ -275,7 +282,19 @@ function StatusPanelCore() {
                                             }}
                                         /></span>
                                     </div>
-                                    <input type="number" className="prestige-input-base" value={baseP || 0} readOnly />
+                                    <input 
+                                        type="number" 
+                                        className="prestige-input-base" 
+                                        value={baseP === undefined ? '' : baseP} 
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            updateFicha(f => {
+                                                if(!f[attrKey]) f[attrKey] = {};
+                                                f[attrKey].prestigioBase = val === '' ? undefined : Number(val);
+                                            });
+                                            salvarFichaSilencioso();
+                                        }}
+                                    />
                                 </div>
                             );
                         })}
@@ -291,7 +310,8 @@ function StatusPanelCore() {
                     <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                         {VITALS_RADAR.map((attrKey, i) => {
                             const rawMax = safeGetMaximo(ficha, attrKey);
-                            const baseP = safeGetPrestigioReal(attrKey, rawMax);
+                            const calcBaseP = safeGetPrestigioReal(attrKey, rawMax);
+                            const baseP = ficha[attrKey]?.prestigioBase !== undefined ? ficha[attrKey].prestigioBase : calcBaseP;
                             const pAtualObj = safeCalcPAtual(ficha, attrKey, baseP);
                             const rankInfo = safeGetRank(pAtualObj.valor, ficha.ascensaoBase || 0);
 
@@ -315,7 +335,7 @@ function StatusPanelCore() {
             <h3 className="section-title-mint-spaced" style={{ color: '#fff', fontSize: '1.2em' }}>&gt; ANÁLISE DE PODER E CULTIVAÇÃO</h3>
             <div className="analise-grid" style={{ marginTop: '15px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                 <div className="radar-container" style={{ background: 'rgba(25, 25, 40, 0.6)', padding: '20px', borderRadius: '10px' }}>
-                    <h4 style={{ color: '#fff', textAlign: 'center', marginBottom: '20px', letterSpacing: '2px', fontSize: '0.9em' }}>ALMA (RANK BASE)<br/><span style={{ fontSize: '0.8em', color: '#0ff' }}>[A]</span></h4>
+                    <h4 style={{ color: '#fff', textAlign: 'center', marginBottom: '20px', letterSpacing: '2px', fontSize: '0.9em' }}>STATUS (RANK BASE)<br/><span style={{ fontSize: '0.8em', color: '#0ff' }}>[A]</span></h4>
                     <RadarChart ficha={ficha} isAtual={false} />
                 </div>
                 <div className="radar-container atual" style={{ background: 'rgba(30, 25, 10, 0.6)', padding: '20px', borderRadius: '10px', borderColor: 'rgba(255, 204, 0, 0.3)' }}>
