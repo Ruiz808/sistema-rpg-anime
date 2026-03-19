@@ -7,19 +7,21 @@ const MAP_SIZE = 30;
 const PALETA = ['#ff003c', '#0088ff', '#00ff88', '#ffcc00', '#ff00ff', '#00ffff', '#ff8800', '#88ff00'];
 
 export default function MapaPanel() {
-    const { minhaFicha, meuNome, personagens, updateFicha, feedCombate = [] } = useStore();
+    const { minhaFicha, meuNome, personagens, updateFicha, feedCombate = [], isMestre } = useStore();
 
     const [tamanhoCelula, setTamanhoCelula] = useState(35);
     const [iniciativaInput, setIniciativaInput] = useState(minhaFicha.iniciativa || 0);
     const [turnoAtualIndex, setTurnoAtualIndex] = useState(0);
-    
     const [feedIndexTurnoAtual, setFeedIndexTurnoAtual] = useState(0);
+
+    // 🔥 NOVO: Controle do Histórico de Ações
+    const [jogadorHistory, setJogadorHistory] = useState(null);
 
     // Estados do Mini-Painel de Acerto
     const [mapQD, setMapQD] = useState(1);
     const [mapFD, setMapFD] = useState(20);
     const [mapBonus, setMapBonus] = useState(0);
-    const [mapStat, setMapStat] = useState('destreza'); // 🔥 AGORA TEMOS O SELETOR LOCAL!
+    const [mapStat, setMapStat] = useState('destreza'); 
 
     const coresJogadoresRef = useRef({});
     const corIndexRef = useRef(0);
@@ -127,6 +129,25 @@ export default function MapaPanel() {
             return next;
         });
         setFeedIndexTurnoAtual(feedCombate.length);
+        setJogadorHistory(null); // Fecha o histórico para focar na luta
+    }
+
+    // 🔥 FUNÇÕES DE CONTROLE DE COMBATE
+    function sairDoCombate() {
+        updateFicha(ficha => { ficha.iniciativa = 0; });
+        setIniciativaInput(0);
+        salvarFichaSilencioso();
+        setJogadorHistory(null);
+    }
+
+    function encerrarCombate() {
+        enviarParaFeed({
+            tipo: 'sistema',
+            nome: 'SISTEMA',
+            texto: '⚔️ O COMBATE FOI ENCERRADO PELO MESTRE! ⚔️'
+        });
+        sairDoCombate();
+        setTurnoAtualIndex(0);
     }
 
     function rolarAcertoRapido() {
@@ -134,9 +155,7 @@ export default function MapaPanel() {
         const fD = parseInt(mapFD) || 20;
         const bonus = parseInt(mapBonus) || 0;
         
-        // 🔥 GOLPE CIRÚRGICO: Agora usa exclusivamente a seleção da caixinha do mapa!
         const sels = [mapStat]; 
-        
         const itensEquipados = minhaFicha.inventario ? minhaFicha.inventario.filter(i => i.equipado) : [];
 
         const result = calcularAcerto({ qD, fD, prof: 0, bonus, sels, minhaFicha, itensEquipados, vantagens: 0, desvantagens: 0 });
@@ -209,6 +228,7 @@ export default function MapaPanel() {
                 case 'evasiva': corImpacto = '#0088ff'; tituloImpacto = 'ESQUIVA'; valorImpacto = acaoExibir.total; break;
                 case 'resistencia': corImpacto = '#ccc'; tituloImpacto = 'BLOQUEIO'; valorImpacto = acaoExibir.total; break;
                 case 'escudo': corImpacto = '#f0f'; tituloImpacto = 'ESCUDO'; valorImpacto = acaoExibir.escudoReduzido; break;
+                case 'sistema': corImpacto = '#ffcc00'; tituloImpacto = 'AVISO DO SISTEMA'; valorImpacto = 0; break;
                 default: break;
             }
         }
@@ -216,82 +236,90 @@ export default function MapaPanel() {
         return (
             <div className="def-box" style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', border: `2px solid ${isCrit ? '#ffcc00' : isFalha ? '#660000' : (acaoExibir ? corImpacto : '#333')}`, boxShadow: `0 0 20px ${acaoExibir ? corImpacto : '#00ffcc'}40` }}>
                 
-                <div style={{ background: isCrit ? '#ffcc00' : isFalha ? '#660000' : (acaoExibir ? corImpacto : '#00ffcc'), color: isFalha || !acaoExibir ? '#000' : '#000', padding: '10px', textAlign: 'center', fontWeight: '900', letterSpacing: 2, fontSize: '1.2em', textTransform: 'uppercase' }}>
-                    {acaoExibir ? (isCrit ? '🔥 ACERTO CRÍTICO 🔥' : isFalha ? '☠️ FALHA CRÍTICA ☠️' : (jogadorDaVez && !isForaDeTurno && !isForaDeCombate ? `TURNO DE ${nomeBase}` : 'AÇÃO LIVRE')) : `⚡ TURNO DE ${nomeBase} ⚡`}
+                <div style={{ background: isCrit ? '#ffcc00' : isFalha ? '#660000' : (acaoExibir ? corImpacto : '#00ffcc'), color: '#000', padding: '10px', textAlign: 'center', fontWeight: '900', letterSpacing: 2, fontSize: '1.2em', textTransform: 'uppercase' }}>
+                    {acaoExibir?.tipo === 'sistema' ? 'AVISO DO SISTEMA' : (acaoExibir ? (isCrit ? '🔥 ACERTO CRÍTICO 🔥' : isFalha ? '☠️ FALHA CRÍTICA ☠️' : (jogadorDaVez && !isForaDeTurno && !isForaDeCombate ? `TURNO DE ${nomeBase}` : 'AÇÃO LIVRE')) : `⚡ TURNO DE ${nomeBase} ⚡`)}
                 </div>
 
-                <div style={{ 
-                    flex: '1', minHeight: '250px', 
-                    backgroundImage: infoBase.img ? `url('${infoBase.img}')` : 'none', 
-                    backgroundSize: 'cover', backgroundPosition: 'top center',
-                    position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
-                    boxShadow: 'inset 0 -100px 50px -20px rgba(0,0,0,0.9)' 
-                }}>
-                    <div style={{ padding: '20px', zIndex: 2 }}>
-                        <h2 style={{ margin: 0, color: '#fff', fontSize: '2em', textShadow: '0 0 10px #000, 2px 2px 0px #000' }}>
-                            {nomeBase}
-                        </h2>
-                        {infoBase.forma && (
-                            <div style={{ color: '#00ffcc', fontSize: '1.2em', fontWeight: 'bold', textShadow: '0 0 5px #000' }}>
-                                ☄️ {infoBase.forma}
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {acaoExibir && (
-                    <div style={{ padding: '20px', background: 'rgba(0,0,0,0.85)', textAlign: 'center', borderTop: `1px solid ${corImpacto}` }}>
-                        
-                        {isForaDeCombate && (
-                            <div style={{ background: 'rgba(255,204,0,0.1)', color: '#ffcc00', border: '1px solid #ffcc00', padding: 4, fontSize: '0.8em', marginBottom: 10, borderRadius: 4 }}>
-                                ⚠️ Rolagem Fora de Combate (Feita por: {acaoExibir.nome})
-                            </div>
-                        )}
-                        {isForaDeTurno && (
-                            <div style={{ background: 'rgba(255,0,60,0.1)', color: '#ff003c', border: '1px solid #ff003c', padding: 4, fontSize: '0.8em', marginBottom: 10, borderRadius: 4 }}>
-                                ❌ Ação Fora de Turno (Feita por: {acaoExibir.nome})
-                            </div>
-                        )}
-
-                        <div style={{ fontSize: '0.9em', color: '#aaa', marginBottom: '-10px', textTransform: 'uppercase' }}>
-                            {tituloImpacto} {(!isForaDeCombate && !isForaDeTurno) ? '' : `(${acaoExibir.nome})`}
-                        </div>
-                        <h1 style={{ margin: 0, fontSize: '4em', color: corImpacto, textShadow: `0 0 20px ${corImpacto}` }}>
-                            {fmt(valorImpacto)}
-                        </h1>
-                        
-                        {acaoExibir.tipo === 'dano' && acaoExibir.letalidade !== undefined && (
-                            <div style={{ color: '#ffcc00', fontSize: '1.2em', fontWeight: 'bold', marginTop: '10px', textShadow: '0 0 5px #ffcc00' }}>
-                                LETALIDADE: +{acaoExibir.letalidade}
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {fichaBase && (
-                    <div style={{ padding: '15px', background: '#050505' }}>
-                        <div style={{
-                            display: 'flex', flexDirection: 'column', gap: 6,
-                            background: 'rgba(0,0,0,0.7)', padding: 12, borderRadius: 8,
-                            border: '1px solid rgba(255,255,255,0.1)'
+                {acaoExibir?.tipo === 'sistema' ? (
+                     <div style={{ flex: '1', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 30, textAlign: 'center', background: 'rgba(0,0,0,0.8)' }}>
+                        <h2 style={{ color: '#ffcc00', textShadow: '0 0 20px #ffcc00' }}>{acaoExibir.texto}</h2>
+                     </div>
+                ) : (
+                    <>
+                        <div style={{ 
+                            flex: '1', minHeight: '250px', 
+                            backgroundImage: infoBase.img ? `url('${infoBase.img}')` : 'none', 
+                            backgroundSize: 'cover', backgroundPosition: 'top center',
+                            position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+                            boxShadow: 'inset 0 -100px 50px -20px rgba(0,0,0,0.9)' 
                         }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ff4d4d', fontWeight: 'bold' }}>
-                                <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>HP</span><span>{fmt(fichaBase.vida?.atual)}</span>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#4dffff', fontWeight: 'bold' }}>
-                                <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>MP</span><span>{fmt(fichaBase.mana?.atual)}</span>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ffff4d', fontWeight: 'bold' }}>
-                                <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>AU</span><span>{fmt(fichaBase.aura?.atual)}</span>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#00ffcc', fontWeight: 'bold' }}>
-                                <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>CK</span><span>{fmt(fichaBase.chakra?.atual)}</span>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ff66ff', fontWeight: 'bold' }}>
-                                <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>CP</span><span>{fmt(fichaBase.corpo?.atual)}</span>
+                            <div style={{ padding: '20px', zIndex: 2 }}>
+                                <h2 style={{ margin: 0, color: '#fff', fontSize: '2em', textShadow: '0 0 10px #000, 2px 2px 0px #000' }}>
+                                    {nomeBase}
+                                </h2>
+                                {infoBase.forma && (
+                                    <div style={{ color: '#00ffcc', fontSize: '1.2em', fontWeight: 'bold', textShadow: '0 0 5px #000' }}>
+                                        ☄️ {infoBase.forma}
+                                    </div>
+                                )}
                             </div>
                         </div>
-                    </div>
+
+                        {acaoExibir && (
+                            <div style={{ padding: '20px', background: 'rgba(0,0,0,0.85)', textAlign: 'center', borderTop: `1px solid ${corImpacto}` }}>
+                                
+                                {isForaDeCombate && (
+                                    <div style={{ background: 'rgba(255,204,0,0.1)', color: '#ffcc00', border: '1px solid #ffcc00', padding: 4, fontSize: '0.8em', marginBottom: 10, borderRadius: 4 }}>
+                                        ⚠️ Rolagem Fora de Combate (Feita por: {acaoExibir.nome})
+                                    </div>
+                                )}
+                                {isForaDeTurno && (
+                                    <div style={{ background: 'rgba(255,0,60,0.1)', color: '#ff003c', border: '1px solid #ff003c', padding: 4, fontSize: '0.8em', marginBottom: 10, borderRadius: 4 }}>
+                                        ❌ Ação Fora de Turno (Feita por: {acaoExibir.nome})
+                                    </div>
+                                )}
+
+                                <div style={{ fontSize: '0.9em', color: '#aaa', marginBottom: '-10px', textTransform: 'uppercase' }}>
+                                    {tituloImpacto} {(!isForaDeCombate && !isForaDeTurno) ? '' : `(${acaoExibir.nome})`}
+                                </div>
+                                <h1 style={{ margin: 0, fontSize: '4em', color: corImpacto, textShadow: `0 0 20px ${corImpacto}` }}>
+                                    {fmt(valorImpacto)}
+                                </h1>
+                                
+                                {acaoExibir.tipo === 'dano' && acaoExibir.letalidade !== undefined && (
+                                    <div style={{ color: '#ffcc00', fontSize: '1.2em', fontWeight: 'bold', marginTop: '10px', textShadow: '0 0 5px #ffcc00' }}>
+                                        LETALIDADE: +{acaoExibir.letalidade}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {fichaBase && (
+                            <div style={{ padding: '15px', background: '#050505' }}>
+                                <div style={{
+                                    display: 'flex', flexDirection: 'column', gap: 6,
+                                    background: 'rgba(0,0,0,0.7)', padding: 12, borderRadius: 8,
+                                    border: '1px solid rgba(255,255,255,0.1)'
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ff4d4d', fontWeight: 'bold' }}>
+                                        <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>HP</span><span>{fmt(fichaBase.vida?.atual)}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#4dffff', fontWeight: 'bold' }}>
+                                        <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>MP</span><span>{fmt(fichaBase.mana?.atual)}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ffff4d', fontWeight: 'bold' }}>
+                                        <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>AU</span><span>{fmt(fichaBase.aura?.atual)}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#00ffcc', fontWeight: 'bold' }}>
+                                        <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>CK</span><span>{fmt(fichaBase.chakra?.atual)}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ff66ff', fontWeight: 'bold' }}>
+                                        <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>CP</span><span>{fmt(fichaBase.corpo?.atual)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
         );
@@ -336,7 +364,18 @@ export default function MapaPanel() {
                 </div>
 
                 <div className="def-box" style={{ marginTop: 15 }}>
-                    <h3 style={{ color: '#00ffcc', marginBottom: 10 }}>Sistema de Iniciativa</h3>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 10 }}>
+                        <h3 style={{ color: '#00ffcc', margin: 0 }}>Sistema de Iniciativa</h3>
+                        <div style={{ display: 'flex', gap: 10 }}>
+                            {minhaFicha.iniciativa > 0 && (
+                                <button className="btn-neon btn-red" onClick={sairDoCombate} style={{ padding: '4px 10px', fontSize: '0.8em' }}>Sair do Combate</button>
+                            )}
+                            {isMestre && (
+                                <button className="btn-neon" onClick={encerrarCombate} style={{ borderColor: '#ff003c', color: '#ff003c', padding: '4px 10px', fontSize: '0.8em' }}>Zerar Combate</button>
+                            )}
+                        </div>
+                    </div>
+
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                         <input className="input-neon" type="number" id="minha-iniciativa" value={iniciativaInput} onChange={e => setIniciativaInput(e.target.value)} style={{ width: 80 }} />
                         <button className="btn-neon btn-gold" onClick={setMinhaIniciativa}>Definir Iniciativa</button>
@@ -351,11 +390,14 @@ export default function MapaPanel() {
                                 const info = getAvatarInfo(j.ficha);
                                 const isActive = (i === turnoAtualIndex % ordemIniciativa.length);
                                 return (
-                                    <div key={j.nome} title={`${j.nome} (${j.iniciativa})`}
+                                    <div key={j.nome} title={`Clique para ver o Histórico de ${j.nome}`}
+                                        onClick={() => setJogadorHistory(j.nome)}
                                         style={{
+                                            cursor: 'pointer',
                                             minWidth: 50, height: 50, borderRadius: '50%', border: isActive ? '3px solid #00ffcc' : '2px solid #444', opacity: isActive ? 1 : 0.5,
                                             backgroundImage: info.img ? `url('${info.img}')` : 'none', backgroundSize: 'cover', backgroundPosition: 'top center',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.7em', color: 'white', textShadow: '1px 1px 2px black'
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.7em', color: 'white', textShadow: '1px 1px 2px black',
+                                            transition: 'transform 0.2s',
                                         }}>
                                         {!info.img && j.nome.charAt(0)}
                                     </div>
@@ -364,7 +406,35 @@ export default function MapaPanel() {
                         )}
                     </div>
 
-                    {/* Destaque do Turno Atual + BOTÃO DE AÇÃO RÁPIDA COM SELETOR DE STATUS */}
+                    {/* 🔥 HISTÓRICO DE AÇÕES DO JOGADOR CLICADO */}
+                    {jogadorHistory && (
+                        <div style={{ marginTop: 15, padding: 15, background: 'rgba(0, 20, 40, 0.8)', border: '1px solid #0088ff', borderRadius: 8 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                                <h4 style={{ margin: 0, color: '#0088ff' }}>Histórico de Ações: {jogadorHistory}</h4>
+                                <button className="btn-neon btn-red" onClick={() => setJogadorHistory(null)} style={{ padding: '2px 8px', fontSize: '0.8em' }}>X Fechar</button>
+                            </div>
+                            
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 200, overflowY: 'auto', paddingRight: 5 }}>
+                                {feedCombate.filter(f => f.nome === jogadorHistory).slice(-6).reverse().map((h, i) => (
+                                    <div key={i} style={{ fontSize: '0.85em', color: '#ccc', background: 'rgba(0,0,0,0.5)', padding: 8, borderRadius: 5, borderLeft: `3px solid ${h.tipo === 'dano' ? '#ff003c' : '#f90'}` }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                                            <strong style={{ color: h.tipo === 'dano' ? '#ff003c' : h.tipo === 'acerto' ? '#f90' : '#0088ff', textTransform: 'uppercase' }}>
+                                                [{h.tipo}]
+                                            </strong>
+                                            {h.acertoTotal && <strong style={{ color: '#fff' }}>Total Resultante: {fmt(h.acertoTotal)}</strong>}
+                                            {h.dano && <strong style={{ color: '#fff' }}>Dano Bruto: {fmt(h.dano)}</strong>}
+                                        </div>
+
+                                        {h.rolagem && <div style={{ marginBottom: 4 }}>🎲 <strong>Dados:</strong> <span dangerouslySetInnerHTML={{ __html: h.rolagem }} /></div>}
+                                        {h.atributosUsados && <div style={{ color: '#888', fontSize: '0.9em' }}><strong>Status Lidos:</strong> {h.atributosUsados}</div>}
+                                        {h.profBonusTexto && <div style={{ color: '#888', fontSize: '0.9em' }}><strong>Cálculo Extra:</strong> {h.profBonusTexto}</div>}
+                                        {h.armaStr && <div style={{ color: '#888', fontSize: '0.9em' }} dangerouslySetInnerHTML={{ __html: h.armaStr }} />}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     {jogadorDaVez && (
                         <div style={{ marginTop: 15, display: 'flex', gap: 15, alignItems: 'center' }}>
                             <div id="turno-destaque" style={{
@@ -378,11 +448,9 @@ export default function MapaPanel() {
                                 <div id="turno-nome" style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.2em' }}>{jogadorDaVez.nome}</div>
                                 {infoDaVez && infoDaVez.forma && (<div id="turno-forma" style={{ color: '#00ffcc', fontSize: '0.9em' }}>{infoDaVez.forma}</div>)}
                                 
-                                {/* 🔥 AÇÃO RÁPIDA (Só aparece se for a MINHA vez!) */}
                                 {jogadorDaVez.nome === meuNome && (
                                     <div style={{ marginTop: 8, padding: 8, background: 'rgba(0, 255, 204, 0.1)', border: '1px solid #00ffcc', borderRadius: 8, display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'wrap' }}>
                                         
-                                        {/* NOVO: Seletor de Status exclusivo para o Mapa */}
                                         <select className="input-neon" value={mapStat} onChange={e => setMapStat(e.target.value)} style={{ padding: 4, width: 100 }} title="Atributo">
                                             <option value="forca">Força</option>
                                             <option value="destreza">Destreza</option>
