@@ -4,14 +4,18 @@ import { sanitizarNome } from '../../stores/useStore';
 import { carregarFichaDoFirebase, deletarPersonagem, salvarFichaSilencioso } from '../../services/firebase-sync';
 
 export default function PerfilPanel() {
-    const meuNome = useStore(s => s.meuNome);
-    const setMeuNome = useStore(s => s.setMeuNome);
-    const isMestre = useStore(s => s.isMestre);
-    const setIsMestre = useStore(s => s.setIsMestre);
-    const resetFicha = useStore(s => s.resetFicha);
-    const carregarDadosFicha = useStore(s => s.carregarDadosFicha);
-    const setPersonagemParaDeletar = useStore(s => s.setPersonagemParaDeletar);
-    const setAbaAtiva = useStore(s => s.setAbaAtiva);
+    const { 
+        minhaFicha, 
+        updateFicha, 
+        meuNome, 
+        setMeuNome, 
+        isMestre, 
+        setIsMestre, 
+        resetFicha, 
+        carregarDadosFicha, 
+        setPersonagemParaDeletar, 
+        setAbaAtiva 
+    } = useStore();
 
     const [nomeInput, setNomeInput] = useState(meuNome || '');
     const [listaLocal, setListaLocal] = useState([]);
@@ -90,10 +94,20 @@ export default function PerfilPanel() {
         localStorage.setItem('rpgIsMestre', novoVal ? 'sim' : 'nao');
     }
 
+    // 🔥 NOVA FUNÇÃO: Atualiza a URL da Imagem Base da Ficha
+    function alterarAvatarBase(e) {
+        updateFicha(ficha => {
+            if (!ficha.avatar) ficha.avatar = { base: "" };
+            ficha.avatar.base = e.target.value;
+        });
+        salvarFichaSilencioso();
+    }
+
     return (
         <div className="perfil-panel">
             <div className="def-box">
                 <h3 style={{ color: '#ffcc00', marginBottom: 10 }}>Perfil do Jogador</h3>
+                
                 <label style={{ color: '#aaa', fontSize: '0.9em' }}>Nome do Personagem:</label>
                 <input
                     type="text"
@@ -102,7 +116,34 @@ export default function PerfilPanel() {
                     onChange={(e) => setNomeInput(e.target.value)}
                     placeholder="Digite o nome..."
                 />
-                <button className="btn-neon btn-gold" onClick={trocarPersonagem} style={{ marginTop: 10 }}>
+
+                {/* 🔥 O CAMPO DE IMAGEM RESTAURADO */}
+                <label style={{ color: '#aaa', fontSize: '0.9em', marginTop: 10, display: 'block' }}>URL da Imagem Base (Avatar):</label>
+                <input
+                    type="text"
+                    className="input-neon"
+                    value={minhaFicha?.avatar?.base || ''}
+                    onChange={alterarAvatarBase}
+                    placeholder="Cole o link da imagem aqui..."
+                />
+                
+                {/* PREVIEW DO AVATAR */}
+                {minhaFicha?.avatar?.base && (
+                    <div style={{ marginTop: 10, textAlign: 'center' }}>
+                        <div style={{
+                            display: 'inline-block',
+                            width: '100px', height: '100px',
+                            borderRadius: '10px',
+                            border: '2px solid #ffcc00',
+                            backgroundImage: `url('${minhaFicha.avatar.base}')`,
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'top center',
+                            boxShadow: '0 0 10px rgba(255,204,0,0.5)'
+                        }} />
+                    </div>
+                )}
+
+                <button className="btn-neon btn-gold" onClick={trocarPersonagem} style={{ marginTop: 15, width: '100%' }}>
                     Trocar / Criar Personagem
                 </button>
             </div>
