@@ -27,37 +27,58 @@ export default function Jukebox() {
 
     return (
         <div className="def-box" style={{ marginTop: '15px' }}>
-            <h3 style={{ color: '#00ffcc', marginBottom: 10, display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <h3 style={{ color: '#00ffcc', marginBottom: 15, display: 'flex', alignItems: 'center', gap: '10px' }}>
                 🎵 Mesa de Som (Trilha Sonora)
             </h3>
             
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+            {/* Trocámos o Flex por um GRID robusto! */}
+            <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: '1fr auto auto', /* A barra de texto toma o espaço livre, os botões o tamanho que precisam */
+                gap: '15px', 
+                marginBottom: '20px',
+                alignItems: 'center'
+            }}>
                 <input 
                     className="input-neon" 
                     type="text" 
                     placeholder="Cole o link do YouTube aqui... (Ex: https://youtu.be/...)" 
                     value={inputUrl} 
                     onChange={(e) => setInputUrl(e.target.value)} 
-                    style={{ flex: 1, borderColor: '#00ffcc' }}
+                    style={{ 
+                        width: '100%', 
+                        margin: 0, 
+                        borderColor: '#00ffcc',
+                        color: '#fff'
+                    }}
                 />
-                <button className="btn-neon btn-green" onClick={handlePlay} style={{ padding: '0 20px' }}>
+                <button 
+                    className="btn-neon btn-green" 
+                    onClick={handlePlay} 
+                    style={{ margin: 0, height: '44px', padding: '0 25px' }}
+                >
                     ▶ TOCAR
                 </button>
-                <button className="btn-neon btn-red" onClick={handleStop} style={{ padding: '0 20px' }}>
+                <button 
+                    className="btn-neon btn-red" 
+                    onClick={handleStop} 
+                    style={{ margin: 0, height: '44px', padding: '0 25px' }}
+                >
                     ⏹ PARAR
                 </button>
             </div>
 
-            {/* O Player Embutido (Só aparece se houver música tocando) */}
+            {/* O Player Embutido */}
             {videoId && (
                 <div style={{ 
                     position: 'relative', 
-                    paddingBottom: '25%', /* Altura reduzida para não ocupar muita tela */
-                    height: '150px', 
+                    paddingBottom: '25%', 
+                    height: '200px', 
                     overflow: 'hidden', 
                     borderRadius: '8px', 
                     border: '2px solid #00ffcc', 
-                    boxShadow: '0 0 15px rgba(0,255,204,0.3)' 
+                    boxShadow: '0 0 15px rgba(0,255,204,0.3)',
+                    background: '#000'
                 }}>
                     <iframe 
                         style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
