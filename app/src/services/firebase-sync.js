@@ -1,13 +1,9 @@
 import { ref, set, get, push, remove, onValue, onChildAdded, limitToLast, query } from 'firebase/database';
 import { db } from './firebase-config';
-import useStore from '../stores/useStore';
-import { sanitizarNome } from '../stores/useStore';
+import useStore, { sanitizarNome } from '../stores/useStore';
 
 let debounceTimer = null;
 
-/**
- * Salva a ficha no localStorage e Firebase com debounce de 500ms.
- */
 export function salvarFichaSilencioso() {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
@@ -15,99 +11,72 @@ export function salvarFichaSilencioso() {
     }, 500);
 }
 
-/**
- * Salva a ficha imediatamente no localStorage e Firebase.
- */
 export function salvarFirebaseImediato() {
     const { minhaFicha, meuNome } = useStore.getState();
     const nomeSanitizado = sanitizarNome(meuNome);
 
     if (!nomeSanitizado) {
         console.warn('[Sync] Nome vazio, salvamento cancelado.');
-        return;
+        return Promise.resolve();
     }
 
-    // Save to localStorage
+    // 🔥 O CLONE DE SACRIFÍCIO: Impede que o Firebase tente mutar o estado congelado do Zustand
+    const fichaParaSalvar = JSON.parse(JSON.stringify(minhaFicha));
+
     try {
-        localStorage.setItem('rpgFicha_' + nomeSanitizado, JSON.stringify(minhaFicha));
+        localStorage.setItem('rpgFicha_' + nomeSanitizado, JSON.stringify(fichaParaSalvar));
         localStorage.setItem('rpgNome', nomeSanitizado);
     } catch (err) {
         console.error('[Sync] Erro ao salvar no localStorage:', err);
     }
 
-    // Save to Firebase
     if (!db) return Promise.resolve();
 
-    const fichaRef = ref(db, 'personagens/' + nomeSanitizado);
-    return set(fichaRef, minhaFicha).catch((err) => {
+    const fichaRef = ref(db, `personagens/${nomeSanitizado}`);
+    return set(fichaRef, fichaParaSalvar).catch((err) => {
         console.error('[Sync] Erro ao salvar no Firebase:', err);
     });
 }
 
-/**
- * Carrega uma ficha do Firebase (leitura única).
- * @param {string} nome - Nome do personagem
- * @returns {Promise<Object|null>} Dados da ficha ou null
- */
 export async function carregarFichaDoFirebase(nome) {
     const nomeSanitizado = sanitizarNome(nome);
     if (!nomeSanitizado || !db) return null;
 
     try {
-        const fichaRef = ref(db, 'personagens/' + nomeSanitizado);
+        const fichaRef = ref(db, `personagens/${nomeSanitizado}`);
         const snapshot = await get(fichaRef);
-        if (snapshot.exists()) {
-            return snapshot.val();
-        }
-        return null;
+        return snapshot.exists() ? snapshot.val() : null;
     } catch (err) {
         console.error('[Sync] Erro ao carregar do Firebase:', err);
         return null;
     }
 }
 
-/**
- * Inicia listener real-time em /personagens.
- * @param {function} callback - Chamado com o objeto de personagens a cada mudança
- * @returns {function} Função para cancelar o listener (unsubscribe)
- */
 export function iniciarListenerPersonagens(callback) {
     if (!db) return () => {};
 
     const personagensRef = ref(db, 'personagens');
-    const unsubscribe = onValue(personagensRef, (snapshot) => {
+    // Retorna o unsubscribe garantindo que não haverá memory leak
+    return onValue(personagensRef, (snapshot) => {
         const dados = snapshot.val() || {};
         if (callback) callback(dados);
     }, (err) => {
         console.error('[Sync] Erro no listener de personagens:', err);
     });
-
-    return unsubscribe;
 }
 
-/**
- * Inicia listener no feed de combate (último item adicionado).
- * @param {function} callback - Chamado com cada nova entrada do feed
- * @returns {function} Função para cancelar o listener (unsubscribe)
- */
 export function iniciarListenerFeed(callback) {
     if (!db) return () => {};
 
     const feedRef = query(ref(db, 'feed_combate'), limitToLast(1));
-    const unsubscribe = onChildAdded(feedRef, (snapshot) => {
+    return onChildAdded(feedRef, (snapshot) => {
         const entry = snapshot.val();
         if (entry && callback) callback(entry);
     }, (err) => {
         console.error('[Sync] Erro no listener de feed:', err);
     });
-
-    return unsubscribe;
 }
 
-/**
- * Envia uma entrada para o feed de combate.
- * @param {Object} d - Dados da entrada do feed
- */
 export function enviarParaFeed(d) {
     if (!db) return;
 
@@ -117,26 +86,20 @@ export function enviarParaFeed(d) {
     });
 }
 
-/**
- * Deleta um personagem do Firebase e localStorage.
- * @param {string} nome - Nome do personagem a deletar
- */
 export async function deletarPersonagem(nome) {
     const nomeSanitizado = sanitizarNome(nome);
     if (!nomeSanitizado) return;
 
-    // Remove from localStorage
     try {
         localStorage.removeItem('rpgFicha_' + nomeSanitizado);
     } catch (err) {
         console.error('[Sync] Erro ao remover do localStorage:', err);
     }
 
-    // Remove from Firebase
     if (!db) return;
 
     try {
-        const personagemRef = ref(db, 'personagens/' + nomeSanitizado);
+        const personagemRef = ref(db, `personagens/${nomeSanitizado}`);
         await remove(personagemRef);
     } catch (err) {
         console.error('[Sync] Erro ao deletar do Firebase:', err);

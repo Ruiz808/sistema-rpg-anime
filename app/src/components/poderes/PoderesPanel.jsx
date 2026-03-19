@@ -13,12 +13,14 @@ const PROPRIEDADE_OPTIONS = [
 ];
 
 export default function PoderesPanel() {
-    const minhaFicha = useStore(s => s.minhaFicha);
-    const updateFicha = useStore(s => s.updateFicha);
-    const efeitosTemp = useStore(s => s.efeitosTemp);
-    const setEfeitosTemp = useStore(s => s.setEfeitosTemp);
-    const poderEditandoId = useStore(s => s.poderEditandoId);
-    const setPoderEditandoId = useStore(s => s.setPoderEditandoId);
+    const { 
+        minhaFicha, 
+        updateFicha, 
+        efeitosTemp, 
+        setEfeitosTemp, 
+        poderEditandoId, 
+        setPoderEditandoId 
+    } = useStore();
 
     const [nomePoder, setNomePoder] = useState('');
     const [imagemUrl, setImagemUrl] = useState('');
@@ -28,83 +30,75 @@ export default function PoderesPanel() {
 
     const formRef = useRef(null);
 
-    function addEfeitoTemp() {
-        setEfeitosTemp([...efeitosTemp, {
-            atributo: novoAtr,
-            propriedade: novoProp,
-            valor: novoVal
-        }]);
+    const addEfeitoTemp = () => {
+        if (!novoVal) return;
+        setEfeitosTemp([...efeitosTemp, { atributo: novoAtr, propriedade: novoProp, valor: novoVal }]);
         setNovoVal('');
-    }
+    };
 
-    function removerEfeitoTemp(i) {
-        const newList = [...efeitosTemp];
-        newList.splice(i, 1);
-        setEfeitosTemp(newList);
-    }
+    const removerEfeitoTemp = (index) => {
+        setEfeitosTemp(efeitosTemp.filter((_, i) => i !== index));
+    };
 
-    function salvarNovoPoder() {
-        try {
-            const n = nomePoder.trim();
-            if (!n || !efeitosTemp.length) {
-                alert('Falta nome ou efeitos!');
-                return;
-            }
-
-            updateFicha((ficha) => {
-                if (!ficha.poderes) ficha.poderes = [];
-
-                if (poderEditandoId) {
-                    const ix = ficha.poderes.findIndex(p => p.id === poderEditandoId);
-                    if (ix !== -1) {
-                        ficha.poderes[ix].nome = n;
-                        ficha.poderes[ix].efeitos = JSON.parse(JSON.stringify(efeitosTemp));
-                        ficha.poderes[ix].imagemUrl = imagemUrl;
-                    }
-                } else {
-                    ficha.poderes.push({
-                        id: Date.now(),
-                        nome: n,
-                        ativa: false,
-                        efeitos: JSON.parse(JSON.stringify(efeitosTemp)),
-                        imagemUrl: imagemUrl
-                    });
-                }
-            });
-
-            setPoderEditandoId(null);
-            setEfeitosTemp([]);
-            setNomePoder('');
-            setImagemUrl('');
-            salvarFichaSilencioso();
-        } catch (e) {
-            console.error('Erro ao salvar:', e);
-            alert('Erro ao salvar o poder.');
+    const salvarNovoPoder = () => {
+        const n = nomePoder.trim();
+        if (!n || !efeitosTemp.length) {
+            alert('Falta nome ou efeitos!');
+            return;
         }
-    }
 
-    function editarPoder(id) {
+        updateFicha((ficha) => {
+            if (!ficha.poderes) ficha.poderes = [];
+
+            if (poderEditandoId) {
+                const ix = ficha.poderes.findIndex(p => p.id === poderEditandoId);
+                if (ix !== -1) {
+                    ficha.poderes[ix].nome = n;
+                    ficha.poderes[ix].efeitos = JSON.parse(JSON.stringify(efeitosTemp));
+                    ficha.poderes[ix].imagemUrl = imagemUrl;
+                }
+            } else {
+                ficha.poderes.push({
+                    id: Date.now(),
+                    nome: n,
+                    ativa: false,
+                    efeitos: JSON.parse(JSON.stringify(efeitosTemp)),
+                    imagemUrl: imagemUrl
+                });
+            }
+        });
+
+        cancelarEdicaoPoder();
+        salvarFichaSilencioso();
+    };
+
+    const editarPoder = (id) => {
         const p = (minhaFicha.poderes || []).find(po => po.id === id);
         if (!p) return;
+        
         if (p.ativa) {
             togglePoder(id);
-            alert(`A habilidade [${p.nome}] foi DESATIVADA temporariamente para edicao.`);
+            alert(`A habilidade [${p.nome}] foi DESATIVADA temporariamente para edição.`);
         }
+        
         setPoderEditandoId(p.id);
         setNomePoder(p.nome);
         setImagemUrl(p.imagemUrl || '');
         setEfeitosTemp(JSON.parse(JSON.stringify(p.efeitos || [])));
-        if (formRef.current) formRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
+        
+        if (formRef.current) {
+            formRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+    };
 
-    function cancelarEdicaoPoder() {
+    const cancelarEdicaoPoder = () => {
         setPoderEditandoId(null);
         setNomePoder('');
         setImagemUrl('');
         setEfeitosTemp([]);
-    }
+    };
 
-    function togglePoder(id) {
+    const togglePoder = (id) => {
         const vitais = ['vida', 'mana', 'aura', 'chakra', 'corpo'];
 
         updateFicha((ficha) => {
@@ -112,116 +106,79 @@ export default function PoderesPanel() {
             const p = ficha.poderes.find(po => po.id === id);
             if (!p) return;
 
-            // Save old maximos before toggle
+            // Salva os máximos antes da alteração
             const oldM = {};
-            for (let i = 0; i < vitais.length; i++) {
-                oldM[vitais[i]] = getMaximo(ficha, vitais[i]) || 1;
-            }
+            vitais.forEach(v => {
+                oldM[v] = getMaximo(ficha, v) || 1;
+            });
 
+            // Mutação protegida pelo Immer
             p.ativa = !p.ativa;
 
-            // Recalculate vital atual values proportionally
-            for (let i = 0; i < vitais.length; i++) {
-                const k = vitais[i];
+            // Recalcula a proporção atual baseada nos novos máximos
+            vitais.forEach(k => {
                 const nMax = getMaximo(ficha, k) || 1;
                 let atu = parseFloat(ficha[k].atual);
                 if (isNaN(atu)) atu = nMax;
+                
                 ficha[k].atual = Math.floor(atu * (nMax / oldM[k]));
+                
                 if (isNaN(ficha[k].atual) || ficha[k].atual < 0 || ficha[k].atual > nMax) {
                     ficha[k].atual = nMax;
                 }
-            }
+            });
         });
 
         salvarFichaSilencioso();
-    }
+    };
 
-    function deletarPoder(id) {
-        if (!confirm('Tem certeza que deseja apagar este poder permanentemente?')) return;
+    const deletarPoder = (id) => {
+        if (!window.confirm('Tem certeza que deseja apagar este poder permanentemente?')) return;
         const p = (minhaFicha.poderes || []).find(po => po.id === id);
+        
         if (p && p.ativa) togglePoder(id);
 
         updateFicha((ficha) => {
             ficha.poderes = (ficha.poderes || []).filter(po => po.id !== id);
         });
+        
         salvarFichaSilencioso();
-    }
+    };
 
     const poderes = minhaFicha.poderes || [];
 
     return (
         <div className="poderes-panel">
-            {/* Create/Edit form */}
             <div className="def-box" ref={formRef} id="form-poder-box">
-                <h3 style={{ color: '#0ff', marginBottom: 10 }} id="titulo-poder-form">
+                <h3 style={{ color: '#0ff', marginBottom: 10 }}>
                     {poderEditandoId ? `Editando: ${nomePoder}` : 'Criar Novo Poder'}
                 </h3>
 
-                <input
-                    className="input-neon"
-                    type="text"
-                    placeholder="Nome do Poder"
-                    value={nomePoder}
-                    onChange={e => setNomePoder(e.target.value)}
-                />
-                <input
-                    className="input-neon"
-                    type="text"
-                    placeholder="URL da Imagem (opcional)"
-                    value={imagemUrl}
-                    onChange={e => setImagemUrl(e.target.value)}
-                    style={{ marginTop: 5 }}
-                />
+                <input className="input-neon" type="text" placeholder="Nome do Poder" value={nomePoder} onChange={e => setNomePoder(e.target.value)} />
+                <input className="input-neon" type="text" placeholder="URL da Imagem (opcional)" value={imagemUrl} onChange={e => setImagemUrl(e.target.value)} style={{ marginTop: 5 }} />
 
-                {/* Add effect */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8, marginTop: 10 }}>
                     <select className="input-neon" value={novoAtr} onChange={e => setNovoAtr(e.target.value)}>
-                        {ATRIBUTO_OPTIONS.map(a => (
-                            <option key={a} value={a}>{a.toUpperCase()}</option>
-                        ))}
+                        {ATRIBUTO_OPTIONS.map(a => <option key={a} value={a}>{a.toUpperCase()}</option>)}
                     </select>
                     <select className="input-neon" value={novoProp} onChange={e => setNovoProp(e.target.value)}>
-                        {PROPRIEDADE_OPTIONS.map(p => (
-                            <option key={p} value={p}>{p.toUpperCase()}</option>
-                        ))}
+                        {PROPRIEDADE_OPTIONS.map(p => <option key={p} value={p}>{p.toUpperCase()}</option>)}
                     </select>
-                    <input
-                        className="input-neon"
-                        type="text"
-                        placeholder="Valor"
-                        value={novoVal}
-                        onChange={e => setNovoVal(e.target.value)}
-                    />
-                    <button className="btn-neon btn-blue" onClick={addEfeitoTemp} style={{ padding: '5px 10px' }}>
-                        + Efeito
-                    </button>
+                    <input className="input-neon" type="text" placeholder="Valor" value={novoVal} onChange={e => setNovoVal(e.target.value)} />
+                    <button className="btn-neon btn-blue" onClick={addEfeitoTemp} style={{ padding: '5px 10px' }}>+ Efeito</button>
                 </div>
 
-                {/* Effects temp list */}
                 <div style={{ marginTop: 10 }}>
                     {efeitosTemp.length === 0 ? (
                         <p style={{ color: '#888', fontSize: '0.9em', margin: 0 }}>Nenhum efeito adicionado.</p>
                     ) : (
                         efeitosTemp.map((e, i) => {
                             const prop = (e.propriedade || '').toLowerCase();
-                            const isMult = (prop === 'mbase' || prop === 'mgeral' || prop === 'mformas' || prop === 'mabs' || prop === 'munico');
-                            const prefixo = isMult ? '(x)' : '(+)';
+                            const isMult = ['mbase', 'mgeral', 'mformas', 'mabs', 'munico'].includes(prop);
                             return (
-                                <div key={i} style={{
-                                    color: '#0ff', fontSize: '0.9em', marginBottom: 5,
-                                    background: 'rgba(0,255,255,0.1)', padding: '5px 10px',
-                                    borderLeft: '2px solid #0ff', display: 'flex', justifyContent: 'space-between'
-                                }}>
-                                    <span>
-                                        [{(e.atributo || '').toUpperCase()}] - [{(e.propriedade || '').toUpperCase()}]:
-                                        <strong style={{ color: '#ffcc00' }}> {prefixo} {e.valor}</strong>
-                                    </span>
-                                    <button
-                                        onClick={() => removerEfeitoTemp(i)}
-                                        style={{ background: 'transparent', color: '#f00', border: 'none', cursor: 'pointer' }}
-                                    >
-                                        X
-                                    </button>
+                                <div key={i} style={{ color: '#0ff', fontSize: '0.9em', marginBottom: 5, background: 'rgba(0,255,255,0.1)', padding: '5px 10px', borderLeft: '2px solid #0ff', display: 'flex', justifyContent: 'space-between' }}>
+                                    <span>[{(e.atributo || '').toUpperCase()}] - [{(e.propriedade || '').toUpperCase()}]: <strong style={{ color: '#ffcc00' }}>{isMult ? '(x)' : '(+)'} {e.valor}</strong></span>
+                                    <button onClick={() => removerEfeitoTemp(i)} style={{ background: 'transparent', color: '#f00', border: 'none', cursor: 'pointer' }}>X</button>
                                 </div>
                             );
                         })
@@ -229,18 +186,11 @@ export default function PoderesPanel() {
                 </div>
 
                 <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
-                    <button className="btn-neon btn-gold" onClick={salvarNovoPoder} style={{ flex: 1 }}>
-                        {poderEditandoId ? 'Salvar Edicao' : 'Salvar Poder'}
-                    </button>
-                    {poderEditandoId && (
-                        <button className="btn-neon btn-red" onClick={cancelarEdicaoPoder} style={{ flex: 1 }}>
-                            Cancelar
-                        </button>
-                    )}
+                    <button className="btn-neon btn-gold" onClick={salvarNovoPoder} style={{ flex: 1 }}>{poderEditandoId ? 'Salvar Edição' : 'Salvar Poder'}</button>
+                    {poderEditandoId && <button className="btn-neon btn-red" onClick={cancelarEdicaoPoder} style={{ flex: 1 }}>Cancelar</button>}
                 </div>
             </div>
 
-            {/* Powers list */}
             <div id="lista-poderes-salvos" style={{ marginTop: 15 }}>
                 {poderes.length === 0 ? (
                     <p style={{ color: '#888' }}>Nenhuma habilidade gravada.</p>
@@ -252,9 +202,8 @@ export default function PoderesPanel() {
                         const txtArr = (p.efeitos || []).map(e => {
                             if (!e) return '';
                             const prop = (e.propriedade || '').toLowerCase();
-                            const isMult = (prop === 'mbase' || prop === 'mgeral' || prop === 'mformas' || prop === 'mabs' || prop === 'munico');
-                            const prefixo = isMult ? 'x' : '+';
-                            return `[${(e.atributo || '').toUpperCase()}] ${(e.propriedade || '').toUpperCase()}: ${prefixo}${e.valor || 0}`;
+                            const isMult = ['mbase', 'mgeral', 'mformas', 'mabs', 'munico'].includes(prop);
+                            return `[${(e.atributo || '').toUpperCase()}] ${(e.propriedade || '').toUpperCase()}: ${isMult ? 'x' : '+'}${e.valor || 0}`;
                         }).filter(Boolean);
 
                         return (
@@ -262,32 +211,12 @@ export default function PoderesPanel() {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 15 }}>
                                     <div>
                                         <h3 style={{ margin: 0, color: c, textShadow: `0 0 10px ${c}` }}>{p.nome || 'Poder'}</h3>
-                                        <p style={{ color: '#aaa', fontSize: '0.85em', margin: '5px 0 0' }}>
-                                            {txtArr.join(' | ') || 'Sem efeitos.'}
-                                        </p>
+                                        <p style={{ color: '#aaa', fontSize: '0.85em', margin: '5px 0 0' }}>{txtArr.join(' | ') || 'Sem efeitos.'}</p>
                                     </div>
                                     <div style={{ display: 'flex', gap: 10 }}>
-                                        <button
-                                            className="btn-neon"
-                                            style={{ borderColor: c, color: c, padding: '5px 15px', fontSize: '1.1em', margin: 0 }}
-                                            onClick={() => togglePoder(p.id)}
-                                        >
-                                            {p.ativa ? 'LIGADO' : 'DESLIGADO'}
-                                        </button>
-                                        <button
-                                            className="btn-neon btn-blue"
-                                            style={{ padding: '5px 15px', fontSize: '1em', margin: 0 }}
-                                            onClick={() => editarPoder(p.id)}
-                                        >
-                                            EDITAR
-                                        </button>
-                                        <button
-                                            className="btn-neon btn-red"
-                                            style={{ padding: '5px 15px', fontSize: '1em', margin: 0 }}
-                                            onClick={() => deletarPoder(p.id)}
-                                        >
-                                            APAGAR
-                                        </button>
+                                        <button className="btn-neon" style={{ borderColor: c, color: c, padding: '5px 15px', fontSize: '1.1em', margin: 0 }} onClick={() => togglePoder(p.id)}>{p.ativa ? 'LIGADO' : 'DESLIGADO'}</button>
+                                        <button className="btn-neon btn-blue" style={{ padding: '5px 15px', fontSize: '1em', margin: 0 }} onClick={() => editarPoder(p.id)}>EDITAR</button>
+                                        <button className="btn-neon btn-red" style={{ padding: '5px 15px', fontSize: '1em', margin: 0 }} onClick={() => deletarPoder(p.id)}>APAGAR</button>
                                     </div>
                                 </div>
                             </div>

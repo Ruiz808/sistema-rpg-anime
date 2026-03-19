@@ -1,19 +1,17 @@
-// ==========================================
-// MOTOR DE ATRIBUTOS — Cálculos sobre a ficha
-// ==========================================
 import { isFisico, isEnergia, tratarUnico } from './utils.js';
 
 export function getBuffs(ficha, statKey) {
     let buffs = { base: 0, mbase: 0, mgeral: 0, mformas: 0, mabs: 0, munico: [], reducaoCusto: 0, regeneracao: 0 };
-    // Rastreador: O personagem ativou algum poder destas categorias?
     let hasBuff = { mbase: false, mgeral: false, mformas: false, mabs: false };
 
-    if (!ficha || !ficha.poderes) {
+    // Blindagem extra de segurança na leitura
+    if (!ficha || !ficha.poderes || !statKey) {
         buffs.mbase = 1.0; buffs.mgeral = 1.0; buffs.mformas = 1.0; buffs.mabs = 1.0;
+        buffs._hasBuff = hasBuff;
         return buffs;
     }
 
-    let sK = statKey.toLowerCase();
+    let sK = String(statKey).toLowerCase();
     let isStatFisico = isFisico(sK);
     let isStatEnergia = isEnergia(sK);
 
@@ -26,6 +24,7 @@ export function getBuffs(ficha, statKey) {
                 let prop = (e.propriedade || '').toLowerCase();
                 let atr = (e.atributo || '').toLowerCase();
                 let val = parseFloat(e.valor);
+                
                 if (isNaN(val)) val = prop.startsWith('m') ? 1.0 : 0;
 
                 let afeta = (atr === sK) ||
@@ -47,21 +46,18 @@ export function getBuffs(ficha, statKey) {
         }
     }
 
-    // Se a categoria NÃO teve nenhum poder ativado, recebe 1.0 para não zerar a multiplicação final
     if (!hasBuff.mbase) buffs.mbase = 1.0;
     if (!hasBuff.mgeral) buffs.mgeral = 1.0;
     if (!hasBuff.mformas) buffs.mformas = 1.0;
     if (!hasBuff.mabs) buffs.mabs = 1.0;
 
-    // Guardamos o rastreador para a próxima etapa da máquina ler
     buffs._hasBuff = hasBuff;
-
     return buffs;
 }
 
 export function getPoderesDefesa(ficha, tipo) {
     let t = 0;
-    if (!ficha.poderes) return 0;
+    if (!ficha || !ficha.poderes) return 0;
     for (let i = 0; i < ficha.poderes.length; i++) {
         let p = ficha.poderes[i];
         if (p && p.ativa && p.efeitos) {
@@ -80,7 +76,6 @@ export function getPoderTotalDaAbaPoderes(ficha, statKey) {
     let mU = 1.0;
     for (let i = 0; i < b.munico.length; i++) mU *= b.munico[i];
 
-    // Mostra exatamente o valor somado da categoria sem invenções matemáticas
     let mB = b._hasBuff.mbase ? b.mbase : 1.0;
     let mG = b._hasBuff.mgeral ? b.mgeral : 1.0;
     let mF = b._hasBuff.mformas ? b.mformas : 1.0;
@@ -102,26 +97,26 @@ export function isStatBuffed(ficha, statKey) {
 }
 
 export function getRawBase(ficha, statKey) {
+    if (!ficha || !statKey) return 0;
     let s = ficha[statKey];
     return (s && s.base) ? parseFloat(s.base) : 0;
 }
 
 export function getEfetivoBase(ficha, statKey) {
-    let s = ficha[statKey];
-    let rawBase = (s && s.base) ? parseFloat(s.base) : 0;
+    let rawBase = getRawBase(ficha, statKey);
     if (isNaN(rawBase)) rawBase = 0;
     return rawBase + getBuffs(ficha, statKey).base;
 }
 
 export function getMultiplicadorTotal(ficha, k) {
+    if (!ficha || !k) return 1.0;
     let s = ficha[k] || {};
     let b = getBuffs(ficha, k);
 
-    // Função inteligente blindada: Só soma se o rastreador confirmar que há buff!
     const calcAdd = (fichaVal, buffSum, hasBuffFlag) => {
         let v = parseFloat(fichaVal) || 1.0;
-        if (!hasBuffFlag) return v; // Se não tem poder ativado, usa a base da ficha (1.0)
-        return (v === 1.0 ? 0 : v) + buffSum; // Se tem poder, anula a base e retorna SÓ o valor exato da soma (120!)
+        if (!hasBuffFlag) return v; 
+        return (v === 1.0 ? 0 : v) + buffSum; 
     };
 
     let mB = calcAdd(s.mBase, b.mbase, b._hasBuff.mbase);
