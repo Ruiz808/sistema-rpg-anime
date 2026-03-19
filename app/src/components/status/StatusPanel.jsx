@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import useStore from '../../stores/useStore';
-import { getMaximo, getEfetivoBase } from '../../core/attributes.js';
+import { getMaximo, getRawBase } from '../../core/attributes.js';
 import { getPrestigioReal, calcPAtual, getRank } from '../../core/prestige.js';
 import { salvarFichaSilencioso } from '../../services/firebase-sync.js';
 
@@ -32,15 +32,27 @@ const safeFn = (fn, fallback) => (...args) => {
 };
 
 const safeGetMaximo = safeFn(getMaximo, 1);
+const safeGetRawBase = safeFn(getRawBase, 0);
 const safeGetPrestigioReal = safeFn(getPrestigioReal, 0);
 const safeCalcPAtual = safeFn(calcPAtual, { valor: 0 });
 const safeGetRank = safeFn(getRank, { l: 'F', c: '#ffffff', a: 1 });
 
-// ---------- EIXOS DO GRÁFICO (Lê os dados editados na aba Ficha) ----------
+// ---------- EIXOS DO GRÁFICO ----------
 const CX = 100, CY = 100, R = 70;
-
-const VITALS_RADAR = ['vida', 'mana', 'aura', 'chakra', 'corpo', 'alma'];
+const VITALS_RADAR = ['vida', 'mana', 'aura', 'chakra', 'corpo', 'status'];
 const VITALS_LABELS = ['VIDA', 'MANA', 'AURA', 'CHAKRA', 'CORPO', 'STATUS'];
+const STATS = ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'];
+
+// Multiplicadores originais da Forja para traduzir a Ficha para o Radar
+const MULTIPLICADORES = {
+    vida: 1000000,
+    mana: 10000000,
+    aura: 10000000,
+    chakra: 10000000,
+    corpo: 10000000,
+    status: 1000
+};
+
 const ANGLES = VITALS_RADAR.map((_, i) => (Math.PI * 2 * i) / 6 - Math.PI / 2);
 
 function hexPoints(cx, cy, r) {
@@ -53,37 +65,37 @@ function radarPoint(cx, cy, r, idx, frac) {
     return [cx + r * safeFrac * Math.cos(a), cy + r * safeFrac * Math.sin(a)];
 }
 
-// ---------- Componente do Gráfico Radar ----------
+// ---------- Componente do Gráfico Radar (Agora Sincronizado com a Ficha) ----------
 function RadarChart({ ficha, isAtual }) {
     const LIMIT = 100; 
 
+    // Função que recalcula o Prestígio usando a mesma lógica exata da Tabela
+    const getBasePFor = (k) => {
+        if (k === 'status') {
+            let m = 0;
+            for (let j = 0; j < STATS.length; j++) m += safeGetRawBase(ficha, STATS[j]);
+            return Math.floor((m / 8) / MULTIPLICADORES.status);
+        }
+        return safeGetPrestigioReal(k, safeGetRawBase(ficha, k));
+    };
+
     const chartValues = VITALS_RADAR.map((k) => {
-        const rawMax = safeGetMaximo(ficha, k);
-        const calcBaseP = safeGetPrestigioReal(k, rawMax);
-        // Lê o prestigio configurado lá na aba Ficha
-        const baseP = ficha[k]?.prestigioBase !== undefined && ficha[k]?.prestigioBase !== null 
-            ? Number(ficha[k].prestigioBase) 
-            : calcBaseP;
-        
+        const baseP = getBasePFor(k);
         if (!isAtual) return baseP;
         
-        const pAtual = safeCalcPAtual(ficha, k, baseP);
-        return pAtual.valor;
+        const keyForCalc = k === 'status' ? 'alma' : k;
+        const pAtual = safeCalcPAtual(ficha, keyForCalc, baseP);
+        return pAtual?.valor || baseP;
     });
 
     const dataPoints = chartValues.map((v, i) => radarPoint(CX, CY, R, i, Math.min((v || 0) / LIMIT, 1)));
     const dataPoly = dataPoints.map((p) => `${p[0] || 0},${p[1] || 0}`).join(' ');
 
     const rankInfos = VITALS_RADAR.map((k) => {
-        const rawMax = safeGetMaximo(ficha, k);
-        const calcBaseP = safeGetPrestigioReal(k, rawMax);
-        const baseP = ficha[k]?.prestigioBase !== undefined && ficha[k]?.prestigioBase !== null 
-            ? Number(ficha[k].prestigioBase) 
-            : calcBaseP;
-        
-        const pAtual = safeCalcPAtual(ficha, k, baseP) || { valor: baseP };
-        // Lê a ascensão configurada na aba Ficha
-        return safeGetRank(pAtual.valor, ficha?.ascensaoBase || 0);
+        const baseP = getBasePFor(k);
+        const keyForCalc = k === 'status' ? 'alma' : k;
+        const pAtualObj = safeCalcPAtual(ficha, keyForCalc, baseP) || { valor: baseP };
+        return safeGetRank(pAtualObj.valor, ficha?.ascensaoBase || 0);
     });
 
     const labelR = R + 15;
@@ -101,9 +113,10 @@ function RadarChart({ ficha, isAtual }) {
             {ANGLES.map((a, i) => (
                 <line key={i} x1={CX} y1={CY} x2={CX + R * Math.cos(a)} y2={CY + R * Math.sin(a)} stroke="rgba(255,255,255,0.15)" strokeWidth="1" strokeDasharray="4" />
             ))}
-            <polygon points={dataPoly} fill={polyColor} stroke={strokeColor} strokeWidth="2" style={{ transition: 'all 0.4s ease-out' }} />
+            {/* ANIMAÇÃO DE REDIMENSIONAMENTO FLUIDO */}
+            <polygon points={dataPoly} fill={polyColor} stroke={strokeColor} strokeWidth="2" style={{ transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)' }} />
             {dataPoints.map(([x, y], i) => (
-                <circle key={i} cx={x || 0} cy={y || 0} r="3" fill={strokeColor} style={{ transition: 'all 0.4s ease-out' }} />
+                <circle key={i} cx={x || 0} cy={y || 0} r="3" fill={strokeColor} style={{ transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)' }} />
             ))}
             {VITALS_LABELS.map((lbl, i) => {
                 const [lx, ly] = labelPos[i];
@@ -118,7 +131,7 @@ function RadarChart({ ficha, isAtual }) {
     );
 }
 
-// ---------- Componente Interno ----------
+// ---------- Componente Interno Principal ----------
 function StatusPanelCore() {
     const ficha = useStore((s) => s.minhaFicha);
     const updateFicha = useStore((s) => s.updateFicha);
@@ -150,7 +163,6 @@ function StatusPanelCore() {
         inicializado.current = true;
     }, [ficha, updateFicha, vitalsBars]);
 
-    // Ações de Combate (Essas sim salvam a ficha pois alteram o HP)
     const alterarHP = useCallback((tipo) => {
         const valor = parseInt(inputDano) || 0;
         if (valor <= 0) return;
