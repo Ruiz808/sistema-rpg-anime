@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import useStore from '../../stores/useStore';
-import { getRawBase, getMultiplicadorTotal } from '../../core/attributes.js';
+import { getRawBase } from '../../core/attributes.js';
 import { getPrestigioReal, getRank } from '../../core/prestige.js';
 import { salvarFichaSilencioso } from '../../services/firebase-sync.js';
 
@@ -26,79 +26,54 @@ const MULTIPLICADORES = {
     chakra: 10000000, corpo: 10000000, status: 1000
 };
 
-// --- O SCANNER DEFINITIVO DE FORMAS (Caça-Buffs Dinâmicos) ---
-function getEfetivoMFormas(ficha, k) {
-    const anchor = k === 'status' ? 'forca' : k;
-    let val = 1;
-    
-    // 1. Tenta a função oficial (se ela retornar o objeto completo)
-    try {
-        const mults = getMultiplicadorTotal(ficha, anchor);
-        if (mults && typeof mults === 'object' && mults.mFormas !== undefined) {
-            val = Math.max(val, parseFloat(mults.mFormas));
-        }
-    } catch(e) {}
+// --- CAÇA-FORMAS GLOBAL (Busca Implacável) ---
+function getGlobalMFormas(ficha) {
+    let maxM = 1;
+    if (!ficha) return maxM;
 
-    // 2. Extrai do texto do Buff Ativo (ex: "[VIDA] MFORMAS: x60" do Modo Assalto)
-    const regexExtract = (conteudo) => {
-        if (!conteudo) return;
-        let texto = '';
-        if (typeof conteudo === 'string') texto = conteudo;
-        else if (Array.isArray(conteudo)) texto = conteudo.join(' | ');
-        else { try { texto = JSON.stringify(conteudo); } catch(e) { return; } }
+    // 1. Busca Direta nos Atributos (Caso altere via Editor de Atributos)
+    const allKeys = [...STATS, 'vida', 'mana', 'aura', 'chakra', 'corpo'];
+    for (let k of allKeys) {
+        if (ficha[k]?.mFormas) {
+            const val = parseFloat(ficha[k].mFormas);
+            if (!Number.isNaN(val) && val > maxM) maxM = val;
+        }
+    }
+
+    // 2. Busca Profunda (Rastreia TODOS os Buffs, Modos e Transformações Ativos)
+    const searchDeep = (obj) => {
+        if (!obj || typeof obj !== 'object') return;
         
-        const str = texto.toUpperCase();
-        const matches = str.matchAll(/\[(.*?)\] MFORMAS:\s*[X]?(\d+(\.\d+)?)/g);
-        for (const match of matches) {
-            const alvo = match[1];
-            const num = parseFloat(match[2]);
-            if (alvo.includes(anchor.toUpperCase()) || alvo.includes('TODOS STATUS') || alvo.includes('TODAS ENERGIAS') || alvo.includes('GERAL')) {
-                val = Math.max(val, num);
+        // Se a gaveta estiver ligada/ativa, escaneia o texto completo dela
+        if (obj.ligado === true || obj.ativo === true || obj.equipado === true) {
+            const str = JSON.stringify(obj).toUpperCase();
+            // Procura o padrão "MFORMAS: x60" ou "MFORMAS: 60"
+            const matches = str.matchAll(/MFORMAS[^0-9]*(\d+(\.\d+)?)/g);
+            for (const match of matches) {
+                const val = parseFloat(match[1]);
+                if (!Number.isNaN(val) && val > maxM) maxM = val;
             }
         }
-    };
-
-    const scanGavetas = (gaveta) => {
-        if (!gaveta) return;
-        Object.values(gaveta).forEach(item => {
-            if (item.ligado || item.ativo) {
-                regexExtract(item.descricao);
-                regexExtract(item.texto);
-                regexExtract(item.efeitos);
-                
-                if (Array.isArray(item.efeitos)) {
-                    item.efeitos.forEach(ef => {
-                        if (typeof ef === 'object' && ef !== null) {
-                            const target = String(ef.alvo || ef.atributo || '').toUpperCase();
-                            if ((target.includes(anchor.toUpperCase()) || target.includes('TODOS')) && (ef.tipo === 'mFormas' || ef.chave === 'mFormas')) {
-                                val = Math.max(val, parseFloat(ef.valor) || 1);
-                            }
-                        }
-                    });
-                }
-            }
+        
+        // Continua a mergulhar nas pastas da ficha
+        Object.values(obj).forEach(val => {
+            if (val && typeof val === 'object') searchDeep(val);
         });
     };
-
-    // Vasculha todos os locais onde os buffs/modos do RPG podem estar
-    scanGavetas(ficha.buffs);
-    scanGavetas(ficha.modos);
-    scanGavetas(ficha.transformacoes);
-    scanGavetas(ficha.habilidades);
-    scanGavetas(ficha.poderes);
-
-    // Fallback para o atributo puro
-    const puro = parseFloat(ficha[anchor]?.mFormas) || 1;
-    return Math.max(val, puro);
+    
+    searchDeep(ficha);
+    return maxM;
 }
 
-// A REGRA DE OURO: Atual = Base * (Forma / 10)
-function calcularPrestAtual(ficha, attrKey, baseP) {
-    const mFormas = getEfetivoMFormas(ficha, attrKey);
-    const multForma = mFormas >= 10 ? (mFormas / 10) : 1;
+// --- REGRA DE OURO: Atual = Base * (Forma / 10) ---
+function calcularPrestAtual(ficha, baseP) {
+    const mFormas = getGlobalMFormas(ficha);
+    // Se a forma for 50 -> 50/10 = 5. Se a forma for menor que 10, mantem x1.
+    const multForma = Math.max(1, mFormas / 10);
     return Math.floor(baseP * multForma);
 }
 
+// LÓGICA DO BASE PURO
 const getBasePFor = (ficha, k) => {
     if (k === 'status') {
         let m = 0;
@@ -192,7 +167,7 @@ export default function TabelaPrestigio() {
                     <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                         {VITALS_KEYS.map((attrKey, i) => {
                             const calcBaseP = getBasePFor(ficha, attrKey);
-                            const pAtualValor = calcularPrestAtual(ficha, attrKey, calcBaseP);
+                            const pAtualValor = calcularPrestAtual(ficha, calcBaseP);
                             const rankInfo = safeGetRank(pAtualValor, ficha.ascensaoBase || 1);
 
                             return (

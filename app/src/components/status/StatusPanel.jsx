@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import useStore from '../../stores/useStore';
-import { getMaximo, getRawBase, getMultiplicadorTotal } from '../../core/attributes.js';
+import { getMaximo, getRawBase } from '../../core/attributes.js';
 import { getPrestigioReal, getRank } from '../../core/prestige.js';
 import { salvarFichaSilencioso } from '../../services/firebase-sync.js';
 
@@ -40,61 +40,41 @@ function radarPoint(cx, cy, r, idx, frac) {
     return [cx + r * safeFrac * Math.cos(a), cy + r * safeFrac * Math.sin(a)];
 }
 
-// --- SCANNER DEFINITIVO NO GRÁFICO RADAR ---
-function getEfetivoMFormas(ficha, k) {
-    const anchor = k === 'status' ? 'forca' : k;
-    let val = 1;
-    
-    try {
-        const mults = getMultiplicadorTotal(ficha, anchor);
-        if (mults && typeof mults === 'object' && mults.mFormas !== undefined) val = Math.max(val, parseFloat(mults.mFormas));
-    } catch(e) {}
+// --- SCANNER GLOBAL NO GRÁFICO RADAR ---
+function getGlobalMFormas(ficha) {
+    let maxM = 1;
+    if (!ficha) return maxM;
 
-    const regexExtract = (conteudo) => {
-        if (!conteudo) return;
-        let texto = '';
-        if (typeof conteudo === 'string') texto = conteudo;
-        else if (Array.isArray(conteudo)) texto = conteudo.join(' | ');
-        else { try { texto = JSON.stringify(conteudo); } catch(e) { return; } }
-        
-        const str = texto.toUpperCase();
-        const matches = str.matchAll(/\[(.*?)\] MFORMAS:\s*[X]?(\d+(\.\d+)?)/g);
-        for (const match of matches) {
-            const alvo = match[1];
-            const num = parseFloat(match[2]);
-            if (alvo.includes(anchor.toUpperCase()) || alvo.includes('TODOS STATUS') || alvo.includes('TODAS ENERGIAS') || alvo.includes('GERAL')) {
-                val = Math.max(val, num);
+    const allKeys = [...STATS, 'vida', 'mana', 'aura', 'chakra', 'corpo'];
+    for (let k of allKeys) {
+        if (ficha[k]?.mFormas) {
+            const val = parseFloat(ficha[k].mFormas);
+            if (!Number.isNaN(val) && val > maxM) maxM = val;
+        }
+    }
+
+    const searchDeep = (obj) => {
+        if (!obj || typeof obj !== 'object') return;
+        if (obj.ligado === true || obj.ativo === true || obj.equipado === true) {
+            const str = JSON.stringify(obj).toUpperCase();
+            const matches = str.matchAll(/MFORMAS[^0-9]*(\d+(\.\d+)?)/g);
+            for (const match of matches) {
+                const val = parseFloat(match[1]);
+                if (!Number.isNaN(val) && val > maxM) maxM = val;
             }
         }
-    };
-
-    const scanGavetas = (gaveta) => {
-        if (!gaveta) return;
-        Object.values(gaveta).forEach(item => {
-            if (item.ligado || item.ativo) {
-                regexExtract(item.descricao); regexExtract(item.texto); regexExtract(item.efeitos);
-                if (Array.isArray(item.efeitos)) {
-                    item.efeitos.forEach(ef => {
-                        if (typeof ef === 'object' && ef !== null) {
-                            const target = String(ef.alvo || ef.atributo || '').toUpperCase();
-                            if ((target.includes(anchor.toUpperCase()) || target.includes('TODOS')) && (ef.tipo === 'mFormas' || ef.chave === 'mFormas')) {
-                                val = Math.max(val, parseFloat(ef.valor) || 1);
-                            }
-                        }
-                    });
-                }
-            }
+        Object.values(obj).forEach(val => {
+            if (val && typeof val === 'object') searchDeep(val);
         });
     };
-
-    scanGavetas(ficha.buffs); scanGavetas(ficha.modos); scanGavetas(ficha.transformacoes); scanGavetas(ficha.habilidades); scanGavetas(ficha.poderes);
-    const puro = parseFloat(ficha[anchor]?.mFormas) || 1;
-    return Math.max(val, puro);
+    
+    searchDeep(ficha);
+    return maxM;
 }
 
-function calcularPrestAtual(ficha, attrKey, baseP) {
-    const mFormas = getEfetivoMFormas(ficha, attrKey);
-    const multForma = mFormas >= 10 ? (mFormas / 10) : 1;
+function calcularPrestAtual(ficha, baseP) {
+    const mFormas = getGlobalMFormas(ficha);
+    const multForma = Math.max(1, mFormas / 10);
     return Math.floor(baseP * multForma);
 }
 
@@ -112,7 +92,7 @@ function RadarChart({ ficha, isAtual }) {
 
     const chartValues = VITALS_RADAR.map((k) => {
         const baseP = getBasePFor(ficha, k);
-        return isAtual ? calcularPrestAtual(ficha, k, baseP) : baseP;
+        return isAtual ? calcularPrestAtual(ficha, baseP) : baseP;
     });
 
     const dataPoints = chartValues.map((v, i) => radarPoint(CX, CY, R, i, Math.min((v || 0) / LIMIT, 1)));
@@ -120,7 +100,7 @@ function RadarChart({ ficha, isAtual }) {
 
     const rankInfos = VITALS_RADAR.map((k) => {
         const baseP = getBasePFor(ficha, k);
-        const pAtualValor = isAtual ? calcularPrestAtual(ficha, k, baseP) : baseP;
+        const pAtualValor = isAtual ? calcularPrestAtual(ficha, baseP) : baseP;
         return safeGetRank(pAtualValor, ficha?.ascensaoBase || 1);
     });
 
