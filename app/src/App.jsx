@@ -16,7 +16,7 @@ import ElementosPanel from './components/arsenal/ElementosPanel'
 import FeedCombate from './components/feed/FeedCombate'
 import MapaPanel from './components/mapa/MapaPanel'
 import NarrativaPanel from './components/narrativa/NarrativaPanel'
-import Jukebox from './components/Jukebox' // <-- Importamos a nossa Mesa de Som aqui!
+import Jukebox from './components/jukebox/Jukebox'
 import { carregarFichaDoFirebase } from './services/firebase-sync'
 
 function MestrePanel() {
