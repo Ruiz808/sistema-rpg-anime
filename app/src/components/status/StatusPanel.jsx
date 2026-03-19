@@ -139,52 +139,11 @@ function RadarChart({ ficha, isAtual }) {
 // --- MOTOR DE COMPRESSÃO DE VITALIDADE ---
 function calcVitalScale(rawMx, key) {
     if (!rawMx || rawMx <= 0) return { p: 0, mxDisplay: 0 };
-    // Vida suporta 8 dígitos. Energias suportam 9 dígitos.
     const limit = key === 'vida' ? 8 : 9;
     const strMx = Math.floor(rawMx).toString();
     const p = Math.max(0, strMx.length - limit);
     const mxDisplay = p > 0 ? Math.floor(rawMx / Math.pow(10, p)) : Math.floor(rawMx);
     return { p, mxDisplay };
-}
-
-// --- NOVO COMPONENTE VISUAL DE VITALIDADE (Sua Imagem Replicada) ---
-function VitalityBlocks({ p, color }) {
-    if (!p || p <= 0) return null;
-    
-    // Gera uma lista de números baseados em P (Ex: se p=2, lista é [2, 2])
-    const blockList = Array.from({ length: p }, () => p);
-    
-    // Borda Neon Vermelha do Exemplo
-    const redNeonBorder = '4px solid #ff0000';
-    const redNeonShadow = '0 0 10px #ff0000, inset 0 0 5px rgba(255,0,0,0.5)';
-
-    return (
-        <div style={{ display: 'flex', gap: '8px', marginRight: '12px', alignItems: 'center' }}>
-            {blockList.map((num, index) => (
-                <div 
-                    key={index} 
-                    style={{
-                        width: '32px',
-                        height: '32px',
-                        background: 'rgba(20, 0, 0, 0.8)', // Fundo escuro
-                        border: redNeonBorder,             // Borda grossa vermelha
-                        boxShadow: redNeonShadow,          // Neon Red
-                        borderRadius: '4px',               // Levemente arredondado
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#fff',                     // Número Branco
-                        fontFamily: 'arial, sans-serif',
-                        fontSize: '20px',
-                        fontWeight: 'bold',
-                        transition: 'all 0.3s ease'
-                    }}
-                >
-                    {num}
-                </div>
-            ))}
-        </div>
-    );
 }
 
 function StatusPanelCore() {
@@ -287,18 +246,44 @@ function StatusPanelCore() {
                     
                     const percent = Number.isNaN(atual / mxDisplay) ? 0 : Math.min((atual / mxDisplay) * 100, 100);
 
+                    // --- SÍMBOLO VISUAL TÁTICO CONFORME A IMAGEM (Apenas para Vida) ---
+                    const vitalitySymbol = (p > 0 && key === 'vida') ? (
+                        <div style={{
+                            position: 'absolute',
+                            left: '8px',
+                            zIndex: 3,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '32px',
+                            height: '32px',
+                            background: 'rgba(20, 0, 0, 0.9)', // Fundo escuro
+                            border: '3px solid #ff0000', // Neon vermelho conforme imagem
+                            boxShadow: '0 0 10px #ff0000, inset 0 0 5px rgba(255,0,0,0.5)',
+                            borderRadius: '4px',
+                            color: '#fff',
+                            fontWeight: 'bold',
+                            fontSize: '18px',
+                            fontFamily: 'arial, sans-serif',
+                            textShadow: '0 0 5px #ff0000'
+                        }}>
+                            {p}
+                        </div>
+                    ) : null;
+
                     return (
                         <div key={key} className="vital-container" style={gridStyle}>
                             <div className={`vital-label ${classColor}`}>{label} {extra && <span style={{fontSize: '0.8em', color: '#aaa'}}>{extra}</span>}</div>
                             
-                            {/* AJUSTE NA ALTURA DA BARRA PARA ACOMODAR OS BLOCOS */}
-                            <div className="bar-bg" style={{ height: '40px', display: 'flex', alignItems: 'center', padding: '0 10px', transition: 'all 0.3s ease' }}>
-                                <div className="bar-fill" style={{ width: `${percent}%`, backgroundColor: color, height: '100%' }}></div>
+                            <div className="bar-bg" style={{ position: 'relative', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                {/* BARRA FLUIDA */}
+                                <div className="bar-fill" style={{ width: `${percent}%`, backgroundColor: color, position: 'absolute', left: 0, top: 0, height: '100%', borderRadius: 'inherit' }}></div>
                                 
-                                <div className="bar-text" style={{ display: 'flex', alignItems: 'center', width: '100%', zIndex: 2, height: '100%', justifyContent: 'flex-start' }}>
-                                    {/* INSERINDO OS BLOCOS VISUAIS NEON */}
-                                    <VitalityBlocks p={p} color={color} />
-                                    
+                                {/* SÍMBOLO VISUAL (Fixo na esquerda, apenas para a Vida) */}
+                                {vitalitySymbol}
+                                
+                                {/* NÚMEROS (Perfeitamente no Centro, zIndex maior que a barra) */}
+                                <div className="bar-text" style={{ position: 'relative', zIndex: 2, width: '100%', textAlign: 'center', textShadow: '1px 1px 3px #000, -1px -1px 3px #000' }}>
                                     <span style={{ fontSize: '1.2em', fontWeight: 'bold' }}>
                                         {Math.floor(atual).toLocaleString('pt-BR')} / {mxDisplay.toLocaleString('pt-BR')}
                                     </span>
