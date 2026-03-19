@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import useStore from '../../stores/useStore';
 import { getRawBase } from '../../core/attributes.js';
-import { getPrestigioReal, calcPAtual, getRank } from '../../core/prestige.js';
+import { getPrestigioReal, getRank } from '../../core/prestige.js';
 import { salvarFichaSilencioso } from '../../services/firebase-sync.js';
 
 // --- SAFE MATH HELPERS ---
@@ -15,27 +15,36 @@ const safeFn = (fn, fallback) => (...args) => {
 
 const safeGetRawBase = safeFn(getRawBase, 0);
 const safeGetPrestigioReal = safeFn(getPrestigioReal, 0);
-const safeCalcPAtual = safeFn(calcPAtual, { valor: 0 });
 const safeGetRank = safeFn(getRank, { l: 'F', c: '#ffffff', a: 1 });
 
 const VITALS_KEYS = ['vida', 'mana', 'aura', 'chakra', 'corpo', 'status'];
 const VITALS_LABELS = ['VIDA', 'MANA', 'AURA', 'CHAKRA', 'CORPO', 'STATUS'];
 const STATS = ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'];
 
-// LÓGICA CENTRAL DO SEU MOTOR
+const MULTIPLICADORES = {
+    vida: 1000000, mana: 10000000, aura: 10000000,
+    chakra: 10000000, corpo: 10000000, status: 1000
+};
+
+// --- A REGRA DE OURO DAS FORMAS (Sua Matemática Exata) ---
+function calcularPrestAtual(ficha, attrKey, baseP) {
+    // Status e Vida leem a forma a partir do atributo principal de combate
+    const anchor = attrKey === 'status' ? 'forca' : attrKey;
+    const mFormas = parseFloat(ficha[anchor]?.mFormas) || 1;
+    
+    // Multiplica pela Forma / 10 (mínimo de 1x para não diminuir se estiver sem forma)
+    const multForma = Math.max(1, mFormas / 10);
+    return Math.floor(baseP * multForma);
+}
+
+// LÓGICA DO BASE
 const getBasePFor = (ficha, k) => {
     if (k === 'status') {
         let m = 0;
         STATS.forEach(s => m += safeGetRawBase(ficha, s));
-        return Math.floor((m / 8) / 1000); // Tabela Original
+        return Math.floor((m / 8) / 1000);
     }
     return safeGetPrestigioReal(k, safeGetRawBase(ficha, k));
-};
-
-const getAtualPObjFor = (ficha, k, baseP) => {
-    // Para o "Status", lemos o mFormas da "forca" para o calcPAtual funcionar!
-    const keyForCalc = k === 'status' ? 'forca' : k;
-    return safeCalcPAtual(ficha, keyForCalc, baseP) || { valor: baseP };
 };
 
 export default function TabelaPrestigio() {
@@ -72,7 +81,7 @@ export default function TabelaPrestigio() {
                         <input 
                             type="number" 
                             className="prestige-input-base" 
-                            value={ficha.ascensaoBase || 0} 
+                            value={ficha.ascensaoBase || 1} 
                             onChange={(e) => {
                                 updateFicha(f => { f.ascensaoBase = Number(e.target.value) });
                             }} 
@@ -123,20 +132,22 @@ export default function TabelaPrestigio() {
                     </div>
                 </div>
 
-                {/* PRESTÍGIO ATUAL (Alimentado pelas Formas) */}
+                {/* PRESTÍGIO ATUAL */}
                 <div className="tabela-prestigio atual">
                     <h4 className="prestige-title-atual">PRESTÍGIO ATUAL</h4>
                     <div className="prestige-ascension-box">
                         <label className="text-white-md" style={{ display: 'block', marginBottom: '5px' }}>Ascensão Efetiva:</label>
-                        <div className="prestige-display-atual">{ficha.ascensaoBase || 0}</div>
+                        <div className="prestige-display-atual">{ficha.ascensaoBase || 1}</div>
                     </div>
                     <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                         {VITALS_KEYS.map((attrKey, i) => {
                             const calcBaseP = getBasePFor(ficha, attrKey);
                             
-                            // A Mágica de verdade: O seu 'calcPAtual' e 'getRank' fazem tudo sozinhos!
-                            const pAtualObj = getAtualPObjFor(ficha, attrKey, calcBaseP);
-                            const rankInfo = safeGetRank(pAtualObj.valor, ficha.ascensaoBase || 0);
+                            // Calcula o PAtual matematicamente perfeito
+                            const pAtualValor = calcularPrestAtual(ficha, attrKey, calcBaseP);
+                            
+                            // O motor do getRank calcula a ascensão sozinho em cima do valor gigante
+                            const rankInfo = safeGetRank(pAtualValor, ficha.ascensaoBase || 1);
 
                             return (
                                 <div key={attrKey}>
@@ -145,7 +156,7 @@ export default function TabelaPrestigio() {
                                         <span style={{ color: rankInfo.c || '#fff', fontWeight: 'bold' }}>Rank {rankInfo.l || 'F'} [A{rankInfo.a || 1}]</span>
                                     </div>
                                     <div className="prestige-display-atual">
-                                        {Math.floor(pAtualObj.valor || 0).toLocaleString('pt-BR')}
+                                        {pAtualValor.toLocaleString('pt-BR')}
                                     </div>
                                 </div>
                             );

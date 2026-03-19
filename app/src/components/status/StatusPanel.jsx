@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import useStore from '../../stores/useStore';
 import { getMaximo, getRawBase } from '../../core/attributes.js';
-import { getPrestigioReal, calcPAtual, getRank } from '../../core/prestige.js';
+import { getPrestigioReal, getRank } from '../../core/prestige.js';
 import { salvarFichaSilencioso } from '../../services/firebase-sync.js';
 
 class StatusErrorBoundary extends React.Component {
@@ -31,7 +31,6 @@ const safeFn = (fn, fallback) => (...args) => {
 const safeGetMaximo = safeFn(getMaximo, 1);
 const safeGetRawBase = safeFn(getRawBase, 0);
 const safeGetPrestigioReal = safeFn(getPrestigioReal, 0);
-const safeCalcPAtual = safeFn(calcPAtual, { valor: 0 });
 const safeGetRank = safeFn(getRank, { l: 'F', c: '#ffffff', a: 1 });
 
 const CX = 100, CY = 100, R = 70;
@@ -51,7 +50,14 @@ function radarPoint(cx, cy, r, idx, frac) {
     return [cx + r * safeFrac * Math.cos(a), cy + r * safeFrac * Math.sin(a)];
 }
 
-// LÓGICA CENTRAL DO SEU MOTOR
+// --- REGRA DE OURO INJETADA NO GRÁFICO ---
+function calcularPrestAtual(ficha, attrKey, baseP) {
+    const anchor = attrKey === 'status' ? 'forca' : attrKey;
+    const mFormas = parseFloat(ficha[anchor]?.mFormas) || 1;
+    const multForma = Math.max(1, mFormas / 10);
+    return Math.floor(baseP * multForma);
+}
+
 const getBasePFor = (ficha, k) => {
     if (k === 'status') {
         let m = 0;
@@ -61,11 +67,6 @@ const getBasePFor = (ficha, k) => {
     return safeGetPrestigioReal(k, safeGetRawBase(ficha, k));
 };
 
-const getAtualPObjFor = (ficha, k, baseP) => {
-    const keyForCalc = k === 'status' ? 'forca' : k;
-    return safeCalcPAtual(ficha, keyForCalc, baseP) || { valor: baseP };
-};
-
 function RadarChart({ ficha, isAtual }) {
     const LIMIT = 100; 
 
@@ -73,7 +74,7 @@ function RadarChart({ ficha, isAtual }) {
         const baseP = getBasePFor(ficha, k);
         if (!isAtual) return baseP;
         
-        return getAtualPObjFor(ficha, k, baseP).valor;
+        return calcularPrestAtual(ficha, k, baseP);
     });
 
     const dataPoints = chartValues.map((v, i) => radarPoint(CX, CY, R, i, Math.min((v || 0) / LIMIT, 1)));
@@ -81,9 +82,9 @@ function RadarChart({ ficha, isAtual }) {
 
     const rankInfos = VITALS_RADAR.map((k) => {
         const baseP = getBasePFor(ficha, k);
-        const pAtualValor = isAtual ? getAtualPObjFor(ficha, k, baseP).valor : baseP;
+        const pAtualValor = isAtual ? calcularPrestAtual(ficha, k, baseP) : baseP;
         
-        return safeGetRank(pAtualValor, ficha?.ascensaoBase || 0);
+        return safeGetRank(pAtualValor, ficha?.ascensaoBase || 1);
     });
 
     const labelR = R + 15;
