@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import useStore from '../../stores/useStore';
-import { getMaximo, getEfetivoBase } from '../../core/attributes.js';
-import { getPrestigioReal, getRank } from '../../core/prestige.js';
+import { getMaximo, getRawBase } from '../../core/attributes.js';
+import { getPrestigioReal, calcPAtual, getRank } from '../../core/prestige.js';
 import { salvarFichaSilencioso } from '../../services/firebase-sync.js';
 
 class StatusErrorBoundary extends React.Component {
@@ -29,19 +29,15 @@ const safeFn = (fn, fallback) => (...args) => {
 };
 
 const safeGetMaximo = safeFn(getMaximo, 1);
-const safeGetEfetivoBase = safeFn(getEfetivoBase, 0);
+const safeGetRawBase = safeFn(getRawBase, 0);
 const safeGetPrestigioReal = safeFn(getPrestigioReal, 0);
+const safeCalcPAtual = safeFn(calcPAtual, { valor: 0 });
 const safeGetRank = safeFn(getRank, { l: 'F', c: '#ffffff', a: 1 });
 
 const CX = 100, CY = 100, R = 70;
 const VITALS_RADAR = ['vida', 'mana', 'aura', 'chakra', 'corpo', 'status'];
 const VITALS_LABELS = ['VIDA', 'MANA', 'AURA', 'CHAKRA', 'CORPO', 'STATUS'];
 const STATS = ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'];
-
-const MULTIPLICADORES = {
-    vida: 1000000, mana: 10000000, aura: 10000000,
-    chakra: 10000000, corpo: 10000000, status: 1000
-};
 
 const ANGLES = VITALS_RADAR.map((_, i) => (Math.PI * 2 * i) / 6 - Math.PI / 2);
 
@@ -55,50 +51,38 @@ function radarPoint(cx, cy, r, idx, frac) {
     return [cx + r * safeFrac * Math.cos(a), cy + r * safeFrac * Math.sin(a)];
 }
 
-// --- MOTOR DA REGRA DE OURO INJETADO NO GRÁFICO ---
-function getFormaMultiplier(ficha, attrKey) {
-    const anchor = attrKey === 'status' ? 'forca' : attrKey;
-    return parseFloat(ficha[anchor]?.mFormas) || 1;
-}
+// LÓGICA CENTRAL DO SEU MOTOR
+const getBasePFor = (ficha, k) => {
+    if (k === 'status') {
+        let m = 0;
+        STATS.forEach(s => m += safeGetRawBase(ficha, s));
+        return Math.floor((m / 8) / 1000);
+    }
+    return safeGetPrestigioReal(k, safeGetRawBase(ficha, k));
+};
 
-function getPAtualValue(baseP, mFormas) {
-    const multForma = mFormas >= 10 ? (mFormas / 10) : 1;
-    return Math.floor(baseP * multForma);
-}
+const getAtualPObjFor = (ficha, k, baseP) => {
+    const keyForCalc = k === 'status' ? 'forca' : k;
+    return safeCalcPAtual(ficha, keyForCalc, baseP) || { valor: baseP };
+};
 
 function RadarChart({ ficha, isAtual }) {
     const LIMIT = 100; 
 
-    const getBasePFor = (k) => {
-        if (k === 'status') {
-            let m = 0;
-            STATS.forEach(s => m += safeGetEfetivoBase(ficha, s));
-            return Math.floor((m / 8) / MULTIPLICADORES.status);
-        }
-        return safeGetPrestigioReal(k, safeGetEfetivoBase(ficha, k));
-    };
-
     const chartValues = VITALS_RADAR.map((k) => {
-        const baseP = getBasePFor(k);
+        const baseP = getBasePFor(ficha, k);
         if (!isAtual) return baseP;
         
-        const mFormas = getFormaMultiplier(ficha, k);
-        return getPAtualValue(baseP, mFormas);
+        return getAtualPObjFor(ficha, k, baseP).valor;
     });
 
     const dataPoints = chartValues.map((v, i) => radarPoint(CX, CY, R, i, Math.min((v || 0) / LIMIT, 1)));
     const dataPoly = dataPoints.map((p) => `${p[0] || 0},${p[1] || 0}`).join(' ');
 
     const rankInfos = VITALS_RADAR.map((k) => {
-        const baseP = getBasePFor(k);
-        let pAtualValor = baseP;
-
-        if (isAtual) {
-            const mFormas = getFormaMultiplier(ficha, k);
-            pAtualValor = getPAtualValue(baseP, mFormas);
-        }
+        const baseP = getBasePFor(ficha, k);
+        const pAtualValor = isAtual ? getAtualPObjFor(ficha, k, baseP).valor : baseP;
         
-        // Passa o Prestígio Multiplicado diretamente ao getRank e deixa-o decidir o Nível!
         return safeGetRank(pAtualValor, ficha?.ascensaoBase || 0);
     });
 

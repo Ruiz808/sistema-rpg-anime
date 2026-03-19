@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import useStore from '../../stores/useStore';
-import { getEfetivoBase } from '../../core/attributes.js';
-import { getPrestigioReal, getRank } from '../../core/prestige.js';
+import { getRawBase } from '../../core/attributes.js';
+import { getPrestigioReal, calcPAtual, getRank } from '../../core/prestige.js';
 import { salvarFichaSilencioso } from '../../services/firebase-sync.js';
 
 // --- SAFE MATH HELPERS ---
@@ -13,30 +13,30 @@ const safeFn = (fn, fallback) => (...args) => {
     } catch (e) { return fallback; }
 };
 
-const safeGetEfetivoBase = safeFn(getEfetivoBase, 0);
+const safeGetRawBase = safeFn(getRawBase, 0);
 const safeGetPrestigioReal = safeFn(getPrestigioReal, 0);
+const safeCalcPAtual = safeFn(calcPAtual, { valor: 0 });
 const safeGetRank = safeFn(getRank, { l: 'F', c: '#ffffff', a: 1 });
 
 const VITALS_KEYS = ['vida', 'mana', 'aura', 'chakra', 'corpo', 'status'];
 const VITALS_LABELS = ['VIDA', 'MANA', 'AURA', 'CHAKRA', 'CORPO', 'STATUS'];
 const STATS = ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'];
 
-const MULTIPLICADORES = {
-    vida: 1000000, mana: 10000000, aura: 10000000,
-    chakra: 10000000, corpo: 10000000, status: 1000
+// LÓGICA CENTRAL DO SEU MOTOR
+const getBasePFor = (ficha, k) => {
+    if (k === 'status') {
+        let m = 0;
+        STATS.forEach(s => m += safeGetRawBase(ficha, s));
+        return Math.floor((m / 8) / 1000); // Tabela Original
+    }
+    return safeGetPrestigioReal(k, safeGetRawBase(ficha, k));
 };
 
-// --- MOTOR DA REGRA DE OURO DAS FORMAS (Multiplicador / 10) ---
-function getFormaMultiplier(ficha, attrKey) {
-    const anchor = attrKey === 'status' ? 'forca' : attrKey;
-    return parseFloat(ficha[anchor]?.mFormas) || 1;
-}
-
-function getPAtualValue(baseP, mFormas) {
-    // Se a forma for menor que 10, o multiplicador é 1 (não altera)
-    const multForma = mFormas >= 10 ? (mFormas / 10) : 1;
-    return Math.floor(baseP * multForma);
-}
+const getAtualPObjFor = (ficha, k, baseP) => {
+    // Para o "Status", lemos o mFormas da "forca" para o calcPAtual funcionar!
+    const keyForCalc = k === 'status' ? 'forca' : k;
+    return safeCalcPAtual(ficha, keyForCalc, baseP) || { valor: baseP };
+};
 
 export default function TabelaPrestigio() {
     const ficha = useStore((s) => s.minhaFicha);
@@ -64,7 +64,7 @@ export default function TabelaPrestigio() {
             </h3>
             
             <div className="grid-2col" style={{ marginBottom: '15px' }}>
-                {/* PRESTÍGIO BASE (Puro, sem Formas) */}
+                {/* PRESTÍGIO BASE */}
                 <div className="tabela-prestigio">
                     <h4 className="prestige-title-base">PRESTÍGIO BASE</h4>
                     <div className="prestige-ascension-box">
@@ -80,15 +80,7 @@ export default function TabelaPrestigio() {
                     </div>
                     <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                         {VITALS_KEYS.map((attrKey, i) => {
-                            let baseP = 0;
-                            if (attrKey === 'status') {
-                                let m = 0;
-                                STATS.forEach(s => m += safeGetEfetivoBase(ficha, s));
-                                baseP = Math.floor((m / 8) / MULTIPLICADORES.status);
-                            } else {
-                                baseP = safeGetPrestigioReal(attrKey, safeGetEfetivoBase(ficha, attrKey));
-                            }
-                            
+                            const calcBaseP = getBasePFor(ficha, attrKey);
                             const divisor = ficha.divisores?.[attrKey] ?? 1;
                             
                             return (
@@ -111,15 +103,16 @@ export default function TabelaPrestigio() {
                                     <input 
                                         type="number" 
                                         className="prestige-input-base" 
-                                        value={baseP} 
+                                        value={calcBaseP} 
                                         onChange={(e) => {
                                             const val = parseInt(e.target.value) || 0;
                                             updateFicha(f => {
                                                 if (attrKey === 'status') {
-                                                    const stBase = val * MULTIPLICADORES.status;
+                                                    const stBase = val * 1000;
                                                     STATS.forEach(s => { if(f[s]) f[s].base = stBase; });
                                                 } else {
-                                                    if(f[attrKey]) f[attrKey].base = val * MULTIPLICADORES[attrKey];
+                                                    const mults = { vida: 1000000, mana: 10000000, aura: 10000000, chakra: 10000000, corpo: 10000000 };
+                                                    if(f[attrKey]) f[attrKey].base = val * mults[attrKey];
                                                 }
                                             });
                                         }}
@@ -130,7 +123,7 @@ export default function TabelaPrestigio() {
                     </div>
                 </div>
 
-                {/* PRESTÍGIO ATUAL (Acelerado pelas Formas) */}
+                {/* PRESTÍGIO ATUAL (Alimentado pelas Formas) */}
                 <div className="tabela-prestigio atual">
                     <h4 className="prestige-title-atual">PRESTÍGIO ATUAL</h4>
                     <div className="prestige-ascension-box">
@@ -139,21 +132,11 @@ export default function TabelaPrestigio() {
                     </div>
                     <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                         {VITALS_KEYS.map((attrKey, i) => {
-                            let baseP = 0;
-                            if (attrKey === 'status') {
-                                let m = 0;
-                                STATS.forEach(s => m += safeGetEfetivoBase(ficha, s));
-                                baseP = Math.floor((m / 8) / MULTIPLICADORES.status);
-                            } else {
-                                baseP = safeGetPrestigioReal(attrKey, safeGetEfetivoBase(ficha, attrKey));
-                            }
+                            const calcBaseP = getBasePFor(ficha, attrKey);
                             
-                            // A Mágica Acontece Aqui: Pega no Base e multiplica pela Forma/10
-                            const mFormas = getFormaMultiplier(ficha, attrKey);
-                            const pAtualValor = getPAtualValue(baseP, mFormas);
-                            
-                            // O getRank descobre sozinho qual é o Rank e a Ascensão baseado neste novo valor massivo!
-                            const rankInfo = safeGetRank(pAtualValor, ficha.ascensaoBase || 0);
+                            // A Mágica de verdade: O seu 'calcPAtual' e 'getRank' fazem tudo sozinhos!
+                            const pAtualObj = getAtualPObjFor(ficha, attrKey, calcBaseP);
+                            const rankInfo = safeGetRank(pAtualObj.valor, ficha.ascensaoBase || 0);
 
                             return (
                                 <div key={attrKey}>
@@ -162,7 +145,7 @@ export default function TabelaPrestigio() {
                                         <span style={{ color: rankInfo.c || '#fff', fontWeight: 'bold' }}>Rank {rankInfo.l || 'F'} [A{rankInfo.a || 1}]</span>
                                     </div>
                                     <div className="prestige-display-atual">
-                                        {Math.floor(pAtualValor || 0).toLocaleString('pt-BR')}
+                                        {Math.floor(pAtualObj.valor || 0).toLocaleString('pt-BR')}
                                     </div>
                                 </div>
                             );
