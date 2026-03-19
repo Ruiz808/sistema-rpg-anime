@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import useStore from '../../stores/useStore';
-import { getRawBase, getBuffs } from '../../core/attributes.js'; // IMPORTAMOS O GETBUFFS DIRETO DA FONTE!
+import { getRawBase, getBuffs } from '../../core/attributes.js'; 
 import { getPrestigioReal, getRank } from '../../core/prestige.js';
 import { salvarFichaSilencioso } from '../../services/firebase-sync.js';
 
-// --- SAFE MATH HELPERS ---
 const safeFn = (fn, fallback) => (...args) => {
     if (typeof fn !== 'function') return fallback;
     try { 
@@ -26,21 +25,17 @@ const MULTIPLICADORES = {
     chakra: 10000000, corpo: 10000000, status: 1000
 };
 
-// --- A MATEMÁTICA NATIVA DA FORJA ---
+// --- MOTOR NATIVO DAS FORMAS ---
 function getEfetivoMFormas(ficha, k) {
     const anchor = k === 'status' ? 'forca' : k;
     let s = ficha[anchor] || {};
-    
-    // Chama o seu motor nativo para caçar os poderes ativos
     let b = getBuffs(ficha, anchor);
 
-    // Usa a exata mesma lógica do seu 'calcAdd'
     let v = parseFloat(s.mFormas) || 1.0;
     if (!b._hasBuff || !b._hasBuff.mformas) return v;
     return (v === 1.0 ? 0 : v) + b.mformas;
 }
 
-// A REGRA DE OURO: Atual = Base * (Forma / 10)
 function calcularPrestAtual(ficha, attrKey, baseP) {
     const mFormas = getEfetivoMFormas(ficha, attrKey);
     const multForma = mFormas >= 10 ? (mFormas / 10) : 1;
@@ -60,6 +55,19 @@ export default function TabelaPrestigio() {
     const ficha = useStore((s) => s.minhaFicha);
     const updateFicha = useStore((s) => s.updateFicha);
     const [statusBotao, setStatusBotao] = useState('idle');
+
+    // CÁLCULO DA MÉDIA DA ASCENSÃO EFETIVA
+    const mediaAscensaoEfetiva = useMemo(() => {
+        if (!ficha) return 1;
+        let sumAscensao = 0;
+        VITALS_KEYS.forEach(k => {
+            const baseP = getBasePFor(ficha, k);
+            const pAtual = calcularPrestAtual(ficha, k, baseP);
+            const rankInfo = safeGetRank(pAtual, ficha.ascensaoBase || 1);
+            sumAscensao += (rankInfo.a || 1);
+        });
+        return Math.floor(sumAscensao / VITALS_KEYS.length);
+    }, [ficha]);
 
     const handleSalvarPrestigio = async () => {
         setStatusBotao('saving');
@@ -134,8 +142,8 @@ export default function TabelaPrestigio() {
                 <div className="tabela-prestigio atual">
                     <h4 className="prestige-title-atual">PRESTÍGIO ATUAL</h4>
                     <div className="prestige-ascension-box">
-                        <label className="text-white-md" style={{ display: 'block', marginBottom: '5px' }}>Ascensão Efetiva:</label>
-                        <div className="prestige-display-atual">{ficha.ascensaoBase || 1}</div>
+                        <label className="text-white-md" style={{ display: 'block', marginBottom: '5px' }}>Ascensão Efetiva (Média):</label>
+                        <div className="prestige-display-atual">{mediaAscensaoEfetiva}</div>
                     </div>
                     <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                         {VITALS_KEYS.map((attrKey, i) => {

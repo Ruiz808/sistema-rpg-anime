@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import useStore from '../../stores/useStore';
-import { getMaximo, getRawBase, getMultiplicadorTotal } from '../../core/attributes.js';
+import { getMaximo, getRawBase, getBuffs } from '../../core/attributes.js'; 
 import { getPrestigioReal, getRank } from '../../core/prestige.js';
 import { salvarFichaSilencioso } from '../../services/firebase-sync.js';
 
@@ -40,41 +40,20 @@ function radarPoint(cx, cy, r, idx, frac) {
     return [cx + r * safeFrac * Math.cos(a), cy + r * safeFrac * Math.sin(a)];
 }
 
-// --- SCANNER GLOBAL NO GRÁFICO RADAR ---
-function getGlobalMFormas(ficha) {
-    let maxM = 1;
-    if (!ficha) return maxM;
+// --- MOTOR NATIVO SINCRONIZADO NO GRÁFICO RADAR ---
+function getEfetivoMFormas(ficha, k) {
+    const anchor = k === 'status' ? 'forca' : k;
+    let s = ficha[anchor] || {};
+    let b = getBuffs(ficha, anchor);
 
-    const allKeys = [...STATS, 'vida', 'mana', 'aura', 'chakra', 'corpo'];
-    for (let k of allKeys) {
-        if (ficha[k]?.mFormas) {
-            const val = parseFloat(ficha[k].mFormas);
-            if (!Number.isNaN(val) && val > maxM) maxM = val;
-        }
-    }
-
-    const searchDeep = (obj) => {
-        if (!obj || typeof obj !== 'object') return;
-        if (obj.ligado === true || obj.ativo === true || obj.equipado === true) {
-            const str = JSON.stringify(obj).toUpperCase();
-            const matches = str.matchAll(/MFORMAS[^0-9]*(\d+(\.\d+)?)/g);
-            for (const match of matches) {
-                const val = parseFloat(match[1]);
-                if (!Number.isNaN(val) && val > maxM) maxM = val;
-            }
-        }
-        Object.values(obj).forEach(val => {
-            if (val && typeof val === 'object') searchDeep(val);
-        });
-    };
-    
-    searchDeep(ficha);
-    return maxM;
+    let v = parseFloat(s.mFormas) || 1.0;
+    if (!b._hasBuff || !b._hasBuff.mformas) return v;
+    return (v === 1.0 ? 0 : v) + b.mformas;
 }
 
-function calcularPrestAtual(ficha, baseP) {
-    const mFormas = getGlobalMFormas(ficha);
-    const multForma = Math.max(1, mFormas / 10);
+function calcularPrestAtual(ficha, attrKey, baseP) {
+    const mFormas = getEfetivoMFormas(ficha, attrKey);
+    const multForma = mFormas >= 10 ? (mFormas / 10) : 1;
     return Math.floor(baseP * multForma);
 }
 
@@ -88,19 +67,21 @@ const getBasePFor = (ficha, k) => {
 };
 
 function RadarChart({ ficha, isAtual }) {
-    const LIMIT = 100; 
-
     const chartValues = VITALS_RADAR.map((k) => {
         const baseP = getBasePFor(ficha, k);
-        return isAtual ? calcularPrestAtual(ficha, baseP) : baseP;
+        return isAtual ? calcularPrestAtual(ficha, k, baseP) : baseP;
     });
+
+    // O SEGREDO DO GRÁFICO: Ajusta o tamanho da teia com base no maior poder!
+    const maxVal = Math.max(100, ...chartValues);
+    const LIMIT = maxVal; 
 
     const dataPoints = chartValues.map((v, i) => radarPoint(CX, CY, R, i, Math.min((v || 0) / LIMIT, 1)));
     const dataPoly = dataPoints.map((p) => `${p[0] || 0},${p[1] || 0}`).join(' ');
 
     const rankInfos = VITALS_RADAR.map((k) => {
         const baseP = getBasePFor(ficha, k);
-        const pAtualValor = isAtual ? calcularPrestAtual(ficha, baseP) : baseP;
+        const pAtualValor = isAtual ? calcularPrestAtual(ficha, k, baseP) : baseP;
         return safeGetRank(pAtualValor, ficha?.ascensaoBase || 1);
     });
 
@@ -246,7 +227,6 @@ function StatusPanelCore() {
                     
                     const percent = Number.isNaN(atual / mxDisplay) ? 0 : Math.min((atual / mxDisplay) * 100, 100);
 
-                    // --- SÍMBOLO VISUAL TÁTICO CONFORME A IMAGEM (Apenas para Vida) ---
                     const vitalitySymbol = (p > 0 && key === 'vida') ? (
                         <div style={{
                             position: 'absolute',
@@ -257,8 +237,8 @@ function StatusPanelCore() {
                             justifyContent: 'center',
                             width: '32px',
                             height: '32px',
-                            background: 'rgba(20, 0, 0, 0.9)', // Fundo escuro
-                            border: '3px solid #ff0000', // Neon vermelho conforme imagem
+                            background: 'rgba(20, 0, 0, 0.9)', 
+                            border: '3px solid #ff0000', 
                             boxShadow: '0 0 10px #ff0000, inset 0 0 5px rgba(255,0,0,0.5)',
                             borderRadius: '4px',
                             color: '#fff',
@@ -276,13 +256,8 @@ function StatusPanelCore() {
                             <div className={`vital-label ${classColor}`}>{label} {extra && <span style={{fontSize: '0.8em', color: '#aaa'}}>{extra}</span>}</div>
                             
                             <div className="bar-bg" style={{ position: 'relative', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                {/* BARRA FLUIDA */}
                                 <div className="bar-fill" style={{ width: `${percent}%`, backgroundColor: color, position: 'absolute', left: 0, top: 0, height: '100%', borderRadius: 'inherit' }}></div>
-                                
-                                {/* SÍMBOLO VISUAL (Fixo na esquerda, apenas para a Vida) */}
                                 {vitalitySymbol}
-                                
-                                {/* NÚMEROS (Perfeitamente no Centro, zIndex maior que a barra) */}
                                 <div className="bar-text" style={{ position: 'relative', zIndex: 2, width: '100%', textAlign: 'center', textShadow: '1px 1px 3px #000, -1px -1px 3px #000' }}>
                                     <span style={{ fontSize: '1.2em', fontWeight: 'bold' }}>
                                         {Math.floor(atual).toLocaleString('pt-BR')} / {mxDisplay.toLocaleString('pt-BR')}
