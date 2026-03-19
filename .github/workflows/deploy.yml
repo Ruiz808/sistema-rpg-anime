@@ -23,6 +23,13 @@ jobs:
         run: npm run build
         working-directory: app
 
+      - name: Deploy database rules
+        run: |
+          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_DATABASERPG_5595B }}' > "$RUNNER_TEMP/sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+          npx firebase-tools deploy --only database --project databaserpg-5595b
+          rm -f "$RUNNER_TEMP/sa.json"
+
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
