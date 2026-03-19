@@ -16,8 +16,7 @@ import ElementosPanel from './components/arsenal/ElementosPanel'
 import FeedCombate from './components/feed/FeedCombate'
 import MapaPanel from './components/mapa/MapaPanel'
 import NarrativaPanel from './components/narrativa/NarrativaPanel'
-import Jukebox from './components/Jukebox' 
-import RadioGlobal from './components/RadioGlobal' // <-- A RÁDIO IMPORTADA AQUI
+import Jukebox from './components/jukebox/Jukebox'
 import { carregarFichaDoFirebase } from './services/firebase-sync'
 
 function MestrePanel() {
@@ -105,9 +104,6 @@ export default function App() {
 
     return (
         <div className="app-layout">
-            
-            <RadioGlobal /> {/* <-- A RÁDIO LIGADA 100% DO TEMPO AQUI */}
-            
             <Sidebar />
             <div className={`main-content${isMapMode ? ' modo-mapa' : ''}`}>
                 {!isMapMode && <h1 className="title">RPG Anime System</h1>}

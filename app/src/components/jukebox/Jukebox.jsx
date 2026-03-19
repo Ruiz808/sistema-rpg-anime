@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { enviarParaJukebox, iniciarListenerJukebox } from '../services/firebase-sync';
+import { enviarParaJukebox, iniciarListenerJukebox } from '../../services/firebase-sync';
 
 export default function Jukebox() {
     const [inputUrl, setInputUrl] = useState('');
