@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import useStore from '../../stores/useStore';
-import { getRawBase } from '../../core/attributes.js';
+import { getRawBase, getBuffs } from '../../core/attributes.js'; // IMPORTAMOS O GETBUFFS DIRETO DA FONTE!
 import { getPrestigioReal, getRank } from '../../core/prestige.js';
 import { salvarFichaSilencioso } from '../../services/firebase-sync.js';
 
@@ -26,54 +26,27 @@ const MULTIPLICADORES = {
     chakra: 10000000, corpo: 10000000, status: 1000
 };
 
-// --- CAÇA-FORMAS GLOBAL (Busca Implacável) ---
-function getGlobalMFormas(ficha) {
-    let maxM = 1;
-    if (!ficha) return maxM;
-
-    // 1. Busca Direta nos Atributos (Caso altere via Editor de Atributos)
-    const allKeys = [...STATS, 'vida', 'mana', 'aura', 'chakra', 'corpo'];
-    for (let k of allKeys) {
-        if (ficha[k]?.mFormas) {
-            const val = parseFloat(ficha[k].mFormas);
-            if (!Number.isNaN(val) && val > maxM) maxM = val;
-        }
-    }
-
-    // 2. Busca Profunda (Rastreia TODOS os Buffs, Modos e Transformações Ativos)
-    const searchDeep = (obj) => {
-        if (!obj || typeof obj !== 'object') return;
-        
-        // Se a gaveta estiver ligada/ativa, escaneia o texto completo dela
-        if (obj.ligado === true || obj.ativo === true || obj.equipado === true) {
-            const str = JSON.stringify(obj).toUpperCase();
-            // Procura o padrão "MFORMAS: x60" ou "MFORMAS: 60"
-            const matches = str.matchAll(/MFORMAS[^0-9]*(\d+(\.\d+)?)/g);
-            for (const match of matches) {
-                const val = parseFloat(match[1]);
-                if (!Number.isNaN(val) && val > maxM) maxM = val;
-            }
-        }
-        
-        // Continua a mergulhar nas pastas da ficha
-        Object.values(obj).forEach(val => {
-            if (val && typeof val === 'object') searchDeep(val);
-        });
-    };
+// --- A MATEMÁTICA NATIVA DA FORJA ---
+function getEfetivoMFormas(ficha, k) {
+    const anchor = k === 'status' ? 'forca' : k;
+    let s = ficha[anchor] || {};
     
-    searchDeep(ficha);
-    return maxM;
+    // Chama o seu motor nativo para caçar os poderes ativos
+    let b = getBuffs(ficha, anchor);
+
+    // Usa a exata mesma lógica do seu 'calcAdd'
+    let v = parseFloat(s.mFormas) || 1.0;
+    if (!b._hasBuff || !b._hasBuff.mformas) return v;
+    return (v === 1.0 ? 0 : v) + b.mformas;
 }
 
-// --- REGRA DE OURO: Atual = Base * (Forma / 10) ---
-function calcularPrestAtual(ficha, baseP) {
-    const mFormas = getGlobalMFormas(ficha);
-    // Se a forma for 50 -> 50/10 = 5. Se a forma for menor que 10, mantem x1.
-    const multForma = Math.max(1, mFormas / 10);
+// A REGRA DE OURO: Atual = Base * (Forma / 10)
+function calcularPrestAtual(ficha, attrKey, baseP) {
+    const mFormas = getEfetivoMFormas(ficha, attrKey);
+    const multForma = mFormas >= 10 ? (mFormas / 10) : 1;
     return Math.floor(baseP * multForma);
 }
 
-// LÓGICA DO BASE PURO
 const getBasePFor = (ficha, k) => {
     if (k === 'status') {
         let m = 0;
@@ -167,7 +140,7 @@ export default function TabelaPrestigio() {
                     <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                         {VITALS_KEYS.map((attrKey, i) => {
                             const calcBaseP = getBasePFor(ficha, attrKey);
-                            const pAtualValor = calcularPrestAtual(ficha, calcBaseP);
+                            const pAtualValor = calcularPrestAtual(ficha, attrKey, calcBaseP);
                             const rankInfo = safeGetRank(pAtualValor, ficha.ascensaoBase || 1);
 
                             return (
