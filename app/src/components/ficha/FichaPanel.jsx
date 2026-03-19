@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import useStore from '../../stores/useStore';
 import { contarDigitos } from '../../core/utils.js';
-import { getMaximo } from '../../core/attributes.js';
+import { getMaximo, getBuffs } from '../../core/attributes.js'; // <-- Adicionamos o getBuffs aqui!
 import { salvarFichaSilencioso } from '../../services/firebase-sync.js';
-import TabelaPrestigio from './TabelaPrestigio'; // <-- O NOSSO NOVO MÓDULO
+import TabelaPrestigio from './TabelaPrestigio'; 
 
 const STATS = ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'];
 const ENERGIAS = ['mana', 'aura', 'chakra', 'corpo'];
@@ -109,11 +109,31 @@ export default function FichaPanel() {
         setCampos(prev => ({ ...prev, [field]: val }));
     }
 
+    // --- LÓGICA DO HOLOGRAMA (RENDERIZA OS BUFFS) ---
+    const sKeyForBuffs = (selAtributo === 'todos_status') ? 'forca' : (selAtributo === 'todas_energias') ? 'mana' : selAtributo;
+    const buffsAtuais = minhaFicha ? getBuffs(minhaFicha, sKeyForBuffs) : null;
+
+    const renderBuffHolograma = (rawVal, buffVal, hasBuff, isMult = false) => {
+        if (isMult && !hasBuff) return null;
+        if (!isMult && !buffVal) return null;
+
+        let v = parseFloat(rawVal);
+        if (isNaN(v)) v = isMult ? 1.0 : 0;
+        
+        // Aplica a mesma matemática de combate
+        let total = isMult ? ((v === 1.0 ? 0 : v) + buffVal) : (v + buffVal);
+
+        return (
+            <div style={{ fontSize: '0.75em', color: '#0f0', marginTop: '4px', textShadow: '0 0 5px rgba(0,255,0,0.5)' }}>
+                ↳ Buff Ativo: <b>+{buffVal}</b> ➔ Efetivo: <b style={{color: '#fff'}}>{total}</b>
+            </div>
+        );
+    };
+
     if (!minhaFicha) return <div style={{ color: '#aaa', textAlign: 'center' }}>Carregando ficha...</div>;
 
     return (
         <div className="ficha-panel">
-            {/* Editor de Atributos Mantido */}
             <div className="def-box">
                 <h3 style={{ color: '#ffcc00', marginBottom: 10 }}>Editor de Atributos</h3>
                 <select
@@ -127,38 +147,46 @@ export default function FichaPanel() {
                     ))}
                 </select>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15, marginTop: 15 }}>
                     <div>
                         <label style={{ color: '#aaa', fontSize: '0.85em' }}>Base</label>
                         <input className="input-neon" type="number" value={campos.base} onChange={e => handleCampo('base', e.target.value)} />
+                        {buffsAtuais && renderBuffHolograma(campos.base, buffsAtuais.base, false, false)}
                     </div>
                     <div>
                         <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Base</label>
                         <input className="input-neon" type="number" step="0.01" value={campos.mBase} onChange={e => handleCampo('mBase', e.target.value)} />
+                        {buffsAtuais && renderBuffHolograma(campos.mBase, buffsAtuais.mbase, buffsAtuais._hasBuff.mbase, true)}
                     </div>
                     <div>
                         <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Geral</label>
                         <input className="input-neon" type="number" step="0.01" value={campos.mGeral} onChange={e => handleCampo('mGeral', e.target.value)} />
+                        {buffsAtuais && renderBuffHolograma(campos.mGeral, buffsAtuais.mgeral, buffsAtuais._hasBuff.mgeral, true)}
                     </div>
                     <div>
                         <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Formas</label>
                         <input className="input-neon" type="number" step="0.01" value={campos.mFormas} onChange={e => handleCampo('mFormas', e.target.value)} />
+                        {buffsAtuais && renderBuffHolograma(campos.mFormas, buffsAtuais.mformas, buffsAtuais._hasBuff.mformas, true)}
                     </div>
                     <div>
                         <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Unico</label>
                         <input className="input-neon" type="text" value={campos.mUnico} onChange={e => handleCampo('mUnico', e.target.value)} />
+                        {/* Mult Unico usa array, entao nao renderizamos holograma direto aqui para nao complicar a string */}
                     </div>
                     <div>
                         <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Absoluto</label>
                         <input className="input-neon" type="number" step="0.01" value={campos.mAbsoluto} onChange={e => handleCampo('mAbsoluto', e.target.value)} />
+                        {buffsAtuais && renderBuffHolograma(campos.mAbsoluto, buffsAtuais.mabs, buffsAtuais._hasBuff.mabs, true)}
                     </div>
                     <div>
                         <label style={{ color: '#aaa', fontSize: '0.85em' }}>Reducao Custo</label>
                         <input className="input-neon" type="number" step="0.01" value={campos.reducaoCusto} onChange={e => handleCampo('reducaoCusto', e.target.value)} />
+                        {buffsAtuais && renderBuffHolograma(campos.reducaoCusto, buffsAtuais.reducaoCusto, false, false)}
                     </div>
                     <div>
                         <label style={{ color: '#aaa', fontSize: '0.85em' }}>Regeneracao</label>
                         <input className="input-neon" type="number" step="0.01" value={campos.regeneracao} onChange={e => handleCampo('regeneracao', e.target.value)} />
+                        {buffsAtuais && renderBuffHolograma(campos.regeneracao, buffsAtuais.regeneracao, false, false)}
                     </div>
                 </div>
 
@@ -167,9 +195,7 @@ export default function FichaPanel() {
                 </button>
             </div>
 
-            {/* A NOSSA NOVA TABELA ASSUME O CONTROLE AQUI */}
             <TabelaPrestigio />
-
         </div>
     );
 }
