@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import useStore from '../../stores/useStore';
-import { getMaximo } from '../../core/attributes.js';
-import { getPrestigioReal, calcPAtual, getRank, getDivisorPara } from '../../core/prestige.js';
+import { getMaximo, getRawBase } from '../../core/attributes.js';
+import { getPrestigioReal, calcPAtual, getRank } from '../../core/prestige.js';
 import { salvarFichaSilencioso } from '../../services/firebase-sync.js';
 
 // --- SAFE MATH HELPERS ---
@@ -14,14 +14,24 @@ const safeFn = (fn, fallback) => (...args) => {
 };
 
 const safeGetMaximo = safeFn(getMaximo, 1);
+const safeGetRawBase = safeFn(getRawBase, 0);
 const safeGetPrestigioReal = safeFn(getPrestigioReal, 0);
 const safeCalcPAtual = safeFn(calcPAtual, { valor: 0 });
 const safeGetRank = safeFn(getRank, { l: 'F', c: '#ffffff', a: 1 });
-const safeGetDivisorPara = safeFn(getDivisorPara, 'Padrão');
 
-// Eixos que afetam diretamente o Radar no Status
-const VITALS_KEYS = ['vida', 'mana', 'aura', 'chakra', 'corpo', 'alma'];
+const VITALS_KEYS = ['vida', 'mana', 'aura', 'chakra', 'corpo', 'status'];
 const VITALS_LABELS = ['VIDA', 'MANA', 'AURA', 'CHAKRA', 'CORPO', 'STATUS'];
+const STATS = ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'];
+
+// A TABELA DE MULTIPLICADORES ORIGINAIS DO SEU SISTEMA
+const MULTIPLICADORES = {
+    vida: 1000000,
+    mana: 10000000,
+    aura: 10000000,
+    chakra: 10000000,
+    corpo: 10000000,
+    status: 1000
+};
 
 export default function TabelaPrestigio() {
     const ficha = useStore((s) => s.minhaFicha);
@@ -65,11 +75,18 @@ export default function TabelaPrestigio() {
                     </div>
                     <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                         {VITALS_KEYS.map((attrKey, i) => {
-                            const rawMax = safeGetMaximo(ficha, attrKey);
-                            const calcBaseP = safeGetPrestigioReal(attrKey, rawMax); 
-                            const baseP = ficha[attrKey]?.prestigioBase !== undefined && ficha[attrKey]?.prestigioBase !== null 
-                                ? ficha[attrKey].prestigioBase 
-                                : calcBaseP;
+                            // Reconstruindo o valor original baseado no Base real
+                            let baseP = 0;
+                            if (attrKey === 'status') {
+                                let m = 0;
+                                for (let j = 0; j < STATS.length; j++) m += safeGetRawBase(ficha, STATS[j]);
+                                baseP = Math.floor((m / 8) / MULTIPLICADORES.status);
+                            } else {
+                                baseP = safeGetPrestigioReal(attrKey, safeGetRawBase(ficha, attrKey));
+                            }
+                            
+                            // Lendo da gaveta correta de divisores
+                            const divisor = ficha.divisores?.[attrKey] ?? 1;
                             
                             return (
                                 <div key={attrKey}>
@@ -78,13 +95,12 @@ export default function TabelaPrestigio() {
                                         <span>Divisor: <input 
                                             type="number" 
                                             className="divisor-mini-input" 
-                                            value={ficha[attrKey]?.divisorCustom || ''} 
-                                            placeholder={String(safeGetDivisorPara(attrKey) || 'Padrão')}
+                                            value={divisor} 
                                             onChange={(e) => {
-                                                const val = e.target.value;
+                                                const val = parseFloat(e.target.value) || 1;
                                                 updateFicha(f => { 
-                                                    if(!f[attrKey]) f[attrKey] = {};
-                                                    f[attrKey].divisorCustom = val ? Number(val) : null;
+                                                    if (!f.divisores) f.divisores = { vida: 1, status: 1, mana: 1, aura: 1, chakra: 1, corpo: 1 };
+                                                    f.divisores[attrKey] = val; // Gravando na gaveta correta
                                                 });
                                             }}
                                         /></span>
@@ -92,12 +108,16 @@ export default function TabelaPrestigio() {
                                     <input 
                                         type="number" 
                                         className="prestige-input-base" 
-                                        value={baseP === undefined ? '' : baseP} 
+                                        value={baseP} 
                                         onChange={(e) => {
-                                            const val = e.target.value;
+                                            const val = parseInt(e.target.value) || 0;
                                             updateFicha(f => {
-                                                if(!f[attrKey]) f[attrKey] = {};
-                                                f[attrKey].prestigioBase = val === '' ? null : Number(val);
+                                                if (attrKey === 'status') {
+                                                    const stBase = val * MULTIPLICADORES.status;
+                                                    STATS.forEach(s => { if(f[s]) f[s].base = stBase; }); // Espalhando status
+                                                } else {
+                                                    if(f[attrKey]) f[attrKey].base = val * MULTIPLICADORES[attrKey]; // Multiplicador correto
+                                                }
                                             });
                                         }}
                                     />
@@ -116,12 +136,17 @@ export default function TabelaPrestigio() {
                     </div>
                     <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                         {VITALS_KEYS.map((attrKey, i) => {
-                            const rawMax = safeGetMaximo(ficha, attrKey);
-                            const calcBaseP = safeGetPrestigioReal(attrKey, rawMax);
-                            const baseP = ficha[attrKey]?.prestigioBase !== undefined && ficha[attrKey]?.prestigioBase !== null 
-                                ? ficha[attrKey].prestigioBase 
-                                : calcBaseP;
-                            const pAtualObj = safeCalcPAtual(ficha, attrKey, baseP);
+                            let baseP = 0;
+                            if (attrKey === 'status') {
+                                let m = 0;
+                                for (let j = 0; j < STATS.length; j++) m += safeGetRawBase(ficha, STATS[j]);
+                                baseP = Math.floor((m / 8) / MULTIPLICADORES.status);
+                            } else {
+                                baseP = safeGetPrestigioReal(attrKey, safeGetRawBase(ficha, attrKey));
+                            }
+                            
+                            const keyForCalc = attrKey === 'status' ? 'alma' : attrKey;
+                            const pAtualObj = safeCalcPAtual(ficha, keyForCalc, baseP);
                             const rankInfo = safeGetRank(pAtualObj.valor, ficha.ascensaoBase || 0);
 
                             return (
@@ -141,12 +166,12 @@ export default function TabelaPrestigio() {
             </div>
 
             <button 
-                className={`btn-neon ${statusBotao === 'saved' ? 'btn-green' : 'btn-blue'}`} 
+                className={`btn-neon ${statusBotao === 'saved' ? 'btn-green' : 'btn-gold'}`} 
                 onClick={handleSalvarPrestigio} 
                 disabled={statusBotao === 'saving'}
                 style={{ width: '100%', marginBottom: '30px', height: '50px', transition: 'all 0.3s ease' }}
             >
-                {statusBotao === 'idle' && '💾 SALVAR ALTERAÇÕES DE PRESTÍGIO'}
+                {statusBotao === 'idle' && '💾 SALVAR PRESTÍGIO NO SERVIDOR'}
                 {statusBotao === 'saving' && '⏳ ENVIANDO PARA A FORJA (FIREBASE)...'}
                 {statusBotao === 'saved' && '✅ PRESTÍGIOS SALVOS COM SUCESSO!'}
             </button>
