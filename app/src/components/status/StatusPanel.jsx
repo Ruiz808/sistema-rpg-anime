@@ -147,6 +147,46 @@ function calcVitalScale(rawMx, key) {
     return { p, mxDisplay };
 }
 
+// --- NOVO COMPONENTE VISUAL DE VITALIDADE (Sua Imagem Replicada) ---
+function VitalityBlocks({ p, color }) {
+    if (!p || p <= 0) return null;
+    
+    // Gera uma lista de números baseados em P (Ex: se p=2, lista é [2, 2])
+    const blockList = Array.from({ length: p }, () => p);
+    
+    // Borda Neon Vermelha do Exemplo
+    const redNeonBorder = '4px solid #ff0000';
+    const redNeonShadow = '0 0 10px #ff0000, inset 0 0 5px rgba(255,0,0,0.5)';
+
+    return (
+        <div style={{ display: 'flex', gap: '8px', marginRight: '12px', alignItems: 'center' }}>
+            {blockList.map((num, index) => (
+                <div 
+                    key={index} 
+                    style={{
+                        width: '32px',
+                        height: '32px',
+                        background: 'rgba(20, 0, 0, 0.8)', // Fundo escuro
+                        border: redNeonBorder,             // Borda grossa vermelha
+                        boxShadow: redNeonShadow,          // Neon Red
+                        borderRadius: '4px',               // Levemente arredondado
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#fff',                     // Número Branco
+                        fontFamily: 'arial, sans-serif',
+                        fontSize: '20px',
+                        fontWeight: 'bold',
+                        transition: 'all 0.3s ease'
+                    }}
+                >
+                    {num}
+                </div>
+            ))}
+        </div>
+    );
+}
+
 function StatusPanelCore() {
     const ficha = useStore((s) => s.minhaFicha);
     const updateFicha = useStore((s) => s.updateFicha);
@@ -171,7 +211,6 @@ function StatusPanelCore() {
                 const rawMx = safeGetMaximo(f, key);
                 const { mxDisplay } = calcVitalScale(rawMx, key);
                 if (!f[key]) f[key] = {};
-                // Sincroniza o atual vazio para o teto comprimido
                 if (f[key].atual === undefined || f[key].atual === null) {
                     f[key].atual = mxDisplay;
                 }
@@ -187,7 +226,7 @@ function StatusPanelCore() {
 
         updateFicha((f) => {
             const rawMx = safeGetMaximo(f, 'vida');
-            const { mxDisplay } = calcVitalScale(rawMx, 'vida'); // Escala de Combate
+            const { mxDisplay } = calcVitalScale(rawMx, 'vida'); 
             
             let danoFinal = valor;
             if (tipo === 'dano' && letalidade > 0) {
@@ -209,7 +248,7 @@ function StatusPanelCore() {
             vitalsBars.forEach(({ key }) => {
                 const rawMx = safeGetMaximo(f, key);
                 const { mxDisplay } = calcVitalScale(rawMx, key);
-                if(f[key]) f[key].atual = mxDisplay; // Cura até ao limite comprimido
+                if(f[key]) f[key].atual = mxDisplay; 
             });
         });
         salvarFichaSilencioso();
@@ -240,7 +279,6 @@ function StatusPanelCore() {
                     const { p, mxDisplay } = calcVitalScale(rawMx, key);
                     
                     let atual = ficha[key]?.atual ?? mxDisplay;
-                    // Proteção automática: se o buff do Modo Assalto desligar, o HP cai para o novo teto seguro
                     if (atual > mxDisplay) atual = mxDisplay; 
 
                     const regen = parseFloat(ficha[key]?.regeneracao) || 0;
@@ -249,21 +287,21 @@ function StatusPanelCore() {
                     
                     const percent = Number.isNaN(atual / mxDisplay) ? 0 : Math.min((atual / mxDisplay) * 100, 100);
 
-                    // Cria o distintivo Neon para os Pontos de Vitalidade [1V], [2V] / Energia [1E]
-                    const badge = p > 0 ? (
-                        <span style={{ color: '#fff', textShadow: `0 0 8px ${color}`, marginRight: '8px', fontWeight: '900', fontSize: '1.1em' }}>
-                            [{p}{key === 'vida' ? 'V' : 'E'}]
-                        </span>
-                    ) : null;
-
                     return (
                         <div key={key} className="vital-container" style={gridStyle}>
                             <div className={`vital-label ${classColor}`}>{label} {extra && <span style={{fontSize: '0.8em', color: '#aaa'}}>{extra}</span>}</div>
-                            <div className="bar-bg">
-                                <div className="bar-fill" style={{ width: `${percent}%`, backgroundColor: color }}></div>
-                                <div className="bar-text">
-                                    {badge}
-                                    {Math.floor(atual).toLocaleString('pt-BR')} / {mxDisplay.toLocaleString('pt-BR')}
+                            
+                            {/* AJUSTE NA ALTURA DA BARRA PARA ACOMODAR OS BLOCOS */}
+                            <div className="bar-bg" style={{ height: '40px', display: 'flex', alignItems: 'center', padding: '0 10px', transition: 'all 0.3s ease' }}>
+                                <div className="bar-fill" style={{ width: `${percent}%`, backgroundColor: color, height: '100%' }}></div>
+                                
+                                <div className="bar-text" style={{ display: 'flex', alignItems: 'center', width: '100%', zIndex: 2, height: '100%', justifyContent: 'flex-start' }}>
+                                    {/* INSERINDO OS BLOCOS VISUAIS NEON */}
+                                    <VitalityBlocks p={p} color={color} />
+                                    
+                                    <span style={{ fontSize: '1.2em', fontWeight: 'bold' }}>
+                                        {Math.floor(atual).toLocaleString('pt-BR')} / {mxDisplay.toLocaleString('pt-BR')}
+                                    </span>
                                 </div>
                             </div>
                         </div>
