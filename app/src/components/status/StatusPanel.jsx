@@ -1,10 +1,9 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import useStore from '../../stores/useStore';
-import { getMaximo, getRawBase } from '../../core/attributes.js';
-import { getPrestigioReal, calcPAtual, getRank } from '../../core/prestige.js';
+import { getMaximo, getEfetivoBase } from '../../core/attributes.js';
+import { getPrestigioReal, getRank } from '../../core/prestige.js';
 import { salvarFichaSilencioso } from '../../services/firebase-sync.js';
 
-// --- PROTEÇÃO ANTI-CRASH (ERROR BOUNDARY) ---
 class StatusErrorBoundary extends React.Component {
     constructor(props) { super(props); this.state = { hasError: false, error: null }; }
     static getDerivedStateFromError(error) { return { hasError: true, error }; }
@@ -13,7 +12,6 @@ class StatusErrorBoundary extends React.Component {
             return (
                 <div style={{ padding: '20px', border: '2px solid #ff003c', background: '#1a0000', borderRadius: '10px', color: '#fff', margin: '20px' }}>
                     <h3 style={{ color: '#ff003c', marginTop: 0 }}>🔥 ERRO DETECTADO NO PAINEL DE STATUS 🔥</h3>
-                    <p>O React evitou a tela branca. O erro real é este:</p>
                     <pre style={{ color: '#ffaaaa', whiteSpace: 'pre-wrap', fontSize: '14px' }}>{this.state.error?.toString()}</pre>
                 </div>
             );
@@ -22,7 +20,6 @@ class StatusErrorBoundary extends React.Component {
     }
 }
 
-// --- SAFE MATH HELPERS ---
 const safeFn = (fn, fallback) => (...args) => {
     if (typeof fn !== 'function') return fallback;
     try { 
@@ -32,25 +29,18 @@ const safeFn = (fn, fallback) => (...args) => {
 };
 
 const safeGetMaximo = safeFn(getMaximo, 1);
-const safeGetRawBase = safeFn(getRawBase, 0);
+const safeGetEfetivoBase = safeFn(getEfetivoBase, 0);
 const safeGetPrestigioReal = safeFn(getPrestigioReal, 0);
-const safeCalcPAtual = safeFn(calcPAtual, { valor: 0 });
 const safeGetRank = safeFn(getRank, { l: 'F', c: '#ffffff', a: 1 });
 
-// ---------- EIXOS DO GRÁFICO ----------
 const CX = 100, CY = 100, R = 70;
 const VITALS_RADAR = ['vida', 'mana', 'aura', 'chakra', 'corpo', 'status'];
 const VITALS_LABELS = ['VIDA', 'MANA', 'AURA', 'CHAKRA', 'CORPO', 'STATUS'];
 const STATS = ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'];
 
-// Multiplicadores originais da Forja para traduzir a Ficha para o Radar
 const MULTIPLICADORES = {
-    vida: 1000000,
-    mana: 10000000,
-    aura: 10000000,
-    chakra: 10000000,
-    corpo: 10000000,
-    status: 1000
+    vida: 1000000, mana: 10000000, aura: 10000000,
+    chakra: 10000000, corpo: 10000000, status: 1000
 };
 
 const ANGLES = VITALS_RADAR.map((_, i) => (Math.PI * 2 * i) / 6 - Math.PI / 2);
@@ -65,27 +55,35 @@ function radarPoint(cx, cy, r, idx, frac) {
     return [cx + r * safeFrac * Math.cos(a), cy + r * safeFrac * Math.sin(a)];
 }
 
-// ---------- Componente do Gráfico Radar (Agora Sincronizado com a Ficha) ----------
+// --- MOTOR DA REGRA DE OURO INJETADO NO GRÁFICO ---
+function getFormaMultiplier(ficha, attrKey) {
+    const anchor = attrKey === 'status' ? 'forca' : attrKey;
+    return parseFloat(ficha[anchor]?.mFormas) || 1;
+}
+
+function getPAtualValue(baseP, mFormas) {
+    const multForma = mFormas >= 10 ? (mFormas / 10) : 1;
+    return Math.floor(baseP * multForma);
+}
+
 function RadarChart({ ficha, isAtual }) {
     const LIMIT = 100; 
 
-    // Função que recalcula o Prestígio usando a mesma lógica exata da Tabela
     const getBasePFor = (k) => {
         if (k === 'status') {
             let m = 0;
-            for (let j = 0; j < STATS.length; j++) m += safeGetRawBase(ficha, STATS[j]);
+            STATS.forEach(s => m += safeGetEfetivoBase(ficha, s));
             return Math.floor((m / 8) / MULTIPLICADORES.status);
         }
-        return safeGetPrestigioReal(k, safeGetRawBase(ficha, k));
+        return safeGetPrestigioReal(k, safeGetEfetivoBase(ficha, k));
     };
 
     const chartValues = VITALS_RADAR.map((k) => {
         const baseP = getBasePFor(k);
         if (!isAtual) return baseP;
         
-        const keyForCalc = k === 'status' ? 'alma' : k;
-        const pAtual = safeCalcPAtual(ficha, keyForCalc, baseP);
-        return pAtual?.valor || baseP;
+        const mFormas = getFormaMultiplier(ficha, k);
+        return getPAtualValue(baseP, mFormas);
     });
 
     const dataPoints = chartValues.map((v, i) => radarPoint(CX, CY, R, i, Math.min((v || 0) / LIMIT, 1)));
@@ -93,9 +91,15 @@ function RadarChart({ ficha, isAtual }) {
 
     const rankInfos = VITALS_RADAR.map((k) => {
         const baseP = getBasePFor(k);
-        const keyForCalc = k === 'status' ? 'alma' : k;
-        const pAtualObj = safeCalcPAtual(ficha, keyForCalc, baseP) || { valor: baseP };
-        return safeGetRank(pAtualObj.valor, ficha?.ascensaoBase || 0);
+        let pAtualValor = baseP;
+
+        if (isAtual) {
+            const mFormas = getFormaMultiplier(ficha, k);
+            pAtualValor = getPAtualValue(baseP, mFormas);
+        }
+        
+        // Passa o Prestígio Multiplicado diretamente ao getRank e deixa-o decidir o Nível!
+        return safeGetRank(pAtualValor, ficha?.ascensaoBase || 0);
     });
 
     const labelR = R + 15;
@@ -113,7 +117,6 @@ function RadarChart({ ficha, isAtual }) {
             {ANGLES.map((a, i) => (
                 <line key={i} x1={CX} y1={CY} x2={CX + R * Math.cos(a)} y2={CY + R * Math.sin(a)} stroke="rgba(255,255,255,0.15)" strokeWidth="1" strokeDasharray="4" />
             ))}
-            {/* ANIMAÇÃO DE REDIMENSIONAMENTO FLUIDO */}
             <polygon points={dataPoly} fill={polyColor} stroke={strokeColor} strokeWidth="2" style={{ transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)' }} />
             {dataPoints.map(([x, y], i) => (
                 <circle key={i} cx={x || 0} cy={y || 0} r="3" fill={strokeColor} style={{ transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)' }} />
@@ -131,7 +134,6 @@ function RadarChart({ ficha, isAtual }) {
     );
 }
 
-// ---------- Componente Interno Principal ----------
 function StatusPanelCore() {
     const ficha = useStore((s) => s.minhaFicha);
     const updateFicha = useStore((s) => s.updateFicha);
@@ -210,7 +212,6 @@ function StatusPanelCore() {
 
     return (
         <div className="status-panel-container">
-            {/* --- BLOCO 1: BARRAS VITAIS --- */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '30px' }}>
                 {vitalsBars.map(({ key, label, color, classColor }, index) => {
                     const mx = safeGetMaximo(ficha, key);
@@ -232,7 +233,6 @@ function StatusPanelCore() {
                 })}
             </div>
 
-            {/* --- BLOCO 2: CONTROLE RÁPIDO --- */}
             <h3 className="section-title-mint-spaced" style={{ marginTop: 0, color: '#fff', fontSize: '1.2em' }}>&gt; CONTROLE RÁPIDO</h3>
             <div className="form-row-dark" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '15px', alignItems: 'end', background: 'transparent', padding: 0 }}>
                 <div className="input-group" style={{ margin: 0 }}>
@@ -259,7 +259,6 @@ function StatusPanelCore() {
                 </button>
             </div>
 
-            {/* --- BLOCO 3: ANÁLISE DE PODER E CULTIVAÇÃO --- */}
             <h3 className="section-title-mint-spaced" style={{ color: '#fff', fontSize: '1.2em' }}>&gt; ANÁLISE DE PODER E CULTIVAÇÃO</h3>
             <p style={{ color: '#aaa', fontSize: '0.9em', marginTop: '-10px', textAlign: 'center' }}>
                 (Para editar a Ascensão e Divisores, utilize a aba <b>Ficha</b>)
@@ -278,7 +277,6 @@ function StatusPanelCore() {
     );
 }
 
-// O componente final exportado
 export default function StatusPanel() {
     return (
         <StatusErrorBoundary>

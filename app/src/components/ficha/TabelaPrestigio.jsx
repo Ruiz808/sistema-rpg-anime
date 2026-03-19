@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import useStore from '../../stores/useStore';
-import { getMaximo, getRawBase } from '../../core/attributes.js';
+import { getEfetivoBase } from '../../core/attributes.js';
 import { getPrestigioReal, getRank } from '../../core/prestige.js';
 import { salvarFichaSilencioso } from '../../services/firebase-sync.js';
 
@@ -13,8 +13,7 @@ const safeFn = (fn, fallback) => (...args) => {
     } catch (e) { return fallback; }
 };
 
-const safeGetMaximo = safeFn(getMaximo, 1);
-const safeGetRawBase = safeFn(getRawBase, 0);
+const safeGetEfetivoBase = safeFn(getEfetivoBase, 0);
 const safeGetPrestigioReal = safeFn(getPrestigioReal, 0);
 const safeGetRank = safeFn(getRank, { l: 'F', c: '#ffffff', a: 1 });
 
@@ -23,22 +22,20 @@ const VITALS_LABELS = ['VIDA', 'MANA', 'AURA', 'CHAKRA', 'CORPO', 'STATUS'];
 const STATS = ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'];
 
 const MULTIPLICADORES = {
-    vida: 1000000,
-    mana: 10000000,
-    aura: 10000000,
-    chakra: 10000000,
-    corpo: 10000000,
-    status: 1000
+    vida: 1000000, mana: 10000000, aura: 10000000,
+    chakra: 10000000, corpo: 10000000, status: 1000
 };
 
-// A REGRA DE OURO DAS FORMAS (Multiplicador / 10)
-function calcularPAtual(ficha, attrKey, baseP) {
-    const anchorKey = attrKey === 'status' ? 'forca' : attrKey;
-    const mFormas = parseFloat(ficha[anchorKey]?.mFormas) || 1;
-    // Se a forma tiver multiplicador 50, o prestígio multiplica por 5. 
-    // Se for menor que 10 (ex: 1), mantém-se intacto.
-    const multForma = Math.max(1, mFormas / 10);
-    return baseP * multForma;
+// --- MOTOR DA REGRA DE OURO DAS FORMAS (Multiplicador / 10) ---
+function getFormaMultiplier(ficha, attrKey) {
+    const anchor = attrKey === 'status' ? 'forca' : attrKey;
+    return parseFloat(ficha[anchor]?.mFormas) || 1;
+}
+
+function getPAtualValue(baseP, mFormas) {
+    // Se a forma for menor que 10, o multiplicador é 1 (não altera)
+    const multForma = mFormas >= 10 ? (mFormas / 10) : 1;
+    return Math.floor(baseP * multForma);
 }
 
 export default function TabelaPrestigio() {
@@ -67,7 +64,7 @@ export default function TabelaPrestigio() {
             </h3>
             
             <div className="grid-2col" style={{ marginBottom: '15px' }}>
-                {/* PRESTÍGIO BASE (Inalterado pelas Formas) */}
+                {/* PRESTÍGIO BASE (Puro, sem Formas) */}
                 <div className="tabela-prestigio">
                     <h4 className="prestige-title-base">PRESTÍGIO BASE</h4>
                     <div className="prestige-ascension-box">
@@ -86,10 +83,10 @@ export default function TabelaPrestigio() {
                             let baseP = 0;
                             if (attrKey === 'status') {
                                 let m = 0;
-                                for (let j = 0; j < STATS.length; j++) m += safeGetRawBase(ficha, STATS[j]);
+                                STATS.forEach(s => m += safeGetEfetivoBase(ficha, s));
                                 baseP = Math.floor((m / 8) / MULTIPLICADORES.status);
                             } else {
-                                baseP = safeGetPrestigioReal(attrKey, safeGetRawBase(ficha, attrKey));
+                                baseP = safeGetPrestigioReal(attrKey, safeGetEfetivoBase(ficha, attrKey));
                             }
                             
                             const divisor = ficha.divisores?.[attrKey] ?? 1;
@@ -145,21 +142,24 @@ export default function TabelaPrestigio() {
                             let baseP = 0;
                             if (attrKey === 'status') {
                                 let m = 0;
-                                for (let j = 0; j < STATS.length; j++) m += safeGetRawBase(ficha, STATS[j]);
+                                STATS.forEach(s => m += safeGetEfetivoBase(ficha, s));
                                 baseP = Math.floor((m / 8) / MULTIPLICADORES.status);
                             } else {
-                                baseP = safeGetPrestigioReal(attrKey, safeGetRawBase(ficha, attrKey));
+                                baseP = safeGetPrestigioReal(attrKey, safeGetEfetivoBase(ficha, attrKey));
                             }
                             
-                            // Aplica a Matemática de Multiplicação da Forma / 10
-                            const pAtualValor = calcularPAtual(ficha, attrKey, baseP);
+                            // A Mágica Acontece Aqui: Pega no Base e multiplica pela Forma/10
+                            const mFormas = getFormaMultiplier(ficha, attrKey);
+                            const pAtualValor = getPAtualValue(baseP, mFormas);
+                            
+                            // O getRank descobre sozinho qual é o Rank e a Ascensão baseado neste novo valor massivo!
                             const rankInfo = safeGetRank(pAtualValor, ficha.ascensaoBase || 0);
 
                             return (
                                 <div key={attrKey}>
                                     <div className="label-divisor" style={{ marginBottom: '5px' }}>
                                         <span style={{ color: '#00ffcc', fontWeight: 'bold' }}>{VITALS_LABELS[i]}</span>
-                                        <span style={{ color: rankInfo.c || '#fff', fontWeight: 'bold' }}>Rank {rankInfo.l || 'F'}</span>
+                                        <span style={{ color: rankInfo.c || '#fff', fontWeight: 'bold' }}>Rank {rankInfo.l || 'F'} [A{rankInfo.a || 1}]</span>
                                     </div>
                                     <div className="prestige-display-atual">
                                         {Math.floor(pAtualValor || 0).toLocaleString('pt-BR')}
