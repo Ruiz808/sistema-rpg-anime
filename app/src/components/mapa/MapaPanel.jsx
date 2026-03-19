@@ -152,7 +152,6 @@ export default function MapaPanel() {
         const atorFicha = jogadores[ultimaAcao.nome] || null;
         const atorInfo = getAvatarInfo(atorFicha);
         
-        // Define a cor e o texto do impacto baseados no tipo de ação
         let corImpacto = '#fff';
         let tituloImpacto = 'AÇÃO';
         let valorImpacto = 0;
@@ -180,7 +179,7 @@ export default function MapaPanel() {
                     backgroundImage: atorInfo.img ? `url('${atorInfo.img}')` : 'none', 
                     backgroundSize: 'cover', backgroundPosition: 'top center',
                     position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
-                    boxShadow: 'inset 0 -100px 50px -20px rgba(0,0,0,0.9)' // Degrade escurão no fundo para destacar o nome
+                    boxShadow: 'inset 0 -100px 50px -20px rgba(0,0,0,0.9)' 
                 }}>
                     <div style={{ padding: '20px', zIndex: 2 }}>
                         <h2 style={{ margin: 0, color: '#fff', fontSize: '2em', textShadow: '0 0 10px #000, 2px 2px 0px #000' }}>
@@ -194,12 +193,19 @@ export default function MapaPanel() {
                     </div>
                 </div>
 
-                {/* 3. O Dano/Número Gigante */}
+                {/* 3. O Dano/Número Gigante & LETALIDADE */}
                 <div style={{ padding: '20px', background: 'rgba(0,0,0,0.8)', textAlign: 'center', borderTop: `1px solid ${corImpacto}` }}>
                     <div style={{ fontSize: '0.9em', color: '#aaa', marginBottom: '-10px', textTransform: 'uppercase' }}>Impacto Resultante</div>
                     <h1 style={{ margin: 0, fontSize: '4em', color: corImpacto, textShadow: `0 0 20px ${corImpacto}` }}>
                         {fmt(valorImpacto)}
                     </h1>
+                    
+                    {/* 🔥 EXIBIÇÃO DA LETALIDADE AQUI */}
+                    {ultimaAcao.tipo === 'dano' && ultimaAcao.letalidade !== undefined && (
+                        <div style={{ color: '#ffcc00', fontSize: '1.2em', fontWeight: 'bold', marginTop: '10px', textShadow: '0 0 5px #ffcc00' }}>
+                            LETALIDADE: +{ultimaAcao.letalidade}
+                        </div>
+                    )}
                 </div>
 
                 {/* 4. O HUD de Status do Atacante/Defensor */}
