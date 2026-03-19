@@ -24,7 +24,7 @@ const ENERGIA_LIST = [
 ];
 
 export default function AtaquePanel() {
-    const { minhaFicha, meuNome, updateFicha, setAbaAtiva, addFeedEntry } = useStore();
+    const { minhaFicha, meuNome, updateFicha, setAbaAtiva } = useStore(); // 🔥 addFeedEntry foi removido da desestruturação local!
 
     const ac = minhaFicha.ataqueConfig || {};
 
@@ -76,7 +76,6 @@ export default function AtaquePanel() {
             const main = sels[0];
             if (!minhaFicha || !minhaFicha[main]) return;
 
-            // 🔥 A MÁGICA DE SEPARAÇÃO: A interface agora lê os buffs EXCLUSIVOS de 'dano' para preencher as labels!
             const bDano = getBuffs(minhaFicha, 'dano');
             
             setBuffLabels({
@@ -201,8 +200,11 @@ export default function AtaquePanel() {
             atributosUsados: result.atributosUsados, detalheEnergia: result.detalheEnergia,
             armaStr: result.armaStr, detalheConta: result.detalheConta
         };
+        
+        // 🔥 A FONTE ÚNICA: Apenas enviamos para o Firebase. O listener em firebase-sync.js 
+        // vai detectar essa nova entrada e adicionar na tela para todos.
         enviarParaFeed(feedData);
-        addFeedEntry(feedData);
+        
         setAbaAtiva('aba-log');
     }
 

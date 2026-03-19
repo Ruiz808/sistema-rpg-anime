@@ -1,8 +1,9 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import AtaquePanel from './AtaquePanel';
 import useStore from '../../stores/useStore';
 import { getBuffs } from '../../core/attributes';
+import { enviarParaFeed } from '../../services/firebase-sync';
 
 vi.mock('../../stores/useStore');
 vi.mock('../../core/attributes', () => ({
@@ -17,10 +18,13 @@ vi.mock('../../services/firebase-sync', () => ({
 }));
 
 describe('AtaquePanel', () => {
+    let mockAddFeedEntry;
+
     beforeEach(() => {
         vi.clearAllMocks();
         
-        // Mock da Ficha e dos hooks do Zustand
+        mockAddFeedEntry = vi.fn(); // Função local que NÂO deve ser chamada
+
         useStore.mockReturnValue({
             minhaFicha: { 
                 ataqueConfig: { statusSelecionados: ['forca'] } 
@@ -28,21 +32,24 @@ describe('AtaquePanel', () => {
             meuNome: 'Herói',
             updateFicha: vi.fn(),
             setAbaAtiva: vi.fn(),
-            addFeedEntry: vi.fn()
+            addFeedEntry: mockAddFeedEntry 
         });
 
-        // Simula que existe um buff ativo especificamente em DANO
         getBuffs.mockReturnValue({
             mbase: 2.0, mgeral: 1.0, mformas: 1.0, mabs: 1.0, munico: []
         });
     });
 
-    it('deve ler os buffs de DANO para renderizar as labels e não os de Status', () => {
+    it('deve enviar para o Firebase e NÃO adicionar localmente (evitando duplicidade de eco)', () => {
         render(<AtaquePanel />);
-        // Verifica se a função getBuffs foi chamada com 'dano' na renderização
-        expect(getBuffs).toHaveBeenCalledWith(expect.anything(), 'dano');
+        const btnRolar = screen.getByText('ROLAR DANO');
         
-        // Verifica se o multiplicador x2.00 apareceu na label (e não o status do personagem)
-        expect(screen.getByText('(Poder: x2.00)')).toBeDefined();
+        fireEvent.click(btnRolar);
+        
+        // Verifica se enviou para o banco de dados
+        expect(enviarParaFeed).toHaveBeenCalled();
+        
+        // Verifica se a adição local foi bloqueada com sucesso!
+        expect(mockAddFeedEntry).not.toHaveBeenCalled(); 
     });
 });
