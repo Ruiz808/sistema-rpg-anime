@@ -16,7 +16,8 @@ import ElementosPanel from './components/arsenal/ElementosPanel'
 import FeedCombate from './components/feed/FeedCombate'
 import MapaPanel from './components/mapa/MapaPanel'
 import NarrativaPanel from './components/narrativa/NarrativaPanel'
-import Jukebox from './components/jukebox/Jukebox'
+import Jukebox from './components/Jukebox' 
+import RadioGlobal from './components/RadioGlobal' // <-- A RÁDIO IMPORTADA AQUI
 import { carregarFichaDoFirebase } from './services/firebase-sync'
 
 function MestrePanel() {
@@ -56,68 +57,44 @@ export default function App() {
     const abaAtiva = useStore(s => s.abaAtiva)
     const [pronto, setPronto] = useState(false)
 
-    // On mount: check localStorage for saved name and backup
     useEffect(() => {
         let nomeLocal = localStorage.getItem('rpgNome')
         if (!nomeLocal) nomeLocal = localStorage.getItem('rpg_nome')
         if (nomeLocal) {
             const nomeSanitizado = sanitizarNome(nomeLocal)
             setMeuNome(nomeSanitizado)
-
-            // Load backup from localStorage
             try {
                 const backup = localStorage.getItem('rpgFicha_' + nomeSanitizado)
-                if (backup) {
-                    carregarDadosFicha(JSON.parse(backup))
-                }
-            } catch (e) {
-                console.warn('Falha ao carregar backup local:', e)
-            }
-
+                if (backup) carregarDadosFicha(JSON.parse(backup))
+            } catch (e) { console.warn('Falha:', e) }
             setPronto(true)
         }
     }, [setMeuNome, carregarDadosFicha])
 
-    // Firebase listeners (real hook)
     const { loading } = useFirebase()
 
-    // Name prompt handler
     const handleNameSubmit = async (e) => {
         e.preventDefault()
         const input = e.target.elements.nomeInput.value.trim()
         if (!input) return
         const nomeSanitizado = sanitizarNome(input)
         if (!nomeSanitizado) return
-
         localStorage.setItem('rpgNome', nomeSanitizado)
         setMeuNome(nomeSanitizado)
         setPronto(true)
-
-        // Load from Firebase
         try {
             const dados = await carregarFichaDoFirebase(nomeSanitizado)
-            if (dados && Object.keys(dados).length > 2) {
-                carregarDadosFicha(dados)
-            }
-        } catch (e) {
-            console.warn('Firebase load falhou:', e)
-        }
+            if (dados && Object.keys(dados).length > 2) carregarDadosFicha(dados)
+        } catch (e) { console.warn('Falha:', e) }
     }
 
-    // Show name prompt if no name set
     if (!pronto && !meuNome) {
         return (
             <div className="modal-overlay" style={{ display: 'flex' }}>
                 <form className="modal-box" onSubmit={handleNameSubmit}>
                     <h2 style={{ color: '#0ff', marginTop: 0 }}>Bem-vindo ao RPG</h2>
                     <p style={{ color: '#fff' }}>Digite o nome do seu personagem:</p>
-                    <input
-                        name="nomeInput"
-                        type="text"
-                        autoFocus
-                        placeholder="Nome do personagem"
-                        maxLength={50}
-                    />
+                    <input name="nomeInput" type="text" autoFocus placeholder="Nome do personagem" maxLength={50} />
                     <button type="submit" className="btn-neon" style={{ marginTop: 15 }}>Entrar</button>
                 </form>
             </div>
@@ -126,15 +103,14 @@ export default function App() {
 
     const isMapMode = abaAtiva === 'aba-mapa'
 
-return (
+    return (
         <div className="app-layout">
-
+            
+            <RadioGlobal /> {/* <-- A RÁDIO LIGADA 100% DO TEMPO AQUI */}
+            
             <Sidebar />
-
-            {/* Conteúdo principal */}
             <div className={`main-content${isMapMode ? ' modo-mapa' : ''}`}>
                 {!isMapMode && <h1 className="title">RPG Anime System</h1>}
-
                 <TabPanel id="aba-perfil"><PerfilPanel /></TabPanel>
                 <TabPanel id="aba-mestre"><MestrePanel /></TabPanel>
                 <TabPanel id="aba-status"><StatusPanel /></TabPanel>
@@ -148,9 +124,8 @@ return (
                 <TabPanel id="aba-log"><FeedCombate /></TabPanel>
                 <TabPanel id="aba-mapa"><MapaPanel /></TabPanel>
                 <TabPanel id="aba-narrativa"><NarrativaPanel /></TabPanel>
-                <TabPanel id="aba-musica"><Jukebox /></TabPanel> {/* <-- A NOSSA NOVA ABA AQUI */}
+                <TabPanel id="aba-musica"><Jukebox /></TabPanel>
             </div>
-
             <ModalConfirm />
         </div>
     )
