@@ -13,7 +13,7 @@ class StatusErrorBoundary extends React.Component {
             return (
                 <div style={{ padding: '20px', border: '2px solid #ff003c', background: '#1a0000', borderRadius: '10px', color: '#fff', margin: '20px' }}>
                     <h3 style={{ color: '#ff003c', marginTop: 0 }}>🔥 ERRO DETECTADO NO PAINEL DE STATUS 🔥</h3>
-                    <p>O React evitou a tela branca. O erro real é este (Mande print para a bancada):</p>
+                    <p>O React evitou a tela branca. O erro real é este:</p>
                     <pre style={{ color: '#ffaaaa', whiteSpace: 'pre-wrap', fontSize: '14px' }}>{this.state.error?.toString()}</pre>
                 </div>
             );
@@ -22,7 +22,7 @@ class StatusErrorBoundary extends React.Component {
     }
 }
 
-// --- SAFE MATH HELPERS (Blinda contra NaN e Undefined) ---
+// --- SAFE MATH HELPERS (Blinda o motor matemático) ---
 const safeFn = (fn, fallback) => (...args) => {
     if (typeof fn !== 'function') return fallback;
     try { 
@@ -38,11 +38,11 @@ const safeCalcPAtual = safeFn(calcPAtual, { valor: 0 });
 const safeGetRank = safeFn(getRank, { l: 'F', c: '#ffffff', a: 1 });
 const safeGetDivisorPara = safeFn(getDivisorPara, 'Padrão');
 
-// ---------- Constantes do Gráfico Radar ----------
+// ---------- EIXOS DO GRÁFICO (INTERLIGADO À TABELA) ----------
 const CX = 100, CY = 100, R = 70;
-const STATS_RADAR = ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma'];
-const STAT_LABELS = ['FOR', 'DES', 'INT', 'SAB', 'ENE', 'CAR'];
-const ANGLES = STATS_RADAR.map((_, i) => (Math.PI * 2 * i) / 6 - Math.PI / 2);
+const VITALS_RADAR = ['vida', 'mana', 'aura', 'chakra', 'corpo', 'alma'];
+const VITALS_LABELS = ['VIDA', 'MANA', 'AURA', 'CHAKRA', 'CORPO', 'ALMA'];
+const ANGLES = VITALS_RADAR.map((_, i) => (Math.PI * 2 * i) / 6 - Math.PI / 2);
 
 function hexPoints(cx, cy, r) {
     return ANGLES.map((a) => `${cx + r * Math.cos(a)},${cy + r * Math.sin(a)}`).join(' ');
@@ -56,9 +56,9 @@ function radarPoint(cx, cy, r, idx, frac) {
 
 // ---------- Componente do Gráfico Radar ----------
 function RadarChart({ ficha, isAtual }) {
-    const maxVals = STATS_RADAR.map((k) => safeGetMaximo(ficha, k));
-    const baseVals = STATS_RADAR.map((k) => safeGetEfetivoBase(ficha, k));
-    const globalMax = Math.max(...maxVals, 1);
+    const maxVals = VITALS_RADAR.map((k) => safeGetMaximo(ficha, k));
+    const baseVals = VITALS_RADAR.map((k) => safeGetEfetivoBase(ficha, k));
+    const globalMax = Math.max(...maxVals, ...baseVals, 1);
 
     const dataPoints = isAtual 
         ? maxVals.map((v, i) => radarPoint(CX, CY, R, i, v / globalMax))
@@ -66,7 +66,7 @@ function RadarChart({ ficha, isAtual }) {
 
     const dataPoly = dataPoints.map((p) => `${p[0] || 0},${p[1] || 0}`).join(' ');
 
-    const rankInfos = STATS_RADAR.map((k) => {
+    const rankInfos = VITALS_RADAR.map((k) => {
         const raw = isAtual ? safeGetMaximo(ficha, k) : safeGetEfetivoBase(ficha, k);
         const pRes = safeGetPrestigioReal(k, raw);
         const pAtual = safeCalcPAtual(ficha, k, pRes);
@@ -88,11 +88,12 @@ function RadarChart({ ficha, isAtual }) {
             {ANGLES.map((a, i) => (
                 <line key={i} x1={CX} y1={CY} x2={CX + R * Math.cos(a)} y2={CY + R * Math.sin(a)} stroke="rgba(255,255,255,0.15)" strokeWidth="1" strokeDasharray="4" />
             ))}
-            <polygon points={dataPoly} fill={polyColor} stroke={strokeColor} strokeWidth="2" style={{ transition: 'all 0.5s ease-out' }} />
+            {/* O SEGREDO DA INTERATIVIDADE: transition suavizada */}
+            <polygon points={dataPoly} fill={polyColor} stroke={strokeColor} strokeWidth="2" style={{ transition: 'all 0.4s ease-out' }} />
             {dataPoints.map(([x, y], i) => (
-                <circle key={i} cx={x || 0} cy={y || 0} r="3" fill={strokeColor} />
+                <circle key={i} cx={x || 0} cy={y || 0} r="3" fill={strokeColor} style={{ transition: 'all 0.4s ease-out' }} />
             ))}
-            {STAT_LABELS.map((lbl, i) => {
+            {VITALS_LABELS.map((lbl, i) => {
                 const [lx, ly] = labelPos[i];
                 const rk = rankInfos[i];
                 return (
@@ -115,7 +116,8 @@ function StatusPanelCore() {
     
     const inicializado = useRef(false);
 
-    const vitals = useMemo(() => [
+    // As barras visíveis de combate (exclui a Alma, pois Alma não tem HP)
+    const vitalsBars = useMemo(() => [
         { key: 'vida',   label: 'VIDA (HP)', color: '#ff4d4d', classColor: 'label-color-vida' },
         { key: 'mana',   label: 'MANA',      color: '#00ffff', classColor: 'label-color-mana' },
         { key: 'aura',   label: 'AURA',      color: '#ffcc00', classColor: 'label-color-aura' },
@@ -126,7 +128,7 @@ function StatusPanelCore() {
     useEffect(() => {
         if (!ficha || inicializado.current) return;
         updateFicha((f) => {
-            vitals.forEach(({ key }) => {
+            vitalsBars.forEach(({ key }) => {
                 const mx = safeGetMaximo(f, key);
                 if (!f[key]) f[key] = {};
                 if (f[key].atual === undefined || f[key].atual === null) {
@@ -135,7 +137,7 @@ function StatusPanelCore() {
             });
         });
         inicializado.current = true;
-    }, [ficha, updateFicha, vitals]);
+    }, [ficha, updateFicha, vitalsBars]);
 
     const alterarHP = useCallback((tipo) => {
         const valor = parseInt(inputDano) || 0;
@@ -160,16 +162,16 @@ function StatusPanelCore() {
 
     const curarTudo = useCallback(() => {
         updateFicha((f) => {
-            vitals.forEach(({ key }) => {
+            vitalsBars.forEach(({ key }) => {
                 if(f[key]) f[key].atual = safeGetMaximo(f, key);
             });
         });
         salvarFichaSilencioso();
-    }, [updateFicha, vitals]);
+    }, [updateFicha, vitalsBars]);
 
     const aplicarRegeneracaoTurno = useCallback(() => {
         updateFicha((f) => {
-            vitals.forEach(({ key }) => {
+            vitalsBars.forEach(({ key }) => {
                 const mx = safeGetMaximo(f, key);
                 const regen = parseFloat(f[key]?.regeneracao) || 0;
                 if (regen > 0 && f[key].atual < mx) {
@@ -178,7 +180,7 @@ function StatusPanelCore() {
             });
         });
         salvarFichaSilencioso();
-    }, [updateFicha, vitals]);
+    }, [updateFicha, vitalsBars]);
 
     if (!ficha) return <div style={{ color: '#888', textAlign: 'center', marginTop: '50px' }}>Carregando dados vitais...</div>;
 
@@ -186,7 +188,7 @@ function StatusPanelCore() {
         <div className="status-panel-container">
             {/* --- BLOCO 1: BARRAS VITAIS --- */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '30px' }}>
-                {vitals.map(({ key, label, color, classColor }, index) => {
+                {vitalsBars.map(({ key, label, color, classColor }, index) => {
                     const mx = safeGetMaximo(ficha, key);
                     const atual = ficha[key]?.atual ?? mx;
                     const regen = parseFloat(ficha[key]?.regeneracao) || 0;
@@ -251,22 +253,23 @@ function StatusPanelCore() {
                         />
                     </div>
                     <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                        {STATS_RADAR.map((attrKey, i) => {
+                        {VITALS_RADAR.map((attrKey, i) => {
                             const rawMax = safeGetMaximo(ficha, attrKey);
                             const baseP = safeGetPrestigioReal(attrKey, rawMax); 
                             return (
                                 <div key={attrKey}>
                                     <div className="label-divisor" style={{ marginBottom: '5px' }}>
-                                        <span style={{ color: '#00ffcc', fontWeight: 'bold' }}>{STAT_LABELS[i]}</span>
+                                        <span style={{ color: '#00ffcc', fontWeight: 'bold' }}>{VITALS_LABELS[i]}</span>
                                         <span>Divisor: <input 
                                             type="number" 
                                             className="divisor-mini-input" 
                                             value={ficha[attrKey]?.divisorCustom || ''} 
-                                            placeholder={String(safeGetDivisorPara(attrKey))}
+                                            placeholder={String(safeGetDivisorPara(attrKey) || 'Padrão')}
                                             onChange={(e) => {
+                                                const val = e.target.value;
                                                 updateFicha(f => { 
                                                     if(!f[attrKey]) f[attrKey] = {};
-                                                    f[attrKey].divisorCustom = Number(e.target.value) || undefined;
+                                                    f[attrKey].divisorCustom = val ? Number(val) : undefined;
                                                 });
                                                 salvarFichaSilencioso();
                                             }}
@@ -286,7 +289,7 @@ function StatusPanelCore() {
                         <div className="prestige-display-atual">{ficha.ascensaoBase || 0}</div>
                     </div>
                     <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                        {STATS_RADAR.map((attrKey, i) => {
+                        {VITALS_RADAR.map((attrKey, i) => {
                             const rawMax = safeGetMaximo(ficha, attrKey);
                             const baseP = safeGetPrestigioReal(attrKey, rawMax);
                             const pAtualObj = safeCalcPAtual(ficha, attrKey, baseP);
@@ -295,7 +298,7 @@ function StatusPanelCore() {
                             return (
                                 <div key={attrKey}>
                                     <div className="label-divisor" style={{ marginBottom: '5px' }}>
-                                        <span style={{ color: '#00ffcc', fontWeight: 'bold' }}>{STAT_LABELS[i]}</span>
+                                        <span style={{ color: '#00ffcc', fontWeight: 'bold' }}>{VITALS_LABELS[i]}</span>
                                         <span style={{ color: rankInfo.c || '#fff', fontWeight: 'bold' }}>Rank {rankInfo.l || 'F'}</span>
                                     </div>
                                     <div className="prestige-display-atual">
@@ -324,7 +327,7 @@ function StatusPanelCore() {
     );
 }
 
-// O componente final exportado é envolto no Escudo Anti-Crash
+// O componente final exportado é blindado contra tela branca
 export default function StatusPanel() {
     return (
         <StatusErrorBoundary>
