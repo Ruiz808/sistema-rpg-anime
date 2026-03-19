@@ -39,7 +39,9 @@ const safeGetDivisorPara = safeFn(getDivisorPara, 'Padrão');
 
 // ---------- EIXOS DO GRÁFICO ----------
 const CX = 100, CY = 100, R = 70;
-const VITALS_RADAR = ['vida', 'mana', 'aura', 'chakra', 'corpo', 'status'];
+
+// O SEGREDO: 'alma' é a chave do banco de dados, 'STATUS' é o que aparece na tela.
+const VITALS_RADAR = ['vida', 'mana', 'aura', 'chakra', 'corpo', 'alma'];
 const VITALS_LABELS = ['VIDA', 'MANA', 'AURA', 'CHAKRA', 'CORPO', 'STATUS'];
 const ANGLES = VITALS_RADAR.map((_, i) => (Math.PI * 2 * i) / 6 - Math.PI / 2);
 
@@ -60,7 +62,9 @@ function RadarChart({ ficha, isAtual }) {
     const chartValues = VITALS_RADAR.map((k) => {
         const rawMax = safeGetMaximo(ficha, k);
         const calcBaseP = safeGetPrestigioReal(k, rawMax);
-        const baseP = ficha[k]?.prestigioBase !== undefined ? Number(ficha[k].prestigioBase) : calcBaseP;
+        const baseP = ficha[k]?.prestigioBase !== undefined && ficha[k]?.prestigioBase !== null 
+            ? Number(ficha[k].prestigioBase) 
+            : calcBaseP;
         
         if (!isAtual) return baseP;
         
@@ -74,7 +78,9 @@ function RadarChart({ ficha, isAtual }) {
     const rankInfos = VITALS_RADAR.map((k) => {
         const rawMax = safeGetMaximo(ficha, k);
         const calcBaseP = safeGetPrestigioReal(k, rawMax);
-        const baseP = ficha[k]?.prestigioBase !== undefined ? Number(ficha[k].prestigioBase) : calcBaseP;
+        const baseP = ficha[k]?.prestigioBase !== undefined && ficha[k]?.prestigioBase !== null 
+            ? Number(ficha[k].prestigioBase) 
+            : calcBaseP;
         
         const pAtual = safeCalcPAtual(ficha, k, baseP) || { valor: baseP };
         return safeGetRank(pAtual.valor, ficha?.ascensaoBase || 0);
@@ -269,7 +275,7 @@ function StatusPanelCore() {
                             value={ficha.ascensaoBase || 0} 
                             onChange={(e) => {
                                 updateFicha(f => { f.ascensaoBase = Number(e.target.value) });
-                                salvarFichaSilencioso(); // RESTAURADO
+                                salvarFichaSilencioso();
                             }} 
                         />
                     </div>
@@ -277,7 +283,9 @@ function StatusPanelCore() {
                         {VITALS_RADAR.map((attrKey, i) => {
                             const rawMax = safeGetMaximo(ficha, attrKey);
                             const calcBaseP = safeGetPrestigioReal(attrKey, rawMax); 
-                            const baseP = ficha[attrKey]?.prestigioBase !== undefined ? ficha[attrKey].prestigioBase : calcBaseP;
+                            const baseP = ficha[attrKey]?.prestigioBase !== undefined && ficha[attrKey]?.prestigioBase !== null 
+                                ? ficha[attrKey].prestigioBase 
+                                : calcBaseP;
                             return (
                                 <div key={attrKey}>
                                     <div className="label-divisor" style={{ marginBottom: '5px' }}>
@@ -291,9 +299,9 @@ function StatusPanelCore() {
                                                 const val = e.target.value;
                                                 updateFicha(f => { 
                                                     if(!f[attrKey]) f[attrKey] = {};
-                                                    f[attrKey].divisorCustom = val ? Number(val) : undefined; // REVERTIDO PARA UNDEFINED (Padrao do Firebase)
+                                                    f[attrKey].divisorCustom = val ? Number(val) : null; 
                                                 });
-                                                salvarFichaSilencioso(); // RESTAURADO
+                                                salvarFichaSilencioso();
                                             }}
                                         /></span>
                                     </div>
@@ -305,9 +313,9 @@ function StatusPanelCore() {
                                             const val = e.target.value;
                                             updateFicha(f => {
                                                 if(!f[attrKey]) f[attrKey] = {};
-                                                f[attrKey].prestigioBase = val === '' ? undefined : Number(val); // REVERTIDO PARA UNDEFINED
+                                                f[attrKey].prestigioBase = val === '' ? null : Number(val);
                                             });
-                                            salvarFichaSilencioso(); // RESTAURADO
+                                            salvarFichaSilencioso();
                                         }}
                                     />
                                 </div>
@@ -326,7 +334,9 @@ function StatusPanelCore() {
                         {VITALS_RADAR.map((attrKey, i) => {
                             const rawMax = safeGetMaximo(ficha, attrKey);
                             const calcBaseP = safeGetPrestigioReal(attrKey, rawMax);
-                            const baseP = ficha[attrKey]?.prestigioBase !== undefined ? ficha[attrKey].prestigioBase : calcBaseP;
+                            const baseP = ficha[attrKey]?.prestigioBase !== undefined && ficha[attrKey]?.prestigioBase !== null 
+                                ? ficha[attrKey].prestigioBase 
+                                : calcBaseP;
                             const pAtualObj = safeCalcPAtual(ficha, attrKey, baseP);
                             const rankInfo = safeGetRank(pAtualObj.valor, ficha.ascensaoBase || 0);
 
@@ -346,7 +356,7 @@ function StatusPanelCore() {
                 </div>
             </div>
 
-            {/* BOTÃO INTELIGENTE DE SALVAR (Mantido como forçador extra/feedback) */}
+            {/* BOTÃO INTELIGENTE DE SALVAR */}
             <button 
                 className={`btn-neon ${statusBotao === 'saved' ? 'btn-green' : 'btn-blue'}`} 
                 onClick={handleSalvarPrestigio} 
@@ -374,6 +384,7 @@ function StatusPanelCore() {
     );
 }
 
+// O componente final exportado
 export default function StatusPanel() {
     return (
         <StatusErrorBoundary>
