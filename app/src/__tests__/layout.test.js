@@ -97,30 +97,26 @@ describe('App.jsx layout CSS classes', () => {
 });
 
 // ==========================================
-// App.jsx — useEffect nesting fix
+// App.jsx — useEffect structure
 // ==========================================
+// The dead second useEffect was removed. App.jsx now has exactly one useEffect
+// (the mount effect that reads localStorage and loads the local backup).
+// These tests verify the current valid state and guard against re-introducing
+// the old nesting bug should a second useEffect be added in the future.
 describe('App.jsx useEffect structure', () => {
     const content = readFileSync(APP_JSX, 'utf-8');
 
-    it('contains at least two top-level useEffect calls (not nested)', () => {
-        // Count occurrences of "useEffect(" at the top level of the component
+    it('contains exactly one useEffect call (dead effect was removed)', () => {
         const matches = content.match(/useEffect\s*\(/g) || [];
-        expect(matches.length).toBeGreaterThanOrEqual(2);
+        expect(matches.length).toBe(1);
     });
 
-    it('closes the first useEffect before opening the second (no nesting)', () => {
-        // Detect the nested-useEffect bug: when the second useEffect call appears inside
-        // the body of the first one (before the first closing `}, [deps])` ).
-        //
-        // Strategy: find the first useEffect, then scan forward character-by-character
-        // tracking brace depth. The closing `}, [deps])` of the first useEffect is where
-        // depth returns to 0 after the opening `() => {`.  If we find a second "useEffect("
-        // string before that closing brace, the effects are nested.
-
+    it('the single useEffect has a properly closed callback body', () => {
+        // Verify the useEffect callback opens and closes its brace correctly
+        // (guards against malformed syntax after any future edits).
         const firstIdx = content.indexOf('useEffect(');
         expect(firstIdx).toBeGreaterThan(-1);
 
-        // Find the opening `{` of the first useEffect callback
         const openBrace = content.indexOf('{', firstIdx);
         let depth = 0;
         let firstCloseIdx = -1;
@@ -131,10 +127,7 @@ describe('App.jsx useEffect structure', () => {
                 if (depth === 0) { firstCloseIdx = i; break; }
             }
         }
-        expect(firstCloseIdx).toBeGreaterThan(-1);
-
-        // The second useEffect must appear AFTER the closing brace of the first
-        const secondIdx = content.indexOf('useEffect(', firstIdx + 1);
-        expect(secondIdx).toBeGreaterThan(firstCloseIdx);
+        // A valid closing brace must have been found
+        expect(firstCloseIdx).toBeGreaterThan(openBrace);
     });
 });
