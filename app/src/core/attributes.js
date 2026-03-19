@@ -1,11 +1,11 @@
 import { isFisico, isEnergia, tratarUnico } from './utils.js';
 
-export function getBuffs(ficha, statKey) {
+// Adicionamos o "interruptor" ignorarPassivas
+export function getBuffs(ficha, statKey, ignorarPassivas = false) {
     let buffs = { base: 0, mbase: 0, mgeral: 0, mformas: 0, mabs: 0, munico: [], reducaoCusto: 0, regeneracao: 0 };
     let hasBuff = { mbase: false, mgeral: false, mformas: false, mabs: false };
 
-    // Blindagem extra de segurança na leitura
-    if (!ficha || !ficha.poderes || !statKey) {
+    if (!ficha || !statKey) {
         buffs.mbase = 1.0; buffs.mgeral = 1.0; buffs.mformas = 1.0; buffs.mabs = 1.0;
         buffs._hasBuff = hasBuff;
         return buffs;
@@ -15,34 +15,50 @@ export function getBuffs(ficha, statKey) {
     let isStatFisico = isFisico(sK);
     let isStatEnergia = isEnergia(sK);
 
-    for (let i = 0; i < ficha.poderes.length; i++) {
-        let p = ficha.poderes[i];
-        if (p && p.ativa && p.efeitos) {
-            for (let j = 0; j < p.efeitos.length; j++) {
-                let e = p.efeitos[j];
-                if (!e) continue;
-                let prop = (e.propriedade || '').toLowerCase();
-                let atr = (e.atributo || '').toLowerCase();
-                let val = parseFloat(e.valor);
-                
-                if (isNaN(val)) val = prop.startsWith('m') ? 1.0 : 0;
+    // FUNÇÃO INTERNA: Processa os efeitos sem precisarmos repetir código
+    const processarEfeitos = (efeitos) => {
+        if (!efeitos) return;
+        for (let j = 0; j < efeitos.length; j++) {
+            let e = efeitos[j];
+            if (!e) continue;
+            let prop = (e.propriedade || '').toLowerCase();
+            let atr = (e.atributo || '').toLowerCase();
+            let val = parseFloat(e.valor);
+            
+            if (isNaN(val)) val = prop.startsWith('m') ? 1.0 : 0;
 
-                let afeta = (atr === sK) ||
-                    (atr === 'todos_status' && isStatFisico) ||
-                    (atr === 'todas_energias' && isStatEnergia) ||
-                    (atr === 'geral');
+            let afeta = (atr === sK) ||
+                (atr === 'todos_status' && isStatFisico) ||
+                (atr === 'todas_energias' && isStatEnergia) ||
+                (atr === 'geral') ||
+                (atr === 'dano' && sK === 'dano'); // Garante que lê bónus de dano também
 
-                if (afeta) {
-                    if (prop === 'base') buffs.base += val;
-                    if (prop === 'mbase') { buffs.mbase += val; hasBuff.mbase = true; }
-                    if (prop === 'mgeral') { buffs.mgeral += val; hasBuff.mgeral = true; }
-                    if (prop === 'mformas') { buffs.mformas += val; hasBuff.mformas = true; }
-                    if (prop === 'mabs') { buffs.mabs += val; hasBuff.mabs = true; }
-                    if (prop === 'munico') buffs.munico.push(val);
-                    if (prop === 'reducaocusto') buffs.reducaoCusto += val;
-                    if (prop === 'regeneracao') buffs.regeneracao += val;
-                }
+            if (afeta) {
+                if (prop === 'base') buffs.base += val;
+                if (prop === 'mbase') { buffs.mbase += val; hasBuff.mbase = true; }
+                if (prop === 'mgeral') { buffs.mgeral += val; hasBuff.mgeral = true; }
+                if (prop === 'mformas') { buffs.mformas += val; hasBuff.mformas = true; }
+                if (prop === 'mabs') { buffs.mabs += val; hasBuff.mabs = true; }
+                if (prop === 'munico') buffs.munico.push(val);
+                if (prop === 'reducaocusto') buffs.reducaoCusto += val;
+                if (prop === 'regeneracao') buffs.regeneracao += val;
             }
+        }
+    };
+
+    // 1. Processar Poderes (Formas/Modos com interruptor liga/desliga)
+    if (ficha.poderes) {
+        for (let i = 0; i < ficha.poderes.length; i++) {
+            let p = ficha.poderes[i];
+            if (p && p.ativa && p.efeitos) processarEfeitos(p.efeitos);
+        }
+    }
+
+    // 2. Processar Passivas (Ocultas para o Prestígio, Fortes para o Combate)
+    if (!ignorarPassivas && ficha.passivas) {
+        for (let i = 0; i < ficha.passivas.length; i++) {
+            let p = ficha.passivas[i];
+            if (p && p.efeitos) processarEfeitos(p.efeitos);
         }
     }
 
@@ -111,7 +127,7 @@ export function getEfetivoBase(ficha, statKey) {
 export function getMultiplicadorTotal(ficha, k) {
     if (!ficha || !k) return 1.0;
     let s = ficha[k] || {};
-    let b = getBuffs(ficha, k);
+    let b = getBuffs(ficha, k); // Aqui ele NÃO ignora as passivas, aplica-as no combate!
 
     const calcAdd = (fichaVal, buffSum, hasBuffFlag) => {
         let v = parseFloat(fichaVal) || 1.0;

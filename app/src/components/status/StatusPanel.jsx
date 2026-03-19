@@ -43,7 +43,9 @@ function radarPoint(cx, cy, r, idx, frac) {
 function getEfetivoMFormas(ficha, k) {
     const anchor = k === 'status' ? 'forca' : k;
     let s = ficha[anchor] || {};
-    let b = getBuffs(ficha, anchor);
+    
+    // O SEGREDO ESTÁ AQUI: O 'true' diz à engine: "Ignore as passivas!"
+    let b = getBuffs(ficha, anchor, true);
 
     let v = parseFloat(s.mFormas) || 1.0;
     if (!b._hasBuff || !b._hasBuff.mformas) return v;
