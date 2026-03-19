@@ -134,14 +134,14 @@ export default function MapaPanel() {
     }, [jogadores]);
 
     const jogadorDaVez = ordemIniciativa.length > 0 ? ordemIniciativa[turnoAtualIndex % ordemIniciativa.length] : null;
-    const infoDaVez = jogadorDaVez ? getAvatarInfo(jogadorDaVez.ficha) : null;
     const fmt = (n) => Number(n || 0).toLocaleString('pt-BR');
-
-    // 🔥 O CÉREBRO DO HOLOGRAMA: Busca a última ação que caiu no feed
     const ultimaAcao = feedCombate.length > 0 ? feedCombate[feedCombate.length - 1] : null;
-    
+
+    // 🔥 O CÉREBRO DO HOLOGRAMA E REGRAS DE TURNO
     function renderHologramaAcao() {
-        if (!ultimaAcao) {
+        const emCombate = ordemIniciativa.length > 0;
+
+        if (!emCombate && !ultimaAcao) {
             return (
                 <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontStyle: 'italic', border: '2px dashed #333', borderRadius: 8 }}>
                     O campo de batalha aguarda o primeiro movimento...
@@ -149,67 +149,105 @@ export default function MapaPanel() {
             );
         }
 
-        const atorFicha = jogadores[ultimaAcao.nome] || null;
-        const atorInfo = getAvatarInfo(atorFicha);
-        
+        // Se há um combate rolando, a base visual do holograma é SEMPRE o jogador da vez.
+        // Se não há combate, a base visual é quem fez a última ação.
+        let nomeBase = jogadorDaVez ? jogadorDaVez.nome : (ultimaAcao ? ultimaAcao.nome : '');
+        let fichaBase = jogadorDaVez ? jogadorDaVez.ficha : (ultimaAcao ? jogadores[ultimaAcao.nome] : null);
+        let infoBase = getAvatarInfo(fichaBase);
+
+        // Lógica de Leitura de Crítico (Escaneia a rolagem de dados em busca de 20 ou 1)
+        let isCrit = false, isFalha = false;
+        if (ultimaAcao && ultimaAcao.rolagem && (ultimaAcao.tipo === 'acerto' || ultimaAcao.tipo === 'dano')) {
+            const match = ultimaAcao.rolagem.match(/\[(.*?)\]/);
+            if (match) {
+                const clean = match[1].replace(/<[^>]*>?/gm, ''); // Limpa tags HTML como <strike> ou <strong>
+                const numbers = clean.split(',').map(n => parseInt(n.trim(), 10));
+                if (numbers.includes(20)) isCrit = true;
+                if (numbers.includes(1)) isFalha = true;
+            }
+        }
+
+        // Verificações de Regras de Turno
+        const isForaDeCombate = ultimaAcao && emCombate && (!ordemIniciativa.find(j => j.nome === ultimaAcao.nome));
+        const isForaDeTurno = ultimaAcao && emCombate && !isForaDeCombate && ultimaAcao.nome !== nomeBase;
+
         let corImpacto = '#fff';
         let tituloImpacto = 'AÇÃO';
         let valorImpacto = 0;
 
-        switch (ultimaAcao.tipo) {
-            case 'dano': corImpacto = '#ff003c'; tituloImpacto = 'DANO'; valorImpacto = ultimaAcao.dano; break;
-            case 'acerto': corImpacto = '#f90'; tituloImpacto = 'ACERTO'; valorImpacto = ultimaAcao.acertoTotal; break;
-            case 'evasiva': corImpacto = '#0088ff'; tituloImpacto = 'ESQUIVA'; valorImpacto = ultimaAcao.total; break;
-            case 'resistencia': corImpacto = '#ccc'; tituloImpacto = 'BLOQUEIO'; valorImpacto = ultimaAcao.total; break;
-            case 'escudo': corImpacto = '#f0f'; tituloImpacto = 'ESCUDO'; valorImpacto = ultimaAcao.escudoReduzido; break;
-            default: break;
+        if (ultimaAcao) {
+            switch (ultimaAcao.tipo) {
+                case 'dano': corImpacto = '#ff003c'; tituloImpacto = 'DANO'; valorImpacto = ultimaAcao.dano; break;
+                case 'acerto': corImpacto = '#f90'; tituloImpacto = 'ACERTO'; valorImpacto = ultimaAcao.acertoTotal; break;
+                case 'evasiva': corImpacto = '#0088ff'; tituloImpacto = 'ESQUIVA'; valorImpacto = ultimaAcao.total; break;
+                case 'resistencia': corImpacto = '#ccc'; tituloImpacto = 'BLOQUEIO'; valorImpacto = ultimaAcao.total; break;
+                case 'escudo': corImpacto = '#f0f'; tituloImpacto = 'ESCUDO'; valorImpacto = ultimaAcao.escudoReduzido; break;
+                default: break;
+            }
         }
 
         return (
-            <div className="def-box" style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', border: `2px solid ${corImpacto}`, boxShadow: `0 0 20px ${corImpacto}40` }}>
+            <div className="def-box" style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', border: `2px solid ${isCrit ? '#ffcc00' : isFalha ? '#660000' : corImpacto}`, boxShadow: `0 0 20px ${corImpacto}40` }}>
                 
-                {/* 1. O Cabeçalho da Ação */}
-                <div style={{ background: corImpacto, color: '#000', padding: '10px', textAlign: 'center', fontWeight: '900', letterSpacing: 2, fontSize: '1.2em', textTransform: 'uppercase' }}>
-                    ⚡ {tituloImpacto} ⚡
+                {/* 1. O Cabeçalho (Quem domina o Turno) */}
+                <div style={{ background: isCrit ? '#ffcc00' : isFalha ? '#660000' : corImpacto, color: isFalha ? '#ff003c' : '#000', padding: '10px', textAlign: 'center', fontWeight: '900', letterSpacing: 2, fontSize: '1.2em', textTransform: 'uppercase' }}>
+                    {isCrit ? '🔥 ACERTO CRÍTICO 🔥' : isFalha ? '☠️ FALHA CRÍTICA ☠️' : (jogadorDaVez ? `TURNO DE ${nomeBase}` : 'AÇÃO LIVRE')}
                 </div>
 
-                {/* 2. A Imagem do Personagem (Cut-in) */}
+                {/* 2. A Imagem do Personagem Base */}
                 <div style={{ 
                     flex: '1', minHeight: '250px', 
-                    backgroundImage: atorInfo.img ? `url('${atorInfo.img}')` : 'none', 
+                    backgroundImage: infoBase.img ? `url('${infoBase.img}')` : 'none', 
                     backgroundSize: 'cover', backgroundPosition: 'top center',
                     position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
                     boxShadow: 'inset 0 -100px 50px -20px rgba(0,0,0,0.9)' 
                 }}>
                     <div style={{ padding: '20px', zIndex: 2 }}>
                         <h2 style={{ margin: 0, color: '#fff', fontSize: '2em', textShadow: '0 0 10px #000, 2px 2px 0px #000' }}>
-                            {ultimaAcao.nome}
+                            {nomeBase}
                         </h2>
-                        {atorInfo.forma && (
-                            <div style={{ color: corImpacto, fontSize: '1.2em', fontWeight: 'bold', textShadow: '0 0 5px #000' }}>
-                                ☄️ {atorInfo.forma}
+                        {infoBase.forma && (
+                            <div style={{ color: '#00ffcc', fontSize: '1.2em', fontWeight: 'bold', textShadow: '0 0 5px #000' }}>
+                                ☄️ {infoBase.forma}
                             </div>
                         )}
                     </div>
                 </div>
 
-                {/* 3. O Dano/Número Gigante & LETALIDADE */}
-                <div style={{ padding: '20px', background: 'rgba(0,0,0,0.8)', textAlign: 'center', borderTop: `1px solid ${corImpacto}` }}>
-                    <div style={{ fontSize: '0.9em', color: '#aaa', marginBottom: '-10px', textTransform: 'uppercase' }}>Impacto Resultante</div>
-                    <h1 style={{ margin: 0, fontSize: '4em', color: corImpacto, textShadow: `0 0 20px ${corImpacto}` }}>
-                        {fmt(valorImpacto)}
-                    </h1>
-                    
-                    {/* 🔥 EXIBIÇÃO DA LETALIDADE AQUI */}
-                    {ultimaAcao.tipo === 'dano' && ultimaAcao.letalidade !== undefined && (
-                        <div style={{ color: '#ffcc00', fontSize: '1.2em', fontWeight: 'bold', marginTop: '10px', textShadow: '0 0 5px #ffcc00' }}>
-                            LETALIDADE: +{ultimaAcao.letalidade}
-                        </div>
-                    )}
-                </div>
+                {/* 3. A Última Ação (Sobreposição) */}
+                {ultimaAcao && (
+                    <div style={{ padding: '20px', background: 'rgba(0,0,0,0.85)', textAlign: 'center', borderTop: `1px solid ${corImpacto}` }}>
+                        
+                        {/* Alertas de Violação de Turno */}
+                        {isForaDeCombate && (
+                            <div style={{ background: 'rgba(255,204,0,0.1)', color: '#ffcc00', border: '1px solid #ffcc00', padding: 4, fontSize: '0.8em', marginBottom: 10, borderRadius: 4 }}>
+                                ⚠️ Rolagem Fora de Combate (Feita por: {ultimaAcao.nome})
+                            </div>
+                        )}
+                        {isForaDeTurno && (
+                            <div style={{ background: 'rgba(255,0,60,0.1)', color: '#ff003c', border: '1px solid #ff003c', padding: 4, fontSize: '0.8em', marginBottom: 10, borderRadius: 4 }}>
+                                ❌ Ação Fora de Turno (Feita por: {ultimaAcao.nome})
+                            </div>
+                        )}
 
-                {/* 4. O HUD de Status do Atacante/Defensor */}
-                {atorFicha && (
+                        <div style={{ fontSize: '0.9em', color: '#aaa', marginBottom: '-10px', textTransform: 'uppercase' }}>
+                            {tituloImpacto} {(!isForaDeCombate && !isForaDeTurno) ? '' : `(${ultimaAcao.nome})`}
+                        </div>
+                        <h1 style={{ margin: 0, fontSize: '4em', color: corImpacto, textShadow: `0 0 20px ${corImpacto}` }}>
+                            {fmt(valorImpacto)}
+                        </h1>
+                        
+                        {/* Letalidade */}
+                        {ultimaAcao.tipo === 'dano' && ultimaAcao.letalidade !== undefined && (
+                            <div style={{ color: '#ffcc00', fontSize: '1.2em', fontWeight: 'bold', marginTop: '10px', textShadow: '0 0 5px #ffcc00' }}>
+                                LETALIDADE: +{ultimaAcao.letalidade}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* 4. O HUD de Status do Personagem da Vez */}
+                {fichaBase && (
                     <div style={{ padding: '15px', background: '#050505' }}>
                         <div style={{
                             display: 'flex', flexDirection: 'column', gap: 6,
@@ -217,19 +255,19 @@ export default function MapaPanel() {
                             border: '1px solid rgba(255,255,255,0.1)'
                         }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ff4d4d', fontWeight: 'bold' }}>
-                                <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>HP</span><span>{fmt(atorFicha.vida?.atual)}</span>
+                                <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>HP</span><span>{fmt(fichaBase.vida?.atual)}</span>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', color: '#4dffff', fontWeight: 'bold' }}>
-                                <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>MP</span><span>{fmt(atorFicha.mana?.atual)}</span>
+                                <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>MP</span><span>{fmt(fichaBase.mana?.atual)}</span>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ffff4d', fontWeight: 'bold' }}>
-                                <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>AU</span><span>{fmt(atorFicha.aura?.atual)}</span>
+                                <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>AU</span><span>{fmt(fichaBase.aura?.atual)}</span>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', color: '#00ffcc', fontWeight: 'bold' }}>
-                                <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>CK</span><span>{fmt(atorFicha.chakra?.atual)}</span>
+                                <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>CK</span><span>{fmt(fichaBase.chakra?.atual)}</span>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ff66ff', fontWeight: 'bold' }}>
-                                <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>CP</span><span>{fmt(atorFicha.corpo?.atual)}</span>
+                                <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>CP</span><span>{fmt(fichaBase.corpo?.atual)}</span>
                             </div>
                         </div>
                     </div>
@@ -241,7 +279,7 @@ export default function MapaPanel() {
     return (
         <div className="mapa-panel" style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
             
-            {/* LADO ESQUERDO: Mapa Grid e Controle de Turnos (70% da tela) */}
+            {/* LADO ESQUERDO: Mapa Grid e Controle de Turnos */}
             <div style={{ flex: '1 1 70%', minWidth: 0 }}>
                 {/* Zoom controls */}
                 <div style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'center' }}>
@@ -251,19 +289,7 @@ export default function MapaPanel() {
                 </div>
 
                 {/* Grid */}
-                <div
-                    id="combat-grid"
-                    style={{
-                        display: 'grid',
-                        gridTemplateColumns: `repeat(${MAP_SIZE}, ${tamanhoCelula}px)`,
-                        gap: 1,
-                        overflow: 'auto',
-                        maxHeight: '60vh',
-                        background: 'rgba(0,0,0,0.3)',
-                        padding: 5,
-                        borderRadius: 5
-                    }}
-                >
+                <div id="combat-grid" style={{ display: 'grid', gridTemplateColumns: `repeat(${MAP_SIZE}, ${tamanhoCelula}px)`, gap: 1, overflow: 'auto', maxHeight: '60vh', background: 'rgba(0,0,0,0.3)', padding: 5, borderRadius: 5 }}>
                     {cells.map((cell) => {
                         const key = `${cell.x},${cell.y}`;
                         const tokens = tokenMap[key] || [];
@@ -297,7 +323,11 @@ export default function MapaPanel() {
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                         <input className="input-neon" type="number" id="minha-iniciativa" value={iniciativaInput} onChange={e => setIniciativaInput(e.target.value)} style={{ width: 80 }} />
                         <button className="btn-neon btn-gold" onClick={setMinhaIniciativa}>Definir Iniciativa</button>
-                        <button className="btn-neon" onClick={avancarTurno} style={{ borderColor: '#00ffcc', color: '#00ffcc' }}>Avançar Turno</button>
+                        
+                        {/* Botão Dinâmico: Só avança se for minha vez ou se eu for Mestre (Opcional) */}
+                        <button className="btn-neon" onClick={avancarTurno} style={{ borderColor: '#00ffcc', color: '#00ffcc' }}>
+                            Encerrar Turno
+                        </button>
                     </div>
 
                     {/* Fila de Turnos Visual */}
@@ -321,27 +351,10 @@ export default function MapaPanel() {
                             })
                         )}
                     </div>
-
-                    {/* Destaque do Turno Atual */}
-                    {jogadorDaVez && (
-                        <div style={{ marginTop: 15, display: 'flex', gap: 15, alignItems: 'center' }}>
-                            <div id="turno-destaque" style={{
-                                width: 80, height: 80, borderRadius: '50%', border: '3px solid #00ffcc',
-                                backgroundImage: infoDaVez && infoDaVez.img ? `url('${infoDaVez.img}')` : 'none', backgroundSize: 'cover', backgroundPosition: 'center',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5em', fontWeight: 'bold', color: '#fff'
-                            }}>
-                                {(!infoDaVez || !infoDaVez.img) && jogadorDaVez.nome.charAt(0)}
-                            </div>
-                            <div>
-                                <div id="turno-nome" style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.2em' }}>{jogadorDaVez.nome}</div>
-                                {infoDaVez && infoDaVez.forma && (<div id="turno-forma" style={{ color: '#00ffcc', fontSize: '0.9em' }}>{infoDaVez.forma}</div>)}
-                            </div>
-                        </div>
-                    )}
                 </div>
             </div>
 
-            {/* LADO DIREITO: Holograma de Ação (30% da tela) */}
+            {/* LADO DIREITO: Holograma de Ação */}
             <div style={{ flex: '1 1 30%', minWidth: '300px', position: 'sticky', top: 10, height: '85vh' }}>
                 {renderHologramaAcao()}
             </div>
