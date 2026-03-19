@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef } from 'react';
 import useStore from '../../stores/useStore';
-import { salvarFichaSilencioso } from '../../services/firebase-sync';
+import { salvarFichaSilencioso, enviarParaFeed } from '../../services/firebase-sync';
+import { calcularAcerto } from '../../core/engine'; // 🔥 Importamos a máquina de Acerto!
 
 const MAP_SIZE = 30;
 const PALETA = ['#ff003c', '#0088ff', '#00ff88', '#ffcc00', '#ff00ff', '#00ffff', '#ff8800', '#88ff00'];
@@ -11,6 +12,14 @@ export default function MapaPanel() {
     const [tamanhoCelula, setTamanhoCelula] = useState(35);
     const [iniciativaInput, setIniciativaInput] = useState(minhaFicha.iniciativa || 0);
     const [turnoAtualIndex, setTurnoAtualIndex] = useState(0);
+    
+    // 🔥 O MARCADOR TEMPORAL: Grava o tamanho do feed quando o turno muda
+    const [feedIndexTurnoAtual, setFeedIndexTurnoAtual] = useState(0);
+
+    // Estados do Mini-Painel de Acerto
+    const [mapQD, setMapQD] = useState(1);
+    const [mapFD, setMapFD] = useState(20);
+    const [mapBonus, setMapBonus] = useState(0);
 
     const coresJogadoresRef = useRef({});
     const corIndexRef = useRef(0);
@@ -107,6 +116,8 @@ export default function MapaPanel() {
             ficha.iniciativa = val;
         });
         salvarFichaSilencioso();
+        // Zera o marcador temporal ao entrar no combate
+        setFeedIndexTurnoAtual(feedCombate.length); 
     }
 
     function avancarTurno() {
@@ -116,6 +127,22 @@ export default function MapaPanel() {
             if (next >= ordemIniciativa.length) next = 0;
             return next;
         });
+        // 🔥 Limpa o holograma gravando a linha do tempo atual
+        setFeedIndexTurnoAtual(feedCombate.length);
+    }
+
+    function rolarAcertoRapido() {
+        const qD = parseInt(mapQD) || 1;
+        const fD = parseInt(mapFD) || 20;
+        const bonus = parseInt(mapBonus) || 0;
+        // Puxa o status que o jogador deixou selecionado na aba de ataque, ou usa destreza como padrão
+        const sels = minhaFicha.ataqueConfig?.statusSelecionados?.length > 0 ? minhaFicha.ataqueConfig.statusSelecionados : ['destreza'];
+        const itensEquipados = minhaFicha.inventario ? minhaFicha.inventario.filter(i => i.equipado) : [];
+
+        const result = calcularAcerto({ qD, fD, prof: 0, bonus, sels, minhaFicha, itensEquipados, vantagens: 0, desvantagens: 0 });
+        
+        const feedData = { tipo: 'acerto', nome: meuNome, ...result };
+        enviarParaFeed(feedData);
     }
 
     const tokenMap = useMemo(() => {
@@ -134,14 +161,21 @@ export default function MapaPanel() {
     }, [jogadores]);
 
     const jogadorDaVez = ordemIniciativa.length > 0 ? ordemIniciativa[turnoAtualIndex % ordemIniciativa.length] : null;
+    const infoDaVez = jogadorDaVez ? getAvatarInfo(jogadorDaVez.ficha) : null;
     const fmt = (n) => Number(n || 0).toLocaleString('pt-BR');
-    const ultimaAcao = feedCombate.length > 0 ? feedCombate[feedCombate.length - 1] : null;
 
-    // 🔥 O CÉREBRO DO HOLOGRAMA E REGRAS DE TURNO
+    // 🔥 O CÉREBRO TEMPORAL DO HOLOGRAMA
     function renderHologramaAcao() {
         const emCombate = ordemIniciativa.length > 0;
+        
+        // Ação Nova = Rolagens feitas APÓS a pessoa atual assumir o turno
+        const acaoNovaNoTurno = feedCombate.length > feedIndexTurnoAtual ? feedCombate[feedCombate.length - 1] : null;
+        // Ação Geral = Qualquer última rolagem se o combate não estiver rolando
+        const acaoGeralForaDeCombate = feedCombate.length > 0 ? feedCombate[feedCombate.length - 1] : null;
 
-        if (!emCombate && !ultimaAcao) {
+        const acaoExibir = emCombate ? acaoNovaNoTurno : acaoGeralForaDeCombate;
+
+        if (!emCombate && !acaoExibir) {
             return (
                 <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontStyle: 'italic', border: '2px dashed #333', borderRadius: 8 }}>
                     O campo de batalha aguarda o primeiro movimento...
@@ -149,49 +183,47 @@ export default function MapaPanel() {
             );
         }
 
-        // Se há um combate rolando, a base visual do holograma é SEMPRE o jogador da vez.
-        // Se não há combate, a base visual é quem fez a última ação.
-        let nomeBase = jogadorDaVez ? jogadorDaVez.nome : (ultimaAcao ? ultimaAcao.nome : '');
-        let fichaBase = jogadorDaVez ? jogadorDaVez.ficha : (ultimaAcao ? jogadores[ultimaAcao.nome] : null);
+        let nomeBase = jogadorDaVez ? jogadorDaVez.nome : (acaoExibir ? acaoExibir.nome : '');
+        let fichaBase = jogadorDaVez ? jogadorDaVez.ficha : (acaoExibir ? jogadores[acaoExibir.nome] : null);
         let infoBase = getAvatarInfo(fichaBase);
 
-        // Lógica de Leitura de Crítico (Escaneia a rolagem de dados em busca de 20 ou 1)
+        // Lógica de Leitura de Crítico
         let isCrit = false, isFalha = false;
-        if (ultimaAcao && ultimaAcao.rolagem && (ultimaAcao.tipo === 'acerto' || ultimaAcao.tipo === 'dano')) {
-            const match = ultimaAcao.rolagem.match(/\[(.*?)\]/);
+        if (acaoExibir && acaoExibir.rolagem && (acaoExibir.tipo === 'acerto' || acaoExibir.tipo === 'dano')) {
+            const match = acaoExibir.rolagem.match(/\[(.*?)\]/);
             if (match) {
-                const clean = match[1].replace(/<[^>]*>?/gm, ''); // Limpa tags HTML como <strike> ou <strong>
+                const clean = match[1].replace(/<[^>]*>?/gm, ''); 
                 const numbers = clean.split(',').map(n => parseInt(n.trim(), 10));
                 if (numbers.includes(20)) isCrit = true;
                 if (numbers.includes(1)) isFalha = true;
             }
         }
 
-        // Verificações de Regras de Turno
-        const isForaDeCombate = ultimaAcao && emCombate && (!ordemIniciativa.find(j => j.nome === ultimaAcao.nome));
-        const isForaDeTurno = ultimaAcao && emCombate && !isForaDeCombate && ultimaAcao.nome !== nomeBase;
+        // Verificações de Violação
+        const isForaDeCombate = acaoExibir && emCombate && (!ordemIniciativa.find(j => j.nome === acaoExibir.nome));
+        const isForaDeTurno = acaoExibir && emCombate && !isForaDeCombate && acaoExibir.nome !== nomeBase;
 
         let corImpacto = '#fff';
         let tituloImpacto = 'AÇÃO';
         let valorImpacto = 0;
 
-        if (ultimaAcao) {
-            switch (ultimaAcao.tipo) {
-                case 'dano': corImpacto = '#ff003c'; tituloImpacto = 'DANO'; valorImpacto = ultimaAcao.dano; break;
-                case 'acerto': corImpacto = '#f90'; tituloImpacto = 'ACERTO'; valorImpacto = ultimaAcao.acertoTotal; break;
-                case 'evasiva': corImpacto = '#0088ff'; tituloImpacto = 'ESQUIVA'; valorImpacto = ultimaAcao.total; break;
-                case 'resistencia': corImpacto = '#ccc'; tituloImpacto = 'BLOQUEIO'; valorImpacto = ultimaAcao.total; break;
-                case 'escudo': corImpacto = '#f0f'; tituloImpacto = 'ESCUDO'; valorImpacto = ultimaAcao.escudoReduzido; break;
+        if (acaoExibir) {
+            switch (acaoExibir.tipo) {
+                case 'dano': corImpacto = '#ff003c'; tituloImpacto = 'DANO'; valorImpacto = acaoExibir.dano; break;
+                case 'acerto': corImpacto = '#f90'; tituloImpacto = 'ACERTO'; valorImpacto = acaoExibir.acertoTotal; break;
+                case 'evasiva': corImpacto = '#0088ff'; tituloImpacto = 'ESQUIVA'; valorImpacto = acaoExibir.total; break;
+                case 'resistencia': corImpacto = '#ccc'; tituloImpacto = 'BLOQUEIO'; valorImpacto = acaoExibir.total; break;
+                case 'escudo': corImpacto = '#f0f'; tituloImpacto = 'ESCUDO'; valorImpacto = acaoExibir.escudoReduzido; break;
                 default: break;
             }
         }
 
         return (
-            <div className="def-box" style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', border: `2px solid ${isCrit ? '#ffcc00' : isFalha ? '#660000' : corImpacto}`, boxShadow: `0 0 20px ${corImpacto}40` }}>
+            <div className="def-box" style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', border: `2px solid ${isCrit ? '#ffcc00' : isFalha ? '#660000' : (acaoExibir ? corImpacto : '#333')}`, boxShadow: `0 0 20px ${acaoExibir ? corImpacto : '#00ffcc'}40` }}>
                 
-                {/* 1. O Cabeçalho (Quem domina o Turno) */}
-                <div style={{ background: isCrit ? '#ffcc00' : isFalha ? '#660000' : corImpacto, color: isFalha ? '#ff003c' : '#000', padding: '10px', textAlign: 'center', fontWeight: '900', letterSpacing: 2, fontSize: '1.2em', textTransform: 'uppercase' }}>
-                    {isCrit ? '🔥 ACERTO CRÍTICO 🔥' : isFalha ? '☠️ FALHA CRÍTICA ☠️' : (jogadorDaVez ? `TURNO DE ${nomeBase}` : 'AÇÃO LIVRE')}
+                {/* 1. O Cabeçalho (Limpo quando não há ação) */}
+                <div style={{ background: isCrit ? '#ffcc00' : isFalha ? '#660000' : (acaoExibir ? corImpacto : '#00ffcc'), color: isFalha || !acaoExibir ? '#000' : '#000', padding: '10px', textAlign: 'center', fontWeight: '900', letterSpacing: 2, fontSize: '1.2em', textTransform: 'uppercase' }}>
+                    {acaoExibir ? (isCrit ? '🔥 ACERTO CRÍTICO 🔥' : isFalha ? '☠️ FALHA CRÍTICA ☠️' : (jogadorDaVez && !isForaDeTurno && !isForaDeCombate ? `TURNO DE ${nomeBase}` : 'AÇÃO LIVRE')) : `⚡ TURNO DE ${nomeBase} ⚡`}
                 </div>
 
                 {/* 2. A Imagem do Personagem Base */}
@@ -214,33 +246,32 @@ export default function MapaPanel() {
                     </div>
                 </div>
 
-                {/* 3. A Última Ação (Sobreposição) */}
-                {ultimaAcao && (
+                {/* 3. A Última Ação (Só aparece se ele rolou algo) */}
+                {acaoExibir && (
                     <div style={{ padding: '20px', background: 'rgba(0,0,0,0.85)', textAlign: 'center', borderTop: `1px solid ${corImpacto}` }}>
                         
                         {/* Alertas de Violação de Turno */}
                         {isForaDeCombate && (
                             <div style={{ background: 'rgba(255,204,0,0.1)', color: '#ffcc00', border: '1px solid #ffcc00', padding: 4, fontSize: '0.8em', marginBottom: 10, borderRadius: 4 }}>
-                                ⚠️ Rolagem Fora de Combate (Feita por: {ultimaAcao.nome})
+                                ⚠️ Rolagem Fora de Combate (Feita por: {acaoExibir.nome})
                             </div>
                         )}
                         {isForaDeTurno && (
                             <div style={{ background: 'rgba(255,0,60,0.1)', color: '#ff003c', border: '1px solid #ff003c', padding: 4, fontSize: '0.8em', marginBottom: 10, borderRadius: 4 }}>
-                                ❌ Ação Fora de Turno (Feita por: {ultimaAcao.nome})
+                                ❌ Ação Fora de Turno (Feita por: {acaoExibir.nome})
                             </div>
                         )}
 
                         <div style={{ fontSize: '0.9em', color: '#aaa', marginBottom: '-10px', textTransform: 'uppercase' }}>
-                            {tituloImpacto} {(!isForaDeCombate && !isForaDeTurno) ? '' : `(${ultimaAcao.nome})`}
+                            {tituloImpacto} {(!isForaDeCombate && !isForaDeTurno) ? '' : `(${acaoExibir.nome})`}
                         </div>
                         <h1 style={{ margin: 0, fontSize: '4em', color: corImpacto, textShadow: `0 0 20px ${corImpacto}` }}>
                             {fmt(valorImpacto)}
                         </h1>
                         
-                        {/* Letalidade */}
-                        {ultimaAcao.tipo === 'dano' && ultimaAcao.letalidade !== undefined && (
+                        {acaoExibir.tipo === 'dano' && acaoExibir.letalidade !== undefined && (
                             <div style={{ color: '#ffcc00', fontSize: '1.2em', fontWeight: 'bold', marginTop: '10px', textShadow: '0 0 5px #ffcc00' }}>
-                                LETALIDADE: +{ultimaAcao.letalidade}
+                                LETALIDADE: +{acaoExibir.letalidade}
                             </div>
                         )}
                     </div>
@@ -323,11 +354,7 @@ export default function MapaPanel() {
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                         <input className="input-neon" type="number" id="minha-iniciativa" value={iniciativaInput} onChange={e => setIniciativaInput(e.target.value)} style={{ width: 80 }} />
                         <button className="btn-neon btn-gold" onClick={setMinhaIniciativa}>Definir Iniciativa</button>
-                        
-                        {/* Botão Dinâmico: Só avança se for minha vez ou se eu for Mestre (Opcional) */}
-                        <button className="btn-neon" onClick={avancarTurno} style={{ borderColor: '#00ffcc', color: '#00ffcc' }}>
-                            Encerrar Turno
-                        </button>
+                        <button className="btn-neon" onClick={avancarTurno} style={{ borderColor: '#00ffcc', color: '#00ffcc' }}>Encerrar Turno</button>
                     </div>
 
                     {/* Fila de Turnos Visual */}
@@ -351,6 +378,37 @@ export default function MapaPanel() {
                             })
                         )}
                     </div>
+
+                    {/* Destaque do Turno Atual + BOTÃO DE AÇÃO RÁPIDA */}
+                    {jogadorDaVez && (
+                        <div style={{ marginTop: 15, display: 'flex', gap: 15, alignItems: 'center' }}>
+                            <div id="turno-destaque" style={{
+                                width: 80, height: 80, borderRadius: '50%', border: '3px solid #00ffcc',
+                                backgroundImage: infoDaVez && infoDaVez.img ? `url('${infoDaVez.img}')` : 'none', backgroundSize: 'cover', backgroundPosition: 'center',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5em', fontWeight: 'bold', color: '#fff'
+                            }}>
+                                {(!infoDaVez || !infoDaVez.img) && jogadorDaVez.nome.charAt(0)}
+                            </div>
+                            <div>
+                                <div id="turno-nome" style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.2em' }}>{jogadorDaVez.nome}</div>
+                                {infoDaVez && infoDaVez.forma && (<div id="turno-forma" style={{ color: '#00ffcc', fontSize: '0.9em' }}>{infoDaVez.forma}</div>)}
+                                
+                                {/* 🔥 AÇÃO RÁPIDA (Só aparece se for a MINHA vez!) */}
+                                {jogadorDaVez.nome === meuNome && (
+                                    <div style={{ marginTop: 8, padding: 8, background: 'rgba(0, 255, 204, 0.1)', border: '1px solid #00ffcc', borderRadius: 8, display: 'flex', gap: 5, alignItems: 'center' }}>
+                                        <input className="input-neon" type="number" value={mapQD} onChange={e => setMapQD(e.target.value)} style={{ width: 45, padding: 4 }} title="Dados" />
+                                        <span style={{ color: '#aaa', fontSize: '0.8em' }}>D</span>
+                                        <input className="input-neon" type="number" value={mapFD} onChange={e => setMapFD(e.target.value)} style={{ width: 55, padding: 4 }} title="Faces" />
+                                        <span style={{ color: '#aaa', fontSize: '0.8em' }}>+</span>
+                                        <input className="input-neon" type="number" value={mapBonus} onChange={e => setMapBonus(e.target.value)} style={{ width: 60, padding: 4 }} title="Bônus" />
+                                        <button className="btn-neon btn-gold" onClick={rolarAcertoRapido} style={{ padding: '4px 10px', fontSize: '0.85em' }}>
+                                            Rolar Acerto
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
