@@ -3,9 +3,20 @@ import useStore from '../../stores/useStore';
 import { getMaximo } from '../../core/attributes';
 import { salvarFichaSilencioso } from '../../services/firebase-sync';
 
-const ATRIBUTO_OPTIONS = [
-    'forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao',
-    'vida', 'mana', 'aura', 'chakra', 'corpo', 'todos_status', 'todas_energias', 'geral'
+// 🔥 AGRUPAMENTO VISUAL DOS ATRIBUTOS
+const ATRIBUTOS_AGRUPADOS = [
+    { 
+        label: 'STATUS BASE', 
+        options: ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'] 
+    },
+    { 
+        label: 'VITAIS & ENERGIAS', 
+        options: ['vida', 'mana', 'aura', 'chakra', 'corpo'] 
+    },
+    { 
+        label: 'ESPECIAIS (GLOBAIS)', 
+        options: ['todos_status', 'todas_energias', 'geral'] 
+    }
 ];
 
 const PROPRIEDADE_OPTIONS = [
@@ -106,16 +117,13 @@ export default function PoderesPanel() {
             const p = ficha.poderes.find(po => po.id === id);
             if (!p) return;
 
-            // Salva os máximos antes da alteração
             const oldM = {};
             vitais.forEach(v => {
                 oldM[v] = getMaximo(ficha, v) || 1;
             });
 
-            // Mutação protegida pelo Immer
             p.ativa = !p.ativa;
 
-            // Recalcula a proporção atual baseada nos novos máximos
             vitais.forEach(k => {
                 const nMax = getMaximo(ficha, k) || 1;
                 let atu = parseFloat(ficha[k].atual);
@@ -158,9 +166,19 @@ export default function PoderesPanel() {
                 <input className="input-neon" type="text" placeholder="URL da Imagem (opcional)" value={imagemUrl} onChange={e => setImagemUrl(e.target.value)} style={{ marginTop: 5 }} />
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8, marginTop: 10 }}>
+                    {/* 🔥 O NOVO SELECT COM OPTGROUPS */}
                     <select className="input-neon" value={novoAtr} onChange={e => setNovoAtr(e.target.value)}>
-                        {ATRIBUTO_OPTIONS.map(a => <option key={a} value={a}>{a.toUpperCase()}</option>)}
+                        {ATRIBUTOS_AGRUPADOS.map(grupo => (
+                            <optgroup key={grupo.label} label={grupo.label} style={{ background: '#051010', color: '#0ff' }}>
+                                {grupo.options.map(a => (
+                                    <option key={a} value={a}>
+                                        {a.replace('_', ' ').toUpperCase()}
+                                    </option>
+                                ))}
+                            </optgroup>
+                        ))}
                     </select>
+
                     <select className="input-neon" value={novoProp} onChange={e => setNovoProp(e.target.value)}>
                         {PROPRIEDADE_OPTIONS.map(p => <option key={p} value={p}>{p.toUpperCase()}</option>)}
                     </select>
@@ -177,7 +195,7 @@ export default function PoderesPanel() {
                             const isMult = ['mbase', 'mgeral', 'mformas', 'mabs', 'munico'].includes(prop);
                             return (
                                 <div key={i} style={{ color: '#0ff', fontSize: '0.9em', marginBottom: 5, background: 'rgba(0,255,255,0.1)', padding: '5px 10px', borderLeft: '2px solid #0ff', display: 'flex', justifyContent: 'space-between' }}>
-                                    <span>[{(e.atributo || '').toUpperCase()}] - [{(e.propriedade || '').toUpperCase()}]: <strong style={{ color: '#ffcc00' }}>{isMult ? '(x)' : '(+)'} {e.valor}</strong></span>
+                                    <span>[{(e.atributo || '').replace('_', ' ').toUpperCase()}] - [{(e.propriedade || '').toUpperCase()}]: <strong style={{ color: '#ffcc00' }}>{isMult ? '(x)' : '(+)'} {e.valor}</strong></span>
                                     <button onClick={() => removerEfeitoTemp(i)} style={{ background: 'transparent', color: '#f00', border: 'none', cursor: 'pointer' }}>X</button>
                                 </div>
                             );
@@ -203,7 +221,7 @@ export default function PoderesPanel() {
                             if (!e) return '';
                             const prop = (e.propriedade || '').toLowerCase();
                             const isMult = ['mbase', 'mgeral', 'mformas', 'mabs', 'munico'].includes(prop);
-                            return `[${(e.atributo || '').toUpperCase()}] ${(e.propriedade || '').toUpperCase()}: ${isMult ? 'x' : '+'}${e.valor || 0}`;
+                            return `[${(e.atributo || '').replace('_', ' ').toUpperCase()}] ${(e.propriedade || '').toUpperCase()}: ${isMult ? 'x' : '+'}${e.valor || 0}`;
                         }).filter(Boolean);
 
                         return (
