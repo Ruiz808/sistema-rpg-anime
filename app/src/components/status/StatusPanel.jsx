@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import useStore from '../../stores/useStore';
 import { getMaximo, getEfetivoBase } from '../../core/attributes.js';
-import { getPrestigioReal, calcPAtual, getRank, getDivisorPara } from '../../core/prestige.js';
+import { getPrestigioReal, calcPAtual, getRank } from '../../core/prestige.js';
 import { salvarFichaSilencioso } from '../../services/firebase-sync.js';
 
 // --- PROTEÇÃO ANTI-CRASH (ERROR BOUNDARY) ---
@@ -35,12 +35,10 @@ const safeGetMaximo = safeFn(getMaximo, 1);
 const safeGetPrestigioReal = safeFn(getPrestigioReal, 0);
 const safeCalcPAtual = safeFn(calcPAtual, { valor: 0 });
 const safeGetRank = safeFn(getRank, { l: 'F', c: '#ffffff', a: 1 });
-const safeGetDivisorPara = safeFn(getDivisorPara, 'Padrão');
 
-// ---------- EIXOS DO GRÁFICO ----------
+// ---------- EIXOS DO GRÁFICO (Lê os dados editados na aba Ficha) ----------
 const CX = 100, CY = 100, R = 70;
 
-// O SEGREDO: 'alma' é a chave do banco de dados, 'STATUS' é o que aparece na tela.
 const VITALS_RADAR = ['vida', 'mana', 'aura', 'chakra', 'corpo', 'alma'];
 const VITALS_LABELS = ['VIDA', 'MANA', 'AURA', 'CHAKRA', 'CORPO', 'STATUS'];
 const ANGLES = VITALS_RADAR.map((_, i) => (Math.PI * 2 * i) / 6 - Math.PI / 2);
@@ -62,6 +60,7 @@ function RadarChart({ ficha, isAtual }) {
     const chartValues = VITALS_RADAR.map((k) => {
         const rawMax = safeGetMaximo(ficha, k);
         const calcBaseP = safeGetPrestigioReal(k, rawMax);
+        // Lê o prestigio configurado lá na aba Ficha
         const baseP = ficha[k]?.prestigioBase !== undefined && ficha[k]?.prestigioBase !== null 
             ? Number(ficha[k].prestigioBase) 
             : calcBaseP;
@@ -83,6 +82,7 @@ function RadarChart({ ficha, isAtual }) {
             : calcBaseP;
         
         const pAtual = safeCalcPAtual(ficha, k, baseP) || { valor: baseP };
+        // Lê a ascensão configurada na aba Ficha
         return safeGetRank(pAtual.valor, ficha?.ascensaoBase || 0);
     });
 
@@ -126,9 +126,6 @@ function StatusPanelCore() {
     const [inputDano, setInputDano] = useState('');
     const [inputLetalidade, setInputLetalidade] = useState('0');
     
-    // Estado do Botão Inteligente
-    const [statusBotao, setStatusBotao] = useState('idle');
-    
     const inicializado = useRef(false);
 
     const vitalsBars = useMemo(() => [
@@ -153,6 +150,7 @@ function StatusPanelCore() {
         inicializado.current = true;
     }, [ficha, updateFicha, vitalsBars]);
 
+    // Ações de Combate (Essas sim salvam a ficha pois alteram o HP)
     const alterarHP = useCallback((tipo) => {
         const valor = parseInt(inputDano) || 0;
         if (valor <= 0) return;
@@ -195,19 +193,6 @@ function StatusPanelCore() {
         });
         salvarFichaSilencioso();
     }, [updateFicha, vitalsBars]);
-
-    // Função Robusta de Salvar com Feedback Visual
-    const handleSalvarPrestigio = async () => {
-        setStatusBotao('saving');
-        try {
-            await salvarFichaSilencioso();
-            setStatusBotao('saved');
-            setTimeout(() => setStatusBotao('idle'), 2500);
-        } catch (error) {
-            console.error("Falha ao salvar:", error);
-            setStatusBotao('idle');
-        }
-    };
 
     if (!ficha) return <div style={{ color: '#888', textAlign: 'center', marginTop: '50px' }}>Carregando dados vitais...</div>;
 
@@ -262,114 +247,11 @@ function StatusPanelCore() {
                 </button>
             </div>
 
-            {/* --- BLOCO 3: SISTEMA DE PRESTÍGIO E ASCENSÃO --- */}
-            <h3 className="section-title-mint-spaced" style={{ color: '#fff', fontSize: '1.2em' }}>&gt; SISTEMA DE PRESTÍGIO E ASCENSÃO</h3>
-            <div className="grid-2col" style={{ marginBottom: '15px' }}>
-                <div className="tabela-prestigio">
-                    <h4 className="prestige-title-base">PRESTÍGIO BASE</h4>
-                    <div className="prestige-ascension-box">
-                        <label className="text-white-md" style={{ display: 'block', marginBottom: '5px' }}>Ascensão Base (Nível):</label>
-                        <input 
-                            type="number" 
-                            className="prestige-input-base" 
-                            value={ficha.ascensaoBase || 0} 
-                            onChange={(e) => {
-                                updateFicha(f => { f.ascensaoBase = Number(e.target.value) });
-                                salvarFichaSilencioso();
-                            }} 
-                        />
-                    </div>
-                    <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                        {VITALS_RADAR.map((attrKey, i) => {
-                            const rawMax = safeGetMaximo(ficha, attrKey);
-                            const calcBaseP = safeGetPrestigioReal(attrKey, rawMax); 
-                            const baseP = ficha[attrKey]?.prestigioBase !== undefined && ficha[attrKey]?.prestigioBase !== null 
-                                ? ficha[attrKey].prestigioBase 
-                                : calcBaseP;
-                            return (
-                                <div key={attrKey}>
-                                    <div className="label-divisor" style={{ marginBottom: '5px' }}>
-                                        <span style={{ color: '#00ffcc', fontWeight: 'bold' }}>{VITALS_LABELS[i]}</span>
-                                        <span>Divisor: <input 
-                                            type="number" 
-                                            className="divisor-mini-input" 
-                                            value={ficha[attrKey]?.divisorCustom || ''} 
-                                            placeholder={String(safeGetDivisorPara(attrKey) || 'Padrão')}
-                                            onChange={(e) => {
-                                                const val = e.target.value;
-                                                updateFicha(f => { 
-                                                    if(!f[attrKey]) f[attrKey] = {};
-                                                    f[attrKey].divisorCustom = val ? Number(val) : null; 
-                                                });
-                                                salvarFichaSilencioso();
-                                            }}
-                                        /></span>
-                                    </div>
-                                    <input 
-                                        type="number" 
-                                        className="prestige-input-base" 
-                                        value={baseP === undefined ? '' : baseP} 
-                                        onChange={(e) => {
-                                            const val = e.target.value;
-                                            updateFicha(f => {
-                                                if(!f[attrKey]) f[attrKey] = {};
-                                                f[attrKey].prestigioBase = val === '' ? null : Number(val);
-                                            });
-                                            salvarFichaSilencioso();
-                                        }}
-                                    />
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-
-                <div className="tabela-prestigio atual">
-                    <h4 className="prestige-title-atual">PRESTÍGIO ATUAL</h4>
-                    <div className="prestige-ascension-box">
-                        <label className="text-white-md" style={{ display: 'block', marginBottom: '5px' }}>Ascensão Efetiva:</label>
-                        <div className="prestige-display-atual">{ficha.ascensaoBase || 0}</div>
-                    </div>
-                    <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                        {VITALS_RADAR.map((attrKey, i) => {
-                            const rawMax = safeGetMaximo(ficha, attrKey);
-                            const calcBaseP = safeGetPrestigioReal(attrKey, rawMax);
-                            const baseP = ficha[attrKey]?.prestigioBase !== undefined && ficha[attrKey]?.prestigioBase !== null 
-                                ? ficha[attrKey].prestigioBase 
-                                : calcBaseP;
-                            const pAtualObj = safeCalcPAtual(ficha, attrKey, baseP);
-                            const rankInfo = safeGetRank(pAtualObj.valor, ficha.ascensaoBase || 0);
-
-                            return (
-                                <div key={attrKey}>
-                                    <div className="label-divisor" style={{ marginBottom: '5px' }}>
-                                        <span style={{ color: '#00ffcc', fontWeight: 'bold' }}>{VITALS_LABELS[i]}</span>
-                                        <span style={{ color: rankInfo.c || '#fff', fontWeight: 'bold' }}>Rank {rankInfo.l || 'F'}</span>
-                                    </div>
-                                    <div className="prestige-display-atual">
-                                        {Math.floor(pAtualObj.valor || 0).toLocaleString('pt-BR')}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            </div>
-
-            {/* BOTÃO INTELIGENTE DE SALVAR */}
-            <button 
-                className={`btn-neon ${statusBotao === 'saved' ? 'btn-green' : 'btn-blue'}`} 
-                onClick={handleSalvarPrestigio} 
-                disabled={statusBotao === 'saving'}
-                style={{ width: '100%', marginBottom: '30px', height: '50px', transition: 'all 0.3s ease' }}
-            >
-                {statusBotao === 'idle' && '💾 SALVAR ALTERAÇÕES DE PRESTÍGIO'}
-                {statusBotao === 'saving' && '⏳ ENVIANDO PARA A FORJA (FIREBASE)...'}
-                {statusBotao === 'saved' && '✅ PRESTÍGIOS SALVOS COM SUCESSO!'}
-            </button>
-
-            {/* --- BLOCO 4: ANÁLISE DE PODER E CULTIVAÇÃO --- */}
+            {/* --- BLOCO 3: ANÁLISE DE PODER E CULTIVAÇÃO --- */}
             <h3 className="section-title-mint-spaced" style={{ color: '#fff', fontSize: '1.2em' }}>&gt; ANÁLISE DE PODER E CULTIVAÇÃO</h3>
+            <p style={{ color: '#aaa', fontSize: '0.9em', marginTop: '-10px', textAlign: 'center' }}>
+                (Para editar a Ascensão e Divisores, utilize a aba <b>Ficha</b>)
+            </p>
             <div className="analise-grid" style={{ marginTop: '15px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                 <div className="radar-container" style={{ background: 'rgba(25, 25, 40, 0.6)', padding: '20px', borderRadius: '10px' }}>
                     <h4 style={{ color: '#fff', textAlign: 'center', marginBottom: '20px', letterSpacing: '2px', fontSize: '0.9em' }}>STATUS (RANK BASE)<br/><span style={{ fontSize: '0.8em', color: '#0ff' }}>[A]</span></h4>
