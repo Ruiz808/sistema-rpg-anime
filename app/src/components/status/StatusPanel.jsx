@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import useStore from '../../stores/useStore';
-import { getMaximo, getRawBase, getBuffs } from '../../core/attributes.js'; // GETBUFFS IMPORTADO AQUI
+import { getMaximo, getRawBase, getMultiplicadorTotal } from '../../core/attributes.js';
 import { getPrestigioReal, getRank } from '../../core/prestige.js';
 import { salvarFichaSilencioso } from '../../services/firebase-sync.js';
 
@@ -40,20 +40,41 @@ function radarPoint(cx, cy, r, idx, frac) {
     return [cx + r * safeFrac * Math.cos(a), cy + r * safeFrac * Math.sin(a)];
 }
 
-// --- MATEMÁTICA NATIVA DO GRÁFICO ---
-function getEfetivoMFormas(ficha, k) {
-    const anchor = k === 'status' ? 'forca' : k;
-    let s = ficha[anchor] || {};
-    let b = getBuffs(ficha, anchor);
+// --- SCANNER GLOBAL NO GRÁFICO RADAR ---
+function getGlobalMFormas(ficha) {
+    let maxM = 1;
+    if (!ficha) return maxM;
 
-    let v = parseFloat(s.mFormas) || 1.0;
-    if (!b._hasBuff || !b._hasBuff.mformas) return v;
-    return (v === 1.0 ? 0 : v) + b.mformas;
+    const allKeys = [...STATS, 'vida', 'mana', 'aura', 'chakra', 'corpo'];
+    for (let k of allKeys) {
+        if (ficha[k]?.mFormas) {
+            const val = parseFloat(ficha[k].mFormas);
+            if (!Number.isNaN(val) && val > maxM) maxM = val;
+        }
+    }
+
+    const searchDeep = (obj) => {
+        if (!obj || typeof obj !== 'object') return;
+        if (obj.ligado === true || obj.ativo === true || obj.equipado === true) {
+            const str = JSON.stringify(obj).toUpperCase();
+            const matches = str.matchAll(/MFORMAS[^0-9]*(\d+(\.\d+)?)/g);
+            for (const match of matches) {
+                const val = parseFloat(match[1]);
+                if (!Number.isNaN(val) && val > maxM) maxM = val;
+            }
+        }
+        Object.values(obj).forEach(val => {
+            if (val && typeof val === 'object') searchDeep(val);
+        });
+    };
+    
+    searchDeep(ficha);
+    return maxM;
 }
 
-function calcularPrestAtual(ficha, attrKey, baseP) {
-    const mFormas = getEfetivoMFormas(ficha, attrKey);
-    const multForma = mFormas >= 10 ? (mFormas / 10) : 1;
+function calcularPrestAtual(ficha, baseP) {
+    const mFormas = getGlobalMFormas(ficha);
+    const multForma = Math.max(1, mFormas / 10);
     return Math.floor(baseP * multForma);
 }
 
@@ -71,7 +92,7 @@ function RadarChart({ ficha, isAtual }) {
 
     const chartValues = VITALS_RADAR.map((k) => {
         const baseP = getBasePFor(ficha, k);
-        return isAtual ? calcularPrestAtual(ficha, k, baseP) : baseP;
+        return isAtual ? calcularPrestAtual(ficha, baseP) : baseP;
     });
 
     const dataPoints = chartValues.map((v, i) => radarPoint(CX, CY, R, i, Math.min((v || 0) / LIMIT, 1)));
@@ -79,7 +100,7 @@ function RadarChart({ ficha, isAtual }) {
 
     const rankInfos = VITALS_RADAR.map((k) => {
         const baseP = getBasePFor(ficha, k);
-        const pAtualValor = isAtual ? calcularPrestAtual(ficha, k, baseP) : baseP;
+        const pAtualValor = isAtual ? calcularPrestAtual(ficha, baseP) : baseP;
         return safeGetRank(pAtualValor, ficha?.ascensaoBase || 1);
     });
 
@@ -115,6 +136,17 @@ function RadarChart({ ficha, isAtual }) {
     );
 }
 
+// --- MOTOR DE COMPRESSÃO DE VITALIDADE ---
+function calcVitalScale(rawMx, key) {
+    if (!rawMx || rawMx <= 0) return { p: 0, mxDisplay: 0 };
+    // Vida suporta 8 dígitos. Energias suportam 9 dígitos.
+    const limit = key === 'vida' ? 8 : 9;
+    const strMx = Math.floor(rawMx).toString();
+    const p = Math.max(0, strMx.length - limit);
+    const mxDisplay = p > 0 ? Math.floor(rawMx / Math.pow(10, p)) : Math.floor(rawMx);
+    return { p, mxDisplay };
+}
+
 function StatusPanelCore() {
     const ficha = useStore((s) => s.minhaFicha);
     const updateFicha = useStore((s) => s.updateFicha);
@@ -136,10 +168,12 @@ function StatusPanelCore() {
         if (!ficha || inicializado.current) return;
         updateFicha((f) => {
             vitalsBars.forEach(({ key }) => {
-                const mx = safeGetMaximo(f, key);
+                const rawMx = safeGetMaximo(f, key);
+                const { mxDisplay } = calcVitalScale(rawMx, key);
                 if (!f[key]) f[key] = {};
+                // Sincroniza o atual vazio para o teto comprimido
                 if (f[key].atual === undefined || f[key].atual === null) {
-                    f[key].atual = mx;
+                    f[key].atual = mxDisplay;
                 }
             });
         });
@@ -152,15 +186,18 @@ function StatusPanelCore() {
         const letalidade = parseInt(inputLetalidade) || 0;
 
         updateFicha((f) => {
-            const vidaMax = safeGetMaximo(f, 'vida');
+            const rawMx = safeGetMaximo(f, 'vida');
+            const { mxDisplay } = calcVitalScale(rawMx, 'vida'); // Escala de Combate
+            
             let danoFinal = valor;
             if (tipo === 'dano' && letalidade > 0) {
                 danoFinal = valor * Math.pow(10, letalidade);
             }
+            
             if (tipo === 'dano') {
                 f.vida.atual = Math.max(0, (f.vida.atual || 0) - danoFinal);
             } else {
-                f.vida.atual = Math.min(vidaMax, (f.vida.atual || 0) + danoFinal);
+                f.vida.atual = Math.min(mxDisplay, (f.vida.atual || 0) + danoFinal);
             }
         });
         salvarFichaSilencioso();
@@ -170,7 +207,9 @@ function StatusPanelCore() {
     const curarTudo = useCallback(() => {
         updateFicha((f) => {
             vitalsBars.forEach(({ key }) => {
-                if(f[key]) f[key].atual = safeGetMaximo(f, key);
+                const rawMx = safeGetMaximo(f, key);
+                const { mxDisplay } = calcVitalScale(rawMx, key);
+                if(f[key]) f[key].atual = mxDisplay; // Cura até ao limite comprimido
             });
         });
         salvarFichaSilencioso();
@@ -179,10 +218,12 @@ function StatusPanelCore() {
     const aplicarRegeneracaoTurno = useCallback(() => {
         updateFicha((f) => {
             vitalsBars.forEach(({ key }) => {
-                const mx = safeGetMaximo(f, key);
+                const rawMx = safeGetMaximo(f, key);
+                const { mxDisplay } = calcVitalScale(rawMx, key);
                 const regen = parseFloat(f[key]?.regeneracao) || 0;
-                if (regen > 0 && f[key].atual < mx) {
-                    f[key].atual = Math.min(mx, (f[key].atual || 0) + regen);
+                
+                if (regen > 0 && (f[key].atual || 0) < mxDisplay) {
+                    f[key].atual = Math.min(mxDisplay, (f[key].atual || 0) + regen);
                 }
             });
         });
@@ -195,19 +236,35 @@ function StatusPanelCore() {
         <div className="status-panel-container">
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '30px' }}>
                 {vitalsBars.map(({ key, label, color, classColor }, index) => {
-                    const mx = safeGetMaximo(ficha, key);
-                    const atual = ficha[key]?.atual ?? mx;
+                    const rawMx = safeGetMaximo(ficha, key);
+                    const { p, mxDisplay } = calcVitalScale(rawMx, key);
+                    
+                    let atual = ficha[key]?.atual ?? mxDisplay;
+                    // Proteção automática: se o buff do Modo Assalto desligar, o HP cai para o novo teto seguro
+                    if (atual > mxDisplay) atual = mxDisplay; 
+
                     const regen = parseFloat(ficha[key]?.regeneracao) || 0;
                     const extra = regen > 0 ? `(+${regen}/turno)` : '';
                     const gridStyle = index === 0 ? { gridColumn: '1 / -1', margin: 0 } : { margin: 0 };
-                    const percent = Number.isNaN(atual / mx) ? 0 : Math.min((atual / mx) * 100, 100);
+                    
+                    const percent = Number.isNaN(atual / mxDisplay) ? 0 : Math.min((atual / mxDisplay) * 100, 100);
+
+                    // Cria o distintivo Neon para os Pontos de Vitalidade [1V], [2V] / Energia [1E]
+                    const badge = p > 0 ? (
+                        <span style={{ color: '#fff', textShadow: `0 0 8px ${color}`, marginRight: '8px', fontWeight: '900', fontSize: '1.1em' }}>
+                            [{p}{key === 'vida' ? 'V' : 'E'}]
+                        </span>
+                    ) : null;
 
                     return (
                         <div key={key} className="vital-container" style={gridStyle}>
                             <div className={`vital-label ${classColor}`}>{label} {extra && <span style={{fontSize: '0.8em', color: '#aaa'}}>{extra}</span>}</div>
                             <div className="bar-bg">
                                 <div className="bar-fill" style={{ width: `${percent}%`, backgroundColor: color }}></div>
-                                <div className="bar-text">{atual.toLocaleString('pt-BR')} / {mx.toLocaleString('pt-BR')}</div>
+                                <div className="bar-text">
+                                    {badge}
+                                    {Math.floor(atual).toLocaleString('pt-BR')} / {mxDisplay.toLocaleString('pt-BR')}
+                                </div>
                             </div>
                         </div>
                     );
