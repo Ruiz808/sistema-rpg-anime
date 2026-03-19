@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import useStore from '../../stores/useStore';
 import { getMaximo, getEfetivoBase } from '../../core/attributes.js';
 import { getPrestigioReal, calcPAtual, getRank, getDivisorPara } from '../../core/prestige.js';
@@ -77,6 +77,9 @@ export default function StatusPanel() {
 
     const [inputDano, setInputDano] = useState('');
     const [inputLetalidade, setInputLetalidade] = useState('0');
+    
+    // Trava de segurança para impedir o Loop Infinito do React
+    const inicializado = useRef(false);
 
     const vitals = useMemo(() => [
         { key: 'vida',   label: 'VIDA (HP)', color: '#ff4d4d', classColor: 'label-color-vida' },
@@ -86,22 +89,22 @@ export default function StatusPanel() {
         { key: 'corpo',  label: 'CORPO',     color: '#ff66ff', classColor: 'label-color-corpo' },
     ], []);
 
-    const inicializarAtuais = useCallback(() => {
-        if (!ficha) return;
+    // Inicialização Blindada (Roda estritamente 1 vez quando a ficha carrega)
+    useEffect(() => {
+        if (!ficha || inicializado.current) return;
+        
         updateFicha((f) => {
             vitals.forEach(({ key }) => {
                 const mx = getMaximo(f, key);
-                if (f[key] && (f[key].atual === undefined || f[key].atual === null)) {
+                if (!f[key]) f[key] = {};
+                if (f[key].atual === undefined || f[key].atual === null) {
                     f[key].atual = mx;
                 }
-                if (f[key] && f[key].atual > mx) f[key].atual = mx;
             });
         });
+        
+        inicializado.current = true;
     }, [ficha, updateFicha, vitals]);
-
-    useEffect(() => {
-        inicializarAtuais();
-    }, [inicializarAtuais]);
 
     const alterarHP = useCallback((tipo) => {
         const valor = parseInt(inputDano) || 0;
@@ -146,7 +149,7 @@ export default function StatusPanel() {
         salvarFichaSilencioso();
     }, [updateFicha, vitals]);
 
-    if (!ficha) return <div style={{ color: '#888', textAlign: 'center' }}>Carregando dados vitais...</div>;
+    if (!ficha) return <div style={{ color: '#888', textAlign: 'center', marginTop: '50px' }}>Carregando dados vitais...</div>;
 
     return (
         <div className="status-panel-container">
@@ -163,7 +166,7 @@ export default function StatusPanel() {
                         <div key={key} className="vital-container" style={gridStyle}>
                             <div className={`vital-label ${classColor}`}>{label} {extra && <span style={{fontSize: '0.8em', color: '#aaa'}}>{extra}</span>}</div>
                             <div className="bar-bg">
-                                <div className="bar-fill" style={{ width: `${(atual / mx) * 100}%`, backgroundColor: color }}></div>
+                                <div className="bar-fill" style={{ width: `${Math.min((atual / mx) * 100, 100)}%`, backgroundColor: color }}></div>
                                 <div className="bar-text">{atual.toLocaleString('pt-BR')} / {mx.toLocaleString('pt-BR')}</div>
                             </div>
                         </div>
@@ -176,7 +179,7 @@ export default function StatusPanel() {
             <div className="form-row-dark" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '15px', alignItems: 'end', background: 'transparent', padding: 0 }}>
                 <div className="input-group" style={{ margin: 0 }}>
                     <label style={{ fontSize: '0.8em', color: '#aaa' }}>VALOR (HP/ENERGIA)</label>
-                    <input type="number" placeholder="Ex: 24500000" value={inputDano} onChange={(e) => setInputDano(e.target.value)} />
+                    <input type="number" placeholder="Ex: 24500" value={inputDano} onChange={(e) => setInputDano(e.target.value)} />
                 </div>
                 <div className="input-group" style={{ margin: 0 }}>
                     <label style={{ fontSize: '0.8em', color: '#aaa' }}>LETALIDADE</label>
@@ -218,22 +221,23 @@ export default function StatusPanel() {
                         />
                     </div>
                     <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                        {vitals.map(v => {
-                            const rawMax = getMaximo(ficha, v.key);
-                            const baseP = getPrestigioReal(v.key, rawMax); 
+                        {STATS_RADAR.map((attrKey, i) => {
+                            const rawMax = getMaximo(ficha, attrKey);
+                            const baseP = getPrestigioReal(attrKey, rawMax); 
+                            const labelTxt = STAT_LABELS[i];
                             return (
-                                <div key={v.key}>
+                                <div key={attrKey}>
                                     <div className="label-divisor" style={{ marginBottom: '5px' }}>
-                                        <span className={v.classColor} style={{ fontWeight: 'bold' }}>{v.label}</span>
+                                        <span style={{ color: '#00ffcc', fontWeight: 'bold' }}>{labelTxt}</span>
                                         <span>Divisor: <input 
                                             type="number" 
                                             className="divisor-mini-input" 
-                                            value={ficha[v.key]?.divisorCustom || ''} 
-                                            placeholder={getDivisorPara ? getDivisorPara(v.key) : 'Padrão'}
+                                            value={ficha[attrKey]?.divisorCustom || ''} 
+                                            placeholder={getDivisorPara ? getDivisorPara(attrKey) : 'Padrão'}
                                             onChange={(e) => {
                                                 updateFicha(f => { 
-                                                    if(!f[v.key]) f[v.key] = {};
-                                                    f[v.key].divisorCustom = Number(e.target.value) || undefined;
+                                                    if(!f[attrKey]) f[attrKey] = {};
+                                                    f[attrKey].divisorCustom = Number(e.target.value) || undefined;
                                                 });
                                                 salvarFichaSilencioso();
                                             }}
@@ -254,16 +258,17 @@ export default function StatusPanel() {
                         <div className="prestige-display-atual">{ficha.ascensaoBase || 0}</div>
                     </div>
                     <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                        {vitals.map(v => {
-                            const rawMax = getMaximo(ficha, v.key);
-                            const baseP = getPrestigioReal(v.key, rawMax);
-                            const pAtualObj = calcPAtual(ficha, v.key, baseP) || { valor: baseP };
+                        {STATS_RADAR.map((attrKey, i) => {
+                            const rawMax = getMaximo(ficha, attrKey);
+                            const baseP = getPrestigioReal(attrKey, rawMax);
+                            const pAtualObj = calcPAtual(ficha, attrKey, baseP) || { valor: baseP };
                             const rankInfo = getRank(pAtualObj.valor, ficha.ascensaoBase || 0) || { l: 'F', c: '#fff' };
+                            const labelTxt = STAT_LABELS[i];
 
                             return (
-                                <div key={v.key}>
+                                <div key={attrKey}>
                                     <div className="label-divisor" style={{ marginBottom: '5px' }}>
-                                        <span className={v.classColor} style={{ fontWeight: 'bold' }}>{v.label}</span>
+                                        <span style={{ color: '#00ffcc', fontWeight: 'bold' }}>{labelTxt}</span>
                                         <span style={{ color: rankInfo.c, fontWeight: 'bold' }}>Rank {rankInfo.l}</span>
                                     </div>
                                     <div className="prestige-display-atual">
