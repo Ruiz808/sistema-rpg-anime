@@ -1,12 +1,11 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import useStore from '../../stores/useStore';
-import VitalBar from './VitalBar';
 import { getMaximo, getEfetivoBase } from '../../core/attributes.js';
-import { getPrestigioReal, calcPAtual, getRank } from '../../core/prestige.js';
+import { getPrestigioReal, calcPAtual, getRank, getDivisorPara } from '../../core/prestige.js';
 import { salvarFichaSilencioso } from '../../services/firebase-sync.js';
 
 // ---------- Constantes do Gráfico Radar ----------
-const CX = 100, CY = 100, R = 70; // Reduzido para caber melhor na tela dividida
+const CX = 100, CY = 100, R = 70;
 const STATS_RADAR = ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma'];
 const STAT_LABELS = ['FOR', 'DES', 'INT', 'SAB', 'ENE', 'CAR'];
 const ANGLES = STATS_RADAR.map((_, i) => (Math.PI * 2 * i) / 6 - Math.PI / 2);
@@ -35,8 +34,8 @@ function RadarChart({ ficha, isAtual }) {
     const rankInfos = STATS_RADAR.map((k) => {
         const raw = isAtual ? getMaximo(ficha, k) : getEfetivoBase(ficha, k);
         const pRes = getPrestigioReal(k, raw);
-        const pAtual = calcPAtual(ficha, k, pRes);
-        return getRank(pAtual.valor, ficha.ascensaoBase);
+        const pAtual = calcPAtual(ficha, k, pRes) || { valor: pRes };
+        return getRank(pAtual.valor, ficha?.ascensaoBase || 0) || { l: 'F', c: '#fff', a: 1 };
     });
 
     const labelR = R + 15;
@@ -79,7 +78,6 @@ export default function StatusPanel() {
     const [inputDano, setInputDano] = useState('');
     const [inputLetalidade, setInputLetalidade] = useState('0');
 
-    // Configuração das Barras Vitais (Mapeamento Neon)
     const vitals = useMemo(() => [
         { key: 'vida',   label: 'VIDA (HP)', color: '#ff4d4d', classColor: 'label-color-vida' },
         { key: 'mana',   label: 'MANA',      color: '#00ffff', classColor: 'label-color-mana' },
@@ -88,16 +86,15 @@ export default function StatusPanel() {
         { key: 'corpo',  label: 'CORPO',     color: '#ff66ff', classColor: 'label-color-corpo' },
     ], []);
 
-    // Inicialização (Preservada da versão original)
     const inicializarAtuais = useCallback(() => {
         if (!ficha) return;
         updateFicha((f) => {
             vitals.forEach(({ key }) => {
                 const mx = getMaximo(f, key);
-                if (f[key].atual === undefined || f[key].atual === null) {
+                if (f[key] && (f[key].atual === undefined || f[key].atual === null)) {
                     f[key].atual = mx;
                 }
-                if (f[key].atual > mx) f[key].atual = mx;
+                if (f[key] && f[key].atual > mx) f[key].atual = mx;
             });
         });
     }, [ficha, updateFicha, vitals]);
@@ -106,7 +103,6 @@ export default function StatusPanel() {
         inicializarAtuais();
     }, [inicializarAtuais]);
 
-    // Lógica de Combate (Preservada)
     const alterarHP = useCallback((tipo) => {
         const valor = parseInt(inputDano) || 0;
         if (valor <= 0) return;
@@ -131,7 +127,7 @@ export default function StatusPanel() {
     const curarTudo = useCallback(() => {
         updateFicha((f) => {
             vitals.forEach(({ key }) => {
-                f[key].atual = getMaximo(f, key);
+                if(f[key]) f[key].atual = getMaximo(f, key);
             });
         });
         salvarFichaSilencioso();
@@ -141,7 +137,7 @@ export default function StatusPanel() {
         updateFicha((f) => {
             vitals.forEach(({ key }) => {
                 const mx = getMaximo(f, key);
-                const regen = parseFloat(f[key].regeneracao) || 0;
+                const regen = parseFloat(f[key]?.regeneracao) || 0;
                 if (regen > 0 && f[key].atual < mx) {
                     f[key].atual = Math.min(mx, (f[key].atual || 0) + regen);
                 }
@@ -154,15 +150,13 @@ export default function StatusPanel() {
 
     return (
         <div className="status-panel-container">
-            {/* --- BLOCO 1: BARRAS VITAIS (CSS GRID) --- */}
+            {/* --- BLOCO 1: BARRAS VITAIS --- */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '30px' }}>
                 {vitals.map(({ key, label, color, classColor }, index) => {
                     const mx = getMaximo(ficha, key);
                     const atual = ficha[key]?.atual ?? mx;
                     const regen = parseFloat(ficha[key]?.regeneracao) || 0;
                     const extra = regen > 0 ? `(+${regen}/turno)` : '';
-                    
-                    // HP ocupa a linha toda (gridColumn: '1 / -1')
                     const gridStyle = index === 0 ? { gridColumn: '1 / -1', margin: 0 } : { margin: 0 };
 
                     return (
@@ -179,7 +173,6 @@ export default function StatusPanel() {
 
             {/* --- BLOCO 2: CONTROLE RÁPIDO --- */}
             <h3 className="section-title-mint-spaced" style={{ marginTop: 0, color: '#fff', fontSize: '1.2em' }}>&gt; CONTROLE RÁPIDO</h3>
-            
             <div className="form-row-dark" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '15px', alignItems: 'end', background: 'transparent', padding: 0 }}>
                 <div className="input-group" style={{ margin: 0 }}>
                     <label style={{ fontSize: '0.8em', color: '#aaa' }}>VALOR (HP/ENERGIA)</label>
@@ -196,7 +189,6 @@ export default function StatusPanel() {
                     💊 CURAR HP
                 </button>
             </div>
-
             <div style={{ display: 'flex', gap: '15px', marginTop: '15px', marginBottom: '30px' }}>
                 <button className="btn-neon btn-green btn-small" onClick={aplicarRegeneracaoTurno} style={{ flex: 1, margin: 0 }}>
                     ✨ APLICAR REGENERAÇÃO
@@ -206,17 +198,91 @@ export default function StatusPanel() {
                 </button>
             </div>
 
-            {/* --- BLOCO 3: ANÁLISE DE PODER E CULTIVAÇÃO --- */}
+            {/* --- BLOCO 3: SISTEMA DE PRESTÍGIO E ASCENSÃO --- */}
+            <h3 className="section-title-mint-spaced" style={{ color: '#fff', fontSize: '1.2em' }}>&gt; SISTEMA DE PRESTÍGIO E ASCENSÃO</h3>
+            <div className="grid-2col" style={{ marginBottom: '30px' }}>
+                
+                {/* PRESTÍGIO BASE */}
+                <div className="tabela-prestigio">
+                    <h4 className="prestige-title-base">PRESTÍGIO BASE</h4>
+                    <div className="prestige-ascension-box">
+                        <label className="text-white-md" style={{ display: 'block', marginBottom: '5px' }}>Ascensão Base (Nível):</label>
+                        <input 
+                            type="number" 
+                            className="prestige-input-base" 
+                            value={ficha.ascensaoBase || 0} 
+                            onChange={(e) => {
+                                updateFicha(f => { f.ascensaoBase = Number(e.target.value) });
+                                salvarFichaSilencioso();
+                            }} 
+                        />
+                    </div>
+                    <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                        {vitals.map(v => {
+                            const rawMax = getMaximo(ficha, v.key);
+                            const baseP = getPrestigioReal(v.key, rawMax); 
+                            return (
+                                <div key={v.key}>
+                                    <div className="label-divisor" style={{ marginBottom: '5px' }}>
+                                        <span className={v.classColor} style={{ fontWeight: 'bold' }}>{v.label}</span>
+                                        <span>Divisor: <input 
+                                            type="number" 
+                                            className="divisor-mini-input" 
+                                            value={ficha[v.key]?.divisorCustom || ''} 
+                                            placeholder={getDivisorPara ? getDivisorPara(v.key) : 'Padrão'}
+                                            onChange={(e) => {
+                                                updateFicha(f => { 
+                                                    if(!f[v.key]) f[v.key] = {};
+                                                    f[v.key].divisorCustom = Number(e.target.value) || undefined;
+                                                });
+                                                salvarFichaSilencioso();
+                                            }}
+                                        /></span>
+                                    </div>
+                                    <input type="number" className="prestige-input-base" value={baseP || 0} readOnly />
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* PRESTÍGIO ATUAL */}
+                <div className="tabela-prestigio atual">
+                    <h4 className="prestige-title-atual">PRESTÍGIO ATUAL</h4>
+                    <div className="prestige-ascension-box">
+                        <label className="text-white-md" style={{ display: 'block', marginBottom: '5px' }}>Ascensão Efetiva:</label>
+                        <div className="prestige-display-atual">{ficha.ascensaoBase || 0}</div>
+                    </div>
+                    <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                        {vitals.map(v => {
+                            const rawMax = getMaximo(ficha, v.key);
+                            const baseP = getPrestigioReal(v.key, rawMax);
+                            const pAtualObj = calcPAtual(ficha, v.key, baseP) || { valor: baseP };
+                            const rankInfo = getRank(pAtualObj.valor, ficha.ascensaoBase || 0) || { l: 'F', c: '#fff' };
+
+                            return (
+                                <div key={v.key}>
+                                    <div className="label-divisor" style={{ marginBottom: '5px' }}>
+                                        <span className={v.classColor} style={{ fontWeight: 'bold' }}>{v.label}</span>
+                                        <span style={{ color: rankInfo.c, fontWeight: 'bold' }}>Rank {rankInfo.l}</span>
+                                    </div>
+                                    <div className="prestige-display-atual">
+                                        {Math.floor(pAtualObj.valor || 0).toLocaleString('pt-BR')}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
+
+            {/* --- BLOCO 4: ANÁLISE DE PODER E CULTIVAÇÃO --- */}
             <h3 className="section-title-mint-spaced" style={{ color: '#fff', fontSize: '1.2em' }}>&gt; ANÁLISE DE PODER E CULTIVAÇÃO</h3>
-            
             <div className="analise-grid" style={{ marginTop: '15px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                {/* Radar Base */}
                 <div className="radar-container" style={{ background: 'rgba(25, 25, 40, 0.6)', padding: '20px', borderRadius: '10px' }}>
                     <h4 style={{ color: '#fff', textAlign: 'center', marginBottom: '20px', letterSpacing: '2px', fontSize: '0.9em' }}>ALMA (RANK BASE)<br/><span style={{ fontSize: '0.8em', color: '#0ff' }}>[A]</span></h4>
                     <RadarChart ficha={ficha} isAtual={false} />
                 </div>
-
-                {/* Radar Atual */}
                 <div className="radar-container atual" style={{ background: 'rgba(30, 25, 10, 0.6)', padding: '20px', borderRadius: '10px', borderColor: 'rgba(255, 204, 0, 0.3)' }}>
                     <h4 style={{ color: '#ffcc00', textAlign: 'center', marginBottom: '20px', letterSpacing: '2px', fontSize: '0.9em' }}>PODER ATUAL (C/ FORMAS)<br/><span style={{ fontSize: '0.8em', color: '#0f0' }}>[A]</span></h4>
                     <RadarChart ficha={ficha} isAtual={true} />
