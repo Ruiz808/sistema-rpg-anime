@@ -1,6 +1,5 @@
 import { isFisico, isEnergia, tratarUnico } from './utils.js';
 
-// Adicionamos o "interruptor" ignorarPassivas
 export function getBuffs(ficha, statKey, ignorarPassivas = false) {
     let buffs = { base: 0, mbase: 0, mgeral: 0, mformas: 0, mabs: 0, munico: [], reducaoCusto: 0, regeneracao: 0 };
     let hasBuff = { mbase: false, mgeral: false, mformas: false, mabs: false };
@@ -14,6 +13,7 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false) {
     let sK = String(statKey).toLowerCase();
     let isStatFisico = isFisico(sK);
     let isStatEnergia = isEnergia(sK);
+    let isVital = ['vida', 'mana', 'aura', 'chakra', 'corpo'].includes(sK);
 
     // FUNÇÃO INTERNA: Processa os efeitos sem precisarmos repetir código
     const processarEfeitos = (efeitos) => {
@@ -27,11 +27,12 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false) {
             
             if (isNaN(val)) val = prop.startsWith('m') ? 1.0 : 0;
 
+            // O SEGREDO DESBLOQUEADO: TODOS_STATUS agora afeta Vidas e Dano!
             let afeta = (atr === sK) ||
-                (atr === 'todos_status' && isStatFisico) ||
-                (atr === 'todas_energias' && isStatEnergia) ||
+                (atr === 'todos_status' && (isStatFisico || isVital || sK === 'status' || sK === 'dano')) ||
+                (atr === 'todas_energias' && (isVital || isStatEnergia)) ||
                 (atr === 'geral') ||
-                (atr === 'dano' && sK === 'dano'); // Garante que lê bónus de dano também
+                (atr === 'dano' && sK === 'dano');
 
             if (afeta) {
                 if (prop === 'base') buffs.base += val;

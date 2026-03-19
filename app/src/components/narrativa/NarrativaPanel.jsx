@@ -32,13 +32,14 @@ export default function NarrativaPanel() {
     const [notaAbs, setNotaAbs] = useState('');
     const [notaUnico, setNotaUnico] = useState('');
 
-    // Passive creation
+    // Passive creation/editing
     const [passivaNome, setPassivaNome] = useState('');
     const [passivaTipo, setPassivaTipo] = useState('Vantagem');
     const [efeitosTempPassiva, setEfeitosTempPassiva] = useState([]);
     const [novoAtr, setNovoAtr] = useState('forca');
     const [novoProp, setNovoProp] = useState('base');
     const [novoVal, setNovoVal] = useState('');
+    const [editIndex, setEditIndex] = useState(-1); // NOVO ESTADO: Índice da passiva a editar
 
     // Save feedback
     const [salvando, setSalvando] = useState(false);
@@ -89,7 +90,6 @@ export default function NarrativaPanel() {
         });
         salvarFichaSilencioso();
 
-        // Visual feedback
         setSalvando(true);
         setTimeout(() => setSalvando(false), 2000);
     }
@@ -111,7 +111,27 @@ export default function NarrativaPanel() {
         });
     }
 
-    function adicionarPassiva() {
+    // NOVA FUNÇÃO: Carregar a Passiva para Edição
+    function editarPassiva(index) {
+        const p = passivas[index];
+        setPassivaNome(p.nome);
+        setPassivaTipo(p.tipo || 'Vantagem');
+        setEfeitosTempPassiva(JSON.parse(JSON.stringify(p.efeitos || [])));
+        setEditIndex(index);
+        
+        // Dá um scroll suave para cima no painel de edição
+        document.getElementById('painel-edicao-passiva')?.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cancelarEdicao() {
+        setPassivaNome('');
+        setPassivaTipo('Vantagem');
+        setEfeitosTempPassiva([]);
+        setEditIndex(-1);
+    }
+
+    // ATUALIZADA: Salva a Passiva nova ou substitui a que está sendo editada
+    function salvarPassiva() {
         if (passivaNome.trim() === '') {
             alert('Digite o nome da habilidade!');
             return;
@@ -119,15 +139,22 @@ export default function NarrativaPanel() {
 
         updateFicha((ficha) => {
             if (!ficha.passivas) ficha.passivas = [];
-            ficha.passivas.push({
+            
+            const novaPassiva = {
                 nome: passivaNome.trim(),
                 tipo: passivaTipo,
                 efeitos: JSON.parse(JSON.stringify(efeitosTempPassiva))
-            });
+            };
+
+            if (editIndex >= 0) {
+                ficha.passivas[editIndex] = novaPassiva;
+            } else {
+                ficha.passivas.push(novaPassiva);
+            }
         });
 
-        setPassivaNome('');
-        setEfeitosTempPassiva([]);
+        // Limpa os campos após salvar
+        cancelarEdicao();
         salvarFichaSilencioso();
     }
 
@@ -136,12 +163,13 @@ export default function NarrativaPanel() {
             if (!ficha.passivas) return;
             ficha.passivas.splice(index, 1);
         });
+        if (editIndex === index) cancelarEdicao(); // Se apagou a que estava editando, limpa o painel
         salvarFichaSilencioso();
     }
 
     const passivas = minhaFicha.passivas || [];
 
-    // Auto-audit panel: group effects by property
+    // Auto-audit panel
     const relatorioAuditoria = (() => {
         if (!passivas || passivas.length === 0) return null;
 
@@ -200,7 +228,7 @@ export default function NarrativaPanel() {
             );
         }
 
-        if (!hasContent) return <span style={{ color: '#888', fontStyle: 'italic' }}>As passivas nao possuem modificadores mecanicos configurados.</span>;
+        if (!hasContent) return <span style={{ color: '#888', fontStyle: 'italic' }}>As passivas não possuem modificadores mecânicos configurados.</span>;
         return sections;
     })();
 
@@ -211,7 +239,7 @@ export default function NarrativaPanel() {
                 <h3 style={{ color: '#ffcc00', marginBottom: 10 }}>Ficha Narrativa</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                     <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Raca</label>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Raça</label>
                         <input className="input-neon" id="bio-raca" value={raca} onChange={e => setRaca(e.target.value)} />
                     </div>
                     <div>
@@ -223,11 +251,11 @@ export default function NarrativaPanel() {
                         <input className="input-neon" id="bio-idade" value={idade} onChange={e => setIdade(e.target.value)} />
                     </div>
                     <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Fisico</label>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Físico</label>
                         <input className="input-neon" id="bio-fisico" value={fisico} onChange={e => setFisico(e.target.value)} />
                     </div>
                     <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Tipo Sanguineo</label>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Tipo Sanguíneo</label>
                         <input className="input-neon" id="bio-sangue" value={sangue} onChange={e => setSangue(e.target.value)} />
                     </div>
                     <div>
@@ -235,7 +263,7 @@ export default function NarrativaPanel() {
                         <input className="input-neon" id="bio-alinhamento" value={alinhamento} onChange={e => setAlinhamento(e.target.value)} />
                     </div>
                     <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Afiliacao</label>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Afiliação</label>
                         <input className="input-neon" id="bio-afiliacao" value={afiliacao} onChange={e => setAfiliacao(e.target.value)} />
                     </div>
                     <div>
@@ -247,7 +275,7 @@ export default function NarrativaPanel() {
 
             {/* Notes */}
             <div className="def-box" style={{ marginTop: 15 }}>
-                <h3 style={{ color: '#0ff', marginBottom: 10 }}>Anotacoes de Multiplicadores</h3>
+                <h3 style={{ color: '#0ff', marginBottom: 10 }}>Anotações de Multiplicadores</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                     <div>
                         <label style={{ color: '#aaa', fontSize: '0.85em' }}>Base</label>
@@ -266,13 +294,12 @@ export default function NarrativaPanel() {
                         <textarea className="input-neon" id="nota-abs" value={notaAbs} onChange={e => setNotaAbs(e.target.value)} rows={2} style={{ resize: 'vertical' }} />
                     </div>
                     <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Unico</label>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Único</label>
                         <textarea className="input-neon" id="nota-unico" value={notaUnico} onChange={e => setNotaUnico(e.target.value)} rows={2} style={{ resize: 'vertical' }} />
                     </div>
                 </div>
             </div>
 
-            {/* Save bio button */}
             <button
                 className="btn-neon btn-gold"
                 onClick={salvarBio}
@@ -284,12 +311,14 @@ export default function NarrativaPanel() {
                     color: salvando ? '#fff' : undefined
                 }}
             >
-                {salvando ? 'SALVO COM SUCESSO!' : 'Salvar Bio e Anotacoes'}
+                {salvando ? 'SALVO COM SUCESSO!' : 'Salvar Bio e Anotações'}
             </button>
 
             {/* Passives system */}
-            <div className="def-box" style={{ marginTop: 15 }}>
-                <h3 style={{ color: '#f0f', marginBottom: 10 }}>Sistema de Passivas</h3>
+            <div id="painel-edicao-passiva" className="def-box" style={{ marginTop: 15 }}>
+                <h3 style={{ color: editIndex >= 0 ? '#0ff' : '#f0f', marginBottom: 10 }}>
+                    {editIndex >= 0 ? 'Editando Passiva/Vantagem' : 'Sistema de Passivas'}
+                </h3>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
                     <div>
@@ -336,9 +365,11 @@ export default function NarrativaPanel() {
                     ) : (
                         efeitosTempPassiva.map((e, i) => (
                             <div key={i} style={{
-                                color: '#f0f', fontSize: '0.9em', marginBottom: 5,
-                                background: 'rgba(255,0,255,0.1)', padding: '5px 10px',
-                                borderLeft: '2px solid #f0f', display: 'flex', justifyContent: 'space-between'
+                                color: editIndex >= 0 ? '#0ff' : '#f0f', fontSize: '0.9em', marginBottom: 5,
+                                background: editIndex >= 0 ? 'rgba(0,255,255,0.1)' : 'rgba(255,0,255,0.1)', 
+                                padding: '5px 10px',
+                                borderLeft: `2px solid ${editIndex >= 0 ? '#0ff' : '#f0f'}`, 
+                                display: 'flex', justifyContent: 'space-between'
                             }}>
                                 <span>
                                     [{(e.atributo || '').toUpperCase()}] {(e.propriedade || '').toUpperCase()}: {e.valor}
@@ -354,9 +385,21 @@ export default function NarrativaPanel() {
                     )}
                 </div>
 
-                <button className="btn-neon" onClick={adicionarPassiva} style={{ marginTop: 10, width: '100%', borderColor: '#f0f', color: '#f0f' }}>
-                    Adicionar Passiva
-                </button>
+                <div style={{ display: 'flex', gap: '10px', marginTop: 10 }}>
+                    <button 
+                        className="btn-neon" 
+                        onClick={salvarPassiva} 
+                        style={{ flex: 1, borderColor: editIndex >= 0 ? '#0ff' : '#f0f', color: editIndex >= 0 ? '#0ff' : '#f0f' }}
+                    >
+                        {editIndex >= 0 ? 'SALVAR EDIÇÃO' : 'ADICIONAR PASSIVA'}
+                    </button>
+                    
+                    {editIndex >= 0 && (
+                        <button className="btn-neon btn-red" onClick={cancelarEdicao} style={{ flex: 0.5 }}>
+                            CANCELAR
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* List of passives */}
@@ -394,13 +437,22 @@ export default function NarrativaPanel() {
                                         ))}
                                     </div>
                                 </div>
-                                <button
-                                    onClick={() => removerPassiva(i)}
-                                    style={{ background: 'transparent', border: 'none', color: '#ff4d4d', cursor: 'pointer', fontSize: '1.2em' }}
-                                    title="Remover"
-                                >
-                                    X
-                                </button>
+                                <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                                    <button
+                                        onClick={() => editarPassiva(i)}
+                                        style={{ background: 'transparent', border: '1px solid #0ff', color: '#0ff', cursor: 'pointer', fontSize: '0.8em', padding: '3px 8px', borderRadius: '4px' }}
+                                        title="Editar"
+                                    >
+                                        EDITAR
+                                    </button>
+                                    <button
+                                        onClick={() => removerPassiva(i)}
+                                        style={{ background: 'transparent', border: 'none', color: '#ff4d4d', cursor: 'pointer', fontSize: '1.2em' }}
+                                        title="Remover"
+                                    >
+                                        X
+                                    </button>
+                                </div>
                             </div>
                         );
                     })
