@@ -105,3 +105,25 @@ export async function deletarPersonagem(nome) {
         console.error('[Sync] Erro ao deletar do Firebase:', err);
     }
 }
+// --- SISTEMA DE SINCRONIZAÇÃO DA MESA DE SOM (JUKEBOX) ---
+
+export function enviarParaJukebox(estado) {
+    if (!db) return;
+    const jukeboxRef = ref(db, 'jukebox');
+    // Envia o estado da música para a base de dados
+    set(jukeboxRef, estado).catch((err) => {
+        console.error('[Sync] Erro ao enviar para jukebox:', err);
+    });
+}
+
+export function iniciarListenerJukebox(callback) {
+    if (!db) return () => {};
+    const jukeboxRef = ref(db, 'jukebox');
+    // Fica à escuta de qualquer mudança na música e avisa a interface
+    return onValue(jukeboxRef, (snapshot) => {
+        const dados = snapshot.val() || null;
+        if (callback) callback(dados);
+    }, (err) => {
+        console.error('[Sync] Erro no listener da jukebox:', err);
+    });
+}
