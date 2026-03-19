@@ -16,6 +16,7 @@ import ElementosPanel from './components/arsenal/ElementosPanel'
 import FeedCombate from './components/feed/FeedCombate'
 import MapaPanel from './components/mapa/MapaPanel'
 import NarrativaPanel from './components/narrativa/NarrativaPanel'
+import Jukebox from './components/Jukebox' // <-- Importamos a nossa Mesa de Som aqui!
 import { carregarFichaDoFirebase } from './services/firebase-sync'
 
 function MestrePanel() {
@@ -147,6 +148,7 @@ return (
                 <TabPanel id="aba-log"><FeedCombate /></TabPanel>
                 <TabPanel id="aba-mapa"><MapaPanel /></TabPanel>
                 <TabPanel id="aba-narrativa"><NarrativaPanel /></TabPanel>
+                <TabPanel id="aba-musica"><Jukebox /></TabPanel> {/* <-- A NOSSA NOVA ABA AQUI */}
             </div>
 
             <ModalConfirm />

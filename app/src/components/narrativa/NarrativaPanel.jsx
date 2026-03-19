@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import useStore from '../../stores/useStore';
 import { salvarFichaSilencioso } from '../../services/firebase-sync';
+import Jukebox from './Jukebox'; // Ajuste o caminho conforme onde guardou o arquivo
 
 const ATRIBUTO_OPTIONS = [
     'forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao',
@@ -470,6 +471,7 @@ export default function NarrativaPanel() {
                     )}
                 </div>
             </div>
+            <Jukebox />
         </div>
     );
 }
