@@ -3,7 +3,7 @@ import useStore from '../../stores/useStore';
 import { getMaximo } from '../../core/attributes';
 import { salvarFichaSilencioso } from '../../services/firebase-sync';
 
-// 🔥 AGRUPAMENTO VISUAL DOS ATRIBUTOS
+// 🔥 AGRUPAMENTO VISUAL DOS ATRIBUTOS (Agora com COMBATE!)
 const ATRIBUTOS_AGRUPADOS = [
     { 
         label: 'STATUS BASE', 
@@ -12,6 +12,10 @@ const ATRIBUTOS_AGRUPADOS = [
     { 
         label: 'VITAIS & ENERGIAS', 
         options: ['vida', 'mana', 'aura', 'chakra', 'corpo'] 
+    },
+    {
+        label: 'COMBATE',
+        options: ['dano'] // <-- O nosso novo atributo letal!
     },
     { 
         label: 'ESPECIAIS (GLOBAIS)', 
@@ -166,7 +170,6 @@ export default function PoderesPanel() {
                 <input className="input-neon" type="text" placeholder="URL da Imagem (opcional)" value={imagemUrl} onChange={e => setImagemUrl(e.target.value)} style={{ marginTop: 5 }} />
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8, marginTop: 10 }}>
-                    {/* 🔥 O NOVO SELECT COM OPTGROUPS */}
                     <select className="input-neon" value={novoAtr} onChange={e => setNovoAtr(e.target.value)}>
                         {ATRIBUTOS_AGRUPADOS.map(grupo => (
                             <optgroup key={grupo.label} label={grupo.label} style={{ background: '#051010', color: '#0ff' }}>
