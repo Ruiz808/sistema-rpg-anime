@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import useStore from '../../stores/useStore';
-import { getMaximo, getRawBase } from '../../core/attributes.js';
+import { getMaximo, getRawBase, getMultiplicadorTotal } from '../../core/attributes.js';
 import { getPrestigioReal, getRank } from '../../core/prestige.js';
 import { salvarFichaSilencioso } from '../../services/firebase-sync.js';
 
@@ -8,24 +8,19 @@ class StatusErrorBoundary extends React.Component {
     constructor(props) { super(props); this.state = { hasError: false, error: null }; }
     static getDerivedStateFromError(error) { return { hasError: true, error }; }
     render() {
-        if (this.state.hasError) {
-            return (
-                <div style={{ padding: '20px', border: '2px solid #ff003c', background: '#1a0000', borderRadius: '10px', color: '#fff', margin: '20px' }}>
-                    <h3 style={{ color: '#ff003c', marginTop: 0 }}>🔥 ERRO DETECTADO NO PAINEL DE STATUS 🔥</h3>
-                    <pre style={{ color: '#ffaaaa', whiteSpace: 'pre-wrap', fontSize: '14px' }}>{this.state.error?.toString()}</pre>
-                </div>
-            );
-        }
+        if (this.state.hasError) return (
+            <div style={{ padding: '20px', border: '2px solid #ff003c', background: '#1a0000', borderRadius: '10px', color: '#fff', margin: '20px' }}>
+                <h3 style={{ color: '#ff003c', marginTop: 0 }}>🔥 ERRO DETECTADO NO PAINEL DE STATUS 🔥</h3>
+                <pre style={{ color: '#ffaaaa', whiteSpace: 'pre-wrap', fontSize: '14px' }}>{this.state.error?.toString()}</pre>
+            </div>
+        );
         return this.props.children;
     }
 }
 
 const safeFn = (fn, fallback) => (...args) => {
     if (typeof fn !== 'function') return fallback;
-    try { 
-        const res = fn(...args);
-        return (res !== undefined && res !== null && !Number.isNaN(res)) ? res : fallback;
-    } catch (e) { return fallback; }
+    try { const res = fn(...args); return (res !== undefined && res !== null && !Number.isNaN(res)) ? res : fallback; } catch (e) { return fallback; }
 };
 
 const safeGetMaximo = safeFn(getMaximo, 1);
@@ -39,31 +34,67 @@ const VITALS_LABELS = ['VIDA', 'MANA', 'AURA', 'CHAKRA', 'CORPO', 'STATUS'];
 const STATS = ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'];
 
 const ANGLES = VITALS_RADAR.map((_, i) => (Math.PI * 2 * i) / 6 - Math.PI / 2);
-
-function hexPoints(cx, cy, r) {
-    return ANGLES.map((a) => `${cx + r * Math.cos(a)},${cy + r * Math.sin(a)}`).join(' ');
-}
-
+function hexPoints(cx, cy, r) { return ANGLES.map((a) => `${cx + r * Math.cos(a)},${cy + r * Math.sin(a)}`).join(' '); }
 function radarPoint(cx, cy, r, idx, frac) {
-    const a = ANGLES[idx];
-    const safeFrac = Number.isNaN(frac) ? 0 : frac;
+    const a = ANGLES[idx]; const safeFrac = Number.isNaN(frac) ? 0 : frac;
     return [cx + r * safeFrac * Math.cos(a), cy + r * safeFrac * Math.sin(a)];
 }
 
-// --- AURA UNIVERSAL NO GRÁFICO ---
-function getHighestForma(ficha) {
-    let maxF = 1;
-    const keys = ['forca', 'vida', 'mana', 'aura', 'chakra', 'corpo'];
-    for (let k of keys) {
-        const val = parseFloat(ficha[k]?.mFormas) || 1;
-        if (val > maxF) maxF = val;
-    }
-    return maxF;
+// --- SCANNER DEFINITIVO NO GRÁFICO RADAR ---
+function getEfetivoMFormas(ficha, k) {
+    const anchor = k === 'status' ? 'forca' : k;
+    let val = 1;
+    
+    try {
+        const mults = getMultiplicadorTotal(ficha, anchor);
+        if (mults && typeof mults === 'object' && mults.mFormas !== undefined) val = Math.max(val, parseFloat(mults.mFormas));
+    } catch(e) {}
+
+    const regexExtract = (conteudo) => {
+        if (!conteudo) return;
+        let texto = '';
+        if (typeof conteudo === 'string') texto = conteudo;
+        else if (Array.isArray(conteudo)) texto = conteudo.join(' | ');
+        else { try { texto = JSON.stringify(conteudo); } catch(e) { return; } }
+        
+        const str = texto.toUpperCase();
+        const matches = str.matchAll(/\[(.*?)\] MFORMAS:\s*[X]?(\d+(\.\d+)?)/g);
+        for (const match of matches) {
+            const alvo = match[1];
+            const num = parseFloat(match[2]);
+            if (alvo.includes(anchor.toUpperCase()) || alvo.includes('TODOS STATUS') || alvo.includes('TODAS ENERGIAS') || alvo.includes('GERAL')) {
+                val = Math.max(val, num);
+            }
+        }
+    };
+
+    const scanGavetas = (gaveta) => {
+        if (!gaveta) return;
+        Object.values(gaveta).forEach(item => {
+            if (item.ligado || item.ativo) {
+                regexExtract(item.descricao); regexExtract(item.texto); regexExtract(item.efeitos);
+                if (Array.isArray(item.efeitos)) {
+                    item.efeitos.forEach(ef => {
+                        if (typeof ef === 'object' && ef !== null) {
+                            const target = String(ef.alvo || ef.atributo || '').toUpperCase();
+                            if ((target.includes(anchor.toUpperCase()) || target.includes('TODOS')) && (ef.tipo === 'mFormas' || ef.chave === 'mFormas')) {
+                                val = Math.max(val, parseFloat(ef.valor) || 1);
+                            }
+                        }
+                    });
+                }
+            }
+        });
+    };
+
+    scanGavetas(ficha.buffs); scanGavetas(ficha.modos); scanGavetas(ficha.transformacoes); scanGavetas(ficha.habilidades); scanGavetas(ficha.poderes);
+    const puro = parseFloat(ficha[anchor]?.mFormas) || 1;
+    return Math.max(val, puro);
 }
 
-function calcularPrestAtual(ficha, baseP) {
-    const maxF = getHighestForma(ficha);
-    const multForma = Math.max(1, maxF / 10);
+function calcularPrestAtual(ficha, attrKey, baseP) {
+    const mFormas = getEfetivoMFormas(ficha, attrKey);
+    const multForma = mFormas >= 10 ? (mFormas / 10) : 1;
     return Math.floor(baseP * multForma);
 }
 
@@ -81,9 +112,7 @@ function RadarChart({ ficha, isAtual }) {
 
     const chartValues = VITALS_RADAR.map((k) => {
         const baseP = getBasePFor(ficha, k);
-        if (!isAtual) return baseP;
-        
-        return calcularPrestAtual(ficha, baseP);
+        return isAtual ? calcularPrestAtual(ficha, k, baseP) : baseP;
     });
 
     const dataPoints = chartValues.map((v, i) => radarPoint(CX, CY, R, i, Math.min((v || 0) / LIMIT, 1)));
@@ -91,8 +120,7 @@ function RadarChart({ ficha, isAtual }) {
 
     const rankInfos = VITALS_RADAR.map((k) => {
         const baseP = getBasePFor(ficha, k);
-        const pAtualValor = isAtual ? calcularPrestAtual(ficha, baseP) : baseP;
-        
+        const pAtualValor = isAtual ? calcularPrestAtual(ficha, k, baseP) : baseP;
         return safeGetRank(pAtualValor, ficha?.ascensaoBase || 1);
     });
 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import useStore from '../../stores/useStore';
-import { getRawBase } from '../../core/attributes.js';
+import { getRawBase, getMultiplicadorTotal } from '../../core/attributes.js';
 import { getPrestigioReal, getRank } from '../../core/prestige.js';
 import { salvarFichaSilencioso } from '../../services/firebase-sync.js';
 
@@ -26,26 +26,79 @@ const MULTIPLICADORES = {
     chakra: 10000000, corpo: 10000000, status: 1000
 };
 
-// --- AURA UNIVERSAL (Acha a maior forma ativa no personagem) ---
-function getHighestForma(ficha) {
-    let maxF = 1;
-    // Varre os atributos principais para ver se o personagem está transformado
-    const keys = ['forca', 'vida', 'mana', 'aura', 'chakra', 'corpo'];
-    for (let k of keys) {
-        const val = parseFloat(ficha[k]?.mFormas) || 1;
-        if (val > maxF) maxF = val;
-    }
-    return maxF;
+// --- O SCANNER DEFINITIVO DE FORMAS (Caça-Buffs Dinâmicos) ---
+function getEfetivoMFormas(ficha, k) {
+    const anchor = k === 'status' ? 'forca' : k;
+    let val = 1;
+    
+    // 1. Tenta a função oficial (se ela retornar o objeto completo)
+    try {
+        const mults = getMultiplicadorTotal(ficha, anchor);
+        if (mults && typeof mults === 'object' && mults.mFormas !== undefined) {
+            val = Math.max(val, parseFloat(mults.mFormas));
+        }
+    } catch(e) {}
+
+    // 2. Extrai do texto do Buff Ativo (ex: "[VIDA] MFORMAS: x60" do Modo Assalto)
+    const regexExtract = (conteudo) => {
+        if (!conteudo) return;
+        let texto = '';
+        if (typeof conteudo === 'string') texto = conteudo;
+        else if (Array.isArray(conteudo)) texto = conteudo.join(' | ');
+        else { try { texto = JSON.stringify(conteudo); } catch(e) { return; } }
+        
+        const str = texto.toUpperCase();
+        const matches = str.matchAll(/\[(.*?)\] MFORMAS:\s*[X]?(\d+(\.\d+)?)/g);
+        for (const match of matches) {
+            const alvo = match[1];
+            const num = parseFloat(match[2]);
+            if (alvo.includes(anchor.toUpperCase()) || alvo.includes('TODOS STATUS') || alvo.includes('TODAS ENERGIAS') || alvo.includes('GERAL')) {
+                val = Math.max(val, num);
+            }
+        }
+    };
+
+    const scanGavetas = (gaveta) => {
+        if (!gaveta) return;
+        Object.values(gaveta).forEach(item => {
+            if (item.ligado || item.ativo) {
+                regexExtract(item.descricao);
+                regexExtract(item.texto);
+                regexExtract(item.efeitos);
+                
+                if (Array.isArray(item.efeitos)) {
+                    item.efeitos.forEach(ef => {
+                        if (typeof ef === 'object' && ef !== null) {
+                            const target = String(ef.alvo || ef.atributo || '').toUpperCase();
+                            if ((target.includes(anchor.toUpperCase()) || target.includes('TODOS')) && (ef.tipo === 'mFormas' || ef.chave === 'mFormas')) {
+                                val = Math.max(val, parseFloat(ef.valor) || 1);
+                            }
+                        }
+                    });
+                }
+            }
+        });
+    };
+
+    // Vasculha todos os locais onde os buffs/modos do RPG podem estar
+    scanGavetas(ficha.buffs);
+    scanGavetas(ficha.modos);
+    scanGavetas(ficha.transformacoes);
+    scanGavetas(ficha.habilidades);
+    scanGavetas(ficha.poderes);
+
+    // Fallback para o atributo puro
+    const puro = parseFloat(ficha[anchor]?.mFormas) || 1;
+    return Math.max(val, puro);
 }
 
-// --- REGRA DE OURO: Atual = Base * (Forma / 10) ---
-function calcularPrestAtual(ficha, baseP) {
-    const mFormas = getHighestForma(ficha);
-    const multForma = Math.max(1, mFormas / 10);
+// A REGRA DE OURO: Atual = Base * (Forma / 10)
+function calcularPrestAtual(ficha, attrKey, baseP) {
+    const mFormas = getEfetivoMFormas(ficha, attrKey);
+    const multForma = mFormas >= 10 ? (mFormas / 10) : 1;
     return Math.floor(baseP * multForma);
 }
 
-// LÓGICA DO BASE PURO
 const getBasePFor = (ficha, k) => {
     if (k === 'status') {
         let m = 0;
@@ -67,7 +120,6 @@ export default function TabelaPrestigio() {
             setStatusBotao('saved');
             setTimeout(() => setStatusBotao('idle'), 2500);
         } catch (error) {
-            console.error("Falha ao salvar:", error);
             setStatusBotao('idle');
         }
     };
@@ -87,12 +139,9 @@ export default function TabelaPrestigio() {
                     <div className="prestige-ascension-box">
                         <label className="text-white-md" style={{ display: 'block', marginBottom: '5px' }}>Ascensão Base (Nível):</label>
                         <input 
-                            type="number" 
-                            className="prestige-input-base" 
+                            type="number" className="prestige-input-base" 
                             value={ficha.ascensaoBase || 1} 
-                            onChange={(e) => {
-                                updateFicha(f => { f.ascensaoBase = Number(e.target.value) });
-                            }} 
+                            onChange={(e) => { updateFicha(f => { f.ascensaoBase = Number(e.target.value) }); }} 
                         />
                     </div>
                     <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
@@ -104,10 +153,7 @@ export default function TabelaPrestigio() {
                                 <div key={attrKey}>
                                     <div className="label-divisor" style={{ marginBottom: '5px' }}>
                                         <span style={{ color: '#00ffcc', fontWeight: 'bold' }}>{VITALS_LABELS[i]}</span>
-                                        <span>Divisor: <input 
-                                            type="number" 
-                                            className="divisor-mini-input" 
-                                            value={divisor} 
+                                        <span>Divisor: <input type="number" className="divisor-mini-input" value={divisor} 
                                             onChange={(e) => {
                                                 const val = parseFloat(e.target.value) || 1;
                                                 updateFicha(f => { 
@@ -117,10 +163,7 @@ export default function TabelaPrestigio() {
                                             }}
                                         /></span>
                                     </div>
-                                    <input 
-                                        type="number" 
-                                        className="prestige-input-base" 
-                                        value={calcBaseP} 
+                                    <input type="number" className="prestige-input-base" value={calcBaseP} 
                                         onChange={(e) => {
                                             const val = parseInt(e.target.value) || 0;
                                             updateFicha(f => {
@@ -128,8 +171,7 @@ export default function TabelaPrestigio() {
                                                     const stBase = val * 1000;
                                                     STATS.forEach(s => { if(f[s]) f[s].base = stBase; });
                                                 } else {
-                                                    const mults = { vida: 1000000, mana: 10000000, aura: 10000000, chakra: 10000000, corpo: 10000000 };
-                                                    if(f[attrKey]) f[attrKey].base = val * mults[attrKey];
+                                                    if(f[attrKey]) f[attrKey].base = val * MULTIPLICADORES[attrKey];
                                                 }
                                             });
                                         }}
@@ -150,11 +192,7 @@ export default function TabelaPrestigio() {
                     <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                         {VITALS_KEYS.map((attrKey, i) => {
                             const calcBaseP = getBasePFor(ficha, attrKey);
-                            
-                            // Matemática de Ouro Injetada!
-                            const pAtualValor = calcularPrestAtual(ficha, calcBaseP);
-                            
-                            // Motor de Rank descobre o Ascensao sozinho com base no valor escalado
+                            const pAtualValor = calcularPrestAtual(ficha, attrKey, calcBaseP);
                             const rankInfo = safeGetRank(pAtualValor, ficha.ascensaoBase || 1);
 
                             return (
@@ -173,12 +211,7 @@ export default function TabelaPrestigio() {
                 </div>
             </div>
 
-            <button 
-                className={`btn-neon ${statusBotao === 'saved' ? 'btn-green' : 'btn-gold'}`} 
-                onClick={handleSalvarPrestigio} 
-                disabled={statusBotao === 'saving'}
-                style={{ width: '100%', marginBottom: '30px', height: '50px', transition: 'all 0.3s ease' }}
-            >
+            <button className={`btn-neon ${statusBotao === 'saved' ? 'btn-green' : 'btn-gold'}`} onClick={handleSalvarPrestigio} disabled={statusBotao === 'saving'} style={{ width: '100%', marginBottom: '30px', height: '50px', transition: 'all 0.3s ease' }}>
                 {statusBotao === 'idle' && '💾 SALVAR PRESTÍGIO NO SERVIDOR'}
                 {statusBotao === 'saving' && '⏳ ENVIANDO PARA A FORJA (FIREBASE)...'}
                 {statusBotao === 'saved' && '✅ PRESTÍGIOS SALVOS COM SUCESSO!'}
