@@ -4,6 +4,58 @@
 import { contarDigitos, tratarUnico, pegarDoisPrimeirosDigitos } from './utils.js';
 import { getMaximo, getBuffs, getRawBase, getPoderesDefesa } from './attributes.js';
 
+/**
+ * Função inteligente de rolagem com Vantagem/Desvantagem
+ * Retorna a soma dos dados mantidos e o texto formatado para o feed (com os dados descartados riscados).
+ */
+export function rolarDadosComVantagem(qD, fD, vantagens = 0, desvantagens = 0) {
+    let netVantagem = (parseInt(vantagens) || 0) - (parseInt(desvantagens) || 0);
+    let totalDice = qD + Math.abs(netVantagem);
+    let rolls = [];
+    
+    for (let i = 0; i < totalDice; i++) {
+        rolls.push(Math.floor(Math.random() * fD) + 1);
+    }
+
+    // Ordena do MAIOR para o MENOR para selecionar quais manter
+    let sorted = [...rolls].sort((a, b) => b - a);
+    let kept = [];
+
+    if (netVantagem > 0) {
+        kept = sorted.slice(0, qD); // Mantém os maiores
+    } else if (netVantagem < 0) {
+        kept = sorted.slice(totalDice - qD); // Mantém os menores (que estão no final)
+    } else {
+        kept = sorted; // Normal (Mantém todos)
+    }
+
+    let sD = 0;
+    let finalTexts = [];
+    let pool = [...kept]; // Pool temporária para não riscar números idênticos errados
+
+    for (let i = 0; i < rolls.length; i++) {
+        let r = rolls[i];
+        let idx = pool.indexOf(r);
+        if (idx !== -1) {
+            pool.splice(idx, 1);
+            sD += r;
+            finalTexts.push(`<strong>${r}</strong>`);
+        } else {
+            // Os dados ignorados pela Vantagem/Desvantagem ficam riscados e vermelhos
+            finalTexts.push(`<strike style="color:#ff003c; opacity:0.7">${r}</strike>`);
+        }
+    }
+
+    let prefix = netVantagem > 0 ? `<span style="color:#0f0">[VANTAGEM]</span> ` : 
+                 netVantagem < 0 ? `<span style="color:#f00">[DESVANTAGEM]</span> ` : ``;
+                 
+    let rolagemTexto = totalDice <= 30
+        ? `${prefix}[${finalTexts.join(', ')}] = 🎲(${sD})`
+        : `${prefix}[${finalTexts.slice(0, 30).join(', ')}... e mais ${(totalDice - 30).toLocaleString('pt-BR')} dados] = 🎲(${sD})`;
+
+    return { sD, rolagemTexto };
+}
+
 export function calcularDano({
     qDBase, qDExtra, qDMagia, fD,
     pE, pMagiaTotal, rE, mE, db, mdb,
@@ -102,7 +154,6 @@ export function calcularDano({
     let uni = 1.0;
     for (let i = 0; i < uArr.length; i++) uni *= uArr[i];
 
-    // 🔥 O GOLPE FINAL: Isolamos o Dano! O motor agora pede apenas os buffs classificados como 'dano' na criação do poder
     let bFora = getBuffs(minhaFicha, 'dano');
 
     let multArr = [];
@@ -164,7 +215,8 @@ export function calcularDano({
     };
 }
 
-export function calcularAcerto({ qD, fD, prof, bonus, sels, minhaFicha, itensEquipados }) {
+// 🔥 ACERTO AGORA ACEITA VANTAGEM E DESVANTAGEM
+export function calcularAcerto({ qD, fD, prof, bonus, sels, minhaFicha, itensEquipados, vantagens = 0, desvantagens = 0 }) {
     let iAcerto = 0;
     let nomesArmas = [];
     itensEquipados.forEach(item => {
@@ -172,16 +224,8 @@ export function calcularAcerto({ qD, fD, prof, bonus, sels, minhaFicha, itensEqu
         if (item.tipo === 'arma' || item.tipo === 'artefato') nomesArmas.push(item.nome);
     });
 
-    let sD = 0;
-    let rD = [];
-    for (let i = 0; i < qD; i++) {
-        let r = Math.floor(Math.random() * fD) + 1;
-        sD += r;
-        if (i < 30) rD.push(r);
-    }
-    let rolagemTexto = qD <= 30
-        ? `[${rD.join(', ')}] (${sD})`
-        : `[${rD.join(', ')}... e mais ${(qD - 30).toLocaleString('pt-BR')} dados] (${sD})`;
+    // Chama o novo motor inteligente de Vantagem!
+    let { sD, rolagemTexto } = rolarDadosComVantagem(qD, fD, vantagens, desvantagens);
 
     let vSt = 0;
     for (let i = 0; i < sels.length; i++) {
