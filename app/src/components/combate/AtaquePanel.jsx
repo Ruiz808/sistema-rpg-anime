@@ -24,11 +24,7 @@ const ENERGIA_LIST = [
 ];
 
 export default function AtaquePanel() {
-    const minhaFicha = useStore(s => s.minhaFicha);
-    const meuNome = useStore(s => s.meuNome);
-    const updateFicha = useStore(s => s.updateFicha);
-    const setAbaAtiva = useStore(s => s.setAbaAtiva);
-    const addFeedEntry = useStore(s => s.addFeedEntry);
+    const { minhaFicha, meuNome, updateFicha, setAbaAtiva, addFeedEntry } = useStore();
 
     const ac = minhaFicha.ataqueConfig || {};
 
@@ -49,14 +45,11 @@ export default function AtaquePanel() {
     const [statusSelecionados, setStatusSelecionados] = useState(ac.statusSelecionados || ['forca']);
     const [energiasSelecionadas, setEnergiasSelecionadas] = useState(ac.energiasSelecionadas || ['mana']);
 
-    // Computed from equipped elementals
     const [dadosMagia, setDadosMagia] = useState(0);
     const [percMagia, setPercMagia] = useState(0);
 
-    // Buff labels
     const [buffLabels, setBuffLabels] = useState({ base: '', geral: '', formas: '', abs: '', uni: '' });
 
-    // Load config when ficha changes
     useEffect(() => {
         const ac2 = minhaFicha.ataqueConfig || {};
         setDados(ac2.dadosBase || 1);
@@ -77,20 +70,21 @@ export default function AtaquePanel() {
         if (ac2.energiasSelecionadas && ac2.energiasSelecionadas.length > 0) setEnergiasSelecionadas(ac2.energiasSelecionadas);
     }, [minhaFicha.ataqueConfig]);
 
-    // Update elemental data and buff labels
     const atualizarInputsDeDano = useCallback(() => {
         try {
             const sels = statusSelecionados.length > 0 ? statusSelecionados : ['forca'];
             const main = sels[0];
             if (!minhaFicha || !minhaFicha[main]) return;
 
-            const b = getBuffs(minhaFicha, main);
+            // 🔥 A MÁGICA DE SEPARAÇÃO: A interface agora lê os buffs EXCLUSIVOS de 'dano' para preencher as labels!
+            const bDano = getBuffs(minhaFicha, 'dano');
+            
             setBuffLabels({
-                base: b.mbase > 1 ? `(Forma: x${b.mbase.toFixed(2)})` : '',
-                geral: b.mgeral > 1 ? `(Forma: x${b.mgeral.toFixed(2)})` : '',
-                formas: b.mformas > 1 ? `(Forma: x${b.mformas.toFixed(2)})` : '',
-                abs: b.mabs > 1 ? `(Forma: x${b.mabs.toFixed(2)})` : '',
-                uni: b.munico.length > 0 ? `(Forma: x${b.munico.join(', ')})` : ''
+                base: bDano.mbase > 1 ? `(Poder: x${bDano.mbase.toFixed(2)})` : '',
+                geral: bDano.mgeral > 1 ? `(Poder: x${bDano.mgeral.toFixed(2)})` : '',
+                formas: bDano.mformas > 1 ? `(Poder: x${bDano.mformas.toFixed(2)})` : '',
+                abs: bDano.mabs > 1 ? `(Poder: x${bDano.mabs.toFixed(2)})` : '',
+                uni: bDano.munico.length > 0 ? `(Poder: x${bDano.munico.join(', ')})` : ''
             });
 
             const magiasEquipadas = minhaFicha.ataquesElementais ? minhaFicha.ataquesElementais.filter(e => e.equipado) : [];
@@ -192,7 +186,6 @@ export default function AtaquePanel() {
             return;
         }
 
-        // Apply energy drains
         if (result.drenos) {
             updateFicha((ficha) => {
                 for (let i = 0; i < result.drenos.length; i++) {
@@ -216,129 +209,60 @@ export default function AtaquePanel() {
     return (
         <div className="ataque-panel">
             <div className="def-box">
-                <h3 style={{ color: '#ff003c', marginBottom: 10 }}>Configuracao de Ataque</h3>
+                <h3 style={{ color: '#ff003c', marginBottom: 10 }}>Configuração de Ataque</h3>
 
-                {/* Status checkboxes */}
                 <div style={{ marginBottom: 10 }}>
                     <label style={{ color: '#aaa', fontSize: '0.85em' }}>Status usados no dano:</label>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 5 }}>
                         {STATS_LIST.map(st => (
                             <label key={st.value} style={{ color: statusSelecionados.includes(st.value) ? '#0f0' : '#888', fontSize: '0.9em', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <input
-                                    type="checkbox"
-                                    className="chk-stat"
-                                    value={st.value}
-                                    checked={statusSelecionados.includes(st.value)}
-                                    onChange={() => toggleStat(st.value)}
-                                />
+                                <input type="checkbox" className="chk-stat" value={st.value} checked={statusSelecionados.includes(st.value)} onChange={() => toggleStat(st.value)} />
                                 {st.label}
                             </label>
                         ))}
                     </div>
                 </div>
 
-                {/* Energy checkboxes */}
                 <div style={{ marginBottom: 10 }}>
-                    <label style={{ color: '#aaa', fontSize: '0.85em' }}>Energias de combustao:</label>
+                    <label style={{ color: '#aaa', fontSize: '0.85em' }}>Energias de combustão:</label>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 5 }}>
                         {ENERGIA_LIST.map(en => (
                             <label key={en.value} style={{ color: energiasSelecionadas.includes(en.value) ? '#0ff' : '#888', fontSize: '0.9em', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <input
-                                    type="checkbox"
-                                    className="chk-energia"
-                                    value={en.value}
-                                    checked={energiasSelecionadas.includes(en.value)}
-                                    onChange={() => toggleEnergia(en.value)}
-                                />
+                                <input type="checkbox" className="chk-energia" value={en.value} checked={energiasSelecionadas.includes(en.value)} onChange={() => toggleEnergia(en.value)} />
                                 {en.label}
                             </label>
                         ))}
                     </div>
                 </div>
 
-                {/* Dice and damage inputs */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Dados</label>
-                        <input className="input-neon" type="number" value={dados} onChange={e => setDados(e.target.value)} />
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Faces</label>
-                        <input className="input-neon" type="number" value={faces} onChange={e => setFaces(e.target.value)} />
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Dados Extra</label>
-                        <input className="input-neon" type="number" value={dadosExtra} onChange={e => setDadosExtra(e.target.value)} />
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Bruto</label>
-                        <input className="input-neon" type="number" value={bruto} onChange={e => setBruto(e.target.value)} />
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Bruto</label>
-                        <input className="input-neon" type="number" step="0.01" value={mBruto} onChange={e => setMBruto(e.target.value)} />
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Dados Magia</label>
-                        <input className="input-neon" type="number" value={dadosMagia} readOnly style={{ opacity: 0.6 }} />
-                    </div>
+                    <div><label style={{ color: '#aaa', fontSize: '0.85em' }}>Dados</label><input className="input-neon" type="number" value={dados} onChange={e => setDados(e.target.value)} /></div>
+                    <div><label style={{ color: '#aaa', fontSize: '0.85em' }}>Faces</label><input className="input-neon" type="number" value={faces} onChange={e => setFaces(e.target.value)} /></div>
+                    <div><label style={{ color: '#aaa', fontSize: '0.85em' }}>Dados Extra</label><input className="input-neon" type="number" value={dadosExtra} onChange={e => setDadosExtra(e.target.value)} /></div>
+                    <div><label style={{ color: '#aaa', fontSize: '0.85em' }}>Bruto</label><input className="input-neon" type="number" value={bruto} onChange={e => setBruto(e.target.value)} /></div>
+                    <div><label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Bruto</label><input className="input-neon" type="number" step="0.01" value={mBruto} onChange={e => setMBruto(e.target.value)} /></div>
+                    <div><label style={{ color: '#aaa', fontSize: '0.85em' }}>Dados Magia</label><input className="input-neon" type="number" value={dadosMagia} readOnly style={{ opacity: 0.6 }} /></div>
                 </div>
 
-                {/* Multiplier inputs */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Base <span style={{ color: '#0f0', fontSize: '0.8em' }}>{buffLabels.base}</span></label>
-                        <input className="input-neon" type="number" step="0.01" value={mBase} onChange={e => setMBase(e.target.value)} />
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Geral <span style={{ color: '#0f0', fontSize: '0.8em' }}>{buffLabels.geral}</span></label>
-                        <input className="input-neon" type="number" step="0.01" value={mGeral} onChange={e => setMGeral(e.target.value)} />
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Formas <span style={{ color: '#0f0', fontSize: '0.8em' }}>{buffLabels.formas}</span></label>
-                        <input className="input-neon" type="number" step="0.01" value={mFormas} onChange={e => setMFormas(e.target.value)} />
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Absoluto <span style={{ color: '#0f0', fontSize: '0.8em' }}>{buffLabels.abs}</span></label>
-                        <input className="input-neon" type="number" step="0.01" value={mAbsoluto} onChange={e => setMAbsoluto(e.target.value)} />
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Unico <span style={{ color: '#0f0', fontSize: '0.8em' }}>{buffLabels.uni}</span></label>
-                        <input className="input-neon" type="text" value={mUnico} onChange={e => setMUnico(e.target.value)} />
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Potencial</label>
-                        <input className="input-neon" type="number" step="0.01" value={mPotencial} onChange={e => setMPotencial(e.target.value)} />
-                    </div>
+                    <div><label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Base <span style={{ color: '#0f0', fontSize: '0.8em' }}>{buffLabels.base}</span></label><input className="input-neon" type="number" step="0.01" value={mBase} onChange={e => setMBase(e.target.value)} /></div>
+                    <div><label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Geral <span style={{ color: '#0f0', fontSize: '0.8em' }}>{buffLabels.geral}</span></label><input className="input-neon" type="number" step="0.01" value={mGeral} onChange={e => setMGeral(e.target.value)} /></div>
+                    <div><label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Formas <span style={{ color: '#0f0', fontSize: '0.8em' }}>{buffLabels.formas}</span></label><input className="input-neon" type="number" step="0.01" value={mFormas} onChange={e => setMFormas(e.target.value)} /></div>
+                    <div><label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Absoluto <span style={{ color: '#0f0', fontSize: '0.8em' }}>{buffLabels.abs}</span></label><input className="input-neon" type="number" step="0.01" value={mAbsoluto} onChange={e => setMAbsoluto(e.target.value)} /></div>
+                    <div><label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Único <span style={{ color: '#0f0', fontSize: '0.8em' }}>{buffLabels.uni}</span></label><input className="input-neon" type="text" value={mUnico} onChange={e => setMUnico(e.target.value)} /></div>
+                    <div><label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Potencial</label><input className="input-neon" type="number" step="0.01" value={mPotencial} onChange={e => setMPotencial(e.target.value)} /></div>
                 </div>
 
-                {/* Energy inputs */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginTop: 10 }}>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>% Energia</label>
-                        <input className="input-neon" type="number" value={percEnergia} onChange={e => setPercEnergia(e.target.value)} />
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>% Magia</label>
-                        <input className="input-neon" type="number" value={percMagia} readOnly style={{ opacity: 0.6 }} />
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Red Custo</label>
-                        <input className="input-neon" type="number" value={redCusto} onChange={e => setRedCusto(e.target.value)} />
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Energia</label>
-                        <input className="input-neon" type="number" step="0.01" value={mEnergia} onChange={e => setMEnergia(e.target.value)} />
-                    </div>
+                    <div><label style={{ color: '#aaa', fontSize: '0.85em' }}>% Energia</label><input className="input-neon" type="number" value={percEnergia} onChange={e => setPercEnergia(e.target.value)} /></div>
+                    <div><label style={{ color: '#aaa', fontSize: '0.85em' }}>% Magia</label><input className="input-neon" type="number" value={percMagia} readOnly style={{ opacity: 0.6 }} /></div>
+                    <div><label style={{ color: '#aaa', fontSize: '0.85em' }}>Red Custo</label><input className="input-neon" type="number" value={redCusto} onChange={e => setRedCusto(e.target.value)} /></div>
+                    <div><label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Energia</label><input className="input-neon" type="number" step="0.01" value={mEnergia} onChange={e => setMEnergia(e.target.value)} /></div>
                 </div>
 
                 <div style={{ display: 'flex', gap: 10, marginTop: 15 }}>
-                    <button className="btn-neon btn-gold" onClick={() => salvarConfigAtaque(false)} style={{ flex: 1 }}>
-                        Salvar Config
-                    </button>
-                    <button className="btn-neon btn-red" onClick={rolarDano} style={{ flex: 1 }}>
-                        ROLAR DANO
-                    </button>
+                    <button className="btn-neon btn-gold" onClick={() => salvarConfigAtaque(false)} style={{ flex: 1 }}>Salvar Config</button>
+                    <button className="btn-neon btn-red" onClick={rolarDano} style={{ flex: 1 }}>ROLAR DANO</button>
                 </div>
             </div>
         </div>

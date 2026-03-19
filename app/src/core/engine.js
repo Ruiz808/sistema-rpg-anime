@@ -4,10 +4,6 @@
 import { contarDigitos, tratarUnico, pegarDoisPrimeirosDigitos } from './utils.js';
 import { getMaximo, getBuffs, getRawBase, getPoderesDefesa } from './attributes.js';
 
-/**
- * Calcula o dano final. Recebe todos os parâmetros já lidos do DOM.
- * Retorna objeto puro com resultado e drenos a aplicar (sem side effects).
- */
 export function calcularDano({
     qDBase, qDExtra, qDMagia, fD,
     pE, pMagiaTotal, rE, mE, db, mdb,
@@ -15,7 +11,6 @@ export function calcularDano({
     m1, m2, m3, m4, m5, uArr,
     itensEquipados, magiasEquipadas
 }) {
-    // Bônus de equipamentos
     let iMultDano = 1.0, iDanoBruto = 0, iLetalidade = 0;
     let elementosAtaque = [];
     let nomesArmas = [];
@@ -46,7 +41,6 @@ export function calcularDano({
         nomesMagias.push(atk.nome);
     });
 
-    // Custo de energia (Combustão)
     let gastoPercentualPorEnergia = pE / engs.length;
     let gastoMagiaPorEnergia = pMagiaTotal / engs.length;
     let chkCustos = [];
@@ -76,7 +70,6 @@ export function calcularDano({
         if (crTotal > 0) custoTxt.push(`${crTotal.toLocaleString('pt-BR')} ${eKey.toUpperCase()}`);
     }
 
-    // Coletar drenos para o caller aplicar
     let drenos = [];
     let gtBase = 0;
     let cTotal = 0;
@@ -86,7 +79,6 @@ export function calcularDano({
         gtBase += chkCustos[i].p;
     }
 
-    // Rolagem de dados
     let sDadosBase = 0;
     let rDadosBase = [];
     let totalDice = qDBase + qDExtra + qDMagia;
@@ -99,21 +91,19 @@ export function calcularDano({
         ? `[${rDadosBase.join(', ')}] (${sDadosBase})`
         : `[${rDadosBase.join(', ')}... e mais ${(totalDice - 40).toLocaleString('pt-BR')} dados] (${sDadosBase})`;
 
-    // Status total
     let powerStatus = 0;
     for (let i = 0; i < sels.length; i++) { powerStatus += getMaximo(minhaFicha, sels[i]); }
 
-    // Cálculo base
     let eCal = Math.floor(gtBase * mE);
     let dbCal = Math.floor(db * mdb);
     let fixoTotal = dbCal + iDanoBruto;
     let dIni = (powerStatus * sDadosBase) + eCal + fixoTotal;
 
-    // Multiplicadores
     let uni = 1.0;
     for (let i = 0; i < uArr.length; i++) uni *= uArr[i];
 
-    let bFora = getBuffs(minhaFicha, sels[0]);
+    // 🔥 O GOLPE FINAL: Isolamos o Dano! O motor agora pede apenas os buffs classificados como 'dano' na criação do poder
+    let bFora = getBuffs(minhaFicha, 'dano');
 
     let multArr = [];
     let totalGer = m1 * bFora.mgeral; if (totalGer !== 1) multArr.push(`x${totalGer.toFixed(2)}(Ger)`);
@@ -136,7 +126,6 @@ export function calcularDano({
     let letal = Math.max(0, contarDigitos(total) - 8) + iLetalidade;
     let dRed = letal > 0 ? Math.floor(total / Math.pow(10, letal)) : total;
 
-    // Textos do feed
     let txtEng = '';
     if ((pE > 0 || pMagiaTotal > 0) && engs.length > 0) {
         txtEng = `<br>📉 Custo de Combustão Pago: <strong style="color:#f0f;">${custoTxt.join(' e ')}</strong> | 💥 Dano Bruto Injetado: <strong style="color:#0f0;">+${eCal.toLocaleString('pt-BR')}</strong>`;
@@ -175,9 +164,6 @@ export function calcularDano({
     };
 }
 
-/**
- * Calcula acerto. Retorna resultado puro.
- */
 export function calcularAcerto({ qD, fD, prof, bonus, sels, minhaFicha, itensEquipados }) {
     let iAcerto = 0;
     let nomesArmas = [];
@@ -218,9 +204,6 @@ export function calcularAcerto({ qD, fD, prof, bonus, sels, minhaFicha, itensEqu
     };
 }
 
-/**
- * Calcula evasiva. Retorna resultado puro.
- */
 export function calcularEvasiva({ prof, bonus, minhaFicha, itensEquipados }) {
     let iEvasiva = 0;
     let nomesArmaduras = [];
@@ -242,9 +225,6 @@ export function calcularEvasiva({ prof, bonus, minhaFicha, itensEquipados }) {
     };
 }
 
-/**
- * Calcula resistência. Retorna resultado puro.
- */
 export function calcularResistencia({ prof, bonus, minhaFicha, itensEquipados }) {
     let iResistencia = 0;
     let nomesArmaduras = [];
@@ -266,9 +246,6 @@ export function calcularResistencia({ prof, bonus, minhaFicha, itensEquipados })
     };
 }
 
-/**
- * Calcula escudo/redução. Retorna resultado puro com drenos.
- */
 export function calcularReducao({ energiaKey, perc, multBase, minhaFicha, itensEquipados, rE }) {
     let iMultEscudo = 0;
     let nomesArmaduras = [];
@@ -294,7 +271,6 @@ export function calcularReducao({ energiaKey, perc, multBase, minhaFicha, itensE
         chk.push({ e: e, cr: cr, bb: gt });
     }
 
-    // Coletar drenos para o caller aplicar
     let drenos = [];
     for (let i = 0; i < chk.length; i++) {
         drenos.push({ key: chk[i].e, valor: chk[i].cr });
@@ -322,7 +298,6 @@ export function calcularReducao({ energiaKey, perc, multBase, minhaFicha, itensE
     };
 }
 
-// Helper para formatar span de elemento
 function formatElemSpan(elemento) {
     let cls = 'elem-' + elemento.toLowerCase()
         .replace(/[áàãâä]/g, 'a').replace(/[éèêë]/g, 'e')
