@@ -15,6 +15,7 @@ const tabs = [
     { id: 'aba-log',        emoji: '\u{1F4DC}', label: 'Feed de Combate' },
     { id: 'aba-mapa',       emoji: '\u{1F5FA}\uFE0F', label: 'Mapa de Combate' },
     { id: 'aba-narrativa',  emoji: '\u{1F4D6}', label: 'Ficha Narrativa' },
+    { id: 'aba-musica',     emoji: '\u{1F3A7}', label: 'Mesa de Som' }, // <-- A PORTA PARA A MÚSICA AQUI!
 ];
 
 export default function Sidebar() {
