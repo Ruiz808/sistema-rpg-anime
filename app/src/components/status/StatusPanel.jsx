@@ -37,7 +37,7 @@ const safeCalcPAtual = safeFn(calcPAtual, { valor: 0 });
 const safeGetRank = safeFn(getRank, { l: 'F', c: '#ffffff', a: 1 });
 const safeGetDivisorPara = safeFn(getDivisorPara, 'Padrão');
 
-// ---------- EIXOS DO GRÁFICO (AGORA COM STATUS) ----------
+// ---------- EIXOS DO GRÁFICO ----------
 const CX = 100, CY = 100, R = 70;
 const VITALS_RADAR = ['vida', 'mana', 'aura', 'chakra', 'corpo', 'status'];
 const VITALS_LABELS = ['VIDA', 'MANA', 'AURA', 'CHAKRA', 'CORPO', 'STATUS'];
@@ -53,9 +53,9 @@ function radarPoint(cx, cy, r, idx, frac) {
     return [cx + r * safeFrac * Math.cos(a), cy + r * safeFrac * Math.sin(a)];
 }
 
-// ---------- Componente do Gráfico Radar (COM LIMITE DE 100) ----------
+// ---------- Componente do Gráfico Radar ----------
 function RadarChart({ ficha, isAtual }) {
-    const LIMIT = 100; // Limite fixo forçado a 100%
+    const LIMIT = 100; 
 
     const chartValues = VITALS_RADAR.map((k) => {
         const rawMax = safeGetMaximo(ficha, k);
@@ -122,7 +122,6 @@ function StatusPanelCore() {
     
     const inicializado = useRef(false);
 
-    // As barras visíveis na interface (O Status entra apenas nos gráficos e tabela, não como barra de HP)
     const vitalsBars = useMemo(() => [
         { key: 'vida',   label: 'VIDA (HP)', color: '#ff4d4d', classColor: 'label-color-vida' },
         { key: 'mana',   label: 'MANA',      color: '#00ffff', classColor: 'label-color-mana' },
@@ -243,7 +242,7 @@ function StatusPanelCore() {
 
             {/* --- BLOCO 3: SISTEMA DE PRESTÍGIO E ASCENSÃO --- */}
             <h3 className="section-title-mint-spaced" style={{ color: '#fff', fontSize: '1.2em' }}>&gt; SISTEMA DE PRESTÍGIO E ASCENSÃO</h3>
-            <div className="grid-2col" style={{ marginBottom: '30px' }}>
+            <div className="grid-2col" style={{ marginBottom: '15px' }}>
                 <div className="tabela-prestigio">
                     <h4 className="prestige-title-base">PRESTÍGIO BASE</h4>
                     <div className="prestige-ascension-box">
@@ -254,7 +253,6 @@ function StatusPanelCore() {
                             value={ficha.ascensaoBase || 0} 
                             onChange={(e) => {
                                 updateFicha(f => { f.ascensaoBase = Number(e.target.value) });
-                                salvarFichaSilencioso();
                             }} 
                         />
                     </div>
@@ -278,7 +276,6 @@ function StatusPanelCore() {
                                                     if(!f[attrKey]) f[attrKey] = {};
                                                     f[attrKey].divisorCustom = val ? Number(val) : undefined;
                                                 });
-                                                salvarFichaSilencioso();
                                             }}
                                         /></span>
                                     </div>
@@ -292,7 +289,6 @@ function StatusPanelCore() {
                                                 if(!f[attrKey]) f[attrKey] = {};
                                                 f[attrKey].prestigioBase = val === '' ? undefined : Number(val);
                                             });
-                                            salvarFichaSilencioso();
                                         }}
                                     />
                                 </div>
@@ -330,6 +326,15 @@ function StatusPanelCore() {
                     </div>
                 </div>
             </div>
+
+            {/* BOTÃO DE SALVAR PRESTÍGIOS */}
+            <button 
+                className="btn-neon btn-blue" 
+                onClick={() => salvarFichaSilencioso()} 
+                style={{ width: '100%', marginBottom: '30px', height: '50px' }}
+            >
+                💾 SALVAR ALTERAÇÕES DE PRESTÍGIO
+            </button>
 
             {/* --- BLOCO 4: ANÁLISE DE PODER E CULTIVAÇÃO --- */}
             <h3 className="section-title-mint-spaced" style={{ color: '#fff', fontSize: '1.2em' }}>&gt; ANÁLISE DE PODER E CULTIVAÇÃO</h3>
