@@ -4,6 +4,40 @@ import { getMaximo, getEfetivoBase } from '../../core/attributes.js';
 import { getPrestigioReal, calcPAtual, getRank, getDivisorPara } from '../../core/prestige.js';
 import { salvarFichaSilencioso } from '../../services/firebase-sync.js';
 
+// --- PROTEÇÃO ANTI-CRASH (ERROR BOUNDARY) ---
+class StatusErrorBoundary extends React.Component {
+    constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+    static getDerivedStateFromError(error) { return { hasError: true, error }; }
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div style={{ padding: '20px', border: '2px solid #ff003c', background: '#1a0000', borderRadius: '10px', color: '#fff', margin: '20px' }}>
+                    <h3 style={{ color: '#ff003c', marginTop: 0 }}>🔥 ERRO DETECTADO NO PAINEL DE STATUS 🔥</h3>
+                    <p>O React evitou a tela branca. O erro real é este (Mande print para a bancada):</p>
+                    <pre style={{ color: '#ffaaaa', whiteSpace: 'pre-wrap', fontSize: '14px' }}>{this.state.error?.toString()}</pre>
+                </div>
+            );
+        }
+        return this.props.children;
+    }
+}
+
+// --- SAFE MATH HELPERS (Blinda contra NaN e Undefined) ---
+const safeFn = (fn, fallback) => (...args) => {
+    if (typeof fn !== 'function') return fallback;
+    try { 
+        const res = fn(...args);
+        return (res !== undefined && res !== null && !Number.isNaN(res)) ? res : fallback;
+    } catch (e) { return fallback; }
+};
+
+const safeGetMaximo = safeFn(getMaximo, 1);
+const safeGetEfetivoBase = safeFn(getEfetivoBase, 1);
+const safeGetPrestigioReal = safeFn(getPrestigioReal, 0);
+const safeCalcPAtual = safeFn(calcPAtual, { valor: 0 });
+const safeGetRank = safeFn(getRank, { l: 'F', c: '#ffffff', a: 1 });
+const safeGetDivisorPara = safeFn(getDivisorPara, 'Padrão');
+
 // ---------- Constantes do Gráfico Radar ----------
 const CX = 100, CY = 100, R = 70;
 const STATS_RADAR = ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma'];
@@ -16,26 +50,27 @@ function hexPoints(cx, cy, r) {
 
 function radarPoint(cx, cy, r, idx, frac) {
     const a = ANGLES[idx];
-    return [cx + r * frac * Math.cos(a), cy + r * frac * Math.sin(a)];
+    const safeFrac = Number.isNaN(frac) ? 0 : frac;
+    return [cx + r * safeFrac * Math.cos(a), cy + r * safeFrac * Math.sin(a)];
 }
 
 // ---------- Componente do Gráfico Radar ----------
 function RadarChart({ ficha, isAtual }) {
-    const maxVals = STATS_RADAR.map((k) => getMaximo(ficha, k));
-    const baseVals = STATS_RADAR.map((k) => getEfetivoBase(ficha, k));
+    const maxVals = STATS_RADAR.map((k) => safeGetMaximo(ficha, k));
+    const baseVals = STATS_RADAR.map((k) => safeGetEfetivoBase(ficha, k));
     const globalMax = Math.max(...maxVals, 1);
 
     const dataPoints = isAtual 
         ? maxVals.map((v, i) => radarPoint(CX, CY, R, i, v / globalMax))
         : baseVals.map((v, i) => radarPoint(CX, CY, R, i, Math.min(v / globalMax, 1)));
 
-    const dataPoly = dataPoints.map((p) => p.join(',')).join(' ');
+    const dataPoly = dataPoints.map((p) => `${p[0] || 0},${p[1] || 0}`).join(' ');
 
     const rankInfos = STATS_RADAR.map((k) => {
-        const raw = isAtual ? getMaximo(ficha, k) : getEfetivoBase(ficha, k);
-        const pRes = getPrestigioReal(k, raw);
-        const pAtual = calcPAtual(ficha, k, pRes) || { valor: pRes };
-        return getRank(pAtual.valor, ficha?.ascensaoBase || 0) || { l: 'F', c: '#fff', a: 1 };
+        const raw = isAtual ? safeGetMaximo(ficha, k) : safeGetEfetivoBase(ficha, k);
+        const pRes = safeGetPrestigioReal(k, raw);
+        const pAtual = safeCalcPAtual(ficha, k, pRes);
+        return safeGetRank(pAtual.valor, ficha?.ascensaoBase || 0);
     });
 
     const labelR = R + 15;
@@ -55,14 +90,14 @@ function RadarChart({ ficha, isAtual }) {
             ))}
             <polygon points={dataPoly} fill={polyColor} stroke={strokeColor} strokeWidth="2" style={{ transition: 'all 0.5s ease-out' }} />
             {dataPoints.map(([x, y], i) => (
-                <circle key={i} cx={x} cy={y} r="3" fill={strokeColor} />
+                <circle key={i} cx={x || 0} cy={y || 0} r="3" fill={strokeColor} />
             ))}
             {STAT_LABELS.map((lbl, i) => {
                 const [lx, ly] = labelPos[i];
                 const rk = rankInfos[i];
                 return (
-                    <text key={i} x={lx} y={ly} textAnchor="middle" dominantBaseline="central" fill={rk.c} fontSize="10" fontWeight="bold" style={{ textShadow: '0 0 5px #000' }}>
-                        [{rk.l}{rk.a > 1 ? ` A${rk.a}` : ''}] {lbl}
+                    <text key={i} x={lx || 0} y={ly || 0} textAnchor="middle" dominantBaseline="central" fill={rk.c || '#fff'} fontSize="10" fontWeight="bold" style={{ textShadow: '0 0 5px #000' }}>
+                        [{rk.l || 'F'}{rk.a > 1 ? ` A${rk.a}` : ''}] {lbl}
                     </text>
                 );
             })}
@@ -70,15 +105,14 @@ function RadarChart({ ficha, isAtual }) {
     );
 }
 
-// ---------- Componente Principal do Painel de Status ----------
-export default function StatusPanel() {
+// ---------- Componente Interno ----------
+function StatusPanelCore() {
     const ficha = useStore((s) => s.minhaFicha);
     const updateFicha = useStore((s) => s.updateFicha);
 
     const [inputDano, setInputDano] = useState('');
     const [inputLetalidade, setInputLetalidade] = useState('0');
     
-    // Trava de segurança para impedir o Loop Infinito do React
     const inicializado = useRef(false);
 
     const vitals = useMemo(() => [
@@ -89,20 +123,17 @@ export default function StatusPanel() {
         { key: 'corpo',  label: 'CORPO',     color: '#ff66ff', classColor: 'label-color-corpo' },
     ], []);
 
-    // Inicialização Blindada (Roda estritamente 1 vez quando a ficha carrega)
     useEffect(() => {
         if (!ficha || inicializado.current) return;
-        
         updateFicha((f) => {
             vitals.forEach(({ key }) => {
-                const mx = getMaximo(f, key);
+                const mx = safeGetMaximo(f, key);
                 if (!f[key]) f[key] = {};
                 if (f[key].atual === undefined || f[key].atual === null) {
                     f[key].atual = mx;
                 }
             });
         });
-        
         inicializado.current = true;
     }, [ficha, updateFicha, vitals]);
 
@@ -112,7 +143,7 @@ export default function StatusPanel() {
         const letalidade = parseInt(inputLetalidade) || 0;
 
         updateFicha((f) => {
-            const vidaMax = getMaximo(f, 'vida');
+            const vidaMax = safeGetMaximo(f, 'vida');
             let danoFinal = valor;
             if (tipo === 'dano' && letalidade > 0) {
                 danoFinal = valor * Math.pow(10, letalidade);
@@ -130,7 +161,7 @@ export default function StatusPanel() {
     const curarTudo = useCallback(() => {
         updateFicha((f) => {
             vitals.forEach(({ key }) => {
-                if(f[key]) f[key].atual = getMaximo(f, key);
+                if(f[key]) f[key].atual = safeGetMaximo(f, key);
             });
         });
         salvarFichaSilencioso();
@@ -139,7 +170,7 @@ export default function StatusPanel() {
     const aplicarRegeneracaoTurno = useCallback(() => {
         updateFicha((f) => {
             vitals.forEach(({ key }) => {
-                const mx = getMaximo(f, key);
+                const mx = safeGetMaximo(f, key);
                 const regen = parseFloat(f[key]?.regeneracao) || 0;
                 if (regen > 0 && f[key].atual < mx) {
                     f[key].atual = Math.min(mx, (f[key].atual || 0) + regen);
@@ -156,17 +187,18 @@ export default function StatusPanel() {
             {/* --- BLOCO 1: BARRAS VITAIS --- */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '30px' }}>
                 {vitals.map(({ key, label, color, classColor }, index) => {
-                    const mx = getMaximo(ficha, key);
+                    const mx = safeGetMaximo(ficha, key);
                     const atual = ficha[key]?.atual ?? mx;
                     const regen = parseFloat(ficha[key]?.regeneracao) || 0;
                     const extra = regen > 0 ? `(+${regen}/turno)` : '';
                     const gridStyle = index === 0 ? { gridColumn: '1 / -1', margin: 0 } : { margin: 0 };
+                    const percent = Number.isNaN(atual / mx) ? 0 : Math.min((atual / mx) * 100, 100);
 
                     return (
                         <div key={key} className="vital-container" style={gridStyle}>
                             <div className={`vital-label ${classColor}`}>{label} {extra && <span style={{fontSize: '0.8em', color: '#aaa'}}>{extra}</span>}</div>
                             <div className="bar-bg">
-                                <div className="bar-fill" style={{ width: `${Math.min((atual / mx) * 100, 100)}%`, backgroundColor: color }}></div>
+                                <div className="bar-fill" style={{ width: `${percent}%`, backgroundColor: color }}></div>
                                 <div className="bar-text">{atual.toLocaleString('pt-BR')} / {mx.toLocaleString('pt-BR')}</div>
                             </div>
                         </div>
@@ -204,8 +236,6 @@ export default function StatusPanel() {
             {/* --- BLOCO 3: SISTEMA DE PRESTÍGIO E ASCENSÃO --- */}
             <h3 className="section-title-mint-spaced" style={{ color: '#fff', fontSize: '1.2em' }}>&gt; SISTEMA DE PRESTÍGIO E ASCENSÃO</h3>
             <div className="grid-2col" style={{ marginBottom: '30px' }}>
-                
-                {/* PRESTÍGIO BASE */}
                 <div className="tabela-prestigio">
                     <h4 className="prestige-title-base">PRESTÍGIO BASE</h4>
                     <div className="prestige-ascension-box">
@@ -222,18 +252,17 @@ export default function StatusPanel() {
                     </div>
                     <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                         {STATS_RADAR.map((attrKey, i) => {
-                            const rawMax = getMaximo(ficha, attrKey);
-                            const baseP = getPrestigioReal(attrKey, rawMax); 
-                            const labelTxt = STAT_LABELS[i];
+                            const rawMax = safeGetMaximo(ficha, attrKey);
+                            const baseP = safeGetPrestigioReal(attrKey, rawMax); 
                             return (
                                 <div key={attrKey}>
                                     <div className="label-divisor" style={{ marginBottom: '5px' }}>
-                                        <span style={{ color: '#00ffcc', fontWeight: 'bold' }}>{labelTxt}</span>
+                                        <span style={{ color: '#00ffcc', fontWeight: 'bold' }}>{STAT_LABELS[i]}</span>
                                         <span>Divisor: <input 
                                             type="number" 
                                             className="divisor-mini-input" 
                                             value={ficha[attrKey]?.divisorCustom || ''} 
-                                            placeholder={getDivisorPara ? getDivisorPara(attrKey) : 'Padrão'}
+                                            placeholder={String(safeGetDivisorPara(attrKey))}
                                             onChange={(e) => {
                                                 updateFicha(f => { 
                                                     if(!f[attrKey]) f[attrKey] = {};
@@ -250,7 +279,6 @@ export default function StatusPanel() {
                     </div>
                 </div>
 
-                {/* PRESTÍGIO ATUAL */}
                 <div className="tabela-prestigio atual">
                     <h4 className="prestige-title-atual">PRESTÍGIO ATUAL</h4>
                     <div className="prestige-ascension-box">
@@ -259,17 +287,16 @@ export default function StatusPanel() {
                     </div>
                     <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                         {STATS_RADAR.map((attrKey, i) => {
-                            const rawMax = getMaximo(ficha, attrKey);
-                            const baseP = getPrestigioReal(attrKey, rawMax);
-                            const pAtualObj = calcPAtual(ficha, attrKey, baseP) || { valor: baseP };
-                            const rankInfo = getRank(pAtualObj.valor, ficha.ascensaoBase || 0) || { l: 'F', c: '#fff' };
-                            const labelTxt = STAT_LABELS[i];
+                            const rawMax = safeGetMaximo(ficha, attrKey);
+                            const baseP = safeGetPrestigioReal(attrKey, rawMax);
+                            const pAtualObj = safeCalcPAtual(ficha, attrKey, baseP);
+                            const rankInfo = safeGetRank(pAtualObj.valor, ficha.ascensaoBase || 0);
 
                             return (
                                 <div key={attrKey}>
                                     <div className="label-divisor" style={{ marginBottom: '5px' }}>
-                                        <span style={{ color: '#00ffcc', fontWeight: 'bold' }}>{labelTxt}</span>
-                                        <span style={{ color: rankInfo.c, fontWeight: 'bold' }}>Rank {rankInfo.l}</span>
+                                        <span style={{ color: '#00ffcc', fontWeight: 'bold' }}>{STAT_LABELS[i]}</span>
+                                        <span style={{ color: rankInfo.c || '#fff', fontWeight: 'bold' }}>Rank {rankInfo.l || 'F'}</span>
                                     </div>
                                     <div className="prestige-display-atual">
                                         {Math.floor(pAtualObj.valor || 0).toLocaleString('pt-BR')}
@@ -294,5 +321,14 @@ export default function StatusPanel() {
                 </div>
             </div>
         </div>
+    );
+}
+
+// O componente final exportado é envolto no Escudo Anti-Crash
+export default function StatusPanel() {
+    return (
+        <StatusErrorBoundary>
+            <StatusPanelCore />
+        </StatusErrorBoundary>
     );
 }
