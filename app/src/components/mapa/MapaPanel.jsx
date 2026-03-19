@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef } from 'react';
 import useStore from '../../stores/useStore';
 import { salvarFichaSilencioso, enviarParaFeed } from '../../services/firebase-sync';
-import { calcularAcerto } from '../../core/engine'; // 🔥 Importamos a máquina de Acerto!
+import { calcularAcerto } from '../../core/engine';
 
 const MAP_SIZE = 30;
 const PALETA = ['#ff003c', '#0088ff', '#00ff88', '#ffcc00', '#ff00ff', '#00ffff', '#ff8800', '#88ff00'];
@@ -13,13 +13,13 @@ export default function MapaPanel() {
     const [iniciativaInput, setIniciativaInput] = useState(minhaFicha.iniciativa || 0);
     const [turnoAtualIndex, setTurnoAtualIndex] = useState(0);
     
-    // 🔥 O MARCADOR TEMPORAL: Grava o tamanho do feed quando o turno muda
     const [feedIndexTurnoAtual, setFeedIndexTurnoAtual] = useState(0);
 
     // Estados do Mini-Painel de Acerto
     const [mapQD, setMapQD] = useState(1);
     const [mapFD, setMapFD] = useState(20);
     const [mapBonus, setMapBonus] = useState(0);
+    const [mapStat, setMapStat] = useState('destreza'); // 🔥 AGORA TEMOS O SELETOR LOCAL!
 
     const coresJogadoresRef = useRef({});
     const corIndexRef = useRef(0);
@@ -116,7 +116,6 @@ export default function MapaPanel() {
             ficha.iniciativa = val;
         });
         salvarFichaSilencioso();
-        // Zera o marcador temporal ao entrar no combate
         setFeedIndexTurnoAtual(feedCombate.length); 
     }
 
@@ -127,7 +126,6 @@ export default function MapaPanel() {
             if (next >= ordemIniciativa.length) next = 0;
             return next;
         });
-        // 🔥 Limpa o holograma gravando a linha do tempo atual
         setFeedIndexTurnoAtual(feedCombate.length);
     }
 
@@ -135,8 +133,10 @@ export default function MapaPanel() {
         const qD = parseInt(mapQD) || 1;
         const fD = parseInt(mapFD) || 20;
         const bonus = parseInt(mapBonus) || 0;
-        // Puxa o status que o jogador deixou selecionado na aba de ataque, ou usa destreza como padrão
-        const sels = minhaFicha.ataqueConfig?.statusSelecionados?.length > 0 ? minhaFicha.ataqueConfig.statusSelecionados : ['destreza'];
+        
+        // 🔥 GOLPE CIRÚRGICO: Agora usa exclusivamente a seleção da caixinha do mapa!
+        const sels = [mapStat]; 
+        
         const itensEquipados = minhaFicha.inventario ? minhaFicha.inventario.filter(i => i.equipado) : [];
 
         const result = calcularAcerto({ qD, fD, prof: 0, bonus, sels, minhaFicha, itensEquipados, vantagens: 0, desvantagens: 0 });
@@ -164,13 +164,10 @@ export default function MapaPanel() {
     const infoDaVez = jogadorDaVez ? getAvatarInfo(jogadorDaVez.ficha) : null;
     const fmt = (n) => Number(n || 0).toLocaleString('pt-BR');
 
-    // 🔥 O CÉREBRO TEMPORAL DO HOLOGRAMA
     function renderHologramaAcao() {
         const emCombate = ordemIniciativa.length > 0;
         
-        // Ação Nova = Rolagens feitas APÓS a pessoa atual assumir o turno
         const acaoNovaNoTurno = feedCombate.length > feedIndexTurnoAtual ? feedCombate[feedCombate.length - 1] : null;
-        // Ação Geral = Qualquer última rolagem se o combate não estiver rolando
         const acaoGeralForaDeCombate = feedCombate.length > 0 ? feedCombate[feedCombate.length - 1] : null;
 
         const acaoExibir = emCombate ? acaoNovaNoTurno : acaoGeralForaDeCombate;
@@ -187,7 +184,6 @@ export default function MapaPanel() {
         let fichaBase = jogadorDaVez ? jogadorDaVez.ficha : (acaoExibir ? jogadores[acaoExibir.nome] : null);
         let infoBase = getAvatarInfo(fichaBase);
 
-        // Lógica de Leitura de Crítico
         let isCrit = false, isFalha = false;
         if (acaoExibir && acaoExibir.rolagem && (acaoExibir.tipo === 'acerto' || acaoExibir.tipo === 'dano')) {
             const match = acaoExibir.rolagem.match(/\[(.*?)\]/);
@@ -199,7 +195,6 @@ export default function MapaPanel() {
             }
         }
 
-        // Verificações de Violação
         const isForaDeCombate = acaoExibir && emCombate && (!ordemIniciativa.find(j => j.nome === acaoExibir.nome));
         const isForaDeTurno = acaoExibir && emCombate && !isForaDeCombate && acaoExibir.nome !== nomeBase;
 
@@ -221,12 +216,10 @@ export default function MapaPanel() {
         return (
             <div className="def-box" style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', border: `2px solid ${isCrit ? '#ffcc00' : isFalha ? '#660000' : (acaoExibir ? corImpacto : '#333')}`, boxShadow: `0 0 20px ${acaoExibir ? corImpacto : '#00ffcc'}40` }}>
                 
-                {/* 1. O Cabeçalho (Limpo quando não há ação) */}
                 <div style={{ background: isCrit ? '#ffcc00' : isFalha ? '#660000' : (acaoExibir ? corImpacto : '#00ffcc'), color: isFalha || !acaoExibir ? '#000' : '#000', padding: '10px', textAlign: 'center', fontWeight: '900', letterSpacing: 2, fontSize: '1.2em', textTransform: 'uppercase' }}>
                     {acaoExibir ? (isCrit ? '🔥 ACERTO CRÍTICO 🔥' : isFalha ? '☠️ FALHA CRÍTICA ☠️' : (jogadorDaVez && !isForaDeTurno && !isForaDeCombate ? `TURNO DE ${nomeBase}` : 'AÇÃO LIVRE')) : `⚡ TURNO DE ${nomeBase} ⚡`}
                 </div>
 
-                {/* 2. A Imagem do Personagem Base */}
                 <div style={{ 
                     flex: '1', minHeight: '250px', 
                     backgroundImage: infoBase.img ? `url('${infoBase.img}')` : 'none', 
@@ -246,11 +239,9 @@ export default function MapaPanel() {
                     </div>
                 </div>
 
-                {/* 3. A Última Ação (Só aparece se ele rolou algo) */}
                 {acaoExibir && (
                     <div style={{ padding: '20px', background: 'rgba(0,0,0,0.85)', textAlign: 'center', borderTop: `1px solid ${corImpacto}` }}>
                         
-                        {/* Alertas de Violação de Turno */}
                         {isForaDeCombate && (
                             <div style={{ background: 'rgba(255,204,0,0.1)', color: '#ffcc00', border: '1px solid #ffcc00', padding: 4, fontSize: '0.8em', marginBottom: 10, borderRadius: 4 }}>
                                 ⚠️ Rolagem Fora de Combate (Feita por: {acaoExibir.nome})
@@ -277,7 +268,6 @@ export default function MapaPanel() {
                     </div>
                 )}
 
-                {/* 4. O HUD de Status do Personagem da Vez */}
                 {fichaBase && (
                     <div style={{ padding: '15px', background: '#050505' }}>
                         <div style={{
@@ -310,16 +300,13 @@ export default function MapaPanel() {
     return (
         <div className="mapa-panel" style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
             
-            {/* LADO ESQUERDO: Mapa Grid e Controle de Turnos */}
             <div style={{ flex: '1 1 70%', minWidth: 0 }}>
-                {/* Zoom controls */}
                 <div style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'center' }}>
                     <button className="btn-neon" onClick={() => alterarZoom(-1)} style={{ padding: '5px 15px' }}>-</button>
                     <span style={{ color: '#aaa' }}>Zoom: {tamanhoCelula}px</span>
                     <button className="btn-neon" onClick={() => alterarZoom(1)} style={{ padding: '5px 15px' }}>+</button>
                 </div>
 
-                {/* Grid */}
                 <div id="combat-grid" style={{ display: 'grid', gridTemplateColumns: `repeat(${MAP_SIZE}, ${tamanhoCelula}px)`, gap: 1, overflow: 'auto', maxHeight: '60vh', background: 'rgba(0,0,0,0.3)', padding: 5, borderRadius: 5 }}>
                     {cells.map((cell) => {
                         const key = `${cell.x},${cell.y}`;
@@ -348,7 +335,6 @@ export default function MapaPanel() {
                     })}
                 </div>
 
-                {/* Iniciativa e Turnos */}
                 <div className="def-box" style={{ marginTop: 15 }}>
                     <h3 style={{ color: '#00ffcc', marginBottom: 10 }}>Sistema de Iniciativa</h3>
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
@@ -357,7 +343,6 @@ export default function MapaPanel() {
                         <button className="btn-neon" onClick={avancarTurno} style={{ borderColor: '#00ffcc', color: '#00ffcc' }}>Encerrar Turno</button>
                     </div>
 
-                    {/* Fila de Turnos Visual */}
                     <div id="lista-turnos" style={{ display: 'flex', gap: 8, marginTop: 15, overflowX: 'auto', paddingBottom: 5 }}>
                         {ordemIniciativa.length === 0 ? (
                             <p style={{ color: '#888', fontSize: '0.8em', margin: 0 }}>Nenhum jogador rolou iniciativa ainda.</p>
@@ -379,7 +364,7 @@ export default function MapaPanel() {
                         )}
                     </div>
 
-                    {/* Destaque do Turno Atual + BOTÃO DE AÇÃO RÁPIDA */}
+                    {/* Destaque do Turno Atual + BOTÃO DE AÇÃO RÁPIDA COM SELETOR DE STATUS */}
                     {jogadorDaVez && (
                         <div style={{ marginTop: 15, display: 'flex', gap: 15, alignItems: 'center' }}>
                             <div id="turno-destaque" style={{
@@ -395,12 +380,26 @@ export default function MapaPanel() {
                                 
                                 {/* 🔥 AÇÃO RÁPIDA (Só aparece se for a MINHA vez!) */}
                                 {jogadorDaVez.nome === meuNome && (
-                                    <div style={{ marginTop: 8, padding: 8, background: 'rgba(0, 255, 204, 0.1)', border: '1px solid #00ffcc', borderRadius: 8, display: 'flex', gap: 5, alignItems: 'center' }}>
+                                    <div style={{ marginTop: 8, padding: 8, background: 'rgba(0, 255, 204, 0.1)', border: '1px solid #00ffcc', borderRadius: 8, display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'wrap' }}>
+                                        
+                                        {/* NOVO: Seletor de Status exclusivo para o Mapa */}
+                                        <select className="input-neon" value={mapStat} onChange={e => setMapStat(e.target.value)} style={{ padding: 4, width: 100 }} title="Atributo">
+                                            <option value="forca">Força</option>
+                                            <option value="destreza">Destreza</option>
+                                            <option value="inteligencia">Intelig.</option>
+                                            <option value="sabedoria">Sabedoria</option>
+                                            <option value="energiaEsp">Energ. Esp.</option>
+                                            <option value="carisma">Carisma</option>
+                                            <option value="stamina">Stamina</option>
+                                            <option value="constituicao">Constit.</option>
+                                        </select>
+
                                         <input className="input-neon" type="number" value={mapQD} onChange={e => setMapQD(e.target.value)} style={{ width: 45, padding: 4 }} title="Dados" />
                                         <span style={{ color: '#aaa', fontSize: '0.8em' }}>D</span>
                                         <input className="input-neon" type="number" value={mapFD} onChange={e => setMapFD(e.target.value)} style={{ width: 55, padding: 4 }} title="Faces" />
                                         <span style={{ color: '#aaa', fontSize: '0.8em' }}>+</span>
                                         <input className="input-neon" type="number" value={mapBonus} onChange={e => setMapBonus(e.target.value)} style={{ width: 60, padding: 4 }} title="Bônus" />
+                                        
                                         <button className="btn-neon btn-gold" onClick={rolarAcertoRapido} style={{ padding: '4px 10px', fontSize: '0.85em' }}>
                                             Rolar Acerto
                                         </button>
@@ -412,7 +411,6 @@ export default function MapaPanel() {
                 </div>
             </div>
 
-            {/* LADO DIREITO: Holograma de Ação */}
             <div style={{ flex: '1 1 30%', minWidth: '300px', position: 'sticky', top: 10, height: '85vh' }}>
                 {renderHologramaAcao()}
             </div>
