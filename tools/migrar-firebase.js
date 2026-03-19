@@ -5,21 +5,27 @@
  * 1. Baixe a chave de serviço do Firebase:
  *    Console Firebase → Configurações do Projeto → Contas de Serviço → Gerar nova chave privada
  * 2. Salve o arquivo JSON como "firebase-service-account.json" nesta pasta
- * 3. Preencha a databaseURL abaixo com a URL do seu Realtime Database
+ * 3. Defina a variável de ambiente: export FIREBASE_DATABASE_URL=https://SEU-PROJETO-default-rtdb.firebaseio.com
  * 4. Execute: node migrar-firebase.js
  */
 
-const admin = require('firebase-admin');
 const fs = require('fs');
 const path = require('path');
 
 // ==========================================
-// CONFIGURAR ANTES DE EXECUTAR:
+// CONFIGURAR VIA VARIÁVEIS DE AMBIENTE:
+//   FIREBASE_DATABASE_URL (obrigatório)
+//   FIREBASE_SERVICE_ACCOUNT_PATH (opcional, default: ./firebase-service-account.json)
 // ==========================================
-const DATABASE_URL = 'https://databaserpg-5595b-default-rtdb.firebaseio.com';
-const SERVICE_ACCOUNT_PATH = 'c:\\Users\\Gabriel\\Downloads\\databaserpg-5595b-firebase-adminsdk-fbsvc-e1e26dd20c.json';
+const DATABASE_URL = process.env.FIREBASE_DATABASE_URL;
+const SERVICE_ACCOUNT_PATH = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || path.join(__dirname, 'firebase-service-account.json');
 const BANCO_PATH = path.join(__dirname, 'banco_de_dados_rpg.json');
-// ==========================================
+
+if (!DATABASE_URL) {
+    console.error('❌ Variável FIREBASE_DATABASE_URL não definida!');
+    console.error('   Defina com: export FIREBASE_DATABASE_URL=https://SEU-PROJETO-default-rtdb.firebaseio.com');
+    process.exit(1);
+}
 
 if (!fs.existsSync(SERVICE_ACCOUNT_PATH)) {
     console.error('❌ Arquivo firebase-service-account.json não encontrado!');
@@ -32,7 +38,8 @@ if (!fs.existsSync(BANCO_PATH)) {
     process.exit(1);
 }
 
-const serviceAccount = require(SERVICE_ACCOUNT_PATH);
+const admin = require('firebase-admin');
+const serviceAccount = JSON.parse(fs.readFileSync(SERVICE_ACCOUNT_PATH, 'utf8'));
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
     databaseURL: DATABASE_URL

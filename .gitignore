@@ -9,6 +9,18 @@ src-tauri/target/
 .env
 .env.*
 
+# Firebase cache
+.firebase/
+
+# Build output
+app/dist/
+
+# Firebase service account keys
+**/firebase-service-account*.json
+
+# Dados locais de jogadores (migração)
+tools/banco_de_dados_rpg.json
+
 
 # Save files com dados de usuário
 .vscode/ficha_save.json

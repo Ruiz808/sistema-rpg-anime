@@ -1,0 +1,24 @@
+{
+  "rules": {
+    "personagens": {
+      ".read": true,
+      ".write": false,
+      "$nome": {
+        ".write": true,
+        ".validate": "newData.exists() && newData.hasChildren() && $nome.length >= 1 && $nome.length <= 50"
+      }
+    },
+    "feed_combate": {
+      ".read": true,
+      ".write": false,
+      "$entry": {
+        ".write": true,
+        ".validate": "newData.hasChildren() && newData.child('tipo').exists() && newData.child('nome').exists() && newData.child('tipo').isString() && newData.child('nome').isString() && newData.child('tipo').val().length <= 50 && newData.child('nome').val().length <= 50"
+      }
+    },
+    "$other": {
+      ".read": false,
+      ".write": false
+    }
+  }
+}
