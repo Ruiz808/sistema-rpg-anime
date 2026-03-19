@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import useStore from '../../stores/useStore';
 import { getMaximo, getRawBase } from '../../core/attributes.js';
-import { getPrestigioReal, calcPAtual, getRank } from '../../core/prestige.js';
+import { getPrestigioReal, getRank } from '../../core/prestige.js';
 import { salvarFichaSilencioso } from '../../services/firebase-sync.js';
 
 // --- SAFE MATH HELPERS ---
@@ -16,14 +16,12 @@ const safeFn = (fn, fallback) => (...args) => {
 const safeGetMaximo = safeFn(getMaximo, 1);
 const safeGetRawBase = safeFn(getRawBase, 0);
 const safeGetPrestigioReal = safeFn(getPrestigioReal, 0);
-const safeCalcPAtual = safeFn(calcPAtual, { valor: 0 });
 const safeGetRank = safeFn(getRank, { l: 'F', c: '#ffffff', a: 1 });
 
 const VITALS_KEYS = ['vida', 'mana', 'aura', 'chakra', 'corpo', 'status'];
 const VITALS_LABELS = ['VIDA', 'MANA', 'AURA', 'CHAKRA', 'CORPO', 'STATUS'];
 const STATS = ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'];
 
-// A TABELA DE MULTIPLICADORES ORIGINAIS DO SEU SISTEMA
 const MULTIPLICADORES = {
     vida: 1000000,
     mana: 10000000,
@@ -32,6 +30,16 @@ const MULTIPLICADORES = {
     corpo: 10000000,
     status: 1000
 };
+
+// A REGRA DE OURO DAS FORMAS (Multiplicador / 10)
+function calcularPAtual(ficha, attrKey, baseP) {
+    const anchorKey = attrKey === 'status' ? 'forca' : attrKey;
+    const mFormas = parseFloat(ficha[anchorKey]?.mFormas) || 1;
+    // Se a forma tiver multiplicador 50, o prestígio multiplica por 5. 
+    // Se for menor que 10 (ex: 1), mantém-se intacto.
+    const multForma = Math.max(1, mFormas / 10);
+    return baseP * multForma;
+}
 
 export default function TabelaPrestigio() {
     const ficha = useStore((s) => s.minhaFicha);
@@ -59,7 +67,7 @@ export default function TabelaPrestigio() {
             </h3>
             
             <div className="grid-2col" style={{ marginBottom: '15px' }}>
-                {/* PRESTÍGIO BASE */}
+                {/* PRESTÍGIO BASE (Inalterado pelas Formas) */}
                 <div className="tabela-prestigio">
                     <h4 className="prestige-title-base">PRESTÍGIO BASE</h4>
                     <div className="prestige-ascension-box">
@@ -75,7 +83,6 @@ export default function TabelaPrestigio() {
                     </div>
                     <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                         {VITALS_KEYS.map((attrKey, i) => {
-                            // Reconstruindo o valor original baseado no Base real
                             let baseP = 0;
                             if (attrKey === 'status') {
                                 let m = 0;
@@ -85,7 +92,6 @@ export default function TabelaPrestigio() {
                                 baseP = safeGetPrestigioReal(attrKey, safeGetRawBase(ficha, attrKey));
                             }
                             
-                            // Lendo da gaveta correta de divisores
                             const divisor = ficha.divisores?.[attrKey] ?? 1;
                             
                             return (
@@ -100,7 +106,7 @@ export default function TabelaPrestigio() {
                                                 const val = parseFloat(e.target.value) || 1;
                                                 updateFicha(f => { 
                                                     if (!f.divisores) f.divisores = { vida: 1, status: 1, mana: 1, aura: 1, chakra: 1, corpo: 1 };
-                                                    f.divisores[attrKey] = val; // Gravando na gaveta correta
+                                                    f.divisores[attrKey] = val;
                                                 });
                                             }}
                                         /></span>
@@ -114,9 +120,9 @@ export default function TabelaPrestigio() {
                                             updateFicha(f => {
                                                 if (attrKey === 'status') {
                                                     const stBase = val * MULTIPLICADORES.status;
-                                                    STATS.forEach(s => { if(f[s]) f[s].base = stBase; }); // Espalhando status
+                                                    STATS.forEach(s => { if(f[s]) f[s].base = stBase; });
                                                 } else {
-                                                    if(f[attrKey]) f[attrKey].base = val * MULTIPLICADORES[attrKey]; // Multiplicador correto
+                                                    if(f[attrKey]) f[attrKey].base = val * MULTIPLICADORES[attrKey];
                                                 }
                                             });
                                         }}
@@ -127,7 +133,7 @@ export default function TabelaPrestigio() {
                     </div>
                 </div>
 
-                {/* PRESTÍGIO ATUAL */}
+                {/* PRESTÍGIO ATUAL (Acelerado pelas Formas) */}
                 <div className="tabela-prestigio atual">
                     <h4 className="prestige-title-atual">PRESTÍGIO ATUAL</h4>
                     <div className="prestige-ascension-box">
@@ -145,9 +151,9 @@ export default function TabelaPrestigio() {
                                 baseP = safeGetPrestigioReal(attrKey, safeGetRawBase(ficha, attrKey));
                             }
                             
-                            const keyForCalc = attrKey === 'status' ? 'alma' : attrKey;
-                            const pAtualObj = safeCalcPAtual(ficha, keyForCalc, baseP);
-                            const rankInfo = safeGetRank(pAtualObj.valor, ficha.ascensaoBase || 0);
+                            // Aplica a Matemática de Multiplicação da Forma / 10
+                            const pAtualValor = calcularPAtual(ficha, attrKey, baseP);
+                            const rankInfo = safeGetRank(pAtualValor, ficha.ascensaoBase || 0);
 
                             return (
                                 <div key={attrKey}>
@@ -156,7 +162,7 @@ export default function TabelaPrestigio() {
                                         <span style={{ color: rankInfo.c || '#fff', fontWeight: 'bold' }}>Rank {rankInfo.l || 'F'}</span>
                                     </div>
                                     <div className="prestige-display-atual">
-                                        {Math.floor(pAtualObj.valor || 0).toLocaleString('pt-BR')}
+                                        {Math.floor(pAtualValor || 0).toLocaleString('pt-BR')}
                                     </div>
                                 </div>
                             );
