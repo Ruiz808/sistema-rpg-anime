@@ -121,7 +121,7 @@ function StatusPanelCore() {
     const [inputLetalidade, setInputLetalidade] = useState('0');
     
     // Estado do Botão Inteligente
-    const [statusBotao, setStatusBotao] = useState('idle'); // 'idle' | 'saving' | 'saved'
+    const [statusBotao, setStatusBotao] = useState('idle');
     
     const inicializado = useRef(false);
 
@@ -196,10 +196,9 @@ function StatusPanelCore() {
         try {
             await salvarFichaSilencioso();
             setStatusBotao('saved');
-            // Volta ao botão azul original após 2.5 segundos
             setTimeout(() => setStatusBotao('idle'), 2500);
         } catch (error) {
-            console.error("Falha ao salvar no Firebase:", error);
+            console.error("Falha ao salvar:", error);
             setStatusBotao('idle');
         }
     };
@@ -270,6 +269,7 @@ function StatusPanelCore() {
                             value={ficha.ascensaoBase || 0} 
                             onChange={(e) => {
                                 updateFicha(f => { f.ascensaoBase = Number(e.target.value) });
+                                salvarFichaSilencioso(); // RESTAURADO
                             }} 
                         />
                     </div>
@@ -291,8 +291,9 @@ function StatusPanelCore() {
                                                 const val = e.target.value;
                                                 updateFicha(f => { 
                                                     if(!f[attrKey]) f[attrKey] = {};
-                                                    f[attrKey].divisorCustom = val ? Number(val) : null;
+                                                    f[attrKey].divisorCustom = val ? Number(val) : undefined; // REVERTIDO PARA UNDEFINED (Padrao do Firebase)
                                                 });
+                                                salvarFichaSilencioso(); // RESTAURADO
                                             }}
                                         /></span>
                                     </div>
@@ -304,8 +305,9 @@ function StatusPanelCore() {
                                             const val = e.target.value;
                                             updateFicha(f => {
                                                 if(!f[attrKey]) f[attrKey] = {};
-                                                f[attrKey].prestigioBase = val === '' ? null : Number(val);
+                                                f[attrKey].prestigioBase = val === '' ? undefined : Number(val); // REVERTIDO PARA UNDEFINED
                                             });
+                                            salvarFichaSilencioso(); // RESTAURADO
                                         }}
                                     />
                                 </div>
@@ -344,7 +346,7 @@ function StatusPanelCore() {
                 </div>
             </div>
 
-            {/* BOTÃO INTELIGENTE DE SALVAR */}
+            {/* BOTÃO INTELIGENTE DE SALVAR (Mantido como forçador extra/feedback) */}
             <button 
                 className={`btn-neon ${statusBotao === 'saved' ? 'btn-green' : 'btn-blue'}`} 
                 onClick={handleSalvarPrestigio} 
@@ -372,7 +374,6 @@ function StatusPanelCore() {
     );
 }
 
-// O componente final exportado
 export default function StatusPanel() {
     return (
         <StatusErrorBoundary>
