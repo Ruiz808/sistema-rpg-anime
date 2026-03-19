@@ -15,7 +15,7 @@ const tabs = [
     { id: 'aba-log',        emoji: '\u{1F4DC}', label: 'Feed de Combate' },
     { id: 'aba-mapa',       emoji: '\u{1F5FA}\uFE0F', label: 'Mapa de Combate' },
     { id: 'aba-narrativa',  emoji: '\u{1F4D6}', label: 'Ficha Narrativa' },
-    { id: 'aba-musica',     emoji: '\u{1F3A7}', label: 'Mesa de Som' }, // <-- A PORTA PARA A MÚSICA AQUI!
+    { id: 'aba-musica',     emoji: '\u{1F3A7}', label: 'Mesa de Som' }, // <-- A PORTA PARA A MÚSICA
 ];
 
 export default function Sidebar() {
@@ -24,7 +24,8 @@ export default function Sidebar() {
     const isMestre = useStore((s) => s.isMestre);
 
     return (
-        <nav className="sidebar">
+        // ADICIONEI o overflowY aqui para garantir que você consegue rolar a barra!
+        <nav className="sidebar" style={{ overflowY: 'auto', paddingBottom: '20px' }}>
             {tabs.map((tab) => {
                 if (tab.mestreOnly && !isMestre) {
                     return (
