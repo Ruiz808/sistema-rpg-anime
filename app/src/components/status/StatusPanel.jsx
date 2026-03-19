@@ -40,7 +40,6 @@ function radarPoint(cx, cy, r, idx, frac) {
     return [cx + r * safeFrac * Math.cos(a), cy + r * safeFrac * Math.sin(a)];
 }
 
-// --- MOTOR NATIVO SINCRONIZADO NO GRÁFICO RADAR ---
 function getEfetivoMFormas(ficha, k) {
     const anchor = k === 'status' ? 'forca' : k;
     let s = ficha[anchor] || {};
@@ -67,16 +66,24 @@ const getBasePFor = (ficha, k) => {
 };
 
 function RadarChart({ ficha, isAtual }) {
+    const LIMIT = 100; 
+
     const chartValues = VITALS_RADAR.map((k) => {
         const baseP = getBasePFor(ficha, k);
         return isAtual ? calcularPrestAtual(ficha, k, baseP) : baseP;
     });
 
-    // O SEGREDO DO GRÁFICO: Ajusta o tamanho da teia com base no maior poder!
-    const maxVal = Math.max(100, ...chartValues);
-    const LIMIT = maxVal; 
-
-    const dataPoints = chartValues.map((v, i) => radarPoint(CX, CY, R, i, Math.min((v || 0) / LIMIT, 1)));
+    // --- A LÓGICA DO 84 (Módulo de 100) ---
+    const dataPoints = chartValues.map((v, i) => {
+        let val = v || 0;
+        // Se for 384, val % 100 vira 84. Se for exatamente um múltiplo de 100 (ex: 200), mantém no limite (100).
+        if (val >= LIMIT) {
+            val = val % LIMIT;
+            if (val === 0 && v > 0) val = LIMIT;
+        }
+        return radarPoint(CX, CY, R, i, Math.min(val / LIMIT, 1));
+    });
+    
     const dataPoly = dataPoints.map((p) => `${p[0] || 0},${p[1] || 0}`).join(' ');
 
     const rankInfos = VITALS_RADAR.map((k) => {
@@ -117,7 +124,6 @@ function RadarChart({ ficha, isAtual }) {
     );
 }
 
-// --- MOTOR DE COMPRESSÃO DE VITALIDADE ---
 function calcVitalScale(rawMx, key) {
     if (!rawMx || rawMx <= 0) return { p: 0, mxDisplay: 0 };
     const limit = key === 'vida' ? 8 : 9;
