@@ -1,13 +1,12 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import useStore from '../../stores/useStore';
 import VitalBar from './VitalBar';
-import { contarDigitos } from '../../core/utils.js';
-import { getMaximo, getEfetivoBase, getMultiplicadorTotal } from '../../core/attributes.js';
-import { getPrestigioReal, calcPAtual, getRank, getDivisorPara } from '../../core/prestige.js';
+import { getMaximo, getEfetivoBase } from '../../core/attributes.js';
+import { getPrestigioReal, calcPAtual, getRank } from '../../core/prestige.js';
 import { salvarFichaSilencioso } from '../../services/firebase-sync.js';
 
-// ---------- Radar chart constants ----------
-const CX = 250, CY = 180, R = 140;
+// ---------- Constantes do Gráfico Radar ----------
+const CX = 100, CY = 100, R = 70; // Reduzido para caber melhor na tela dividida
 const STATS_RADAR = ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma'];
 const STAT_LABELS = ['FOR', 'DES', 'INT', 'SAB', 'ENE', 'CAR'];
 const ANGLES = STATS_RADAR.map((_, i) => (Math.PI * 2 * i) / 6 - Math.PI / 2);
@@ -21,90 +20,50 @@ function radarPoint(cx, cy, r, idx, frac) {
     return [cx + r * frac * Math.cos(a), cy + r * frac * Math.sin(a)];
 }
 
-// ---------- Radar SVG ----------
-function RadarChart({ ficha }) {
+// ---------- Componente do Gráfico Radar ----------
+function RadarChart({ ficha, isAtual }) {
     const maxVals = STATS_RADAR.map((k) => getMaximo(ficha, k));
     const baseVals = STATS_RADAR.map((k) => getEfetivoBase(ficha, k));
     const globalMax = Math.max(...maxVals, 1);
 
-    const atualPoints = maxVals.map((v, i) => radarPoint(CX, CY, R, i, v / globalMax));
-    const basePoints = baseVals.map((v, i) => radarPoint(CX, CY, R, i, Math.min(v / globalMax, 1)));
+    const dataPoints = isAtual 
+        ? maxVals.map((v, i) => radarPoint(CX, CY, R, i, v / globalMax))
+        : baseVals.map((v, i) => radarPoint(CX, CY, R, i, Math.min(v / globalMax, 1)));
 
-    const atualPoly = atualPoints.map((p) => p.join(',')).join(' ');
-    const basePoly = basePoints.map((p) => p.join(',')).join(' ');
+    const dataPoly = dataPoints.map((p) => p.join(',')).join(' ');
 
-    // Rank labels
     const rankInfos = STATS_RADAR.map((k) => {
-        const raw = getMaximo(ficha, k);
+        const raw = isAtual ? getMaximo(ficha, k) : getEfetivoBase(ficha, k);
         const pRes = getPrestigioReal(k, raw);
         const pAtual = calcPAtual(ficha, k, pRes);
         return getRank(pAtual.valor, ficha.ascensaoBase);
     });
 
-    // Label positions (slightly outside the hex)
-    const labelR = R + 30;
+    const labelR = R + 15;
     const labelPos = ANGLES.map((a) => [CX + labelR * Math.cos(a), CY + labelR * Math.sin(a)]);
 
+    const polyColor = isAtual ? 'rgba(255, 204, 0, 0.2)' : 'rgba(0, 255, 255, 0.2)';
+    const strokeColor = isAtual ? '#ffcc00' : '#0ff';
+    const gridStroke = isAtual ? 'rgba(255, 204, 0, 0.1)' : 'rgba(255, 255, 255, 0.1)';
+
     return (
-        <svg viewBox="0 0 500 360" className="radar-svg" style={{ width: '100%', maxWidth: 500 }}>
-            {/* Grid hexagons */}
+        <svg viewBox="0 0 200 200" className={`radar-svg ${isAtual ? 'atual' : ''}`} style={{ width: '100%', height: 'auto', maxHeight: '250px' }}>
             {[0.25, 0.5, 0.75, 1.0].map((s, i) => (
-                <polygon
-                    key={i}
-                    points={hexPoints(CX, CY, R * s)}
-                    fill="none"
-                    stroke="rgba(255,255,255,0.1)"
-                    strokeWidth="1"
-                />
+                <polygon key={i} points={hexPoints(CX, CY, R * s)} fill="none" stroke={gridStroke} strokeWidth="1" />
             ))}
-
-            {/* Axis lines */}
             {ANGLES.map((a, i) => (
-                <line
-                    key={i}
-                    x1={CX} y1={CY}
-                    x2={CX + R * Math.cos(a)} y2={CY + R * Math.sin(a)}
-                    stroke="rgba(255,255,255,0.15)"
-                    strokeWidth="1"
-                />
+                <line key={i} x1={CX} y1={CY} x2={CX + R * Math.cos(a)} y2={CY + R * Math.sin(a)} stroke="rgba(255,255,255,0.15)" strokeWidth="1" strokeDasharray="4" />
             ))}
-
-            {/* Base polygon */}
-            <polygon
-                points={basePoly}
-                fill="rgba(0,200,255,0.15)"
-                stroke="rgba(0,200,255,0.5)"
-                strokeWidth="1.5"
-            />
-
-            {/* Atual polygon */}
-            <polygon
-                points={atualPoly}
-                fill="rgba(255,0,100,0.25)"
-                stroke="rgba(255,0,100,0.8)"
-                strokeWidth="2"
-            />
-
-            {/* Data dots */}
-            {atualPoints.map(([x, y], i) => (
-                <circle key={i} cx={x} cy={y} r="4" fill="#ff0064" />
+            <polygon points={dataPoly} fill={polyColor} stroke={strokeColor} strokeWidth="2" style={{ transition: 'all 0.5s ease-out' }} />
+            {dataPoints.map(([x, y], i) => (
+                <circle key={i} cx={x} cy={y} r="3" fill={strokeColor} />
             ))}
-
-            {/* Labels with rank */}
             {STAT_LABELS.map((lbl, i) => {
                 const [lx, ly] = labelPos[i];
                 const rk = rankInfos[i];
                 return (
-                    <text
-                        key={i}
-                        x={lx} y={ly}
-                        textAnchor="middle"
-                        dominantBaseline="central"
-                        fill={rk.c}
-                        fontSize="12"
-                        fontWeight="bold"
-                    >
-                        {lbl} {rk.l}{rk.a > 1 ? ` A${rk.a}` : ''}
+                    <text key={i} x={lx} y={ly} textAnchor="middle" dominantBaseline="central" fill={rk.c} fontSize="10" fontWeight="bold" style={{ textShadow: '0 0 5px #000' }}>
+                        [{rk.l}{rk.a > 1 ? ` A${rk.a}` : ''}] {lbl}
                     </text>
                 );
             })}
@@ -112,7 +71,7 @@ function RadarChart({ ficha }) {
     );
 }
 
-// ---------- Main StatusPanel ----------
+// ---------- Componente Principal do Painel de Status ----------
 export default function StatusPanel() {
     const ficha = useStore((s) => s.minhaFicha);
     const updateFicha = useStore((s) => s.updateFicha);
@@ -120,73 +79,64 @@ export default function StatusPanel() {
     const [inputDano, setInputDano] = useState('');
     const [inputLetalidade, setInputLetalidade] = useState('0');
 
-    // Vitals config
+    // Configuração das Barras Vitais (Mapeamento Neon)
     const vitals = useMemo(() => [
-        { key: 'vida',   label: 'HP (Vida)',  color: '#ff003c' },
-        { key: 'mana',   label: 'Mana',       color: '#0088ff' },
-        { key: 'aura',   label: 'Aura',       color: '#00ff88' },
-        { key: 'chakra', label: 'Chakra',      color: '#ffcc00' },
-        { key: 'corpo',  label: 'Corpo',       color: '#ff8800' },
+        { key: 'vida',   label: 'VIDA (HP)', color: '#ff4d4d', classColor: 'label-color-vida' },
+        { key: 'mana',   label: 'MANA',      color: '#00ffff', classColor: 'label-color-mana' },
+        { key: 'aura',   label: 'AURA',      color: '#ffcc00', classColor: 'label-color-aura' },
+        { key: 'chakra', label: 'CHAKRA',    color: '#e6ffff', classColor: 'label-color-chakra' },
+        { key: 'corpo',  label: 'CORPO',     color: '#ff66ff', classColor: 'label-color-corpo' },
     ], []);
 
-    // Initialize atual values if they are undefined
+    // Inicialização (Preservada da versão original)
     const inicializarAtuais = useCallback(() => {
+        if (!ficha) return;
         updateFicha((f) => {
             vitals.forEach(({ key }) => {
                 const mx = getMaximo(f, key);
                 if (f[key].atual === undefined || f[key].atual === null) {
                     f[key].atual = mx;
                 }
-                // Clamp
                 if (f[key].atual > mx) f[key].atual = mx;
             });
         });
-    }, [updateFicha, vitals]);
+    }, [ficha, updateFicha, vitals]);
 
-    // Ensure atuais are initialized on first render
-    React.useEffect(() => {
+    useEffect(() => {
         inicializarAtuais();
     }, [inicializarAtuais]);
 
-    // alterarHP
+    // Lógica de Combate (Preservada)
     const alterarHP = useCallback((tipo) => {
         const valor = parseInt(inputDano) || 0;
         if (valor <= 0) return;
-
         const letalidade = parseInt(inputLetalidade) || 0;
 
         updateFicha((f) => {
             const vidaMax = getMaximo(f, 'vida');
             let danoFinal = valor;
-
-            // Lethality scaling: damage = valor * 10^letalidade
             if (tipo === 'dano' && letalidade > 0) {
                 danoFinal = valor * Math.pow(10, letalidade);
             }
-
             if (tipo === 'dano') {
                 f.vida.atual = Math.max(0, (f.vida.atual || 0) - danoFinal);
             } else {
                 f.vida.atual = Math.min(vidaMax, (f.vida.atual || 0) + danoFinal);
             }
         });
-
         salvarFichaSilencioso();
         setInputDano('');
     }, [inputDano, inputLetalidade, updateFicha]);
 
-    // curarTudo
     const curarTudo = useCallback(() => {
         updateFicha((f) => {
             vitals.forEach(({ key }) => {
-                const mx = getMaximo(f, key);
-                f[key].atual = mx;
+                f[key].atual = getMaximo(f, key);
             });
         });
         salvarFichaSilencioso();
     }, [updateFicha, vitals]);
 
-    // aplicarRegeneracaoTurno
     const aplicarRegeneracaoTurno = useCallback(() => {
         updateFicha((f) => {
             vitals.forEach(({ key }) => {
@@ -200,71 +150,76 @@ export default function StatusPanel() {
         salvarFichaSilencioso();
     }, [updateFicha, vitals]);
 
+    if (!ficha) return <div style={{ color: '#888', textAlign: 'center' }}>Carregando dados vitais...</div>;
+
     return (
-        <div className="status-panel">
-            <h2>Monitor Vital</h2>
-
-            {/* Radar chart */}
-            <div className="radar-container">
-                <RadarChart ficha={ficha} />
-            </div>
-
-            {/* Vital bars */}
-            <div className="vitals-container">
-                {vitals.map(({ key, label, color }) => {
+        <div className="status-panel-container">
+            {/* --- BLOCO 1: BARRAS VITAIS (CSS GRID) --- */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '30px' }}>
+                {vitals.map(({ key, label, color, classColor }, index) => {
                     const mx = getMaximo(ficha, key);
                     const atual = ficha[key]?.atual ?? mx;
                     const regen = parseFloat(ficha[key]?.regeneracao) || 0;
+                    const extra = regen > 0 ? `(+${regen}/turno)` : '';
+                    
+                    // HP ocupa a linha toda (gridColumn: '1 / -1')
+                    const gridStyle = index === 0 ? { gridColumn: '1 / -1', margin: 0 } : { margin: 0 };
+
                     return (
-                        <VitalBar
-                            key={key}
-                            label={label}
-                            atual={atual}
-                            max={mx}
-                            color={color}
-                            extraInfo={regen > 0 ? `(+${regen}/turno)` : ''}
-                        />
+                        <div key={key} className="vital-container" style={gridStyle}>
+                            <div className={`vital-label ${classColor}`}>{label} {extra && <span style={{fontSize: '0.8em', color: '#aaa'}}>{extra}</span>}</div>
+                            <div className="bar-bg">
+                                <div className="bar-fill" style={{ width: `${(atual / mx) * 100}%`, backgroundColor: color }}></div>
+                                <div className="bar-text">{atual.toLocaleString('pt-BR')} / {mx.toLocaleString('pt-BR')}</div>
+                            </div>
+                        </div>
                     );
                 })}
             </div>
 
-            {/* Damage / Heal controls */}
-            <div className="hp-controls">
-                <div className="hp-input-row">
-                    <label>
-                        Valor:
-                        <input
-                            type="number"
-                            min="0"
-                            value={inputDano}
-                            onChange={(e) => setInputDano(e.target.value)}
-                            placeholder="Quantidade"
-                        />
-                    </label>
-                    <label>
-                        Letalidade:
-                        <input
-                            type="number"
-                            min="0"
-                            value={inputLetalidade}
-                            onChange={(e) => setInputLetalidade(e.target.value)}
-                            placeholder="0"
-                        />
-                    </label>
+            {/* --- BLOCO 2: CONTROLE RÁPIDO --- */}
+            <h3 className="section-title-mint-spaced" style={{ marginTop: 0, color: '#fff', fontSize: '1.2em' }}>&gt; CONTROLE RÁPIDO</h3>
+            
+            <div className="form-row-dark" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '15px', alignItems: 'end', background: 'transparent', padding: 0 }}>
+                <div className="input-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '0.8em', color: '#aaa' }}>VALOR (HP/ENERGIA)</label>
+                    <input type="number" placeholder="Ex: 24500000" value={inputDano} onChange={(e) => setInputDano(e.target.value)} />
                 </div>
-                <div className="hp-buttons">
-                    <button className="btn-dano" onClick={() => alterarHP('dano')}>
-                        Receber Dano
-                    </button>
-                    <button className="btn-curar" onClick={() => alterarHP('curar')}>
-                        Curar HP
-                    </button>
-                    <button className="btn-regen" onClick={aplicarRegeneracaoTurno}>
-                        Regenera\u00E7\u00E3o
-                    </button>
-                    <button className="btn-curar-tudo" onClick={curarTudo}>
-                        Curar Tudo
-                    </button>
+                <div className="input-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '0.8em', color: '#aaa' }}>LETALIDADE</label>
+                    <input type="number" value={inputLetalidade} onChange={(e) => setInputLetalidade(e.target.value)} />
+                </div>
+                <button className="btn-neon btn-red btn-small" onClick={() => alterarHP('dano')} style={{ height: '44px', margin: 0 }}>
+                    🔥 RECEBER DANO
+                </button>
+                <button className="btn-neon btn-green btn-small" onClick={() => alterarHP('curar')} style={{ height: '44px', margin: 0 }}>
+                    💊 CURAR HP
+                </button>
+            </div>
+
+            <div style={{ display: 'flex', gap: '15px', marginTop: '15px', marginBottom: '30px' }}>
+                <button className="btn-neon btn-green btn-small" onClick={aplicarRegeneracaoTurno} style={{ flex: 1, margin: 0 }}>
+                    ✨ APLICAR REGENERAÇÃO
+                </button>
+                <button className="btn-neon btn-small" onClick={curarTudo} style={{ flex: 1, margin: 0, borderColor: '#00ffff', color: '#00ffff' }}>
+                    💚 RESTABELECER TUDO (100%)
+                </button>
+            </div>
+
+            {/* --- BLOCO 3: ANÁLISE DE PODER E CULTIVAÇÃO --- */}
+            <h3 className="section-title-mint-spaced" style={{ color: '#fff', fontSize: '1.2em' }}>&gt; ANÁLISE DE PODER E CULTIVAÇÃO</h3>
+            
+            <div className="analise-grid" style={{ marginTop: '15px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                {/* Radar Base */}
+                <div className="radar-container" style={{ background: 'rgba(25, 25, 40, 0.6)', padding: '20px', borderRadius: '10px' }}>
+                    <h4 style={{ color: '#fff', textAlign: 'center', marginBottom: '20px', letterSpacing: '2px', fontSize: '0.9em' }}>ALMA (RANK BASE)<br/><span style={{ fontSize: '0.8em', color: '#0ff' }}>[A]</span></h4>
+                    <RadarChart ficha={ficha} isAtual={false} />
+                </div>
+
+                {/* Radar Atual */}
+                <div className="radar-container atual" style={{ background: 'rgba(30, 25, 10, 0.6)', padding: '20px', borderRadius: '10px', borderColor: 'rgba(255, 204, 0, 0.3)' }}>
+                    <h4 style={{ color: '#ffcc00', textAlign: 'center', marginBottom: '20px', letterSpacing: '2px', fontSize: '0.9em' }}>PODER ATUAL (C/ FORMAS)<br/><span style={{ fontSize: '0.8em', color: '#0f0' }}>[A]</span></h4>
+                    <RadarChart ficha={ficha} isAtual={true} />
                 </div>
             </div>
         </div>
