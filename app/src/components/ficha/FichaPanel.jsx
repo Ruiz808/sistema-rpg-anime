@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import useStore from '../../stores/useStore';
-import { contarDigitos } from '../../core/utils';
-import { getMaximo, getRawBase } from '../../core/attributes';
-import { getPrestigioReal } from '../../core/prestige';
-import { salvarFichaSilencioso, salvarFirebaseImediato } from '../../services/firebase-sync';
-import TabelaPrestigio from './TabelaPrestigio';
+import { contarDigitos } from '../../core/utils.js';
+import { getMaximo } from '../../core/attributes.js';
+import { salvarFichaSilencioso } from '../../services/firebase-sync.js';
+import TabelaPrestigio from './TabelaPrestigio'; // <-- O NOSSO NOVO MÓDULO
 
 const STATS = ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'];
 const ENERGIAS = ['mana', 'aura', 'chakra', 'corpo'];
@@ -36,28 +35,12 @@ export default function FichaPanel() {
         base: 0, mBase: 1, mGeral: 1, mFormas: 1, mUnico: '1.0', mAbsoluto: 1, reducaoCusto: 0, regeneracao: 0
     });
 
-    // Prestige
-    const [presAsc, setPresAsc] = useState(1);
-    const [presVida, setPresVida] = useState(0);
-    const [presStatus, setPresStatus] = useState(0);
-    const [presMana, setPresMana] = useState(0);
-    const [presAura, setPresAura] = useState(0);
-    const [presChakra, setPresChakra] = useState(0);
-    const [presCorpo, setPresCorpo] = useState(0);
-
-    // Divisores
-    const [divVida, setDivVida] = useState(1);
-    const [divStatus, setDivStatus] = useState(1);
-    const [divMana, setDivMana] = useState(1);
-    const [divAura, setDivAura] = useState(1);
-    const [divChakra, setDivChakra] = useState(1);
-    const [divCorpo, setDivCorpo] = useState(1);
-
     const carregarAtributoNaTela = useCallback(() => {
         const s = selAtributo;
         const k = (s === 'todos_status') ? 'forca' : (s === 'todas_energias') ? 'mana' : s;
+        if (!minhaFicha || !minhaFicha[k]) return;
         const st = minhaFicha[k];
-        if (!st) return;
+        
         setCampos({
             base: st.base || 0,
             mBase: st.mBase || 1,
@@ -73,33 +56,6 @@ export default function FichaPanel() {
     useEffect(() => {
         carregarAtributoNaTela();
     }, [selAtributo, carregarAtributoNaTela]);
-
-    // Load prestige table
-    const carregarTabelaPrestigio = useCallback(() => {
-        let m = 0;
-        for (let i = 0; i < STATS.length; i++) {
-            m += getRawBase(minhaFicha, STATS[i]);
-        }
-        setPresAsc(minhaFicha.ascensaoBase || 1);
-        setPresVida(getPrestigioReal('vida', getRawBase(minhaFicha, 'vida')));
-        setPresStatus(Math.floor((m / 8) / 1000));
-        setPresMana(getPrestigioReal('mana', getRawBase(minhaFicha, 'mana')));
-        setPresAura(getPrestigioReal('aura', getRawBase(minhaFicha, 'aura')));
-        setPresChakra(getPrestigioReal('chakra', getRawBase(minhaFicha, 'chakra')));
-        setPresCorpo(getPrestigioReal('corpo', getRawBase(minhaFicha, 'corpo')));
-
-        const d = minhaFicha.divisores || { vida: 1, status: 1, mana: 1, aura: 1, chakra: 1, corpo: 1 };
-        setDivVida(d.vida || 1);
-        setDivStatus(d.status || 1);
-        setDivMana(d.mana || 1);
-        setDivAura(d.aura || 1);
-        setDivChakra(d.chakra || 1);
-        setDivCorpo(d.corpo || 1);
-    }, [minhaFicha]);
-
-    useEffect(() => {
-        carregarTabelaPrestigio();
-    }, [carregarTabelaPrestigio]);
 
     function salvarAtributo() {
         const s = selAtributo;
@@ -132,7 +88,7 @@ export default function FichaPanel() {
                 ficha[c].reducaoCusto = v.rc;
                 ficha[c].regeneracao = v.rg;
 
-                if (c === 'vida' || c === 'mana' || c === 'aura' || c === 'chakra' || c === 'corpo') {
+                if (['vida', 'mana', 'aura', 'chakra', 'corpo'].includes(c)) {
                     let mx = getMaximo(ficha, c);
                     if (c === 'vida') {
                         const p = Math.max(0, contarDigitos(mx) - 8);
@@ -149,62 +105,22 @@ export default function FichaPanel() {
         alert('Salvo!');
     }
 
-    function aplicarPrestigioNaFicha() {
-        const ascB = Math.max(1, parseInt(presAsc) || 1);
-        const v1 = Math.max(0, parseInt(presVida) || 0);
-        const v2 = Math.max(0, parseInt(presStatus) || 0);
-        const v3 = Math.max(0, parseInt(presMana) || 0);
-        const v4 = Math.max(0, parseInt(presAura) || 0);
-        const v5 = Math.max(0, parseInt(presChakra) || 0);
-        const v6 = Math.max(0, parseInt(presCorpo) || 0);
-
-        updateFicha((ficha) => {
-            ficha.ascensaoBase = ascB;
-            ficha.vida.base = v1 * 1000000;
-            ficha.mana.base = v3 * 10000000;
-            ficha.aura.base = v4 * 10000000;
-            ficha.chakra.base = v5 * 10000000;
-            ficha.corpo.base = v6 * 10000000;
-
-            const stBase = v2 * 1000;
-            for (let i = 0; i < STATS.length; i++) {
-                ficha[STATS[i]].base = stBase;
-            }
-        });
-    }
-
-    function atualizarDivisores() {
-        updateFicha((ficha) => {
-            if (!ficha.divisores) ficha.divisores = { vida: 1, status: 1, mana: 1, aura: 1, chakra: 1, corpo: 1 };
-            ficha.divisores.vida = parseFloat(divVida) || 1;
-            ficha.divisores.status = parseFloat(divStatus) || 1;
-            ficha.divisores.mana = parseFloat(divMana) || 1;
-            ficha.divisores.aura = parseFloat(divAura) || 1;
-            ficha.divisores.chakra = parseFloat(divChakra) || 1;
-            ficha.divisores.corpo = parseFloat(divCorpo) || 1;
-        });
-        salvarFichaSilencioso();
-    }
-
-    function salvarTabelaAoServidor() {
-        aplicarPrestigioNaFicha();
-        salvarFirebaseImediato();
-        alert('Tabela de Prestigio salva!');
-    }
-
     function handleCampo(field, val) {
         setCampos(prev => ({ ...prev, [field]: val }));
     }
 
+    if (!minhaFicha) return <div style={{ color: '#aaa', textAlign: 'center' }}>Carregando ficha...</div>;
+
     return (
         <div className="ficha-panel">
-            {/* Attribute Editor */}
+            {/* Editor de Atributos Mantido */}
             <div className="def-box">
                 <h3 style={{ color: '#ffcc00', marginBottom: 10 }}>Editor de Atributos</h3>
                 <select
                     className="input-neon"
                     value={selAtributo}
                     onChange={(e) => setSelAtributo(e.target.value)}
+                    style={{ width: '100%', padding: '10px', background: 'rgba(0,0,0,0.5)', color: '#fff' }}
                 >
                     {ATRIBUTO_OPTIONS.map(opt => (
                         <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -246,80 +162,14 @@ export default function FichaPanel() {
                     </div>
                 </div>
 
-                <button className="btn-neon btn-gold" onClick={salvarAtributo} style={{ marginTop: 15, width: '100%' }}>
-                    Salvar Atributo
+                <button className="btn-neon btn-gold" onClick={salvarAtributo} style={{ marginTop: 15, width: '100%', height: '44px' }}>
+                    SALVAR ATRIBUTOS
                 </button>
             </div>
 
-            {/* Prestige Table */}
-            <div className="def-box" style={{ marginTop: 15 }}>
-                <h3 style={{ color: '#f0f', marginBottom: 10 }}>Tabela de Prestigio</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Ascensao Base</label>
-                        <input className="input-neon" type="number" value={presAsc} onChange={e => setPresAsc(e.target.value)} onBlur={aplicarPrestigioNaFicha} />
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Vida</label>
-                        <input className="input-neon" type="number" value={presVida} onChange={e => setPresVida(e.target.value)} onBlur={aplicarPrestigioNaFicha} />
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Status</label>
-                        <input className="input-neon" type="number" value={presStatus} onChange={e => setPresStatus(e.target.value)} onBlur={aplicarPrestigioNaFicha} />
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mana</label>
-                        <input className="input-neon" type="number" value={presMana} onChange={e => setPresMana(e.target.value)} onBlur={aplicarPrestigioNaFicha} />
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Aura</label>
-                        <input className="input-neon" type="number" value={presAura} onChange={e => setPresAura(e.target.value)} onBlur={aplicarPrestigioNaFicha} />
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Chakra</label>
-                        <input className="input-neon" type="number" value={presChakra} onChange={e => setPresChakra(e.target.value)} onBlur={aplicarPrestigioNaFicha} />
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Corpo</label>
-                        <input className="input-neon" type="number" value={presCorpo} onChange={e => setPresCorpo(e.target.value)} onBlur={aplicarPrestigioNaFicha} />
-                    </div>
-                </div>
-                <button className="btn-neon btn-gold" onClick={salvarTabelaAoServidor} style={{ marginTop: 15, width: '100%' }}>
-                    Salvar Prestigio no Servidor
-                </button>
-            </div>
-
-            {/* Divisores */}
-            <div className="def-box" style={{ marginTop: 15 }}>
-                <h3 style={{ color: '#0ff', marginBottom: 10 }}>Divisores</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Vida</label>
-                        <input className="input-neon" type="number" value={divVida} onChange={e => setDivVida(e.target.value)} onBlur={atualizarDivisores} />
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Status</label>
-                        <input className="input-neon" type="number" value={divStatus} onChange={e => setDivStatus(e.target.value)} onBlur={atualizarDivisores} />
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mana</label>
-                        <input className="input-neon" type="number" value={divMana} onChange={e => setDivMana(e.target.value)} onBlur={atualizarDivisores} />
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Aura</label>
-                        <input className="input-neon" type="number" value={divAura} onChange={e => setDivAura(e.target.value)} onBlur={atualizarDivisores} />
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Chakra</label>
-                        <input className="input-neon" type="number" value={divChakra} onChange={e => setDivChakra(e.target.value)} onBlur={atualizarDivisores} />
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Corpo</label>
-                        <input className="input-neon" type="number" value={divCorpo} onChange={e => setDivCorpo(e.target.value)} onBlur={atualizarDivisores} />
-                    </div>
-                </div>
-            </div>
+            {/* A NOSSA NOVA TABELA ASSUME O CONTROLE AQUI */}
             <TabelaPrestigio />
+
         </div>
     );
 }
