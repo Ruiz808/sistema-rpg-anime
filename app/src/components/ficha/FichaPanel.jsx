@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import useStore from '../../stores/useStore';
 import { contarDigitos } from '../../core/utils.js';
-import { getMaximo, getBuffs } from '../../core/attributes.js'; // <-- Adicionamos o getBuffs aqui!
+import { getMaximo, getBuffs } from '../../core/attributes.js';
 import { salvarFichaSilencioso } from '../../services/firebase-sync.js';
 import TabelaPrestigio from './TabelaPrestigio'; 
 
@@ -34,6 +34,15 @@ export default function FichaPanel() {
     const [campos, setCampos] = useState({
         base: 0, mBase: 1, mGeral: 1, mFormas: 1, mUnico: '1.0', mAbsoluto: 1, reducaoCusto: 0, regeneracao: 0
     });
+
+    // Multiplicadores de Dano
+    const [dmBase, setDmBase] = useState(1.0);
+    const [dmPotencial, setDmPotencial] = useState(1.0);
+    const [dmGeral, setDmGeral] = useState(1.0);
+    const [dmFormas, setDmFormas] = useState(1.0);
+    const [dmAbsoluto, setDmAbsoluto] = useState(1.0);
+    const [dmUnico, setDmUnico] = useState('1.0');
+    const [salvandoMult, setSalvandoMult] = useState(false);
 
     const carregarAtributoNaTela = useCallback(() => {
         const s = selAtributo;
@@ -103,6 +112,34 @@ export default function FichaPanel() {
         });
         salvarFichaSilencioso();
         alert('Salvo!');
+    }
+
+    // Carregar multiplicadores de dano
+    useEffect(() => {
+        const d = minhaFicha.dano || {};
+        setDmBase(d.mBase ?? 1.0);
+        setDmPotencial(d.mPotencial ?? 1.0);
+        setDmGeral(d.mGeral ?? 1.0);
+        setDmFormas(d.mFormas ?? 1.0);
+        setDmAbsoluto(d.mAbsoluto ?? 1.0);
+        setDmUnico(d.mUnico ?? '1.0');
+    }, [minhaFicha.dano]);
+
+    const buffsDano = useMemo(() => getBuffs(minhaFicha, 'dano'), [minhaFicha.poderes, minhaFicha.passivas]);
+
+    function salvarMultiplicadores() {
+        updateFicha((ficha) => {
+            if (!ficha.dano) ficha.dano = {};
+            ficha.dano.mBase = parseFloat(dmBase) || 1.0;
+            ficha.dano.mPotencial = parseFloat(dmPotencial) || 1.0;
+            ficha.dano.mGeral = parseFloat(dmGeral) || 1.0;
+            ficha.dano.mFormas = parseFloat(dmFormas) || 1.0;
+            ficha.dano.mAbsoluto = parseFloat(dmAbsoluto) || 1.0;
+            ficha.dano.mUnico = dmUnico || '1.0';
+        });
+        salvarFichaSilencioso();
+        setSalvandoMult(true);
+        setTimeout(() => setSalvandoMult(false), 2000);
     }
 
     function handleCampo(field, val) {
@@ -192,6 +229,50 @@ export default function FichaPanel() {
 
                 <button className="btn-neon btn-gold" onClick={salvarAtributo} style={{ marginTop: 15, width: '100%', height: '44px' }}>
                     SALVAR ATRIBUTOS
+                </button>
+            </div>
+
+            {/* Multiplicadores de Dano */}
+            <div className="def-box" style={{ marginTop: 15 }}>
+                <h3 style={{ color: '#ff003c', marginBottom: 10 }}>Multiplicadores de Dano</h3>
+                <p style={{ color: '#888', fontSize: '0.8em', margin: '0 0 10px' }}>Valores base. Habilidades ativas somam automaticamente.</p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                    <div>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Base {buffsDano._hasBuff.mbase && <span style={{ color: '#0f0', fontSize: '0.8em' }}>(Buff: +{buffsDano.mbase.toFixed(2)})</span>}</label>
+                        <input className="input-neon" type="number" step="0.01" value={dmBase} onChange={e => setDmBase(e.target.value)} />
+                    </div>
+                    <div>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Potencial</label>
+                        <input className="input-neon" type="number" step="0.01" value={dmPotencial} onChange={e => setDmPotencial(e.target.value)} />
+                    </div>
+                    <div>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Geral {buffsDano._hasBuff.mgeral && <span style={{ color: '#0f0', fontSize: '0.8em' }}>(Buff: +{buffsDano.mgeral.toFixed(2)})</span>}</label>
+                        <input className="input-neon" type="number" step="0.01" value={dmGeral} onChange={e => setDmGeral(e.target.value)} />
+                    </div>
+                    <div>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Formas {buffsDano._hasBuff.mformas && <span style={{ color: '#0f0', fontSize: '0.8em' }}>(Buff: +{buffsDano.mformas.toFixed(2)})</span>}</label>
+                        <input className="input-neon" type="number" step="0.01" value={dmFormas} onChange={e => setDmFormas(e.target.value)} />
+                    </div>
+                    <div>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Absoluto {buffsDano._hasBuff.mabs && <span style={{ color: '#0f0', fontSize: '0.8em' }}>(Buff: +{buffsDano.mabs.toFixed(2)})</span>}</label>
+                        <input className="input-neon" type="number" step="0.01" value={dmAbsoluto} onChange={e => setDmAbsoluto(e.target.value)} />
+                    </div>
+                    <div>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Unico {buffsDano.munico.length > 0 && <span style={{ color: '#0f0', fontSize: '0.8em' }}>(Buff: x{buffsDano.munico.join(',')})</span>}</label>
+                        <input className="input-neon" type="text" value={dmUnico} onChange={e => setDmUnico(e.target.value)} />
+                    </div>
+                </div>
+                <button
+                    className="btn-neon btn-gold"
+                    onClick={salvarMultiplicadores}
+                    style={{
+                        marginTop: 10, width: '100%',
+                        backgroundColor: salvandoMult ? 'rgba(0, 255, 100, 0.2)' : undefined,
+                        borderColor: salvandoMult ? '#00ffcc' : undefined,
+                        color: salvandoMult ? '#fff' : undefined
+                    }}
+                >
+                    {salvandoMult ? 'SALVO COM SUCESSO!' : 'SALVAR MULTIPLICADORES'}
                 </button>
             </div>
 

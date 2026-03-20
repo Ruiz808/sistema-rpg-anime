@@ -151,6 +151,31 @@ describe('calcularDano — novo sistema', () => {
         expect(result.dano).toBe(1600);
     });
 
+    it('mPotencial from ficha.dano applied in global multTotal', () => {
+        // ficha.dano.mPotencial=2 → totalPot=2
+        // danoArma=800, multTotal includes totalPot=2 → total=1600
+        const ficha = buildFicha();
+        ficha.dano.mPotencial = 2.0;
+        const arma = makeArma({ dadosQtd: 2, dadosFaces: 6 });
+
+        const result = callCalcDano({ itensEquipados: [arma], minhaFicha: ficha });
+        expect(result.dano).toBe(1600);
+    });
+
+    it('mPotencial does NOT multiply energy combustion in sub-calc', () => {
+        // With mPotencial=2, energy combustion in sub-calc should NOT be multiplied by pot
+        // hab: 2d6=8, custoPerc=20, mana max=50, combustao=10
+        // somaTermos = 100(forca)*1(uni) + 10(combustao)*1(uni) = 110 (NOT 10*1*2=20)
+        // dano = floor(8*110) = 880
+        // multTotal = 1*2*1*1*1*1*1 = 2 → total = floor(880*2) = 1760
+        const ficha = buildFicha();
+        ficha.dano.mPotencial = 2.0;
+        const hab = makeHabConfig({ dadosQtd: 2, dadosFaces: 6, custoPercentual: 20, energiaCombustao: 'mana' });
+
+        const result = callCalcDano({ minhaFicha: ficha, configHabilidades: [hab] });
+        expect(result.dano).toBe(1760);
+    });
+
     it('mUnico from ficha.dano applied per-term and global', () => {
         // ficha.dano.mUnico='2.0' → uniTotal=2
         // somaTermos = 100*2 = 200, rolagemArma=8
@@ -186,7 +211,7 @@ describe('calcularDano — novo sistema', () => {
     it('detalheConta contains MAQUINA DE CALCULO', () => {
         const arma = makeArma({ dadosQtd: 2, dadosFaces: 6 });
         const result = callCalcDano({ itensEquipados: [arma] });
-        expect(result.detalheConta).toContain('MAQUINA DE CALCULO');
+        expect(result.detalheConta).toContain('MÁQUINA DE CÁLCULO');
     });
 
     it('letalidade reduces dano for 9+ digit totals', () => {

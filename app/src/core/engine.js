@@ -83,7 +83,7 @@ function formatarRolagem(qtd, faces, rolls, soma) {
  * - Cada atributo: getMaximo(ficha, attr) × mUnico
  * - Cada energia: combustao × mUnico × mPotencial
  */
-function calcularSubDano({ qtdDados, facesDados, sels, combustaoPorEnergia, minhaFicha, mUnico, mPotencial }) {
+function calcularSubDano({ qtdDados, facesDados, sels, combustaoPorEnergia, minhaFicha, mUnico }) {
     if (qtdDados <= 0) return { dano: 0, rolagem: '', rolagemValor: 0, somaTermos: 0, detalhesTermos: [] };
 
     let { soma, rolls } = rolarDadosSimples(qtdDados, facesDados);
@@ -103,9 +103,9 @@ function calcularSubDano({ qtdDados, facesDados, sels, combustaoPorEnergia, minh
         let key = energyKeys[i];
         let combustao = combustaoPorEnergia[key];
         if (combustao > 0) {
-            let termo = combustao * mUnico * mPotencial;
+            let termo = combustao * mUnico;
             somaTermos += termo;
-            detalhesTermos.push(`<span style="color:#0ff">${key.toUpperCase()}(${combustao.toLocaleString('pt-BR')})</span>×Uni(${mUnico})×Pot(${mPotencial})`);
+            detalhesTermos.push(`<span style="color:#0ff">${key.toUpperCase()}(${combustao.toLocaleString('pt-BR')})</span>×Uni(${mUnico})`);
         }
     }
 
@@ -248,7 +248,7 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
             let r = calcularSubDano({
                 qtdDados: hab.dadosQtd || 0, facesDados: hab.dadosFaces || 20,
                 sels: hab.statusUsados || ['forca'], combustaoPorEnergia,
-                minhaFicha, mUnico: uniTotal, mPotencial: totalPot
+                minhaFicha, mUnico: uniTotal
             });
             r.nome = hab.nome;
             somaHabVinc += r.dano;
@@ -268,9 +268,9 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
         }
 
         if (armaCombustao > 0) {
-            somaTermosArma += armaCombustao * uniTotal * totalPot;
+            somaTermosArma += armaCombustao * uniTotal;
             let engKey = configArma ? configArma.energiaCombustao : 'mana';
-            detalhesArma.push(`<span style="color:#0ff">${engKey.toUpperCase()}(${armaCombustao.toLocaleString('pt-BR')})</span>×Uni(${uniTotal})×Pot(${totalPot})`);
+            detalhesArma.push(`<span style="color:#0ff">${engKey.toUpperCase()}(${armaCombustao.toLocaleString('pt-BR')})</span>×Uni(${uniTotal})`);
         }
 
         somaTermosArma += somaHabVinc;
@@ -297,7 +297,7 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
         let r = calcularSubDano({
             qtdDados: hab.dadosQtd, facesDados: hab.dadosFaces || 20,
             sels: hab.statusUsados || ['forca'], combustaoPorEnergia,
-            minhaFicha, mUnico: uniTotal, mPotencial: totalPot
+            minhaFicha, mUnico: uniTotal
         });
         r.nome = hab.nome;
         resultadosHabLivres.push(r);
@@ -323,7 +323,7 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
         nomeCritico = 'CRÍTICO NORMAL';
     }
 
-    let multTotal = totalBas * totalFor * totalGer * totalAbs * uniTotal * iMultDano;
+    let multTotal = totalBas * totalPot * totalFor * totalGer * totalAbs * uniTotal * iMultDano;
     let multEfetivo = multTotal * multCritico; // 🔥 Multiplicador Efetivo entra aqui
     
     let total = Math.floor(somaDanos * multEfetivo);
@@ -340,6 +340,7 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
 
     let multArr = [];
     if (totalBas !== 1) multArr.push(`x${totalBas.toFixed(2)}(Bas)`);
+    if (totalPot !== 1) multArr.push(`x${totalPot.toFixed(2)}(Pot)`);
     if (totalFor !== 1) multArr.push(`x${totalFor.toFixed(2)}(For)`);
     if (totalGer !== 1) multArr.push(`x${totalGer.toFixed(2)}(Ger)`);
     if (totalAbs !== 1) multArr.push(`x${totalAbs.toFixed(2)}(Abs)`);
