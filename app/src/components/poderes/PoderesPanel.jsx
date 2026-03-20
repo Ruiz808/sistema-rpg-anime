@@ -28,17 +28,18 @@ const PROPRIEDADE_OPTIONS = [
 ];
 
 export default function PoderesPanel() {
-    const { 
-        minhaFicha, 
-        updateFicha, 
-        efeitosTemp, 
-        setEfeitosTemp, 
-        poderEditandoId, 
-        setPoderEditandoId 
-    } = useStore();
+    const minhaFicha = useStore(s => s.minhaFicha);
+    const updateFicha = useStore(s => s.updateFicha);
+    const efeitosTemp = useStore(s => s.efeitosTemp);
+    const setEfeitosTemp = useStore(s => s.setEfeitosTemp);
+    const poderEditandoId = useStore(s => s.poderEditandoId);
+    const setPoderEditandoId = useStore(s => s.setPoderEditandoId);
 
     const [nomePoder, setNomePoder] = useState('');
     const [imagemUrl, setImagemUrl] = useState('');
+    const [dadosQtd, setDadosQtd] = useState(0);
+    const [dadosFaces, setDadosFaces] = useState(20);
+    const [armaVinculada, setArmaVinculada] = useState('');
     const [novoAtr, setNovoAtr] = useState('forca');
     const [novoProp, setNovoProp] = useState('base');
     const [novoVal, setNovoVal] = useState('');
@@ -71,6 +72,9 @@ export default function PoderesPanel() {
                     ficha.poderes[ix].nome = n;
                     ficha.poderes[ix].efeitos = JSON.parse(JSON.stringify(efeitosTemp));
                     ficha.poderes[ix].imagemUrl = imagemUrl;
+                    ficha.poderes[ix].dadosQtd = parseInt(dadosQtd) || 0;
+                    ficha.poderes[ix].dadosFaces = parseInt(dadosFaces) || 20;
+                    ficha.poderes[ix].armaVinculada = armaVinculada;
                 }
             } else {
                 ficha.poderes.push({
@@ -78,7 +82,10 @@ export default function PoderesPanel() {
                     nome: n,
                     ativa: false,
                     efeitos: JSON.parse(JSON.stringify(efeitosTemp)),
-                    imagemUrl: imagemUrl
+                    imagemUrl: imagemUrl,
+                    dadosQtd: parseInt(dadosQtd) || 0,
+                    dadosFaces: parseInt(dadosFaces) || 20,
+                    armaVinculada: armaVinculada
                 });
             }
         });
@@ -99,6 +106,9 @@ export default function PoderesPanel() {
         setPoderEditandoId(p.id);
         setNomePoder(p.nome);
         setImagemUrl(p.imagemUrl || '');
+        setDadosQtd(p.dadosQtd || 0);
+        setDadosFaces(p.dadosFaces || 20);
+        setArmaVinculada(p.armaVinculada || '');
         setEfeitosTemp(JSON.parse(JSON.stringify(p.efeitos || [])));
         
         if (formRef.current) {
@@ -110,6 +120,9 @@ export default function PoderesPanel() {
         setPoderEditandoId(null);
         setNomePoder('');
         setImagemUrl('');
+        setDadosQtd(0);
+        setDadosFaces(20);
+        setArmaVinculada('');
         setEfeitosTemp([]);
     };
 
@@ -169,6 +182,27 @@ export default function PoderesPanel() {
                 <input className="input-neon" type="text" placeholder="Nome do Poder" value={nomePoder} onChange={e => setNomePoder(e.target.value)} />
                 <input className="input-neon" type="text" placeholder="URL da Imagem (opcional)" value={imagemUrl} onChange={e => setImagemUrl(e.target.value)} style={{ marginTop: 5 }} />
 
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 10 }}>
+                    <div>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Dados de Dano (qtd)</label>
+                        <input className="input-neon" type="number" min="0" value={dadosQtd} onChange={e => setDadosQtd(e.target.value)} placeholder="0" />
+                    </div>
+                    <div>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Faces (d)</label>
+                        <input className="input-neon" type="number" min="1" value={dadosFaces} onChange={e => setDadosFaces(e.target.value)} placeholder="20" />
+                    </div>
+                    <div>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Vincular a Arma</label>
+                        <select className="input-neon" value={armaVinculada} onChange={e => setArmaVinculada(e.target.value)}>
+                            <option value="">Nenhuma (Livre)</option>
+                            {(minhaFicha.inventario || []).filter(i => i.tipo === 'arma').map(arma => (
+                                <option key={arma.id} value={String(arma.id)}>{arma.nome}</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+                {dadosQtd > 0 && <p style={{ color: '#f0f', fontSize: '0.85em', margin: '5px 0 0' }}>Dano: {dadosQtd}d{dadosFaces}{armaVinculada ? ' (vinculada a arma)' : ' (livre)'}</p>}
+
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8, marginTop: 10 }}>
                     <select className="input-neon" value={novoAtr} onChange={e => setNovoAtr(e.target.value)}>
                         {ATRIBUTOS_AGRUPADOS.map(grupo => (
@@ -226,12 +260,15 @@ export default function PoderesPanel() {
                             const isMult = ['mbase', 'mgeral', 'mformas', 'mabs', 'munico'].includes(prop);
                             return `[${(e.atributo || '').replace('_', ' ').toUpperCase()}] ${(e.propriedade || '').toUpperCase()}: ${isMult ? 'x' : '+'}${e.valor || 0}`;
                         }).filter(Boolean);
+                        const dadosTxt = (p.dadosQtd > 0) ? `${p.dadosQtd}d${p.dadosFaces || 20}` : '';
+                        const armaVinc = p.armaVinculada ? (minhaFicha.inventario || []).find(i => String(i.id) === String(p.armaVinculada)) : null;
 
                         return (
                             <div key={p.id} className="def-box" style={{ borderLeft: `5px solid ${c}`, background: bg, marginBottom: 10 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 15 }}>
                                     <div>
                                         <h3 style={{ margin: 0, color: c, textShadow: `0 0 10px ${c}` }}>{p.nome || 'Poder'}</h3>
+                                        {dadosTxt && <p style={{ color: '#f0f', fontSize: '0.85em', margin: '5px 0 0' }}>Dano: {dadosTxt}{armaVinc ? ` (na ${armaVinc.nome})` : ' (livre)'}</p>}
                                         <p style={{ color: '#aaa', fontSize: '0.85em', margin: '5px 0 0' }}>{txtArr.join(' | ') || 'Sem efeitos.'}</p>
                                     </div>
                                     <div style={{ display: 'flex', gap: 10 }}>

@@ -56,6 +56,65 @@ export function rolarDadosComVantagem(qD, fD, vantagens = 0, desvantagens = 0) {
     return { sD, rolagemTexto };
 }
 
+/**
+ * Rola dados simples (sem vantagem/desvantagem).
+ */
+function rolarDadosSimples(qtd, faces) {
+    let soma = 0;
+    let rolls = [];
+    for (let i = 0; i < qtd; i++) {
+        let r = Math.floor(Math.random() * faces) + 1;
+        soma += r;
+        rolls.push(r);
+    }
+    return { soma, rolls };
+}
+
+function formatarRolagem(qtd, faces, rolls, soma) {
+    if (rolls.length <= 30) {
+        return `${qtd}d${faces}: [${rolls.join(', ')}] = ${soma}`;
+    }
+    return `${qtd}d${faces}: [${rolls.slice(0, 30).join(', ')}... +${(rolls.length - 30).toLocaleString('pt-BR')} dados] = ${soma}`;
+}
+
+/**
+ * Calcula o dano de um sub-componente (habilidade ou arma).
+ * Formula: rolagemDados × (somaAtributos + somaEnergias + somaHabVinculadas)
+ * - Cada atributo: getMaximo(ficha, attr) × mUnico
+ * - Cada energia: combustao × mUnico × mPotencial
+ */
+function calcularSubDano({ qtdDados, facesDados, sels, combustaoPorEnergia, minhaFicha, mUnico, mPotencial }) {
+    if (qtdDados <= 0) return { dano: 0, rolagem: '', rolagemValor: 0, somaTermos: 0, detalhesTermos: [] };
+
+    let { soma, rolls } = rolarDadosSimples(qtdDados, facesDados);
+    let somaTermos = 0;
+    let detalhesTermos = [];
+
+    for (let i = 0; i < sels.length; i++) {
+        let val = getMaximo(minhaFicha, sels[i]);
+        let termo = val * mUnico;
+        somaTermos += termo;
+        let nomeAttr = (minhaFicha[sels[i]] && minhaFicha[sels[i]].nome) || sels[i].toUpperCase();
+        detalhesTermos.push(`<span style="color:#ff003c">${nomeAttr}(${val.toLocaleString('pt-BR')})</span>×Uni(${mUnico})`);
+    }
+
+    let energyKeys = Object.keys(combustaoPorEnergia);
+    for (let i = 0; i < energyKeys.length; i++) {
+        let key = energyKeys[i];
+        let combustao = combustaoPorEnergia[key];
+        if (combustao > 0) {
+            let termo = combustao * mUnico * mPotencial;
+            somaTermos += termo;
+            detalhesTermos.push(`<span style="color:#0ff">${key.toUpperCase()}(${combustao.toLocaleString('pt-BR')})</span>×Uni(${mUnico})×Pot(${mPotencial})`);
+        }
+    }
+
+    let dano = Math.floor(soma * somaTermos);
+    let rolagem = formatarRolagem(qtdDados, facesDados, rolls, soma);
+
+    return { dano, rolagem, rolagemValor: soma, somaTermos, detalhesTermos };
+}
+
 export function calcularDano({
     qDBase, qDExtra, qDMagia, fD,
     pE, pMagiaTotal, rE, mE, db, mdb,
@@ -93,10 +152,11 @@ export function calcularDano({
         nomesMagias.push(atk.nome);
     });
 
-    let gastoPercentualPorEnergia = pE / engs.length;
-    let gastoMagiaPorEnergia = pMagiaTotal / engs.length;
+    let gastoPercentualPorEnergia = engs.length > 0 ? pE / engs.length : 0;
+    let gastoMagiaPorEnergia = engs.length > 0 ? pMagiaTotal / engs.length : 0;
     let chkCustos = [];
     let custoTxt = [];
+    let combustaoPorEnergia = {};
 
     for (let i = 0; i < engs.length; i++) {
         let eKey = engs[i];
@@ -118,19 +178,182 @@ export function calcularDano({
             return { erro: `Sem ${eKey.toUpperCase()} suficiente! Custo Final: ${crTotal.toLocaleString('pt-BR')}` };
         }
 
+        combustaoPorEnergia[eKey] = gtDrenoBase + gtDrenoMagia;
         chkCustos.push({ k: eKey, cr: crTotal, p: (gtDrenoBase + gtDrenoMagia) });
         if (crTotal > 0) custoTxt.push(`${crTotal.toLocaleString('pt-BR')} ${eKey.toUpperCase()}`);
     }
 
     let drenos = [];
     let gtBase = 0;
-    let cTotal = 0;
     for (let i = 0; i < chkCustos.length; i++) {
         drenos.push({ key: chkCustos[i].k, valor: chkCustos[i].cr });
-        cTotal += chkCustos[i].cr;
         gtBase += chkCustos[i].p;
     }
 
+    let uni = 1.0;
+    for (let i = 0; i < uArr.length; i++) uni *= uArr[i];
+    let bFora = getBuffs(minhaFicha, 'dano');
+    let uniTotal = uni;
+    for (let i = 0; i < bFora.munico.length; i++) uniTotal *= bFora.munico[i];
+
+    let atrNames = [];
+    for (let i = 0; i < sels.length; i++) atrNames.push((minhaFicha[sels[i]] && minhaFicha[sels[i]].nome) || sels[i].toUpperCase());
+
+    let armaEquipada = itensEquipados.find(i => i.tipo === 'arma');
+    let poderesAtivos = (minhaFicha.poderes || []).filter(p => p && p.ativa && (p.dadosQtd || 0) > 0);
+
+    let temNovoSistema = (armaEquipada && (armaEquipada.dadosQtd || 0) > 0) || poderesAtivos.length > 0;
+
+    let totalGer = m1 * bFora.mgeral;
+    let totalBas = m2 * bFora.mbase;
+    let totalFor = m4 * bFora.mformas;
+    let totalAbs = m5 * bFora.mabs;
+
+    let multArr = [];
+    if (totalBas !== 1) multArr.push(`x${totalBas.toFixed(2)}(Bas)`);
+    if (totalFor !== 1) multArr.push(`x${totalFor.toFixed(2)}(For)`);
+    if (totalGer !== 1) multArr.push(`x${totalGer.toFixed(2)}(Ger)`);
+    if (totalAbs !== 1) multArr.push(`x${totalAbs.toFixed(2)}(Abs)`);
+    if (uniTotal !== 1) multArr.push(`x${uniTotal.toFixed(2)}(Uni)`);
+    if (iMultDano !== 1) multArr.push(`x${iMultDano.toFixed(2)}(Eqp)`);
+    let multStr = multArr.length > 0 ? multArr.join(' * ') : 'Nenhum (x1)';
+
+    if (temNovoSistema) {
+        let habsVinculadas = armaEquipada
+            ? poderesAtivos.filter(p => p.armaVinculada && String(p.armaVinculada) === String(armaEquipada.id))
+            : [];
+        let habsLivres = poderesAtivos.filter(p => {
+            if (!p.armaVinculada) return true;
+            if (!armaEquipada) return true;
+            return String(p.armaVinculada) !== String(armaEquipada.id);
+        });
+
+        let resultadoArma = null;
+        if (armaEquipada && (armaEquipada.dadosQtd || 0) > 0) {
+            let habVincResults = [];
+            let somaHabVinc = 0;
+            for (let i = 0; i < habsVinculadas.length; i++) {
+                let hab = habsVinculadas[i];
+                let r = calcularSubDano({
+                    qtdDados: hab.dadosQtd, facesDados: hab.dadosFaces || 20,
+                    sels, combustaoPorEnergia, minhaFicha, mUnico: uniTotal, mPotencial: m3
+                });
+                r.nome = hab.nome;
+                somaHabVinc += r.dano;
+                habVincResults.push(r);
+            }
+
+            let { soma: rolagemArma, rolls: rollsArma } = rolarDadosSimples(armaEquipada.dadosQtd, armaEquipada.dadosFaces || 20);
+
+            let somaTermosArma = 0;
+            let detalhesArma = [];
+            for (let i = 0; i < sels.length; i++) {
+                let val = getMaximo(minhaFicha, sels[i]);
+                somaTermosArma += val * uniTotal;
+                detalhesArma.push(`<span style="color:#ff003c">${atrNames[i]}(${val.toLocaleString('pt-BR')})</span>×Uni(${uniTotal})`);
+            }
+            let engKeys = Object.keys(combustaoPorEnergia);
+            for (let i = 0; i < engKeys.length; i++) {
+                let comb = combustaoPorEnergia[engKeys[i]];
+                if (comb > 0) {
+                    somaTermosArma += comb * uniTotal * m3;
+                    detalhesArma.push(`<span style="color:#0ff">${engKeys[i].toUpperCase()}(${comb.toLocaleString('pt-BR')})</span>×Uni(${uniTotal})×Pot(${m3})`);
+                }
+            }
+            somaTermosArma += somaHabVinc;
+
+            let danoArma = Math.floor(rolagemArma * somaTermosArma);
+
+            resultadoArma = {
+                dano: danoArma,
+                rolagem: formatarRolagem(armaEquipada.dadosQtd, armaEquipada.dadosFaces || 20, rollsArma, rolagemArma),
+                rolagemValor: rolagemArma,
+                nome: armaEquipada.nome,
+                habVincResults,
+                detalhesArma,
+                somaTermosArma,
+                somaHabVinc
+            };
+        }
+
+        let resultadosHabLivres = [];
+        for (let i = 0; i < habsLivres.length; i++) {
+            let hab = habsLivres[i];
+            let r = calcularSubDano({
+                qtdDados: hab.dadosQtd, facesDados: hab.dadosFaces || 20,
+                sels, combustaoPorEnergia, minhaFicha, mUnico: uniTotal, mPotencial: m3
+            });
+            r.nome = hab.nome;
+            resultadosHabLivres.push(r);
+        }
+
+        let somaDanos = (resultadoArma ? resultadoArma.dano : 0);
+        for (let i = 0; i < resultadosHabLivres.length; i++) somaDanos += resultadosHabLivres[i].dano;
+        somaDanos += iDanoBruto;
+
+        let multTotal = totalBas * totalFor * totalGer * totalAbs * uniTotal * iMultDano;
+        let total = Math.floor(somaDanos * multTotal);
+        if (isNaN(total)) total = 0;
+
+        let letal = Math.max(0, contarDigitos(total) - 8) + iLetalidade;
+        let dRed = letal > 0 ? Math.floor(total / Math.pow(10, letal)) : total;
+
+        let txtEng = '';
+        if ((pE > 0 || pMagiaTotal > 0) && engs.length > 0) {
+            txtEng = `<br>Custo de Combustao: <strong style="color:#f0f;">${custoTxt.join(' e ')}</strong>`;
+        }
+
+        let detalheLinhas = [`<span style="color:#ffcc00; font-weight:bold;">[MAQUINA DE CALCULO]</span>`];
+
+        if (resultadoArma) {
+            let habVincTxt = '';
+            if (resultadoArma.habVincResults.length > 0) {
+                let habParts = resultadoArma.habVincResults.map(h => `<span style="color:#f0f">${h.nome}(${h.dano.toLocaleString('pt-BR')})</span>`);
+                habVincTxt = ` + Habs: ${habParts.join(' + ')}`;
+            }
+            detalheLinhas.push(`<strong style="color:#0f0">Dano de Arma [${resultadoArma.nome}]:</strong> <span style="color:#0f0">${resultadoArma.rolagem}</span> x (${resultadoArma.detalhesArma.join(' + ')}${habVincTxt}) = <strong style="color:#0f0">${resultadoArma.dano.toLocaleString('pt-BR')}</strong>`);
+        }
+
+        for (let i = 0; i < resultadosHabLivres.length; i++) {
+            let h = resultadosHabLivres[i];
+            detalheLinhas.push(`<strong style="color:#f0f">Dano de Habilidade [${h.nome}]:</strong> <span style="color:#f0f">${h.rolagem}</span> x (${h.detalhesTermos.join(' + ')}) = <strong style="color:#f0f">${h.dano.toLocaleString('pt-BR')}</strong>`);
+        }
+
+        detalheLinhas.push(`<strong>Soma:</strong> ${somaDanos.toLocaleString('pt-BR')}${iDanoBruto > 0 ? ` (inclui +${iDanoBruto.toLocaleString('pt-BR')} bruto)` : ''}`);
+        detalheLinhas.push(`<strong>Multiplicadores:</strong> ${multStr} = <strong style="color:#fff;">x${multTotal % 1 === 0 ? multTotal : multTotal.toFixed(2)}</strong>`);
+        detalheLinhas.push(`<strong>Dano Total:</strong> ${somaDanos.toLocaleString('pt-BR')} x ${multTotal % 1 === 0 ? multTotal : multTotal.toFixed(2)} = <strong style="color:#ff003c; font-size:1.1em;">${total.toLocaleString('pt-BR')}</strong>`);
+
+        let detalheConta = `<div style="margin-top: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 5px; border-left: 3px solid #ffcc00; font-family: monospace; font-size: 0.95em; color: #ccc;">
+        ${detalheLinhas.join('<br>')}
+        </div>`;
+
+        let rolagemTextoFinal = '';
+        if (resultadoArma) rolagemTextoFinal += `Arma: ${resultadoArma.rolagem}`;
+        for (let i = 0; i < resultadosHabLivres.length; i++) {
+            if (rolagemTextoFinal) rolagemTextoFinal += ' | ';
+            rolagemTextoFinal += `${resultadosHabLivres[i].nome}: ${resultadosHabLivres[i].rolagem}`;
+        }
+
+        let armaStr = "";
+        let combinados = nomesArmas.concat(nomesMagias);
+        if (combinados.length) { armaStr = ` usando <strong>${combinados.join(' e ')}</strong>`; }
+        if (elementosAtaque.length) { armaStr += ` [${elementosAtaque.join(' / ')}]`; }
+
+        return {
+            dano: dRed,
+            letalidade: letal,
+            rolagem: rolagemTextoFinal,
+            rolagemMagica: "",
+            atributosUsados: atrNames.join(' + '),
+            detalheEnergia: txtEng,
+            armaStr: armaStr,
+            detalheConta: detalheConta,
+            drenos: drenos,
+            energiaDrenada: true
+        };
+    }
+
+    // === SISTEMA LEGADO (sem arma com dados e sem habilidades com dados) ===
     let sDadosBase = 0;
     let rDadosBase = [];
     let totalDice = qDBase + qDExtra + qDMagia;
@@ -151,24 +374,8 @@ export function calcularDano({
     let fixoTotal = dbCal + iDanoBruto;
     let dIni = (powerStatus * sDadosBase) + eCal + fixoTotal;
 
-    let uni = 1.0;
-    for (let i = 0; i < uArr.length; i++) uni *= uArr[i];
-
-    let bFora = getBuffs(minhaFicha, 'dano');
-
-    let multArr = [];
-    let totalGer = m1 * bFora.mgeral; if (totalGer !== 1) multArr.push(`x${totalGer.toFixed(2)}(Ger)`);
-    let totalBas = m2 * bFora.mbase; if (totalBas !== 1) multArr.push(`x${totalBas.toFixed(2)}(Bas)`);
-    let totalFor = m4 * bFora.mformas; if (totalFor !== 1) multArr.push(`x${totalFor.toFixed(2)}(For)`);
-    let totalAbs = m5 * bFora.mabs; if (totalAbs !== 1) multArr.push(`x${totalAbs.toFixed(2)}(Abs)`);
     if (m3 !== 1) multArr.push(`x${m3.toFixed(2)}(Pot)`);
-
-    let uniTotal = uni;
-    for (let i = 0; i < bFora.munico.length; i++) uniTotal *= bFora.munico[i];
-    if (uniTotal !== 1) multArr.push(`x${uniTotal.toFixed(2)}(Uni)`);
-
-    if (iMultDano !== 1) multArr.push(`x${iMultDano.toFixed(2)}(Eqp)`);
-    let multStr = multArr.length > 0 ? multArr.join(' * ') : 'Nenhum (x1)';
+    let multStrLeg = multArr.length > 0 ? multArr.join(' * ') : 'Nenhum (x1)';
 
     let multTotal = totalGer * totalBas * m3 * totalFor * totalAbs * uniTotal * iMultDano;
     let total = Math.floor(dIni * multTotal);
@@ -179,7 +386,7 @@ export function calcularDano({
 
     let txtEng = '';
     if ((pE > 0 || pMagiaTotal > 0) && engs.length > 0) {
-        txtEng = `<br>📉 Custo de Combustão Pago: <strong style="color:#f0f;">${custoTxt.join(' e ')}</strong> | 💥 Dano Bruto Injetado: <strong style="color:#0f0;">+${eCal.toLocaleString('pt-BR')}</strong>`;
+        txtEng = `<br>Custo de Combustao: <strong style="color:#f0f;">${custoTxt.join(' e ')}</strong> | Dano Injetado: <strong style="color:#0f0;">+${eCal.toLocaleString('pt-BR')}</strong>`;
     }
 
     let dIniExplicado = `(Status Total: ${powerStatus.toLocaleString('pt-BR')} * Dados: ${sDadosBase})`;
@@ -187,14 +394,11 @@ export function calcularDano({
     if (fixoTotal > 0) dIniExplicado += ` + ${fixoTotal.toLocaleString('pt-BR')} (Fixo)`;
 
     let detalheConta = `<div style="margin-top: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 5px; border-left: 3px solid #ffcc00; font-family: monospace; font-size: 0.95em; color: #ccc;">
-        <span style="color:#ffcc00; font-weight:bold;">[MÁQUINA DE CÁLCULO]</span><br>
+        <span style="color:#ffcc00; font-weight:bold;">[MAQUINA DE CALCULO]</span><br>
         <strong>1. Base:</strong> ${dIniExplicado} = <strong style="color:#fff;">${dIni.toLocaleString('pt-BR')}</strong><br>
-        <strong>2. Multiplicadores:</strong> ${multStr} = <strong style="color:#fff;">x${multTotal % 1 === 0 ? multTotal : multTotal.toFixed(2)}</strong><br>
+        <strong>2. Multiplicadores:</strong> ${multStrLeg} = <strong style="color:#fff;">x${multTotal % 1 === 0 ? multTotal : multTotal.toFixed(2)}</strong><br>
         <strong>3. Dano Total Bruto:</strong> ${dIni.toLocaleString('pt-BR')} * ${multTotal % 1 === 0 ? multTotal : multTotal.toFixed(2)} = <strong style="color:#ff003c; font-size:1.1em;">${total.toLocaleString('pt-BR')}</strong>
         </div>`;
-
-    let atrNames = [];
-    for (let i = 0; i < sels.length; i++) atrNames.push(minhaFicha[sels[i]].nome || sels[i].toUpperCase());
 
     let armaStr = "";
     let combinados = nomesArmas.concat(nomesMagias);

@@ -22,6 +22,8 @@ export default function ArsenalPanel() {
     const [tipoItem, setTipoItem] = useState('arma');
     const [bonusTipo, setBonusTipo] = useState('mult_dano');
     const [bonusValor, setBonusValor] = useState('');
+    const [armaDadosQtd, setArmaDadosQtd] = useState(1);
+    const [armaDadosFaces, setArmaDadosFaces] = useState(20);
 
     const formRef = useRef(null);
 
@@ -43,6 +45,10 @@ export default function ArsenalPanel() {
                     ficha.inventario[ix].elemento = 'Neutro';
                     ficha.inventario[ix].bonusTipo = bonusTipo;
                     ficha.inventario[ix].bonusValor = bonusValor;
+                    if (tipoItem === 'arma') {
+                        ficha.inventario[ix].dadosQtd = parseInt(armaDadosQtd) || 1;
+                        ficha.inventario[ix].dadosFaces = parseInt(armaDadosFaces) || 20;
+                    }
                 }
             } else {
                 ficha.inventario.push({
@@ -52,6 +58,8 @@ export default function ArsenalPanel() {
                     elemento: 'Neutro',
                     bonusTipo: bonusTipo,
                     bonusValor: bonusValor,
+                    dadosQtd: tipoItem === 'arma' ? (parseInt(armaDadosQtd) || 1) : 0,
+                    dadosFaces: tipoItem === 'arma' ? (parseInt(armaDadosFaces) || 20) : 0,
                     equipado: false
                 });
             }
@@ -76,12 +84,19 @@ export default function ArsenalPanel() {
         setTipoItem(p.tipo);
         setBonusTipo(p.bonusTipo);
         setBonusValor(p.bonusValor);
+        setArmaDadosQtd(p.dadosQtd || 1);
+        setArmaDadosFaces(p.dadosFaces || 20);
         if (formRef.current) formRef.current.scrollIntoView({ behavior: 'smooth' });
     }
 
     function cancelarEdicaoItem() {
         setItemEditandoId(null);
         setNomeItem('');
+        setTipoItem('arma');
+        setBonusTipo('mult_dano');
+        setBonusValor('');
+        setArmaDadosQtd(1);
+        setArmaDadosFaces(20);
     }
 
     function toggleEquiparItem(id) {
@@ -151,6 +166,20 @@ export default function ArsenalPanel() {
                     </div>
                 </div>
 
+                {tipoItem === 'arma' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+                        <div>
+                            <label style={{ color: '#aaa', fontSize: '0.85em' }}>Dados de Dano (qtd)</label>
+                            <input className="input-neon" type="number" min="1" value={armaDadosQtd} onChange={e => setArmaDadosQtd(e.target.value)} />
+                        </div>
+                        <div>
+                            <label style={{ color: '#aaa', fontSize: '0.85em' }}>Faces (d)</label>
+                            <input className="input-neon" type="number" min="1" value={armaDadosFaces} onChange={e => setArmaDadosFaces(e.target.value)} />
+                        </div>
+                    </div>
+                )}
+                {tipoItem === 'arma' && <p style={{ color: '#0f0', fontSize: '0.85em', margin: '5px 0 0' }}>Dano da Arma: {armaDadosQtd}d{armaDadosFaces}</p>}
+
                 <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
                     <button className="btn-neon btn-gold" onClick={salvarNovoItem} style={{ flex: 1 }}>
                         {itemEditandoId ? 'Salvar Edicao' : 'Forjar Equipamento'}
@@ -188,7 +217,7 @@ export default function ArsenalPanel() {
                                             {icon} {p.nome || 'Item'}
                                         </h3>
                                         <p style={{ color: '#aaa', fontSize: '0.85em', margin: '5px 0 0' }}>
-                                            Classe: {(p.tipo || '').toUpperCase()}
+                                            Classe: {(p.tipo || '').toUpperCase()}{p.tipo === 'arma' && p.dadosQtd ? ` | Dano: ${p.dadosQtd}d${p.dadosFaces || 20}` : ''}
                                         </p>
                                         <p style={{ color: '#0ff', fontSize: '0.9em', margin: '5px 0 0' }}>
                                             {propText}: <strong style={{ color: '#ffcc00' }}>{prefixo}{p.bonusValor || 0}</strong>
