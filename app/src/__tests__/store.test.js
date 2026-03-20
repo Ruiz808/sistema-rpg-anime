@@ -81,10 +81,15 @@ describe('fichaPadrao', () => {
     });
 
     it('has default ataqueConfig', () => {
-        expect(fichaPadrao.ataqueConfig.dadosBase).toBe(1);
-        expect(fichaPadrao.ataqueConfig.faces).toBe(20);
-        expect(fichaPadrao.ataqueConfig.statusSelecionados).toEqual(['forca']);
-        expect(fichaPadrao.ataqueConfig.energiasSelecionadas).toEqual(['mana']);
+        expect(fichaPadrao.ataqueConfig.armaStatusUsados).toEqual(['forca']);
+        expect(fichaPadrao.ataqueConfig.armaEnergiaCombustao).toBe('mana');
+        expect(fichaPadrao.ataqueConfig.armaPercEnergia).toBe(0);
+    });
+
+    it('has default dano stat', () => {
+        expect(fichaPadrao.dano.mBase).toBe(1.0);
+        expect(fichaPadrao.dano.mGeral).toBe(1.0);
+        expect(fichaPadrao.dano.mPotencial).toBe(1.0);
     });
 
     it('has default divisores all set to 1', () => {
@@ -231,9 +236,9 @@ describe('useStore actions', () => {
         });
 
         it('loads ataqueConfig with defaults', () => {
-            useStore.getState().carregarDadosFicha({ ataqueConfig: { dadosBase: 5 } });
-            expect(useStore.getState().minhaFicha.ataqueConfig.dadosBase).toBe(5);
-            expect(useStore.getState().minhaFicha.ataqueConfig.faces).toBe(20); // default
+            useStore.getState().carregarDadosFicha({ ataqueConfig: { armaPercEnergia: 15 } });
+            expect(useStore.getState().minhaFicha.ataqueConfig.armaPercEnergia).toBe(15);
+            expect(useStore.getState().minhaFicha.ataqueConfig.armaStatusUsados).toEqual(['forca']); // default
         });
     });
 

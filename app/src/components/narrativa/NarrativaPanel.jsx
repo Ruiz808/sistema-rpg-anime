@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import useStore from '../../stores/useStore';
+import { getBuffs } from '../../core/attributes';
 import { salvarFichaSilencioso } from '../../services/firebase-sync';
 import Jukebox from '../jukebox/Jukebox'
 
@@ -33,6 +34,14 @@ export default function NarrativaPanel() {
     const [notaAbs, setNotaAbs] = useState('');
     const [notaUnico, setNotaUnico] = useState('');
 
+    // Multiplicadores de Dano (base values)
+    const [dmBase, setDmBase] = useState(1.0);
+    const [dmGeral, setDmGeral] = useState(1.0);
+    const [dmFormas, setDmFormas] = useState(1.0);
+    const [dmAbsoluto, setDmAbsoluto] = useState(1.0);
+    const [dmPotencial, setDmPotencial] = useState(1.0);
+    const [dmUnico, setDmUnico] = useState('1.0');
+
     // Passive creation/editing
     const [passivaNome, setPassivaNome] = useState('');
     const [passivaTipo, setPassivaTipo] = useState('Vantagem');
@@ -63,7 +72,15 @@ export default function NarrativaPanel() {
         setNotaFormas(notas.formas || '');
         setNotaAbs(notas.abs || '');
         setNotaUnico(notas.unico || '');
-    }, [minhaFicha.bio, minhaFicha.notas]);
+
+        const d = minhaFicha.dano || {};
+        setDmBase(d.mBase ?? 1.0);
+        setDmGeral(d.mGeral ?? 1.0);
+        setDmFormas(d.mFormas ?? 1.0);
+        setDmAbsoluto(d.mAbsoluto ?? 1.0);
+        setDmPotencial(d.mPotencial ?? 1.0);
+        setDmUnico(d.mUnico ?? '1.0');
+    }, [minhaFicha.bio, minhaFicha.notas, minhaFicha.dano]);
 
     useEffect(() => {
         carregarBio();
@@ -88,6 +105,14 @@ export default function NarrativaPanel() {
             ficha.notas.formas = notaFormas;
             ficha.notas.abs = notaAbs;
             ficha.notas.unico = notaUnico;
+
+            if (!ficha.dano) ficha.dano = {};
+            ficha.dano.mBase = parseFloat(dmBase) || 1.0;
+            ficha.dano.mGeral = parseFloat(dmGeral) || 1.0;
+            ficha.dano.mFormas = parseFloat(dmFormas) || 1.0;
+            ficha.dano.mAbsoluto = parseFloat(dmAbsoluto) || 1.0;
+            ficha.dano.mPotencial = parseFloat(dmPotencial) || 1.0;
+            ficha.dano.mUnico = dmUnico || '1.0';
         });
         salvarFichaSilencioso();
 
@@ -169,6 +194,8 @@ export default function NarrativaPanel() {
     }
 
     const passivas = minhaFicha.passivas || [];
+
+    const buffsDano = useMemo(() => getBuffs(minhaFicha, 'dano'), [minhaFicha.poderes, minhaFicha.passivas]);
 
     // Auto-audit panel
     const relatorioAuditoria = (() => {
@@ -274,9 +301,41 @@ export default function NarrativaPanel() {
                 </div>
             </div>
 
+            {/* Multiplicadores de Dano */}
+            <div className="def-box" style={{ marginTop: 15 }}>
+                <h3 style={{ color: '#ff003c', marginBottom: 10 }}>Multiplicadores de Dano (Base)</h3>
+                <p style={{ color: '#888', fontSize: '0.8em', margin: '0 0 10px' }}>Valores base. Habilidades ativas somam automaticamente.</p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                    <div>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Base {buffsDano._hasBuff.mbase && <span style={{ color: '#0f0', fontSize: '0.8em' }}>(Buff: +{buffsDano.mbase.toFixed(2)})</span>}</label>
+                        <input className="input-neon" type="number" step="0.01" value={dmBase} onChange={e => setDmBase(e.target.value)} />
+                    </div>
+                    <div>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Geral {buffsDano._hasBuff.mgeral && <span style={{ color: '#0f0', fontSize: '0.8em' }}>(Buff: +{buffsDano.mgeral.toFixed(2)})</span>}</label>
+                        <input className="input-neon" type="number" step="0.01" value={dmGeral} onChange={e => setDmGeral(e.target.value)} />
+                    </div>
+                    <div>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Formas {buffsDano._hasBuff.mformas && <span style={{ color: '#0f0', fontSize: '0.8em' }}>(Buff: +{buffsDano.mformas.toFixed(2)})</span>}</label>
+                        <input className="input-neon" type="number" step="0.01" value={dmFormas} onChange={e => setDmFormas(e.target.value)} />
+                    </div>
+                    <div>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Absoluto {buffsDano._hasBuff.mabs && <span style={{ color: '#0f0', fontSize: '0.8em' }}>(Buff: +{buffsDano.mabs.toFixed(2)})</span>}</label>
+                        <input className="input-neon" type="number" step="0.01" value={dmAbsoluto} onChange={e => setDmAbsoluto(e.target.value)} />
+                    </div>
+                    <div>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Potencial</label>
+                        <input className="input-neon" type="number" step="0.01" value={dmPotencial} onChange={e => setDmPotencial(e.target.value)} />
+                    </div>
+                    <div>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Unico {buffsDano.munico.length > 0 && <span style={{ color: '#0f0', fontSize: '0.8em' }}>(Buff: x{buffsDano.munico.join(',')})</span>}</label>
+                        <input className="input-neon" type="text" value={dmUnico} onChange={e => setDmUnico(e.target.value)} />
+                    </div>
+                </div>
+            </div>
+
             {/* Notes */}
             <div className="def-box" style={{ marginTop: 15 }}>
-                <h3 style={{ color: '#0ff', marginBottom: 10 }}>Anotações de Multiplicadores</h3>
+                <h3 style={{ color: '#0ff', marginBottom: 10 }}>Anotacoes de Multiplicadores</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                     <div>
                         <label style={{ color: '#aaa', fontSize: '0.85em' }}>Base</label>
@@ -295,7 +354,7 @@ export default function NarrativaPanel() {
                         <textarea className="input-neon" id="nota-abs" value={notaAbs} onChange={e => setNotaAbs(e.target.value)} rows={2} style={{ resize: 'vertical' }} />
                     </div>
                     <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Único</label>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Unico</label>
                         <textarea className="input-neon" id="nota-unico" value={notaUnico} onChange={e => setNotaUnico(e.target.value)} rows={2} style={{ resize: 'vertical' }} />
                     </div>
                 </div>

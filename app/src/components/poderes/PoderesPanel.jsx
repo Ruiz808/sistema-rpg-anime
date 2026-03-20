@@ -39,6 +39,7 @@ export default function PoderesPanel() {
     const [imagemUrl, setImagemUrl] = useState('');
     const [dadosQtd, setDadosQtd] = useState(0);
     const [dadosFaces, setDadosFaces] = useState(20);
+    const [custoPercentual, setCustoPercentual] = useState(0);
     const [armaVinculada, setArmaVinculada] = useState('');
     const [novoAtr, setNovoAtr] = useState('forca');
     const [novoProp, setNovoProp] = useState('base');
@@ -74,6 +75,7 @@ export default function PoderesPanel() {
                     ficha.poderes[ix].imagemUrl = imagemUrl;
                     ficha.poderes[ix].dadosQtd = parseInt(dadosQtd) || 0;
                     ficha.poderes[ix].dadosFaces = parseInt(dadosFaces) || 20;
+                    ficha.poderes[ix].custoPercentual = parseFloat(custoPercentual) || 0;
                     ficha.poderes[ix].armaVinculada = armaVinculada;
                 }
             } else {
@@ -85,6 +87,7 @@ export default function PoderesPanel() {
                     imagemUrl: imagemUrl,
                     dadosQtd: parseInt(dadosQtd) || 0,
                     dadosFaces: parseInt(dadosFaces) || 20,
+                    custoPercentual: parseFloat(custoPercentual) || 0,
                     armaVinculada: armaVinculada
                 });
             }
@@ -108,6 +111,7 @@ export default function PoderesPanel() {
         setImagemUrl(p.imagemUrl || '');
         setDadosQtd(p.dadosQtd || 0);
         setDadosFaces(p.dadosFaces || 20);
+        setCustoPercentual(p.custoPercentual || 0);
         setArmaVinculada(p.armaVinculada || '');
         setEfeitosTemp(JSON.parse(JSON.stringify(p.efeitos || [])));
         
@@ -122,6 +126,7 @@ export default function PoderesPanel() {
         setImagemUrl('');
         setDadosQtd(0);
         setDadosFaces(20);
+        setCustoPercentual(0);
         setArmaVinculada('');
         setEfeitosTemp([]);
     };
@@ -182,7 +187,7 @@ export default function PoderesPanel() {
                 <input className="input-neon" type="text" placeholder="Nome do Poder" value={nomePoder} onChange={e => setNomePoder(e.target.value)} />
                 <input className="input-neon" type="text" placeholder="URL da Imagem (opcional)" value={imagemUrl} onChange={e => setImagemUrl(e.target.value)} style={{ marginTop: 5 }} />
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8, marginTop: 10 }}>
                     <div>
                         <label style={{ color: '#aaa', fontSize: '0.85em' }}>Dados de Dano (qtd)</label>
                         <input className="input-neon" type="number" min="0" value={dadosQtd} onChange={e => setDadosQtd(e.target.value)} placeholder="0" />
@@ -190,6 +195,10 @@ export default function PoderesPanel() {
                     <div>
                         <label style={{ color: '#aaa', fontSize: '0.85em' }}>Faces (d)</label>
                         <input className="input-neon" type="number" min="1" value={dadosFaces} onChange={e => setDadosFaces(e.target.value)} placeholder="20" />
+                    </div>
+                    <div>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Custo (% Energia)</label>
+                        <input className="input-neon" type="number" min="0" value={custoPercentual} onChange={e => setCustoPercentual(e.target.value)} placeholder="0" />
                     </div>
                     <div>
                         <label style={{ color: '#aaa', fontSize: '0.85em' }}>Vincular a Arma</label>
@@ -201,7 +210,7 @@ export default function PoderesPanel() {
                         </select>
                     </div>
                 </div>
-                {dadosQtd > 0 && <p style={{ color: '#f0f', fontSize: '0.85em', margin: '5px 0 0' }}>Dano: {dadosQtd}d{dadosFaces}{armaVinculada ? ' (vinculada a arma)' : ' (livre)'}</p>}
+                {dadosQtd > 0 && <p style={{ color: '#f0f', fontSize: '0.85em', margin: '5px 0 0' }}>Dano: {dadosQtd}d{dadosFaces}{custoPercentual > 0 ? ` | Custo: ${custoPercentual}%` : ''}{armaVinculada ? ' (vinculada a arma)' : ' (livre)'}</p>}
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8, marginTop: 10 }}>
                     <select className="input-neon" value={novoAtr} onChange={e => setNovoAtr(e.target.value)}>
@@ -261,6 +270,7 @@ export default function PoderesPanel() {
                             return `[${(e.atributo || '').replace('_', ' ').toUpperCase()}] ${(e.propriedade || '').toUpperCase()}: ${isMult ? 'x' : '+'}${e.valor || 0}`;
                         }).filter(Boolean);
                         const dadosTxt = (p.dadosQtd > 0) ? `${p.dadosQtd}d${p.dadosFaces || 20}` : '';
+                        const custoTxt = (p.custoPercentual > 0) ? `Custo: ${p.custoPercentual}%` : '';
                         const armaVinc = p.armaVinculada ? (minhaFicha.inventario || []).find(i => String(i.id) === String(p.armaVinculada)) : null;
 
                         return (
@@ -268,7 +278,7 @@ export default function PoderesPanel() {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 15 }}>
                                     <div>
                                         <h3 style={{ margin: 0, color: c, textShadow: `0 0 10px ${c}` }}>{p.nome || 'Poder'}</h3>
-                                        {dadosTxt && <p style={{ color: '#f0f', fontSize: '0.85em', margin: '5px 0 0' }}>Dano: {dadosTxt}{armaVinc ? ` (na ${armaVinc.nome})` : ' (livre)'}</p>}
+                                        {dadosTxt && <p style={{ color: '#f0f', fontSize: '0.85em', margin: '5px 0 0' }}>Dano: {dadosTxt}{custoTxt ? ` | ${custoTxt}` : ''}{armaVinc ? ` (na ${armaVinc.nome})` : ' (livre)'}</p>}
                                         <p style={{ color: '#aaa', fontSize: '0.85em', margin: '5px 0 0' }}>{txtArr.join(' | ') || 'Sem efeitos.'}</p>
                                     </div>
                                     <div style={{ display: 'flex', gap: 10 }}>

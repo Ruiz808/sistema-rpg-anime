@@ -115,13 +115,8 @@ function calcularSubDano({ qtdDados, facesDados, sels, combustaoPorEnergia, minh
     return { dano, rolagem, rolagemValor: soma, somaTermos, detalhesTermos };
 }
 
-export function calcularDano({
-    qDBase, qDExtra, qDMagia, fD,
-    pE, pMagiaTotal, rE, mE, db, mdb,
-    engs, sels, minhaFicha,
-    m1, m2, m3, m4, m5, uArr,
-    itensEquipados, magiasEquipadas
-}) {
+export function calcularDano({ minhaFicha, configArma, configHabilidades, itensEquipados }) {
+    // 1. Equipment bonuses
     let iMultDano = 1.0, iDanoBruto = 0, iLetalidade = 0;
     let elementosAtaque = [];
     let nomesArmas = [];
@@ -131,83 +126,204 @@ export function calcularDano({
         if (item.bonusTipo === 'mult_dano') iMultDano *= (v === 0 ? 1 : v);
         if (item.bonusTipo === 'dano_bruto') iDanoBruto += v;
         if (item.bonusTipo === 'letalidade') iLetalidade += Math.floor(v);
-
         if (item.tipo === 'arma' || item.tipo === 'artefato') {
-            if (item.elemento && item.elemento !== 'Neutro') {
-                elementosAtaque.push(formatElemSpan(item.elemento));
-            }
+            if (item.elemento && item.elemento !== 'Neutro') elementosAtaque.push(formatElemSpan(item.elemento));
             nomesArmas.push(item.nome);
         }
     });
 
     let nomesMagias = [];
+    let magiasEquipadas = minhaFicha.ataquesElementais ? minhaFicha.ataquesElementais.filter(e => e.equipado) : [];
     magiasEquipadas.forEach(atk => {
         let v = parseFloat(atk.bonusValor) || 0;
         if (atk.bonusTipo === 'mult_dano' && v > 0) iMultDano *= v;
         if (atk.bonusTipo === 'dano_bruto' && v > 0) iDanoBruto += v;
         if (atk.bonusTipo === 'letalidade' && v > 0) iLetalidade += Math.floor(v);
-        if (atk.elemento && atk.elemento !== 'Neutro') {
-            elementosAtaque.push(formatElemSpan(atk.elemento));
-        }
+        if (atk.elemento && atk.elemento !== 'Neutro') elementosAtaque.push(formatElemSpan(atk.elemento));
         nomesMagias.push(atk.nome);
     });
 
-    let gastoPercentualPorEnergia = engs.length > 0 ? pE / engs.length : 0;
-    let gastoMagiaPorEnergia = engs.length > 0 ? pMagiaTotal / engs.length : 0;
-    let chkCustos = [];
+    // 2. Multipliers from ficha.dano + buffs
+    let fichaD = minhaFicha.dano || {};
+    let bDano = getBuffs(minhaFicha, 'dano');
+
+    const calcAdd = (fichaVal, buffSum, hasBuff) => {
+        let v = parseFloat(fichaVal) || 1.0;
+        if (!hasBuff) return v;
+        return (v === 1.0 ? 0 : v) + buffSum;
+    };
+
+    let totalBas = calcAdd(fichaD.mBase, bDano.mbase, bDano._hasBuff.mbase);
+    let totalGer = calcAdd(fichaD.mGeral, bDano.mgeral, bDano._hasBuff.mgeral);
+    let totalFor = calcAdd(fichaD.mFormas, bDano.mformas, bDano._hasBuff.mformas);
+    let totalAbs = calcAdd(fichaD.mAbsoluto, bDano.mabs, bDano._hasBuff.mabs);
+    let totalPot = parseFloat(fichaD.mPotencial) || 1.0;
+
+    let u1 = tratarUnico(fichaD.mUnico || "1.0");
+    let uniTotal = 1.0;
+    for (let i = 0; i < u1.length; i++) uniTotal *= u1[i];
+    for (let i = 0; i < bDano.munico.length; i++) uniTotal *= bDano.munico[i];
+
+    // 3. Calculate energy drains (per-source)
+    let drenosPorEnergia = {};
+    let drenos = [];
     let custoTxt = [];
-    let combustaoPorEnergia = {};
 
-    for (let i = 0; i < engs.length; i++) {
-        let eKey = engs[i];
-        let eng = minhaFicha[eKey];
-        let mx = getMaximo(minhaFicha, eKey);
+    function calcularDreno(energiaKey, custoPerc) {
+        if (custoPerc <= 0) return { dreno: 0, combustao: 0 };
+        let eng = minhaFicha[energiaKey];
+        if (!eng) return { dreno: 0, combustao: 0 };
+        let mx = getMaximo(minhaFicha, energiaKey);
+        let combustao = Math.floor(mx * (custoPerc / 100));
+        let redBase = eng.reducaoCusto ? parseFloat(eng.reducaoCusto) : 0;
+        let bEnergia = getBuffs(minhaFicha, energiaKey);
+        let red = Math.min(100, redBase + bEnergia.reducaoCusto);
+        let dreno = Math.floor(combustao * (1 - (red / 100)));
+        return { dreno, combustao };
+    }
 
-        let gtDrenoBase = Math.floor(mx * (gastoPercentualPorEnergia / 100));
-        let gtDrenoMagia = Math.floor(mx * (gastoMagiaPorEnergia / 100));
+    // Weapon energy drain
+    let armaEquipada = itensEquipados.find(i => i.tipo === 'arma');
+    let armaCombustao = 0;
+    if (armaEquipada && configArma && configArma.percEnergia > 0) {
+        let { dreno, combustao } = calcularDreno(configArma.energiaCombustao, configArma.percEnergia);
+        armaCombustao = combustao;
+        if (dreno > 0) {
+            if (!drenosPorEnergia[configArma.energiaCombustao]) drenosPorEnergia[configArma.energiaCombustao] = 0;
+            drenosPorEnergia[configArma.energiaCombustao] += dreno;
+        }
+    }
 
-        let redBase = (eng && eng.reducaoCusto) ? parseFloat(eng.reducaoCusto) : 0;
-        let bEnergia = getBuffs(minhaFicha, eKey);
-        let red = Math.min(100, redBase + bEnergia.reducaoCusto + rE);
+    // Skill energy drains
+    let skillCombustoes = {};
+    for (let i = 0; i < configHabilidades.length; i++) {
+        let hab = configHabilidades[i];
+        if (hab.custoPercentual > 0) {
+            let { dreno, combustao } = calcularDreno(hab.energiaCombustao, hab.custoPercentual);
+            skillCombustoes[hab.id] = { energia: hab.energiaCombustao, combustao };
+            if (dreno > 0) {
+                if (!drenosPorEnergia[hab.energiaCombustao]) drenosPorEnergia[hab.energiaCombustao] = 0;
+                drenosPorEnergia[hab.energiaCombustao] += dreno;
+            }
+        } else {
+            skillCombustoes[hab.id] = { energia: hab.energiaCombustao, combustao: 0 };
+        }
+    }
 
-        let crDreno = Math.floor(gtDrenoBase * (1 - (red / 100)));
-        let crMagia = Math.floor(gtDrenoMagia * (1 - (red / 100)));
-        let crTotal = crDreno + crMagia;
+    // Check all energies have enough
+    for (let key in drenosPorEnergia) {
+        let eng = minhaFicha[key];
+        let totalDreno = drenosPorEnergia[key];
+        if (totalDreno > 0 && (eng?.atual ?? 0) < totalDreno) {
+            return { erro: `Sem ${key.toUpperCase()} suficiente! Custo Total: ${totalDreno.toLocaleString('pt-BR')}` };
+        }
+        if (totalDreno > 0) {
+            drenos.push({ key, valor: totalDreno });
+            custoTxt.push(`${totalDreno.toLocaleString('pt-BR')} ${key.toUpperCase()}`);
+        }
+    }
 
-        if (crTotal > 0 && (eng.atual || 0) < crTotal) {
-            return { erro: `Sem ${eKey.toUpperCase()} suficiente! Custo Final: ${crTotal.toLocaleString('pt-BR')}` };
+    // 4. Separate linked vs free skills
+    let habsVinculadas = armaEquipada
+        ? configHabilidades.filter(h => h.armaVinculada && String(h.armaVinculada) === String(armaEquipada.id))
+        : [];
+    let habsLivres = configHabilidades.filter(h => {
+        if (!h.armaVinculada) return true;
+        if (!armaEquipada) return true;
+        return String(h.armaVinculada) !== String(armaEquipada.id);
+    });
+
+    // 5. Calculate weapon damage
+    let resultadoArma = null;
+    if (armaEquipada && (armaEquipada.dadosQtd || 0) > 0) {
+        let habVincResults = [];
+        let somaHabVinc = 0;
+        for (let i = 0; i < habsVinculadas.length; i++) {
+            let hab = habsVinculadas[i];
+            let combData = skillCombustoes[hab.id] || { combustao: 0, energia: 'mana' };
+            let combustaoPorEnergia = {};
+            if (combData.combustao > 0) combustaoPorEnergia[combData.energia] = combData.combustao;
+
+            let r = calcularSubDano({
+                qtdDados: hab.dadosQtd || 0, facesDados: hab.dadosFaces || 20,
+                sels: hab.statusUsados || ['forca'], combustaoPorEnergia,
+                minhaFicha, mUnico: uniTotal, mPotencial: totalPot
+            });
+            r.nome = hab.nome;
+            somaHabVinc += r.dano;
+            habVincResults.push(r);
         }
 
-        combustaoPorEnergia[eKey] = gtDrenoBase + gtDrenoMagia;
-        chkCustos.push({ k: eKey, cr: crTotal, p: (gtDrenoBase + gtDrenoMagia) });
-        if (crTotal > 0) custoTxt.push(`${crTotal.toLocaleString('pt-BR')} ${eKey.toUpperCase()}`);
+        let { soma: rolagemArma, rolls: rollsArma } = rolarDadosSimples(armaEquipada.dadosQtd, armaEquipada.dadosFaces || 20);
+        let somaTermosArma = 0;
+        let detalhesArma = [];
+        let armaSels = configArma ? configArma.statusUsados || ['forca'] : ['forca'];
+
+        for (let i = 0; i < armaSels.length; i++) {
+            let val = getMaximo(minhaFicha, armaSels[i]);
+            somaTermosArma += val * uniTotal;
+            let nomeAttr = (minhaFicha[armaSels[i]] && minhaFicha[armaSels[i]].nome) || armaSels[i].toUpperCase();
+            detalhesArma.push(`<span style="color:#ff003c">${nomeAttr}(${val.toLocaleString('pt-BR')})</span>×Uni(${uniTotal})`);
+        }
+
+        if (armaCombustao > 0) {
+            somaTermosArma += armaCombustao * uniTotal * totalPot;
+            let engKey = configArma ? configArma.energiaCombustao : 'mana';
+            detalhesArma.push(`<span style="color:#0ff">${engKey.toUpperCase()}(${armaCombustao.toLocaleString('pt-BR')})</span>×Uni(${uniTotal})×Pot(${totalPot})`);
+        }
+
+        somaTermosArma += somaHabVinc;
+        let danoArma = Math.floor(rolagemArma * somaTermosArma);
+
+        resultadoArma = {
+            dano: danoArma,
+            rolagem: formatarRolagem(armaEquipada.dadosQtd, armaEquipada.dadosFaces || 20, rollsArma, rolagemArma),
+            rolagemValor: rolagemArma, nome: armaEquipada.nome,
+            habVincResults, detalhesArma, somaTermosArma, somaHabVinc
+        };
     }
 
-    let drenos = [];
-    let gtBase = 0;
-    for (let i = 0; i < chkCustos.length; i++) {
-        drenos.push({ key: chkCustos[i].k, valor: chkCustos[i].cr });
-        gtBase += chkCustos[i].p;
+    // 6. Free skill damages
+    let resultadosHabLivres = [];
+    for (let i = 0; i < habsLivres.length; i++) {
+        let hab = habsLivres[i];
+        if ((hab.dadosQtd || 0) <= 0) continue;
+
+        let combData = skillCombustoes[hab.id] || { combustao: 0, energia: 'mana' };
+        let combustaoPorEnergia = {};
+        if (combData.combustao > 0) combustaoPorEnergia[combData.energia] = combData.combustao;
+
+        let r = calcularSubDano({
+            qtdDados: hab.dadosQtd, facesDados: hab.dadosFaces || 20,
+            sels: hab.statusUsados || ['forca'], combustaoPorEnergia,
+            minhaFicha, mUnico: uniTotal, mPotencial: totalPot
+        });
+        r.nome = hab.nome;
+        resultadosHabLivres.push(r);
     }
 
-    let uni = 1.0;
-    for (let i = 0; i < uArr.length; i++) uni *= uArr[i];
-    let bFora = getBuffs(minhaFicha, 'dano');
-    let uniTotal = uni;
-    for (let i = 0; i < bFora.munico.length; i++) uniTotal *= bFora.munico[i];
+    // 7. Total damage
+    let somaDanos = (resultadoArma ? resultadoArma.dano : 0);
+    for (let i = 0; i < resultadosHabLivres.length; i++) somaDanos += resultadosHabLivres[i].dano;
+    somaDanos += iDanoBruto;
 
-    let atrNames = [];
-    for (let i = 0; i < sels.length; i++) atrNames.push((minhaFicha[sels[i]] && minhaFicha[sels[i]].nome) || sels[i].toUpperCase());
+    if (!resultadoArma && resultadosHabLivres.length === 0 && somaDanos === 0) {
+        return { erro: 'Nenhuma fonte de dano! Equipe uma arma com dados ou ative habilidades com dados de dano.' };
+    }
 
-    let armaEquipada = itensEquipados.find(i => i.tipo === 'arma');
-    let poderesAtivos = (minhaFicha.poderes || []).filter(p => p && p.ativa && (p.dadosQtd || 0) > 0);
+    // uniTotal applied here AND per-term in sub-calcs — intentional double-application per game formula
+    let multTotal = totalBas * totalFor * totalGer * totalAbs * uniTotal * iMultDano;
+    let total = Math.floor(somaDanos * multTotal);
+    if (isNaN(total)) total = 0;
 
-    let temNovoSistema = (armaEquipada && (armaEquipada.dadosQtd || 0) > 0) || poderesAtivos.length > 0;
+    let letal = Math.max(0, contarDigitos(total) - 8) + iLetalidade;
+    let dRed = letal > 0 ? Math.floor(total / Math.pow(10, letal)) : total;
 
-    let totalGer = m1 * bFora.mgeral;
-    let totalBas = m2 * bFora.mbase;
-    let totalFor = m4 * bFora.mformas;
-    let totalAbs = m5 * bFora.mabs;
+    // 8. Build output
+    let txtEng = '';
+    if (custoTxt.length > 0) {
+        txtEng = `<br>Custo de Combustao: <strong style="color:#f0f;">${custoTxt.join(' e ')}</strong>`;
+    }
 
     let multArr = [];
     if (totalBas !== 1) multArr.push(`x${totalBas.toFixed(2)}(Bas)`);
@@ -218,204 +334,53 @@ export function calcularDano({
     if (iMultDano !== 1) multArr.push(`x${iMultDano.toFixed(2)}(Eqp)`);
     let multStr = multArr.length > 0 ? multArr.join(' * ') : 'Nenhum (x1)';
 
-    if (temNovoSistema) {
-        let habsVinculadas = armaEquipada
-            ? poderesAtivos.filter(p => p.armaVinculada && String(p.armaVinculada) === String(armaEquipada.id))
-            : [];
-        let habsLivres = poderesAtivos.filter(p => {
-            if (!p.armaVinculada) return true;
-            if (!armaEquipada) return true;
-            return String(p.armaVinculada) !== String(armaEquipada.id);
-        });
+    let detalheLinhas = [`<span style="color:#ffcc00; font-weight:bold;">[MAQUINA DE CALCULO]</span>`];
 
-        let resultadoArma = null;
-        if (armaEquipada && (armaEquipada.dadosQtd || 0) > 0) {
-            let habVincResults = [];
-            let somaHabVinc = 0;
-            for (let i = 0; i < habsVinculadas.length; i++) {
-                let hab = habsVinculadas[i];
-                let r = calcularSubDano({
-                    qtdDados: hab.dadosQtd, facesDados: hab.dadosFaces || 20,
-                    sels, combustaoPorEnergia, minhaFicha, mUnico: uniTotal, mPotencial: m3
-                });
-                r.nome = hab.nome;
-                somaHabVinc += r.dano;
-                habVincResults.push(r);
-            }
-
-            let { soma: rolagemArma, rolls: rollsArma } = rolarDadosSimples(armaEquipada.dadosQtd, armaEquipada.dadosFaces || 20);
-
-            let somaTermosArma = 0;
-            let detalhesArma = [];
-            for (let i = 0; i < sels.length; i++) {
-                let val = getMaximo(minhaFicha, sels[i]);
-                somaTermosArma += val * uniTotal;
-                detalhesArma.push(`<span style="color:#ff003c">${atrNames[i]}(${val.toLocaleString('pt-BR')})</span>×Uni(${uniTotal})`);
-            }
-            let engKeys = Object.keys(combustaoPorEnergia);
-            for (let i = 0; i < engKeys.length; i++) {
-                let comb = combustaoPorEnergia[engKeys[i]];
-                if (comb > 0) {
-                    somaTermosArma += comb * uniTotal * m3;
-                    detalhesArma.push(`<span style="color:#0ff">${engKeys[i].toUpperCase()}(${comb.toLocaleString('pt-BR')})</span>×Uni(${uniTotal})×Pot(${m3})`);
-                }
-            }
-            somaTermosArma += somaHabVinc;
-
-            let danoArma = Math.floor(rolagemArma * somaTermosArma);
-
-            resultadoArma = {
-                dano: danoArma,
-                rolagem: formatarRolagem(armaEquipada.dadosQtd, armaEquipada.dadosFaces || 20, rollsArma, rolagemArma),
-                rolagemValor: rolagemArma,
-                nome: armaEquipada.nome,
-                habVincResults,
-                detalhesArma,
-                somaTermosArma,
-                somaHabVinc
-            };
+    if (resultadoArma) {
+        let habVincTxt = '';
+        if (resultadoArma.habVincResults.length > 0) {
+            let habParts = resultadoArma.habVincResults.map(h => `<span style="color:#f0f">${h.nome}(${h.dano.toLocaleString('pt-BR')})</span>`);
+            habVincTxt = ` + Habs: ${habParts.join(' + ')}`;
         }
-
-        let resultadosHabLivres = [];
-        for (let i = 0; i < habsLivres.length; i++) {
-            let hab = habsLivres[i];
-            let r = calcularSubDano({
-                qtdDados: hab.dadosQtd, facesDados: hab.dadosFaces || 20,
-                sels, combustaoPorEnergia, minhaFicha, mUnico: uniTotal, mPotencial: m3
-            });
-            r.nome = hab.nome;
-            resultadosHabLivres.push(r);
-        }
-
-        let somaDanos = (resultadoArma ? resultadoArma.dano : 0);
-        for (let i = 0; i < resultadosHabLivres.length; i++) somaDanos += resultadosHabLivres[i].dano;
-        somaDanos += iDanoBruto;
-
-        let multTotal = totalBas * totalFor * totalGer * totalAbs * uniTotal * iMultDano;
-        let total = Math.floor(somaDanos * multTotal);
-        if (isNaN(total)) total = 0;
-
-        let letal = Math.max(0, contarDigitos(total) - 8) + iLetalidade;
-        let dRed = letal > 0 ? Math.floor(total / Math.pow(10, letal)) : total;
-
-        let txtEng = '';
-        if ((pE > 0 || pMagiaTotal > 0) && engs.length > 0) {
-            txtEng = `<br>Custo de Combustao: <strong style="color:#f0f;">${custoTxt.join(' e ')}</strong>`;
-        }
-
-        let detalheLinhas = [`<span style="color:#ffcc00; font-weight:bold;">[MAQUINA DE CALCULO]</span>`];
-
-        if (resultadoArma) {
-            let habVincTxt = '';
-            if (resultadoArma.habVincResults.length > 0) {
-                let habParts = resultadoArma.habVincResults.map(h => `<span style="color:#f0f">${h.nome}(${h.dano.toLocaleString('pt-BR')})</span>`);
-                habVincTxt = ` + Habs: ${habParts.join(' + ')}`;
-            }
-            detalheLinhas.push(`<strong style="color:#0f0">Dano de Arma [${resultadoArma.nome}]:</strong> <span style="color:#0f0">${resultadoArma.rolagem}</span> x (${resultadoArma.detalhesArma.join(' + ')}${habVincTxt}) = <strong style="color:#0f0">${resultadoArma.dano.toLocaleString('pt-BR')}</strong>`);
-        }
-
-        for (let i = 0; i < resultadosHabLivres.length; i++) {
-            let h = resultadosHabLivres[i];
-            detalheLinhas.push(`<strong style="color:#f0f">Dano de Habilidade [${h.nome}]:</strong> <span style="color:#f0f">${h.rolagem}</span> x (${h.detalhesTermos.join(' + ')}) = <strong style="color:#f0f">${h.dano.toLocaleString('pt-BR')}</strong>`);
-        }
-
-        detalheLinhas.push(`<strong>Soma:</strong> ${somaDanos.toLocaleString('pt-BR')}${iDanoBruto > 0 ? ` (inclui +${iDanoBruto.toLocaleString('pt-BR')} bruto)` : ''}`);
-        detalheLinhas.push(`<strong>Multiplicadores:</strong> ${multStr} = <strong style="color:#fff;">x${multTotal % 1 === 0 ? multTotal : multTotal.toFixed(2)}</strong>`);
-        detalheLinhas.push(`<strong>Dano Total:</strong> ${somaDanos.toLocaleString('pt-BR')} x ${multTotal % 1 === 0 ? multTotal : multTotal.toFixed(2)} = <strong style="color:#ff003c; font-size:1.1em;">${total.toLocaleString('pt-BR')}</strong>`);
-
-        let detalheConta = `<div style="margin-top: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 5px; border-left: 3px solid #ffcc00; font-family: monospace; font-size: 0.95em; color: #ccc;">
-        ${detalheLinhas.join('<br>')}
-        </div>`;
-
-        let rolagemTextoFinal = '';
-        if (resultadoArma) rolagemTextoFinal += `Arma: ${resultadoArma.rolagem}`;
-        for (let i = 0; i < resultadosHabLivres.length; i++) {
-            if (rolagemTextoFinal) rolagemTextoFinal += ' | ';
-            rolagemTextoFinal += `${resultadosHabLivres[i].nome}: ${resultadosHabLivres[i].rolagem}`;
-        }
-
-        let armaStr = "";
-        let combinados = nomesArmas.concat(nomesMagias);
-        if (combinados.length) { armaStr = ` usando <strong>${combinados.join(' e ')}</strong>`; }
-        if (elementosAtaque.length) { armaStr += ` [${elementosAtaque.join(' / ')}]`; }
-
-        return {
-            dano: dRed,
-            letalidade: letal,
-            rolagem: rolagemTextoFinal,
-            rolagemMagica: "",
-            atributosUsados: atrNames.join(' + '),
-            detalheEnergia: txtEng,
-            armaStr: armaStr,
-            detalheConta: detalheConta,
-            drenos: drenos,
-            energiaDrenada: true
-        };
+        detalheLinhas.push(`<strong style="color:#0f0">Dano de Arma [${resultadoArma.nome}]:</strong> <span style="color:#0f0">${resultadoArma.rolagem}</span> x (${resultadoArma.detalhesArma.join(' + ')}${habVincTxt}) = <strong style="color:#0f0">${resultadoArma.dano.toLocaleString('pt-BR')}</strong>`);
     }
 
-    // === SISTEMA LEGADO (sem arma com dados e sem habilidades com dados) ===
-    let sDadosBase = 0;
-    let rDadosBase = [];
-    let totalDice = qDBase + qDExtra + qDMagia;
-    for (let i = 0; i < totalDice; i++) {
-        let r = Math.floor(Math.random() * fD) + 1;
-        sDadosBase += r;
-        if (i < 40) rDadosBase.push(r);
-    }
-    let rolagemTexto = totalDice <= 40
-        ? `[${rDadosBase.join(', ')}] (${sDadosBase})`
-        : `[${rDadosBase.join(', ')}... e mais ${(totalDice - 40).toLocaleString('pt-BR')} dados] (${sDadosBase})`;
-
-    let powerStatus = 0;
-    for (let i = 0; i < sels.length; i++) { powerStatus += getMaximo(minhaFicha, sels[i]); }
-
-    let eCal = Math.floor(gtBase * mE);
-    let dbCal = Math.floor(db * mdb);
-    let fixoTotal = dbCal + iDanoBruto;
-    let dIni = (powerStatus * sDadosBase) + eCal + fixoTotal;
-
-    if (m3 !== 1) multArr.push(`x${m3.toFixed(2)}(Pot)`);
-    let multStrLeg = multArr.length > 0 ? multArr.join(' * ') : 'Nenhum (x1)';
-
-    let multTotal = totalGer * totalBas * m3 * totalFor * totalAbs * uniTotal * iMultDano;
-    let total = Math.floor(dIni * multTotal);
-    if (isNaN(total)) total = 0;
-
-    let letal = Math.max(0, contarDigitos(total) - 8) + iLetalidade;
-    let dRed = letal > 0 ? Math.floor(total / Math.pow(10, letal)) : total;
-
-    let txtEng = '';
-    if ((pE > 0 || pMagiaTotal > 0) && engs.length > 0) {
-        txtEng = `<br>Custo de Combustao: <strong style="color:#f0f;">${custoTxt.join(' e ')}</strong> | Dano Injetado: <strong style="color:#0f0;">+${eCal.toLocaleString('pt-BR')}</strong>`;
+    for (let i = 0; i < resultadosHabLivres.length; i++) {
+        let h = resultadosHabLivres[i];
+        detalheLinhas.push(`<strong style="color:#f0f">Dano de Habilidade [${h.nome}]:</strong> <span style="color:#f0f">${h.rolagem}</span> x (${h.detalhesTermos.join(' + ')}) = <strong style="color:#f0f">${h.dano.toLocaleString('pt-BR')}</strong>`);
     }
 
-    let dIniExplicado = `(Status Total: ${powerStatus.toLocaleString('pt-BR')} * Dados: ${sDadosBase})`;
-    if (eCal > 0) dIniExplicado += ` + ${eCal.toLocaleString('pt-BR')} (Energia)`;
-    if (fixoTotal > 0) dIniExplicado += ` + ${fixoTotal.toLocaleString('pt-BR')} (Fixo)`;
+    detalheLinhas.push(`<strong>Soma:</strong> ${somaDanos.toLocaleString('pt-BR')}${iDanoBruto > 0 ? ` (inclui +${iDanoBruto.toLocaleString('pt-BR')} bruto)` : ''}`);
+    detalheLinhas.push(`<strong>Multiplicadores:</strong> ${multStr} = <strong style="color:#fff;">x${multTotal % 1 === 0 ? multTotal : multTotal.toFixed(2)}</strong>`);
+    detalheLinhas.push(`<strong>Dano Total:</strong> ${somaDanos.toLocaleString('pt-BR')} x ${multTotal % 1 === 0 ? multTotal : multTotal.toFixed(2)} = <strong style="color:#ff003c; font-size:1.1em;">${total.toLocaleString('pt-BR')}</strong>`);
 
     let detalheConta = `<div style="margin-top: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 5px; border-left: 3px solid #ffcc00; font-family: monospace; font-size: 0.95em; color: #ccc;">
-        <span style="color:#ffcc00; font-weight:bold;">[MAQUINA DE CALCULO]</span><br>
-        <strong>1. Base:</strong> ${dIniExplicado} = <strong style="color:#fff;">${dIni.toLocaleString('pt-BR')}</strong><br>
-        <strong>2. Multiplicadores:</strong> ${multStrLeg} = <strong style="color:#fff;">x${multTotal % 1 === 0 ? multTotal : multTotal.toFixed(2)}</strong><br>
-        <strong>3. Dano Total Bruto:</strong> ${dIni.toLocaleString('pt-BR')} * ${multTotal % 1 === 0 ? multTotal : multTotal.toFixed(2)} = <strong style="color:#ff003c; font-size:1.1em;">${total.toLocaleString('pt-BR')}</strong>
-        </div>`;
+    ${detalheLinhas.join('<br>')}
+    </div>`;
+
+    let rolagemTextoFinal = '';
+    if (resultadoArma) rolagemTextoFinal += `Arma: ${resultadoArma.rolagem}`;
+    for (let i = 0; i < resultadosHabLivres.length; i++) {
+        if (rolagemTextoFinal) rolagemTextoFinal += ' | ';
+        rolagemTextoFinal += `${resultadosHabLivres[i].nome}: ${resultadosHabLivres[i].rolagem}`;
+    }
+
+    let allAttrNames = new Set();
+    if (configArma) (configArma.statusUsados || []).forEach(s => allAttrNames.add((minhaFicha[s] && minhaFicha[s].nome) || s.toUpperCase()));
+    configHabilidades.forEach(h => (h.statusUsados || []).forEach(s => allAttrNames.add((minhaFicha[s] && minhaFicha[s].nome) || s.toUpperCase())));
 
     let armaStr = "";
     let combinados = nomesArmas.concat(nomesMagias);
-    if (combinados.length) { armaStr = ` usando <strong>${combinados.join(' e ')}</strong>`; }
-    if (elementosAtaque.length) { armaStr += ` [${elementosAtaque.join(' / ')}]`; }
+    if (combinados.length) armaStr = ` usando <strong>${combinados.join(' e ')}</strong>`;
+    if (elementosAtaque.length) armaStr += ` [${elementosAtaque.join(' / ')}]`;
 
     return {
-        dano: dRed,
-        letalidade: letal,
-        rolagem: rolagemTexto,
+        dano: dRed, letalidade: letal,
+        rolagem: rolagemTextoFinal || 'Nenhuma rolagem',
         rolagemMagica: "",
-        atributosUsados: atrNames.join(' + '),
-        detalheEnergia: txtEng,
-        armaStr: armaStr,
-        detalheConta: detalheConta,
-        drenos: drenos,
-        energiaDrenada: true
+        atributosUsados: [...allAttrNames].join(' + '),
+        detalheEnergia: txtEng, armaStr,
+        detalheConta, drenos, energiaDrenada: true
     };
 }
 
