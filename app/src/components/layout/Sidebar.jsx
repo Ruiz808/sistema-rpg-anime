@@ -14,7 +14,6 @@ const tabs = [
     { id: 'aba-elementos',  emoji: '\u{1F525}', label: 'Grim\u00F3rio Elemental' },
     { id: 'aba-log',        emoji: '\u{1F4DC}', label: 'Feed de Combate' },
     { id: 'aba-mapa',       emoji: '\u{1F5FA}\uFE0F', label: 'Mapa de Combate' },
-    { id: 'aba-narrativa',  emoji: '👽', label: 'Ficha Narrativa' },
     { id: 'aba-musica',     emoji: '🎧', label: 'Mesa de Som' }
 ];
 

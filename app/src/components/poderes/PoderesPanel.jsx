@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import useStore from '../../stores/useStore';
 import { getMaximo } from '../../core/attributes';
 import { salvarFichaSilencioso } from '../../services/firebase-sync';
@@ -32,6 +32,8 @@ export default function PoderesPanel() {
     const updateFicha = useStore(s => s.updateFicha);
     const efeitosTemp = useStore(s => s.efeitosTemp);
     const setEfeitosTemp = useStore(s => s.setEfeitosTemp);
+    const efeitosTempPassivos = useStore(s => s.efeitosTempPassivos);
+    const setEfeitosTempPassivos = useStore(s => s.setEfeitosTempPassivos);
     const poderEditandoId = useStore(s => s.poderEditandoId);
     const setPoderEditandoId = useStore(s => s.setPoderEditandoId);
 
@@ -44,6 +46,9 @@ export default function PoderesPanel() {
     const [novoAtr, setNovoAtr] = useState('forca');
     const [novoProp, setNovoProp] = useState('base');
     const [novoVal, setNovoVal] = useState('');
+    const [novoAtrPassivo, setNovoAtrPassivo] = useState('forca');
+    const [novoPropPassivo, setNovoPropPassivo] = useState('base');
+    const [novoValPassivo, setNovoValPassivo] = useState('');
 
     const formRef = useRef(null);
 
@@ -57,9 +62,19 @@ export default function PoderesPanel() {
         setEfeitosTemp(efeitosTemp.filter((_, i) => i !== index));
     };
 
+    const addEfeitoPassivoTemp = () => {
+        if (!novoValPassivo) return;
+        setEfeitosTempPassivos([...efeitosTempPassivos, { atributo: novoAtrPassivo, propriedade: novoPropPassivo, valor: novoValPassivo }]);
+        setNovoValPassivo('');
+    };
+
+    const removerEfeitoPassivoTemp = (index) => {
+        setEfeitosTempPassivos(efeitosTempPassivos.filter((_, i) => i !== index));
+    };
+
     const salvarNovoPoder = () => {
         const n = nomePoder.trim();
-        if (!n || !efeitosTemp.length) {
+        if (!n || (!efeitosTemp.length && !efeitosTempPassivos.length)) {
             alert('Falta nome ou efeitos!');
             return;
         }
@@ -72,6 +87,7 @@ export default function PoderesPanel() {
                 if (ix !== -1) {
                     ficha.poderes[ix].nome = n;
                     ficha.poderes[ix].efeitos = JSON.parse(JSON.stringify(efeitosTemp));
+                    ficha.poderes[ix].efeitosPassivos = JSON.parse(JSON.stringify(efeitosTempPassivos));
                     ficha.poderes[ix].imagemUrl = imagemUrl;
                     ficha.poderes[ix].dadosQtd = parseInt(dadosQtd) || 0;
                     ficha.poderes[ix].dadosFaces = parseInt(dadosFaces) || 20;
@@ -84,6 +100,7 @@ export default function PoderesPanel() {
                     nome: n,
                     ativa: false,
                     efeitos: JSON.parse(JSON.stringify(efeitosTemp)),
+                    efeitosPassivos: JSON.parse(JSON.stringify(efeitosTempPassivos)),
                     imagemUrl: imagemUrl,
                     dadosQtd: parseInt(dadosQtd) || 0,
                     dadosFaces: parseInt(dadosFaces) || 20,
@@ -114,7 +131,8 @@ export default function PoderesPanel() {
         setCustoPercentual(p.custoPercentual || 0);
         setArmaVinculada(p.armaVinculada || '');
         setEfeitosTemp(JSON.parse(JSON.stringify(p.efeitos || [])));
-        
+        setEfeitosTempPassivos(JSON.parse(JSON.stringify(p.efeitosPassivos || [])));
+
         if (formRef.current) {
             formRef.current.scrollIntoView({ behavior: 'smooth' });
         }
@@ -129,6 +147,10 @@ export default function PoderesPanel() {
         setCustoPercentual(0);
         setArmaVinculada('');
         setEfeitosTemp([]);
+        setEfeitosTempPassivos([]);
+        setNovoAtrPassivo('forca');
+        setNovoPropPassivo('base');
+        setNovoValPassivo('');
     };
 
     const togglePoder = (id) => {
@@ -176,6 +198,71 @@ export default function PoderesPanel() {
     };
 
     const poderes = minhaFicha.poderes || [];
+    const passivas = minhaFicha.passivas || [];
+
+    const relatorioAuditoria = useMemo(() => {
+        const nomesProps = {
+            mbase: 'MULT BASE (x)', mgeral: 'MULT GERAL (x)', mformas: 'MULT FORMA (x)',
+            mabs: 'MULT ABSOLUTO (x)', munico: 'MULT UNICO (x)', base: 'VALOR BRUTO (+)'
+        };
+        const mapaEfeitos = { mbase: [], mgeral: [], mformas: [], mabs: [], munico: [], base: [], especial: [] };
+
+        const coletarEfeitos = (nome, efeitos) => {
+            if (!efeitos) return;
+            efeitos.forEach(ef => {
+                const txt = { nome, atributo: ef.atributo, valor: ef.valor };
+                if (mapaEfeitos[ef.propriedade]) {
+                    mapaEfeitos[ef.propriedade].push(txt);
+                } else {
+                    mapaEfeitos.especial.push(txt);
+                }
+            });
+        };
+
+        poderes.forEach(p => {
+            if (p && p.efeitosPassivos) coletarEfeitos(p.nome, p.efeitosPassivos);
+        });
+        passivas.forEach(p => {
+            if (p && p.efeitos) coletarEfeitos(p.nome, p.efeitos);
+        });
+
+        let hasContent = false;
+        const sections = [];
+        for (const prop in nomesProps) {
+            if (mapaEfeitos[prop].length > 0) {
+                hasContent = true;
+                sections.push(
+                    <div key={prop} style={{ marginBottom: 6 }}>
+                        <strong style={{ color: '#f0f' }}>{nomesProps[prop]}:</strong>{' '}
+                        {mapaEfeitos[prop].map((t, i) => (
+                            <span key={i}>
+                                {i > 0 && <strong style={{ color: '#f0f' }}> + </strong>}
+                                <span style={{ color: '#fff' }}>{t.nome}</span>
+                                <span style={{ color: '#555' }}> ({(t.atributo || '').toUpperCase()}: {t.valor})</span>
+                            </span>
+                        ))}
+                    </div>
+                );
+            }
+        }
+        if (mapaEfeitos.especial.length > 0) {
+            hasContent = true;
+            sections.push(
+                <div key="especial" style={{ marginBottom: 6 }}>
+                    <strong style={{ color: '#0ff' }}>OUTROS EFEITOS:</strong>{' '}
+                    {mapaEfeitos.especial.map((t, i) => (
+                        <span key={i}>
+                            {i > 0 && <strong style={{ color: '#0ff' }}> + </strong>}
+                            <span style={{ color: '#fff' }}>{t.nome}</span>
+                            <span style={{ color: '#555' }}> ({(t.atributo || '').toUpperCase()}: {t.valor})</span>
+                        </span>
+                    ))}
+                </div>
+            );
+        }
+        if (!hasContent) return null;
+        return sections;
+    }, [poderes, passivas]);
 
     return (
         <div className="poderes-panel">
@@ -249,6 +336,43 @@ export default function PoderesPanel() {
                     )}
                 </div>
 
+                <h4 style={{ color: '#f0f', marginTop: 15, marginBottom: 8, fontSize: '0.95em' }}>Efeitos Passivos (sempre ativos)</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8 }}>
+                    <select className="input-neon" value={novoAtrPassivo} onChange={e => setNovoAtrPassivo(e.target.value)}>
+                        {ATRIBUTOS_AGRUPADOS.map(grupo => (
+                            <optgroup key={grupo.label} label={grupo.label} style={{ background: '#051010', color: '#f0f' }}>
+                                {grupo.options.map(a => (
+                                    <option key={a} value={a}>
+                                        {a.replace('_', ' ').toUpperCase()}
+                                    </option>
+                                ))}
+                            </optgroup>
+                        ))}
+                    </select>
+                    <select className="input-neon" value={novoPropPassivo} onChange={e => setNovoPropPassivo(e.target.value)}>
+                        {PROPRIEDADE_OPTIONS.map(p => <option key={p} value={p}>{p.toUpperCase()}</option>)}
+                    </select>
+                    <input className="input-neon" type="text" placeholder="Valor" value={novoValPassivo} onChange={e => setNovoValPassivo(e.target.value)} />
+                    <button className="btn-neon" style={{ padding: '5px 10px', borderColor: '#f0f', color: '#f0f' }} onClick={addEfeitoPassivoTemp}>+ Passivo</button>
+                </div>
+
+                <div style={{ marginTop: 10 }}>
+                    {efeitosTempPassivos.length === 0 ? (
+                        <p style={{ color: '#888', fontSize: '0.9em', margin: 0 }}>Nenhum efeito passivo adicionado.</p>
+                    ) : (
+                        efeitosTempPassivos.map((e, i) => {
+                            const prop = (e.propriedade || '').toLowerCase();
+                            const isMult = ['mbase', 'mgeral', 'mformas', 'mabs', 'munico'].includes(prop);
+                            return (
+                                <div key={i} style={{ color: '#f0f', fontSize: '0.9em', marginBottom: 5, background: 'rgba(255,0,255,0.1)', padding: '5px 10px', borderLeft: '2px solid #f0f', display: 'flex', justifyContent: 'space-between' }}>
+                                    <span>PASSIVO: [{(e.atributo || '').replace('_', ' ').toUpperCase()}] - [{(e.propriedade || '').toUpperCase()}]: <strong style={{ color: '#ffcc00' }}>{isMult ? '(x)' : '(+)'} {e.valor}</strong></span>
+                                    <button onClick={() => removerEfeitoPassivoTemp(i)} style={{ background: 'transparent', color: '#f00', border: 'none', cursor: 'pointer' }}>X</button>
+                                </div>
+                            );
+                        })
+                    )}
+                </div>
+
                 <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
                     <button className="btn-neon btn-gold" onClick={salvarNovoPoder} style={{ flex: 1 }}>{poderEditandoId ? 'Salvar Edição' : 'Salvar Poder'}</button>
                     {poderEditandoId && <button className="btn-neon btn-red" onClick={cancelarEdicaoPoder} style={{ flex: 1 }}>Cancelar</button>}
@@ -279,7 +403,15 @@ export default function PoderesPanel() {
                                     <div>
                                         <h3 style={{ margin: 0, color: c, textShadow: `0 0 10px ${c}` }}>{p.nome || 'Poder'}</h3>
                                         {dadosTxt && <p style={{ color: '#f0f', fontSize: '0.85em', margin: '5px 0 0' }}>Dano: {dadosTxt}{custoTxt ? ` | ${custoTxt}` : ''}{armaVinc ? ` (na ${armaVinc.nome})` : ' (livre)'}</p>}
-                                        <p style={{ color: '#aaa', fontSize: '0.85em', margin: '5px 0 0' }}>{txtArr.join(' | ') || 'Sem efeitos.'}</p>
+                                        <p style={{ color: '#aaa', fontSize: '0.85em', margin: '5px 0 0' }}>{txtArr.join(' | ') || 'Sem efeitos.'}
+                        {(p.efeitosPassivos || []).length > 0 && (
+                            <span style={{ color: '#f0f' }}>{txtArr.length > 0 ? ' | ' : ''}{(p.efeitosPassivos || []).map(e => {
+                                if (!e) return '';
+                                const prop = (e.propriedade || '').toLowerCase();
+                                const isMult = ['mbase', 'mgeral', 'mformas', 'mabs', 'munico'].includes(prop);
+                                return `PASSIVO: [${(e.atributo || '').replace('_', ' ').toUpperCase()}] ${(e.propriedade || '').toUpperCase()}: ${isMult ? 'x' : '+'}${e.valor || 0}`;
+                            }).filter(Boolean).join(' | ')}</span>
+                        )}</p>
                                     </div>
                                     <div style={{ display: 'flex', gap: 10 }}>
                                         <button className="btn-neon" style={{ borderColor: c, color: c, padding: '5px 15px', fontSize: '1.1em', margin: 0 }} onClick={() => togglePoder(p.id)}>{p.ativa ? 'LIGADO' : 'DESLIGADO'}</button>
@@ -291,6 +423,13 @@ export default function PoderesPanel() {
                         );
                     })
                 )}
+            </div>
+
+            <div className="def-box" style={{ marginTop: 15 }}>
+                <h3 style={{ color: '#0ff', marginBottom: 10 }}>Auditoria de Combos (Auto)</h3>
+                <div style={{ fontSize: '0.9em' }}>
+                    {relatorioAuditoria || <span style={{ color: '#888', fontStyle: 'italic' }}>Nenhum efeito passivo ativo.</span>}
+                </div>
             </div>
         </div>
     );

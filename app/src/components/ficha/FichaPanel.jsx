@@ -3,7 +3,7 @@ import useStore from '../../stores/useStore';
 import { contarDigitos } from '../../core/utils.js';
 import { getMaximo, getBuffs } from '../../core/attributes.js';
 import { salvarFichaSilencioso } from '../../services/firebase-sync.js';
-import TabelaPrestigio from './TabelaPrestigio'; 
+import TabelaPrestigio from './TabelaPrestigio';
 
 const STATS = ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'];
 const ENERGIAS = ['mana', 'aura', 'chakra', 'corpo'];
@@ -30,34 +30,62 @@ export default function FichaPanel() {
     const minhaFicha = useStore(s => s.minhaFicha);
     const updateFicha = useStore(s => s.updateFicha);
 
-    const [selAtributo, setSelAtributo] = useState('forca');
-    const [campos, setCampos] = useState({
-        base: 0, mBase: 1, mGeral: 1, mFormas: 1, mUnico: '1.0', mAbsoluto: 1, reducaoCusto: 0, regeneracao: 0
-    });
+    // --- BIO ---
+    const [raca, setRaca] = useState('');
+    const [classe, setClasse] = useState('');
+    const [idade, setIdade] = useState('');
+    const [fisico, setFisico] = useState('');
+    const [sangue, setSangue] = useState('');
+    const [alinhamento, setAlinhamento] = useState('');
+    const [afiliacao, setAfiliacao] = useState('');
+    const [dinheiro, setDinheiro] = useState('');
+    const [salvandoBio, setSalvandoBio] = useState(false);
 
-    // Multiplicadores de Dano
-    const [dmBase, setDmBase] = useState(1.0);
-    const [dmPotencial, setDmPotencial] = useState(1.0);
-    const [dmGeral, setDmGeral] = useState(1.0);
-    const [dmFormas, setDmFormas] = useState(1.0);
-    const [dmAbsoluto, setDmAbsoluto] = useState(1.0);
-    const [dmUnico, setDmUnico] = useState('1.0');
-    const [salvandoMult, setSalvandoMult] = useState(false);
+    const carregarBio = useCallback(() => {
+        const bio = minhaFicha.bio || {};
+        setRaca(bio.raca || '');
+        setClasse(bio.classe || '');
+        setIdade(bio.idade || '');
+        setFisico(bio.fisico || '');
+        setSangue(bio.sangue || '');
+        setAlinhamento(bio.alinhamento || '');
+        setAfiliacao(bio.afiliacao || '');
+        setDinheiro(bio.dinheiro || '');
+    }, [minhaFicha.bio]);
+
+    useEffect(() => {
+        carregarBio();
+    }, [carregarBio]);
+
+    function salvarBio() {
+        updateFicha((ficha) => {
+            if (!ficha.bio) ficha.bio = {};
+            ficha.bio.raca = raca;
+            ficha.bio.classe = classe;
+            ficha.bio.idade = idade;
+            ficha.bio.fisico = fisico;
+            ficha.bio.sangue = sangue;
+            ficha.bio.alinhamento = alinhamento;
+            ficha.bio.afiliacao = afiliacao;
+            ficha.bio.dinheiro = dinheiro;
+        });
+        salvarFichaSilencioso();
+        setSalvandoBio(true);
+        setTimeout(() => setSalvandoBio(false), 2000);
+    }
+
+    // --- EDITOR DE ATRIBUTOS ---
+    const [selAtributo, setSelAtributo] = useState('forca');
+    const [campos, setCampos] = useState({ base: 0, mBase: 1, regeneracao: 0 });
 
     const carregarAtributoNaTela = useCallback(() => {
         const s = selAtributo;
         const k = (s === 'todos_status') ? 'forca' : (s === 'todas_energias') ? 'mana' : s;
         if (!minhaFicha || !minhaFicha[k]) return;
         const st = minhaFicha[k];
-        
         setCampos({
             base: st.base || 0,
             mBase: st.mBase || 1,
-            mGeral: st.mGeral || 1,
-            mFormas: st.mFormas || 1,
-            mUnico: st.mUnico || '1.0',
-            mAbsoluto: st.mAbsoluto || 1,
-            reducaoCusto: st.reducaoCusto || 0,
             regeneracao: st.regeneracao || 0
         });
     }, [selAtributo, minhaFicha]);
@@ -76,11 +104,6 @@ export default function FichaPanel() {
         const v = {
             b: parseInt(campos.base) || 0,
             mb: parseFloat(campos.mBase) || 1,
-            mg: parseFloat(campos.mGeral) || 1,
-            mf: parseFloat(campos.mFormas) || 1,
-            mu: campos.mUnico || '1.0',
-            ma: parseFloat(campos.mAbsoluto) || 1,
-            rc: parseFloat(campos.reducaoCusto) || 0,
             rg: parseFloat(campos.regeneracao) || 0
         };
 
@@ -90,11 +113,6 @@ export default function FichaPanel() {
                 if (!ficha[c]) continue;
                 ficha[c].base = v.b;
                 ficha[c].mBase = v.mb;
-                ficha[c].mGeral = v.mg;
-                ficha[c].mFormas = v.mf;
-                ficha[c].mUnico = v.mu;
-                ficha[c].mAbsoluto = v.ma;
-                ficha[c].reducaoCusto = v.rc;
                 ficha[c].regeneracao = v.rg;
 
                 if (['vida', 'mana', 'aura', 'chakra', 'corpo'].includes(c)) {
@@ -114,7 +132,15 @@ export default function FichaPanel() {
         alert('Salvo!');
     }
 
-    // Carregar multiplicadores de dano
+    // --- MULTIPLICADORES DE DANO ---
+    const [dmBase, setDmBase] = useState(1.0);
+    const [dmPotencial, setDmPotencial] = useState(1.0);
+    const [dmGeral, setDmGeral] = useState(1.0);
+    const [dmFormas, setDmFormas] = useState(1.0);
+    const [dmAbsoluto, setDmAbsoluto] = useState(1.0);
+    const [dmUnico, setDmUnico] = useState('1.0');
+    const [salvandoMult, setSalvandoMult] = useState(false);
+
     useEffect(() => {
         const d = minhaFicha.dano || {};
         setDmBase(d.mBase ?? 1.0);
@@ -146,7 +172,7 @@ export default function FichaPanel() {
         setCampos(prev => ({ ...prev, [field]: val }));
     }
 
-    // --- LÓGICA DO HOLOGRAMA (RENDERIZA OS BUFFS) ---
+    // --- HOLOGRAMA DE BUFFS ---
     const sKeyForBuffs = (selAtributo === 'todos_status') ? 'forca' : (selAtributo === 'todas_energias') ? 'mana' : selAtributo;
     const buffsAtuais = minhaFicha ? getBuffs(minhaFicha, sKeyForBuffs) : null;
 
@@ -156,8 +182,7 @@ export default function FichaPanel() {
 
         let v = parseFloat(rawVal);
         if (isNaN(v)) v = isMult ? 1.0 : 0;
-        
-        // Aplica a mesma matemática de combate
+
         let total = isMult ? ((v === 1.0 ? 0 : v) + buffVal) : (v + buffVal);
 
         return (
@@ -171,7 +196,59 @@ export default function FichaPanel() {
 
     return (
         <div className="ficha-panel">
+            {/* Bio */}
             <div className="def-box">
+                <h3 style={{ color: '#ffcc00', marginBottom: 10 }}>Ficha Narrativa</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <div>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Raça</label>
+                        <input className="input-neon" type="text" value={raca} onChange={e => setRaca(e.target.value)} />
+                    </div>
+                    <div>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Classe</label>
+                        <input className="input-neon" type="text" value={classe} onChange={e => setClasse(e.target.value)} />
+                    </div>
+                    <div>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Idade</label>
+                        <input className="input-neon" type="text" value={idade} onChange={e => setIdade(e.target.value)} />
+                    </div>
+                    <div>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Físico</label>
+                        <input className="input-neon" type="text" value={fisico} onChange={e => setFisico(e.target.value)} />
+                    </div>
+                    <div>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Tipo Sanguíneo</label>
+                        <input className="input-neon" type="text" value={sangue} onChange={e => setSangue(e.target.value)} />
+                    </div>
+                    <div>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Alinhamento</label>
+                        <input className="input-neon" type="text" value={alinhamento} onChange={e => setAlinhamento(e.target.value)} />
+                    </div>
+                    <div>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Afiliação</label>
+                        <input className="input-neon" type="text" value={afiliacao} onChange={e => setAfiliacao(e.target.value)} />
+                    </div>
+                    <div>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Dinheiro</label>
+                        <input className="input-neon" type="text" value={dinheiro} onChange={e => setDinheiro(e.target.value)} />
+                    </div>
+                </div>
+                <button
+                    className="btn-neon btn-gold"
+                    onClick={salvarBio}
+                    style={{
+                        marginTop: 15, width: '100%',
+                        backgroundColor: salvandoBio ? 'rgba(0, 255, 100, 0.2)' : undefined,
+                        borderColor: salvandoBio ? '#00ffcc' : undefined,
+                        color: salvandoBio ? '#fff' : undefined
+                    }}
+                >
+                    {salvandoBio ? 'SALVO COM SUCESSO!' : 'SALVAR BIO'}
+                </button>
+            </div>
+
+            {/* Editor de Atributos */}
+            <div className="def-box" style={{ marginTop: 15 }}>
                 <h3 style={{ color: '#ffcc00', marginBottom: 10 }}>Editor de Atributos</h3>
                 <select
                     className="input-neon"
@@ -184,7 +261,7 @@ export default function FichaPanel() {
                     ))}
                 </select>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15, marginTop: 15 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 15, marginTop: 15 }}>
                     <div>
                         <label style={{ color: '#aaa', fontSize: '0.85em' }}>Base</label>
                         <input className="input-neon" type="number" value={campos.base} onChange={e => handleCampo('base', e.target.value)} />
@@ -196,32 +273,7 @@ export default function FichaPanel() {
                         {buffsAtuais && renderBuffHolograma(campos.mBase, buffsAtuais.mbase, buffsAtuais._hasBuff.mbase, true)}
                     </div>
                     <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Geral</label>
-                        <input className="input-neon" type="number" step="0.01" value={campos.mGeral} onChange={e => handleCampo('mGeral', e.target.value)} />
-                        {buffsAtuais && renderBuffHolograma(campos.mGeral, buffsAtuais.mgeral, buffsAtuais._hasBuff.mgeral, true)}
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Formas</label>
-                        <input className="input-neon" type="number" step="0.01" value={campos.mFormas} onChange={e => handleCampo('mFormas', e.target.value)} />
-                        {buffsAtuais && renderBuffHolograma(campos.mFormas, buffsAtuais.mformas, buffsAtuais._hasBuff.mformas, true)}
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Unico</label>
-                        <input className="input-neon" type="text" value={campos.mUnico} onChange={e => handleCampo('mUnico', e.target.value)} />
-                        {/* Mult Unico usa array, entao nao renderizamos holograma direto aqui para nao complicar a string */}
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Absoluto</label>
-                        <input className="input-neon" type="number" step="0.01" value={campos.mAbsoluto} onChange={e => handleCampo('mAbsoluto', e.target.value)} />
-                        {buffsAtuais && renderBuffHolograma(campos.mAbsoluto, buffsAtuais.mabs, buffsAtuais._hasBuff.mabs, true)}
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Reducao Custo</label>
-                        <input className="input-neon" type="number" step="0.01" value={campos.reducaoCusto} onChange={e => handleCampo('reducaoCusto', e.target.value)} />
-                        {buffsAtuais && renderBuffHolograma(campos.reducaoCusto, buffsAtuais.reducaoCusto, false, false)}
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Regeneracao</label>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Regeneração</label>
                         <input className="input-neon" type="number" step="0.01" value={campos.regeneracao} onChange={e => handleCampo('regeneracao', e.target.value)} />
                         {buffsAtuais && renderBuffHolograma(campos.regeneracao, buffsAtuais.regeneracao, false, false)}
                     </div>

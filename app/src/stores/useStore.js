@@ -44,6 +44,7 @@ const useStore = create(
         meuNome: '',
         isMestre: false,
         efeitosTemp: [],
+        efeitosTempPassivos: [],
         poderEditandoId: null,
         itemEditandoId: null,
         elemEditandoId: null,
@@ -67,6 +68,10 @@ const useStore = create(
 
         setEfeitosTemp: (efeitos) => set((state) => {
             state.efeitosTemp = efeitos;
+        }),
+
+        setEfeitosTempPassivos: (efeitos) => set((state) => {
+            state.efeitosTempPassivos = efeitos;
         }),
 
         setPoderEditandoId: (id) => set((state) => {

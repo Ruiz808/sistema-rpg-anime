@@ -52,6 +52,7 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false) {
         for (let i = 0; i < ficha.poderes.length; i++) {
             let p = ficha.poderes[i];
             if (p && p.ativa && p.efeitos) processarEfeitos(p.efeitos);
+            if (p && p.efeitosPassivos) processarEfeitos(p.efeitosPassivos);
         }
     }
 

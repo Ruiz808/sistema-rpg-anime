@@ -15,7 +15,6 @@ import ArsenalPanel from './components/arsenal/ArsenalPanel'
 import ElementosPanel from './components/arsenal/ElementosPanel'
 import FeedCombate from './components/feed/FeedCombate'
 import MapaPanel from './components/mapa/MapaPanel'
-import NarrativaPanel from './components/narrativa/NarrativaPanel'
 import Jukebox from './components/jukebox/Jukebox'
 import { carregarFichaDoFirebase } from './services/firebase-sync'
 
@@ -119,7 +118,6 @@ export default function App() {
                 <TabPanel id="aba-elementos"><ElementosPanel /></TabPanel>
                 <TabPanel id="aba-log"><FeedCombate /></TabPanel>
                 <TabPanel id="aba-mapa"><MapaPanel /></TabPanel>
-                <TabPanel id="aba-narrativa"><NarrativaPanel /></TabPanel>
                 <TabPanel id="aba-musica"><Jukebox /></TabPanel>
             </div>
             <ModalConfirm />
