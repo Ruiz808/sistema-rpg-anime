@@ -14,7 +14,6 @@ export default function MapaPanel() {
     const [turnoAtualIndex, setTurnoAtualIndex] = useState(0);
     const [feedIndexTurnoAtual, setFeedIndexTurnoAtual] = useState(0);
 
-    // 🔥 NOVO: Controle do Histórico de Ações
     const [jogadorHistory, setJogadorHistory] = useState(null);
 
     // Estados do Mini-Painel de Acerto
@@ -22,6 +21,10 @@ export default function MapaPanel() {
     const [mapFD, setMapFD] = useState(20);
     const [mapBonus, setMapBonus] = useState(0);
     const [mapStat, setMapStat] = useState('destreza'); 
+    
+    // 🔥 NOVOS ESTADOS: Vantagens e Desvantagens no Mapa
+    const [mapVantagens, setMapVantagens] = useState(0);
+    const [mapDesvantagens, setMapDesvantagens] = useState(0);
 
     const coresJogadoresRef = useRef({});
     const corIndexRef = useRef(0);
@@ -129,10 +132,9 @@ export default function MapaPanel() {
             return next;
         });
         setFeedIndexTurnoAtual(feedCombate.length);
-        setJogadorHistory(null); // Fecha o histórico para focar na luta
+        setJogadorHistory(null);
     }
 
-    // 🔥 FUNÇÕES DE CONTROLE DE COMBATE
     function sairDoCombate() {
         updateFicha(ficha => { ficha.iniciativa = 0; });
         setIniciativaInput(0);
@@ -155,13 +157,25 @@ export default function MapaPanel() {
         const fD = parseInt(mapFD) || 20;
         const bonus = parseInt(mapBonus) || 0;
         
+        // 🔥 AGORA LÊ OS VALORES DOS INPUTS DE VANTAGEM/DESVANTAGEM
+        const vantagens = parseInt(mapVantagens) || 0;
+        const desvantagens = parseInt(mapDesvantagens) || 0;
+
         const sels = [mapStat]; 
         const itensEquipados = minhaFicha.inventario ? minhaFicha.inventario.filter(i => i.equipado) : [];
 
-        const result = calcularAcerto({ qD, fD, prof: 0, bonus, sels, minhaFicha, itensEquipados, vantagens: 0, desvantagens: 0 });
+        // Injeta na engine
+        const result = calcularAcerto({ 
+            qD, fD, prof: 0, bonus, sels, minhaFicha, itensEquipados, 
+            vantagens, desvantagens 
+        });
         
         const feedData = { tipo: 'acerto', nome: meuNome, ...result };
         enviarParaFeed(feedData);
+        
+        // Opcional: Zerar vantagens/desvantagens após rolar
+        setMapVantagens(0);
+        setMapDesvantagens(0);
     }
 
     const tokenMap = useMemo(() => {
@@ -406,7 +420,6 @@ export default function MapaPanel() {
                         )}
                     </div>
 
-                    {/* 🔥 HISTÓRICO DE AÇÕES DO JOGADOR CLICADO */}
                     {jogadorHistory && (
                         <div style={{ marginTop: 15, padding: 15, background: 'rgba(0, 20, 40, 0.8)', border: '1px solid #0088ff', borderRadius: 8 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
@@ -468,7 +481,14 @@ export default function MapaPanel() {
                                         <span style={{ color: '#aaa', fontSize: '0.8em' }}>+</span>
                                         <input className="input-neon" type="number" value={mapBonus} onChange={e => setMapBonus(e.target.value)} style={{ width: 60, padding: 4 }} title="Bônus" />
                                         
-                                        <button className="btn-neon btn-gold" onClick={rolarAcertoRapido} style={{ padding: '4px 10px', fontSize: '0.85em' }}>
+                                        {/* 🔥 NOVOS INPUTS DE VANTAGEM / DESVANTAGEM AQUI */}
+                                        <span style={{ color: '#0f0', fontSize: '0.8em', marginLeft: 5, fontWeight: 'bold' }}>V:</span>
+                                        <input className="input-neon" type="number" min="0" value={mapVantagens} onChange={e => setMapVantagens(e.target.value)} style={{ width: 45, padding: 4, borderColor: '#0f0', color: '#0f0' }} title="Vantagens" />
+                                        
+                                        <span style={{ color: '#f00', fontSize: '0.8em', marginLeft: 5, fontWeight: 'bold' }}>D:</span>
+                                        <input className="input-neon" type="number" min="0" value={mapDesvantagens} onChange={e => setMapDesvantagens(e.target.value)} style={{ width: 45, padding: 4, borderColor: '#f00', color: '#f00' }} title="Desvantagens" />
+
+                                        <button className="btn-neon btn-gold" onClick={rolarAcertoRapido} style={{ padding: '4px 10px', fontSize: '0.85em', marginLeft: 5 }}>
                                             Rolar Acerto
                                         </button>
                                     </div>
