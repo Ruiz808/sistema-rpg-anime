@@ -115,7 +115,8 @@ function calcularSubDano({ qtdDados, facesDados, sels, combustaoPorEnergia, minh
     return { dano, rolagem, rolagemValor: soma, somaTermos, detalhesTermos };
 }
 
-export function calcularDano({ minhaFicha, configArma, configHabilidades, itensEquipados }) {
+// 🔥 Modificação para aceitar isCriticoNormal e isCriticoFatal
+export function calcularDano({ minhaFicha, configArma, configHabilidades, itensEquipados, isCriticoNormal, isCriticoFatal }) {
     // 1. Equipment bonuses
     let iMultDano = 1.0, iDanoBruto = 0, iLetalidade = 0;
     let elementosAtaque = [];
@@ -311,9 +312,21 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
         return { erro: 'Nenhuma fonte de dano! Equipe uma arma com dados ou ative habilidades com dados de dano.' };
     }
 
-    // uniTotal applied here AND per-term in sub-calcs — intentional double-application per game formula
+    // 🔥 APLICAÇÃO DOS MULTIPLICADORES DE CRÍTICO
+    let multCritico = 1;
+    let nomeCritico = '';
+    if (isCriticoFatal) {
+        multCritico = 4;
+        nomeCritico = 'CRÍTICO FATAL';
+    } else if (isCriticoNormal) {
+        multCritico = 2;
+        nomeCritico = 'CRÍTICO NORMAL';
+    }
+
     let multTotal = totalBas * totalFor * totalGer * totalAbs * uniTotal * iMultDano;
-    let total = Math.floor(somaDanos * multTotal);
+    let multEfetivo = multTotal * multCritico; // 🔥 Multiplicador Efetivo entra aqui
+    
+    let total = Math.floor(somaDanos * multEfetivo);
     if (isNaN(total)) total = 0;
 
     let letal = Math.max(0, contarDigitos(total) - 8) + iLetalidade;
@@ -322,7 +335,7 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
     // 8. Build output
     let txtEng = '';
     if (custoTxt.length > 0) {
-        txtEng = `<br>Custo de Combustao: <strong style="color:#f0f;">${custoTxt.join(' e ')}</strong>`;
+        txtEng = `<br>Custo de Combustão: <strong style="color:#f0f;">${custoTxt.join(' e ')}</strong>`;
     }
 
     let multArr = [];
@@ -332,9 +345,10 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
     if (totalAbs !== 1) multArr.push(`x${totalAbs.toFixed(2)}(Abs)`);
     if (uniTotal !== 1) multArr.push(`x${uniTotal.toFixed(2)}(Uni)`);
     if (iMultDano !== 1) multArr.push(`x${iMultDano.toFixed(2)}(Eqp)`);
+    if (multCritico > 1) multArr.push(`<span style="color:#ffcc00">x${multCritico}(${nomeCritico})</span>`); // 🔥 Mostra o crítico na conta
     let multStr = multArr.length > 0 ? multArr.join(' * ') : 'Nenhum (x1)';
 
-    let detalheLinhas = [`<span style="color:#ffcc00; font-weight:bold;">[MAQUINA DE CALCULO]</span>`];
+    let detalheLinhas = [`<span style="color:#ffcc00; font-weight:bold;">[MÁQUINA DE CÁLCULO]</span>`];
 
     if (resultadoArma) {
         let habVincTxt = '';
@@ -351,8 +365,8 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
     }
 
     detalheLinhas.push(`<strong>Soma:</strong> ${somaDanos.toLocaleString('pt-BR')}${iDanoBruto > 0 ? ` (inclui +${iDanoBruto.toLocaleString('pt-BR')} bruto)` : ''}`);
-    detalheLinhas.push(`<strong>Multiplicadores:</strong> ${multStr} = <strong style="color:#fff;">x${multTotal % 1 === 0 ? multTotal : multTotal.toFixed(2)}</strong>`);
-    detalheLinhas.push(`<strong>Dano Total:</strong> ${somaDanos.toLocaleString('pt-BR')} x ${multTotal % 1 === 0 ? multTotal : multTotal.toFixed(2)} = <strong style="color:#ff003c; font-size:1.1em;">${total.toLocaleString('pt-BR')}</strong>`);
+    detalheLinhas.push(`<strong>Multiplicadores:</strong> ${multStr} = <strong style="color:#fff;">x${multEfetivo % 1 === 0 ? multEfetivo : multEfetivo.toFixed(2)}</strong>`);
+    detalheLinhas.push(`<strong>Dano Total:</strong> ${somaDanos.toLocaleString('pt-BR')} x ${multEfetivo % 1 === 0 ? multEfetivo : multEfetivo.toFixed(2)} = <strong style="color:#ff003c; font-size:1.1em;">${total.toLocaleString('pt-BR')}</strong>`);
 
     let detalheConta = `<div style="margin-top: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 5px; border-left: 3px solid #ffcc00; font-family: monospace; font-size: 0.95em; color: #ccc;">
     ${detalheLinhas.join('<br>')}
@@ -373,6 +387,10 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
     let combinados = nomesArmas.concat(nomesMagias);
     if (combinados.length) armaStr = ` usando <strong>${combinados.join(' e ')}</strong>`;
     if (elementosAtaque.length) armaStr += ` [${elementosAtaque.join(' / ')}]`;
+
+    // 🔥 Adicionando aviso visual ao nome da arma se for crítico
+    if (isCriticoFatal) armaStr += ` 🔥 FATAL 🔥`;
+    else if (isCriticoNormal) armaStr += ` ⚡ CRÍTICO ⚡`;
 
     return {
         dano: dRed, letalidade: letal,

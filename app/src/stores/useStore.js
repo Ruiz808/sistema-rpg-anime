@@ -9,7 +9,8 @@ export const fichaPadrao = {
     notas: { base: "", geral: "", abs: "" },
     posicao: { x: 0, y: 0 },
     iniciativa: 0,
-    ataqueConfig: { armaStatusUsados: ['forca'], armaEnergiaCombustao: 'mana', armaPercEnergia: 0 },
+    // 🔥 UNICA MUDANÇA: Adicionado os limites de crítico padrão na configuração de ataque
+    ataqueConfig: { armaStatusUsados: ['forca'], armaEnergiaCombustao: 'mana', armaPercEnergia: 0, criticoNormalMin: 16, criticoNormalMax: 18, criticoFatalMin: 19, criticoFatalMax: 20 },
     dano: { base: 0, mBase: 1.0, mGeral: 1.0, mFormas: 1.0, mUnico: "1.0", mAbsoluto: 1.0, mPotencial: 1.0, reducaoCusto: 0, regeneracao: 0 },
     divisores: { vida: 1, status: 1, mana: 1, aura: 1, chakra: 1, corpo: 1 },
     vida: { base: 100000000, mBase: 1.0, mGeral: 1.0, mFormas: 1.0, mUnico: "1.0", mAbsoluto: 1.0, reducaoCusto: 0, regeneracao: 0, atual: 100000000 },

@@ -27,12 +27,24 @@ export default function AtaquePanel() {
     const meuNome = useStore(s => s.meuNome);
     const updateFicha = useStore(s => s.updateFicha);
     const setAbaAtiva = useStore(s => s.setAbaAtiva);
+    const feedCombate = useStore(s => s.feedCombate); // 🔥 Adicionado para ler o feed
 
     const ac = minhaFicha.ataqueConfig || {};
 
     const [armaStatusUsados, setArmaStatusUsados] = useState(ac.armaStatusUsados || ['forca']);
     const [armaEnergiaCombustao, setArmaEnergiaCombustao] = useState(ac.armaEnergiaCombustao || 'mana');
     const [armaPercEnergia, setArmaPercEnergia] = useState(ac.armaPercEnergia || 0);
+
+    // 🔥 NOVOS ESTADOS: Limites e Auto-Detector de Crítico
+    const [critNormalMin, setCritNormalMin] = useState(ac.criticoNormalMin || 16);
+    const [critNormalMax, setCritNormalMax] = useState(ac.criticoNormalMax || 18);
+    const [critFatalMin, setCritFatalMin] = useState(ac.criticoFatalMin || 19);
+    const [critFatalMax, setCritFatalMax] = useState(ac.criticoFatalMax || 20);
+
+    const [autoCritNormal, setAutoCritNormal] = useState(false);
+    const [autoCritFatal, setAutoCritFatal] = useState(false);
+    const [forcarCritNormal, setForcarCritNormal] = useState(false);
+    const [forcarCritFatal, setForcarCritFatal] = useState(false);
 
     // Per-skill configs stored on the poder objects: statusUsados, energiaCombustao
     // We use local state keyed by poder.id for in-session changes
@@ -43,7 +55,40 @@ export default function AtaquePanel() {
         setArmaStatusUsados(ac2.armaStatusUsados || ['forca']);
         setArmaEnergiaCombustao(ac2.armaEnergiaCombustao || 'mana');
         setArmaPercEnergia(ac2.armaPercEnergia || 0);
+        // 🔥 Sincronizando limites ao carregar
+        setCritNormalMin(ac2.criticoNormalMin || 16);
+        setCritNormalMax(ac2.criticoNormalMax || 18);
+        setCritFatalMin(ac2.criticoFatalMin || 19);
+        setCritFatalMax(ac2.criticoFatalMax || 20);
     }, [minhaFicha.ataqueConfig]);
+
+    // 🔥 O SENSOR TÁTICO: Lê o último acerto no feed
+    useEffect(() => {
+        const lastAcerto = [...feedCombate].reverse().find(f => f.nome === meuNome && f.tipo === 'acerto');
+        if (lastAcerto && lastAcerto.rolagem) {
+            let maxDado = 0;
+            let regexStrong = /<strong>(\d+)<\/strong>/g;
+            let match;
+            while ((match = regexStrong.exec(lastAcerto.rolagem)) !== null) {
+                let v = parseInt(match[1]);
+                if (v > maxDado) maxDado = v;
+            }
+            if (maxDado === 0) { // Fallback se nao tiver strong
+                let regexArr = /\[(.*?)\]/;
+                let mArr = regexArr.exec(lastAcerto.rolagem);
+                if (mArr) {
+                    let clean = mArr[1].replace(/<[^>]*>?/gm, ''); 
+                    let nums = clean.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n));
+                    if (nums.length > 0) maxDado = Math.max(...nums);
+                }
+            }
+            setAutoCritFatal(maxDado >= critFatalMin && maxDado <= critFatalMax);
+            setAutoCritNormal(maxDado >= critNormalMin && maxDado <= critNormalMax);
+        } else {
+            setAutoCritFatal(false);
+            setAutoCritNormal(false);
+        }
+    }, [feedCombate, meuNome, critNormalMin, critNormalMax, critFatalMin, critFatalMax]);
 
     // Initialize skill configs from saved poder data
     useEffect(() => {
@@ -91,6 +136,11 @@ export default function AtaquePanel() {
             ficha.ataqueConfig.armaStatusUsados = armaStatusUsados;
             ficha.ataqueConfig.armaEnergiaCombustao = armaEnergiaCombustao;
             ficha.ataqueConfig.armaPercEnergia = parseFloat(armaPercEnergia) || 0;
+            // 🔥 Salvando os limites de critico
+            ficha.ataqueConfig.criticoNormalMin = parseInt(critNormalMin) || 16;
+            ficha.ataqueConfig.criticoNormalMax = parseInt(critNormalMax) || 18;
+            ficha.ataqueConfig.criticoFatalMin = parseInt(critFatalMin) || 19;
+            ficha.ataqueConfig.criticoFatalMax = parseInt(critFatalMax) || 20;
 
             // Save per-skill configs into poderes
             if (ficha.poderes) {
@@ -130,11 +180,16 @@ export default function AtaquePanel() {
             percEnergia: parseFloat(armaPercEnergia) || 0
         };
 
+        const isCriticoNormal = forcarCritNormal || autoCritNormal;
+        const isCriticoFatal = forcarCritFatal || autoCritFatal;
+
         const result = calcularDano({
             minhaFicha,
             configArma,
             configHabilidades,
-            itensEquipados
+            itensEquipados,
+            isCriticoNormal, // 🔥 Passando pro motor
+            isCriticoFatal
         });
 
         if (result.erro) {
@@ -153,6 +208,10 @@ export default function AtaquePanel() {
         }
         salvarFichaSilencioso();
 
+        // Reseta os forçados manuais
+        setForcarCritNormal(false);
+        setForcarCritFatal(false);
+
         const feedData = {
             tipo: 'dano', nome: meuNome, dano: result.dano, letalidade: result.letalidade,
             rolagem: result.rolagem, rolagemMagica: result.rolagemMagica,
@@ -169,6 +228,49 @@ export default function AtaquePanel() {
 
     return (
         <div className="ataque-panel">
+            
+            {/* 🔥 NOVO: SENSOR DE CRÍTICO */}
+            <div className="def-box" style={{ marginBottom: 15, border: (autoCritFatal ? '2px solid #ff003c' : autoCritNormal ? '2px solid #ffcc00' : 'none') }}>
+                <h3 style={{ color: '#ffcc00', marginBottom: 10 }}>Configurações de Crítico</h3>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15, marginBottom: 10 }}>
+                    <div style={{ background: 'rgba(255,204,0,0.1)', padding: 8, borderRadius: 5 }}>
+                        <span style={{ color: '#ffcc00', fontSize: '0.85em', fontWeight: 'bold' }}>Crítico Normal (x2)</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 5 }}>
+                            <span style={{ color: '#aaa', fontSize: '0.8em' }}>Min:</span>
+                            <input className="input-neon" type="number" value={critNormalMin} onChange={e => setCritNormalMin(e.target.value)} style={{ width: 45, padding: 2 }} />
+                            <span style={{ color: '#aaa', fontSize: '0.8em' }}>Max:</span>
+                            <input className="input-neon" type="number" value={critNormalMax} onChange={e => setCritNormalMax(e.target.value)} style={{ width: 45, padding: 2 }} />
+                        </div>
+                    </div>
+                    <div style={{ background: 'rgba(255,0,60,0.1)', padding: 8, borderRadius: 5 }}>
+                        <span style={{ color: '#ff003c', fontSize: '0.85em', fontWeight: 'bold' }}>Crítico Fatal (x4)</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 5 }}>
+                            <span style={{ color: '#aaa', fontSize: '0.8em' }}>Min:</span>
+                            <input className="input-neon" type="number" value={critFatalMin} onChange={e => setCritFatalMin(e.target.value)} style={{ width: 45, padding: 2 }} />
+                            <span style={{ color: '#aaa', fontSize: '0.8em' }}>Max:</span>
+                            <input className="input-neon" type="number" value={critFatalMax} onChange={e => setCritFatalMax(e.target.value)} style={{ width: 45, padding: 2 }} />
+                        </div>
+                    </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 15, padding: 10, background: '#111', borderRadius: 5 }}>
+                    <label style={{ color: (autoCritNormal || forcarCritNormal) ? '#ffcc00' : '#888', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <input type="checkbox" checked={autoCritNormal || forcarCritNormal} onChange={e => setForcarCritNormal(e.target.checked)} />
+                        Ativar Crítico (x2)
+                    </label>
+                    <label style={{ color: (autoCritFatal || forcarCritFatal) ? '#ff003c' : '#888', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <input type="checkbox" checked={autoCritFatal || forcarCritFatal} onChange={e => setForcarCritFatal(e.target.checked)} />
+                        Ativar Crítico Fatal (x4)
+                    </label>
+                </div>
+                {(autoCritNormal || autoCritFatal) && (
+                    <p style={{ color: autoCritFatal ? '#ff003c' : '#ffcc00', fontSize: '0.85em', marginTop: 5, fontWeight: 'bold' }}>
+                        ⚡ O Sensor Tático detectou que o seu último ataque foi um Crítico!
+                    </p>
+                )}
+            </div>
+
             {/* Secao da Arma */}
             {armaEquipada && (
                 <div className="def-box" style={{ marginBottom: 15 }}>
