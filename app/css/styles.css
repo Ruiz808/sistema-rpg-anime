@@ -484,3 +484,9 @@ input:focus, select:focus { border-color: #0ff; box-shadow: 0 0 10px rgba(0, 255
 .label-color-aura { color: #ffff00; }
 .label-color-chakra { color: #00ffff; }
 .label-color-corpo { color: #ff00ff; }
+
+.atributo-lista { margin-top: 10px; font-size: 0.85em; }
+.atributo-row { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.atributo-row span:first-child { color: #aaa; }
+.atributo-valor-base { color: #0ff; font-weight: bold; }
+.atributo-valor-atual { color: #ffcc00; font-weight: bold; }

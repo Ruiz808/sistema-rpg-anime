@@ -144,25 +144,27 @@ function calcVitalScale(rawMx, key) {
 }
 
 function AtributosLista({ ficha, isAtual }) {
-    const cor = isAtual ? '#ffcc00' : '#0ff';
+    const valores = useMemo(() => ATRIBUTOS_PRINCIPAIS.map(({ key, label }) => {
+        let valor;
+        if (isAtual) {
+            valor = safeGetMaximo(ficha, key);
+        } else {
+            const rawBase = safeGetRawBase(ficha, key);
+            const mBase = parseFloat(ficha[key]?.mBase) || 1.0;
+            valor = Math.floor(rawBase * mBase);
+        }
+        return { key, label, valor };
+    }), [ficha, isAtual]);
+
+    const classeValor = isAtual ? 'atributo-valor-atual' : 'atributo-valor-base';
     return (
-        <div style={{ marginTop: '10px', fontSize: '0.85em' }}>
-            {ATRIBUTOS_PRINCIPAIS.map(({ key, label }) => {
-                let valor;
-                if (isAtual) {
-                    valor = safeGetMaximo(ficha, key);
-                } else {
-                    const rawBase = safeGetRawBase(ficha, key);
-                    const mBase = parseFloat(ficha[key]?.mBase) || 1.0;
-                    valor = Math.floor(rawBase * mBase);
-                }
-                return (
-                    <div key={key} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                        <span style={{ color: '#aaa' }}>{label}</span>
-                        <span style={{ color: cor, fontWeight: 'bold' }}>{valor.toLocaleString('pt-BR')}</span>
-                    </div>
-                );
-            })}
+        <div className="atributo-lista">
+            {valores.map(({ key, label, valor }) => (
+                <div key={key} className="atributo-row">
+                    <span>{label}</span>
+                    <span className={classeValor}>{valor.toLocaleString('pt-BR')}</span>
+                </div>
+            ))}
         </div>
     );
 }
