@@ -32,6 +32,14 @@ const CX = 100, CY = 100, R = 70;
 const VITALS_RADAR = ['vida', 'mana', 'aura', 'chakra', 'corpo', 'status'];
 const VITALS_LABELS = ['VIDA', 'MANA', 'AURA', 'CHAKRA', 'CORPO', 'STATUS'];
 const STATS = ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'];
+const ATRIBUTOS_PRINCIPAIS = [
+    { key: 'forca', label: 'Força' },
+    { key: 'destreza', label: 'Destreza' },
+    { key: 'inteligencia', label: 'Inteligência' },
+    { key: 'sabedoria', label: 'Sabedoria' },
+    { key: 'energiaEsp', label: 'Energia Espiritual' },
+    { key: 'carisma', label: 'Carisma' },
+];
 
 const ANGLES = VITALS_RADAR.map((_, i) => (Math.PI * 2 * i) / 6 - Math.PI / 2);
 function hexPoints(cx, cy, r) { return ANGLES.map((a) => `${cx + r * Math.cos(a)},${cy + r * Math.sin(a)}`).join(' '); }
@@ -133,6 +141,30 @@ function calcVitalScale(rawMx, key) {
     const p = Math.max(0, strMx.length - limit);
     const mxDisplay = p > 0 ? Math.floor(rawMx / Math.pow(10, p)) : Math.floor(rawMx);
     return { p, mxDisplay };
+}
+
+function AtributosLista({ ficha, isAtual }) {
+    const cor = isAtual ? '#ffcc00' : '#0ff';
+    return (
+        <div style={{ marginTop: '10px', fontSize: '0.85em' }}>
+            {ATRIBUTOS_PRINCIPAIS.map(({ key, label }) => {
+                let valor;
+                if (isAtual) {
+                    valor = safeGetMaximo(ficha, key);
+                } else {
+                    const rawBase = safeGetRawBase(ficha, key);
+                    const mBase = parseFloat(ficha[key]?.mBase) || 1.0;
+                    valor = Math.floor(rawBase * mBase);
+                }
+                return (
+                    <div key={key} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                        <span style={{ color: '#aaa' }}>{label}</span>
+                        <span style={{ color: cor, fontWeight: 'bold' }}>{valor.toLocaleString('pt-BR')}</span>
+                    </div>
+                );
+            })}
+        </div>
+    );
 }
 
 function StatusPanelCore() {
@@ -311,10 +343,12 @@ function StatusPanelCore() {
                 <div className="radar-container" style={{ background: 'rgba(25, 25, 40, 0.6)', padding: '20px', borderRadius: '10px' }}>
                     <h4 style={{ color: '#fff', textAlign: 'center', marginBottom: '20px', letterSpacing: '2px', fontSize: '0.9em' }}>STATUS (RANK BASE)<br/><span style={{ fontSize: '0.8em', color: '#0ff' }}>[A]</span></h4>
                     <RadarChart ficha={ficha} isAtual={false} />
+                    <AtributosLista ficha={ficha} isAtual={false} />
                 </div>
                 <div className="radar-container atual" style={{ background: 'rgba(30, 25, 10, 0.6)', padding: '20px', borderRadius: '10px', borderColor: 'rgba(255, 204, 0, 0.3)' }}>
                     <h4 style={{ color: '#ffcc00', textAlign: 'center', marginBottom: '20px', letterSpacing: '2px', fontSize: '0.9em' }}>PODER ATUAL (C/ FORMAS)<br/><span style={{ fontSize: '0.8em', color: '#0f0' }}>[A]</span></h4>
                     <RadarChart ficha={ficha} isAtual={true} />
+                    <AtributosLista ficha={ficha} isAtual={true} />
                 </div>
             </div>
         </div>
