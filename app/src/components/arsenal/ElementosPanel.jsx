@@ -26,7 +26,26 @@ const cores = {
     'Elemento Velocidade': '#e6ffff', 'Elemento Poeira': '#d9d9d9', 'Elemento Calor': '#ff6600', 'Elemento Cal': '#e6ccb3', 'Elemento Carbono': '#595959', 'Elemento Veneno': '#9933ff', 'Elemento Magnetismo': '#4169e1'
 };
 
-const ELEMENTOS = Object.keys(cores);
+// 🔥 HIERARQUIA ELEMENTAL DINÂMICA
+const CATEGORIAS_ELEMENTOS = [
+    { titulo: 'Elementos Básicos', itens: ['Fogo', 'Raio', 'Agua', 'Vento', 'Terra'] },
+    { titulo: 'Elementos Básicos Verdadeiros', itens: ['Fogo Verdadeiro', 'Raio Verdadeiro', 'Agua Verdadeira', 'Vento Verdadeiro', 'Terra Verdadeira'] },
+    { titulo: 'Elementos Avançados', itens: ['Solar', 'Energia', 'Gelo', 'Vacuo', 'Natureza'] },
+    { titulo: 'Elementos Avançados Verdadeiros', itens: ['Solar Verdadeiro', 'Energia Verdadeira', 'Gelo Verdadeiro', 'Vacuo Verdadeiro', 'Natureza Verdadeira'] },
+    { titulo: 'Elementos Primordiais', itens: ['Luz', 'Trevas', 'Ether'] },
+    { titulo: 'Elementos Primordiais Verdadeiros', itens: ['Celestial', 'Infernal', 'Caos'] },
+    { titulo: 'Elementos Primordiais Absolutos', itens: ['Criacao', 'Destruicao', 'Cosmos'] },
+    { titulo: 'Elementos Astrais', itens: ['Vida', 'Morte', 'Vazio'] },
+    { titulo: 'Neutro (Sem Elemento)', itens: ['Neutro'] }
+];
+
+// O Motor captura todas as magias que não estão na lista acima para não perder nada do seu banco de dados
+const itensJáCategorizados = CATEGORIAS_ELEMENTOS.flatMap(c => c.itens);
+const magiasSobressalentes = Object.keys(cores).filter(k => !itensJáCategorizados.includes(k));
+
+if (magiasSobressalentes.length > 0) {
+    CATEGORIAS_ELEMENTOS.push({ titulo: 'Magias e Elementos Extras', itens: magiasSobressalentes });
+}
 
 const BONUS_OPTIONS = [
     { value: 'nenhum', label: 'Nenhum (Apenas Elemento)' },
@@ -219,36 +238,48 @@ export default function ElementosPanel() {
 
     return (
         <div className="elementos-panel">
-            {/* Element badge selector */}
+            {/* Element badge selector HIERÁRQUICO */}
             <div className="def-box">
-                <h3 style={{ color: '#f90', marginBottom: 10 }}>Grimorio Elemental</h3>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {ELEMENTOS.map(elem => {
-                        const cor = cores[elem];
-                        const isActive = elem === elemSelecionado;
-                        return (
-                            <button
-                                key={elem}
-                                className="badge-elem"
-                                data-elem={elem}
-                                data-color={cor}
-                                onClick={() => selecionarElemento(elem)}
-                                style={{
-                                    padding: '4px 8px',
-                                    fontSize: '0.75em',
-                                    border: `1px solid ${isActive ? cor : '#444'}`,
-                                    borderRadius: 4,
-                                    background: 'transparent',
-                                    color: isActive ? cor : '#aaa',
-                                    cursor: 'pointer',
-                                    boxShadow: isActive ? `inset 0 0 10px ${cor}` : 'none'
-                                }}
-                            >
-                                {emogis[elem] || '\u2728'} {elem}
-                            </button>
-                        );
-                    })}
-                </div>
+                <h3 style={{ color: '#f90', marginBottom: 15 }}>Grimório Elemental</h3>
+                
+                {CATEGORIAS_ELEMENTOS.map(categoria => (
+                    <div key={categoria.titulo} style={{ marginBottom: 18 }}>
+                        <h4 style={{ 
+                            color: '#aaa', fontSize: '0.85em', textTransform: 'uppercase', letterSpacing: '1px',
+                            borderBottom: '1px solid #333', paddingBottom: 4, marginBottom: 8, marginTop: 0
+                        }}>
+                            {categoria.titulo}
+                        </h4>
+                        
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                            {categoria.itens.map(elem => {
+                                const cor = cores[elem] || '#ccc';
+                                const isActive = elem === elemSelecionado;
+                                return (
+                                    <button
+                                        key={elem}
+                                        className="badge-elem"
+                                        data-elem={elem}
+                                        data-color={cor}
+                                        onClick={() => selecionarElemento(elem)}
+                                        style={{
+                                            padding: '4px 8px',
+                                            fontSize: '0.75em',
+                                            border: `1px solid ${isActive ? cor : '#444'}`,
+                                            borderRadius: 4,
+                                            background: 'transparent',
+                                            color: isActive ? cor : '#aaa',
+                                            cursor: 'pointer',
+                                            boxShadow: isActive ? `inset 0 0 10px ${cor}` : 'none'
+                                        }}
+                                    >
+                                        {emogis[elem] || '\u2728'} {elem}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                ))}
             </div>
 
             {/* Form */}
