@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import useStore from '../../stores/useStore';
 import { salvarFichaSilencioso, enviarParaFeed } from '../../services/firebase-sync';
 import { calcularAcerto } from '../../core/engine';
@@ -16,15 +16,41 @@ export default function MapaPanel() {
 
     const [jogadorHistory, setJogadorHistory] = useState(null);
 
-    // Estados do Mini-Painel de Acerto
     const [mapQD, setMapQD] = useState(1);
     const [mapFD, setMapFD] = useState(20);
     const [mapBonus, setMapBonus] = useState(0);
     const [mapStat, setMapStat] = useState('destreza'); 
     
-    // 🔥 NOVOS ESTADOS: Vantagens e Desvantagens no Mapa
-    const [mapVantagens, setMapVantagens] = useState(0);
-    const [mapDesvantagens, setMapDesvantagens] = useState(0);
+    // 🔥 LÊ E SINCRONIZA COM A FICHA GLOBAL
+    const [mapVantagens, setMapVantagens] = useState(minhaFicha.ataqueConfig?.vantagens || 0);
+    const [mapDesvantagens, setMapDesvantagens] = useState(minhaFicha.ataqueConfig?.desvantagens || 0);
+
+    // Mantém atualizado se a pessoa mexer na aba de Acerto
+    useEffect(() => {
+        setMapVantagens(minhaFicha.ataqueConfig?.vantagens || 0);
+        setMapDesvantagens(minhaFicha.ataqueConfig?.desvantagens || 0);
+    }, [minhaFicha.ataqueConfig?.vantagens, minhaFicha.ataqueConfig?.desvantagens]);
+
+    // Salva na ficha ao alterar no mapa
+    function changeVantagem(e) {
+        const val = parseInt(e.target.value) || 0;
+        setMapVantagens(val);
+        updateFicha(f => {
+            if(!f.ataqueConfig) f.ataqueConfig = {};
+            f.ataqueConfig.vantagens = val;
+        });
+        salvarFichaSilencioso();
+    }
+
+    function changeDesvantagem(e) {
+        const val = parseInt(e.target.value) || 0;
+        setMapDesvantagens(val);
+        updateFicha(f => {
+            if(!f.ataqueConfig) f.ataqueConfig = {};
+            f.ataqueConfig.desvantagens = val;
+        });
+        salvarFichaSilencioso();
+    }
 
     const coresJogadoresRef = useRef({});
     const corIndexRef = useRef(0);
@@ -143,11 +169,7 @@ export default function MapaPanel() {
     }
 
     function encerrarCombate() {
-        enviarParaFeed({
-            tipo: 'sistema',
-            nome: 'SISTEMA',
-            texto: '⚔️ O COMBATE FOI ENCERRADO PELO MESTRE! ⚔️'
-        });
+        enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: '⚔️ O COMBATE FOI ENCERRADO PELO MESTRE! ⚔️' });
         sairDoCombate();
         setTurnoAtualIndex(0);
     }
@@ -157,25 +179,16 @@ export default function MapaPanel() {
         const fD = parseInt(mapFD) || 20;
         const bonus = parseInt(mapBonus) || 0;
         
-        // 🔥 AGORA LÊ OS VALORES DOS INPUTS DE VANTAGEM/DESVANTAGEM
-        const vantagens = parseInt(mapVantagens) || 0;
-        const desvantagens = parseInt(mapDesvantagens) || 0;
-
         const sels = [mapStat]; 
         const itensEquipados = minhaFicha.inventario ? minhaFicha.inventario.filter(i => i.equipado) : [];
 
-        // Injeta na engine
         const result = calcularAcerto({ 
             qD, fD, prof: 0, bonus, sels, minhaFicha, itensEquipados, 
-            vantagens, desvantagens 
+            vantagens: mapVantagens, desvantagens: mapDesvantagens 
         });
         
         const feedData = { tipo: 'acerto', nome: meuNome, ...result };
         enviarParaFeed(feedData);
-        
-        // Opcional: Zerar vantagens/desvantagens após rolar
-        setMapVantagens(0);
-        setMapDesvantagens(0);
     }
 
     const tokenMap = useMemo(() => {
@@ -197,12 +210,11 @@ export default function MapaPanel() {
     const infoDaVez = jogadorDaVez ? getAvatarInfo(jogadorDaVez.ficha) : null;
     const fmt = (n) => Number(n || 0).toLocaleString('pt-BR');
 
+    // 🔥 O CÉREBRO DO HOLOGRAMA (Com os 3 Visuais de Crítico/Falha)
     function renderHologramaAcao() {
         const emCombate = ordemIniciativa.length > 0;
-        
         const acaoNovaNoTurno = feedCombate.length > feedIndexTurnoAtual ? feedCombate[feedCombate.length - 1] : null;
         const acaoGeralForaDeCombate = feedCombate.length > 0 ? feedCombate[feedCombate.length - 1] : null;
-
         const acaoExibir = emCombate ? acaoNovaNoTurno : acaoGeralForaDeCombate;
 
         if (!emCombate && !acaoExibir) {
@@ -217,21 +229,57 @@ export default function MapaPanel() {
         let fichaBase = jogadorDaVez ? jogadorDaVez.ficha : (acaoExibir ? jogadores[acaoExibir.nome] : null);
         let infoBase = getAvatarInfo(fichaBase);
 
-        let isCrit = false, isFalha = false;
+        let isCritNormal = false, isCritFatal = false, isFalha = false;
+
+        // Leitura Inteligente do Dado
         if (acaoExibir && acaoExibir.rolagem && (acaoExibir.tipo === 'acerto' || acaoExibir.tipo === 'dano')) {
-            const match = acaoExibir.rolagem.match(/\[(.*?)\]/);
-            if (match) {
-                const clean = match[1].replace(/<[^>]*>?/gm, ''); 
-                const numbers = clean.split(',').map(n => parseInt(n.trim(), 10));
-                if (numbers.includes(20)) isCrit = true;
-                if (numbers.includes(1)) isFalha = true;
+            let maxDado = 0;
+            
+            // Tenta ler do novo formato de <strong> do engine
+            let regexStrong = /<strong>(\d+)<\/strong>/g;
+            let match;
+            while ((match = regexStrong.exec(acaoExibir.rolagem)) !== null) {
+                let v = parseInt(match[1]);
+                if (v > maxDado) maxDado = v;
+            }
+
+            // Fallback para rolagens sem strong
+            if (maxDado === 0) {
+                let regexArr = /\[(.*?)\]/;
+                let mArr = regexArr.exec(acaoExibir.rolagem);
+                if (mArr) {
+                    let clean = mArr[1].replace(/<[^>]*>?/gm, ''); 
+                    let nums = clean.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n));
+                    if (nums.length > 0) maxDado = Math.max(...nums);
+                }
+            }
+
+            const acCfg = fichaBase?.ataqueConfig || minhaFicha.ataqueConfig || {};
+            const cNMin = acCfg.criticoNormalMin || 16;
+            const cNMax = acCfg.criticoNormalMax || 18;
+            const cFMin = acCfg.criticoFatalMin || 19;
+            const cFMax = acCfg.criticoFatalMax || 20;
+
+            if (maxDado >= cFMin && maxDado <= cFMax) {
+                isCritFatal = true;
+            } else if (maxDado >= cNMin && maxDado <= cNMax) {
+                isCritNormal = true;
+            } else if (maxDado === 1) {
+                isFalha = true;
+            }
+
+            if (acaoExibir.tipo === 'dano') {
+                if (acaoExibir.armaStr?.includes('FATAL')) { isCritFatal = true; isCritNormal = false; }
+                else if (acaoExibir.armaStr?.includes('CRÍTICO')) { isCritNormal = true; isCritFatal = false; }
             }
         }
 
         const isForaDeCombate = acaoExibir && emCombate && (!ordemIniciativa.find(j => j.nome === acaoExibir.nome));
         const isForaDeTurno = acaoExibir && emCombate && !isForaDeCombate && acaoExibir.nome !== nomeBase;
 
-        let corImpacto = '#fff';
+        let corImpacto = '#333';
+        let corHeader = '#00ffcc';
+        let corTextoHeader = '#000';
         let tituloImpacto = 'AÇÃO';
         let valorImpacto = 0;
 
@@ -247,11 +295,37 @@ export default function MapaPanel() {
             }
         }
 
+        // Aplicação da Identidade Visual Crítica
+        if (isCritFatal) {
+            corImpacto = '#ff003c';
+            corHeader = '#ff003c';
+            corTextoHeader = '#fff';
+            tituloImpacto = '🔥 CRÍTICO FATAL 🔥';
+        } else if (isCritNormal) {
+            corImpacto = '#ffcc00';
+            corHeader = '#ffcc00';
+            corTextoHeader = '#000';
+            tituloImpacto = '⚡ CRÍTICO NORMAL ⚡';
+        } else if (isFalha) {
+            corImpacto = '#660000';
+            corHeader = '#660000';
+            corTextoHeader = '#ff003c';
+            tituloImpacto = '☠️ FALHA CRÍTICA ☠️';
+        } else if (acaoExibir) {
+            corHeader = corImpacto;
+            corTextoHeader = '#000';
+            if (acaoExibir.tipo === 'sistema') tituloImpacto = 'AVISO DO SISTEMA';
+            else if (jogadorDaVez && !isForaDeTurno && !isForaDeCombate) tituloImpacto = `TURNO DE ${nomeBase}`;
+            else tituloImpacto = 'AÇÃO LIVRE';
+        } else {
+            tituloImpacto = `⚡ TURNO DE ${nomeBase} ⚡`;
+        }
+
         return (
-            <div className="def-box" style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', border: `2px solid ${isCrit ? '#ffcc00' : isFalha ? '#660000' : (acaoExibir ? corImpacto : '#333')}`, boxShadow: `0 0 20px ${acaoExibir ? corImpacto : '#00ffcc'}40` }}>
+            <div className="def-box" style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', border: `2px solid ${corImpacto}`, boxShadow: `0 0 20px ${corImpacto}40` }}>
                 
-                <div style={{ background: isCrit ? '#ffcc00' : isFalha ? '#660000' : (acaoExibir ? corImpacto : '#00ffcc'), color: '#000', padding: '10px', textAlign: 'center', fontWeight: '900', letterSpacing: 2, fontSize: '1.2em', textTransform: 'uppercase' }}>
-                    {acaoExibir?.tipo === 'sistema' ? 'AVISO DO SISTEMA' : (acaoExibir ? (isCrit ? '🔥 ACERTO CRÍTICO 🔥' : isFalha ? '☠️ FALHA CRÍTICA ☠️' : (jogadorDaVez && !isForaDeTurno && !isForaDeCombate ? `TURNO DE ${nomeBase}` : 'AÇÃO LIVRE')) : `⚡ TURNO DE ${nomeBase} ⚡`)}
+                <div style={{ background: corHeader, color: corTextoHeader, padding: '10px', textAlign: 'center', fontWeight: '900', letterSpacing: 2, fontSize: '1.2em', textTransform: 'uppercase' }}>
+                    {tituloImpacto}
                 </div>
 
                 {acaoExibir?.tipo === 'sistema' ? (
@@ -481,12 +555,11 @@ export default function MapaPanel() {
                                         <span style={{ color: '#aaa', fontSize: '0.8em' }}>+</span>
                                         <input className="input-neon" type="number" value={mapBonus} onChange={e => setMapBonus(e.target.value)} style={{ width: 60, padding: 4 }} title="Bônus" />
                                         
-                                        {/* 🔥 NOVOS INPUTS DE VANTAGEM / DESVANTAGEM AQUI */}
                                         <span style={{ color: '#0f0', fontSize: '0.8em', marginLeft: 5, fontWeight: 'bold' }}>V:</span>
-                                        <input className="input-neon" type="number" min="0" value={mapVantagens} onChange={e => setMapVantagens(e.target.value)} style={{ width: 45, padding: 4, borderColor: '#0f0', color: '#0f0' }} title="Vantagens" />
+                                        <input className="input-neon" type="number" min="0" value={mapVantagens} onChange={changeVantagem} style={{ width: 45, padding: 4, borderColor: '#0f0', color: '#0f0' }} title="Vantagens" />
                                         
                                         <span style={{ color: '#f00', fontSize: '0.8em', marginLeft: 5, fontWeight: 'bold' }}>D:</span>
-                                        <input className="input-neon" type="number" min="0" value={mapDesvantagens} onChange={e => setMapDesvantagens(e.target.value)} style={{ width: 45, padding: 4, borderColor: '#f00', color: '#f00' }} title="Desvantagens" />
+                                        <input className="input-neon" type="number" min="0" value={mapDesvantagens} onChange={changeDesvantagem} style={{ width: 45, padding: 4, borderColor: '#f00', color: '#f00' }} title="Desvantagens" />
 
                                         <button className="btn-neon btn-gold" onClick={rolarAcertoRapido} style={{ padding: '4px 10px', fontSize: '0.85em', marginLeft: 5 }}>
                                             Rolar Acerto

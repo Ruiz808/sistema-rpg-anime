@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import useStore from '../../stores/useStore';
 import { calcularAcerto } from '../../core/engine';
-import { enviarParaFeed } from '../../services/firebase-sync';
+import { enviarParaFeed, salvarFichaSilencioso } from '../../services/firebase-sync';
 
 const STATS_LIST = [
     { value: 'forca', label: 'Forca' },
@@ -15,19 +15,36 @@ const STATS_LIST = [
 ];
 
 export default function AcertoPanel() {
-    // 🔥 Efeito Eco removido: não trazemos mais o addFeedEntry do Zustand localmente
-    const { minhaFicha, meuNome, setAbaAtiva } = useStore();
+    // 🔥 Agora puxamos o updateFicha para salvar as vantagens globais
+    const { minhaFicha, meuNome, setAbaAtiva, updateFicha } = useStore();
 
     const [dados, setDados] = useState(1);
     const [faces, setFaces] = useState(20);
     const [proficiencia, setProficiencia] = useState(0);
     const [bonus, setBonus] = useState(0);
     
-    // Novas variáveis táticas de Combate
-    const [vantagens, setVantagens] = useState(0);
-    const [desvantagens, setDesvantagens] = useState(0);
+    // 🔥 LÊ DA FICHA GLOBAL
+    const vantagens = minhaFicha.ataqueConfig?.vantagens || 0;
+    const desvantagens = minhaFicha.ataqueConfig?.desvantagens || 0;
     
     const [statsSelecionados, setStatsSelecionados] = useState(['destreza']);
+
+    // 🔥 FUNÇÕES DE ATUALIZAÇÃO SINCRONIZADA
+    function changeVantagem(e) {
+        updateFicha(f => {
+            if(!f.ataqueConfig) f.ataqueConfig = {};
+            f.ataqueConfig.vantagens = parseInt(e.target.value) || 0;
+        });
+        salvarFichaSilencioso();
+    }
+
+    function changeDesvantagem(e) {
+        updateFicha(f => {
+            if(!f.ataqueConfig) f.ataqueConfig = {};
+            f.ataqueConfig.desvantagens = parseInt(e.target.value) || 0;
+        });
+        salvarFichaSilencioso();
+    }
 
     function toggleStat(value) {
         setStatsSelecionados(prev => {
@@ -41,6 +58,8 @@ export default function AcertoPanel() {
         const fD = parseInt(faces) || 20;
         const prof = parseInt(proficiencia) || 0;
         const bon = parseInt(bonus) || 0;
+        
+        // Usa as variáveis sincronizadas
         const v = parseInt(vantagens) || 0;
         const d = parseInt(desvantagens) || 0;
         
@@ -107,11 +126,11 @@ export default function AcertoPanel() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10, padding: 10, background: 'rgba(0,0,0,0.3)', borderRadius: 5 }}>
                     <div>
                         <label style={{ color: '#0f0', fontSize: '0.85em', textShadow: '0 0 5px #0f0' }}>+ Vantagens</label>
-                        <input className="input-neon" type="number" min="0" value={vantagens} onChange={e => setVantagens(e.target.value)} style={{ borderColor: '#0f0', color: '#0f0' }} />
+                        <input className="input-neon" type="number" min="0" value={vantagens} onChange={changeVantagem} style={{ borderColor: '#0f0', color: '#0f0' }} />
                     </div>
                     <div>
                         <label style={{ color: '#ff003c', fontSize: '0.85em', textShadow: '0 0 5px #ff003c' }}>- Desvantagens</label>
-                        <input className="input-neon" type="number" min="0" value={desvantagens} onChange={e => setDesvantagens(e.target.value)} style={{ borderColor: '#ff003c', color: '#ff003c' }} />
+                        <input className="input-neon" type="number" min="0" value={desvantagens} onChange={changeDesvantagem} style={{ borderColor: '#ff003c', color: '#ff003c' }} />
                     </div>
                 </div>
 
