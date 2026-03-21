@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
+import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
     apiKey: "AIzaSyDJnV8y4fLq3QhuWcPiJsVOszDR3MRNz0Q",
@@ -13,12 +14,14 @@ const firebaseConfig = {
 
 let app = null;
 let db = null;
+let storage = null;
 
 try {
     app = initializeApp(firebaseConfig);
     db = getDatabase(app);
+    storage = getStorage(app);
 } catch (err) {
     console.error('[Firebase] Erro ao inicializar:', err);
 }
 
-export { db, app };
+export { db, app, storage };
