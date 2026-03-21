@@ -449,7 +449,6 @@ export default function MapaPanel() {
                         <span style={{ fontSize: '0.8em', color: '#888' }}>metros (Clique no mapa)</span>
                     </div>
 
-                    {/* 🔥 AQUI ESTÁ A CHAVE DE ATIVAÇÃO DO 3D */}
                     <button 
                         className={`btn-neon ${modo3D ? 'btn-gold' : ''}`} 
                         onClick={() => setModo3D(!modo3D)} 
@@ -459,8 +458,9 @@ export default function MapaPanel() {
                     </button>
                 </div>
 
-                {/* 🔥 AQUI A MÁGICA ACONTECE */}
-                {modo3D ? (
+                {/* 🔥 A BARREIRA DIMENSIONAL 🔥 */}
+                {/* Se o Modo 3D estiver ativo, MOSTRAMOS O 3D */}
+                {modo3D && (
                     <div style={{ height: '60vh', background: '#000', borderRadius: 5, overflow: 'hidden', border: '2px solid #0088ff', boxShadow: '0 0 20px rgba(0, 136, 255, 0.4)' }}>
                         <Tabuleiro3D 
                             mapSize={MAP_SIZE} 
@@ -469,7 +469,10 @@ export default function MapaPanel() {
                             altitudeAtual={altitudeInput}
                         />
                     </div>
-                ) : (
+                )}
+
+                {/* Se o Modo 3D estiver DESLIGADO, MOSTRAMOS O 2D */}
+                {!modo3D && (
                     <div id="combat-grid" style={{ display: 'grid', gridTemplateColumns: `repeat(${MAP_SIZE}, ${tamanhoCelula}px)`, gap: 1, overflow: 'auto', maxHeight: '60vh', background: 'rgba(0,0,0,0.3)', padding: 5, borderRadius: 5 }}>
                         {cells.map((cell) => {
                             const key = `${cell.x},${cell.y}`;
@@ -509,6 +512,7 @@ export default function MapaPanel() {
                         })}
                     </div>
                 )}
+                {/* 🔥 FIM DA BARREIRA DIMENSIONAL 🔥 */}
 
                 <div className="def-box" style={{ marginTop: 15 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 10 }}>
