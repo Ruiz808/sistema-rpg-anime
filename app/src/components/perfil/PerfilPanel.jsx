@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import useStore from '../../stores/useStore';
 import { sanitizarNome } from '../../stores/useStore';
-import { carregarFichaDoFirebase, deletarPersonagem, salvarFichaSilencioso } from '../../services/firebase-sync';
+import { carregarFichaDoFirebase, deletarPersonagem, salvarFichaSilencioso, uploadImagem } from '../../services/firebase-sync'; // 🔥 ADICIONADO: uploadImagem
 
 export default function PerfilPanel() {
     const { 
@@ -19,6 +19,8 @@ export default function PerfilPanel() {
 
     const [nomeInput, setNomeInput] = useState(meuNome || '');
     const [listaLocal, setListaLocal] = useState([]);
+    
+    const [uploadingImg, setUploadingImg] = useState(false); // 🔥 ADICIONADO: Estado do upload
 
     useEffect(() => {
         atualizarListaLocal();
@@ -94,7 +96,6 @@ export default function PerfilPanel() {
         localStorage.setItem('rpgIsMestre', novoVal ? 'sim' : 'nao');
     }
 
-    // 🔥 NOVA FUNÇÃO: Atualiza a URL da Imagem Base da Ficha
     function alterarAvatarBase(e) {
         updateFicha(ficha => {
             if (!ficha.avatar) ficha.avatar = { base: "" };
@@ -102,6 +103,28 @@ export default function PerfilPanel() {
         });
         salvarFichaSilencioso();
     }
+
+    // 🔥 NOVA FUNÇÃO: Lida com a escolha do arquivo do Avatar
+    const handleImageUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        setUploadingImg(true);
+        try {
+            // Guarda na pasta: avatars/NomeDoPersonagem/arquivo.png
+            const urlPermanente = await uploadImagem(file, `avatars/${meuNome || 'desconhecido'}`);
+            updateFicha(ficha => {
+                if (!ficha.avatar) ficha.avatar = { base: "" };
+                ficha.avatar.base = urlPermanente;
+            });
+            salvarFichaSilencioso();
+        } catch (err) {
+            console.error(err);
+            alert('Erro ao enviar o avatar para a Forja! Verifique se as regras do Storage estão ativas.');
+        } finally {
+            setUploadingImg(false);
+        }
+    };
 
     return (
         <div className="perfil-panel">
@@ -117,15 +140,22 @@ export default function PerfilPanel() {
                     placeholder="Digite o nome..."
                 />
 
-                {/* 🔥 O CAMPO DE IMAGEM RESTAURADO */}
+                {/* 🔥 O CAMPO DE IMAGEM ATUALIZADO COM O BOTÃO DE UPLOAD */}
                 <label style={{ color: '#aaa', fontSize: '0.9em', marginTop: 10, display: 'block' }}>URL da Imagem Base (Avatar):</label>
-                <input
-                    type="text"
-                    className="input-neon"
-                    value={minhaFicha?.avatar?.base || ''}
-                    onChange={alterarAvatarBase}
-                    placeholder="Cole o link da imagem aqui..."
-                />
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <input
+                        type="text"
+                        className="input-neon"
+                        value={minhaFicha?.avatar?.base || ''}
+                        onChange={alterarAvatarBase}
+                        placeholder="URL da imagem (Ou anexe ao lado 👉)"
+                        style={{ flex: 1, margin: 0 }}
+                    />
+                    <label className="btn-neon btn-blue" style={{ cursor: 'pointer', padding: '5px 15px', margin: 0, whiteSpace: 'nowrap', opacity: uploadingImg ? 0.5 : 1 }}>
+                        {uploadingImg ? 'Enviando...' : '📁 Anexar'}
+                        <input type="file" accept="image/png, image/jpeg, image/gif, image/webp" onChange={handleImageUpload} style={{ display: 'none' }} disabled={uploadingImg} />
+                    </label>
+                </div>
                 
                 {/* PREVIEW DO AVATAR */}
                 {minhaFicha?.avatar?.base && (
