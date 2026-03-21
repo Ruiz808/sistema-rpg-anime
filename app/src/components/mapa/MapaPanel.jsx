@@ -3,6 +3,9 @@ import useStore from '../../stores/useStore';
 import { salvarFichaSilencioso, enviarParaFeed } from '../../services/firebase-sync';
 import { calcularAcerto } from '../../core/engine';
 
+// 🔥 IMPORTAÇÃO DO MOTOR 3D
+import Tabuleiro3D from './Tabuleiro3D';
+
 const MAP_SIZE = 30;
 const PALETA = ['#ff003c', '#0088ff', '#00ff88', '#ffcc00', '#ff00ff', '#00ffff', '#ff8800', '#88ff00'];
 
@@ -15,6 +18,9 @@ function urlSeguraParaCss(url) {
 
 export default function MapaPanel() {
     const { minhaFicha, meuNome, personagens, updateFicha, feedCombate = [], isMestre } = useStore();
+
+    // 🔥 ESTADO QUE CONTROLA O 3D
+    const [modo3D, setModo3D] = useState(false);
 
     const [tamanhoCelula, setTamanhoCelula] = useState(35);
     const [iniciativaInput, setIniciativaInput] = useState(minhaFicha.iniciativa || 0);
@@ -217,6 +223,17 @@ export default function MapaPanel() {
         return map;
     }, [jogadores]);
 
+    // 🔥 PREPARA DADOS PARA O 3D
+    const tokens3D = useMemo(() => {
+        return Object.entries(jogadores).map(([nome, ficha]) => ({
+            nome,
+            x: ficha.posicao?.x || 0,
+            y: ficha.posicao?.y || 0,
+            z: ficha.posicao?.z || 0,
+            cor: corDoJogador(nome)
+        }));
+    }, [jogadores]);
+
     const jogadorDaVez = ordemIniciativa.length > 0 ? ordemIniciativa[turnoAtualIndex % ordemIniciativa.length] : null;
     const infoDaVez = jogadorDaVez ? getAvatarInfo(jogadorDaVez.ficha) : null;
     const fmt = (n) => Number(n || 0).toLocaleString('pt-BR');
@@ -243,7 +260,6 @@ export default function MapaPanel() {
 
         if (acaoExibir && acaoExibir.rolagem && (acaoExibir.tipo === 'acerto' || acaoExibir.tipo === 'dano')) {
             let maxDado = 0;
-            
             let regexStrong = /<strong>(\d+)<\/strong>/g;
             let match;
             while ((match = regexStrong.exec(acaoExibir.rolagem)) !== null) {
@@ -414,11 +430,12 @@ export default function MapaPanel() {
             
             <div style={{ flex: '1 1 70%', minWidth: 0 }}>
                 <div style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                        <button className="btn-neon" onClick={() => alterarZoom(-1)} style={{ padding: '5px 15px' }}>-</button>
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', opacity: modo3D ? 0.3 : 1 }}>
+                        <button className="btn-neon" onClick={() => alterarZoom(-1)} style={{ padding: '5px 15px' }} disabled={modo3D}>-</button>
                         <span style={{ color: '#aaa' }}>Zoom: {tamanhoCelula}px</span>
-                        <button className="btn-neon" onClick={() => alterarZoom(1)} style={{ padding: '5px 15px' }}>+</button>
+                        <button className="btn-neon" onClick={() => alterarZoom(1)} style={{ padding: '5px 15px' }} disabled={modo3D}>+</button>
                     </div>
+
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center', borderLeft: '2px solid #333', paddingLeft: 20 }}>
                         <span style={{ color: '#00ccff', fontWeight: 'bold' }}>Altitude (Z):</span>
                         <input
@@ -431,46 +448,67 @@ export default function MapaPanel() {
                         />
                         <span style={{ fontSize: '0.8em', color: '#888' }}>metros (Clique no mapa)</span>
                     </div>
+
+                    {/* 🔥 AQUI ESTÁ A CHAVE DE ATIVAÇÃO DO 3D */}
+                    <button 
+                        className={`btn-neon ${modo3D ? 'btn-gold' : ''}`} 
+                        onClick={() => setModo3D(!modo3D)} 
+                        style={{ marginLeft: 'auto', padding: '5px 15px', borderColor: modo3D ? '#ffcc00' : '#00ffcc' }}
+                    >
+                        {modo3D ? '🌌 VOLTAR AO 2D' : '🌌 VISÃO 3D'}
+                    </button>
                 </div>
 
-                <div id="combat-grid" style={{ display: 'grid', gridTemplateColumns: `repeat(${MAP_SIZE}, ${tamanhoCelula}px)`, gap: 1, overflow: 'auto', maxHeight: '60vh', background: 'rgba(0,0,0,0.3)', padding: 5, borderRadius: 5 }}>
-                    {cells.map((cell) => {
-                        const key = `${cell.x},${cell.y}`;
-                        const tokens = tokenMap[key] || [];
+                {/* 🔥 AQUI A MÁGICA ACONTECE */}
+                {modo3D ? (
+                    <div style={{ height: '60vh', background: '#000', borderRadius: 5, overflow: 'hidden', border: '2px solid #0088ff', boxShadow: '0 0 20px rgba(0, 136, 255, 0.4)' }}>
+                        <Tabuleiro3D 
+                            mapSize={MAP_SIZE} 
+                            tokens={tokens3D} 
+                            moverJogador={moverJogadorPara} 
+                            altitudeAtual={altitudeInput}
+                        />
+                    </div>
+                ) : (
+                    <div id="combat-grid" style={{ display: 'grid', gridTemplateColumns: `repeat(${MAP_SIZE}, ${tamanhoCelula}px)`, gap: 1, overflow: 'auto', maxHeight: '60vh', background: 'rgba(0,0,0,0.3)', padding: 5, borderRadius: 5 }}>
+                        {cells.map((cell) => {
+                            const key = `${cell.x},${cell.y}`;
+                            const tokens = tokenMap[key] || [];
 
-                        return (
-                            <div key={key} className="map-cell" data-x={cell.x} data-y={cell.y} onClick={() => moverJogadorPara(cell.x, cell.y)}
-                                style={{ width: tamanhoCelula, height: tamanhoCelula, border: '1px solid rgba(255,255,255,0.1)', position: 'relative', cursor: 'pointer' }}>
-                                {tokens.map((tk) => {
-                                    const info = getAvatarInfo(tk.ficha);
-                                    const isMe = tk.nome === meuNome;
-                                    const altitude = tk.ficha.posicao?.z || 0;
-                                    const isFlying = altitude > 0;
-                                    const style = {
-                                        position: 'absolute', top: 2, left: 2, width: tamanhoCelula - 4, height: tamanhoCelula - 4,
-                                        borderRadius: '50%', backgroundColor: corDoJogador(tk.nome), display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        color: '#fff', fontSize: '0.7em', fontWeight: 'bold',
-                                        border: isFlying ? '3px solid #00ccff' : (isMe ? '2px solid #00ffcc' : '1px solid rgba(255,255,255,0.3)'),
-                                        boxShadow: isFlying ? '0 10px 15px rgba(0, 204, 255, 0.5)' : 'none',
-                                        transform: isFlying ? 'translateY(-5px)' : 'none',
-                                        backgroundImage: urlSeguraParaCss(info.img) || 'none', backgroundSize: 'cover', backgroundPosition: 'center',
-                                        zIndex: isFlying ? 10 : 1
-                                    };
-                                    return (
-                                        <div key={tk.nome} className={`player-token${isMe ? ' my-token' : ''}`} title={`${tk.nome} | Altura: ${altitude}m`} style={style}>
-                                            {!info.img && tk.nome.charAt(0).toUpperCase()}
-                                            {isFlying && (
-                                                <div style={{ position: 'absolute', bottom: '-15px', background: '#00ccff', color: '#000', fontSize: '0.8em', padding: '0 4px', borderRadius: '4px', fontWeight: 'bold' }}>
-                                                    {altitude}m
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        );
-                    })}
-                </div>
+                            return (
+                                <div key={key} className="map-cell" data-x={cell.x} data-y={cell.y} onClick={() => moverJogadorPara(cell.x, cell.y)}
+                                    style={{ width: tamanhoCelula, height: tamanhoCelula, border: '1px solid rgba(255,255,255,0.1)', position: 'relative', cursor: 'pointer' }}>
+                                    {tokens.map((tk) => {
+                                        const info = getAvatarInfo(tk.ficha);
+                                        const isMe = tk.nome === meuNome;
+                                        const altitude = tk.ficha.posicao?.z || 0;
+                                        const isFlying = altitude > 0;
+                                        const style = {
+                                            position: 'absolute', top: 2, left: 2, width: tamanhoCelula - 4, height: tamanhoCelula - 4,
+                                            borderRadius: '50%', backgroundColor: corDoJogador(tk.nome), display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            color: '#fff', fontSize: '0.7em', fontWeight: 'bold',
+                                            border: isFlying ? '3px solid #00ccff' : (isMe ? '2px solid #00ffcc' : '1px solid rgba(255,255,255,0.3)'),
+                                            boxShadow: isFlying ? '0 10px 15px rgba(0, 204, 255, 0.5)' : 'none',
+                                            transform: isFlying ? 'translateY(-5px)' : 'none',
+                                            backgroundImage: urlSeguraParaCss(info.img) || 'none', backgroundSize: 'cover', backgroundPosition: 'center',
+                                            zIndex: isFlying ? 10 : 1
+                                        };
+                                        return (
+                                            <div key={tk.nome} className={`player-token${isMe ? ' my-token' : ''}`} title={`${tk.nome} | Altura: ${altitude}m`} style={style}>
+                                                {!info.img && tk.nome.charAt(0).toUpperCase()}
+                                                {isFlying && (
+                                                    <div style={{ position: 'absolute', bottom: '-15px', background: '#00ccff', color: '#000', fontSize: '0.8em', padding: '0 4px', borderRadius: '4px', fontWeight: 'bold' }}>
+                                                        {altitude}m
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
 
                 <div className="def-box" style={{ marginTop: 15 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 10 }}>
