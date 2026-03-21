@@ -9,7 +9,7 @@ export default function Jukebox() {
     // O Ouvido Global: Escuta o Firebase (se as regras permitirem)
     useEffect(() => {
         const unsubscribe = iniciarListenerJukebox((dados) => {
-            if (dados && dados.playing && dados.videoId) {
+            if (dados && dados.playing && dados.videoId && /^[a-zA-Z0-9_-]{11}$/.test(dados.videoId)) {
                 setInputUrl(dados.inputUrl || '');
                 setVideoId(dados.videoId);
                 setTocando(true);
@@ -38,7 +38,7 @@ export default function Jukebox() {
 
     const handlePlay = () => {
         const id = extractVideoId(inputUrl);
-        if (id) {
+        if (id && /^[a-zA-Z0-9_-]{11}$/.test(id)) {
             // 1. LIGA O SOM IMEDIATAMENTE NA SUA TELA (Ignora se o Firebase está bloqueado hoje)
             setVideoId(id);
             setTocando(true);

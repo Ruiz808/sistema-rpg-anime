@@ -16,6 +16,23 @@
         ".validate": "newData.hasChildren() && newData.child('tipo').exists() && newData.child('nome').exists() && newData.child('tipo').isString() && newData.child('nome').isString() && newData.child('tipo').val().length <= 50 && newData.child('nome').val().length <= 50"
       }
     },
+    "jukebox": {
+      ".read": true,
+      ".write": true,
+      ".validate": "newData.hasChildren(['playing'])",
+      "playing": {
+        ".validate": "newData.isBoolean()"
+      },
+      "videoId": {
+        ".validate": "!newData.exists() || (newData.isString() && newData.val().length == 11)"
+      },
+      "inputUrl": {
+        ".validate": "newData.isString() && newData.val().length <= 200 && (newData.val() === '' || newData.val().matches(/^https:\\/\\/(www\\.)?(youtube\\.com|youtu\\.be)\\/.+$/))"
+      },
+      "$unknown": {
+        ".validate": false
+      }
+    },
     "$other": {
       ".read": false,
       ".write": false
