@@ -1,5 +1,6 @@
 import { ref, set, get, push, remove, onValue, onChildAdded, limitToLast, query } from 'firebase/database';
-import { db } from './firebase-config';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, storage } from './firebase-config';
 import useStore, { sanitizarNome } from '../stores/useStore';
 
 let debounceTimer = null;
@@ -20,7 +21,6 @@ export function salvarFirebaseImediato() {
         return Promise.resolve();
     }
 
-    // 🔥 O CLONE DE SACRIFÍCIO: Impede que o Firebase tente mutar o estado congelado do Zustand
     const fichaParaSalvar = JSON.parse(JSON.stringify(minhaFicha));
 
     try {
@@ -56,7 +56,6 @@ export function iniciarListenerPersonagens(callback) {
     if (!db) return () => {};
 
     const personagensRef = ref(db, 'personagens');
-    // Retorna o unsubscribe garantindo que não haverá memory leak
     return onValue(personagensRef, (snapshot) => {
         const dados = snapshot.val() || {};
         if (callback) callback(dados);
@@ -105,12 +104,10 @@ export async function deletarPersonagem(nome) {
         console.error('[Sync] Erro ao deletar do Firebase:', err);
     }
 }
-// --- SISTEMA DE SINCRONIZAÇÃO DA MESA DE SOM (JUKEBOX) ---
 
 export function enviarParaJukebox(estado) {
     if (!db) return;
     const jukeboxRef = ref(db, 'jukebox');
-    // Envia o estado da música para a base de dados
     set(jukeboxRef, estado).catch((err) => {
         console.error('[Sync] Erro ao enviar para jukebox:', err);
     });
@@ -119,11 +116,20 @@ export function enviarParaJukebox(estado) {
 export function iniciarListenerJukebox(callback) {
     if (!db) return () => {};
     const jukeboxRef = ref(db, 'jukebox');
-    // Fica à escuta de qualquer mudança na música e avisa a interface
     return onValue(jukeboxRef, (snapshot) => {
         const dados = snapshot.val() || null;
         if (callback) callback(dados);
     }, (err) => {
         console.error('[Sync] Erro no listener da jukebox:', err);
     });
+}
+
+export async function uploadImagem(file, pasta = 'imagens') {
+    if (!storage) throw new Error("Firebase Storage não está inicializado.");
+    const extensao = file.name.split('.').pop();
+    const nomeUnico = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${extensao}`;
+    const caminhoRef = storageRef(storage, `${pasta}/${nomeUnico}`);
+    await uploadBytes(caminhoRef, file);
+    const downloadUrl = await getDownloadURL(caminhoRef);
+    return downloadUrl;
 }

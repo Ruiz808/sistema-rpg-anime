@@ -1,7 +1,7 @@
 import React, { useState, useRef, useMemo } from 'react';
 import useStore from '../../stores/useStore';
 import { getMaximo } from '../../core/attributes';
-import { salvarFichaSilencioso } from '../../services/firebase-sync';
+import { salvarFichaSilencioso, uploadImagem } from '../../services/firebase-sync'; // 🔥 ADICIONADO: uploadImagem
 
 // 🔥 AGRUPAMENTO VISUAL DOS ATRIBUTOS (Agora com COMBATE!)
 const ATRIBUTOS_AGRUPADOS = [
@@ -29,6 +29,7 @@ const PROPRIEDADE_OPTIONS = [
 
 export default function PoderesPanel() {
     const minhaFicha = useStore(s => s.minhaFicha);
+    const meuNome = useStore(s => s.meuNome); // 🔥 ADICIONADO: Para organizar as pastas no storage
     const updateFicha = useStore(s => s.updateFicha);
     const efeitosTemp = useStore(s => s.efeitosTemp);
     const setEfeitosTemp = useStore(s => s.setEfeitosTemp);
@@ -50,6 +51,8 @@ export default function PoderesPanel() {
     const [novoPropPassivo, setNovoPropPassivo] = useState('base');
     const [novoValPassivo, setNovoValPassivo] = useState('');
 
+    const [uploadingImg, setUploadingImg] = useState(false); // 🔥 ADICIONADO: Estado de carregamento do Upload
+
     const formRef = useRef(null);
 
     const addEfeitoTemp = () => {
@@ -70,6 +73,24 @@ export default function PoderesPanel() {
 
     const removerEfeitoPassivoTemp = (index) => {
         setEfeitosTempPassivos(efeitosTempPassivos.filter((_, i) => i !== index));
+    };
+
+    // 🔥 NOVA FUNÇÃO: Lida com a escolha do arquivo do Computador/Celular
+    const handleImageUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        setUploadingImg(true);
+        try {
+            // Guarda na pasta: poderes/NomeDoPersonagem/arquivo.png
+            const urlPermanente = await uploadImagem(file, `poderes/${meuNome || 'desconhecido'}`);
+            setImagemUrl(urlPermanente);
+        } catch (err) {
+            console.error(err);
+            alert('Erro ao enviar a imagem para a Forja! Verifique se as regras do Storage estão ativas no Firebase.');
+        } finally {
+            setUploadingImg(false);
+        }
     };
 
     const salvarNovoPoder = () => {
@@ -272,7 +293,22 @@ export default function PoderesPanel() {
                 </h3>
 
                 <input className="input-neon" type="text" placeholder="Nome do Poder" value={nomePoder} onChange={e => setNomePoder(e.target.value)} />
-                <input className="input-neon" type="text" placeholder="URL da Imagem (opcional)" value={imagemUrl} onChange={e => setImagemUrl(e.target.value)} style={{ marginTop: 5 }} />
+                
+                {/* 🔥 NOVO: Interface de Upload Misturada com Link */}
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 5 }}>
+                    <input 
+                        className="input-neon" 
+                        type="text" 
+                        placeholder="URL da Imagem (Ou anexe ao lado 👉)" 
+                        value={imagemUrl} 
+                        onChange={e => setImagemUrl(e.target.value)} 
+                        style={{ flex: 1, margin: 0 }} 
+                    />
+                    <label className="btn-neon btn-blue" style={{ cursor: 'pointer', padding: '5px 15px', margin: 0, whiteSpace: 'nowrap', opacity: uploadingImg ? 0.5 : 1 }}>
+                        {uploadingImg ? 'Enviando...' : '📁 Anexar'}
+                        <input type="file" accept="image/png, image/jpeg, image/gif, image/webp" onChange={handleImageUpload} style={{ display: 'none' }} disabled={uploadingImg} />
+                    </label>
+                </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8, marginTop: 10 }}>
                     <div>

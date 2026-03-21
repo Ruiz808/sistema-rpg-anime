@@ -24,4 +24,4 @@ try {
     console.error('[Firebase] Erro ao inicializar:', err);
 }
 
-export { db, app, storage };
+export { db, storage, app };
