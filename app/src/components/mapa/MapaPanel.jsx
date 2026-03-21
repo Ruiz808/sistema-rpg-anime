@@ -6,11 +6,19 @@ import { calcularAcerto } from '../../core/engine';
 const MAP_SIZE = 30;
 const PALETA = ['#ff003c', '#0088ff', '#00ff88', '#ffcc00', '#ff00ff', '#00ffff', '#ff8800', '#88ff00'];
 
+function urlSeguraParaCss(url) {
+    if (!url || typeof url !== 'string') return '';
+    const trimmed = url.trim();
+    if (!/^https?:\/\//i.test(trimmed) && !/^data:image\//i.test(trimmed)) return '';
+    return `url("${trimmed.replace(/["\\)]/g, '')}")`;
+}
+
 export default function MapaPanel() {
     const { minhaFicha, meuNome, personagens, updateFicha, feedCombate = [], isMestre } = useStore();
 
     const [tamanhoCelula, setTamanhoCelula] = useState(35);
     const [iniciativaInput, setIniciativaInput] = useState(minhaFicha.iniciativa || 0);
+    const [altitudeInput, setAltitudeInput] = useState(minhaFicha.posicao?.z || 0);
     const [turnoAtualIndex, setTurnoAtualIndex] = useState(0);
     const [feedIndexTurnoAtual, setFeedIndexTurnoAtual] = useState(0);
 
@@ -30,6 +38,10 @@ export default function MapaPanel() {
         setMapVantagens(minhaFicha.ataqueConfig?.vantagens || 0);
         setMapDesvantagens(minhaFicha.ataqueConfig?.desvantagens || 0);
     }, [minhaFicha.ataqueConfig?.vantagens, minhaFicha.ataqueConfig?.desvantagens]);
+
+    useEffect(() => {
+        setAltitudeInput(minhaFicha.posicao?.z || 0);
+    }, [minhaFicha.posicao?.z]);
 
     // Salva na ficha ao alterar no mapa
     function changeVantagem(e) {
@@ -124,10 +136,12 @@ export default function MapaPanel() {
     }, [personagens]);
 
     function moverJogadorPara(x, y) {
+        const z = parseInt(altitudeInput) || 0;
         updateFicha((ficha) => {
             if (!ficha.posicao) ficha.posicao = {};
             ficha.posicao.x = x;
             ficha.posicao.y = y;
+            ficha.posicao.z = z;
         });
         salvarFichaSilencioso();
     }
@@ -336,7 +350,7 @@ export default function MapaPanel() {
                     <>
                         <div style={{ 
                             flex: '1', minHeight: '250px', 
-                            backgroundImage: infoBase.img ? `url('${infoBase.img}')` : 'none', 
+                            backgroundImage: urlSeguraParaCss(infoBase.img) || 'none',
                             backgroundSize: 'cover', backgroundPosition: 'top center',
                             position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
                             boxShadow: 'inset 0 -100px 50px -20px rgba(0,0,0,0.9)' 
@@ -417,10 +431,24 @@ export default function MapaPanel() {
         <div className="mapa-panel" style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
             
             <div style={{ flex: '1 1 70%', minWidth: 0 }}>
-                <div style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'center' }}>
-                    <button className="btn-neon" onClick={() => alterarZoom(-1)} style={{ padding: '5px 15px' }}>-</button>
-                    <span style={{ color: '#aaa' }}>Zoom: {tamanhoCelula}px</span>
-                    <button className="btn-neon" onClick={() => alterarZoom(1)} style={{ padding: '5px 15px' }}>+</button>
+                <div style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                        <button className="btn-neon" onClick={() => alterarZoom(-1)} style={{ padding: '5px 15px' }}>-</button>
+                        <span style={{ color: '#aaa' }}>Zoom: {tamanhoCelula}px</span>
+                        <button className="btn-neon" onClick={() => alterarZoom(1)} style={{ padding: '5px 15px' }}>+</button>
+                    </div>
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', borderLeft: '2px solid #333', paddingLeft: 20 }}>
+                        <span style={{ color: '#00ccff', fontWeight: 'bold' }}>Altitude (Z):</span>
+                        <input
+                            className="input-neon"
+                            type="number"
+                            value={altitudeInput}
+                            onChange={e => setAltitudeInput(e.target.value)}
+                            style={{ width: 70, padding: 4, borderColor: '#00ccff', color: '#fff' }}
+                            title="0 = chao. Valores maiores = voo."
+                        />
+                        <span style={{ fontSize: '0.8em', color: '#888' }}>metros (Clique no mapa)</span>
+                    </div>
                 </div>
 
                 <div id="combat-grid" style={{ display: 'grid', gridTemplateColumns: `repeat(${MAP_SIZE}, ${tamanhoCelula}px)`, gap: 1, overflow: 'auto', maxHeight: '60vh', background: 'rgba(0,0,0,0.3)', padding: 5, borderRadius: 5 }}>
@@ -434,15 +462,26 @@ export default function MapaPanel() {
                                 {tokens.map((tk) => {
                                     const info = getAvatarInfo(tk.ficha);
                                     const isMe = tk.nome === meuNome;
+                                    const altitude = tk.ficha.posicao?.z || 0;
+                                    const isFlying = altitude > 0;
                                     const style = {
                                         position: 'absolute', top: 2, left: 2, width: tamanhoCelula - 4, height: tamanhoCelula - 4,
                                         borderRadius: '50%', backgroundColor: corDoJogador(tk.nome), display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        color: '#fff', fontSize: '0.7em', fontWeight: 'bold', border: isMe ? '2px solid #00ffcc' : '1px solid rgba(255,255,255,0.3)',
-                                        backgroundImage: info.img ? `url('${info.img}')` : 'none', backgroundSize: 'cover', backgroundPosition: 'center'
+                                        color: '#fff', fontSize: '0.7em', fontWeight: 'bold',
+                                        border: isFlying ? '3px solid #00ccff' : (isMe ? '2px solid #00ffcc' : '1px solid rgba(255,255,255,0.3)'),
+                                        boxShadow: isFlying ? '0 10px 15px rgba(0, 204, 255, 0.5)' : 'none',
+                                        transform: isFlying ? 'translateY(-5px)' : 'none',
+                                        backgroundImage: urlSeguraParaCss(info.img) || 'none', backgroundSize: 'cover', backgroundPosition: 'center',
+                                        zIndex: isFlying ? 10 : 1
                                     };
                                     return (
-                                        <div key={tk.nome} className={`player-token${isMe ? ' my-token' : ''}`} title={tk.nome} style={style}>
+                                        <div key={tk.nome} className={`player-token${isMe ? ' my-token' : ''}`} title={`${tk.nome} | Altura: ${altitude}m`} style={style}>
                                             {!info.img && tk.nome.charAt(0).toUpperCase()}
+                                            {isFlying && (
+                                                <div style={{ position: 'absolute', bottom: '-15px', background: '#00ccff', color: '#000', fontSize: '0.8em', padding: '0 4px', borderRadius: '4px', fontWeight: 'bold' }}>
+                                                    {altitude}m
+                                                </div>
+                                            )}
                                         </div>
                                     );
                                 })}
@@ -483,7 +522,7 @@ export default function MapaPanel() {
                                         style={{
                                             cursor: 'pointer',
                                             minWidth: 50, height: 50, borderRadius: '50%', border: isActive ? '3px solid #00ffcc' : '2px solid #444', opacity: isActive ? 1 : 0.5,
-                                            backgroundImage: info.img ? `url('${info.img}')` : 'none', backgroundSize: 'cover', backgroundPosition: 'top center',
+                                            backgroundImage: urlSeguraParaCss(info.img) || 'none', backgroundSize: 'cover', backgroundPosition: 'top center',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.7em', color: 'white', textShadow: '1px 1px 2px black',
                                             transition: 'transform 0.2s',
                                         }}>
@@ -526,7 +565,7 @@ export default function MapaPanel() {
                         <div style={{ marginTop: 15, display: 'flex', gap: 15, alignItems: 'center' }}>
                             <div id="turno-destaque" style={{
                                 width: 80, height: 80, borderRadius: '50%', border: '3px solid #00ffcc',
-                                backgroundImage: infoDaVez && infoDaVez.img ? `url('${infoDaVez.img}')` : 'none', backgroundSize: 'cover', backgroundPosition: 'center',
+                                backgroundImage: urlSeguraParaCss(infoDaVez?.img) || 'none', backgroundSize: 'cover', backgroundPosition: 'center',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5em', fontWeight: 'bold', color: '#fff'
                             }}>
                                 {(!infoDaVez || !infoDaVez.img) && jogadorDaVez.nome.charAt(0)}

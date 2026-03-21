@@ -7,7 +7,7 @@ export const fichaPadrao = {
     avatar: { base: "" },
     bio: { raca: "", classe: "", idade: "", fisico: "", sangue: "", alinhamento: "", afiliacao: "", dinheiro: "" },
     notas: { base: "", geral: "", abs: "" },
-    posicao: { x: 0, y: 0 },
+    posicao: { x: 0, y: 0, z: 0 },
     iniciativa: 0,
     // 🔥 ADICIONADO: vantagens e desvantagens para salvar globalmente!
     ataqueConfig: { armaStatusUsados: ['forca'], armaEnergiaCombustao: 'mana', armaPercEnergia: 0, criticoNormalMin: 16, criticoNormalMax: 18, criticoFatalMin: 19, criticoFatalMax: 20, vantagens: 0, desvantagens: 0 },
