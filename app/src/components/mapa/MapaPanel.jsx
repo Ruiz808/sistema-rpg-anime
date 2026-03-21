@@ -29,11 +29,9 @@ export default function MapaPanel() {
     const [mapBonus, setMapBonus] = useState(0);
     const [mapStat, setMapStat] = useState('destreza'); 
     
-    // 🔥 LÊ E SINCRONIZA COM A FICHA GLOBAL
     const [mapVantagens, setMapVantagens] = useState(minhaFicha.ataqueConfig?.vantagens || 0);
     const [mapDesvantagens, setMapDesvantagens] = useState(minhaFicha.ataqueConfig?.desvantagens || 0);
 
-    // Mantém atualizado se a pessoa mexer na aba de Acerto
     useEffect(() => {
         setMapVantagens(minhaFicha.ataqueConfig?.vantagens || 0);
         setMapDesvantagens(minhaFicha.ataqueConfig?.desvantagens || 0);
@@ -43,7 +41,6 @@ export default function MapaPanel() {
         setAltitudeInput(minhaFicha.posicao?.z || 0);
     }, [minhaFicha.posicao?.z]);
 
-    // Salva na ficha ao alterar no mapa
     function changeVantagem(e) {
         const val = parseInt(e.target.value) || 0;
         setMapVantagens(val);
@@ -224,7 +221,6 @@ export default function MapaPanel() {
     const infoDaVez = jogadorDaVez ? getAvatarInfo(jogadorDaVez.ficha) : null;
     const fmt = (n) => Number(n || 0).toLocaleString('pt-BR');
 
-    // 🔥 O CÉREBRO DO HOLOGRAMA (Com os 3 Visuais de Crítico/Falha)
     function renderHologramaAcao() {
         const emCombate = ordemIniciativa.length > 0;
         const acaoNovaNoTurno = feedCombate.length > feedIndexTurnoAtual ? feedCombate[feedCombate.length - 1] : null;
@@ -245,11 +241,9 @@ export default function MapaPanel() {
 
         let isCritNormal = false, isCritFatal = false, isFalha = false;
 
-        // Leitura Inteligente do Dado
         if (acaoExibir && acaoExibir.rolagem && (acaoExibir.tipo === 'acerto' || acaoExibir.tipo === 'dano')) {
             let maxDado = 0;
             
-            // Tenta ler do novo formato de <strong> do engine
             let regexStrong = /<strong>(\d+)<\/strong>/g;
             let match;
             while ((match = regexStrong.exec(acaoExibir.rolagem)) !== null) {
@@ -257,7 +251,6 @@ export default function MapaPanel() {
                 if (v > maxDado) maxDado = v;
             }
 
-            // Fallback para rolagens sem strong
             if (maxDado === 0) {
                 let regexArr = /\[(.*?)\]/;
                 let mArr = regexArr.exec(acaoExibir.rolagem);
@@ -309,25 +302,14 @@ export default function MapaPanel() {
             }
         }
 
-        // Aplicação da Identidade Visual Crítica
         if (isCritFatal) {
-            corImpacto = '#ff003c';
-            corHeader = '#ff003c';
-            corTextoHeader = '#fff';
-            tituloImpacto = '🔥 CRÍTICO FATAL 🔥';
+            corImpacto = '#ff003c'; corHeader = '#ff003c'; corTextoHeader = '#fff'; tituloImpacto = '🔥 CRÍTICO FATAL 🔥';
         } else if (isCritNormal) {
-            corImpacto = '#ffcc00';
-            corHeader = '#ffcc00';
-            corTextoHeader = '#000';
-            tituloImpacto = '⚡ CRÍTICO NORMAL ⚡';
+            corImpacto = '#ffcc00'; corHeader = '#ffcc00'; corTextoHeader = '#000'; tituloImpacto = '⚡ CRÍTICO NORMAL ⚡';
         } else if (isFalha) {
-            corImpacto = '#660000';
-            corHeader = '#660000';
-            corTextoHeader = '#ff003c';
-            tituloImpacto = '☠️ FALHA CRÍTICA ☠️';
+            corImpacto = '#660000'; corHeader = '#660000'; corTextoHeader = '#ff003c'; tituloImpacto = '☠️ FALHA CRÍTICA ☠️';
         } else if (acaoExibir) {
-            corHeader = corImpacto;
-            corTextoHeader = '#000';
+            corHeader = corImpacto; corTextoHeader = '#000';
             if (acaoExibir.tipo === 'sistema') tituloImpacto = 'AVISO DO SISTEMA';
             else if (jogadorDaVez && !isForaDeTurno && !isForaDeCombate) tituloImpacto = `TURNO DE ${nomeBase}`;
             else tituloImpacto = 'AÇÃO LIVRE';
