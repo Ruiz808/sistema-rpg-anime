@@ -3,7 +3,6 @@ import useStore from '../../stores/useStore';
 import { salvarFichaSilencioso, enviarParaFeed } from '../../services/firebase-sync';
 import { calcularAcerto } from '../../core/engine';
 
-// 🔥 IMPORTAÇÃO DO MOTOR 3D
 import Tabuleiro3D from './Tabuleiro3D';
 
 const MAP_SIZE = 30;
@@ -19,15 +18,12 @@ function urlSeguraParaCss(url) {
 export default function MapaPanel() {
     const { minhaFicha, meuNome, personagens, updateFicha, feedCombate = [], isMestre } = useStore();
 
-    // 🔥 ESTADO QUE CONTROLA O 3D
     const [modo3D, setModo3D] = useState(false);
-
     const [tamanhoCelula, setTamanhoCelula] = useState(35);
     const [iniciativaInput, setIniciativaInput] = useState(minhaFicha.iniciativa || 0);
     const [altitudeInput, setAltitudeInput] = useState(minhaFicha.posicao?.z || 0);
     const [turnoAtualIndex, setTurnoAtualIndex] = useState(0);
     const [feedIndexTurnoAtual, setFeedIndexTurnoAtual] = useState(0);
-
     const [jogadorHistory, setJogadorHistory] = useState(null);
 
     const [mapQD, setMapQD] = useState(1);
@@ -37,6 +33,9 @@ export default function MapaPanel() {
     
     const [mapVantagens, setMapVantagens] = useState(minhaFicha.ataqueConfig?.vantagens || 0);
     const [mapDesvantagens, setMapDesvantagens] = useState(minhaFicha.ataqueConfig?.desvantagens || 0);
+
+    // 🔥 NOVO: Campo de input para o Mestre colar o link do mapa
+    const [inputMapaUrl, setInputMapaUrl] = useState('');
 
     useEffect(() => {
         setMapVantagens(minhaFicha.ataqueConfig?.vantagens || 0);
@@ -66,6 +65,29 @@ export default function MapaPanel() {
         });
         salvarFichaSilencioso();
     }
+
+    // 🔥 NOVO: Função para o Mestre salvar a URL do Mapa na sua ficha
+    function aplicarUrlDoMapa() {
+        updateFicha(f => {
+            f.mapaGlobalUrl = inputMapaUrl;
+        });
+        salvarFichaSilencioso();
+        enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: '🗺️ O Mestre alterou o cenário de combate!' });
+    }
+
+    // 🔥 NOVO: O sistema procura a URL do Mapa guardada na ficha de quem é o Mestre
+    const urlMapaGlobal = useMemo(() => {
+        // Se eu sou o mestre, pego da minha ficha
+        if (isMestre && minhaFicha.mapaGlobalUrl) return minhaFicha.mapaGlobalUrl;
+        // Se não sou, procuro a ficha do mestre nos personagens
+        if (personagens) {
+            const chaves = Object.keys(personagens);
+            for(let k of chaves) {
+                if (personagens[k]?.mapaGlobalUrl) return personagens[k].mapaGlobalUrl;
+            }
+        }
+        return null;
+    }, [isMestre, minhaFicha.mapaGlobalUrl, personagens]);
 
     const coresJogadoresRef = useRef({});
     const corIndexRef = useRef(0);
@@ -223,7 +245,6 @@ export default function MapaPanel() {
         return map;
     }, [jogadores]);
 
-    // 🔥 PREPARA DADOS PARA O 3D
     const tokens3D = useMemo(() => {
         return Object.entries(jogadores).map(([nome, ficha]) => ({
             nome,
@@ -446,7 +467,7 @@ export default function MapaPanel() {
                             style={{ width: 70, padding: 4, borderColor: '#00ccff', color: '#fff' }}
                             title="0 = chao. Valores maiores = voo."
                         />
-                        <span style={{ fontSize: '0.8em', color: '#888' }}>metros (Clique no mapa)</span>
+                        <span style={{ fontSize: '0.8em', color: '#888' }}>m</span>
                     </div>
 
                     <button 
@@ -458,20 +479,36 @@ export default function MapaPanel() {
                     </button>
                 </div>
 
-                {/* 🔥 A BARREIRA DIMENSIONAL 🔥 */}
-                {/* Se o Modo 3D estiver ativo, MOSTRAMOS O 3D */}
+                {/* 🔥 NOVO: CAMPO MÁGICO DO MESTRE PARA TROCAR MAPAS */}
+                {isMestre && modo3D && (
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 10, background: 'rgba(0,0,0,0.5)', padding: 10, borderRadius: 5, border: '1px solid #ffcc00' }}>
+                        <span style={{ color: '#ffcc00', fontWeight: 'bold' }}>🗺️ Link do Cenário (Discord/Imgur):</span>
+                        <input
+                            className="input-neon"
+                            type="text"
+                            placeholder="Cole o link da imagem terminando em .png ou .jpg..."
+                            value={inputMapaUrl}
+                            onChange={e => setInputMapaUrl(e.target.value)}
+                            style={{ flex: 1, padding: 4, borderColor: '#ffcc00', color: '#fff' }}
+                        />
+                        <button className="btn-neon btn-gold" onClick={aplicarUrlDoMapa} style={{ padding: '4px 15px', margin: 0 }}>
+                            GERAR MUNDO
+                        </button>
+                    </div>
+                )}
+
+                {/* 🔥 PASSA A URL MAGICA PARA O 3D */}
                 {modo3D && (
                     <div style={{ height: '60vh', background: '#000', borderRadius: 5, overflow: 'hidden', border: '2px solid #0088ff', boxShadow: '0 0 20px rgba(0, 136, 255, 0.4)' }}>
                         <Tabuleiro3D 
                             mapSize={MAP_SIZE} 
                             tokens={tokens3D} 
                             moverJogador={moverJogadorPara} 
-                            altitudeAtual={altitudeInput}
+                            mapUrl={urlMapaGlobal} 
                         />
                     </div>
                 )}
 
-                {/* Se o Modo 3D estiver DESLIGADO, MOSTRAMOS O 2D */}
                 {!modo3D && (
                     <div id="combat-grid" style={{ display: 'grid', gridTemplateColumns: `repeat(${MAP_SIZE}, ${tamanhoCelula}px)`, gap: 1, overflow: 'auto', maxHeight: '60vh', background: 'rgba(0,0,0,0.3)', padding: 5, borderRadius: 5 }}>
                         {cells.map((cell) => {
@@ -512,7 +549,6 @@ export default function MapaPanel() {
                         })}
                     </div>
                 )}
-                {/* 🔥 FIM DA BARREIRA DIMENSIONAL 🔥 */}
 
                 <div className="def-box" style={{ marginTop: 15 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 10 }}>

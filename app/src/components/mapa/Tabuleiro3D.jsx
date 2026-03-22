@@ -3,21 +3,23 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Grid, Html, Sky } from '@react-three/drei';
 import * as THREE from 'three';
 
-export default function Tabuleiro3D({ mapSize, tokens, moverJogador }) {
-    // ESTADOS DO MAPA
+// 🔥 AGORA ELE RECEBE O "mapUrl" DIRETAMENTE DO PAINEL DO MESTRE
+export default function Tabuleiro3D({ mapSize, tokens, moverJogador, mapUrl }) {
     const [mapTexture, setMapTexture] = useState(null);
     const [statusMundo, setStatusMundo] = useState('pronto');
 
-    // 🔮 FUTURO: Quando vocês criarem a opção de Mudar Mapa no painel do Mestre,
-    // a URL da imagem virá para esta variável (ex: url do Firebase Storage).
-    // Por agora, deixamos como null para usar o chão 3D padrão.
-    const mapUrl = null; 
-
     useEffect(() => {
-        if (!mapUrl) return; // Se não houver mapa configurado, ignora e usa o chão padrão
+        if (!mapUrl) {
+            setMapTexture(null);
+            setStatusMundo('pronto');
+            return;
+        }
 
         setStatusMundo('carregando');
         const loader = new THREE.TextureLoader();
+        // Permite carregar imagens do Discord/Imgur sem bloqueios de segurança (CORS)
+        loader.setCrossOrigin('anonymous'); 
+        
         loader.load(
             mapUrl,
             (texture) => {
@@ -27,13 +29,13 @@ export default function Tabuleiro3D({ mapSize, tokens, moverJogador }) {
             },
             undefined,
             (erro) => {
-                console.warn("Imagem não encontrada. A usar o chão tático padrão.");
-                setStatusMundo('pronto'); // Não quebra o site, apenas ignora a imagem
+                console.warn("Imagem não encontrada ou link inválido. A usar o chão padrão.");
+                setMapTexture(null);
+                setStatusMundo('pronto'); 
             }
         );
     }, [mapUrl]);
 
-    // Se houver imagem, cria relevo. Se não houver, o chão é plano (0)
     const displacementScale = mapTexture ? 2.5 : 0; 
 
     function handleChaoClick(e) {
@@ -62,11 +64,9 @@ export default function Tabuleiro3D({ mapSize, tokens, moverJogador }) {
             <directionalLight position={[10, 20, 10]} intensity={1.5} castShadow />
             <OrbitControls makeDefault maxPolarAngle={Math.PI / 2 - 0.02} />
 
-            {/* O CHÃO DO MUNDO (Dinâmico) */}
             <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.2, 0]} receiveShadow onClick={handleChaoClick}>
                 <planeGeometry args={[1000, 1000, 128, 128]} />
                 {mapTexture ? (
-                    // Se o Mestre enviou um mapa, mostra a imagem com relevo
                     <meshStandardMaterial 
                         map={mapTexture} 
                         displacementMap={mapTexture} 
@@ -74,12 +74,10 @@ export default function Tabuleiro3D({ mapSize, tokens, moverJogador }) {
                         roughness={0.8}
                     />
                 ) : (
-                    // Se não houver mapa, mostra o Chão Escuro Neon padrão
                     <meshStandardMaterial color="#0b0c10" roughness={0.8} />
                 )}
             </mesh>
 
-            {/* A GRELHA TÁTICA */}
             <Grid 
                 args={[mapSize, mapSize]} 
                 position={[0, displacementScale - 0.1, 0]} 
@@ -92,7 +90,6 @@ export default function Tabuleiro3D({ mapSize, tokens, moverJogador }) {
                 fadeDistance={50} 
             />
 
-            {/* OS JOGADORES */}
             {tokens.map((tk, i) => {
                 const posX = tk.x;
                 const posY = tk.z || 0; 
