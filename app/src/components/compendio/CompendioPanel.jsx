@@ -16,7 +16,7 @@ const CLASSES_EXTRA_BASE = [
     { id: 'shielder', nome: 'Shielder', icone: '🛡️', titulo: 'O Escudo Protetor', cor: '#00ffff', passiva: 'Frente de Batalha', desc: 'Classe defensiva suprema. Não possui fraquezas contra classes regulares. Consegue transferir o dano de aliados para si mesmo e criar barreiras impenetráveis.' },
     { id: 'ruler', nome: 'Ruler', icone: '⚖️', titulo: 'O Árbitro Santo', cor: '#ffcc00', passiva: 'Resolução Divina', desc: 'Invocados para manter as regras do mundo. Recebem metade do dano das 6 classes regulares (exceto Berserker). Imunes a efeitos de corrupção mental.' },
     { id: 'avenger', nome: 'Avenger', icone: '⛓️', titulo: 'O Vingador', cor: '#880000', passiva: 'Vingança Eterna', desc: 'Nascidos do ódio e traição. Quanto menos HP tiverem (ou quanto mais aliados caírem), mais forte se torna o seu Dano Base. Têm vantagem contra Rulers.' },
-    { id: 'alterego', nome: 'Alter Ego', icone: '🎭', titulo: 'O Fragmento de Ego', cor: '#ff00ff', passiva: 'Dualidade', desc: 'Fusão de múltiplos espíritos ou emoções separadas de um original. Têm vantagem contra as classes da Cavalaria (Rider, Caster, Assassin), mas são fracos contra os Cavaleiros (Saber, Archer, Lancer).' },
+    { id: 'alterego', nome: 'Alter Ego', icone: '🎭', titulo: 'O Fragmento de Ego', cor: '#ff00ff', passiva: 'Dualidade', desc: 'Fusão de múltiplos espíritos ou emoções separadas de original. Têm vantagem contra as classes da Cavalaria (Rider, Caster, Assassin), mas são fracos contra os Cavaleiros (Saber, Archer, Lancer).' },
     { id: 'foreigner', nome: 'Foreigner', icone: '🐙', titulo: 'O Viajante do Abismo', cor: '#00ff88', passiva: 'Existência Fora do Domínio', desc: 'Conectados a entidades além do universo conhecido (Deuses Exteriores). Têm vantagem absoluta contra Berserkers e resistência passiva a dano psicológico.' },
     { id: 'mooncancer', nome: 'Moon Cancer', icone: '🌕', titulo: 'A Anomalia Digital', cor: '#8888aa', passiva: 'Erro de Sistema', desc: 'Entidades irregulares que não deveriam existir, capazes de corromper as próprias regras do combate. Têm vantagem e causam dano extra aos Avengers, mas são frágeis contra Rulers.' },
     { id: 'pretender', nome: 'Pretender', icone: '🤥', titulo: 'O Falso Heroico', cor: '#ffaa00', passiva: 'Engano Perfeito', desc: 'Aqueles que assumem a identidade e os feitos de outros, enganando até o próprio mundo. Têm vantagem tática contra Alter Egos, mas recebem dano adicional de Foreigners.' },
@@ -25,16 +25,22 @@ const CLASSES_EXTRA_BASE = [
 ];
 
 export default function CompendioPanel() {
-    const { minhaFicha, personagens, isMestre, updateFicha } = useStore();
+    // 🔥 CORREÇÃO: Puxando as variáveis individualmente para forçar a re-renderização correta
+    const minhaFicha = useStore(s => s.minhaFicha);
+    const personagens = useStore(s => s.personagens);
+    const isMestre = useStore(s => s.isMestre);
+    const updateFicha = useStore(s => s.updateFicha);
+
     const [secaoAtiva, setSecaoAtiva] = useState('classes');
 
-    // 🔥 ESTADOS DE EDIÇÃO
+    // ESTADOS DE EDIÇÃO
     const [editandoId, setEditandoId] = useState(null);
     const [tempPassiva, setTempPassiva] = useState('');
     const [tempDesc, setTempDesc] = useState('');
 
-    // 🔥 PROCURA AS EDIÇÕES GLOBAIS (Na ficha do Mestre)
+    // PROCURA AS EDIÇÕES GLOBAIS (Na ficha do Mestre)
     const overridesCompendio = useMemo(() => {
+        if (!minhaFicha) return {};
         if (isMestre && minhaFicha.compendioOverrides) return minhaFicha.compendioOverrides;
         if (personagens) {
             const chaves = Object.keys(personagens);
@@ -43,9 +49,9 @@ export default function CompendioPanel() {
             }
         }
         return {};
-    }, [isMestre, minhaFicha.compendioOverrides, personagens]);
+    }, [isMestre, minhaFicha, personagens]);
 
-    // 🔥 MESCLA AS CLASSES BASE COM AS EDIÇÕES DO MESTRE
+    // MESCLA AS CLASSES BASE COM AS EDIÇÕES DO MESTRE
     const mesclarComOverrides = (classesBase) => {
         return classesBase.map(cls => {
             const custom = overridesCompendio[cls.id];
@@ -59,7 +65,7 @@ export default function CompendioPanel() {
     const regulares = mesclarComOverrides(CLASSES_REGULARES_BASE);
     const extras = mesclarComOverrides(CLASSES_EXTRA_BASE);
 
-    // 🔥 FUNÇÕES DE EDIÇÃO (APENAS MESTRE)
+    // FUNÇÕES DE EDIÇÃO (APENAS MESTRE)
     const iniciarEdicao = (classe) => {
         setEditandoId(classe.id);
         setTempPassiva(classe.passiva);
@@ -105,8 +111,9 @@ export default function CompendioPanel() {
                         </div>
                     </div>
                     
+                    {/* O BOTÃO APARECE AQUI SE VOCÊ FOR MESTRE */}
                     {isMestre && !isEditando && (
-                        <button className="btn-neon btn-gold btn-small" onClick={() => iniciarEdicao(classe)} style={{ padding: '2px 8px', fontSize: '0.7em', margin: 0 }}>
+                        <button className="btn-neon btn-gold btn-small" onClick={() => iniciarEdicao(classe)} style={{ padding: '4px 10px', fontSize: '0.8em', margin: 0 }}>
                             ✏️ Editar
                         </button>
                     )}
