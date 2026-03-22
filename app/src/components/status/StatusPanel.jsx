@@ -273,6 +273,72 @@ function StatusPanelCore() {
         salvarFichaSilencioso();
     }, [updateFicha, allVitals, getVitalMax]);
 
+    // 🔥 SISTEMA DE AÇÕES: Lógica
+    const resetarTurno = useCallback(() => {
+        updateFicha(f => {
+            if (!f.acoes) return;
+            f.acoes.padrao.atual = f.acoes.padrao.max;
+            f.acoes.bonus.atual = f.acoes.bonus.max;
+            f.acoes.reacao.atual = f.acoes.reacao.max;
+        });
+        salvarFichaSilencioso();
+    }, [updateFicha]);
+
+    const changeActionMax = useCallback((tipo, delta) => {
+        updateFicha(f => {
+            if (!f.acoes) f.acoes = { padrao: { max: 1, atual: 1 }, bonus: { max: 1, atual: 1 }, reacao: { max: 1, atual: 1 } };
+            const newMax = Math.max(1, f.acoes[tipo].max + delta);
+            f.acoes[tipo].max = newMax;
+            if (f.acoes[tipo].atual > newMax) f.acoes[tipo].atual = newMax;
+        });
+        salvarFichaSilencioso();
+    }, [updateFicha]);
+
+    const toggleActionDot = useCallback((tipo, isAvailable) => {
+        updateFicha(f => {
+            if (!f.acoes) f.acoes = { padrao: { max: 1, atual: 1 }, bonus: { max: 1, atual: 1 }, reacao: { max: 1, atual: 1 } };
+            if (isAvailable) {
+                f.acoes[tipo].atual = Math.max(0, f.acoes[tipo].atual - 1);
+            } else {
+                f.acoes[tipo].atual = Math.min(f.acoes[tipo].max, f.acoes[tipo].atual + 1);
+            }
+        });
+        salvarFichaSilencioso();
+    }, [updateFicha]);
+
+    const renderActionDots = (tipo, color, label) => {
+        const data = ficha?.acoes?.[tipo] || { max: 1, atual: 1 };
+        const dots = [];
+        for (let i = 0; i < data.max; i++) {
+            const isAvailable = i < data.atual;
+            dots.push(
+                <div
+                    key={i}
+                    onClick={() => toggleActionDot(tipo, isAvailable)}
+                    title={isAvailable ? 'Clique para gastar esta Ação' : 'Clique para recuperar esta Ação'}
+                    style={{
+                        width: '20px', height: '20px', borderRadius: '50%',
+                        border: `2px solid ${color}`,
+                        backgroundColor: isAvailable ? color : 'transparent',
+                        cursor: 'pointer',
+                        boxShadow: isAvailable ? `0 0 10px ${color}` : 'none',
+                        transition: 'all 0.2s ease-in-out'
+                    }}
+                />
+            );
+        }
+        return (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                <span style={{ color: color, fontSize: '0.85em', fontWeight: 'bold', textShadow: `0 0 5px ${color}` }}>{label}</span>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', background: 'rgba(0,0,0,0.4)', padding: '5px 12px', borderRadius: '20px', border: `1px solid ${color}44` }}>
+                    <button onClick={() => changeActionMax(tipo, -1)} style={{ background: 'transparent', color: '#888', border: 'none', cursor: 'pointer', fontSize: '1.2em', padding: '0 5px' }} title="Reduzir Ações Máximas">-</button>
+                    <div style={{ display: 'flex', gap: '5px' }}>{dots}</div>
+                    <button onClick={() => changeActionMax(tipo, 1)} style={{ background: 'transparent', color: '#aaa', border: 'none', cursor: 'pointer', fontSize: '1.2em', padding: '0 5px' }} title="Aumentar Ações Máximas">+</button>
+                </div>
+            </div>
+        );
+    };
+
     if (!ficha) return <div style={{ color: '#888', textAlign: 'center', marginTop: '50px' }}>Carregando dados vitais...</div>;
 
     // 🔥 O RENDERIZADOR UNIVERSAL DE BARRAS
@@ -343,6 +409,21 @@ function StatusPanelCore() {
                 <div className="input-group" style={{ flex: 1, background: 'rgba(255, 0, 255, 0.05)', padding: '10px', borderRadius: '8px', border: '1px solid #ff00ff', margin: 0 }}>
                     <label style={{ color: '#ff00ff', fontSize: '0.8em', marginBottom: '5px', display: 'block' }}>MULT. DE MORTE (PM)</label>
                     <input type="number" step="0.1" value={ficha.multiplicadorMorte || 1} onChange={(e) => { updateFicha(f => f.multiplicadorMorte = parseFloat(e.target.value) || 1); salvarFichaSilencioso(); }} style={{ borderColor: '#ff00ff', color: '#fff', width: '100%' }} />
+                </div>
+            </div>
+
+            {/* 🔥 SISTEMA DE AÇÕES INJETADO AQUI 🔥 */}
+            <h3 className="section-title-mint-spaced" style={{ marginTop: 0, color: '#fff', fontSize: '1.2em' }}>&gt; ECONOMIA DE AÇÕES (TURNO)</h3>
+            <div style={{ background: 'rgba(10, 10, 20, 0.6)', border: '1px solid #333', borderRadius: '8px', padding: '15px', marginBottom: '30px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+                    {renderActionDots('padrao', '#0ff', 'AÇÃO PADRÃO')}
+                    {renderActionDots('bonus', '#ffcc00', 'AÇÃO BÔNUS')}
+                    {renderActionDots('reacao', '#ff00ff', 'REAÇÕES')}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
+                    <button className="btn-neon btn-blue" onClick={resetarTurno} style={{ padding: '8px 20px', letterSpacing: '1px' }}>
+                        🔄 INICIAR NOVO TURNO (RESETAR AÇÕES)
+                    </button>
                 </div>
             </div>
 
