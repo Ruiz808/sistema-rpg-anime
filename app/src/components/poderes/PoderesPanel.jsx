@@ -27,6 +27,12 @@ const PROPRIEDADE_OPTIONS = [
     'base', 'mbase', 'mgeral', 'mformas', 'mabs', 'munico', 'reducaocusto', 'regeneracao'
 ];
 
+const SINGULAR = {
+    'habilidade': 'Habilidade',
+    'forma': 'Forma',
+    'poder': 'Poder'
+};
+
 export default function PoderesPanel() {
     const minhaFicha = useStore(s => s.minhaFicha);
     const meuNome = useStore(s => s.meuNome); // 🔥 ADICIONADO: Para organizar as pastas no storage
@@ -37,6 +43,9 @@ export default function PoderesPanel() {
     const setEfeitosTempPassivos = useStore(s => s.setEfeitosTempPassivos);
     const poderEditandoId = useStore(s => s.poderEditandoId);
     const setPoderEditandoId = useStore(s => s.setPoderEditandoId);
+
+    // 🔥 NOVO ESTADO: Controle da Aba Lateral
+    const [abaAtual, setAbaAtual] = useState('habilidade');
 
     const [nomePoder, setNomePoder] = useState('');
     const [imagemUrl, setImagemUrl] = useState('');
@@ -107,6 +116,7 @@ export default function PoderesPanel() {
                 const ix = ficha.poderes.findIndex(p => p.id === poderEditandoId);
                 if (ix !== -1) {
                     ficha.poderes[ix].nome = n;
+                    ficha.poderes[ix].categoria = abaAtual; // 🔥 Salva a categoria atual
                     ficha.poderes[ix].efeitos = JSON.parse(JSON.stringify(efeitosTemp));
                     ficha.poderes[ix].efeitosPassivos = JSON.parse(JSON.stringify(efeitosTempPassivos));
                     ficha.poderes[ix].imagemUrl = imagemUrl;
@@ -119,6 +129,7 @@ export default function PoderesPanel() {
                 ficha.poderes.push({
                     id: Date.now(),
                     nome: n,
+                    categoria: abaAtual, // 🔥 Salva a categoria atual
                     ativa: false,
                     efeitos: JSON.parse(JSON.stringify(efeitosTemp)),
                     efeitosPassivos: JSON.parse(JSON.stringify(efeitosTempPassivos)),
@@ -131,6 +142,7 @@ export default function PoderesPanel() {
             }
         });
 
+        // 🔥 A lógica blindada do seu amigo mantida
         salvarFirebaseImediato().then(() => {
             cancelarEdicaoPoder();
         }).catch(() => {
@@ -144,10 +156,11 @@ export default function PoderesPanel() {
         
         if (p.ativa) {
             togglePoder(id);
-            alert(`A habilidade [${p.nome}] foi DESATIVADA temporariamente para edição.`);
+            alert(`A técnica [${p.nome}] foi DESATIVADA temporariamente para edição.`);
         }
         
         setPoderEditandoId(p.id);
+        setAbaAtual(p.categoria || 'poder'); // 🔥 Muda a aba para a categoria correta ao editar
         setNomePoder(p.nome);
         setImagemUrl(p.imagemUrl || '');
         setDadosQtd(p.dadosQtd || 0);
@@ -209,7 +222,7 @@ export default function PoderesPanel() {
     };
 
     const deletarPoder = (id) => {
-        if (!window.confirm('Tem certeza que deseja apagar este poder permanentemente?')) return;
+        if (!window.confirm('Tem certeza que deseja apagar este item permanentemente?')) return;
         const p = (minhaFicha.poderes || []).find(po => po.id === id);
         
         if (p && p.ativa) togglePoder(id);
@@ -221,8 +234,11 @@ export default function PoderesPanel() {
         salvarFichaSilencioso();
     };
 
-    const poderes = minhaFicha.poderes || [];
+    const poderesGlobais = minhaFicha.poderes || [];
     const passivas = minhaFicha.passivas || [];
+
+    // 🔥 FILTRA OS ITENS PELA ABA ATUAL (Poderes antigos sem categoria viram 'poder')
+    const itensFiltrados = poderesGlobais.filter(p => (p.categoria || 'poder') === abaAtual);
 
     const relatorioAuditoria = useMemo(() => {
         const nomesProps = {
@@ -243,7 +259,7 @@ export default function PoderesPanel() {
             });
         };
 
-        poderes.forEach(p => {
+        poderesGlobais.forEach(p => {
             if (p && p.efeitosPassivos) coletarEfeitos(p.nome, p.efeitosPassivos);
         });
         passivas.forEach(p => {
@@ -286,189 +302,224 @@ export default function PoderesPanel() {
         }
         if (!hasContent) return null;
         return sections;
-    }, [poderes, passivas]);
+    }, [poderesGlobais, passivas]);
 
     return (
-        <div className="poderes-panel">
-            <div className="def-box" ref={formRef} id="form-poder-box">
-                <h3 style={{ color: '#0ff', marginBottom: 10 }}>
-                    {poderEditandoId ? `Editando: ${nomePoder}` : 'Criar Novo Poder'}
+        <div className="poderes-panel" style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+            
+            {/* 🔥 COLUNA ESQUERDA: Menu de Navegação Vertical (Estilo Compêndio) */}
+            <div className="def-box" style={{ flex: '0 0 230px', padding: '15px', position: 'sticky', top: '20px' }}>
+                <h3 style={{ color: '#fff', marginTop: 0, textAlign: 'center', marginBottom: '20px', fontSize: '1.1em', letterSpacing: '1px' }}>
+                    📖 ARQUIVOS
                 </h3>
-
-                <input className="input-neon" type="text" placeholder="Nome do Poder" value={nomePoder} onChange={e => setNomePoder(e.target.value)} />
-                
-                {/* 🔥 NOVO: Interface de Upload Misturada com Link */}
-                <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 5 }}>
-                    <input 
-                        className="input-neon" 
-                        type="text" 
-                        placeholder="URL da Imagem (Ou anexe ao lado 👉)" 
-                        value={imagemUrl} 
-                        onChange={e => setImagemUrl(e.target.value)} 
-                        style={{ flex: 1, margin: 0 }} 
-                    />
-                    <label className="btn-neon btn-blue" style={{ cursor: 'pointer', padding: '5px 15px', margin: 0, whiteSpace: 'nowrap', opacity: uploadingImg ? 0.5 : 1 }}>
-                        {uploadingImg ? 'Enviando...' : '📁 Anexar'}
-                        <input type="file" accept="image/png, image/jpeg, image/gif, image/webp" onChange={handleImageUpload} style={{ display: 'none' }} disabled={uploadingImg} />
-                    </label>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8, marginTop: 10 }}>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Dados de Dano (qtd)</label>
-                        <input className="input-neon" type="number" min="0" value={dadosQtd} onChange={e => setDadosQtd(e.target.value)} placeholder="0" />
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Faces (d)</label>
-                        <input className="input-neon" type="number" min="1" value={dadosFaces} onChange={e => setDadosFaces(e.target.value)} placeholder="20" />
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Custo (% Energia)</label>
-                        <input className="input-neon" type="number" min="0" value={custoPercentual} onChange={e => setCustoPercentual(e.target.value)} placeholder="0" />
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Vincular a Arma</label>
-                        <select className="input-neon" value={armaVinculada} onChange={e => setArmaVinculada(e.target.value)}>
-                            <option value="">Nenhuma (Livre)</option>
-                            {(minhaFicha.inventario || []).filter(i => i.tipo === 'arma').map(arma => (
-                                <option key={arma.id} value={String(arma.id)}>{arma.nome}</option>
-                            ))}
-                        </select>
-                    </div>
-                </div>
-                {dadosQtd > 0 && <p style={{ color: '#f0f', fontSize: '0.85em', margin: '5px 0 0' }}>Dano: {dadosQtd}d{dadosFaces}{custoPercentual > 0 ? ` | Custo: ${custoPercentual}%` : ''}{armaVinculada ? ' (vinculada a arma)' : ' (livre)'}</p>}
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8, marginTop: 10 }}>
-                    <select className="input-neon" value={novoAtr} onChange={e => setNovoAtr(e.target.value)}>
-                        {ATRIBUTOS_AGRUPADOS.map(grupo => (
-                            <optgroup key={grupo.label} label={grupo.label} style={{ background: '#051010', color: '#0ff' }}>
-                                {grupo.options.map(a => (
-                                    <option key={a} value={a}>
-                                        {a.replace('_', ' ').toUpperCase()}
-                                    </option>
-                                ))}
-                            </optgroup>
-                        ))}
-                    </select>
-
-                    <select className="input-neon" value={novoProp} onChange={e => setNovoProp(e.target.value)}>
-                        {PROPRIEDADE_OPTIONS.map(p => <option key={p} value={p}>{p.toUpperCase()}</option>)}
-                    </select>
-                    <input className="input-neon" type="text" placeholder="Valor" value={novoVal} onChange={e => setNovoVal(e.target.value)} />
-                    <button className="btn-neon btn-blue" onClick={addEfeitoTemp} style={{ padding: '5px 10px' }}>+ Efeito</button>
-                </div>
-
-                <div style={{ marginTop: 10 }}>
-                    {efeitosTemp.length === 0 ? (
-                        <p style={{ color: '#888', fontSize: '0.9em', margin: 0 }}>Nenhum efeito adicionado.</p>
-                    ) : (
-                        efeitosTemp.map((e, i) => {
-                            const prop = (e.propriedade || '').toLowerCase();
-                            const isMult = ['mbase', 'mgeral', 'mformas', 'mabs', 'munico'].includes(prop);
-                            return (
-                                <div key={i} style={{ color: '#0ff', fontSize: '0.9em', marginBottom: 5, background: 'rgba(0,255,255,0.1)', padding: '5px 10px', borderLeft: '2px solid #0ff', display: 'flex', justifyContent: 'space-between' }}>
-                                    <span>[{(e.atributo || '').replace('_', ' ').toUpperCase()}] - [{(e.propriedade || '').toUpperCase()}]: <strong style={{ color: '#ffcc00' }}>{isMult ? '(x)' : '(+)'} {e.valor}</strong></span>
-                                    <button onClick={() => removerEfeitoTemp(i)} style={{ background: 'transparent', color: '#f00', border: 'none', cursor: 'pointer' }}>X</button>
-                                </div>
-                            );
-                        })
-                    )}
-                </div>
-
-                <h4 style={{ color: '#f0f', marginTop: 15, marginBottom: 8, fontSize: '0.95em' }}>Efeitos Passivos (sempre ativos)</h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8 }}>
-                    <select className="input-neon" value={novoAtrPassivo} onChange={e => setNovoAtrPassivo(e.target.value)}>
-                        {ATRIBUTOS_AGRUPADOS.map(grupo => (
-                            <optgroup key={grupo.label} label={grupo.label} style={{ background: '#051010', color: '#f0f' }}>
-                                {grupo.options.map(a => (
-                                    <option key={a} value={a}>
-                                        {a.replace('_', ' ').toUpperCase()}
-                                    </option>
-                                ))}
-                            </optgroup>
-                        ))}
-                    </select>
-                    <select className="input-neon" value={novoPropPassivo} onChange={e => setNovoPropPassivo(e.target.value)}>
-                        {PROPRIEDADE_OPTIONS.map(p => <option key={p} value={p}>{p.toUpperCase()}</option>)}
-                    </select>
-                    <input className="input-neon" type="text" placeholder="Valor" value={novoValPassivo} onChange={e => setNovoValPassivo(e.target.value)} />
-                    <button className="btn-neon" style={{ padding: '5px 10px', borderColor: '#f0f', color: '#f0f' }} onClick={addEfeitoPassivoTemp}>+ Passivo</button>
-                </div>
-
-                <div style={{ marginTop: 10 }}>
-                    {efeitosTempPassivos.length === 0 ? (
-                        <p style={{ color: '#888', fontSize: '0.9em', margin: 0 }}>Nenhum efeito passivo adicionado.</p>
-                    ) : (
-                        efeitosTempPassivos.map((e, i) => {
-                            const prop = (e.propriedade || '').toLowerCase();
-                            const isMult = ['mbase', 'mgeral', 'mformas', 'mabs', 'munico'].includes(prop);
-                            return (
-                                <div key={i} style={{ color: '#f0f', fontSize: '0.9em', marginBottom: 5, background: 'rgba(255,0,255,0.1)', padding: '5px 10px', borderLeft: '2px solid #f0f', display: 'flex', justifyContent: 'space-between' }}>
-                                    <span>PASSIVO: [{(e.atributo || '').replace('_', ' ').toUpperCase()}] - [{(e.propriedade || '').toUpperCase()}]: <strong style={{ color: '#ffcc00' }}>{isMult ? '(x)' : '(+)'} {e.valor}</strong></span>
-                                    <button onClick={() => removerEfeitoPassivoTemp(i)} style={{ background: 'transparent', color: '#f00', border: 'none', cursor: 'pointer' }}>X</button>
-                                </div>
-                            );
-                        })
-                    )}
-                </div>
-
-                <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
-                    <button className="btn-neon btn-gold" onClick={salvarNovoPoder} style={{ flex: 1 }}>{poderEditandoId ? 'Salvar Edição' : 'Salvar Poder'}</button>
-                    {poderEditandoId && <button className="btn-neon btn-red" onClick={cancelarEdicaoPoder} style={{ flex: 1 }}>Cancelar</button>}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    <button 
+                        className={`btn-neon ${abaAtual === 'habilidade' ? 'btn-gold' : ''}`} 
+                        onClick={() => { setAbaAtual('habilidade'); cancelarEdicaoPoder(); }}
+                        style={{ padding: '12px 10px', justifyContent: 'flex-start', margin: 0 }}
+                    >
+                        🗡️ HABILIDADES
+                    </button>
+                    <button 
+                        className={`btn-neon ${abaAtual === 'forma' ? 'btn-gold' : ''}`} 
+                        onClick={() => { setAbaAtual('forma'); cancelarEdicaoPoder(); }}
+                        style={{ padding: '12px 10px', justifyContent: 'flex-start', margin: 0 }}
+                    >
+                        🎭 FORMAS
+                    </button>
+                    <button 
+                        className={`btn-neon ${abaAtual === 'poder' ? 'btn-gold' : ''}`} 
+                        onClick={() => { setAbaAtual('poder'); cancelarEdicaoPoder(); }}
+                        style={{ padding: '12px 10px', justifyContent: 'flex-start', margin: 0 }}
+                    >
+                        ✨ PODERES
+                    </button>
                 </div>
             </div>
 
-            <div id="lista-poderes-salvos" style={{ marginTop: 15 }}>
-                {poderes.length === 0 ? (
-                    <p style={{ color: '#888' }}>Nenhuma habilidade gravada.</p>
-                ) : (
-                    poderes.map((p) => {
-                        if (!p) return null;
-                        const c = p.ativa ? '#0f0' : '#888';
-                        const bg = p.ativa ? 'rgba(0,255,0,0.1)' : 'rgba(0,0,0,0.4)';
-                        const txtArr = (p.efeitos || []).map(e => {
-                            if (!e) return '';
-                            const prop = (e.propriedade || '').toLowerCase();
-                            const isMult = ['mbase', 'mgeral', 'mformas', 'mabs', 'munico'].includes(prop);
-                            return `[${(e.atributo || '').replace('_', ' ').toUpperCase()}] ${(e.propriedade || '').toUpperCase()}: ${isMult ? 'x' : '+'}${e.valor || 0}`;
-                        }).filter(Boolean);
-                        const dadosTxt = (p.dadosQtd > 0) ? `${p.dadosQtd}d${p.dadosFaces || 20}` : '';
-                        const custoTxt = (p.custoPercentual > 0) ? `Custo: ${p.custoPercentual}%` : '';
-                        const armaVinc = p.armaVinculada ? (minhaFicha.inventario || []).find(i => String(i.id) === String(p.armaVinculada)) : null;
+            {/* 🔥 COLUNA DIREITA: Conteúdo (Formulário e Lista) */}
+            <div style={{ flex: '1 1 500px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                
+                <div className="def-box" ref={formRef} id="form-poder-box">
+                    <h3 style={{ color: '#0ff', marginBottom: 10 }}>
+                        {poderEditandoId ? `Editando: ${nomePoder}` : `Criar ${SINGULAR[abaAtual]}`}
+                    </h3>
 
-                        return (
-                            <div key={p.id} className="def-box" style={{ borderLeft: `5px solid ${c}`, background: bg, marginBottom: 10 }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 15 }}>
-                                    <div>
-                                        <h3 style={{ margin: 0, color: c, textShadow: `0 0 10px ${c}` }}>{p.nome || 'Poder'}</h3>
-                                        {dadosTxt && <p style={{ color: '#f0f', fontSize: '0.85em', margin: '5px 0 0' }}>Dano: {dadosTxt}{custoTxt ? ` | ${custoTxt}` : ''}{armaVinc ? ` (na ${armaVinc.nome})` : ' (livre)'}</p>}
-                                        <p style={{ color: '#aaa', fontSize: '0.85em', margin: '5px 0 0' }}>{txtArr.join(' | ') || 'Sem efeitos.'}
-                        {(p.efeitosPassivos || []).length > 0 && (
-                            <span style={{ color: '#f0f' }}>{txtArr.length > 0 ? ' | ' : ''}{(p.efeitosPassivos || []).map(e => {
+                    <input className="input-neon" type="text" placeholder={`Nome da ${SINGULAR[abaAtual]}`} value={nomePoder} onChange={e => setNomePoder(e.target.value)} />
+                    
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 5 }}>
+                        <input 
+                            className="input-neon" 
+                            type="text" 
+                            placeholder="URL da Imagem (Ou anexe ao lado 👉)" 
+                            value={imagemUrl} 
+                            onChange={e => setImagemUrl(e.target.value)} 
+                            style={{ flex: 1, margin: 0 }} 
+                        />
+                        <label className="btn-neon btn-blue" style={{ cursor: 'pointer', padding: '5px 15px', margin: 0, whiteSpace: 'nowrap', opacity: uploadingImg ? 0.5 : 1 }}>
+                            {uploadingImg ? 'Enviando...' : '📁 Anexar'}
+                            <input type="file" accept="image/png, image/jpeg, image/gif, image/webp" onChange={handleImageUpload} style={{ display: 'none' }} disabled={uploadingImg} />
+                        </label>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8, marginTop: 10 }}>
+                        <div>
+                            <label style={{ color: '#aaa', fontSize: '0.85em' }}>Dados de Dano (qtd)</label>
+                            <input className="input-neon" type="number" min="0" value={dadosQtd} onChange={e => setDadosQtd(e.target.value)} placeholder="0" />
+                        </div>
+                        <div>
+                            <label style={{ color: '#aaa', fontSize: '0.85em' }}>Faces (d)</label>
+                            <input className="input-neon" type="number" min="1" value={dadosFaces} onChange={e => setDadosFaces(e.target.value)} placeholder="20" />
+                        </div>
+                        <div>
+                            <label style={{ color: '#aaa', fontSize: '0.85em' }}>Custo (% Energia)</label>
+                            <input className="input-neon" type="number" min="0" value={custoPercentual} onChange={e => setCustoPercentual(e.target.value)} placeholder="0" />
+                        </div>
+                        <div>
+                            <label style={{ color: '#aaa', fontSize: '0.85em' }}>Vincular a Arma</label>
+                            <select className="input-neon" value={armaVinculada} onChange={e => setArmaVinculada(e.target.value)}>
+                                <option value="">Nenhuma (Livre)</option>
+                                {(minhaFicha.inventario || []).filter(i => i.tipo === 'arma').map(arma => (
+                                    <option key={arma.id} value={String(arma.id)}>{arma.nome}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                    {dadosQtd > 0 && <p style={{ color: '#f0f', fontSize: '0.85em', margin: '5px 0 0' }}>Dano: {dadosQtd}d{dadosFaces}{custoPercentual > 0 ? ` | Custo: ${custoPercentual}%` : ''}{armaVinculada ? ' (vinculada a arma)' : ' (livre)'}</p>}
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8, marginTop: 10 }}>
+                        <select className="input-neon" value={novoAtr} onChange={e => setNovoAtr(e.target.value)}>
+                            {ATRIBUTOS_AGRUPADOS.map(grupo => (
+                                <optgroup key={grupo.label} label={grupo.label} style={{ background: '#051010', color: '#0ff' }}>
+                                    {grupo.options.map(a => (
+                                        <option key={a} value={a}>
+                                            {a.replace('_', ' ').toUpperCase()}
+                                        </option>
+                                    ))}
+                                </optgroup>
+                            ))}
+                        </select>
+
+                        <select className="input-neon" value={novoProp} onChange={e => setNovoProp(e.target.value)}>
+                            {PROPRIEDADE_OPTIONS.map(p => <option key={p} value={p}>{p.toUpperCase()}</option>)}
+                        </select>
+                        <input className="input-neon" type="text" placeholder="Valor" value={novoVal} onChange={e => setNovoVal(e.target.value)} />
+                        <button className="btn-neon btn-blue" onClick={addEfeitoTemp} style={{ padding: '5px 10px' }}>+ Efeito</button>
+                    </div>
+
+                    <div style={{ marginTop: 10 }}>
+                        {efeitosTemp.length === 0 ? (
+                            <p style={{ color: '#888', fontSize: '0.9em', margin: 0 }}>Nenhum efeito adicionado.</p>
+                        ) : (
+                            efeitosTemp.map((e, i) => {
+                                const prop = (e.propriedade || '').toLowerCase();
+                                const isMult = ['mbase', 'mgeral', 'mformas', 'mabs', 'munico'].includes(prop);
+                                return (
+                                    <div key={i} style={{ color: '#0ff', fontSize: '0.9em', marginBottom: 5, background: 'rgba(0,255,255,0.1)', padding: '5px 10px', borderLeft: '2px solid #0ff', display: 'flex', justifyContent: 'space-between' }}>
+                                        <span>[{(e.atributo || '').replace('_', ' ').toUpperCase()}] - [{(e.propriedade || '').toUpperCase()}]: <strong style={{ color: '#ffcc00' }}>{isMult ? '(x)' : '(+)'} {e.valor}</strong></span>
+                                        <button onClick={() => removerEfeitoTemp(i)} style={{ background: 'transparent', color: '#f00', border: 'none', cursor: 'pointer' }}>X</button>
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
+
+                    <h4 style={{ color: '#f0f', marginTop: 15, marginBottom: 8, fontSize: '0.95em' }}>Efeitos Passivos (sempre ativos)</h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8 }}>
+                        <select className="input-neon" value={novoAtrPassivo} onChange={e => setNovoAtrPassivo(e.target.value)}>
+                            {ATRIBUTOS_AGRUPADOS.map(grupo => (
+                                <optgroup key={grupo.label} label={grupo.label} style={{ background: '#051010', color: '#f0f' }}>
+                                    {grupo.options.map(a => (
+                                        <option key={a} value={a}>
+                                            {a.replace('_', ' ').toUpperCase()}
+                                        </option>
+                                    ))}
+                                </optgroup>
+                            ))}
+                        </select>
+                        <select className="input-neon" value={novoPropPassivo} onChange={e => setNovoPropPassivo(e.target.value)}>
+                            {PROPRIEDADE_OPTIONS.map(p => <option key={p} value={p}>{p.toUpperCase()}</option>)}
+                        </select>
+                        <input className="input-neon" type="text" placeholder="Valor" value={novoValPassivo} onChange={e => setNovoValPassivo(e.target.value)} />
+                        <button className="btn-neon" style={{ padding: '5px 10px', borderColor: '#f0f', color: '#f0f' }} onClick={addEfeitoPassivoTemp}>+ Passivo</button>
+                    </div>
+
+                    <div style={{ marginTop: 10 }}>
+                        {efeitosTempPassivos.length === 0 ? (
+                            <p style={{ color: '#888', fontSize: '0.9em', margin: 0 }}>Nenhum efeito passivo adicionado.</p>
+                        ) : (
+                            efeitosTempPassivos.map((e, i) => {
+                                const prop = (e.propriedade || '').toLowerCase();
+                                const isMult = ['mbase', 'mgeral', 'mformas', 'mabs', 'munico'].includes(prop);
+                                return (
+                                    <div key={i} style={{ color: '#f0f', fontSize: '0.9em', marginBottom: 5, background: 'rgba(255,0,255,0.1)', padding: '5px 10px', borderLeft: '2px solid #f0f', display: 'flex', justifyContent: 'space-between' }}>
+                                        <span>PASSIVO: [{(e.atributo || '').replace('_', ' ').toUpperCase()}] - [{(e.propriedade || '').toUpperCase()}]: <strong style={{ color: '#ffcc00' }}>{isMult ? '(x)' : '(+)'} {e.valor}</strong></span>
+                                        <button onClick={() => removerEfeitoPassivoTemp(i)} style={{ background: 'transparent', color: '#f00', border: 'none', cursor: 'pointer' }}>X</button>
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+                        <button className="btn-neon btn-gold" onClick={salvarNovoPoder} style={{ flex: 1 }}>{poderEditandoId ? 'Salvar Edição' : `Salvar ${SINGULAR[abaAtual]}`}</button>
+                        {poderEditandoId && <button className="btn-neon btn-red" onClick={cancelarEdicaoPoder} style={{ flex: 1 }}>Cancelar</button>}
+                    </div>
+                </div>
+
+                <div id="lista-poderes-salvos">
+                    {itensFiltrados.length === 0 ? (
+                        <p style={{ color: '#888' }}>Nenhuma {SINGULAR[abaAtual].toLowerCase()} gravada.</p>
+                    ) : (
+                        itensFiltrados.map((p) => {
+                            if (!p) return null;
+                            const c = p.ativa ? '#0f0' : '#888';
+                            const bg = p.ativa ? 'rgba(0,255,0,0.1)' : 'rgba(0,0,0,0.4)';
+                            const txtArr = (p.efeitos || []).map(e => {
                                 if (!e) return '';
                                 const prop = (e.propriedade || '').toLowerCase();
                                 const isMult = ['mbase', 'mgeral', 'mformas', 'mabs', 'munico'].includes(prop);
-                                return `PASSIVO: [${(e.atributo || '').replace('_', ' ').toUpperCase()}] ${(e.propriedade || '').toUpperCase()}: ${isMult ? 'x' : '+'}${e.valor || 0}`;
-                            }).filter(Boolean).join(' | ')}</span>
-                        )}</p>
-                                    </div>
-                                    <div style={{ display: 'flex', gap: 10 }}>
-                                        <button className="btn-neon" style={{ borderColor: c, color: c, padding: '5px 15px', fontSize: '1.1em', margin: 0 }} onClick={() => togglePoder(p.id)}>{p.ativa ? 'LIGADO' : 'DESLIGADO'}</button>
-                                        <button className="btn-neon btn-blue" style={{ padding: '5px 15px', fontSize: '1em', margin: 0 }} onClick={() => editarPoder(p.id)}>EDITAR</button>
-                                        <button className="btn-neon btn-red" style={{ padding: '5px 15px', fontSize: '1em', margin: 0 }} onClick={() => deletarPoder(p.id)}>APAGAR</button>
+                                return `[${(e.atributo || '').replace('_', ' ').toUpperCase()}] ${(e.propriedade || '').toUpperCase()}: ${isMult ? 'x' : '+'}${e.valor || 0}`;
+                            }).filter(Boolean);
+                            const dadosTxt = (p.dadosQtd > 0) ? `${p.dadosQtd}d${p.dadosFaces || 20}` : '';
+                            const custoTxt = (p.custoPercentual > 0) ? `Custo: ${p.custoPercentual}%` : '';
+                            const armaVinc = p.armaVinculada ? (minhaFicha.inventario || []).find(i => String(i.id) === String(p.armaVinculada)) : null;
+
+                            return (
+                                <div key={p.id} className="def-box" style={{ borderLeft: `5px solid ${c}`, background: bg, marginBottom: 10 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 15 }}>
+                                        <div>
+                                            <h3 style={{ margin: 0, color: c, textShadow: `0 0 10px ${c}` }}>{p.nome || 'Poder'}</h3>
+                                            {dadosTxt && <p style={{ color: '#f0f', fontSize: '0.85em', margin: '5px 0 0' }}>Dano: {dadosTxt}{custoTxt ? ` | ${custoTxt}` : ''}{armaVinc ? ` (na ${armaVinc.nome})` : ' (livre)'}</p>}
+                                            <p style={{ color: '#aaa', fontSize: '0.85em', margin: '5px 0 0' }}>{txtArr.join(' | ') || 'Sem efeitos ativos.'}
+                            {(p.efeitosPassivos || []).length > 0 && (
+                                <span style={{ color: '#f0f', display: 'block', marginTop: '4px' }}>{(p.efeitosPassivos || []).map(e => {
+                                    if (!e) return '';
+                                    const prop = (e.propriedade || '').toLowerCase();
+                                    const isMult = ['mbase', 'mgeral', 'mformas', 'mabs', 'munico'].includes(prop);
+                                    return `PASSIVO: [${(e.atributo || '').replace('_', ' ').toUpperCase()}] ${(e.propriedade || '').toUpperCase()}: ${isMult ? 'x' : '+'}${e.valor || 0}`;
+                                }).filter(Boolean).join(' | ')}</span>
+                            )}</p>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                                            <button className="btn-neon" style={{ borderColor: c, color: c, padding: '5px 15px', fontSize: '1.1em', margin: 0 }} onClick={() => togglePoder(p.id)}>{p.ativa ? 'LIGADO' : 'DESLIGADO'}</button>
+                                            <button className="btn-neon btn-blue" style={{ padding: '5px 15px', fontSize: '1em', margin: 0 }} onClick={() => editarPoder(p.id)}>EDITAR</button>
+                                            <button className="btn-neon btn-red" style={{ padding: '5px 15px', fontSize: '1em', margin: 0 }} onClick={() => deletarPoder(p.id)}>APAGAR</button>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        );
-                    })
-                )}
-            </div>
-
-            <div className="def-box" style={{ marginTop: 15 }}>
-                <h3 style={{ color: '#0ff', marginBottom: 10 }}>Auditoria de Combos (Auto)</h3>
-                <div style={{ fontSize: '0.9em' }}>
-                    {relatorioAuditoria || <span style={{ color: '#888', fontStyle: 'italic' }}>Nenhum efeito passivo ativo.</span>}
+                            );
+                        })
+                    )}
                 </div>
+
+                <div className="def-box">
+                    <h3 style={{ color: '#0ff', marginBottom: 10 }}>Auditoria de Combos Globais (Auto)</h3>
+                    <div style={{ fontSize: '0.9em' }}>
+                        {relatorioAuditoria || <span style={{ color: '#888', fontStyle: 'italic' }}>Nenhum efeito passivo ativo computado.</span>}
+                    </div>
+                </div>
+
             </div>
         </div>
     );
