@@ -5,7 +5,33 @@
       ".write": false,
       "$nome": {
         ".write": true,
-        ".validate": "newData.exists() && newData.hasChildren() && $nome.length >= 1 && $nome.length <= 50"
+        ".validate": "newData.exists() && newData.hasChildren() && $nome.length >= 1 && $nome.length <= 50",
+        "posicao": {
+          ".validate": "(!newData.child('x').exists() || newData.child('x').isNumber()) && (!newData.child('y').exists() || newData.child('y').isNumber()) && (!newData.child('z').exists() || newData.child('z').isNumber())"
+        },
+        "iniciativa": {
+          ".validate": "!newData.exists() || newData.isNumber()"
+        },
+        "vida": {
+          "atual": { ".validate": "!newData.exists() || newData.isNumber()" },
+          "base": { ".validate": "!newData.exists() || newData.isNumber()" }
+        },
+        "mana": {
+          "atual": { ".validate": "!newData.exists() || newData.isNumber()" },
+          "base": { ".validate": "!newData.exists() || newData.isNumber()" }
+        },
+        "aura": {
+          "atual": { ".validate": "!newData.exists() || newData.isNumber()" },
+          "base": { ".validate": "!newData.exists() || newData.isNumber()" }
+        },
+        "chakra": {
+          "atual": { ".validate": "!newData.exists() || newData.isNumber()" },
+          "base": { ".validate": "!newData.exists() || newData.isNumber()" }
+        },
+        "corpo": {
+          "atual": { ".validate": "!newData.exists() || newData.isNumber()" },
+          "base": { ".validate": "!newData.exists() || newData.isNumber()" }
+        }
       }
     },
     "feed_combate": {
