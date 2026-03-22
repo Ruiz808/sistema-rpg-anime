@@ -36,7 +36,8 @@ export default function CompendioPanel() {
     const [editandoId, setEditandoId] = useState(null);
     const [tempPassiva, setTempPassiva] = useState('');
     const [tempDesc, setTempDesc] = useState('');
-    const [tempEfeito, setTempEfeito] = useState(''); // 🔥 NOVO ESTADO: O EFEITO MECÂNICO
+    const [tempEfeito, setTempEfeito] = useState('');
+    const [tempIconeUrl, setTempIconeUrl] = useState(''); // 🔥 NOVO: Link da Imagem
 
     // PROCURA AS EDIÇÕES GLOBAIS
     const overridesCompendio = useMemo(() => {
@@ -60,7 +61,8 @@ export default function CompendioPanel() {
                     ...cls, 
                     passiva: custom.passiva || cls.passiva, 
                     desc: custom.desc || cls.desc,
-                    efeito: custom.efeito || cls.efeito // 🔥 AGORA O EFEITO TAMBÉM É MESCLADO
+                    efeito: custom.efeito || cls.efeito,
+                    iconeUrl: custom.iconeUrl || cls.iconeUrl // 🔥 AGORA MESCLA A IMAGEM
                 };
             }
             return cls;
@@ -75,7 +77,8 @@ export default function CompendioPanel() {
         setEditandoId(classe.id);
         setTempPassiva(classe.passiva);
         setTempDesc(classe.desc);
-        setTempEfeito(classe.efeito); // 🔥 PUXA O EFEITO PARA EDIÇÃO
+        setTempEfeito(classe.efeito);
+        setTempIconeUrl(classe.iconeUrl || ''); // 🔥 PUXA O LINK PARA O INPUT
     };
 
     const salvarEdicao = (id) => {
@@ -84,7 +87,8 @@ export default function CompendioPanel() {
             f.compendioOverrides[id] = {
                 passiva: tempPassiva,
                 desc: tempDesc,
-                efeito: tempEfeito // 🔥 GUARDA O NOVO EFEITO
+                efeito: tempEfeito,
+                iconeUrl: tempIconeUrl // 🔥 GUARDA O LINK DA IMAGEM
             };
         });
         salvarFichaSilencioso();
@@ -107,9 +111,20 @@ export default function CompendioPanel() {
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div style={{ fontSize: '2em', background: `${classe.cor}20`, padding: '10px', borderRadius: '50%', border: `1px solid ${classe.cor}` }}>
-                            {classe.icone}
+                        
+                        {/* 🔥 VISUALIZAÇÃO DO ÍCONE DINÂMICO (IMAGEM OU EMOJI) */}
+                        <div style={{ 
+                            width: '50px', height: '50px', background: `${classe.cor}20`, 
+                            borderRadius: '50%', border: `1px solid ${classe.cor}`, 
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden'
+                        }}>
+                            {classe.iconeUrl ? (
+                                <img src={classe.iconeUrl} alt={classe.nome} style={{ width: '80%', height: '80%', objectFit: 'contain' }} />
+                            ) : (
+                                <span style={{ fontSize: '2em' }}>{classe.icone}</span>
+                            )}
                         </div>
+
                         <div>
                             <h3 style={{ margin: 0, color: classe.cor, letterSpacing: '1px', textShadow: `0 0 5px ${classe.cor}80` }}>
                                 {classe.nome.toUpperCase()}
@@ -127,6 +142,15 @@ export default function CompendioPanel() {
 
                 {isEditando ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
+                        {/* 🔥 NOVO CAMPO DE IMAGEM NO MODO DE EDIÇÃO */}
+                        <div>
+                            <label style={{ fontSize: '0.8em', color: '#ffcc00' }}>Link do Ícone (Ex: Imgur/Discord):</label>
+                            <input 
+                                type="text" className="input-neon" value={tempIconeUrl} onChange={(e) => setTempIconeUrl(e.target.value)}
+                                placeholder="Deixe vazio para usar o emoji padrão"
+                                style={{ width: '100%', padding: '5px', borderColor: '#ffcc00', color: '#fff' }}
+                            />
+                        </div>
                         <div>
                             <label style={{ fontSize: '0.8em', color: '#ffcc00' }}>Habilidade de Classe:</label>
                             <input 
@@ -141,7 +165,6 @@ export default function CompendioPanel() {
                                 style={{ width: '100%', padding: '5px', minHeight: '60px', borderColor: '#444', color: '#ccc', fontStyle: 'italic' }}
                             />
                         </div>
-                        {/* 🔥 O NOVO CAMPO DE EDIÇÃO PARA OS EFEITOS MECÂNICOS */}
                         <div>
                             <label style={{ fontSize: '0.8em', color: '#00ffcc' }}>Efeitos Mecânicos (Regras):</label>
                             <textarea 
@@ -161,12 +184,10 @@ export default function CompendioPanel() {
                             <span style={{ color: '#ffcc00', fontSize: '0.9em' }}>{classe.passiva}</span>
                         </div>
                         
-                        {/* 🔥 VISUALIZAÇÃO: Descrição Narrativa (Itálico e cinza) */}
                         <p style={{ margin: '5px 0 0 0', color: '#aaa', fontSize: '0.85em', fontStyle: 'italic', lineHeight: '1.4', whiteSpace: 'pre-wrap' }}>
                             "{classe.desc}"
                         </p>
 
-                        {/* 🔥 VISUALIZAÇÃO: Efeito Mecânico (Caixa clara e texto branco) */}
                         <div style={{ background: 'rgba(0, 255, 204, 0.05)', padding: '10px', borderRadius: '5px', border: '1px solid rgba(0, 255, 204, 0.3)', marginTop: '5px' }}>
                             <div style={{ color: '#00ffcc', fontSize: '0.75em', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px', letterSpacing: '1px' }}>
                                 Efeitos da Classe
