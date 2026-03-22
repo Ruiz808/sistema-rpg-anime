@@ -3,29 +3,28 @@ import useStore from '../../stores/useStore';
 import { salvarFichaSilencioso, enviarParaFeed } from '../../services/firebase-sync';
 
 const CLASSES_REGULARES_BASE = [
-    { id: 'saber', nome: 'Saber', icone: '⚔️', titulo: 'Cavaleiro da Espada', cor: '#0088ff', passiva: 'Resistência Mágica', desc: 'A classe mais equilibrada. Excelentes atributos base em Força, Constituição e Destreza. Recebem bônus passivo para resistir a feitiços e efeitos mágicos diretos.' },
-    { id: 'archer', nome: 'Archer', icone: '🏹', titulo: 'Cavaleiro do Arco', cor: '#ff003c', passiva: 'Ação Independente', desc: 'Especialistas em combate à distância e projéteis. Podem sobreviver e agir mesmo com baixa Mana/Aura. Possuem bônus em precisão e Letalidade.' },
-    { id: 'lancer', nome: 'Lancer', icone: '🗡️', titulo: 'Cavaleiro da Lança', cor: '#00ffcc', passiva: 'Proteção contra Flechas', desc: 'Altamente ágeis e letais no corpo a corpo. Especialistas em contra-ataques e evasão. Foco extremo em Destreza e ataques de alcance médio.' },
-    { id: 'rider', nome: 'Rider', icone: '🏇', titulo: 'Cavaleiro de Montaria', cor: '#ff8800', passiva: 'Montaria (Riding)', desc: 'Possuem a capacidade de domar bestas e conduzir veículos mágicos/tecnológicos. Altíssima velocidade de movimento no mapa e vantagem em ataques de investida.' },
-    { id: 'caster', nome: 'Caster', icone: '🧙‍♂️', titulo: 'Conjurador Magus', cor: '#cc00ff', passiva: 'Criação de Território', desc: 'Fracos no corpo a corpo, mas com Inteligência e Sabedoria supremas. Podem alterar o campo de batalha e possuem reservas colossais de Mana.' },
-    { id: 'assassin', nome: 'Assassin', icone: '🔪', titulo: 'Assassino Furtivo', cor: '#444444', passiva: 'Ocultação de Presença', desc: 'Mestres da furtividade e ataques críticos. Conseguem mover-se pelo mapa sem serem detetados até o momento do ataque. Foco no multiplicador de Dano Crítico.' },
-    { id: 'berserker', nome: 'Berserker', icone: '狂', titulo: 'O Guerreiro Insano', cor: '#ff0000', passiva: 'Mad Enhancement', desc: 'Sacrificam a sanidade (Status/Inteligência) em troca de um aumento monstruoso em Força, Corpo e Pontos Vitais. Causam muito dano, mas recebem dano extra de todas as classes.' }
+    { id: 'saber', nome: 'Saber', icone: '⚔️', titulo: 'Cavaleiro da Espada', cor: '#0088ff', passiva: 'Resistência Mágica', desc: 'A classe mais equilibrada das sete. Especialistas no domínio de lâminas, montam a linha da frente com orgulho.', efeito: 'Excelentes atributos base em Força, Constituição e Destreza. Recebem bônus passivo para resistir a feitiços e efeitos mágicos diretos.' },
+    { id: 'archer', nome: 'Archer', icone: '🏹', titulo: 'Cavaleiro do Arco', cor: '#ff003c', passiva: 'Ação Independente', desc: 'Especialistas em combate à distância e projéteis. Observadores silenciosos que abatem os seus alvos antes mesmo de serem notados.', efeito: 'Podem sobreviver e agir mesmo com baixa Mana/Aura. Possuem bônus massivo em precisão e Letalidade.' },
+    { id: 'lancer', nome: 'Lancer', icone: '🗡️', titulo: 'Cavaleiro da Lança', cor: '#00ffcc', passiva: 'Proteção contra Flechas', desc: 'Guerreiros velozes que empunham armas de haste. Conhecidos pela sua letalidade e agilidade em bater e recuar.', efeito: 'Altamente ágeis e letais no corpo a corpo. Especialistas em contra-ataques e evasão. Foco extremo em Destreza e ataques de alcance médio.' },
+    { id: 'rider', nome: 'Rider', icone: '🏇', titulo: 'Cavaleiro de Montaria', cor: '#ff8800', passiva: 'Montaria (Riding)', desc: 'Espíritos associados a grandes lendas de montarias, sejam feras mitológicas ou construtos tecnológicos.', efeito: 'Possuem a capacidade de domar bestas e conduzir veículos mágicos/tecnológicos. Altíssima velocidade de movimento no mapa e vantagem em ataques de investida.' },
+    { id: 'caster', nome: 'Caster', icone: '🧙‍♂️', titulo: 'Conjurador Magus', cor: '#cc00ff', passiva: 'Criação de Território', desc: 'Estudiosos dos mistérios mágicos e construtores de domínios. Evitam o combate direto para manipular as linhas de energia.', efeito: 'Fracos no corpo a corpo, mas com Inteligência e Sabedoria supremas. Podem alterar o campo de batalha e possuem reservas colossais de Mana.' },
+    { id: 'assassin', nome: 'Assassin', icone: '🔪', titulo: 'Assassino Furtivo', cor: '#444444', passiva: 'Ocultação de Presença', desc: 'Aqueles que espreitam nas sombras, mestres da eliminação rápida e táticas de guerrilha psicológica.', efeito: 'Mestres da furtividade e ataques críticos. Conseguem mover-se pelo mapa sem serem detetados até o momento do ataque. Foco no multiplicador de Dano Crítico.' },
+    { id: 'berserker', nome: 'Berserker', icone: '狂', titulo: 'O Guerreiro Insano', cor: '#ff0000', passiva: 'Mad Enhancement', desc: 'Heróis que sucumbiram à fúria ou à loucura na vida passada, tornando-se bestas imparáveis de destruição.', efeito: 'Sacrificam a sanidade (Status/Inteligência) em troca de um aumento monstruoso em Força, Corpo e Pontos Vitais. Causam muito dano, mas recebem dano extra de todas as classes.' }
 ];
 
 const CLASSES_EXTRA_BASE = [
-    { id: 'shielder', nome: 'Shielder', icone: '🛡️', titulo: 'O Escudo Protetor', cor: '#00ffff', passiva: 'Frente de Batalha', desc: 'Classe defensiva suprema. Não possui fraquezas contra classes regulares. Consegue transferir o dano de aliados para si mesmo e criar barreiras impenetráveis.' },
-    { id: 'ruler', nome: 'Ruler', icone: '⚖️', titulo: 'O Árbitro Santo', cor: '#ffcc00', passiva: 'Resolução Divina', desc: 'Invocados para manter as regras do mundo. Recebem metade do dano das 6 classes regulares (exceto Berserker). Imunes a efeitos de corrupção mental.' },
-    { id: 'avenger', nome: 'Avenger', icone: '⛓️', titulo: 'O Vingador', cor: '#880000', passiva: 'Vingança Eterna', desc: 'Nascidos do ódio e traição. Quanto menos HP tiverem (ou quanto mais aliados caírem), mais forte se torna o seu Dano Base. Têm vantagem contra Rulers.' },
-    { id: 'alterego', nome: 'Alter Ego', icone: '🎭', titulo: 'O Fragmento de Ego', cor: '#ff00ff', passiva: 'Dualidade', desc: 'Fusão de múltiplos espíritos ou emoções separadas de original. Têm vantagem contra as classes da Cavalaria (Rider, Caster, Assassin), mas são fracos contra os Cavaleiros (Saber, Archer, Lancer).' },
-    { id: 'foreigner', nome: 'Foreigner', icone: '🐙', titulo: 'O Viajante do Abismo', cor: '#00ff88', passiva: 'Existência Fora do Domínio', desc: 'Conectados a entidades além do universo conhecido (Deuses Exteriores). Têm vantagem absoluta contra Berserkers e resistência passiva a dano psicológico.' },
-    { id: 'mooncancer', nome: 'Moon Cancer', icone: '🌕', titulo: 'A Anomalia Digital', cor: '#8888aa', passiva: 'Erro de Sistema', desc: 'Entidades irregulares que não deveriam existir, capazes de corromper as próprias regras do combate. Têm vantagem e causam dano extra aos Avengers, mas são frágeis contra Rulers.' },
-    { id: 'pretender', nome: 'Pretender', icone: '🤥', titulo: 'O Falso Heroico', cor: '#ffaa00', passiva: 'Engano Perfeito', desc: 'Aqueles que assumem a identidade e os feitos de outros, enganando até o próprio mundo. Têm vantagem tática contra Alter Egos, mas recebem dano adicional de Foreigners.' },
-    { id: 'beast', nome: 'Beast', icone: '👹', titulo: 'O Mal da Humanidade', cor: '#4a0000', passiva: 'Autoridade da Besta', desc: 'Manifestações dos Pecados da Humanidade. Uma classe apocalíptica desenhada para Chefes. Possuem barras de HP massivas (PV e PM multiplicados) e resistem a quase todas as formas normais de dano.' },
-    { id: 'savior', nome: 'Savior', icone: '☀️', titulo: 'O Iluminado', cor: '#ffffff', passiva: 'Iluminação', desc: 'Seres messiânicos que alcançaram a salvação. Não são feitos para atacar, mas focam-se em curas monumentais, buffs impenetráveis e pacificação de inimigos no campo de batalha.' }
+    { id: 'shielder', nome: 'Shielder', icone: '🛡️', titulo: 'O Escudo Protetor', cor: '#00ffff', passiva: 'Frente de Batalha', desc: 'Invocados com foco absoluto em defesa, carregam a esperança e a proteção dos seus aliados como o seu próprio núcleo.', efeito: 'Classe defensiva suprema. Não possui fraquezas contra classes regulares. Consegue transferir o dano de aliados para si mesmo e criar barreiras impenetráveis.' },
+    { id: 'ruler', nome: 'Ruler', icone: '⚖️', titulo: 'O Árbitro Santo', cor: '#ffcc00', passiva: 'Resolução Divina', desc: 'Invocados sem desejos mundanos para manter as regras e as leis da Guerra de forma justa.', efeito: 'Recebem apenas metade do dano das 6 classes regulares (exceto Berserker). Imunes a efeitos de corrupção mental e de controle.' },
+    { id: 'avenger', nome: 'Avenger', icone: '⛓️', titulo: 'O Vingador', cor: '#880000', passiva: 'Vingança Eterna', desc: 'Espíritos corrompidos, nascidos do ódio humano, traição ou desejo de retaliação absoluta.', efeito: 'Quanto menos HP tiverem (ou quanto mais aliados caírem), mais forte se torna o seu Dano Base. Têm vantagem e causam dano extra contra Rulers.' },
+    { id: 'alterego', nome: 'Alter Ego', icone: '🎭', titulo: 'O Fragmento de Ego', cor: '#ff00ff', passiva: 'Dualidade', desc: 'Manifestações de diferentes aspetos de uma personalidade ou entidades mescladas de forma forçada.', efeito: 'Têm vantagem contra as classes da Cavalaria (Rider, Caster, Assassin), mas são fracos e recebem dano extra dos Cavaleiros (Saber, Archer, Lancer).' },
+    { id: 'foreigner', nome: 'Foreigner', icone: '🐙', titulo: 'O Viajante do Abismo', cor: '#00ff88', passiva: 'Existência Fora do Domínio', desc: 'Seres anômalos que cruzaram o abismo e conectaram as suas almas a Entidades além do universo observável.', efeito: 'Têm vantagem absoluta contra Berserkers e resistência passiva a dano psicológico e cósmico.' },
+    { id: 'mooncancer', nome: 'Moon Cancer', icone: '🌕', titulo: 'A Anomalia Digital', cor: '#8888aa', passiva: 'Erro de Sistema', desc: 'Entidades conceituais que invadiram ou subverteram sistemas fundamentais, como vírus dentro de um supercomputador cósmico.', efeito: 'Capazes de corromper as próprias regras do combate. Têm vantagem e causam dano extra aos Avengers, mas são extremamente frágeis contra Rulers.' },
+    { id: 'pretender', nome: 'Pretender', icone: '🤥', titulo: 'O Falso Heroico', cor: '#ffaa00', passiva: 'Engano Perfeito', desc: 'Aqueles que assumem a identidade, corpo e os feitos de outros, enganando até o próprio mundo com a sua mentira.', efeito: 'Imunes a habilidades de leitura de status ou detecção de identidade. Têm vantagem tática contra Alter Egos, mas recebem dano adicional de Foreigners.' },
+    { id: 'beast', nome: 'Beast', icone: '👹', titulo: 'O Mal da Humanidade', cor: '#4a0000', passiva: 'Autoridade da Besta', desc: 'Os Males Originais, criados pelos pecados inerentes da própria humanidade e concebidos para destruí-la.', efeito: 'Classe apocalíptica desenhada para Chefes de Campanha. Possuem barras de HP massivas (PV e PM multiplicados) e resistem a quase todas as formas normais de dano.' },
+    { id: 'savior', nome: 'Savior', icone: '☀️', titulo: 'O Iluminado', cor: '#ffffff', passiva: 'Iluminação', desc: 'Seres messiânicos transcendentes que alcançaram a iluminação e a salvação do ciclo do sofrimento.', efeito: 'Não possuem mecânicas de ataque agressivo. Focam-se em curas monumentais, buffs impenetráveis e pacificação forçada de inimigos no campo de batalha.' }
 ];
 
 export default function CompendioPanel() {
-    // 🔥 CORREÇÃO: Puxando as variáveis individualmente para forçar a re-renderização correta
     const minhaFicha = useStore(s => s.minhaFicha);
     const personagens = useStore(s => s.personagens);
     const isMestre = useStore(s => s.isMestre);
@@ -37,8 +36,9 @@ export default function CompendioPanel() {
     const [editandoId, setEditandoId] = useState(null);
     const [tempPassiva, setTempPassiva] = useState('');
     const [tempDesc, setTempDesc] = useState('');
+    const [tempEfeito, setTempEfeito] = useState(''); // 🔥 NOVO ESTADO: O EFEITO MECÂNICO
 
-    // PROCURA AS EDIÇÕES GLOBAIS (Na ficha do Mestre)
+    // PROCURA AS EDIÇÕES GLOBAIS
     const overridesCompendio = useMemo(() => {
         if (!minhaFicha) return {};
         if (isMestre && minhaFicha.compendioOverrides) return minhaFicha.compendioOverrides;
@@ -56,7 +56,12 @@ export default function CompendioPanel() {
         return classesBase.map(cls => {
             const custom = overridesCompendio[cls.id];
             if (custom) {
-                return { ...cls, passiva: custom.passiva || cls.passiva, desc: custom.desc || cls.desc };
+                return { 
+                    ...cls, 
+                    passiva: custom.passiva || cls.passiva, 
+                    desc: custom.desc || cls.desc,
+                    efeito: custom.efeito || cls.efeito // 🔥 AGORA O EFEITO TAMBÉM É MESCLADO
+                };
             }
             return cls;
         });
@@ -65,11 +70,12 @@ export default function CompendioPanel() {
     const regulares = mesclarComOverrides(CLASSES_REGULARES_BASE);
     const extras = mesclarComOverrides(CLASSES_EXTRA_BASE);
 
-    // FUNÇÕES DE EDIÇÃO (APENAS MESTRE)
+    // FUNÇÕES DE EDIÇÃO
     const iniciarEdicao = (classe) => {
         setEditandoId(classe.id);
         setTempPassiva(classe.passiva);
         setTempDesc(classe.desc);
+        setTempEfeito(classe.efeito); // 🔥 PUXA O EFEITO PARA EDIÇÃO
     };
 
     const salvarEdicao = (id) => {
@@ -77,7 +83,8 @@ export default function CompendioPanel() {
             if (!f.compendioOverrides) f.compendioOverrides = {};
             f.compendioOverrides[id] = {
                 passiva: tempPassiva,
-                desc: tempDesc
+                desc: tempDesc,
+                efeito: tempEfeito // 🔥 GUARDA O NOVO EFEITO
             };
         });
         salvarFichaSilencioso();
@@ -111,7 +118,6 @@ export default function CompendioPanel() {
                         </div>
                     </div>
                     
-                    {/* O BOTÃO APARECE AQUI SE VOCÊ FOR MESTRE */}
                     {isMestre && !isEditando && (
                         <button className="btn-neon btn-gold btn-small" onClick={() => iniciarEdicao(classe)} style={{ padding: '4px 10px', fontSize: '0.8em', margin: 0 }}>
                             ✏️ Editar
@@ -120,7 +126,7 @@ export default function CompendioPanel() {
                 </div>
 
                 {isEditando ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
                         <div>
                             <label style={{ fontSize: '0.8em', color: '#ffcc00' }}>Habilidade de Classe:</label>
                             <input 
@@ -129,10 +135,18 @@ export default function CompendioPanel() {
                             />
                         </div>
                         <div>
-                            <label style={{ fontSize: '0.8em', color: '#aaa' }}>Descrição / Efeitos:</label>
+                            <label style={{ fontSize: '0.8em', color: '#aaa' }}>Descrição (História / Lore):</label>
                             <textarea 
                                 className="input-neon" value={tempDesc} onChange={(e) => setTempDesc(e.target.value)}
-                                style={{ width: '100%', padding: '5px', minHeight: '80px', borderColor: '#444', color: '#ccc' }}
+                                style={{ width: '100%', padding: '5px', minHeight: '60px', borderColor: '#444', color: '#ccc', fontStyle: 'italic' }}
+                            />
+                        </div>
+                        {/* 🔥 O NOVO CAMPO DE EDIÇÃO PARA OS EFEITOS MECÂNICOS */}
+                        <div>
+                            <label style={{ fontSize: '0.8em', color: '#00ffcc' }}>Efeitos Mecânicos (Regras):</label>
+                            <textarea 
+                                className="input-neon" value={tempEfeito} onChange={(e) => setTempEfeito(e.target.value)}
+                                style={{ width: '100%', padding: '5px', minHeight: '60px', borderColor: '#00ffcc', color: '#fff' }}
                             />
                         </div>
                         <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '5px' }}>
@@ -146,9 +160,21 @@ export default function CompendioPanel() {
                             <strong style={{ color: '#fff', fontSize: '0.85em', textTransform: 'uppercase' }}>Habilidade de Classe: </strong> 
                             <span style={{ color: '#ffcc00', fontSize: '0.9em' }}>{classe.passiva}</span>
                         </div>
-                        <p style={{ margin: 0, color: '#ccc', fontSize: '0.9em', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
-                            {classe.desc}
+                        
+                        {/* 🔥 VISUALIZAÇÃO: Descrição Narrativa (Itálico e cinza) */}
+                        <p style={{ margin: '5px 0 0 0', color: '#aaa', fontSize: '0.85em', fontStyle: 'italic', lineHeight: '1.4', whiteSpace: 'pre-wrap' }}>
+                            "{classe.desc}"
                         </p>
+
+                        {/* 🔥 VISUALIZAÇÃO: Efeito Mecânico (Caixa clara e texto branco) */}
+                        <div style={{ background: 'rgba(0, 255, 204, 0.05)', padding: '10px', borderRadius: '5px', border: '1px solid rgba(0, 255, 204, 0.3)', marginTop: '5px' }}>
+                            <div style={{ color: '#00ffcc', fontSize: '0.75em', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px', letterSpacing: '1px' }}>
+                                Efeitos da Classe
+                            </div>
+                            <div style={{ color: '#fff', fontSize: '0.9em', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
+                                ⚔️ {classe.efeito}
+                            </div>
+                        </div>
                     </>
                 )}
             </div>
