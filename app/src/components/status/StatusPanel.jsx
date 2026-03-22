@@ -63,6 +63,7 @@ function calcularPrestAtual(ficha, attrKey, baseP) {
     return Math.floor(baseP * multForma);
 }
 
+// 🔥 Esta função lê o Prestígio Base, IGNORANDO qualquer buff ou forma!
 const getBasePFor = (ficha, k) => {
     if (k === 'status') {
         let m = 0;
@@ -74,7 +75,6 @@ const getBasePFor = (ficha, k) => {
 
 function RadarChart({ ficha, isAtual }) {
     const LIMIT = 100; 
-
     const chartValues = VITALS_RADAR.map((k) => {
         const baseP = getBasePFor(ficha, k);
         return isAtual ? calcularPrestAtual(ficha, k, baseP) : baseP;
@@ -131,7 +131,7 @@ function RadarChart({ ficha, isAtual }) {
 
 function calcVitalScale(rawMx, key) {
     if (!rawMx || rawMx <= 0) return { p: 0, mxDisplay: 0 };
-    const limit = key === 'vida' ? 8 : 9;
+    const limit = (key === 'vida' || key === 'pv' || key === 'pm') ? 8 : 9;
     const strMx = Math.floor(rawMx).toString();
     const p = Math.max(0, strMx.length - limit);
     const mxDisplay = p > 0 ? Math.floor(rawMx / Math.pow(10, p)) : Math.floor(rawMx);
@@ -151,13 +151,12 @@ function AtributosLista({ ficha, isAtual }) {
         return { key, label, valor };
     }), [ficha, isAtual]);
 
-    const classeValor = isAtual ? 'atributo-valor-atual' : 'atributo-valor-base';
     return (
         <div className="atributo-lista">
             {valores.map(({ key, label, valor }) => (
                 <div key={key} className="atributo-row">
                     <span>{label}</span>
-                    <span className={classeValor}>{valor.toLocaleString('pt-BR')}</span>
+                    <span className={isAtual ? 'atributo-valor-atual' : 'atributo-valor-base'}>{valor.toLocaleString('pt-BR')}</span>
                 </div>
             ))}
         </div>
@@ -168,24 +167,51 @@ function StatusPanelCore() {
     const ficha = useStore((s) => s.minhaFicha);
     const updateFicha = useStore((s) => s.updateFicha);
 
+    const [targetBar, setTargetBar] = useState('vida');
     const [inputDano, setInputDano] = useState('');
     const [inputLetalidade, setInputLetalidade] = useState('0');
     
     const inicializado = useRef(false);
 
     const vitalsBars = useMemo(() => [
-        { key: 'vida',   label: 'VIDA (HP)', color: '#ff4d4d', classColor: 'label-color-vida' },
+        { key: 'vida',   label: 'VIDA (HP)', color: '#ff4d4d', classColor: 'label-color-vida', borderC: '#ff0000' },
         { key: 'mana',   label: 'MANA',      color: '#00ffff', classColor: 'label-color-mana' },
         { key: 'aura',   label: 'AURA',      color: '#ffcc00', classColor: 'label-color-aura' },
         { key: 'chakra', label: 'CHAKRA',    color: '#e6ffff', classColor: 'label-color-chakra' },
         { key: 'corpo',  label: 'CORPO',     color: '#ff66ff', classColor: 'label-color-corpo' },
     ], []);
 
+    const vitaisEspeciais = useMemo(() => [
+        { key: 'pv', label: 'PONTOS VITAIS (PV)', color: '#00ff88', classColor: 'label-color-pv', borderC: '#00ff88' },
+        { key: 'pm', label: 'PONTOS MORTAIS (PM)', color: '#cc00ff', classColor: 'label-color-pm', borderC: '#cc00ff' },
+    ], []);
+
+    const allVitals = useMemo(() => [...vitalsBars, ...vitaisEspeciais], [vitalsBars, vitaisEspeciais]);
+
+    // 🔥 O CÁLCULO BLINDADO: Apenas Prestígio Base * Multiplicador
+    const getVitalMax = useCallback((key, f) => {
+        if (key === 'pv') {
+            const bC = getBasePFor(f, 'corpo');
+            const bV = getBasePFor(f, 'vida');
+            const bCh = getBasePFor(f, 'chakra');
+            const m = parseFloat(f.multiplicadorVida) || 1;
+            return Math.floor(((bC + bV + bCh) / 3) * m);
+        }
+        if (key === 'pm') {
+            const bM = getBasePFor(f, 'mana');
+            const bS = getBasePFor(f, 'status');
+            const bA = getBasePFor(f, 'aura');
+            const m = parseFloat(f.multiplicadorMorte) || 1;
+            return Math.floor(((bM + bS + bA) / 3) * m);
+        }
+        return safeGetMaximo(f, key);
+    }, []);
+
     useEffect(() => {
         if (!ficha || inicializado.current) return;
         updateFicha((f) => {
-            vitalsBars.forEach(({ key }) => {
-                const rawMx = safeGetMaximo(f, key);
+            allVitals.forEach(({ key }) => {
+                const rawMx = getVitalMax(key, f);
                 const { mxDisplay } = calcVitalScale(rawMx, key);
                 if (!f[key]) f[key] = {};
                 if (f[key].atual === undefined || f[key].atual === null) {
@@ -194,80 +220,48 @@ function StatusPanelCore() {
             });
         });
         inicializado.current = true;
-    }, [ficha, updateFicha, vitalsBars]);
+    }, [ficha, updateFicha, allVitals, getVitalMax]);
 
-    // 🔥 CÁLCULO DAS NOVAS ENERGIAS (PONTOS VITAIS E MORTAIS)
-    const energiaAvancada = useMemo(() => {
-        if (!ficha) return { pvBase: 0, pvAtual: 0, pmBase: 0, pmAtual: 0 };
-        
-        // 1. Extrair os Prestígios Base
-        const bCorpo = getBasePFor(ficha, 'corpo');
-        const bVida = getBasePFor(ficha, 'vida');
-        const bChakra = getBasePFor(ficha, 'chakra');
-        
-        const bMana = getBasePFor(ficha, 'mana');
-        const bStatus = getBasePFor(ficha, 'status');
-        const bAura = getBasePFor(ficha, 'aura');
-
-        // 2. Calcular as Médias Base
-        const pvBase = Math.floor((bCorpo + bVida + bChakra) / 3);
-        const pmBase = Math.floor((bMana + bStatus + bAura) / 3);
-
-        // 3. Extrair os Prestígios Atuais (com transformações mFormas)
-        const aCorpo = calcularPrestAtual(ficha, 'corpo', bCorpo);
-        const aVida = calcularPrestAtual(ficha, 'vida', bVida);
-        const aChakra = calcularPrestAtual(ficha, 'chakra', bChakra);
-
-        const aMana = calcularPrestAtual(ficha, 'mana', bMana);
-        const aStatus = calcularPrestAtual(ficha, 'status', bStatus);
-        const aAura = calcularPrestAtual(ficha, 'aura', bAura);
-
-        // 4. Calcular as Médias Atuais
-        const pvAtual = Math.floor((aCorpo + aVida + aChakra) / 3);
-        const pmAtual = Math.floor((aMana + aStatus + aAura) / 3);
-
-        return { pvBase, pvAtual, pmBase, pmAtual };
-    }, [ficha]);
-
-    const alterarHP = useCallback((tipo) => {
+    const alterarVital = useCallback((tipo) => {
         const valor = parseInt(inputDano) || 0;
         if (valor <= 0) return;
         const letalidade = parseInt(inputLetalidade) || 0;
 
         updateFicha((f) => {
-            const rawMx = safeGetMaximo(f, 'vida');
-            const { mxDisplay } = calcVitalScale(rawMx, 'vida'); 
+            const rawMx = getVitalMax(targetBar, f);
+            const { mxDisplay } = calcVitalScale(rawMx, targetBar); 
             
             let danoFinal = valor;
             if (tipo === 'dano' && letalidade > 0) {
                 danoFinal = valor * Math.pow(10, letalidade);
             }
             
+            if (!f[targetBar]) f[targetBar] = {};
             if (tipo === 'dano') {
-                f.vida.atual = Math.max(0, (f.vida.atual || 0) - danoFinal);
+                f[targetBar].atual = Math.max(0, (f[targetBar].atual || 0) - danoFinal);
             } else {
-                f.vida.atual = Math.min(mxDisplay, (f.vida.atual || 0) + danoFinal);
+                f[targetBar].atual = Math.min(mxDisplay, (f[targetBar].atual || 0) + danoFinal);
             }
         });
         salvarFichaSilencioso();
         setInputDano('');
-    }, [inputDano, inputLetalidade, updateFicha]);
+    }, [inputDano, inputLetalidade, updateFicha, targetBar, getVitalMax]);
 
     const curarTudo = useCallback(() => {
         updateFicha((f) => {
-            vitalsBars.forEach(({ key }) => {
-                const rawMx = safeGetMaximo(f, key);
+            allVitals.forEach(({ key }) => {
+                const rawMx = getVitalMax(key, f);
                 const { mxDisplay } = calcVitalScale(rawMx, key);
                 if(f[key]) f[key].atual = mxDisplay; 
             });
         });
         salvarFichaSilencioso();
-    }, [updateFicha, vitalsBars]);
+    }, [updateFicha, allVitals, getVitalMax]);
 
     const aplicarRegeneracaoTurno = useCallback(() => {
         updateFicha((f) => {
-            vitalsBars.forEach(({ key }) => {
-                const rawMx = safeGetMaximo(f, key);
+            allVitals.forEach(({ key }) => {
+                const rawMx = getVitalMax(key, f);
                 const { mxDisplay } = calcVitalScale(rawMx, key);
                 const regen = parseFloat(f[key]?.regeneracao) || 0;
                 
@@ -277,114 +271,117 @@ function StatusPanelCore() {
             });
         });
         salvarFichaSilencioso();
-    }, [updateFicha, vitalsBars]);
+    }, [updateFicha, allVitals, getVitalMax]);
 
     if (!ficha) return <div style={{ color: '#888', textAlign: 'center', marginTop: '50px' }}>Carregando dados vitais...</div>;
 
+    // 🔥 O RENDERIZADOR UNIVERSAL DE BARRAS
+    const renderBar = (item, index, isSpecial = false) => {
+        const { key, label, color, classColor, borderC } = item;
+        const rawMx = getVitalMax(key, ficha);
+        const { p, mxDisplay } = calcVitalScale(rawMx, key);
+        
+        let atual = ficha[key]?.atual ?? mxDisplay;
+        if (atual > mxDisplay) atual = mxDisplay; 
+
+        const regen = parseFloat(ficha[key]?.regeneracao) || 0;
+        const extra = regen > 0 ? `(+${regen}/turno)` : '';
+        const gridStyle = (!isSpecial && index === 0) ? { gridColumn: '1 / -1', margin: 0 } : { margin: 0 };
+        
+        const percent = Number.isNaN(atual / mxDisplay) ? 0 : Math.min((atual / mxDisplay) * 100, 100);
+
+        const vitalitySymbol = (p > 0 && (key === 'vida' || key === 'pv' || key === 'pm')) ? (
+            <div style={{
+                position: 'absolute', left: '8px', zIndex: 3, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: '32px', height: '32px', background: 'rgba(20, 0, 0, 0.9)', 
+                border: `3px solid ${borderC}`, boxShadow: `0 0 10px ${borderC}, inset 0 0 5px ${borderC}80`,
+                borderRadius: '4px', color: '#fff', fontWeight: 'bold', fontSize: '18px',
+                fontFamily: 'arial, sans-serif', textShadow: `0 0 5px ${borderC}`
+            }}>
+                {p}
+            </div>
+        ) : null;
+
+        return (
+            <div key={key} className="vital-container" style={gridStyle}>
+                <div className={`vital-label ${classColor || ''}`} style={{ color: isSpecial ? color : '' }}>
+                    {label} {extra && <span style={{fontSize: '0.8em', color: '#aaa'}}>{extra}</span>}
+                </div>
+                <div className="bar-bg" style={{ position: 'relative', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: isSpecial ? `1px solid ${color}40` : '' }}>
+                    <div className="bar-fill" style={{ width: `${percent}%`, backgroundColor: color, position: 'absolute', left: 0, top: 0, height: '100%', borderRadius: 'inherit', transition: 'width 0.3s' }}></div>
+                    {vitalitySymbol}
+                    <div className="bar-text" style={{ position: 'relative', zIndex: 2, width: '100%', textAlign: 'center', textShadow: '1px 1px 3px #000, -1px -1px 3px #000' }}>
+                        <span style={{ fontSize: '1.2em', fontWeight: 'bold', color: '#fff' }}>
+                            {Math.floor(atual).toLocaleString('pt-BR')} / {mxDisplay.toLocaleString('pt-BR')}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="status-panel-container">
+            
+            {/* 🔥 BARRAS CLÁSSICAS */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
-                {vitalsBars.map(({ key, label, color, classColor }, index) => {
-                    const rawMx = safeGetMaximo(ficha, key);
-                    const { p, mxDisplay } = calcVitalScale(rawMx, key);
-                    
-                    let atual = ficha[key]?.atual ?? mxDisplay;
-                    if (atual > mxDisplay) atual = mxDisplay; 
-
-                    const regen = parseFloat(ficha[key]?.regeneracao) || 0;
-                    const extra = regen > 0 ? `(+${regen}/turno)` : '';
-                    const gridStyle = index === 0 ? { gridColumn: '1 / -1', margin: 0 } : { margin: 0 };
-                    
-                    const percent = Number.isNaN(atual / mxDisplay) ? 0 : Math.min((atual / mxDisplay) * 100, 100);
-
-                    const vitalitySymbol = (p > 0 && key === 'vida') ? (
-                        <div style={{
-                            position: 'absolute',
-                            left: '8px',
-                            zIndex: 3,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: '32px',
-                            height: '32px',
-                            background: 'rgba(20, 0, 0, 0.9)', 
-                            border: '3px solid #ff0000', 
-                            boxShadow: '0 0 10px #ff0000, inset 0 0 5px rgba(255,0,0,0.5)',
-                            borderRadius: '4px',
-                            color: '#fff',
-                            fontWeight: 'bold',
-                            fontSize: '18px',
-                            fontFamily: 'arial, sans-serif',
-                            textShadow: '0 0 5px #ff0000'
-                        }}>
-                            {p}
-                        </div>
-                    ) : null;
-
-                    return (
-                        <div key={key} className="vital-container" style={gridStyle}>
-                            <div className={`vital-label ${classColor}`}>{label} {extra && <span style={{fontSize: '0.8em', color: '#aaa'}}>{extra}</span>}</div>
-                            
-                            <div className="bar-bg" style={{ position: 'relative', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <div className="bar-fill" style={{ width: `${percent}%`, backgroundColor: color, position: 'absolute', left: 0, top: 0, height: '100%', borderRadius: 'inherit' }}></div>
-                                {vitalitySymbol}
-                                <div className="bar-text" style={{ position: 'relative', zIndex: 2, width: '100%', textAlign: 'center', textShadow: '1px 1px 3px #000, -1px -1px 3px #000' }}>
-                                    <span style={{ fontSize: '1.2em', fontWeight: 'bold' }}>
-                                        {Math.floor(atual).toLocaleString('pt-BR')} / {mxDisplay.toLocaleString('pt-BR')}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    );
-                })}
+                {vitalsBars.map((item, i) => renderBar(item, i, false))}
             </div>
 
-            {/* 🔥 AS DUAS NOVAS ENERGIAS MÍSTICAS 🔥 */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '30px' }}>
-                <div style={{ background: 'rgba(0, 255, 136, 0.05)', border: '2px solid #00ff88', borderRadius: '8px', padding: '15px', textAlign: 'center', boxShadow: '0 0 15px rgba(0, 255, 136, 0.2)' }}>
-                    <h4 style={{ color: '#00ff88', margin: '0 0 10px 0', letterSpacing: '2px', textShadow: '0 0 5px #00ff88' }}>💚 PONTOS VITAIS (PV)</h4>
-                    <div style={{ fontSize: '2.5em', color: '#fff', fontWeight: 'bold', textShadow: '0 0 15px #00ff88', lineHeight: '1' }}>
-                        {energiaAvancada.pvAtual.toLocaleString('pt-BR')}
-                    </div>
-                    <div style={{ fontSize: '0.9em', color: '#00cc66', marginTop: '5px' }}>
-                        Base: {energiaAvancada.pvBase.toLocaleString('pt-BR')}
-                    </div>
-                    <div style={{ fontSize: '0.7em', color: '#888', textTransform: 'uppercase', marginTop: '10px', letterSpacing: '1px' }}>
-                        Média de Corpo, Vida e Chakra
-                    </div>
-                </div>
+            {/* 🔥 BARRAS DAS NOVAS ENERGIAS */}
+            <h3 className="section-title-mint-spaced" style={{ marginTop: 0, color: '#fff', fontSize: '1.2em' }}>&gt; ENERGIAS PRIMORDIAIS</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+                {vitaisEspeciais.map((item, i) => renderBar(item, i, true))}
+            </div>
 
-                <div style={{ background: 'rgba(255, 0, 255, 0.05)', border: '2px solid #ff00ff', borderRadius: '8px', padding: '15px', textAlign: 'center', boxShadow: '0 0 15px rgba(255, 0, 255, 0.2)' }}>
-                    <h4 style={{ color: '#ff00ff', margin: '0 0 10px 0', letterSpacing: '2px', textShadow: '0 0 5px #ff00ff' }}>☠️ PONTOS MORTAIS (PM)</h4>
-                    <div style={{ fontSize: '2.5em', color: '#fff', fontWeight: 'bold', textShadow: '0 0 15px #ff00ff', lineHeight: '1' }}>
-                        {energiaAvancada.pmAtual.toLocaleString('pt-BR')}
-                    </div>
-                    <div style={{ fontSize: '0.9em', color: '#cc00cc', marginTop: '5px' }}>
-                        Base: {energiaAvancada.pmBase.toLocaleString('pt-BR')}
-                    </div>
-                    <div style={{ fontSize: '0.7em', color: '#888', textTransform: 'uppercase', marginTop: '10px', letterSpacing: '1px' }}>
-                        Média de Mana, Status e Aura
-                    </div>
+            {/* 🔥 MULTIPLICADORES ESPECIAIS */}
+            <div style={{ display: 'flex', gap: '15px', marginBottom: '30px' }}>
+                <div className="input-group" style={{ flex: 1, background: 'rgba(0, 255, 136, 0.05)', padding: '10px', borderRadius: '8px', border: '1px solid #00ff88', margin: 0 }}>
+                    <label style={{ color: '#00ff88', fontSize: '0.8em', marginBottom: '5px', display: 'block' }}>MULT. DE VIDA (PV)</label>
+                    <input type="number" step="0.1" value={ficha.multiplicadorVida || 1} onChange={(e) => { updateFicha(f => f.multiplicadorVida = parseFloat(e.target.value) || 1); salvarFichaSilencioso(); }} style={{ borderColor: '#00ff88', color: '#fff', width: '100%' }} />
+                </div>
+                <div className="input-group" style={{ flex: 1, background: 'rgba(255, 0, 255, 0.05)', padding: '10px', borderRadius: '8px', border: '1px solid #ff00ff', margin: 0 }}>
+                    <label style={{ color: '#ff00ff', fontSize: '0.8em', marginBottom: '5px', display: 'block' }}>MULT. DE MORTE (PM)</label>
+                    <input type="number" step="0.1" value={ficha.multiplicadorMorte || 1} onChange={(e) => { updateFicha(f => f.multiplicadorMorte = parseFloat(e.target.value) || 1); salvarFichaSilencioso(); }} style={{ borderColor: '#ff00ff', color: '#fff', width: '100%' }} />
                 </div>
             </div>
 
+            {/* 🔥 CONTROLE RÁPIDO AGORA SELECIONA QUALQUER BARRA */}
             <h3 className="section-title-mint-spaced" style={{ marginTop: 0, color: '#fff', fontSize: '1.2em' }}>&gt; CONTROLE RÁPIDO</h3>
-            <div className="form-row-dark" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '15px', alignItems: 'end', background: 'transparent', padding: 0 }}>
+            <div className="form-row-dark" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr 1fr auto auto', gap: '10px', alignItems: 'end', background: 'transparent', padding: 0 }}>
+                
+                {/* O NOVO SELETOR DE ALVO */}
                 <div className="input-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '0.8em', color: '#aaa' }}>VALOR (HP/ENERGIA)</label>
+                    <label style={{ fontSize: '0.8em', color: '#aaa' }}>ALVO</label>
+                    <select value={targetBar} onChange={e => setTargetBar(e.target.value)} style={{ padding: '9px', background: '#111', color: '#00ffcc', border: '1px solid #00ffcc', borderRadius: '5px', fontWeight: 'bold' }}>
+                        <option value="vida">Vida (HP)</option>
+                        <option value="pv">Pontos Vitais (PV)</option>
+                        <option value="pm">Pontos Mortais (PM)</option>
+                        <option value="mana">Mana</option>
+                        <option value="aura">Aura</option>
+                        <option value="chakra">Chakra</option>
+                        <option value="corpo">Corpo</option>
+                    </select>
+                </div>
+
+                <div className="input-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '0.8em', color: '#aaa' }}>VALOR</label>
                     <input type="number" placeholder="Ex: 24500" value={inputDano} onChange={(e) => setInputDano(e.target.value)} />
                 </div>
+                
                 <div className="input-group" style={{ margin: 0 }}>
                     <label style={{ fontSize: '0.8em', color: '#aaa' }}>LETALIDADE</label>
                     <input type="number" value={inputLetalidade} onChange={(e) => setInputLetalidade(e.target.value)} />
                 </div>
-                <button className="btn-neon btn-red btn-small" onClick={() => alterarHP('dano')} style={{ height: '44px', margin: 0 }}>
-                    🔥 RECEBER DANO
+                
+                <button className="btn-neon btn-red btn-small" onClick={() => alterarVital('dano')} style={{ height: '44px', margin: 0, padding: '0 15px' }}>
+                    🔥 DANO
                 </button>
-                <button className="btn-neon btn-green btn-small" onClick={() => alterarHP('curar')} style={{ height: '44px', margin: 0 }}>
-                    💊 CURAR HP
+                <button className="btn-neon btn-green btn-small" onClick={() => alterarVital('curar')} style={{ height: '44px', margin: 0, padding: '0 15px' }}>
+                    💊 CURAR
                 </button>
             </div>
+
             <div style={{ display: 'flex', gap: '15px', marginTop: '15px', marginBottom: '30px' }}>
                 <button className="btn-neon btn-green btn-small" onClick={aplicarRegeneracaoTurno} style={{ flex: 1, margin: 0 }}>
                     ✨ APLICAR REGENERAÇÃO
