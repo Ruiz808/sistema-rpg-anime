@@ -37,7 +37,7 @@ export default function CompendioPanel() {
     const [tempPassiva, setTempPassiva] = useState('');
     const [tempDesc, setTempDesc] = useState('');
     const [tempEfeito, setTempEfeito] = useState('');
-    const [tempIconeUrl, setTempIconeUrl] = useState(''); // 🔥 NOVO: Link da Imagem
+    const [tempIconeUrl, setTempIconeUrl] = useState('');
 
     // PROCURA AS EDIÇÕES GLOBAIS
     const overridesCompendio = useMemo(() => {
@@ -62,7 +62,7 @@ export default function CompendioPanel() {
                     passiva: custom.passiva || cls.passiva, 
                     desc: custom.desc || cls.desc,
                     efeito: custom.efeito || cls.efeito,
-                    iconeUrl: custom.iconeUrl || cls.iconeUrl // 🔥 AGORA MESCLA A IMAGEM
+                    iconeUrl: custom.iconeUrl || cls.iconeUrl 
                 };
             }
             return cls;
@@ -78,7 +78,7 @@ export default function CompendioPanel() {
         setTempPassiva(classe.passiva);
         setTempDesc(classe.desc);
         setTempEfeito(classe.efeito);
-        setTempIconeUrl(classe.iconeUrl || ''); // 🔥 PUXA O LINK PARA O INPUT
+        setTempIconeUrl(classe.iconeUrl || ''); 
     };
 
     const salvarEdicao = (id) => {
@@ -88,7 +88,7 @@ export default function CompendioPanel() {
                 passiva: tempPassiva,
                 desc: tempDesc,
                 efeito: tempEfeito,
-                iconeUrl: tempIconeUrl // 🔥 GUARDA O LINK DA IMAGEM
+                iconeUrl: tempIconeUrl 
             };
         });
         salvarFichaSilencioso();
@@ -98,6 +98,18 @@ export default function CompendioPanel() {
 
     const cancelarEdicao = () => {
         setEditandoId(null);
+    };
+
+    // 🔥 NOVA FUNÇÃO: Transforma o ficheiro num código Base64 para guardar direto na ficha
+    const handleImageUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setTempIconeUrl(reader.result); // O resultado é a imagem convertida em texto!
+            };
+            reader.readAsDataURL(file);
+        }
     };
 
     const renderCardClasse = (classe, index) => {
@@ -112,7 +124,7 @@ export default function CompendioPanel() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         
-                        {/* 🔥 VISUALIZAÇÃO DO ÍCONE DINÂMICO (IMAGEM OU EMOJI) */}
+                        {/* VISUALIZAÇÃO DO ÍCONE DINÂMICO */}
                         <div style={{ 
                             width: '50px', height: '50px', background: `${classe.cor}20`, 
                             borderRadius: '50%', border: `1px solid ${classe.cor}`, 
@@ -142,15 +154,21 @@ export default function CompendioPanel() {
 
                 {isEditando ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
-                        {/* 🔥 NOVO CAMPO DE IMAGEM NO MODO DE EDIÇÃO */}
-                        <div>
-                            <label style={{ fontSize: '0.8em', color: '#ffcc00' }}>Link do Ícone (Ex: Imgur/Discord):</label>
+                        
+                        {/* 🔥 NOVO BOTÃO DE UPLOAD DE FICHEIRO */}
+                        <div style={{ background: 'rgba(255, 204, 0, 0.1)', padding: '10px', borderRadius: '5px', border: '1px solid rgba(255, 204, 0, 0.3)' }}>
+                            <label style={{ fontSize: '0.8em', color: '#ffcc00', display: 'block', marginBottom: '5px' }}>Anexar Ícone (Upload do Computador):</label>
                             <input 
-                                type="text" className="input-neon" value={tempIconeUrl} onChange={(e) => setTempIconeUrl(e.target.value)}
-                                placeholder="Deixe vazio para usar o emoji padrão"
-                                style={{ width: '100%', padding: '5px', borderColor: '#ffcc00', color: '#fff' }}
+                                type="file" 
+                                accept="image/*"
+                                onChange={handleImageUpload}
+                                style={{ color: '#fff', fontSize: '0.9em' }}
                             />
+                            {tempIconeUrl && tempIconeUrl.startsWith('data:image') && (
+                                <div style={{ marginTop: '8px', fontSize: '0.85em', color: '#00ffcc' }}>✓ Imagem carregada e pronta para guardar!</div>
+                            )}
                         </div>
+
                         <div>
                             <label style={{ fontSize: '0.8em', color: '#ffcc00' }}>Habilidade de Classe:</label>
                             <input 
