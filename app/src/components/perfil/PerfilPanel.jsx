@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import useStore from '../../stores/useStore';
 import { sanitizarNome } from '../../stores/useStore';
-import { carregarFichaDoFirebase, deletarPersonagem, salvarFichaSilencioso, uploadImagem } from '../../services/firebase-sync'; // 🔥 ADICIONADO: uploadImagem
+import { carregarFichaDoFirebase, deletarPersonagem, salvarFichaSilencioso, salvarFirebaseImediato, uploadImagem } from '../../services/firebase-sync';
 
 export default function PerfilPanel() {
     const { 
@@ -104,23 +104,21 @@ export default function PerfilPanel() {
         salvarFichaSilencioso();
     }
 
-    // 🔥 NOVA FUNÇÃO: Lida com a escolha do arquivo do Avatar
     const handleImageUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        
+
         setUploadingImg(true);
         try {
-            // Guarda na pasta: avatars/NomeDoPersonagem/arquivo.png
             const urlPermanente = await uploadImagem(file, `avatars/${meuNome || 'desconhecido'}`);
             updateFicha(ficha => {
                 if (!ficha.avatar) ficha.avatar = { base: "" };
                 ficha.avatar.base = urlPermanente;
             });
-            salvarFichaSilencioso();
+            await salvarFirebaseImediato();
         } catch (err) {
-            console.error(err);
-            alert('Erro ao enviar o avatar para a Forja! Verifique se as regras do Storage estão ativas.');
+            console.error('[PerfilPanel] Erro no upload/sync do avatar:', err);
+            alert('Erro ao sincronizar o avatar! O upload pode ter falhado ou o Firebase rejeitou o salvamento.');
         } finally {
             setUploadingImg(false);
         }

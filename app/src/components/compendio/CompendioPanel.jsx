@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import useStore from '../../stores/useStore';
-import { salvarFichaSilencioso, enviarParaFeed } from '../../services/firebase-sync';
+import { salvarFichaSilencioso, salvarFirebaseImediato, enviarParaFeed } from '../../services/firebase-sync';
 
 const CLASSES_REGULARES_BASE = [
     { id: 'saber', nome: 'Saber', icone: '⚔️', titulo: 'Cavaleiro da Espada', cor: '#0088ff', passiva: 'Resistência Mágica', desc: 'A classe mais equilibrada das sete. Especialistas no domínio de lâminas, montam a linha da frente com orgulho.', efeito: 'Excelentes atributos base em Força, Constituição e Destreza. Recebem bônus passivo para resistir a feitiços e efeitos mágicos diretos.' },
@@ -81,19 +81,23 @@ export default function CompendioPanel() {
         setTempIconeUrl(classe.iconeUrl || ''); 
     };
 
-    const salvarEdicao = (id) => {
+    const salvarEdicao = async (id) => {
         updateFicha(f => {
             if (!f.compendioOverrides) f.compendioOverrides = {};
             f.compendioOverrides[id] = {
                 passiva: tempPassiva,
                 desc: tempDesc,
                 efeito: tempEfeito,
-                iconeUrl: tempIconeUrl 
+                iconeUrl: tempIconeUrl
             };
         });
-        salvarFichaSilencioso();
-        setEditandoId(null);
-        enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: '📜 O Mestre reescreveu os registos do Compêndio!' });
+        try {
+            await salvarFirebaseImediato();
+            setEditandoId(null);
+            enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: '📜 O Mestre reescreveu os registos do Compêndio!' });
+        } catch (err) {
+            alert('Erro ao sincronizar as edições do compêndio no Firebase!');
+        }
     };
 
     const cancelarEdicao = () => {

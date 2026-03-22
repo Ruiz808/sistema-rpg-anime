@@ -8,7 +8,7 @@ let debounceTimer = null;
 export function salvarFichaSilencioso() {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
-        salvarFirebaseImediato();
+        salvarFirebaseImediato().catch(() => { /* erro ja logado em salvarFirebaseImediato */ });
     }, 500);
 }
 
@@ -35,6 +35,7 @@ export function salvarFirebaseImediato() {
     const fichaRef = ref(db, `personagens/${nomeSanitizado}`);
     return set(fichaRef, fichaParaSalvar).catch((err) => {
         console.error('[Sync] Erro ao salvar no Firebase:', err);
+        throw err;
     });
 }
 

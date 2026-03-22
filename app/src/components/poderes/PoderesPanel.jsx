@@ -1,7 +1,7 @@
 import React, { useState, useRef, useMemo } from 'react';
 import useStore from '../../stores/useStore';
 import { getMaximo } from '../../core/attributes';
-import { salvarFichaSilencioso, uploadImagem } from '../../services/firebase-sync'; // 🔥 ADICIONADO: uploadImagem
+import { salvarFichaSilencioso, salvarFirebaseImediato, uploadImagem } from '../../services/firebase-sync';
 
 // 🔥 AGRUPAMENTO VISUAL DOS ATRIBUTOS (Agora com COMBATE!)
 const ATRIBUTOS_AGRUPADOS = [
@@ -131,8 +131,11 @@ export default function PoderesPanel() {
             }
         });
 
-        cancelarEdicaoPoder();
-        salvarFichaSilencioso();
+        salvarFirebaseImediato().then(() => {
+            cancelarEdicaoPoder();
+        }).catch(() => {
+            alert('Erro ao sincronizar o poder no Firebase!');
+        });
     };
 
     const editarPoder = (id) => {
