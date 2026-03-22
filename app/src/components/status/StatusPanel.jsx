@@ -51,10 +51,7 @@ function radarPoint(cx, cy, r, idx, frac) {
 function getEfetivoMFormas(ficha, k) {
     const anchor = k === 'status' ? 'forca' : k;
     let s = ficha[anchor] || {};
-    
-    // O SEGREDO ESTÁ AQUI: O 'true' diz à engine: "Ignore as passivas!"
     let b = getBuffs(ficha, anchor, true);
-
     let v = parseFloat(s.mFormas) || 1.0;
     if (!b._hasBuff || !b._hasBuff.mformas) return v;
     return (v === 1.0 ? 0 : v) + b.mformas;
@@ -83,10 +80,8 @@ function RadarChart({ ficha, isAtual }) {
         return isAtual ? calcularPrestAtual(ficha, k, baseP) : baseP;
     });
 
-    // --- A LÓGICA DO 84 (Módulo de 100) ---
     const dataPoints = chartValues.map((v, i) => {
         let val = v || 0;
-        // Se for 384, val % 100 vira 84. Se for exatamente um múltiplo de 100 (ex: 200), mantém no limite (100).
         if (val >= LIMIT) {
             val = val % LIMIT;
             if (val === 0 && v > 0) val = LIMIT;
@@ -201,6 +196,39 @@ function StatusPanelCore() {
         inicializado.current = true;
     }, [ficha, updateFicha, vitalsBars]);
 
+    // 🔥 CÁLCULO DAS NOVAS ENERGIAS (PONTOS VITAIS E MORTAIS)
+    const energiaAvancada = useMemo(() => {
+        if (!ficha) return { pvBase: 0, pvAtual: 0, pmBase: 0, pmAtual: 0 };
+        
+        // 1. Extrair os Prestígios Base
+        const bCorpo = getBasePFor(ficha, 'corpo');
+        const bVida = getBasePFor(ficha, 'vida');
+        const bChakra = getBasePFor(ficha, 'chakra');
+        
+        const bMana = getBasePFor(ficha, 'mana');
+        const bStatus = getBasePFor(ficha, 'status');
+        const bAura = getBasePFor(ficha, 'aura');
+
+        // 2. Calcular as Médias Base
+        const pvBase = Math.floor((bCorpo + bVida + bChakra) / 3);
+        const pmBase = Math.floor((bMana + bStatus + bAura) / 3);
+
+        // 3. Extrair os Prestígios Atuais (com transformações mFormas)
+        const aCorpo = calcularPrestAtual(ficha, 'corpo', bCorpo);
+        const aVida = calcularPrestAtual(ficha, 'vida', bVida);
+        const aChakra = calcularPrestAtual(ficha, 'chakra', bChakra);
+
+        const aMana = calcularPrestAtual(ficha, 'mana', bMana);
+        const aStatus = calcularPrestAtual(ficha, 'status', bStatus);
+        const aAura = calcularPrestAtual(ficha, 'aura', bAura);
+
+        // 4. Calcular as Médias Atuais
+        const pvAtual = Math.floor((aCorpo + aVida + aChakra) / 3);
+        const pmAtual = Math.floor((aMana + aStatus + aAura) / 3);
+
+        return { pvBase, pvAtual, pmBase, pmAtual };
+    }, [ficha]);
+
     const alterarHP = useCallback((tipo) => {
         const valor = parseInt(inputDano) || 0;
         if (valor <= 0) return;
@@ -255,7 +283,7 @@ function StatusPanelCore() {
 
     return (
         <div className="status-panel-container">
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '30px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
                 {vitalsBars.map(({ key, label, color, classColor }, index) => {
                     const rawMx = safeGetMaximo(ficha, key);
                     const { p, mxDisplay } = calcVitalScale(rawMx, key);
@@ -309,6 +337,35 @@ function StatusPanelCore() {
                         </div>
                     );
                 })}
+            </div>
+
+            {/* 🔥 AS DUAS NOVAS ENERGIAS MÍSTICAS 🔥 */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '30px' }}>
+                <div style={{ background: 'rgba(0, 255, 136, 0.05)', border: '2px solid #00ff88', borderRadius: '8px', padding: '15px', textAlign: 'center', boxShadow: '0 0 15px rgba(0, 255, 136, 0.2)' }}>
+                    <h4 style={{ color: '#00ff88', margin: '0 0 10px 0', letterSpacing: '2px', textShadow: '0 0 5px #00ff88' }}>💚 PONTOS VITAIS (PV)</h4>
+                    <div style={{ fontSize: '2.5em', color: '#fff', fontWeight: 'bold', textShadow: '0 0 15px #00ff88', lineHeight: '1' }}>
+                        {energiaAvancada.pvAtual.toLocaleString('pt-BR')}
+                    </div>
+                    <div style={{ fontSize: '0.9em', color: '#00cc66', marginTop: '5px' }}>
+                        Base: {energiaAvancada.pvBase.toLocaleString('pt-BR')}
+                    </div>
+                    <div style={{ fontSize: '0.7em', color: '#888', textTransform: 'uppercase', marginTop: '10px', letterSpacing: '1px' }}>
+                        Média de Corpo, Vida e Chakra
+                    </div>
+                </div>
+
+                <div style={{ background: 'rgba(255, 0, 255, 0.05)', border: '2px solid #ff00ff', borderRadius: '8px', padding: '15px', textAlign: 'center', boxShadow: '0 0 15px rgba(255, 0, 255, 0.2)' }}>
+                    <h4 style={{ color: '#ff00ff', margin: '0 0 10px 0', letterSpacing: '2px', textShadow: '0 0 5px #ff00ff' }}>☠️ PONTOS MORTAIS (PM)</h4>
+                    <div style={{ fontSize: '2.5em', color: '#fff', fontWeight: 'bold', textShadow: '0 0 15px #ff00ff', lineHeight: '1' }}>
+                        {energiaAvancada.pmAtual.toLocaleString('pt-BR')}
+                    </div>
+                    <div style={{ fontSize: '0.9em', color: '#cc00cc', marginTop: '5px' }}>
+                        Base: {energiaAvancada.pmBase.toLocaleString('pt-BR')}
+                    </div>
+                    <div style={{ fontSize: '0.7em', color: '#888', textTransform: 'uppercase', marginTop: '10px', letterSpacing: '1px' }}>
+                        Média de Mana, Status e Aura
+                    </div>
+                </div>
             </div>
 
             <h3 className="section-title-mint-spaced" style={{ marginTop: 0, color: '#fff', fontSize: '1.2em' }}>&gt; CONTROLE RÁPIDO</h3>
