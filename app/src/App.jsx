@@ -18,6 +18,9 @@ import MapaPanel from './components/mapa/MapaPanel'
 import Jukebox from './components/jukebox/Jukebox'
 import { carregarFichaDoFirebase } from './services/firebase-sync'
 
+// 🔥 NOVA IMPORTAÇÃO DO COMPÊNDIO
+import CompendioPanel from './components/compendio/CompendioPanel'
+
 function MestrePanel() {
     const personagens = useStore(s => s.personagens)
     const meuNome = useStore(s => s.meuNome)
@@ -119,6 +122,8 @@ export default function App() {
                 <TabPanel id="aba-log"><FeedCombate /></TabPanel>
                 <TabPanel id="aba-mapa"><MapaPanel /></TabPanel>
                 <TabPanel id="aba-musica"><Jukebox /></TabPanel>
+                {/* 🔥 AQUI ESTÁ O REGISTO DA NOVA ABA */}
+                <TabPanel id="aba-compendio"><CompendioPanel /></TabPanel>
             </div>
             <ModalConfirm />
         </div>
