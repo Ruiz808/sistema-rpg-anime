@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import useStore from '../../stores/useStore';
-import { salvarFichaSilencioso, enviarParaFeed } from '../../services/firebase-sync';
+import { salvarFichaSilencioso, enviarParaFeed, salvarDummie } from '../../services/firebase-sync'; // 🔥 salvarDummie adicionado
 import { calcularAcerto } from '../../core/engine';
 
 import Tabuleiro3D from './Tabuleiro3D';
+import DummieToken from '../combat/DummieToken'; // 🔥 O Token do Alvo
 
 const MAP_SIZE = 30;
 const PALETA = ['#ff003c', '#0088ff', '#00ff88', '#ffcc00', '#ff00ff', '#00ffff', '#ff8800', '#88ff00'];
@@ -16,7 +17,7 @@ function urlSeguraParaCss(url) {
 }
 
 export default function MapaPanel() {
-    const { minhaFicha, meuNome, personagens, updateFicha, feedCombate = [], isMestre } = useStore();
+    const { minhaFicha, meuNome, personagens, updateFicha, feedCombate = [], isMestre, dummies, alvoSelecionado } = useStore(); // 🔥 dummies e alvo puxados
 
     const [modo3D, setModo3D] = useState(false);
     const [tamanhoCelula, setTamanhoCelula] = useState(35);
@@ -33,8 +34,6 @@ export default function MapaPanel() {
     
     const [mapVantagens, setMapVantagens] = useState(minhaFicha.ataqueConfig?.vantagens || 0);
     const [mapDesvantagens, setMapDesvantagens] = useState(minhaFicha.ataqueConfig?.desvantagens || 0);
-
-    // 🔥 NOVO: Campo de input para o Mestre colar o link do mapa
     const [inputMapaUrl, setInputMapaUrl] = useState('');
 
     useEffect(() => {
@@ -66,7 +65,6 @@ export default function MapaPanel() {
         salvarFichaSilencioso();
     }
 
-    // 🔥 NOVO: Função para o Mestre salvar a URL do Mapa na sua ficha
     function aplicarUrlDoMapa() {
         updateFicha(f => {
             f.mapaGlobalUrl = inputMapaUrl;
@@ -75,11 +73,8 @@ export default function MapaPanel() {
         enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: '🗺️ O Mestre alterou o cenário de combate!' });
     }
 
-    // 🔥 NOVO: O sistema procura a URL do Mapa guardada na ficha de quem é o Mestre
     const urlMapaGlobal = useMemo(() => {
-        // Se eu sou o mestre, pego da minha ficha
         if (isMestre && minhaFicha.mapaGlobalUrl) return minhaFicha.mapaGlobalUrl;
-        // Se não sou, procuro a ficha do mestre nos personagens
         if (personagens) {
             const chaves = Object.keys(personagens);
             for(let k of chaves) {
@@ -160,15 +155,21 @@ export default function MapaPanel() {
         return lista;
     }, [personagens]);
 
-    function moverJogadorPara(x, y) {
-        const z = parseInt(altitudeInput) || 0;
-        updateFicha((ficha) => {
-            if (!ficha.posicao) ficha.posicao = {};
-            ficha.posicao.x = x;
-            ficha.posicao.y = y;
-            ficha.posicao.z = z;
-        });
-        salvarFichaSilencioso();
+    // 🔥 NOVO: Lida com clique na célula. Se tiver um Dummie selecionado E for mestre, move o Dummie. Senão, move o jogador.
+    function handleCellClick(x, y) {
+        if (isMestre && alvoSelecionado && dummies[alvoSelecionado]) {
+            const d = dummies[alvoSelecionado];
+            salvarDummie(alvoSelecionado, { ...d, posicao: { x, y } });
+        } else {
+            const z = parseInt(altitudeInput) || 0;
+            updateFicha((ficha) => {
+                if (!ficha.posicao) ficha.posicao = {};
+                ficha.posicao.x = x;
+                ficha.posicao.y = y;
+                ficha.posicao.z = z;
+            });
+            salvarFichaSilencioso();
+        }
     }
 
     function alterarZoom(direcao) {
@@ -226,7 +227,14 @@ export default function MapaPanel() {
             vantagens: mapVantagens, desvantagens: mapDesvantagens 
         });
         
-        const feedData = { tipo: 'acerto', nome: meuNome, ...result };
+        let extraFeed = {};
+        if (alvoSelecionado && dummies[alvoSelecionado]) {
+            const alvo = dummies[alvoSelecionado];
+            const acertou = result.acertoTotal > alvo.valorDefesa;
+            extraFeed = { alvoNome: alvo.nome, alvoDefesa: alvo.valorDefesa, acertouAlvo: acertou };
+        }
+
+        const feedData = { tipo: 'acerto', nome: meuNome, ...result, ...extraFeed };
         enviarParaFeed(feedData);
     }
 
@@ -450,6 +458,34 @@ export default function MapaPanel() {
         <div className="mapa-panel" style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
             
             <div style={{ flex: '1 1 70%', minWidth: 0 }}>
+                
+                {/* 🔥 NOVO: MESA DO MESTRE PARA DUMMIES */}
+                {isMestre && (
+                    <div style={{ marginBottom: 15, padding: 10, border: '1px solid #ffcc00', borderRadius: 5, background: 'rgba(0,0,0,0.5)' }}>
+                        <h4 style={{ color: '#ffcc00', marginTop: 0, marginBottom: 10 }}>🤖 Gerador de Dummies (Alvos)</h4>
+                        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                            <input className="input-neon" type="text" placeholder="Nome" id="dummieNome" defaultValue="Boneco de Treino" style={{ width: 130, padding: 5 }}/>
+                            <input className="input-neon" type="number" placeholder="HP" id="dummieHp" defaultValue="100" style={{ width: 80, padding: 5 }} title="Vida Máxima"/>
+                            <select className="input-neon" id="dummieDefTipo" style={{ width: 100, padding: 5 }} title="Base da CA">
+                                <option value="evasiva">Evasiva (Des)</option>
+                                <option value="resistencia">Resist. (For)</option>
+                            </select>
+                            <input className="input-neon" type="number" placeholder="Classe de Armadura" id="dummieDef" defaultValue="10" style={{ width: 80, padding: 5 }} title="Classe de Armadura (5 + Base)"/>
+                            <button className="btn-neon btn-gold" onClick={() => {
+                                const n = document.getElementById('dummieNome').value || 'Dummie';
+                                const h = parseInt(document.getElementById('dummieHp').value) || 100;
+                                const dt = document.getElementById('dummieDefTipo').value;
+                                const dv = parseInt(document.getElementById('dummieDef').value) || 10;
+                                const id = 'dummie_' + Date.now();
+                                salvarDummie(id, { nome: n, hpMax: h, hpAtual: h, tipoDefesa: dt, valorDefesa: dv, posicao: { x: 0, y: 0 } });
+                            }} style={{ padding: '5px 15px', margin: 0 }}>
+                                + Injetar no Mapa
+                            </button>
+                            <span style={{ fontSize: '0.8em', color: '#aaa' }}>(Clique no Dummie no grid para marcá-lo, e clique noutra célula para o mover)</span>
+                        </div>
+                    </div>
+                )}
+
                 <div style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center', opacity: modo3D ? 0.3 : 1 }}>
                         <button className="btn-neon" onClick={() => alterarZoom(-1)} style={{ padding: '5px 15px' }} disabled={modo3D}>-</button>
@@ -479,7 +515,6 @@ export default function MapaPanel() {
                     </button>
                 </div>
 
-                {/* 🔥 NOVO: CAMPO MÁGICO DO MESTRE PARA TROCAR MAPAS */}
                 {isMestre && modo3D && (
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 10, background: 'rgba(0,0,0,0.5)', padding: 10, borderRadius: 5, border: '1px solid #ffcc00' }}>
                         <span style={{ color: '#ffcc00', fontWeight: 'bold' }}>🗺️ Link do Cenário (Discord/Imgur):</span>
@@ -497,13 +532,12 @@ export default function MapaPanel() {
                     </div>
                 )}
 
-                {/* 🔥 PASSA A URL MAGICA PARA O 3D */}
                 {modo3D && (
                     <div style={{ height: '60vh', background: '#000', borderRadius: 5, overflow: 'hidden', border: '2px solid #0088ff', boxShadow: '0 0 20px rgba(0, 136, 255, 0.4)' }}>
                         <Tabuleiro3D 
                             mapSize={MAP_SIZE} 
                             tokens={tokens3D} 
-                            moverJogador={moverJogadorPara} 
+                            moverJogador={handleCellClick} 
                             mapUrl={urlMapaGlobal} 
                         />
                     </div>
@@ -514,10 +548,20 @@ export default function MapaPanel() {
                         {cells.map((cell) => {
                             const key = `${cell.x},${cell.y}`;
                             const tokens = tokenMap[key] || [];
+                            
+                            // 🔥 Puxa os Dummies que estão nesta célula
+                            const cellDummies = Object.entries(dummies || {}).filter(([id, d]) => d.posicao?.x === cell.x && d.posicao?.y === cell.y);
 
                             return (
-                                <div key={key} className="map-cell" data-x={cell.x} data-y={cell.y} onClick={() => moverJogadorPara(cell.x, cell.y)}
+                                <div key={key} className="map-cell" data-x={cell.x} data-y={cell.y} onClick={() => handleCellClick(cell.x, cell.y)}
                                     style={{ width: tamanhoCelula, height: tamanhoCelula, border: '1px solid rgba(255,255,255,0.1)', position: 'relative', cursor: 'pointer' }}>
+                                    
+                                    {/* Renderiza os Dummies primeiro */}
+                                    {cellDummies.map(([id, d]) => (
+                                        <DummieToken key={id} id={id} dummie={d} />
+                                    ))}
+
+                                    {/* Renderiza os Jogadores depois */}
                                     {tokens.map((tk) => {
                                         const info = getAvatarInfo(tk.ficha);
                                         const isMe = tk.nome === meuNome;

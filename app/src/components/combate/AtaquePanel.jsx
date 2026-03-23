@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import useStore from '../../stores/useStore';
-import { getMaximo, getBuffs } from '../../core/attributes';
 import { calcularDano } from '../../core/engine';
-import { salvarFichaSilencioso, enviarParaFeed } from '../../services/firebase-sync';
+import { salvarFichaSilencioso, enviarParaFeed, salvarDummie } from '../../services/firebase-sync'; // 🔥 salvarDummie importado
 
 const STATS_LIST = [
     { value: 'forca', label: 'Forca' },
@@ -27,7 +26,8 @@ export default function AtaquePanel() {
     const meuNome = useStore(s => s.meuNome);
     const updateFicha = useStore(s => s.updateFicha);
     const setAbaAtiva = useStore(s => s.setAbaAtiva);
-    const feedCombate = useStore(s => s.feedCombate); // 🔥 Adicionado para ler o feed
+    const feedCombate = useStore(s => s.feedCombate); 
+    const { alvoSelecionado, dummies } = useStore(); // 🔥
 
     const ac = minhaFicha.ataqueConfig || {};
 
@@ -35,7 +35,6 @@ export default function AtaquePanel() {
     const [armaEnergiaCombustao, setArmaEnergiaCombustao] = useState(ac.armaEnergiaCombustao || 'mana');
     const [armaPercEnergia, setArmaPercEnergia] = useState(ac.armaPercEnergia || 0);
 
-    // 🔥 NOVOS ESTADOS: Limites e Auto-Detector de Crítico
     const [critNormalMin, setCritNormalMin] = useState(ac.criticoNormalMin || 16);
     const [critNormalMax, setCritNormalMax] = useState(ac.criticoNormalMax || 18);
     const [critFatalMin, setCritFatalMin] = useState(ac.criticoFatalMin || 19);
@@ -46,23 +45,36 @@ export default function AtaquePanel() {
     const [forcarCritNormal, setForcarCritNormal] = useState(false);
     const [forcarCritFatal, setForcarCritFatal] = useState(false);
 
-    // Per-skill configs stored on the poder objects: statusUsados, energiaCombustao
-    // We use local state keyed by poder.id for in-session changes
     const [skillConfigs, setSkillConfigs] = useState({});
+
+    const dummieAlvo = alvoSelecionado && dummies[alvoSelecionado] ? dummies[alvoSelecionado] : null;
+    const [podeRolarDano, setPodeRolarDano] = useState(true);
+
+    // 🔥 BLOQUEIO INTELIGENTE: Verifica se vc acertou o Alvo no turno
+    useEffect(() => {
+        if (!dummieAlvo) {
+            setPodeRolarDano(true);
+            return;
+        }
+        const meuUltimoAcerto = [...feedCombate].reverse().find(f => f.nome === meuNome && f.tipo === 'acerto' && f.alvoNome === dummieAlvo.nome);
+        if (meuUltimoAcerto) {
+            setPodeRolarDano(meuUltimoAcerto.acertouAlvo); // Libera o dano só se acertou
+        } else {
+            setPodeRolarDano(false); // Nunca rolou acerto nele ainda
+        }
+    }, [feedCombate, meuNome, dummieAlvo]);
 
     useEffect(() => {
         const ac2 = minhaFicha.ataqueConfig || {};
         setArmaStatusUsados(ac2.armaStatusUsados || ['forca']);
         setArmaEnergiaCombustao(ac2.armaEnergiaCombustao || 'mana');
         setArmaPercEnergia(ac2.armaPercEnergia || 0);
-        // 🔥 Sincronizando limites ao carregar
         setCritNormalMin(ac2.criticoNormalMin || 16);
         setCritNormalMax(ac2.criticoNormalMax || 18);
         setCritFatalMin(ac2.criticoFatalMin || 19);
         setCritFatalMax(ac2.criticoFatalMax || 20);
     }, [minhaFicha.ataqueConfig]);
 
-    // 🔥 O SENSOR TÁTICO: Lê o último acerto no feed
     useEffect(() => {
         const lastAcerto = [...feedCombate].reverse().find(f => f.nome === meuNome && f.tipo === 'acerto');
         if (lastAcerto && lastAcerto.rolagem) {
@@ -73,7 +85,7 @@ export default function AtaquePanel() {
                 let v = parseInt(match[1]);
                 if (v > maxDado) maxDado = v;
             }
-            if (maxDado === 0) { // Fallback se nao tiver strong
+            if (maxDado === 0) { 
                 let regexArr = /\[(.*?)\]/;
                 let mArr = regexArr.exec(lastAcerto.rolagem);
                 if (mArr) {
@@ -90,7 +102,6 @@ export default function AtaquePanel() {
         }
     }, [feedCombate, meuNome, critNormalMin, critNormalMax, critFatalMin, critFatalMax]);
 
-    // Initialize skill configs from saved poder data
     useEffect(() => {
         const poderes = minhaFicha.poderes || [];
         const configs = {};
@@ -130,19 +141,16 @@ export default function AtaquePanel() {
     }, []);
 
     function salvarConfigAtaque() {
-        // Save weapon config
         updateFicha((ficha) => {
             if (!ficha.ataqueConfig) ficha.ataqueConfig = {};
             ficha.ataqueConfig.armaStatusUsados = armaStatusUsados;
             ficha.ataqueConfig.armaEnergiaCombustao = armaEnergiaCombustao;
             ficha.ataqueConfig.armaPercEnergia = parseFloat(armaPercEnergia) || 0;
-            // 🔥 Salvando os limites de critico
             ficha.ataqueConfig.criticoNormalMin = parseInt(critNormalMin) || 16;
             ficha.ataqueConfig.criticoNormalMax = parseInt(critNormalMax) || 18;
             ficha.ataqueConfig.criticoFatalMin = parseInt(critFatalMin) || 19;
             ficha.ataqueConfig.criticoFatalMax = parseInt(critFatalMax) || 20;
 
-            // Save per-skill configs into poderes
             if (ficha.poderes) {
                 ficha.poderes.forEach(p => {
                     if (p && skillConfigs[p.id]) {
@@ -161,7 +169,6 @@ export default function AtaquePanel() {
         const itensEquipados = minhaFicha.inventario ? minhaFicha.inventario.filter(i => i.equipado) : [];
         const poderesAtivos = (minhaFicha.poderes || []).filter(p => p && p.ativa);
 
-        // Build per-skill configs for the engine
         const configHabilidades = poderesAtivos.map(p => ({
             id: p.id,
             nome: p.nome,
@@ -183,14 +190,7 @@ export default function AtaquePanel() {
         const isCriticoNormal = forcarCritNormal || autoCritNormal;
         const isCriticoFatal = forcarCritFatal || autoCritFatal;
 
-        const result = calcularDano({
-            minhaFicha,
-            configArma,
-            configHabilidades,
-            itensEquipados,
-            isCriticoNormal, // 🔥 Passando pro motor
-            isCriticoFatal
-        });
+        const result = calcularDano({ minhaFicha, configArma, configHabilidades, itensEquipados, isCriticoNormal, isCriticoFatal });
 
         if (result.erro) {
             alert(result.erro);
@@ -208,15 +208,23 @@ export default function AtaquePanel() {
         }
         salvarFichaSilencioso();
 
-        // Reseta os forçados manuais
         setForcarCritNormal(false);
         setForcarCritFatal(false);
+
+        let extraFeed = {};
+        // 🔥 APLICA O DANO NO DUMMIE DE FORMA AUTOMÁTICA!
+        if (dummieAlvo) {
+            const novoHp = Math.max(0, dummieAlvo.hpAtual - result.dano);
+            salvarDummie(alvoSelecionado, { ...dummieAlvo, hpAtual: novoHp });
+            extraFeed = { alvoNome: dummieAlvo.nome, alvoSobreviveu: novoHp > 0 };
+        }
 
         const feedData = {
             tipo: 'dano', nome: meuNome, dano: result.dano, letalidade: result.letalidade,
             rolagem: result.rolagem, rolagemMagica: result.rolagemMagica,
             atributosUsados: result.atributosUsados, detalheEnergia: result.detalheEnergia,
-            armaStr: result.armaStr, detalheConta: result.detalheConta
+            armaStr: result.armaStr, detalheConta: result.detalheConta,
+            ...extraFeed
         };
 
         enviarParaFeed(feedData);
@@ -229,7 +237,6 @@ export default function AtaquePanel() {
     return (
         <div className="ataque-panel">
             
-            {/* 🔥 NOVO: SENSOR DE CRÍTICO */}
             <div className="def-box" style={{ marginBottom: 15, border: (autoCritFatal ? '2px solid #ff003c' : autoCritNormal ? '2px solid #ffcc00' : 'none') }}>
                 <h3 style={{ color: '#ffcc00', marginBottom: 10 }}>Configurações de Crítico</h3>
                 
@@ -271,7 +278,6 @@ export default function AtaquePanel() {
                 )}
             </div>
 
-            {/* Secao da Arma */}
             {armaEquipada && (
                 <div className="def-box" style={{ marginBottom: 15 }}>
                     <h3 style={{ color: '#0f0', marginBottom: 10 }}>
@@ -293,7 +299,7 @@ export default function AtaquePanel() {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                         <div>
                             <label style={{ color: '#aaa', fontSize: '0.85em' }}>Energia de Combustao</label>
-                            <select className="input-neon" value={armaEnergiaCombustao} onChange={e => setArmaEnergiaCombustao(e.target.value)}>
+                            <select className="input-neon" value={armaEnergiaCombustao} onChange={e => setArmEnergiaCombustao(e.target.value)}>
                                 {ENERGIA_LIST.map(en => (
                                     <option key={en.value} value={en.value}>{en.label}</option>
                                 ))}
@@ -313,7 +319,6 @@ export default function AtaquePanel() {
                 </div>
             )}
 
-            {/* Lista de Habilidades Ativas */}
             <div className="def-box">
                 <h3 style={{ color: '#f0f', marginBottom: 10 }}>Habilidades Ativas</h3>
                 {poderesAtivos.length === 0 ? (
@@ -364,10 +369,16 @@ export default function AtaquePanel() {
                 )}
             </div>
 
-            {/* Botoes */}
             <div style={{ display: 'flex', gap: 10, marginTop: 15 }}>
                 <button className="btn-neon btn-gold" onClick={salvarConfigAtaque} style={{ flex: 1 }}>Salvar Config</button>
-                <button className="btn-neon btn-red" onClick={rolarDano} style={{ flex: 1 }}>ROLAR DANO</button>
+                <button 
+                    className={`btn-neon ${podeRolarDano ? 'btn-red' : ''}`} 
+                    onClick={rolarDano} 
+                    style={{ flex: 1, opacity: podeRolarDano ? 1 : 0.5 }}
+                    disabled={!podeRolarDano}
+                >
+                    {dummieAlvo ? (podeRolarDano ? `ATACAR ${dummieAlvo.nome.toUpperCase()}` : `ACERTO NECESSÁRIO`) : 'ROLAR DANO'}
+                </button>
             </div>
         </div>
     );

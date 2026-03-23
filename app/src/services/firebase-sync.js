@@ -134,3 +134,31 @@ export async function uploadImagem(file, pasta = 'imagens') {
     const downloadUrl = await getDownloadURL(caminhoRef);
     return downloadUrl;
 }
+
+// 🔥 MOTOR DE SINCRONIZAÇÃO DOS DUMMIES (ALVOS DE TREINO)
+export function iniciarListenerDummies(callback) {
+    if (!db) return () => {};
+    const dummiesRef = ref(db, 'dummies');
+    return onValue(dummiesRef, (snapshot) => {
+        const dados = snapshot.val() || {};
+        if (callback) callback(dados);
+    }, (err) => {
+        console.error('[Sync] Erro no listener de dummies:', err);
+    });
+}
+
+export function salvarDummie(id, dadosDummie) {
+    if (!db) return;
+    const dummieRef = ref(db, `dummies/${id}`);
+    set(dummieRef, dadosDummie).catch((err) => {
+        console.error('[Sync] Erro ao salvar Dummie:', err);
+    });
+}
+
+export function deletarDummie(id) {
+    if (!db) return;
+    const dummieRef = ref(db, `dummies/${id}`);
+    remove(dummieRef).catch((err) => {
+        console.error('[Sync] Erro ao deletar Dummie:', err);
+    });
+}

@@ -9,7 +9,6 @@ export const fichaPadrao = {
     notas: { base: "", geral: "", abs: "" },
     posicao: { x: 0, y: 0, z: 0 },
     iniciativa: 0,
-    // 🔥 ADICIONADO: Economia de Ações!
     acoes: { padrao: { max: 1, atual: 1 }, bonus: { max: 1, atual: 1 }, reacao: { max: 1, atual: 1 } },
     ataqueConfig: { armaStatusUsados: ['forca'], armaEnergiaCombustao: 'mana', armaPercEnergia: 0, criticoNormalMin: 16, criticoNormalMax: 18, criticoFatalMin: 19, criticoFatalMax: 20, vantagens: 0, desvantagens: 0 },
     dano: { base: 0, mBase: 1.0, mGeral: 1.0, mFormas: 1.0, mUnico: "1.0", mAbsoluto: 1.0, mPotencial: 1.0, reducaoCusto: 0, regeneracao: 0 },
@@ -53,6 +52,10 @@ const useStore = create(
         abaAtiva: 'aba-status',
         personagens: {},
         feedCombate: [],
+        
+        // 🔥 SISTEMA DE COMBATE E ALVOS
+        dummies: {},
+        alvoSelecionado: null,
 
         setMinhaFicha: (ficha) => set((state) => { state.minhaFicha = ficha; }),
         setMeuNome: (nome) => set((state) => { state.meuNome = nome; }),
@@ -66,6 +69,10 @@ const useStore = create(
         setAbaAtiva: (aba) => set((state) => { state.abaAtiva = aba; }),
         setPersonagens: (personagens) => set((state) => { state.personagens = personagens; }),
         addFeedEntry: (entry) => set((state) => { state.feedCombate.push(entry); }),
+        
+        // 🔥 AÇÕES DE COMBATE
+        setDummies: (dummies) => set((state) => { state.dummies = dummies || {}; }),
+        setAlvoSelecionado: (id) => set((state) => { state.alvoSelecionado = id; }),
 
         updateFicha: (callback) => set((state) => {
             callback(state.minhaFicha);
@@ -92,7 +99,6 @@ const useStore = create(
             state.minhaFicha.ataquesElementais = dados.ataquesElementais || [];
             state.minhaFicha.passivas = dados.passivas || [];
 
-            // 🔥 ADICIONADO: Restaura o estado salvo das ações
             if (dados.acoes) {
                 state.minhaFicha.acoes = {
                     padrao: Object.assign({}, fichaPadrao.acoes.padrao, dados.acoes.padrao),
@@ -110,7 +116,7 @@ const useStore = create(
                     ch !== 'ascensaoBase' && ch !== 'poderes' && ch !== 'divisores' &&
                     ch !== 'inventario' && ch !== 'ataquesElementais' && ch !== 'ataqueConfig' &&
                     ch !== 'avatar' && ch !== 'bio' && ch !== 'notas' && ch !== 'passivas' &&
-                    ch !== 'posicao' && ch !== 'iniciativa' && ch !== 'acoes' // Protege o nó acoes
+                    ch !== 'posicao' && ch !== 'iniciativa' && ch !== 'acoes'
                 ) {
                     if (typeof fichaPadrao[ch] === 'object' && !Array.isArray(fichaPadrao[ch])) {
                         state.minhaFicha[ch] = Object.assign({}, fichaPadrao[ch], dados[ch]);

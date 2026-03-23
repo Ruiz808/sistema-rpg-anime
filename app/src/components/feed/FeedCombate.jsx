@@ -14,7 +14,6 @@ export default function FeedCombate() {
         );
     }
 
-    // Render newest first (prepend behavior)
     const reversed = [...feedCombate].reverse();
 
     return (
@@ -31,6 +30,15 @@ export default function FeedCombate() {
                             </h1>
                             <p className="lethality" style={{ color: '#fff' }}>{d.profBonusTexto}</p>
                             <div className="log-details" dangerouslySetInnerHTML={{ __html: `&#x1F3B2; Rolagem Base: ${d.rolagem}` }} />
+                            
+                            {/* 🔥 FEEDBACK VISUAL SE ACERTOU O ALVO */}
+                            {d.alvoNome && (
+                                <div style={{ marginTop: 8, padding: 5, background: 'rgba(0,0,0,0.5)', borderRadius: 4, borderLeft: `3px solid ${d.acertouAlvo ? '#0f0' : '#f00'}` }}>
+                                    <span style={{ color: d.acertouAlvo ? '#0f0' : '#f00', fontWeight: 'bold' }}>
+                                        {d.acertouAlvo ? `🎯 Superou a Defesa de ${d.alvoNome} (${d.alvoDefesa})!` : `❌ Não superou a Defesa de ${d.alvoNome} (${d.alvoDefesa})!`}
+                                    </span>
+                                </div>
+                            )}
                         </div>
                     );
                 }
@@ -91,6 +99,15 @@ export default function FeedCombate() {
                         <div className="log-details" dangerouslySetInnerHTML={{
                             __html: `&#x1F3B2; Rolagem de Dados: ${d.rolagem || ''}${d.rolagemMagica || ''}${d.detalheEnergia || ''}${d.detalheConta || ''}`
                         }} />
+
+                        {/* 🔥 FEEDBACK VISUAL DO DANO NO ALVO */}
+                        {d.alvoNome && (
+                            <div style={{ marginTop: 8, padding: 5, background: 'rgba(0,0,0,0.5)', borderRadius: 4, borderLeft: `3px solid #ff003c` }}>
+                                <span style={{ color: '#ff003c', fontWeight: 'bold' }}>
+                                    🩸 Causou {d.dano.toLocaleString('pt-BR')} de dano em {d.alvoNome}! {d.alvoSobreviveu ? '' : '(💀 MORTO!)'}
+                                </span>
+                            </div>
+                        )}
                     </div>
                 );
             })}
