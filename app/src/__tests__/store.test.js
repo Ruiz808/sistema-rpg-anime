@@ -99,6 +99,13 @@ describe('fichaPadrao', () => {
     it('has default bio fields as empty strings', () => {
         Object.values(fichaPadrao.bio).forEach(v => expect(v).toBe(''));
     });
+
+    it('has compendioOverrides as an empty object', () => {
+        expect(fichaPadrao.compendioOverrides).toBeDefined();
+        expect(fichaPadrao.compendioOverrides).toEqual({});
+        expect(typeof fichaPadrao.compendioOverrides).toBe('object');
+        expect(Array.isArray(fichaPadrao.compendioOverrides)).toBe(false);
+    });
 });
 
 // ==========================================
@@ -141,6 +148,26 @@ describe('useStore actions', () => {
             useStore.getState().updateFicha(f => { f.forca.base = 1; });
             expect(useStore.getState().minhaFicha.forca.base).toBe(1);
             expect(fichaPadrao.forca.base).toBe(100000);
+        });
+
+        it('resets compendioOverrides to empty object', () => {
+            useStore.getState().carregarDadosFicha({
+                compendioOverrides: {
+                    saber: { passiva: 'test', iconeUrl: 'data:image/png;base64,abc' }
+                }
+            });
+            expect(useStore.getState().minhaFicha.compendioOverrides).not.toEqual({});
+
+            useStore.getState().resetFicha();
+            expect(useStore.getState().minhaFicha.compendioOverrides).toEqual({});
+        });
+
+        it('resets compendioOverrides does not share reference with fichaPadrao', () => {
+            useStore.getState().resetFicha();
+            useStore.getState().updateFicha(f => {
+                f.compendioOverrides.saber = { passiva: 'mutated' };
+            });
+            expect(fichaPadrao.compendioOverrides).toEqual({});
         });
     });
 
@@ -239,6 +266,34 @@ describe('useStore actions', () => {
             useStore.getState().carregarDadosFicha({ ataqueConfig: { armaPercEnergia: 15 } });
             expect(useStore.getState().minhaFicha.ataqueConfig.armaPercEnergia).toBe(15);
             expect(useStore.getState().minhaFicha.ataqueConfig.armaStatusUsados).toEqual(['forca']); // default
+        });
+
+        it('restores compendioOverrides when dados contains it', () => {
+            const overrides = {
+                saber: { passiva: 'test', iconeUrl: 'data:image/png;base64,abc' }
+            };
+            useStore.getState().carregarDadosFicha({ compendioOverrides: overrides });
+            expect(useStore.getState().minhaFicha.compendioOverrides).toEqual(overrides);
+            expect(useStore.getState().minhaFicha.compendioOverrides.saber.passiva).toBe('test');
+            expect(useStore.getState().minhaFicha.compendioOverrides.saber.iconeUrl).toBe('data:image/png;base64,abc');
+        });
+
+        it('keeps compendioOverrides as empty object when dados does not contain it', () => {
+            useStore.getState().carregarDadosFicha({ forca: { base: 50000 } });
+            expect(useStore.getState().minhaFicha.compendioOverrides).toEqual({});
+        });
+
+        it('restores multiple entries in compendioOverrides', () => {
+            const overrides = {
+                saber: { passiva: 'sabedoria mistica', iconeUrl: 'data:image/png;base64,abc' },
+                forca: { passiva: 'forca bruta', iconeUrl: 'data:image/png;base64,xyz' }
+            };
+            useStore.getState().carregarDadosFicha({ compendioOverrides: overrides });
+            const result = useStore.getState().minhaFicha.compendioOverrides;
+            expect(result.saber.passiva).toBe('sabedoria mistica');
+            expect(result.saber.iconeUrl).toBe('data:image/png;base64,abc');
+            expect(result.forca.passiva).toBe('forca bruta');
+            expect(result.forca.iconeUrl).toBe('data:image/png;base64,xyz');
         });
     });
 
