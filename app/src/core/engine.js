@@ -4,10 +4,6 @@
 import { contarDigitos, tratarUnico, pegarDoisPrimeirosDigitos } from './utils.js';
 import { getMaximo, getBuffs, getRawBase, getPoderesDefesa } from './attributes.js';
 
-/**
- * Função inteligente de rolagem com Vantagem/Desvantagem
- * Retorna a soma dos dados mantidos e o texto formatado para o feed (com os dados descartados riscados).
- */
 export function rolarDadosComVantagem(qD, fD, vantagens = 0, desvantagens = 0) {
     let netVantagem = (parseInt(vantagens) || 0) - (parseInt(desvantagens) || 0);
     let totalDice = qD + Math.abs(netVantagem);
@@ -17,21 +13,20 @@ export function rolarDadosComVantagem(qD, fD, vantagens = 0, desvantagens = 0) {
         rolls.push(Math.floor(Math.random() * fD) + 1);
     }
 
-    // Ordena do MAIOR para o MENOR para selecionar quais manter
     let sorted = [...rolls].sort((a, b) => b - a);
     let kept = [];
 
     if (netVantagem > 0) {
-        kept = sorted.slice(0, qD); // Mantém os maiores
+        kept = sorted.slice(0, qD); 
     } else if (netVantagem < 0) {
-        kept = sorted.slice(totalDice - qD); // Mantém os menores (que estão no final)
+        kept = sorted.slice(totalDice - qD);
     } else {
-        kept = sorted; // Normal (Mantém todos)
+        kept = sorted; 
     }
 
     let sD = 0;
     let finalTexts = [];
-    let pool = [...kept]; // Pool temporária para não riscar números idênticos errados
+    let pool = [...kept]; 
 
     for (let i = 0; i < rolls.length; i++) {
         let r = rolls[i];
@@ -41,7 +36,6 @@ export function rolarDadosComVantagem(qD, fD, vantagens = 0, desvantagens = 0) {
             sD += r;
             finalTexts.push(`<strong>${r}</strong>`);
         } else {
-            // Os dados ignorados pela Vantagem/Desvantagem ficam riscados e vermelhos
             finalTexts.push(`<strike style="color:#ff003c; opacity:0.7">${r}</strike>`);
         }
     }
@@ -56,9 +50,6 @@ export function rolarDadosComVantagem(qD, fD, vantagens = 0, desvantagens = 0) {
     return { sD, rolagemTexto };
 }
 
-/**
- * Rola dados simples (sem vantagem/desvantagem).
- */
 function rolarDadosSimples(qtd, faces) {
     let soma = 0;
     let rolls = [];
@@ -77,12 +68,6 @@ function formatarRolagem(qtd, faces, rolls, soma) {
     return `${qtd}d${faces}: [${rolls.slice(0, 30).join(', ')}... +${(rolls.length - 30).toLocaleString('pt-BR')} dados] = ${soma}`;
 }
 
-/**
- * Calcula o dano de um sub-componente (habilidade ou arma).
- * Formula: rolagemDados × (somaAtributos + somaEnergias + somaHabVinculadas)
- * - Cada atributo: getMaximo(ficha, attr) × mUnico
- * - Cada energia: combustao × mUnico × mPotencial
- */
 function calcularSubDano({ qtdDados, facesDados, sels, combustaoPorEnergia, minhaFicha, mUnico }) {
     if (qtdDados <= 0) return { dano: 0, rolagem: '', rolagemValor: 0, somaTermos: 0, detalhesTermos: [] };
 
@@ -115,12 +100,21 @@ function calcularSubDano({ qtdDados, facesDados, sels, combustaoPorEnergia, minh
     return { dano, rolagem, rolagemValor: soma, somaTermos, detalhesTermos };
 }
 
-// 🔥 Modificação para aceitar isCriticoNormal e isCriticoFatal
 export function calcularDano({ minhaFicha, configArma, configHabilidades, itensEquipados, isCriticoNormal, isCriticoFatal }) {
-    // 1. Equipment bonuses
     let iMultDano = 1.0, iDanoBruto = 0, iLetalidade = 0;
     let elementosAtaque = [];
     let nomesArmas = [];
+    
+    // 🔥 1. EFEITOS DE CLASSE: Letalidade e Críticos
+    let classeHeroica = (minhaFicha.bio && minhaFicha.bio.classe) ? String(minhaFicha.bio.classe).toLowerCase() : '';
+    let modCriticoBaseNormal = 2;
+    let modCriticoBaseFatal = 4;
+    
+    if (classeHeroica === 'archer') iLetalidade += 20; // O Bónus do Arqueiro
+    if (classeHeroica === 'assassin') {
+        modCriticoBaseNormal = 3; // O Assassino pune com críticos colossais
+        modCriticoBaseFatal = 5;
+    }
 
     itensEquipados.forEach(item => {
         let v = parseFloat(item.bonusValor) || 0;
@@ -144,7 +138,6 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
         nomesMagias.push(atk.nome);
     });
 
-    // 2. Multipliers from ficha.dano + buffs
     let fichaD = minhaFicha.dano || {};
     let bDano = getBuffs(minhaFicha, 'dano');
 
@@ -165,7 +158,6 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
     for (let i = 0; i < u1.length; i++) uniTotal *= u1[i];
     for (let i = 0; i < bDano.munico.length; i++) uniTotal *= bDano.munico[i];
 
-    // 3. Calculate energy drains (per-source)
     let drenosPorEnergia = {};
     let drenos = [];
     let custoTxt = [];
@@ -183,7 +175,6 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
         return { dreno, combustao };
     }
 
-    // Weapon energy drain
     let armaEquipada = itensEquipados.find(i => i.tipo === 'arma');
     let armaCombustao = 0;
     if (armaEquipada && configArma && configArma.percEnergia > 0) {
@@ -195,7 +186,6 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
         }
     }
 
-    // Skill energy drains
     let skillCombustoes = {};
     for (let i = 0; i < configHabilidades.length; i++) {
         let hab = configHabilidades[i];
@@ -211,7 +201,6 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
         }
     }
 
-    // Check all energies have enough
     for (let key in drenosPorEnergia) {
         let eng = minhaFicha[key];
         let totalDreno = drenosPorEnergia[key];
@@ -224,7 +213,6 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
         }
     }
 
-    // 4. Separate linked vs free skills
     let habsVinculadas = armaEquipada
         ? configHabilidades.filter(h => h.armaVinculada && String(h.armaVinculada) === String(armaEquipada.id))
         : [];
@@ -234,7 +222,6 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
         return String(h.armaVinculada) !== String(armaEquipada.id);
     });
 
-    // 5. Calculate weapon damage
     let resultadoArma = null;
     if (armaEquipada && (armaEquipada.dadosQtd || 0) > 0) {
         let habVincResults = [];
@@ -284,7 +271,6 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
         };
     }
 
-    // 6. Free skill damages
     let resultadosHabLivres = [];
     for (let i = 0; i < habsLivres.length; i++) {
         let hab = habsLivres[i];
@@ -303,7 +289,6 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
         resultadosHabLivres.push(r);
     }
 
-    // 7. Total damage
     let somaDanos = (resultadoArma ? resultadoArma.dano : 0);
     for (let i = 0; i < resultadosHabLivres.length; i++) somaDanos += resultadosHabLivres[i].dano;
     somaDanos += iDanoBruto;
@@ -312,19 +297,18 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
         return { erro: 'Nenhuma fonte de dano! Equipe uma arma com dados ou ative habilidades com dados de dano.' };
     }
 
-    // 🔥 APLICAÇÃO DOS MULTIPLICADORES DE CRÍTICO
     let multCritico = 1;
     let nomeCritico = '';
     if (isCriticoFatal) {
-        multCritico = 4;
+        multCritico = modCriticoBaseFatal;
         nomeCritico = 'CRÍTICO FATAL';
     } else if (isCriticoNormal) {
-        multCritico = 2;
+        multCritico = modCriticoBaseNormal;
         nomeCritico = 'CRÍTICO NORMAL';
     }
 
     let multTotal = totalBas * totalPot * totalFor * totalGer * totalAbs * uniTotal * iMultDano;
-    let multEfetivo = multTotal * multCritico; // 🔥 Multiplicador Efetivo entra aqui
+    let multEfetivo = multTotal * multCritico; 
     
     let total = Math.floor(somaDanos * multEfetivo);
     if (isNaN(total)) total = 0;
@@ -332,7 +316,6 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
     let letal = Math.max(0, contarDigitos(total) - 8) + iLetalidade;
     let dRed = letal > 0 ? Math.floor(total / Math.pow(10, letal)) : total;
 
-    // 8. Build output
     let txtEng = '';
     if (custoTxt.length > 0) {
         txtEng = `<br>Custo de Combustão: <strong style="color:#f0f;">${custoTxt.join(' e ')}</strong>`;
@@ -346,7 +329,7 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
     if (totalAbs !== 1) multArr.push(`x${totalAbs.toFixed(2)}(Abs)`);
     if (uniTotal !== 1) multArr.push(`x${uniTotal.toFixed(2)}(Uni)`);
     if (iMultDano !== 1) multArr.push(`x${iMultDano.toFixed(2)}(Eqp)`);
-    if (multCritico > 1) multArr.push(`<span style="color:#ffcc00">x${multCritico}(${nomeCritico})</span>`); // 🔥 Mostra o crítico na conta
+    if (multCritico > 1) multArr.push(`<span style="color:#ffcc00">x${multCritico}(${nomeCritico})</span>`); 
     let multStr = multArr.length > 0 ? multArr.join(' * ') : 'Nenhum (x1)';
 
     let detalheLinhas = [`<span style="color:#ffcc00; font-weight:bold;">[MÁQUINA DE CÁLCULO]</span>`];
@@ -389,7 +372,6 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
     if (combinados.length) armaStr = ` usando <strong>${combinados.join(' e ')}</strong>`;
     if (elementosAtaque.length) armaStr += ` [${elementosAtaque.join(' / ')}]`;
 
-    // 🔥 Adicionando aviso visual ao nome da arma se for crítico
     if (isCriticoFatal) armaStr += ` 🔥 FATAL 🔥`;
     else if (isCriticoNormal) armaStr += ` ⚡ CRÍTICO ⚡`;
 
@@ -403,7 +385,6 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
     };
 }
 
-// 🔥 ACERTO AGORA ACEITA VANTAGEM E DESVANTAGEM
 export function calcularAcerto({ qD, fD, prof, bonus, sels, minhaFicha, itensEquipados, vantagens = 0, desvantagens = 0 }) {
     let iAcerto = 0;
     let nomesArmas = [];
@@ -412,7 +393,6 @@ export function calcularAcerto({ qD, fD, prof, bonus, sels, minhaFicha, itensEqu
         if (item.tipo === 'arma' || item.tipo === 'artefato') nomesArmas.push(item.nome);
     });
 
-    // Chama o novo motor inteligente de Vantagem!
     let { sD, rolagemTexto } = rolarDadosComVantagem(qD, fD, vantagens, desvantagens);
 
     let vSt = 0;

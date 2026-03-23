@@ -26,6 +26,27 @@ const ATRIBUTO_OPTIONS = [
     { value: 'todas_energias', label: 'TODAS AS ENERGIAS' },
 ];
 
+// 🔥 O TRONO DOS HERÓIS: Opções do Seletor de Classe
+const CLASSES_OPTIONS = [
+    { value: '', label: 'Nenhuma / Mundano' },
+    { value: 'saber', label: '⚔️ Saber' },
+    { value: 'archer', label: '🏹 Archer' },
+    { value: 'lancer', label: '🗡️ Lancer' },
+    { value: 'rider', label: '🏇 Rider' },
+    { value: 'caster', label: '🧙‍♂️ Caster' },
+    { value: 'assassin', label: '🔪 Assassin' },
+    { value: 'berserker', label: '狂 Berserker' },
+    { value: 'shielder', label: '🛡️ Shielder' },
+    { value: 'ruler', label: '⚖️ Ruler' },
+    { value: 'avenger', label: '⛓️ Avenger' },
+    { value: 'alterego', label: '🎭 Alter Ego' },
+    { value: 'foreigner', label: '🐙 Foreigner' },
+    { value: 'mooncancer', label: '🌕 Moon Cancer' },
+    { value: 'pretender', label: '🤥 Pretender' },
+    { value: 'beast', label: '👹 Beast' },
+    { value: 'savior', label: '☀️ Savior' }
+];
+
 export default function FichaPanel() {
     const minhaFicha = useStore(s => s.minhaFicha);
     const updateFicha = useStore(s => s.updateFicha);
@@ -61,7 +82,7 @@ export default function FichaPanel() {
         updateFicha((ficha) => {
             if (!ficha.bio) ficha.bio = {};
             ficha.bio.raca = raca;
-            ficha.bio.classe = classe;
+            ficha.bio.classe = classe; // Guarda a tag da classe selecionada
             ficha.bio.idade = idade;
             ficha.bio.fisico = fisico;
             ficha.bio.sangue = sangue;
@@ -204,9 +225,19 @@ export default function FichaPanel() {
                         <label style={{ color: '#aaa', fontSize: '0.85em' }}>Raça</label>
                         <input className="input-neon" type="text" value={raca} onChange={e => setRaca(e.target.value)} />
                     </div>
+                    {/* 🔥 O SELETOR DE CLASSES ENTRA AQUI 🔥 */}
                     <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Classe</label>
-                        <input className="input-neon" type="text" value={classe} onChange={e => setClasse(e.target.value)} />
+                        <label style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold' }}>Classe Mística</label>
+                        <select 
+                            className="input-neon" 
+                            value={classe} 
+                            onChange={e => setClasse(e.target.value)}
+                            style={{ width: '100%', padding: '6px', background: '#111', color: '#00ffcc', border: '1px solid #00ffcc', borderRadius: '4px' }}
+                        >
+                            {CLASSES_OPTIONS.map(opt => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                        </select>
                     </div>
                     <div>
                         <label style={{ color: '#aaa', fontSize: '0.85em' }}>Idade</label>
