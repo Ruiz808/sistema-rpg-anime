@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import useStore from '../../stores/useStore';
+import { getMaximo, getBuffs } from '../../core/attributes';
 import { calcularDano } from '../../core/engine';
-import { salvarFichaSilencioso, enviarParaFeed, salvarDummie } from '../../services/firebase-sync'; // 🔥 salvarDummie importado
+import { salvarFichaSilencioso, enviarParaFeed, salvarDummie } from '../../services/firebase-sync'; 
 
 const STATS_LIST = [
     { value: 'forca', label: 'Forca' },
@@ -27,7 +28,7 @@ export default function AtaquePanel() {
     const updateFicha = useStore(s => s.updateFicha);
     const setAbaAtiva = useStore(s => s.setAbaAtiva);
     const feedCombate = useStore(s => s.feedCombate); 
-    const { alvoSelecionado, dummies } = useStore(); // 🔥
+    const { alvoSelecionado, dummies } = useStore(); 
 
     const ac = minhaFicha.ataqueConfig || {};
 
@@ -50,7 +51,6 @@ export default function AtaquePanel() {
     const dummieAlvo = alvoSelecionado && dummies[alvoSelecionado] ? dummies[alvoSelecionado] : null;
     const [podeRolarDano, setPodeRolarDano] = useState(true);
 
-    // 🔥 BLOQUEIO INTELIGENTE: Verifica se vc acertou o Alvo no turno
     useEffect(() => {
         if (!dummieAlvo) {
             setPodeRolarDano(true);
@@ -58,9 +58,9 @@ export default function AtaquePanel() {
         }
         const meuUltimoAcerto = [...feedCombate].reverse().find(f => f.nome === meuNome && f.tipo === 'acerto' && f.alvoNome === dummieAlvo.nome);
         if (meuUltimoAcerto) {
-            setPodeRolarDano(meuUltimoAcerto.acertouAlvo); // Libera o dano só se acertou
+            setPodeRolarDano(meuUltimoAcerto.acertouAlvo); 
         } else {
-            setPodeRolarDano(false); // Nunca rolou acerto nele ainda
+            setPodeRolarDano(false); 
         }
     }, [feedCombate, meuNome, dummieAlvo]);
 
@@ -212,11 +212,19 @@ export default function AtaquePanel() {
         setForcarCritFatal(false);
 
         let extraFeed = {};
-        // 🔥 APLICA O DANO NO DUMMIE DE FORMA AUTOMÁTICA!
+        // 🔥 CÁLCULO DE OVERKILL
         if (dummieAlvo) {
-            const novoHp = Math.max(0, dummieAlvo.hpAtual - result.dano);
+            const danoCausado = result.dano;
+            const hpAnterior = dummieAlvo.hpAtual;
+            const novoHp = Math.max(0, hpAnterior - danoCausado);
+            const overkill = danoCausado > hpAnterior ? danoCausado - hpAnterior : 0;
+
             salvarDummie(alvoSelecionado, { ...dummieAlvo, hpAtual: novoHp });
-            extraFeed = { alvoNome: dummieAlvo.nome, alvoSobreviveu: novoHp > 0 };
+            extraFeed = { 
+                alvoNome: dummieAlvo.nome, 
+                alvoSobreviveu: novoHp > 0,
+                overkill: overkill // Envia o overkill para o feed
+            };
         }
 
         const feedData = {
@@ -299,7 +307,7 @@ export default function AtaquePanel() {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                         <div>
                             <label style={{ color: '#aaa', fontSize: '0.85em' }}>Energia de Combustao</label>
-                            <select className="input-neon" value={armaEnergiaCombustao} onChange={e => setArmEnergiaCombustao(e.target.value)}>
+                            <select className="input-neon" value={armaEnergiaCombustao} onChange={e => setArmaEnergiaCombustao(e.target.value)}>
                                 {ENERGIA_LIST.map(en => (
                                     <option key={en.value} value={en.value}>{en.label}</option>
                                 ))}

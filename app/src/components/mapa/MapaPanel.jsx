@@ -462,27 +462,35 @@ export default function MapaPanel() {
                 {/* 🔥 NOVO: MESA DO MESTRE PARA DUMMIES */}
                 {isMestre && (
                     <div style={{ marginBottom: 15, padding: 10, border: '1px solid #ffcc00', borderRadius: 5, background: 'rgba(0,0,0,0.5)' }}>
-                        <h4 style={{ color: '#ffcc00', marginTop: 0, marginBottom: 10 }}>🤖 Gerador de Dummies (Alvos)</h4>
-                        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-                            <input className="input-neon" type="text" placeholder="Nome" id="dummieNome" defaultValue="Boneco de Treino" style={{ width: 130, padding: 5 }}/>
-                            <input className="input-neon" type="number" placeholder="HP" id="dummieHp" defaultValue="100" style={{ width: 80, padding: 5 }} title="Vida Máxima"/>
-                            <select className="input-neon" id="dummieDefTipo" style={{ width: 100, padding: 5 }} title="Base da CA">
-                                <option value="evasiva">Evasiva (Des)</option>
-                                <option value="resistencia">Resist. (For)</option>
-                            </select>
-                            <input className="input-neon" type="number" placeholder="Classe de Armadura" id="dummieDef" defaultValue="10" style={{ width: 80, padding: 5 }} title="Classe de Armadura (5 + Base)"/>
-                            <button className="btn-neon btn-gold" onClick={() => {
-                                const n = document.getElementById('dummieNome').value || 'Dummie';
-                                const h = parseInt(document.getElementById('dummieHp').value) || 100;
-                                const dt = document.getElementById('dummieDefTipo').value;
-                                const dv = parseInt(document.getElementById('dummieDef').value) || 10;
-                                const id = 'dummie_' + Date.now();
-                                salvarDummie(id, { nome: n, hpMax: h, hpAtual: h, tipoDefesa: dt, valorDefesa: dv, posicao: { x: 0, y: 0 } });
-                            }} style={{ padding: '5px 15px', margin: 0 }}>
-                                + Injetar no Mapa
-                            </button>
-                            <span style={{ fontSize: '0.8em', color: '#aaa' }}>(Clique no Dummie no grid para marcá-lo, e clique noutra célula para o mover)</span>
-                        </div>
+                    <h4 style={{ color: '#ffcc00', marginTop: 0, marginBottom: 10 }}>🤖 Gerador de Entidades</h4>
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <input className="input-neon" type="text" placeholder="Nome" id="dummieNome" defaultValue="Boneco de Treino" style={{ width: 130, padding: 5 }}/>
+                    <input className="input-neon" type="number" placeholder="HP" id="dummieHp" defaultValue="100" style={{ width: 80, padding: 5 }} title="Vida Máxima"/>
+                    <select className="input-neon" id="dummieDefTipo" style={{ width: 100, padding: 5 }} title="Base da CA">
+                    <option value="evasiva">Evasiva (Des)</option>
+                    <option value="resistencia">Resist. (For)</option>
+                    </select>
+                    <input className="input-neon" type="number" placeholder="CA" id="dummieDef" defaultValue="10" style={{ width: 60, padding: 5 }} title="Classe de Armadura (5 + Base)"/>
+            
+                    {/* 🔥 NOVO: ESCOLHA DE VISIBILIDADE DO HP */}
+                    <select className="input-neon" id="dummieVisivel" style={{ width: 110, padding: 5 }} title="Visibilidade do HP">
+                    <option value="todos">HP Visível</option>
+                    <option value="mestre">HP Oculto</option>
+                    </select>
+
+                    <button className="btn-neon btn-gold" onClick={() => {
+                        const n = document.getElementById('dummieNome').value || 'Entidade';
+                        const h = parseInt(document.getElementById('dummieHp').value) || 100;
+                        const dt = document.getElementById('dummieDefTipo').value;
+                        const dv = parseInt(document.getElementById('dummieDef').value) || 10;
+                        const vHp = document.getElementById('dummieVisivel').value;
+                        const id = 'dummie_' + Date.now();
+                        salvarDummie(id, { nome: n, hpMax: h, hpAtual: h, tipoDefesa: dt, valorDefesa: dv, visibilidadeHp: vHp, posicao: { x: 0, y: 0 } });
+                    }} style={{ padding: '5px 15px', margin: 0 }}>
+                    + Injetar no Mapa
+                    </button>
+                    <span style={{ fontSize: '0.8em', color: '#aaa' }}>(Clique no grid para marcar, e clique noutra célula para mover)</span>
+                    </div>
                     </div>
                 )}
 

@@ -31,7 +31,6 @@ export default function FeedCombate() {
                             <p className="lethality" style={{ color: '#fff' }}>{d.profBonusTexto}</p>
                             <div className="log-details" dangerouslySetInnerHTML={{ __html: `&#x1F3B2; Rolagem Base: ${d.rolagem}` }} />
                             
-                            {/* 🔥 FEEDBACK VISUAL SE ACERTOU O ALVO */}
                             {d.alvoNome && (
                                 <div style={{ marginTop: 8, padding: 5, background: 'rgba(0,0,0,0.5)', borderRadius: 4, borderLeft: `3px solid ${d.acertouAlvo ? '#0f0' : '#f00'}` }}>
                                     <span style={{ color: d.acertouAlvo ? '#0f0' : '#f00', fontWeight: 'bold' }}>
@@ -100,12 +99,17 @@ export default function FeedCombate() {
                             __html: `&#x1F3B2; Rolagem de Dados: ${d.rolagem || ''}${d.rolagemMagica || ''}${d.detalheEnergia || ''}${d.detalheConta || ''}`
                         }} />
 
-                        {/* 🔥 FEEDBACK VISUAL DO DANO NO ALVO */}
+                        {/* 🔥 FEEDBACK VISUAL DO DANO E DO OVERKILL NO ALVO */}
                         {d.alvoNome && (
                             <div style={{ marginTop: 8, padding: 5, background: 'rgba(0,0,0,0.5)', borderRadius: 4, borderLeft: `3px solid #ff003c` }}>
                                 <span style={{ color: '#ff003c', fontWeight: 'bold' }}>
                                     🩸 Causou {d.dano.toLocaleString('pt-BR')} de dano em {d.alvoNome}! {d.alvoSobreviveu ? '' : '(💀 MORTO!)'}
                                 </span>
+                                {d.overkill > 0 && (
+                                    <div style={{ color: '#ffcc00', fontSize: '0.9em', marginTop: 4, fontWeight: 'bold', textShadow: '0 0 5px #ffcc00' }}>
+                                        💥 OVERKILL: +{d.overkill.toLocaleString('pt-BR')} de dano excedente!
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
