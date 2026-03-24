@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import useStore from '../../stores/useStore';
 import { getMaximo } from '../../core/attributes';
 import { salvarFichaSilencioso, salvarFirebaseImediato, uploadImagem } from '../../services/firebase-sync';
@@ -40,6 +40,18 @@ export default function PoderesPanel() {
     const [vincularAberto, setVincularAberto] = useState(null);
 
     const formRef = useRef(null);
+    const vincularRef = useRef(null);
+
+    useEffect(() => {
+        if (!vincularAberto) return;
+        const handler = (e) => {
+            if (vincularRef.current && !vincularRef.current.contains(e.target)) {
+                setVincularAberto(null);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [vincularAberto]);
 
     const addEfeitoTemp = () => {
         if (!novoVal) return;
@@ -195,6 +207,18 @@ export default function PoderesPanel() {
         updateFicha((ficha) => { ficha.poderes = (ficha.poderes || []).filter(po => po.id !== id); });
         salvarFichaSilencioso();
     };
+
+    const vincularArmaAoPoder = (poderId, armaId) => {
+        updateFicha((ficha) => {
+            if (!ficha.poderes) return;
+            const p = ficha.poderes.find(po => po.id === poderId);
+            if (p) p.armaVinculada = armaId;
+        });
+        setVincularAberto(null);
+        salvarFichaSilencioso();
+    };
+
+    const armasEquipadas = (minhaFicha.inventario || []).filter(i => i.tipo === 'arma' && i.equipado);
 
     const poderesGlobais = minhaFicha.poderes || [];
     const passivas = minhaFicha.passivas || [];
@@ -397,8 +421,43 @@ export default function PoderesPanel() {
                                                 }).filter(Boolean).join(' | ')}</span>
                                             )}</p>
                                         </div>
-                                        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                                        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                                             <button className="btn-neon" style={{ borderColor: c, color: c, padding: '5px 15px', fontSize: '1.1em', margin: 0 }} onClick={() => togglePoder(p.id)}>{p.ativa ? 'LIGADO' : 'DESLIGADO'}</button>
+                                            {abaAtual === 'habilidade' && (
+                                                <div style={{ position: 'relative' }} ref={vincularAberto === p.id ? vincularRef : null}>
+                                                    <button
+                                                        className={`btn-neon ${p.armaVinculada ? 'btn-gold' : ''}`}
+                                                        style={{ padding: '5px 15px', fontSize: '1em', margin: 0 }}
+                                                        onClick={() => setVincularAberto(vincularAberto === p.id ? null : p.id)}
+                                                    >
+                                                        {p.armaVinculada ? `⚔️ ${((minhaFicha.inventario || []).find(i => String(i.id) === String(p.armaVinculada))?.nome) || 'Arma'}` : '🔗 VINCULAR'}
+                                                    </button>
+                                                    {vincularAberto === p.id && (
+                                                        <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 10, background: '#0a0a1a', border: '1px solid #0ff', borderRadius: 6, padding: 5, minWidth: 180, marginTop: 4 }}>
+                                                            <button
+                                                                className="btn-neon"
+                                                                style={{ width: '100%', padding: '5px 10px', fontSize: '0.85em', margin: '2px 0', borderColor: !p.armaVinculada ? '#0f0' : '#555', color: !p.armaVinculada ? '#0f0' : '#aaa' }}
+                                                                onClick={() => vincularArmaAoPoder(p.id, '')}
+                                                            >
+                                                                Nenhuma (Livre)
+                                                            </button>
+                                                            {armasEquipadas.map(arma => (
+                                                                <button
+                                                                    key={arma.id}
+                                                                    className="btn-neon"
+                                                                    style={{ width: '100%', padding: '5px 10px', fontSize: '0.85em', margin: '2px 0', borderColor: String(p.armaVinculada) === String(arma.id) ? '#ffcc00' : '#0ff', color: String(p.armaVinculada) === String(arma.id) ? '#ffcc00' : '#0ff' }}
+                                                                    onClick={() => vincularArmaAoPoder(p.id, String(arma.id))}
+                                                                >
+                                                                    ⚔️ {arma.nome}
+                                                                </button>
+                                                            ))}
+                                                            {armasEquipadas.length === 0 && (
+                                                                <p style={{ color: '#888', fontSize: '0.8em', margin: '5px 0', textAlign: 'center' }}>Nenhuma arma equipada</p>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
                                             <button className="btn-neon btn-blue" style={{ padding: '5px 15px', fontSize: '1em', margin: 0 }} onClick={() => editarPoder(p.id)}>EDITAR</button>
                                             <button className="btn-neon btn-red" style={{ padding: '5px 15px', fontSize: '1em', margin: 0 }} onClick={() => deletarPoder(p.id)}>APAGAR</button>
                                         </div>
