@@ -1,4 +1,35 @@
+import useStore from '../stores/useStore';
 import { isFisico, isEnergia, tratarUnico } from './utils.js';
+
+// 🔥 FUNÇÃO UNIVERSAL: Lê a classe do jogador e procura a versão editada pelo Mestre no Compêndio
+export function getEfeitosDeClasse(ficha) {
+    let classeHeroica = (ficha.bio && ficha.bio.classe) ? String(ficha.bio.classe).toLowerCase() : '';
+    if (!classeHeroica) return [];
+
+    let state = useStore.getState();
+    let mestreOverrides = {};
+    
+    // Procura as regras da casa (na ficha do Mestre ou nas de outros jogadores sincronizados)
+    if (state.isMestre && state.minhaFicha?.compendioOverrides) {
+        mestreOverrides = state.minhaFicha.compendioOverrides;
+    } else if (state.personagens) {
+        for (let k of Object.keys(state.personagens)) {
+            if (state.personagens[k]?.compendioOverrides) {
+                mestreOverrides = state.personagens[k].compendioOverrides;
+                break;
+            }
+        }
+    }
+
+    let classData = mestreOverrides[classeHeroica];
+    // Se o Mestre editou a classe e guardou regras matemáticas, use-as!
+    if (classData && classData.efeitosMatematicos) {
+        return classData.efeitosMatematicos;
+    }
+    
+    // Se a classe ainda não foi editada/guardada no Compêndio, retorna vazio
+    return [];
+}
 
 export function getBuffs(ficha, statKey, ignorarPassivas = false) {
     let buffs = { base: 0, mbase: 0, mgeral: 0, mformas: 0, mabs: 0, munico: [], reducaoCusto: 0, regeneracao: 0 };
@@ -61,60 +92,8 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false) {
         }
     }
 
-    // 🔥 2. PROCESSAR EFEITOS DE CLASSE (O Trono dos Heróis) 🔥
-    // Estes buffs são passivos e indestrutíveis, ligados apenas à variável 'classe'
-    let classeHeroica = (ficha.bio && ficha.bio.classe) ? String(ficha.bio.classe).toLowerCase() : '';
-
-    const applyClassBuff = (prop, amount, flagKey) => {
-        if (prop === 'mbase') { buffs.mbase += amount; hasBuff[flagKey] = true; }
-        if (prop === 'mgeral') { buffs.mgeral += amount; hasBuff[flagKey] = true; }
-        if (prop === 'munico') { buffs.munico.push(amount); }
-    };
-
-    switch (classeHeroica) {
-        case 'saber':
-            if (sK === 'corpo' || sK === 'constituicao') applyClassBuff('mbase', 0.5, 'mbase');
-            break;
-        case 'lancer':
-            if (sK === 'destreza' || sK === 'stamina') applyClassBuff('mbase', 0.5, 'mbase');
-            break;
-        case 'caster':
-            if (sK === 'inteligencia' || sK === 'sabedoria' || sK === 'mana') applyClassBuff('mbase', 0.5, 'mbase');
-            break;
-        case 'berserker':
-            if (sK === 'vida' || sK === 'corpo') applyClassBuff('munico', 1.5, null);
-            if (sK === 'status' || sK === 'inteligencia') applyClassBuff('mbase', -0.5, 'mbase'); // Debuff de sanidade
-            break;
-        case 'shielder':
-            if (sK === 'constituicao' || sK === 'forca') applyClassBuff('mbase', 1.0, 'mbase');
-            break;
-        case 'ruler':
-            if (isStatFisico) applyClassBuff('mbase', 0.5, 'mbase');
-            break;
-        case 'avenger':
-            if (sK === 'dano') applyClassBuff('munico', 1.5, null);
-            break;
-        case 'alterego':
-            if (sK === 'carisma' || sK === 'energiaesp') applyClassBuff('mbase', 0.5, 'mbase');
-            break;
-        case 'foreigner':
-            if (sK === 'sabedoria') applyClassBuff('mbase', 1.0, 'mbase');
-            break;
-        case 'mooncancer':
-            if (sK === 'inteligencia') applyClassBuff('mbase', 1.0, 'mbase');
-            break;
-        case 'pretender':
-            if (sK === 'carisma' || sK === 'destreza') applyClassBuff('mbase', 0.5, 'mbase');
-            break;
-        case 'beast':
-            // Multiplicador Massivo de Chefe
-            if (sK === 'pv' || sK === 'pm') applyClassBuff('munico', 3.0, null);
-            if (sK === 'dano') applyClassBuff('mgeral', 1.0, 'mgeral');
-            break;
-        case 'savior':
-            if (sK === 'aura' || sK === 'chakra') applyClassBuff('mbase', 2.0, 'mbase');
-            break;
-    }
+    // 🔥 2. PROCESSAR EFEITOS MATEMÁTICOS DE CLASSE DO COMPÊNDIO 🔥
+    processarEfeitos(getEfeitosDeClasse(ficha));
 
     if (!hasBuff.mbase) buffs.mbase = 1.0;
     if (!hasBuff.mgeral) buffs.mgeral = 1.0;
@@ -128,6 +107,8 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false) {
 export function getPoderesDefesa(ficha, tipo) {
     let t = 0;
     if (!ficha || !ficha.poderes) return 0;
+    
+    // Efeitos das habilidades ativas
     for (let i = 0; i < ficha.poderes.length; i++) {
         let p = ficha.poderes[i];
         if (p && p.ativa && p.efeitos) {
@@ -139,10 +120,13 @@ export function getPoderesDefesa(ficha, tipo) {
         }
     }
     
-    // 🔥 EFEITOS DEFENSIVOS E DE ACERTO DE CLASSE
-    let classeHeroica = (ficha.bio && ficha.bio.classe) ? String(ficha.bio.classe).toLowerCase() : '';
-    if (classeHeroica === 'rider' && tipo === 'bonus_evasiva') t += 200;
-    if (classeHeroica === 'shielder' && tipo === 'bonus_resistencia') t += 500;
+    // 🔥 Efeitos de defesa/acerto criados no "Motor Matemático" da Classe no Compêndio
+    let efeitosClasse = getEfeitosDeClasse(ficha);
+    for (let j = 0; j < efeitosClasse.length; j++) {
+        if ((efeitosClasse[j].propriedade || '').toLowerCase() === tipo) {
+            t += (parseFloat(efeitosClasse[j].valor) || 0);
+        }
+    }
     
     return t;
 }
