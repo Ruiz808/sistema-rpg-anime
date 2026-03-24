@@ -82,7 +82,6 @@ export default function CompendioPanel() {
         setTempDesc(classe.desc || '');
         setTempEfeito(classe.efeito || '');
         setTempIconeUrl(classe.iconeUrl || '');
-        // 🔥 CORREÇÃO 1: Criar clones profundos para o React não bloquear a edição
         setTempEfeitosMat(classe.efeitosMatematicos ? classe.efeitosMatematicos.map(ef => ({ ...ef })) : []); 
     };
 
@@ -108,11 +107,10 @@ export default function CompendioPanel() {
         setEditandoId(null);
     };
 
-    // 🔥 CORREÇÃO 2: Atualização de estado segura para campos de edição no React
     const handleEfMat = (index, campo, valor) => {
         const novosEfeitos = tempEfeitosMat.map((ef, i) => {
             if (i === index) {
-                return { ...ef, [campo]: valor }; // Guarda como texto temporariamente para evitar falhas ao apagar vírgulas
+                return { ...ef, [campo]: valor }; 
             }
             return ef;
         });
@@ -168,18 +166,35 @@ export default function CompendioPanel() {
                             </div>
                         </div>
 
-                        {/* MOTOR MATEMÁTICO (UI CORRIGIDA) */}
-                        <div style={{ background: 'rgba(0, 255, 204, 0.05)', padding: '10px', borderRadius: '5px', border: '1px solid rgba(0, 255, 204, 0.3)' }}>
-                            <h4 style={{ color: '#00ffcc', margin: '0 0 10px 0', fontSize: '0.9em' }}>⚙️ Motor Matemático (Efeitos Base)</h4>
+                        {/* 🔥 MOTOR MATEMÁTICO: AGORA COM MUITO ESPAÇO! */}
+                        <div style={{ background: 'rgba(0, 255, 204, 0.05)', padding: '15px', borderRadius: '5px', border: '1px solid rgba(0, 255, 204, 0.3)' }}>
+                            <h4 style={{ color: '#00ffcc', margin: '0 0 15px 0', fontSize: '0.9em', borderBottom: '1px solid #00ffcc40', paddingBottom: '5px' }}>⚙️ Motor Matemático (Efeitos Base)</h4>
+                            
                             {tempEfeitosMat.map((ef, idx) => (
-                                <div key={idx} style={{ display: 'flex', gap: '5px', marginBottom: '5px' }}>
-                                    <input type="text" placeholder="Atributo (ex: dano)" value={ef.atributo} onChange={e => handleEfMat(idx, 'atributo', e.target.value)} className="input-neon" style={{ flex: 1, padding: '4px' }} title="Ex: forca, dano, vida, todos_status" />
-                                    <input type="text" placeholder="Prop. (ex: munico)" value={ef.propriedade} onChange={e => handleEfMat(idx, 'propriedade', e.target.value)} className="input-neon" style={{ flex: 1, padding: '4px' }} title="Ex: base, mbase, munico, letalidade" />
-                                    <input type="text" placeholder="Valor" value={ef.valor} onChange={e => handleEfMat(idx, 'valor', e.target.value)} className="input-neon" style={{ width: '80px', padding: '4px' }} title="Pode usar decimais. Ex: 10 ou 0.5" />
-                                    <button className="btn-neon btn-red" onClick={() => removeEfMat(idx)} style={{ padding: '0 8px', margin: 0 }}>X</button>
+                                <div key={idx} style={{ 
+                                    display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '15px', 
+                                    background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '4px', border: '1px solid #333'
+                                }}>
+                                    <div style={{ flex: '1 1 120px' }}>
+                                        <label style={{ fontSize: '0.7em', color: '#aaa', display: 'block', marginBottom: '3px' }}>Atributo (ex: dano, vida)</label>
+                                        <input type="text" placeholder="dano" value={ef.atributo} onChange={e => handleEfMat(idx, 'atributo', e.target.value)} className="input-neon" style={{ width: '100%', padding: '6px' }} />
+                                    </div>
+                                    <div style={{ flex: '1 1 120px' }}>
+                                        <label style={{ fontSize: '0.7em', color: '#aaa', display: 'block', marginBottom: '3px' }}>Propriedade (ex: munico, mbase)</label>
+                                        <input type="text" placeholder="munico" value={ef.propriedade} onChange={e => handleEfMat(idx, 'propriedade', e.target.value)} className="input-neon" style={{ width: '100%', padding: '6px' }} />
+                                    </div>
+                                    <div style={{ flex: '0 0 80px' }}>
+                                        <label style={{ fontSize: '0.7em', color: '#ffcc00', display: 'block', marginBottom: '3px' }}>Valor</label>
+                                        <input type="text" placeholder="Ex: 10" value={ef.valor} onChange={e => handleEfMat(idx, 'valor', e.target.value)} className="input-neon" style={{ width: '100%', padding: '6px', borderColor: '#ffcc00' }} />
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                                        <button className="btn-neon btn-red" onClick={() => removeEfMat(idx)} style={{ padding: '6px 12px', margin: 0, height: '34px' }}>X</button>
+                                    </div>
                                 </div>
                             ))}
-                            <button className="btn-neon btn-small" onClick={addEfMat} style={{ marginTop: '5px', fontSize: '0.7em' }}>+ Adicionar Efeito Matemático</button>
+                            <button className="btn-neon btn-small" onClick={addEfMat} style={{ marginTop: '5px', fontSize: '0.8em', width: '100%', borderStyle: 'dashed' }}>
+                                + ADICIONAR NOVA REGRA MATEMÁTICA
+                            </button>
                         </div>
 
                         <div style={{ background: 'rgba(255, 204, 0, 0.1)', padding: '10px', borderRadius: '5px', border: '1px solid rgba(255, 204, 0, 0.3)' }}>
