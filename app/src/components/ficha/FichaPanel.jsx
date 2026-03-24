@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import useStore from '../../stores/useStore';
 import { contarDigitos } from '../../core/utils.js';
 import { getMaximo, getBuffs } from '../../core/attributes.js';
@@ -26,7 +26,6 @@ const ATRIBUTO_OPTIONS = [
     { value: 'todas_energias', label: 'TODAS AS ENERGIAS' },
 ];
 
-// 🔥 O TRONO DOS HERÓIS: Opções do Seletor de Classe
 const CLASSES_OPTIONS = [
     { value: '', label: 'Nenhuma / Mundano' },
     { value: 'saber', label: '⚔️ Saber' },
@@ -82,7 +81,7 @@ export default function FichaPanel() {
         updateFicha((ficha) => {
             if (!ficha.bio) ficha.bio = {};
             ficha.bio.raca = raca;
-            ficha.bio.classe = classe; // Guarda a tag da classe selecionada
+            ficha.bio.classe = classe;
             ficha.bio.idade = idade;
             ficha.bio.fisico = fisico;
             ficha.bio.sangue = sangue;
@@ -172,7 +171,8 @@ export default function FichaPanel() {
         setDmUnico(d.mUnico ?? '1.0');
     }, [minhaFicha.dano]);
 
-    const buffsDano = useMemo(() => getBuffs(minhaFicha, 'dano'), [minhaFicha.poderes, minhaFicha.passivas]);
+    // 🔥 CORREÇÃO: Removido o useMemo para que o cálculo de Dano seja dinâmico e reflita o Motor do Compêndio imediatamente!
+    const buffsDano = minhaFicha ? getBuffs(minhaFicha, 'dano') : { _hasBuff: {}, munico: [] };
 
     function salvarMultiplicadores() {
         updateFicha((ficha) => {
@@ -225,7 +225,6 @@ export default function FichaPanel() {
                         <label style={{ color: '#aaa', fontSize: '0.85em' }}>Raça</label>
                         <input className="input-neon" type="text" value={raca} onChange={e => setRaca(e.target.value)} />
                     </div>
-                    {/* 🔥 O SELETOR DE CLASSES ENTRA AQUI 🔥 */}
                     <div>
                         <label style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold' }}>Classe Mística</label>
                         <select 
@@ -341,7 +340,7 @@ export default function FichaPanel() {
                         <input className="input-neon" type="number" step="0.01" value={dmAbsoluto} onChange={e => setDmAbsoluto(e.target.value)} />
                     </div>
                     <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Unico {buffsDano.munico.length > 0 && <span style={{ color: '#0f0', fontSize: '0.8em' }}>(Buff: x{buffsDano.munico.join(',')})</span>}</label>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Unico {buffsDano.munico.length > 0 && <span style={{ color: '#0f0', fontSize: '0.8em', textShadow: '0 0 5px rgba(0,255,0,0.5)' }}>(Buff: x{buffsDano.munico.join(' e x')})</span>}</label>
                         <input className="input-neon" type="text" value={dmUnico} onChange={e => setDmUnico(e.target.value)} />
                     </div>
                 </div>
