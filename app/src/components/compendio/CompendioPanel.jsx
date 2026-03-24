@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import useStore from '../../stores/useStore';
-import { salvarFichaSilencioso, salvarFirebaseImediato, enviarParaFeed } from '../../services/firebase-sync';
+import { salvarFichaSilencioso, enviarParaFeed } from '../../services/firebase-sync';
 
 const CLASSES_REGULARES_BASE = [
     { id: 'saber', nome: 'Saber', icone: '⚔️', titulo: 'Cavaleiro da Espada', cor: '#0088ff', passiva: 'Resistência Mágica', desc: 'A classe mais equilibrada das sete. Especialistas no domínio de lâminas, montam a linha da frente com orgulho.', efeito: 'Excelentes atributos base em Força, Constituição e Destreza. Recebem bônus passivo para resistir a feitiços e efeitos mágicos diretos.' },
@@ -34,6 +34,8 @@ export default function CompendioPanel() {
 
     // ESTADOS DE EDIÇÃO
     const [editandoId, setEditandoId] = useState(null);
+    const [tempNome, setTempNome] = useState(''); // 🔥 NOVO: Nome da Classe
+    const [tempTitulo, setTempTitulo] = useState(''); // 🔥 NOVO: Título da Classe
     const [tempPassiva, setTempPassiva] = useState('');
     const [tempDesc, setTempDesc] = useState('');
     const [tempEfeito, setTempEfeito] = useState('');
@@ -59,6 +61,8 @@ export default function CompendioPanel() {
             if (custom) {
                 return { 
                     ...cls, 
+                    nome: custom.nome || cls.nome, // 🔥 APLICA O NOME SALVO
+                    titulo: custom.titulo || cls.titulo, // 🔥 APLICA O TÍTULO SALVO
                     passiva: custom.passiva || cls.passiva, 
                     desc: custom.desc || cls.desc,
                     efeito: custom.efeito || cls.efeito,
@@ -75,42 +79,41 @@ export default function CompendioPanel() {
     // FUNÇÕES DE EDIÇÃO
     const iniciarEdicao = (classe) => {
         setEditandoId(classe.id);
-        setTempPassiva(classe.passiva);
-        setTempDesc(classe.desc);
-        setTempEfeito(classe.efeito);
+        setTempNome(classe.nome || ''); // 🔥 Puxa pro formulário
+        setTempTitulo(classe.titulo || ''); // 🔥 Puxa pro formulário
+        setTempPassiva(classe.passiva || '');
+        setTempDesc(classe.desc || '');
+        setTempEfeito(classe.efeito || '');
         setTempIconeUrl(classe.iconeUrl || ''); 
     };
 
-    const salvarEdicao = async (id) => {
+    const salvarEdicao = (id) => {
         updateFicha(f => {
             if (!f.compendioOverrides) f.compendioOverrides = {};
             f.compendioOverrides[id] = {
+                nome: tempNome, // 🔥 Salva o nome
+                titulo: tempTitulo, // 🔥 Salva o título
                 passiva: tempPassiva,
                 desc: tempDesc,
                 efeito: tempEfeito,
-                iconeUrl: tempIconeUrl
+                iconeUrl: tempIconeUrl 
             };
         });
-        try {
-            await salvarFirebaseImediato();
-            setEditandoId(null);
-            enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: '📜 O Mestre reescreveu os registos do Compêndio!' });
-        } catch (err) {
-            alert('Erro ao sincronizar as edições do compêndio no Firebase!');
-        }
+        salvarFichaSilencioso();
+        setEditandoId(null);
+        enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: '📜 O Mestre reescreveu os registos do Compêndio!' });
     };
 
     const cancelarEdicao = () => {
         setEditandoId(null);
     };
 
-    // 🔥 NOVA FUNÇÃO: Transforma o ficheiro num código Base64 para guardar direto na ficha
     const handleImageUpload = (e) => {
         const file = e.target.files[0];
         if (file) {
             const reader = new FileReader();
             reader.onloadend = () => {
-                setTempIconeUrl(reader.result); // O resultado é a imagem convertida em texto!
+                setTempIconeUrl(reader.result);
             };
             reader.readAsDataURL(file);
         }
@@ -128,7 +131,6 @@ export default function CompendioPanel() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         
-                        {/* VISUALIZAÇÃO DO ÍCONE DINÂMICO */}
                         <div style={{ 
                             width: '50px', height: '50px', background: `${classe.cor}20`, 
                             borderRadius: '50%', border: `1px solid ${classe.cor}`, 
@@ -159,7 +161,24 @@ export default function CompendioPanel() {
                 {isEditando ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
                         
-                        {/* 🔥 NOVO BOTÃO DE UPLOAD DE FICHEIRO */}
+                        {/* 🔥 NOVOS CAMPOS PARA NOME E TÍTULO */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                            <div>
+                                <label style={{ fontSize: '0.8em', color: '#0088ff' }}>Nome da Classe:</label>
+                                <input 
+                                    type="text" className="input-neon" value={tempNome} onChange={(e) => setTempNome(e.target.value)}
+                                    style={{ width: '100%', padding: '5px', borderColor: '#0088ff', color: '#fff', fontWeight: 'bold' }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: '0.8em', color: '#aaa' }}>Título / Alcunha:</label>
+                                <input 
+                                    type="text" className="input-neon" value={tempTitulo} onChange={(e) => setTempTitulo(e.target.value)}
+                                    style={{ width: '100%', padding: '5px', borderColor: '#aaa', color: '#ccc', fontStyle: 'italic' }}
+                                />
+                            </div>
+                        </div>
+
                         <div style={{ background: 'rgba(255, 204, 0, 0.1)', padding: '10px', borderRadius: '5px', border: '1px solid rgba(255, 204, 0, 0.3)' }}>
                             <label style={{ fontSize: '0.8em', color: '#ffcc00', display: 'block', marginBottom: '5px' }}>Anexar Ícone (Upload do Computador):</label>
                             <input 
