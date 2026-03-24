@@ -3,14 +3,21 @@ import useStore from '../../stores/useStore';
 import { calcularReducao } from '../../core/engine';
 import { salvarFichaSilencioso, enviarParaFeed } from '../../services/firebase-sync';
 
-// 🔥 O CÉREBRO DA CLASSE DE ARMADURA
+// 🔥 O CÉREBRO DA CLASSE DE ARMADURA (ATUALIZADO PARA LER SÓ 2 DÍGITOS)
 export function calcularCA(ficha, tipo) {
     if (!ficha) return 10;
     
-    // Regra: Evasiva = Destreza Base | Resistência = Força Base
+    // Função mágica para extrair apenas os dois primeiros algarismos de qualquer número gigante
+    const getDoisDigitos = (valor) => {
+        if (!valor) return 0;
+        const strVal = String(valor).replace(/[^0-9]/g, ''); // Remove o que não for número
+        if (!strVal) return 0;
+        return parseInt(strVal.substring(0, 2), 10); // Corta tudo depois da 2ª casa
+    };
+
     let base = 5;
-    if (tipo === 'evasiva') base += (parseInt(ficha.destreza?.base) || 0);
-    if (tipo === 'resistencia') base += (parseInt(ficha.forca?.base) || 0);
+    if (tipo === 'evasiva') base += getDoisDigitos(ficha.destreza?.base);
+    if (tipo === 'resistencia') base += getDoisDigitos(ficha.forca?.base);
     
     let bonus = 0;
     
@@ -53,7 +60,7 @@ export default function DefesaPanel() {
     const caResistencia = calcularCA(minhaFicha, 'resistencia');
 
     // Evasion States
-    const [evaDados, setEvaDados] = useState(0); // Começa a 0 para defesas estáticas
+    const [evaDados, setEvaDados] = useState(0); 
     const [evaFaces, setEvaFaces] = useState(20);
     const [evaProf, setEvaProf] = useState(0);
     const [evaBonus, setEvaBonus] = useState(0);

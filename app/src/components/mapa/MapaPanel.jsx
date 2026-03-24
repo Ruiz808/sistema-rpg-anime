@@ -18,9 +18,18 @@ function urlSeguraParaCss(url) {
 
 export function calcularCA(ficha, tipo) {
     if (!ficha) return 10;
+    
+    // 🔥 CÁLCULO CEIFADO PARA LER SÓ 2 DÍGITOS DA BASE
+    const getDoisDigitos = (valor) => {
+        if (!valor) return 0;
+        const strVal = String(valor).replace(/[^0-9]/g, '');
+        if (!strVal) return 0;
+        return parseInt(strVal.substring(0, 2), 10);
+    };
+
     let base = 5;
-    if (tipo === 'evasiva') base += (parseInt(ficha.destreza?.base) || 0);
-    if (tipo === 'resistencia') base += (parseInt(ficha.forca?.base) || 0);
+    if (tipo === 'evasiva') base += getDoisDigitos(ficha.destreza?.base);
+    if (tipo === 'resistencia') base += getDoisDigitos(ficha.forca?.base);
     
     let bonus = 0;
     (ficha.poderes || []).forEach(p => {
@@ -35,6 +44,7 @@ export function calcularCA(ficha, tipo) {
     (ficha.inventario || []).filter(i => i.equipado).forEach(i => {
         (i.efeitos || []).forEach(e => { if (e.atributo === tipo && e.propriedade === 'base') bonus += parseFloat(e.valor) || 0; });
     });
+    
     return Math.floor(base + bonus);
 }
 
