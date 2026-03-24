@@ -423,8 +423,7 @@ export default function PoderesPanel() {
                                         </div>
                                         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                                             <button className="btn-neon" style={{ borderColor: c, color: c, padding: '5px 15px', fontSize: '1.1em', margin: 0 }} onClick={() => togglePoder(p.id)}>{p.ativa ? 'LIGADO' : 'DESLIGADO'}</button>
-                                            {abaAtual === 'habilidade' && (
-                                                <div style={{ position: 'relative' }} ref={vincularAberto === p.id ? vincularRef : null}>
+                                            <div style={{ position: 'relative' }} ref={vincularAberto === p.id ? vincularRef : null}>
                                                     <button
                                                         className={`btn-neon ${p.armaVinculada ? 'btn-gold' : ''}`}
                                                         style={{ padding: '5px 15px', fontSize: '1em', margin: 0 }}
@@ -457,7 +456,6 @@ export default function PoderesPanel() {
                                                         </div>
                                                     )}
                                                 </div>
-                                            )}
                                             <button className="btn-neon btn-blue" style={{ padding: '5px 15px', fontSize: '1em', margin: 0 }} onClick={() => editarPoder(p.id)}>EDITAR</button>
                                             <button className="btn-neon btn-red" style={{ padding: '5px 15px', fontSize: '1em', margin: 0 }} onClick={() => deletarPoder(p.id)}>APAGAR</button>
                                         </div>
