@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import useStore from '../../stores/useStore';
 import { calcularAcerto } from '../../core/engine';
+import { getPoderesDefesa } from '../../core/attributes'; // 🔥 IMPORT NOVO
 import { enviarParaFeed, salvarFichaSilencioso } from '../../services/firebase-sync';
 
 const STATS_LIST = [
@@ -15,7 +16,7 @@ const STATS_LIST = [
 ];
 
 export default function AcertoPanel() {
-    const { minhaFicha, meuNome, setAbaAtiva, updateFicha, alvoSelecionado, dummies } = useStore(); // 🔥 Alvos puxados aqui
+    const { minhaFicha, meuNome, setAbaAtiva, updateFicha, alvoSelecionado, dummies } = useStore(); 
 
     const [dados, setDados] = useState(1);
     const [faces, setFaces] = useState(20);
@@ -26,6 +27,9 @@ export default function AcertoPanel() {
     const desvantagens = minhaFicha.ataqueConfig?.desvantagens || 0;
     
     const [statsSelecionados, setStatsSelecionados] = useState(['destreza']);
+
+    // 🔥 PUXA O BÓNUS DE ACERTO DA CLASSE (MOTOR MATEMÁTICO)
+    const bonusAcertoClasse = minhaFicha ? getPoderesDefesa(minhaFicha, 'bonus_acerto') : 0;
 
     function changeVantagem(e) {
         updateFicha(f => {
@@ -66,11 +70,10 @@ export default function AcertoPanel() {
             vantagens: v, desvantagens: d 
         });
 
-        // 🔥 LÓGICA DE ALVO (COMPARAÇÃO COM ARMADURA)
         let extraData = {};
         if (alvoSelecionado && dummies[alvoSelecionado]) {
             const alvo = dummies[alvoSelecionado];
-            const acertou = result.acertoTotal >= alvo.valorDefesa; // Se for igual ou maior, acerta
+            const acertou = result.acertoTotal >= alvo.valorDefesa; 
             extraData = { alvoNome: alvo.nome, alvoDefesa: alvo.valorDefesa, acertouAlvo: acertou };
         }
 
@@ -82,7 +85,14 @@ export default function AcertoPanel() {
     return (
         <div className="acerto-panel">
             <div className="def-box">
-                <h3 style={{ color: '#f90', marginBottom: 10 }}>Rolagem de Acerto</h3>
+                <h3 style={{ color: '#f90', marginBottom: 5 }}>Rolagem de Acerto</h3>
+
+                {/* 🔥 AVISO VISUAL SE A CLASSE DER ACERTO BÓNUS */}
+                {bonusAcertoClasse > 0 && (
+                    <p style={{ color: '#0f0', fontSize: '0.85em', margin: '0 0 10px 0', textShadow: '0 0 5px rgba(0,255,0,0.5)' }}>
+                        ✨ Instinto de Batalha: A sua classe concede +{bonusAcertoClasse} de Acerto passivo!
+                    </p>
+                )}
 
                 <div style={{ marginBottom: 10 }}>
                     <label style={{ color: '#aaa', fontSize: '0.85em' }}>Atributos de Acerto:</label>
