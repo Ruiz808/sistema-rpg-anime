@@ -2,10 +2,9 @@ import React, { useState, useMemo } from 'react';
 import useStore from '../../stores/useStore';
 import { salvarFichaSilencioso, enviarParaFeed } from '../../services/firebase-sync';
 
-// 🔥 AS CLASSES AGORA TÊM UM "MOTOR MATEMÁTICO" EMBUTIDO
 const CLASSES_REGULARES_BASE = [
     { id: 'saber', nome: 'Saber', icone: '⚔️', titulo: 'Cavaleiro da Espada', cor: '#0088ff', passiva: 'Resistência Mágica', desc: 'A classe mais equilibrada das sete. Especialistas no domínio de lâminas.', efeito: 'Excelentes atributos base em Força, Constituição e Destreza.', efeitosMatematicos: [{ atributo: 'corpo', propriedade: 'mbase', valor: 0.5 }, { atributo: 'constituicao', propriedade: 'mbase', valor: 0.5 }] },
-    { id: 'archer', nome: 'Archer', icone: '🏹', titulo: 'Cavaleiro do Arco', cor: '#ff003c', passiva: 'Ação Independente', desc: 'Especialistas em combate à distância e projéteis.', efeito: 'Possuem bônus massivo em precisão e Letalidade.', efeitosMatematicos: [{ atributo: 'geral', propriedade: 'letalidade', valor: 20 }] },
+    { id: 'archer', nome: 'Archer', icone: '🏹', titulo: 'Cavaleiro do Arco', cor: '#ff003c', passiva: 'Ação Independente', desc: 'Especialistas em combate à distância e projéteis.', efeito: 'Possuem bónus massivo em precisão e Letalidade.', efeitosMatematicos: [{ atributo: 'geral', propriedade: 'letalidade', valor: 20 }] },
     { id: 'lancer', nome: 'Lancer', icone: '🗡️', titulo: 'Cavaleiro da Lança', cor: '#00ffcc', passiva: 'Proteção contra Flechas', desc: 'Guerreiros velozes que empunham armas de haste.', efeito: 'Altamente ágeis e letais no corpo a corpo.', efeitosMatematicos: [{ atributo: 'destreza', propriedade: 'mbase', valor: 0.5 }, { atributo: 'stamina', propriedade: 'mbase', valor: 0.5 }] },
     { id: 'rider', nome: 'Rider', icone: '🏇', titulo: 'Cavaleiro de Montaria', cor: '#ff8800', passiva: 'Montaria (Riding)', desc: 'Espíritos associados a grandes lendas de montarias.', efeito: 'Altíssima velocidade de movimento no mapa e evasão.', efeitosMatematicos: [{ atributo: 'geral', propriedade: 'bonus_evasiva', valor: 200 }] },
     { id: 'caster', nome: 'Caster', icone: '🧙‍♂️', titulo: 'Conjurador Magus', cor: '#cc00ff', passiva: 'Criação de Território', desc: 'Estudiosos dos mistérios mágicos e construtores de domínios.', efeito: 'Fracos no corpo a corpo, mas com Inteligência e Sabedoria supremas.', efeitosMatematicos: [{ atributo: 'inteligencia', propriedade: 'mbase', valor: 0.5 }, { atributo: 'sabedoria', propriedade: 'mbase', valor: 0.5 }, { atributo: 'mana', propriedade: 'mbase', valor: 0.5 }] },
@@ -16,10 +15,7 @@ const CLASSES_REGULARES_BASE = [
 const CLASSES_EXTRA_BASE = [
     { id: 'shielder', nome: 'Shielder', icone: '🛡️', titulo: 'O Escudo Protetor', cor: '#00ffff', passiva: 'Frente de Batalha', desc: 'Classe defensiva suprema.', efeito: 'Consegue transferir o dano de aliados para si mesmo e criar barreiras.', efeitosMatematicos: [{ atributo: 'constituicao', propriedade: 'mbase', valor: 1.0 }, { atributo: 'forca', propriedade: 'mbase', valor: 1.0 }, { atributo: 'geral', propriedade: 'bonus_resistencia', valor: 500 }] },
     { id: 'ruler', nome: 'Ruler', icone: '⚖️', titulo: 'O Árbitro Santo', cor: '#ffcc00', passiva: 'Resolução Divina', desc: 'Invocados para manter as regras do mundo.', efeito: 'Recebem metade do dano das 6 classes regulares.', efeitosMatematicos: [{ atributo: 'todos_status', propriedade: 'mbase', valor: 0.5 }] },
-    
-    // 🔥 A SUA REGRA DA CASA ESTÁ AQUI NO AVENGER
     { id: 'avenger', nome: 'Avenger', icone: '⛓️', titulo: 'O Vingador', cor: '#880000', passiva: 'Vingança Eterna', desc: 'Nascidos do ódio e traição.', efeito: 'Multiplicador único de x10 em Status e Dano.', efeitosMatematicos: [{ atributo: 'dano', propriedade: 'munico', valor: 10 }, { atributo: 'todos_status', propriedade: 'munico', valor: 10 }] },
-    
     { id: 'alterego', nome: 'Alter Ego', icone: '🎭', titulo: 'O Fragmento de Ego', cor: '#ff00ff', passiva: 'Dualidade', desc: 'Fusão de múltiplos espíritos.', efeito: 'Têm vantagem contra as classes da Cavalaria.', efeitosMatematicos: [{ atributo: 'carisma', propriedade: 'mbase', valor: 0.5 }, { atributo: 'energiaesp', propriedade: 'mbase', valor: 0.5 }] },
     { id: 'foreigner', nome: 'Foreigner', icone: '🐙', titulo: 'O Viajante do Abismo', cor: '#00ff88', passiva: 'Existência Fora do Domínio', desc: 'Conectados a entidades além do universo conhecido.', efeito: 'Resistência passiva a dano psicológico.', efeitosMatematicos: [{ atributo: 'sabedoria', propriedade: 'mbase', valor: 1.0 }] },
     { id: 'mooncancer', nome: 'Moon Cancer', icone: '🌕', titulo: 'A Anomalia Digital', cor: '#8888aa', passiva: 'Erro de Sistema', desc: 'Capazes de corromper as próprias regras do combate.', efeito: 'Causam dano extra aos Avengers.', efeitosMatematicos: [{ atributo: 'inteligencia', propriedade: 'mbase', valor: 1.0 }] },
@@ -42,7 +38,7 @@ export default function CompendioPanel() {
     const [tempDesc, setTempDesc] = useState('');
     const [tempEfeito, setTempEfeito] = useState('');
     const [tempIconeUrl, setTempIconeUrl] = useState('');
-    const [tempEfeitosMat, setTempEfeitosMat] = useState([]); // 🔥 NOVO: Estado para os efeitos matemáticos
+    const [tempEfeitosMat, setTempEfeitosMat] = useState([]);
 
     const overridesCompendio = useMemo(() => {
         if (!minhaFicha) return {};
@@ -68,7 +64,7 @@ export default function CompendioPanel() {
                     desc: custom.desc || cls.desc,
                     efeito: custom.efeito || cls.efeito,
                     iconeUrl: custom.iconeUrl || cls.iconeUrl,
-                    efeitosMatematicos: custom.efeitosMatematicos || cls.efeitosMatematicos // 🔥 Mescla os Efeitos Matemáticos
+                    efeitosMatematicos: custom.efeitosMatematicos || cls.efeitosMatematicos 
                 };
             }
             return cls;
@@ -86,7 +82,8 @@ export default function CompendioPanel() {
         setTempDesc(classe.desc || '');
         setTempEfeito(classe.efeito || '');
         setTempIconeUrl(classe.iconeUrl || '');
-        setTempEfeitosMat(classe.efeitosMatematicos ? [...classe.efeitosMatematicos] : []); // 🔥 Carrega os efeitos
+        // 🔥 CORREÇÃO 1: Criar clones profundos para o React não bloquear a edição
+        setTempEfeitosMat(classe.efeitosMatematicos ? classe.efeitosMatematicos.map(ef => ({ ...ef })) : []); 
     };
 
     const salvarEdicao = (id) => {
@@ -99,7 +96,7 @@ export default function CompendioPanel() {
                 desc: tempDesc,
                 efeito: tempEfeito,
                 iconeUrl: tempIconeUrl,
-                efeitosMatematicos: tempEfeitosMat // 🔥 Guarda os efeitos editados!
+                efeitosMatematicos: tempEfeitosMat 
             };
         });
         salvarFichaSilencioso();
@@ -107,13 +104,22 @@ export default function CompendioPanel() {
         enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: '📜 O Mestre reescreveu os registos matemáticos do Compêndio!' });
     };
 
-    // 🔥 Funções de manipulação do array de efeitos matemáticos
-    const handleEfMat = (index, campo, valor) => {
-        const novos = [...tempEfeitosMat];
-        novos[index][campo] = campo === 'valor' ? parseFloat(valor) : valor;
-        setTempEfeitosMat(novos);
+    const cancelarEdicao = () => {
+        setEditandoId(null);
     };
-    const addEfMat = () => setTempEfeitosMat([...tempEfeitosMat, { atributo: '', propriedade: '', valor: 0 }]);
+
+    // 🔥 CORREÇÃO 2: Atualização de estado segura para campos de edição no React
+    const handleEfMat = (index, campo, valor) => {
+        const novosEfeitos = tempEfeitosMat.map((ef, i) => {
+            if (i === index) {
+                return { ...ef, [campo]: valor }; // Guarda como texto temporariamente para evitar falhas ao apagar vírgulas
+            }
+            return ef;
+        });
+        setTempEfeitosMat(novosEfeitos);
+    };
+    
+    const addEfMat = () => setTempEfeitosMat([...tempEfeitosMat, { atributo: '', propriedade: '', valor: '' }]);
     const removeEfMat = (index) => setTempEfeitosMat(tempEfeitosMat.filter((_, i) => i !== index));
 
     const handleImageUpload = (e) => {
@@ -162,14 +168,14 @@ export default function CompendioPanel() {
                             </div>
                         </div>
 
-                        {/* 🔥 O MOTOR MATEMÁTICO (UI) */}
+                        {/* MOTOR MATEMÁTICO (UI CORRIGIDA) */}
                         <div style={{ background: 'rgba(0, 255, 204, 0.05)', padding: '10px', borderRadius: '5px', border: '1px solid rgba(0, 255, 204, 0.3)' }}>
                             <h4 style={{ color: '#00ffcc', margin: '0 0 10px 0', fontSize: '0.9em' }}>⚙️ Motor Matemático (Efeitos Base)</h4>
                             {tempEfeitosMat.map((ef, idx) => (
                                 <div key={idx} style={{ display: 'flex', gap: '5px', marginBottom: '5px' }}>
                                     <input type="text" placeholder="Atributo (ex: dano)" value={ef.atributo} onChange={e => handleEfMat(idx, 'atributo', e.target.value)} className="input-neon" style={{ flex: 1, padding: '4px' }} title="Ex: forca, dano, vida, todos_status" />
                                     <input type="text" placeholder="Prop. (ex: munico)" value={ef.propriedade} onChange={e => handleEfMat(idx, 'propriedade', e.target.value)} className="input-neon" style={{ flex: 1, padding: '4px' }} title="Ex: base, mbase, munico, letalidade" />
-                                    <input type="number" step="0.1" placeholder="Valor" value={ef.valor} onChange={e => handleEfMat(idx, 'valor', e.target.value)} className="input-neon" style={{ width: '80px', padding: '4px' }} />
+                                    <input type="text" placeholder="Valor" value={ef.valor} onChange={e => handleEfMat(idx, 'valor', e.target.value)} className="input-neon" style={{ width: '80px', padding: '4px' }} title="Pode usar decimais. Ex: 10 ou 0.5" />
                                     <button className="btn-neon btn-red" onClick={() => removeEfMat(idx)} style={{ padding: '0 8px', margin: 0 }}>X</button>
                                 </div>
                             ))}
@@ -242,7 +248,6 @@ export default function CompendioPanel() {
                         </div>
                     </div>
                 )}
-                {/* Outras abas omitidas para brevidade, mantenha as originais se quiser! */}
             </div>
         </div>
     );
