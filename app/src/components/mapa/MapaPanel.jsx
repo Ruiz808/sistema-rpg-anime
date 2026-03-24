@@ -460,19 +460,29 @@ export default function MapaPanel() {
             <div style={{ flex: '1 1 70%', minWidth: 0 }}>
                 
                 {/* 🔥 NOVO: MESA DO MESTRE PARA DUMMIES */}
-                {isMestre && (
-                    <div style={{ marginBottom: 15, padding: 10, border: '1px solid #ffcc00', borderRadius: 5, background: 'rgba(0,0,0,0.5)' }}>
-                    <h4 style={{ color: '#ffcc00', marginTop: 0, marginBottom: 10 }}>🤖 Gerador de Entidades</h4>
-                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-                    <input className="input-neon" type="text" placeholder="Nome" id="dummieNome" defaultValue="Boneco de Treino" style={{ width: 130, padding: 5 }}/>
-                    <input className="input-neon" type="number" placeholder="HP" id="dummieHp" defaultValue="100" style={{ width: 80, padding: 5 }} title="Vida Máxima"/>
-                    <select className="input-neon" id="dummieDefTipo" style={{ width: 100, padding: 5 }} title="Base da CA">
-                    <option value="evasiva">Evasiva (Des)</option>
-                    <option value="resistencia">Resist. (For)</option>
-                    </select>
-                    <input className="input-neon" type="number" placeholder="CA" id="dummieDef" defaultValue="10" style={{ width: 60, padding: 5 }} title="Classe de Armadura (5 + Base)"/>
+               {isMestre && (
+                <div style={{ marginBottom: 15, padding: 10, border: '1px solid #ffcc00', borderRadius: 5, background: 'rgba(0,0,0,0.5)' }}>
+                <h4 style={{ color: '#ffcc00', marginTop: 0, marginBottom: 10 }}>🤖 Gerador de Entidades</h4>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                <input className="input-neon" type="text" placeholder="Nome" id="dummieNome" defaultValue="Boneco" style={{ width: 100, padding: 5 }}/>
             
-                    {/* 🔥 NOVO: ESCOLHA DE VISIBILIDADE DO HP */}
+                {/* 🔥 NOVO: HP BASE + VITALIDADE */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#111', padding: '3px 8px', borderRadius: 5, border: '1px solid #444' }}>
+                    <span style={{ color: '#aaa', fontSize: '0.8em' }}>HP Base:</span>
+                    <input className="input-neon" type="number" id="dummieHp" defaultValue="100" style={{ width: 60, padding: 4, margin: 0 }} />
+                    <span style={{ color: '#0f0', fontSize: '0.8em', fontWeight: 'bold' }}>+Vit:</span>
+                    <input className="input-neon" type="number" id="dummieVitalidade" defaultValue="0" min="0" max="15" style={{ width: 45, padding: 4, margin: 0, borderColor: '#0f0', color: '#0f0' }} title="Ex: Vit 3 = adiciona 3 zeros" />
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#111', padding: '3px 8px', borderRadius: 5, border: '1px solid #444' }}>
+                    <select className="input-neon" id="dummieDefTipo" style={{ width: 90, padding: 4, margin: 0 }}>
+                        <option value="evasiva">Evasiva</option>
+                        <option value="resistencia">Resistência</option>
+                    </select>
+                    <span style={{ color: '#0088ff', fontSize: '0.8em', fontWeight: 'bold' }}>CA:</span>
+                    <input className="input-neon" type="number" id="dummieDef" defaultValue="10" style={{ width: 50, padding: 4, margin: 0 }} title="Classe de Armadura (5 + Base)"/>
+                    </div>
+            
                     <select className="input-neon" id="dummieVisivel" style={{ width: 110, padding: 5 }} title="Visibilidade do HP">
                     <option value="todos">HP Visível</option>
                     <option value="mestre">HP Oculto</option>
@@ -480,7 +490,11 @@ export default function MapaPanel() {
 
                     <button className="btn-neon btn-gold" onClick={() => {
                         const n = document.getElementById('dummieNome').value || 'Entidade';
-                        const h = parseInt(document.getElementById('dummieHp').value) || 100;
+                        const hBase = parseInt(document.getElementById('dummieHp').value) || 100;
+                        const vit = parseInt(document.getElementById('dummieVitalidade').value) || 0;
+                    // 🔥 A MATEMÁTICA SHONEN: HP Base * (10 elevado à Vitalidade)
+                        const h = hBase * Math.pow(10, vit);
+
                         const dt = document.getElementById('dummieDefTipo').value;
                         const dv = parseInt(document.getElementById('dummieDef').value) || 10;
                         const vHp = document.getElementById('dummieVisivel').value;
@@ -489,7 +503,6 @@ export default function MapaPanel() {
                     }} style={{ padding: '5px 15px', margin: 0 }}>
                     + Injetar no Mapa
                     </button>
-                    <span style={{ fontSize: '0.8em', color: '#aaa' }}>(Clique no grid para marcar, e clique noutra célula para mover)</span>
                     </div>
                     </div>
                 )}
