@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import useStore from '../../stores/useStore';
-import { getMaximo, getBuffs } from '../../core/attributes';
+import { getMaximo, getBuffs, getPoderesDefesa } from '../../core/attributes';
 import { calcularDano } from '../../core/engine';
 import { salvarFichaSilencioso, enviarParaFeed, salvarDummie } from '../../services/firebase-sync'; 
 
@@ -51,6 +51,9 @@ export default function AtaquePanel() {
     const dummieAlvo = alvoSelecionado && dummies[alvoSelecionado] ? dummies[alvoSelecionado] : null;
     const [podeRolarDano, setPodeRolarDano] = useState(true);
 
+    // 🔥 PUXA A NOVA MARGEM DE CRÍTICO DA CLASSE!
+    const margemBonus = minhaFicha ? getPoderesDefesa(minhaFicha, 'margem_critico') : 0;
+
     useEffect(() => {
         if (!dummieAlvo) {
             setPodeRolarDano(true);
@@ -94,13 +97,18 @@ export default function AtaquePanel() {
                     if (nums.length > 0) maxDado = Math.max(...nums);
                 }
             }
-            setAutoCritFatal(maxDado >= critFatalMin && maxDado <= critFatalMax);
-            setAutoCritNormal(maxDado >= critNormalMin && maxDado <= critNormalMax);
+            
+            // 🔥 O SENSOR AGORA USA A MARGEM BÓNUS PARA DETETAR CRÍTICOS MAIS FÁCEIS
+            const efetivoFatalMin = critFatalMin - margemBonus;
+            const efetivoNormalMin = critNormalMin - margemBonus;
+
+            setAutoCritFatal(maxDado >= efetivoFatalMin && maxDado <= critFatalMax);
+            setAutoCritNormal(maxDado >= efetivoNormalMin && maxDado <= critNormalMax);
         } else {
             setAutoCritFatal(false);
             setAutoCritNormal(false);
         }
-    }, [feedCombate, meuNome, critNormalMin, critNormalMax, critFatalMin, critFatalMax]);
+    }, [feedCombate, meuNome, critNormalMin, critNormalMax, critFatalMin, critFatalMax, margemBonus]);
 
     useEffect(() => {
         const poderes = minhaFicha.poderes || [];
@@ -212,7 +220,6 @@ export default function AtaquePanel() {
         setForcarCritFatal(false);
 
         let extraFeed = {};
-        // 🔥 CÁLCULO DE OVERKILL
         if (dummieAlvo) {
             const danoCausado = result.dano;
             const hpAnterior = dummieAlvo.hpAtual;
@@ -223,7 +230,7 @@ export default function AtaquePanel() {
             extraFeed = { 
                 alvoNome: dummieAlvo.nome, 
                 alvoSobreviveu: novoHp > 0,
-                overkill: overkill // Envia o overkill para o feed
+                overkill: overkill 
             };
         }
 
@@ -246,7 +253,14 @@ export default function AtaquePanel() {
         <div className="ataque-panel">
             
             <div className="def-box" style={{ marginBottom: 15, border: (autoCritFatal ? '2px solid #ff003c' : autoCritNormal ? '2px solid #ffcc00' : 'none') }}>
-                <h3 style={{ color: '#ffcc00', marginBottom: 10 }}>Configurações de Crítico</h3>
+                <h3 style={{ color: '#ffcc00', marginBottom: 5 }}>Configurações de Crítico</h3>
+                
+                {/* 🔥 AVISO VISUAL SE A CLASSE MELHORAR O CRÍTICO */}
+                {margemBonus > 0 && (
+                    <p style={{ color: '#0f0', fontSize: '0.85em', margin: '0 0 10px 0', textShadow: '0 0 5px rgba(0,255,0,0.5)' }}>
+                        ✨ Benção da Classe: Margem de Crítico aumentada em +{margemBonus}!
+                    </p>
+                )}
                 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15, marginBottom: 10 }}>
                     <div style={{ background: 'rgba(255,204,0,0.1)', padding: 8, borderRadius: 5 }}>
@@ -254,7 +268,9 @@ export default function AtaquePanel() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 5 }}>
                             <span style={{ color: '#aaa', fontSize: '0.8em' }}>Min:</span>
                             <input className="input-neon" type="number" value={critNormalMin} onChange={e => setCritNormalMin(e.target.value)} style={{ width: 45, padding: 2 }} />
-                            <span style={{ color: '#aaa', fontSize: '0.8em' }}>Max:</span>
+                            {margemBonus > 0 && <span style={{ color: '#0f0', fontSize: '0.75em' }}>➔ {critNormalMin - margemBonus}</span>}
+                            
+                            <span style={{ color: '#aaa', fontSize: '0.8em', marginLeft: 10 }}>Max:</span>
                             <input className="input-neon" type="number" value={critNormalMax} onChange={e => setCritNormalMax(e.target.value)} style={{ width: 45, padding: 2 }} />
                         </div>
                     </div>
@@ -263,7 +279,9 @@ export default function AtaquePanel() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 5 }}>
                             <span style={{ color: '#aaa', fontSize: '0.8em' }}>Min:</span>
                             <input className="input-neon" type="number" value={critFatalMin} onChange={e => setCritFatalMin(e.target.value)} style={{ width: 45, padding: 2 }} />
-                            <span style={{ color: '#aaa', fontSize: '0.8em' }}>Max:</span>
+                            {margemBonus > 0 && <span style={{ color: '#0f0', fontSize: '0.75em' }}>➔ {critFatalMin - margemBonus}</span>}
+
+                            <span style={{ color: '#aaa', fontSize: '0.8em', marginLeft: 10 }}>Max:</span>
                             <input className="input-neon" type="number" value={critFatalMax} onChange={e => setCritFatalMax(e.target.value)} style={{ width: 45, padding: 2 }} />
                         </div>
                     </div>
