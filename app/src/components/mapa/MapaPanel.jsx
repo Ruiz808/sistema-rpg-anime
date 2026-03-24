@@ -16,6 +16,28 @@ function urlSeguraParaCss(url) {
     return `url("${trimmed.replace(/["\\)]/g, '')}")`;
 }
 
+export function calcularCA(ficha, tipo) {
+    if (!ficha) return 10;
+    let base = 5;
+    if (tipo === 'evasiva') base += (parseInt(ficha.destreza?.base) || 0);
+    if (tipo === 'resistencia') base += (parseInt(ficha.forca?.base) || 0);
+    
+    let bonus = 0;
+    (ficha.poderes || []).forEach(p => {
+        if (p.ativa) {
+            (p.efeitos || []).forEach(e => { if (e.atributo === tipo && e.propriedade === 'base') bonus += parseFloat(e.valor) || 0; });
+        }
+        (p.efeitosPassivos || []).forEach(e => { if (e.atributo === tipo && e.propriedade === 'base') bonus += parseFloat(e.valor) || 0; });
+    });
+    (ficha.passivas || []).forEach(p => {
+        (p.efeitos || []).forEach(e => { if (e.atributo === tipo && e.propriedade === 'base') bonus += parseFloat(e.valor) || 0; });
+    });
+    (ficha.inventario || []).filter(i => i.equipado).forEach(i => {
+        (i.efeitos || []).forEach(e => { if (e.atributo === tipo && e.propriedade === 'base') bonus += parseFloat(e.valor) || 0; });
+    });
+    return Math.floor(base + bonus);
+}
+
 export default function MapaPanel() {
     const { minhaFicha, meuNome, personagens, updateFicha, feedCombate = [], isMestre, dummies, alvoSelecionado } = useStore(); // 🔥 dummies e alvo puxados
 
@@ -423,31 +445,41 @@ export default function MapaPanel() {
                             </div>
                         )}
 
-                        {fichaBase && (
-                            <div style={{ padding: '15px', background: '#050505' }}>
-                                <div style={{
-                                    display: 'flex', flexDirection: 'column', gap: 6,
-                                    background: 'rgba(0,0,0,0.7)', padding: 12, borderRadius: 8,
-                                    border: '1px solid rgba(255,255,255,0.1)'
-                                }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ff4d4d', fontWeight: 'bold' }}>
-                                        <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>HP</span><span>{fmt(fichaBase.vida?.atual)}</span>
-                                    </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#4dffff', fontWeight: 'bold' }}>
-                                        <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>MP</span><span>{fmt(fichaBase.mana?.atual)}</span>
-                                    </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ffff4d', fontWeight: 'bold' }}>
-                                        <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>AU</span><span>{fmt(fichaBase.aura?.atual)}</span>
-                                    </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#00ffcc', fontWeight: 'bold' }}>
-                                        <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>CK</span><span>{fmt(fichaBase.chakra?.atual)}</span>
-                                    </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ff66ff', fontWeight: 'bold' }}>
-                                        <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>CP</span><span>{fmt(fichaBase.corpo?.atual)}</span>
+                {fichaBase && (
+                        <div style={{ padding: '15px', background: '#050505' }}>
+                        <div style={{
+                            display: 'flex', flexDirection: 'column', gap: 6,
+                            background: 'rgba(0,0,0,0.7)', padding: 12, borderRadius: 8,
+                            border: '1px solid rgba(255,255,255,0.1)'
+                        }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ff4d4d', fontWeight: 'bold' }}>
+                    <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>HP</span><span>{fmt(fichaBase.vida?.atual)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#4dffff', fontWeight: 'bold' }}>
+                        <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>MP</span><span>{fmt(fichaBase.mana?.atual)}</span>
+                        </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ffff4d', fontWeight: 'bold' }}>
+                    <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>AU</span><span>{fmt(fichaBase.aura?.atual)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#00ffcc', fontWeight: 'bold' }}>
+                    <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>CK</span><span>{fmt(fichaBase.chakra?.atual)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ff66ff', fontWeight: 'bold' }}>
+                        <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>CP</span><span>{fmt(fichaBase.corpo?.atual)}</span>
+                    </div>
+
+                                {/* 🔥 NOVO: CLASSES DE ARMADURA (CA) */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                                    <div style={{ color: '#0088ff', fontWeight: 'bold', fontSize: '0.9em', textShadow: '0 0 5px #0088ff' }}>
+                                        🛡️ EVA: {calcularCA(fichaBase, 'evasiva')}
+                                </div>
+                                        <div style={{ color: '#ccc', fontWeight: 'bold', fontSize: '0.9em', textShadow: '0 0 5px #ccc' }}>
+                                            🛡️ RES: {calcularCA(fichaBase, 'resistencia')}
                                     </div>
                                 </div>
                             </div>
-                        )}
+                        </div>
+                    )}
                     </>
                 )}
             </div>
