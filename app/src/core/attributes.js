@@ -56,7 +56,18 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false) {
         }
     }
 
-    // 2. Processar Passivas (Ocultas para o Prestígio, Fortes para o Combate)
+    // 2. Processar Efeitos de Equipamentos equipados
+    if (ficha.inventario) {
+        for (let i = 0; i < ficha.inventario.length; i++) {
+            let item = ficha.inventario[i];
+            if (item && item.equipado) {
+                if (item.efeitos) processarEfeitos(item.efeitos);
+                if (item.efeitosPassivos) processarEfeitos(item.efeitosPassivos);
+            }
+        }
+    }
+
+    // 3. Processar Passivas (Ocultas para o Prestígio, Fortes para o Combate)
     if (!ignorarPassivas && ficha.passivas) {
         for (let i = 0; i < ficha.passivas.length; i++) {
             let p = ficha.passivas[i];

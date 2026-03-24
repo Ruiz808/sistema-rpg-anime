@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import useStore from '../../stores/useStore';
 import { salvarFichaSilencioso } from '../../services/firebase-sync';
+import { ATRIBUTOS_AGRUPADOS, PROPRIEDADE_OPTIONS } from '../../core/efeitos-constants';
 
 const BONUS_OPTIONS = [
     { value: 'mult_dano', label: 'Mult Dano' },
@@ -17,6 +18,10 @@ export default function ArsenalPanel() {
     const updateFicha = useStore(s => s.updateFicha);
     const itemEditandoId = useStore(s => s.itemEditandoId);
     const setItemEditandoId = useStore(s => s.setItemEditandoId);
+    const efeitosTempArsenal = useStore(s => s.efeitosTempArsenal);
+    const setEfeitosTempArsenal = useStore(s => s.setEfeitosTempArsenal);
+    const efeitosTempPassivosArsenal = useStore(s => s.efeitosTempPassivosArsenal);
+    const setEfeitosTempPassivosArsenal = useStore(s => s.setEfeitosTempPassivosArsenal);
 
     const [nomeItem, setNomeItem] = useState('');
     const [tipoItem, setTipoItem] = useState('arma');
@@ -25,13 +30,53 @@ export default function ArsenalPanel() {
     const [armaDadosQtd, setArmaDadosQtd] = useState(1);
     const [armaDadosFaces, setArmaDadosFaces] = useState(20);
 
+    const [novoAtr, setNovoAtr] = useState('forca');
+    const [novoProp, setNovoProp] = useState('base');
+    const [novoVal, setNovoVal] = useState('');
+    const [novoAtrPassivo, setNovoAtrPassivo] = useState('forca');
+    const [novoPropPassivo, setNovoPropPassivo] = useState('base');
+    const [novoValPassivo, setNovoValPassivo] = useState('');
+
     const formRef = useRef(null);
+
+    const addEfeitoTemp = () => {
+        if (!novoVal) return;
+        setEfeitosTempArsenal([...efeitosTempArsenal, { atributo: novoAtr, propriedade: novoProp, valor: novoVal }]);
+        setNovoVal('');
+    };
+
+    const removerEfeitoTemp = (index) => {
+        setEfeitosTempArsenal(efeitosTempArsenal.filter((_, i) => i !== index));
+    };
+
+    const addEfeitoPassivoTemp = () => {
+        if (!novoValPassivo) return;
+        setEfeitosTempPassivosArsenal([...efeitosTempPassivosArsenal, { atributo: novoAtrPassivo, propriedade: novoPropPassivo, valor: novoValPassivo }]);
+        setNovoValPassivo('');
+    };
+
+    const removerEfeitoPassivoTemp = (index) => {
+        setEfeitosTempPassivosArsenal(efeitosTempPassivosArsenal.filter((_, i) => i !== index));
+    };
 
     function salvarNovoItem() {
         const n = nomeItem.trim();
         if (!n) {
             alert('Falta o nome do Equipamento!');
             return;
+        }
+
+        const ficha = useStore.getState().ficha;
+        const inventarioAtual = ficha?.inventario || [];
+        let deveLimparEfeitos = true;
+        if (itemEditandoId && tipoItem !== 'arma') {
+            const itemExistente = inventarioAtual.find(i => i.id === itemEditandoId);
+            if (itemExistente) {
+                const tinhaEfeitos = (itemExistente.efeitos || []).length > 0 || (itemExistente.efeitosPassivos || []).length > 0;
+                if (tinhaEfeitos && !confirm('Este item tinha efeitos de arma. Mudar o tipo vai remover todos os efeitos. Continuar?')) {
+                    deveLimparEfeitos = false;
+                }
+            }
         }
 
         updateFicha((ficha) => {
@@ -48,6 +93,11 @@ export default function ArsenalPanel() {
                     if (tipoItem === 'arma') {
                         ficha.inventario[ix].dadosQtd = parseInt(armaDadosQtd) || 1;
                         ficha.inventario[ix].dadosFaces = parseInt(armaDadosFaces) || 20;
+                        ficha.inventario[ix].efeitos = JSON.parse(JSON.stringify(efeitosTempArsenal));
+                        ficha.inventario[ix].efeitosPassivos = JSON.parse(JSON.stringify(efeitosTempPassivosArsenal));
+                    } else if (deveLimparEfeitos) {
+                        ficha.inventario[ix].efeitos = [];
+                        ficha.inventario[ix].efeitosPassivos = [];
                     }
                 }
             } else {
@@ -60,6 +110,8 @@ export default function ArsenalPanel() {
                     bonusValor: bonusValor,
                     dadosQtd: tipoItem === 'arma' ? (parseInt(armaDadosQtd) || 1) : 0,
                     dadosFaces: tipoItem === 'arma' ? (parseInt(armaDadosFaces) || 20) : 0,
+                    efeitos: tipoItem === 'arma' ? JSON.parse(JSON.stringify(efeitosTempArsenal)) : [],
+                    efeitosPassivos: tipoItem === 'arma' ? JSON.parse(JSON.stringify(efeitosTempPassivosArsenal)) : [],
                     equipado: false
                 });
             }
@@ -86,6 +138,8 @@ export default function ArsenalPanel() {
         setBonusValor(p.bonusValor);
         setArmaDadosQtd(p.dadosQtd || 1);
         setArmaDadosFaces(p.dadosFaces || 20);
+        setEfeitosTempArsenal(JSON.parse(JSON.stringify(p.efeitos || [])));
+        setEfeitosTempPassivosArsenal(JSON.parse(JSON.stringify(p.efeitosPassivos || [])));
         if (formRef.current) formRef.current.scrollIntoView({ behavior: 'smooth' });
     }
 
@@ -97,6 +151,8 @@ export default function ArsenalPanel() {
         setBonusValor('');
         setArmaDadosQtd(1);
         setArmaDadosFaces(20);
+        setEfeitosTempArsenal([]);
+        setEfeitosTempPassivosArsenal([]);
     }
 
     function toggleEquiparItem(id) {
@@ -106,7 +162,6 @@ export default function ArsenalPanel() {
             if (itemIndex === -1) return;
 
             const itemToEquip = ficha.inventario[itemIndex];
-            // Mutual exclusion: only 1 weapon, 1 armor
             if (!itemToEquip.equipado && (itemToEquip.tipo === 'arma' || itemToEquip.tipo === 'armadura')) {
                 ficha.inventario.forEach(i => {
                     if (i.tipo === itemToEquip.tipo && i.equipado) i.equipado = false;
@@ -180,6 +235,83 @@ export default function ArsenalPanel() {
                 )}
                 {tipoItem === 'arma' && <p style={{ color: '#0f0', fontSize: '0.85em', margin: '5px 0 0' }}>Dano da Arma: {armaDadosQtd}d{armaDadosFaces}</p>}
 
+                {tipoItem === 'arma' && (
+                    <>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8, marginTop: 10 }}>
+                            <select className="input-neon" value={novoAtr} onChange={e => setNovoAtr(e.target.value)}>
+                                {ATRIBUTOS_AGRUPADOS.map(grupo => (
+                                    <optgroup key={grupo.label} label={grupo.label} style={{ background: '#051010', color: '#0ff' }}>
+                                        {grupo.options.map(a => (
+                                            <option key={a} value={a}>
+                                                {a.replace('_', ' ').toUpperCase()}
+                                            </option>
+                                        ))}
+                                    </optgroup>
+                                ))}
+                            </select>
+                            <select className="input-neon" value={novoProp} onChange={e => setNovoProp(e.target.value)}>
+                                {PROPRIEDADE_OPTIONS.map(p => <option key={p} value={p}>{p.toUpperCase()}</option>)}
+                            </select>
+                            <input className="input-neon" type="text" placeholder="Valor" value={novoVal} onChange={e => setNovoVal(e.target.value)} />
+                            <button className="btn-neon btn-blue" onClick={addEfeitoTemp} style={{ padding: '5px 10px' }}>+ Efeito</button>
+                        </div>
+
+                        <div style={{ marginTop: 10 }}>
+                            {efeitosTempArsenal.length === 0 ? (
+                                <p style={{ color: '#888', fontSize: '0.9em', margin: 0 }}>Nenhum efeito adicionado.</p>
+                            ) : (
+                                efeitosTempArsenal.map((e, i) => {
+                                    const prop = (e.propriedade || '').toLowerCase();
+                                    const isMult = ['mbase', 'mgeral', 'mformas', 'mabs', 'munico'].includes(prop);
+                                    return (
+                                        <div key={i} style={{ color: '#0ff', fontSize: '0.9em', marginBottom: 5, background: 'rgba(0,255,255,0.1)', padding: '5px 10px', borderLeft: '2px solid #0ff', display: 'flex', justifyContent: 'space-between' }}>
+                                            <span>[{(e.atributo || '').replace('_', ' ').toUpperCase()}] - [{(e.propriedade || '').toUpperCase()}]: <strong style={{ color: '#ffcc00' }}>{isMult ? '(x)' : '(+)'} {e.valor}</strong></span>
+                                            <button onClick={() => removerEfeitoTemp(i)} style={{ background: 'transparent', color: '#f00', border: 'none', cursor: 'pointer' }}>X</button>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+
+                        <h4 style={{ color: '#f0f', marginTop: 15, marginBottom: 8, fontSize: '0.95em' }}>Efeitos Passivos (sempre ativos)</h4>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8 }}>
+                            <select className="input-neon" value={novoAtrPassivo} onChange={e => setNovoAtrPassivo(e.target.value)}>
+                                {ATRIBUTOS_AGRUPADOS.map(grupo => (
+                                    <optgroup key={grupo.label} label={grupo.label} style={{ background: '#051010', color: '#f0f' }}>
+                                        {grupo.options.map(a => (
+                                            <option key={a} value={a}>
+                                                {a.replace('_', ' ').toUpperCase()}
+                                            </option>
+                                        ))}
+                                    </optgroup>
+                                ))}
+                            </select>
+                            <select className="input-neon" value={novoPropPassivo} onChange={e => setNovoPropPassivo(e.target.value)}>
+                                {PROPRIEDADE_OPTIONS.map(p => <option key={p} value={p}>{p.toUpperCase()}</option>)}
+                            </select>
+                            <input className="input-neon" type="text" placeholder="Valor" value={novoValPassivo} onChange={e => setNovoValPassivo(e.target.value)} />
+                            <button className="btn-neon" style={{ padding: '5px 10px', borderColor: '#f0f', color: '#f0f' }} onClick={addEfeitoPassivoTemp}>+ Passivo</button>
+                        </div>
+
+                        <div style={{ marginTop: 10 }}>
+                            {efeitosTempPassivosArsenal.length === 0 ? (
+                                <p style={{ color: '#888', fontSize: '0.9em', margin: 0 }}>Nenhum efeito passivo adicionado.</p>
+                            ) : (
+                                efeitosTempPassivosArsenal.map((e, i) => {
+                                    const prop = (e.propriedade || '').toLowerCase();
+                                    const isMult = ['mbase', 'mgeral', 'mformas', 'mabs', 'munico'].includes(prop);
+                                    return (
+                                        <div key={i} style={{ color: '#f0f', fontSize: '0.9em', marginBottom: 5, background: 'rgba(255,0,255,0.1)', padding: '5px 10px', borderLeft: '2px solid #f0f', display: 'flex', justifyContent: 'space-between' }}>
+                                            <span>PASSIVO: [{(e.atributo || '').replace('_', ' ').toUpperCase()}] - [{(e.propriedade || '').toUpperCase()}]: <strong style={{ color: '#ffcc00' }}>{isMult ? '(x)' : '(+)'} {e.valor}</strong></span>
+                                            <button onClick={() => removerEfeitoPassivoTemp(i)} style={{ background: 'transparent', color: '#f00', border: 'none', cursor: 'pointer' }}>X</button>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </>
+                )}
+
                 <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
                     <button className="btn-neon btn-gold" onClick={salvarNovoItem} style={{ flex: 1 }}>
                         {itemEditandoId ? 'Salvar Edicao' : 'Forjar Equipamento'}
@@ -209,6 +341,9 @@ export default function ArsenalPanel() {
                         const prefixo = isMult ? 'x' : '+';
                         const propText = bTipo.replace('_', ' ').toUpperCase();
 
+                        const efeitosAtivos = p.efeitos || [];
+                        const efeitosPassivos = p.efeitosPassivos || [];
+
                         return (
                             <div key={p.id} className="def-box" style={{ borderLeft: `5px solid ${c}`, background: bg, marginBottom: 10 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 15 }}>
@@ -222,6 +357,26 @@ export default function ArsenalPanel() {
                                         <p style={{ color: '#0ff', fontSize: '0.9em', margin: '5px 0 0' }}>
                                             {propText}: <strong style={{ color: '#ffcc00' }}>{prefixo}{p.bonusValor || 0}</strong>
                                         </p>
+                                        {efeitosAtivos.length > 0 && (
+                                            <p style={{ color: '#0ff', fontSize: '0.85em', margin: '5px 0 0' }}>
+                                                {efeitosAtivos.map(e => {
+                                                    if (!e) return '';
+                                                    const pr = (e.propriedade || '').toLowerCase();
+                                                    const isM = ['mbase', 'mgeral', 'mformas', 'mabs', 'munico'].includes(pr);
+                                                    return `[${(e.atributo || '').replace('_', ' ').toUpperCase()}] ${(e.propriedade || '').toUpperCase()}: ${isM ? 'x' : '+'}${e.valor || 0}`;
+                                                }).filter(Boolean).join(' | ')}
+                                            </p>
+                                        )}
+                                        {efeitosPassivos.length > 0 && (
+                                            <p style={{ color: '#f0f', fontSize: '0.85em', margin: '5px 0 0' }}>
+                                                {efeitosPassivos.map(e => {
+                                                    if (!e) return '';
+                                                    const pr = (e.propriedade || '').toLowerCase();
+                                                    const isM = ['mbase', 'mgeral', 'mformas', 'mabs', 'munico'].includes(pr);
+                                                    return `PASSIVO: [${(e.atributo || '').replace('_', ' ').toUpperCase()}] ${(e.propriedade || '').toUpperCase()}: ${isM ? 'x' : '+'}${e.valor || 0}`;
+                                                }).filter(Boolean).join(' | ')}
+                                            </p>
+                                        )}
                                     </div>
                                     <div style={{ display: 'flex', gap: 10 }}>
                                         <button
