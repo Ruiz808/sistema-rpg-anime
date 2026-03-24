@@ -59,6 +59,10 @@
         ".validate": false
       }
     },
+    "dummies": {
+      ".read": true,
+      ".write": true
+    },
     "$other": {
       ".read": false,
       ".write": false

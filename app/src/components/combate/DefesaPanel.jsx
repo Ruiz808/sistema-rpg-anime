@@ -1,47 +1,133 @@
 import React, { useState } from 'react';
 import useStore from '../../stores/useStore';
-import { calcularEvasiva, calcularResistencia, calcularReducao } from '../../core/engine';
+import { calcularReducao } from '../../core/engine';
 import { salvarFichaSilencioso, enviarParaFeed } from '../../services/firebase-sync';
+
+// 🔥 O CÉREBRO DA CLASSE DE ARMADURA (ATUALIZADO PARA LER SÓ 2 DÍGITOS)
+export function calcularCA(ficha, tipo) {
+    if (!ficha) return 10;
+    
+    // Função mágica para extrair apenas os dois primeiros algarismos de qualquer número gigante
+    const getDoisDigitos = (valor) => {
+        if (!valor) return 0;
+        const strVal = String(valor).replace(/[^0-9]/g, ''); // Remove o que não for número
+        if (!strVal) return 0;
+        return parseInt(strVal.substring(0, 2), 10); // Corta tudo depois da 2ª casa
+    };
+
+    let base = 5;
+    if (tipo === 'evasiva') base += getDoisDigitos(ficha.destreza?.base);
+    if (tipo === 'resistencia') base += getDoisDigitos(ficha.forca?.base);
+    
+    let bonus = 0;
+    
+    // Verifica Bónus em Poderes e Formas
+    (ficha.poderes || []).forEach(p => {
+        if (p.ativa) {
+            (p.efeitos || []).forEach(e => {
+                if (e.atributo === tipo && e.propriedade === 'base') bonus += parseFloat(e.valor) || 0;
+            });
+        }
+        (p.efeitosPassivos || []).forEach(e => {
+            if (e.atributo === tipo && e.propriedade === 'base') bonus += parseFloat(e.valor) || 0;
+        });
+    });
+    
+    // Verifica Bónus em Passivas da Ficha
+    (ficha.passivas || []).forEach(p => {
+        (p.efeitos || []).forEach(e => {
+            if (e.atributo === tipo && e.propriedade === 'base') bonus += parseFloat(e.valor) || 0;
+        });
+    });
+    
+    // Verifica Bónus em Itens Equipados
+    (ficha.inventario || []).filter(i => i.equipado).forEach(i => {
+        (i.efeitos || []).forEach(e => {
+            if (e.atributo === tipo && e.propriedade === 'base') bonus += parseFloat(e.valor) || 0;
+        });
+    });
+    
+    return Math.floor(base + bonus);
+}
 
 export default function DefesaPanel() {
     const minhaFicha = useStore(s => s.minhaFicha);
     const meuNome = useStore(s => s.meuNome);
     const updateFicha = useStore(s => s.updateFicha);
     const setAbaAtiva = useStore(s => s.setAbaAtiva);
-    const addFeedEntry = useStore(s => s.addFeedEntry);
 
-    // Evasion
+    const caEvasiva = calcularCA(minhaFicha, 'evasiva');
+    const caResistencia = calcularCA(minhaFicha, 'resistencia');
+
+    // Evasion States
+    const [evaDados, setEvaDados] = useState(0); 
+    const [evaFaces, setEvaFaces] = useState(20);
     const [evaProf, setEvaProf] = useState(0);
     const [evaBonus, setEvaBonus] = useState(0);
 
-    // Resistance
+    // Resistance States
+    const [resDados, setResDados] = useState(0);
+    const [resFaces, setResFaces] = useState(20);
     const [resProf, setResProf] = useState(0);
     const [resBonus, setResBonus] = useState(0);
 
-    // Shield
+    // Shield States
     const [redEnergia, setRedEnergia] = useState('mana');
     const [redPerc, setRedPerc] = useState(0);
     const [redMult, setRedMult] = useState(1);
 
+    function rolar(qtd, faces) {
+        let sum = 0;
+        let rolls = [];
+        for (let i = 0; i < qtd; i++) {
+            const r = Math.floor(Math.random() * faces) + 1;
+            rolls.push(r);
+            sum += r;
+        }
+        return { sum, str: `[${rolls.join(', ')}]` };
+    }
+
     function declararEvasiva() {
+        const qD = parseInt(evaDados) || 0;
+        const fD = parseInt(evaFaces) || 20;
         const prof = parseInt(evaProf) || 0;
         const bonus = parseInt(evaBonus) || 0;
-        const itensEquipados = minhaFicha.inventario ? minhaFicha.inventario.filter(i => i.equipado) : [];
-        const result = calcularEvasiva({ prof, bonus, minhaFicha, itensEquipados });
-        const feedData = { tipo: 'evasiva', nome: meuNome, ...result };
+        
+        let diceTotal = 0;
+        let diceStr = '';
+        if (qD > 0) {
+            const r = rolar(qD, fD);
+            diceTotal = r.sum;
+            diceStr = `🎲 +Dados: ${r.str} | `;
+        }
+
+        const total = caEvasiva + diceTotal + prof + bonus;
+        const baseCalc = `${diceStr}CA Evasiva (${caEvasiva}) + Prof (${prof}) + Bónus Extra (${bonus})`;
+
+        const feedData = { tipo: 'evasiva', nome: meuNome, total, baseCalc };
         enviarParaFeed(feedData);
-        addFeedEntry(feedData);
         setAbaAtiva('aba-log');
     }
 
     function declararResistencia() {
+        const qD = parseInt(resDados) || 0;
+        const fD = parseInt(resFaces) || 20;
         const prof = parseInt(resProf) || 0;
         const bonus = parseInt(resBonus) || 0;
-        const itensEquipados = minhaFicha.inventario ? minhaFicha.inventario.filter(i => i.equipado) : [];
-        const result = calcularResistencia({ prof, bonus, minhaFicha, itensEquipados });
-        const feedData = { tipo: 'resistencia', nome: meuNome, ...result };
+        
+        let diceTotal = 0;
+        let diceStr = '';
+        if (qD > 0) {
+            const r = rolar(qD, fD);
+            diceTotal = r.sum;
+            diceStr = `🎲 +Dados: ${r.str} | `;
+        }
+
+        const total = caResistencia + diceTotal + prof + bonus;
+        const baseCalc = `${diceStr}CA Resistência (${caResistencia}) + Prof (${prof}) + Bónus Extra (${bonus})`;
+
+        const feedData = { tipo: 'resistencia', nome: meuNome, total, baseCalc };
         enviarParaFeed(feedData);
-        addFeedEntry(feedData);
         setAbaAtiva('aba-log');
     }
 
@@ -56,8 +142,6 @@ export default function DefesaPanel() {
             alert(result.erro);
             return;
         }
-
-        // Apply energy drains
         if (result.drenos) {
             updateFicha((ficha) => {
                 for (let i = 0; i < result.drenos.length; i++) {
@@ -69,22 +153,34 @@ export default function DefesaPanel() {
 
         const feedData = { tipo: 'escudo', nome: meuNome, ...result };
         enviarParaFeed(feedData);
-        addFeedEntry(feedData);
         setAbaAtiva('aba-log');
     }
 
     return (
         <div className="defesa-panel">
-            {/* Evasion */}
+            {/* 🔥 EVASIVA ATIVA/PASSIVA */}
             <div className="def-box">
-                <h3 style={{ color: '#0088ff', marginBottom: 10 }}>Esquiva (Evasiva)</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h3 style={{ color: '#0088ff', marginBottom: 5, marginTop: 0 }}>Esquiva Acrobática</h3>
+                    <h2 style={{ color: '#0088ff', margin: 0, textShadow: '0 0 10px #0088ff' }}>CA: {caEvasiva}</h2>
+                </div>
+                <p style={{ color: '#888', fontSize: '0.85em', marginTop: 0 }}>Pode rolar dados caso use uma Reação para se esquivar ativamente.</p>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10 }}>
                     <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Proficiencia</label>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Dados (+)</label>
+                        <input className="input-neon" type="number" min="0" value={evaDados} onChange={e => setEvaDados(e.target.value)} title="Se 0, apenas a CA base é enviada" />
+                    </div>
+                    <div>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Faces (d)</label>
+                        <input className="input-neon" type="number" min="1" value={evaFaces} onChange={e => setEvaFaces(e.target.value)} />
+                    </div>
+                    <div>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Proficiência</label>
                         <input className="input-neon" type="number" value={evaProf} onChange={e => setEvaProf(e.target.value)} />
                     </div>
                     <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Bonus</label>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Bónus Fixo</label>
                         <input className="input-neon" type="number" value={evaBonus} onChange={e => setEvaBonus(e.target.value)} />
                     </div>
                 </div>
@@ -93,16 +189,29 @@ export default function DefesaPanel() {
                 </button>
             </div>
 
-            {/* Resistance */}
+            {/* 🔥 RESISTÊNCIA ATIVA/PASSIVA */}
             <div className="def-box" style={{ marginTop: 15 }}>
-                <h3 style={{ color: '#ccc', marginBottom: 10 }}>Bloqueio (Resistencia)</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h3 style={{ color: '#ccc', marginBottom: 5, marginTop: 0 }}>Bloqueio Bruto</h3>
+                    <h2 style={{ color: '#ccc', margin: 0, textShadow: '0 0 10px #ccc' }}>CA: {caResistencia}</h2>
+                </div>
+                <p style={{ color: '#888', fontSize: '0.85em', marginTop: 0 }}>Pode rolar dados caso use uma Reação para tentar parar o golpe.</p>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10 }}>
                     <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Proficiencia</label>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Dados (+)</label>
+                        <input className="input-neon" type="number" min="0" value={resDados} onChange={e => setResDados(e.target.value)} title="Se 0, apenas a CA base é enviada" />
+                    </div>
+                    <div>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Faces (d)</label>
+                        <input className="input-neon" type="number" min="1" value={resFaces} onChange={e => setResFaces(e.target.value)} />
+                    </div>
+                    <div>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Proficiência</label>
                         <input className="input-neon" type="number" value={resProf} onChange={e => setResProf(e.target.value)} />
                     </div>
                     <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Bonus</label>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Bónus Fixo</label>
                         <input className="input-neon" type="number" value={resBonus} onChange={e => setResBonus(e.target.value)} />
                     </div>
                 </div>
@@ -111,9 +220,9 @@ export default function DefesaPanel() {
                 </button>
             </div>
 
-            {/* Shield */}
+            {/* SHIELD (Mantido intacto) */}
             <div className="def-box" style={{ marginTop: 15 }}>
-                <h3 style={{ color: '#f0f', marginBottom: 10 }}>Escudo (Reducao)</h3>
+                <h3 style={{ color: '#f0f', marginBottom: 10, marginTop: 0 }}>Escudo de Energia (Redução)</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
                     <div>
                         <label style={{ color: '#aaa', fontSize: '0.85em' }}>Energia</label>

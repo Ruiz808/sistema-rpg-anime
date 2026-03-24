@@ -13,6 +13,10 @@ export const ATRIBUTOS_AGRUPADOS = [
         options: ['dano']
     },
     {
+        label: 'DEFESA (CA)',
+        options: ['evasiva', 'resistencia']
+    },
+    {
         label: 'ESPECIAIS (GLOBAIS)',
         options: ['todos_status', 'todas_energias', 'geral']
     }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import useStore from '../../stores/useStore';
 import { calcularAcerto } from '../../core/engine';
+import { getPoderesDefesa } from '../../core/attributes'; // 🔥 IMPORT NOVO
 import { enviarParaFeed, salvarFichaSilencioso } from '../../services/firebase-sync';
 
 const STATS_LIST = [
@@ -15,21 +16,21 @@ const STATS_LIST = [
 ];
 
 export default function AcertoPanel() {
-    // 🔥 Agora puxamos o updateFicha para salvar as vantagens globais
-    const { minhaFicha, meuNome, setAbaAtiva, updateFicha } = useStore();
+    const { minhaFicha, meuNome, setAbaAtiva, updateFicha, alvoSelecionado, dummies } = useStore(); 
 
     const [dados, setDados] = useState(1);
     const [faces, setFaces] = useState(20);
     const [proficiencia, setProficiencia] = useState(0);
     const [bonus, setBonus] = useState(0);
     
-    // 🔥 LÊ DA FICHA GLOBAL
     const vantagens = minhaFicha.ataqueConfig?.vantagens || 0;
     const desvantagens = minhaFicha.ataqueConfig?.desvantagens || 0;
     
     const [statsSelecionados, setStatsSelecionados] = useState(['destreza']);
 
-    // 🔥 FUNÇÕES DE ATUALIZAÇÃO SINCRONIZADA
+    // 🔥 PUXA O BÓNUS DE ACERTO DA CLASSE (MOTOR MATEMÁTICO)
+    const bonusAcertoClasse = minhaFicha ? getPoderesDefesa(minhaFicha, 'bonus_acerto') : 0;
+
     function changeVantagem(e) {
         updateFicha(f => {
             if(!f.ataqueConfig) f.ataqueConfig = {};
@@ -58,24 +59,25 @@ export default function AcertoPanel() {
         const fD = parseInt(faces) || 20;
         const prof = parseInt(proficiencia) || 0;
         const bon = parseInt(bonus) || 0;
-        
-        // Usa as variáveis sincronizadas
         const v = parseInt(vantagens) || 0;
         const d = parseInt(desvantagens) || 0;
         
         const sels = statsSelecionados.length > 0 ? statsSelecionados : ['destreza'];
-
         const itensEquipados = minhaFicha.inventario ? minhaFicha.inventario.filter(i => i.equipado) : [];
 
-        // Injetando as vantagens no motor
         const result = calcularAcerto({ 
             qD, fD, prof, bonus: bon, sels, minhaFicha, itensEquipados, 
             vantagens: v, desvantagens: d 
         });
 
-        const feedData = { tipo: 'acerto', nome: meuNome, ...result };
-        
-        // Fonte Única de Verdade (apenas Firebase)
+        let extraData = {};
+        if (alvoSelecionado && dummies[alvoSelecionado]) {
+            const alvo = dummies[alvoSelecionado];
+            const acertou = result.acertoTotal >= alvo.valorDefesa; 
+            extraData = { alvoNome: alvo.nome, alvoDefesa: alvo.valorDefesa, acertouAlvo: acertou };
+        }
+
+        const feedData = { tipo: 'acerto', nome: meuNome, ...result, ...extraData };
         enviarParaFeed(feedData);
         setAbaAtiva('aba-log');
     }
@@ -83,7 +85,14 @@ export default function AcertoPanel() {
     return (
         <div className="acerto-panel">
             <div className="def-box">
-                <h3 style={{ color: '#f90', marginBottom: 10 }}>Rolagem de Acerto</h3>
+                <h3 style={{ color: '#f90', marginBottom: 5 }}>Rolagem de Acerto</h3>
+
+                {/* 🔥 AVISO VISUAL SE A CLASSE DER ACERTO BÓNUS */}
+                {bonusAcertoClasse > 0 && (
+                    <p style={{ color: '#0f0', fontSize: '0.85em', margin: '0 0 10px 0', textShadow: '0 0 5px rgba(0,255,0,0.5)' }}>
+                        ✨ Instinto de Batalha: A sua classe concede +{bonusAcertoClasse} de Acerto passivo!
+                    </p>
+                )}
 
                 <div style={{ marginBottom: 10 }}>
                     <label style={{ color: '#aaa', fontSize: '0.85em' }}>Atributos de Acerto:</label>
@@ -122,7 +131,6 @@ export default function AcertoPanel() {
                     </div>
                 </div>
 
-                {/* 🔥 A ÁREA TÁTICA DA VANTAGEM */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10, padding: 10, background: 'rgba(0,0,0,0.3)', borderRadius: 5 }}>
                     <div>
                         <label style={{ color: '#0f0', fontSize: '0.85em', textShadow: '0 0 5px #0f0' }}>+ Vantagens</label>
@@ -135,7 +143,7 @@ export default function AcertoPanel() {
                 </div>
 
                 <button className="btn-neon btn-gold" onClick={rolarAcerto} style={{ marginTop: 15, width: '100%', borderColor: '#f90', color: '#f90' }}>
-                    ROLAR ACERTO TÁTICO
+                    {alvoSelecionado && dummies[alvoSelecionado] ? `TENTAR ACERTAR ${dummies[alvoSelecionado].nome.toUpperCase()}` : 'ROLAR ACERTO (SEM ALVO)'}
                 </button>
             </div>
         </div>

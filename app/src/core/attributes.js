@@ -1,4 +1,35 @@
+import useStore from '../stores/useStore';
 import { isFisico, isEnergia, tratarUnico } from './utils.js';
+
+// 🔥 FUNÇÃO UNIVERSAL: Lê a classe do jogador e procura a versão editada pelo Mestre no Compêndio
+export function getEfeitosDeClasse(ficha) {
+    let classeHeroica = (ficha.bio && ficha.bio.classe) ? String(ficha.bio.classe).toLowerCase() : '';
+    if (!classeHeroica) return [];
+
+    let state = useStore.getState();
+    let mestreOverrides = {};
+    
+    // Procura as regras da casa (na ficha do Mestre ou nas de outros jogadores sincronizados)
+    if (state.isMestre && state.minhaFicha?.compendioOverrides) {
+        mestreOverrides = state.minhaFicha.compendioOverrides;
+    } else if (state.personagens) {
+        for (let k of Object.keys(state.personagens)) {
+            if (state.personagens[k]?.compendioOverrides) {
+                mestreOverrides = state.personagens[k].compendioOverrides;
+                break;
+            }
+        }
+    }
+
+    let classData = mestreOverrides[classeHeroica];
+    // Se o Mestre editou a classe e guardou regras matemáticas, use-as!
+    if (classData && classData.efeitosMatematicos) {
+        return classData.efeitosMatematicos;
+    }
+    
+    // Se a classe ainda não foi editada/guardada no Compêndio, retorna vazio
+    return [];
+}
 
 export function getBuffs(ficha, statKey, ignorarPassivas = false) {
     let buffs = { base: 0, mbase: 0, mgeral: 0, mformas: 0, mabs: 0, munico: [], reducaoCusto: 0, regeneracao: 0 };
@@ -26,8 +57,6 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false) {
             
             if (isNaN(val)) val = prop.startsWith('m') ? 1.0 : 0;
 
-            // CORREÇÃO: "todos_status" afeta APENAS os 8 Atributos base. 
-            // Para afetar tudo (Vida, Dano, etc.), usa-se "geral".
             let afeta = (atr === sK) ||
                 (atr === 'todos_status' && isStatFisico) ||
                 (atr === 'todas_energias' && isStatEnergia) ||
@@ -47,7 +76,7 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false) {
         }
     };
 
-    // 1. Processar Poderes (Formas/Modos com interruptor liga/desliga)
+    // 1. Processar Poderes e Passivas
     if (ficha.poderes) {
         for (let i = 0; i < ficha.poderes.length; i++) {
             let p = ficha.poderes[i];
@@ -67,13 +96,16 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false) {
         }
     }
 
-    // 3. Processar Passivas (Ocultas para o Prestígio, Fortes para o Combate)
+    // 3. Processar Passivas
     if (!ignorarPassivas && ficha.passivas) {
         for (let i = 0; i < ficha.passivas.length; i++) {
             let p = ficha.passivas[i];
             if (p && p.efeitos) processarEfeitos(p.efeitos);
         }
     }
+
+    // 🔥 2. PROCESSAR EFEITOS MATEMÁTICOS DE CLASSE DO COMPÊNDIO 🔥
+    processarEfeitos(getEfeitosDeClasse(ficha));
 
     if (!hasBuff.mbase) buffs.mbase = 1.0;
     if (!hasBuff.mgeral) buffs.mgeral = 1.0;
@@ -87,6 +119,8 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false) {
 export function getPoderesDefesa(ficha, tipo) {
     let t = 0;
     if (!ficha || !ficha.poderes) return 0;
+    
+    // Efeitos das habilidades ativas
     for (let i = 0; i < ficha.poderes.length; i++) {
         let p = ficha.poderes[i];
         if (p && p.ativa && p.efeitos) {
@@ -97,6 +131,15 @@ export function getPoderesDefesa(ficha, tipo) {
             }
         }
     }
+    
+    // 🔥 Efeitos de defesa/acerto criados no "Motor Matemático" da Classe no Compêndio
+    let efeitosClasse = getEfeitosDeClasse(ficha);
+    for (let j = 0; j < efeitosClasse.length; j++) {
+        if ((efeitosClasse[j].propriedade || '').toLowerCase() === tipo) {
+            t += (parseFloat(efeitosClasse[j].valor) || 0);
+        }
+    }
+    
     return t;
 }
 

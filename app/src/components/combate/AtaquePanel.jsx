@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import useStore from '../../stores/useStore';
-import { getMaximo, getBuffs } from '../../core/attributes';
+import { getMaximo, getBuffs, getPoderesDefesa } from '../../core/attributes';
 import { calcularDano } from '../../core/engine';
-import { salvarFichaSilencioso, enviarParaFeed } from '../../services/firebase-sync';
+import { salvarFichaSilencioso, enviarParaFeed, salvarDummie } from '../../services/firebase-sync'; 
 
 const STATS_LIST = [
     { value: 'forca', label: 'Forca' },
@@ -27,7 +27,8 @@ export default function AtaquePanel() {
     const meuNome = useStore(s => s.meuNome);
     const updateFicha = useStore(s => s.updateFicha);
     const setAbaAtiva = useStore(s => s.setAbaAtiva);
-    const feedCombate = useStore(s => s.feedCombate); // 🔥 Adicionado para ler o feed
+    const feedCombate = useStore(s => s.feedCombate); 
+    const { alvoSelecionado, dummies } = useStore(); 
 
     const ac = minhaFicha.ataqueConfig || {};
 
@@ -35,7 +36,6 @@ export default function AtaquePanel() {
     const [armaEnergiaCombustao, setArmaEnergiaCombustao] = useState(ac.armaEnergiaCombustao || 'mana');
     const [armaPercEnergia, setArmaPercEnergia] = useState(ac.armaPercEnergia || 0);
 
-    // 🔥 NOVOS ESTADOS: Limites e Auto-Detector de Crítico
     const [critNormalMin, setCritNormalMin] = useState(ac.criticoNormalMin || 16);
     const [critNormalMax, setCritNormalMax] = useState(ac.criticoNormalMax || 18);
     const [critFatalMin, setCritFatalMin] = useState(ac.criticoFatalMin || 19);
@@ -46,23 +46,38 @@ export default function AtaquePanel() {
     const [forcarCritNormal, setForcarCritNormal] = useState(false);
     const [forcarCritFatal, setForcarCritFatal] = useState(false);
 
-    // Per-skill configs stored on the poder objects: statusUsados, energiaCombustao
-    // We use local state keyed by poder.id for in-session changes
     const [skillConfigs, setSkillConfigs] = useState({});
+
+    const dummieAlvo = alvoSelecionado && dummies[alvoSelecionado] ? dummies[alvoSelecionado] : null;
+    const [podeRolarDano, setPodeRolarDano] = useState(true);
+
+    // 🔥 PUXA A NOVA MARGEM DE CRÍTICO DA CLASSE!
+    const margemBonus = minhaFicha ? getPoderesDefesa(minhaFicha, 'margem_critico') : 0;
+
+    useEffect(() => {
+        if (!dummieAlvo) {
+            setPodeRolarDano(true);
+            return;
+        }
+        const meuUltimoAcerto = [...feedCombate].reverse().find(f => f.nome === meuNome && f.tipo === 'acerto' && f.alvoNome === dummieAlvo.nome);
+        if (meuUltimoAcerto) {
+            setPodeRolarDano(meuUltimoAcerto.acertouAlvo); 
+        } else {
+            setPodeRolarDano(false); 
+        }
+    }, [feedCombate, meuNome, dummieAlvo]);
 
     useEffect(() => {
         const ac2 = minhaFicha.ataqueConfig || {};
         setArmaStatusUsados(ac2.armaStatusUsados || ['forca']);
         setArmaEnergiaCombustao(ac2.armaEnergiaCombustao || 'mana');
         setArmaPercEnergia(ac2.armaPercEnergia || 0);
-        // 🔥 Sincronizando limites ao carregar
         setCritNormalMin(ac2.criticoNormalMin || 16);
         setCritNormalMax(ac2.criticoNormalMax || 18);
         setCritFatalMin(ac2.criticoFatalMin || 19);
         setCritFatalMax(ac2.criticoFatalMax || 20);
     }, [minhaFicha.ataqueConfig]);
 
-    // 🔥 O SENSOR TÁTICO: Lê o último acerto no feed
     useEffect(() => {
         const lastAcerto = [...feedCombate].reverse().find(f => f.nome === meuNome && f.tipo === 'acerto');
         if (lastAcerto && lastAcerto.rolagem) {
@@ -73,7 +88,7 @@ export default function AtaquePanel() {
                 let v = parseInt(match[1]);
                 if (v > maxDado) maxDado = v;
             }
-            if (maxDado === 0) { // Fallback se nao tiver strong
+            if (maxDado === 0) { 
                 let regexArr = /\[(.*?)\]/;
                 let mArr = regexArr.exec(lastAcerto.rolagem);
                 if (mArr) {
@@ -82,15 +97,19 @@ export default function AtaquePanel() {
                     if (nums.length > 0) maxDado = Math.max(...nums);
                 }
             }
-            setAutoCritFatal(maxDado >= critFatalMin && maxDado <= critFatalMax);
-            setAutoCritNormal(maxDado >= critNormalMin && maxDado <= critNormalMax);
+            
+            // 🔥 O SENSOR AGORA USA A MARGEM BÓNUS PARA DETETAR CRÍTICOS MAIS FÁCEIS
+            const efetivoFatalMin = critFatalMin - margemBonus;
+            const efetivoNormalMin = critNormalMin - margemBonus;
+
+            setAutoCritFatal(maxDado >= efetivoFatalMin && maxDado <= critFatalMax);
+            setAutoCritNormal(maxDado >= efetivoNormalMin && maxDado <= critNormalMax);
         } else {
             setAutoCritFatal(false);
             setAutoCritNormal(false);
         }
-    }, [feedCombate, meuNome, critNormalMin, critNormalMax, critFatalMin, critFatalMax]);
+    }, [feedCombate, meuNome, critNormalMin, critNormalMax, critFatalMin, critFatalMax, margemBonus]);
 
-    // Initialize skill configs from saved poder data
     useEffect(() => {
         const poderes = minhaFicha.poderes || [];
         const configs = {};
@@ -130,19 +149,16 @@ export default function AtaquePanel() {
     }, []);
 
     function salvarConfigAtaque() {
-        // Save weapon config
         updateFicha((ficha) => {
             if (!ficha.ataqueConfig) ficha.ataqueConfig = {};
             ficha.ataqueConfig.armaStatusUsados = armaStatusUsados;
             ficha.ataqueConfig.armaEnergiaCombustao = armaEnergiaCombustao;
             ficha.ataqueConfig.armaPercEnergia = parseFloat(armaPercEnergia) || 0;
-            // 🔥 Salvando os limites de critico
             ficha.ataqueConfig.criticoNormalMin = parseInt(critNormalMin) || 16;
             ficha.ataqueConfig.criticoNormalMax = parseInt(critNormalMax) || 18;
             ficha.ataqueConfig.criticoFatalMin = parseInt(critFatalMin) || 19;
             ficha.ataqueConfig.criticoFatalMax = parseInt(critFatalMax) || 20;
 
-            // Save per-skill configs into poderes
             if (ficha.poderes) {
                 ficha.poderes.forEach(p => {
                     if (p && skillConfigs[p.id]) {
@@ -161,7 +177,6 @@ export default function AtaquePanel() {
         const itensEquipados = minhaFicha.inventario ? minhaFicha.inventario.filter(i => i.equipado) : [];
         const poderesAtivos = (minhaFicha.poderes || []).filter(p => p && p.ativa);
 
-        // Build per-skill configs for the engine
         const configHabilidades = poderesAtivos.map(p => ({
             id: p.id,
             nome: p.nome,
@@ -183,14 +198,7 @@ export default function AtaquePanel() {
         const isCriticoNormal = forcarCritNormal || autoCritNormal;
         const isCriticoFatal = forcarCritFatal || autoCritFatal;
 
-        const result = calcularDano({
-            minhaFicha,
-            configArma,
-            configHabilidades,
-            itensEquipados,
-            isCriticoNormal, // 🔥 Passando pro motor
-            isCriticoFatal
-        });
+        const result = calcularDano({ minhaFicha, configArma, configHabilidades, itensEquipados, isCriticoNormal, isCriticoFatal });
 
         if (result.erro) {
             alert(result.erro);
@@ -208,15 +216,30 @@ export default function AtaquePanel() {
         }
         salvarFichaSilencioso();
 
-        // Reseta os forçados manuais
         setForcarCritNormal(false);
         setForcarCritFatal(false);
+
+        let extraFeed = {};
+        if (dummieAlvo) {
+            const danoCausado = result.dano;
+            const hpAnterior = dummieAlvo.hpAtual;
+            const novoHp = Math.max(0, hpAnterior - danoCausado);
+            const overkill = danoCausado > hpAnterior ? danoCausado - hpAnterior : 0;
+
+            salvarDummie(alvoSelecionado, { ...dummieAlvo, hpAtual: novoHp });
+            extraFeed = { 
+                alvoNome: dummieAlvo.nome, 
+                alvoSobreviveu: novoHp > 0,
+                overkill: overkill 
+            };
+        }
 
         const feedData = {
             tipo: 'dano', nome: meuNome, dano: result.dano, letalidade: result.letalidade,
             rolagem: result.rolagem, rolagemMagica: result.rolagemMagica,
             atributosUsados: result.atributosUsados, detalheEnergia: result.detalheEnergia,
-            armaStr: result.armaStr, detalheConta: result.detalheConta
+            armaStr: result.armaStr, detalheConta: result.detalheConta,
+            ...extraFeed
         };
 
         enviarParaFeed(feedData);
@@ -229,9 +252,15 @@ export default function AtaquePanel() {
     return (
         <div className="ataque-panel">
             
-            {/* 🔥 NOVO: SENSOR DE CRÍTICO */}
             <div className="def-box" style={{ marginBottom: 15, border: (autoCritFatal ? '2px solid #ff003c' : autoCritNormal ? '2px solid #ffcc00' : 'none') }}>
-                <h3 style={{ color: '#ffcc00', marginBottom: 10 }}>Configurações de Crítico</h3>
+                <h3 style={{ color: '#ffcc00', marginBottom: 5 }}>Configurações de Crítico</h3>
+                
+                {/* 🔥 AVISO VISUAL SE A CLASSE MELHORAR O CRÍTICO */}
+                {margemBonus > 0 && (
+                    <p style={{ color: '#0f0', fontSize: '0.85em', margin: '0 0 10px 0', textShadow: '0 0 5px rgba(0,255,0,0.5)' }}>
+                        ✨ Benção da Classe: Margem de Crítico aumentada em +{margemBonus}!
+                    </p>
+                )}
                 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15, marginBottom: 10 }}>
                     <div style={{ background: 'rgba(255,204,0,0.1)', padding: 8, borderRadius: 5 }}>
@@ -239,7 +268,9 @@ export default function AtaquePanel() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 5 }}>
                             <span style={{ color: '#aaa', fontSize: '0.8em' }}>Min:</span>
                             <input className="input-neon" type="number" value={critNormalMin} onChange={e => setCritNormalMin(e.target.value)} style={{ width: 45, padding: 2 }} />
-                            <span style={{ color: '#aaa', fontSize: '0.8em' }}>Max:</span>
+                            {margemBonus > 0 && <span style={{ color: '#0f0', fontSize: '0.75em' }}>➔ {critNormalMin - margemBonus}</span>}
+                            
+                            <span style={{ color: '#aaa', fontSize: '0.8em', marginLeft: 10 }}>Max:</span>
                             <input className="input-neon" type="number" value={critNormalMax} onChange={e => setCritNormalMax(e.target.value)} style={{ width: 45, padding: 2 }} />
                         </div>
                     </div>
@@ -248,7 +279,9 @@ export default function AtaquePanel() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 5 }}>
                             <span style={{ color: '#aaa', fontSize: '0.8em' }}>Min:</span>
                             <input className="input-neon" type="number" value={critFatalMin} onChange={e => setCritFatalMin(e.target.value)} style={{ width: 45, padding: 2 }} />
-                            <span style={{ color: '#aaa', fontSize: '0.8em' }}>Max:</span>
+                            {margemBonus > 0 && <span style={{ color: '#0f0', fontSize: '0.75em' }}>➔ {critFatalMin - margemBonus}</span>}
+
+                            <span style={{ color: '#aaa', fontSize: '0.8em', marginLeft: 10 }}>Max:</span>
                             <input className="input-neon" type="number" value={critFatalMax} onChange={e => setCritFatalMax(e.target.value)} style={{ width: 45, padding: 2 }} />
                         </div>
                     </div>
@@ -271,7 +304,6 @@ export default function AtaquePanel() {
                 )}
             </div>
 
-            {/* Secao da Arma */}
             {armaEquipada && (
                 <div className="def-box" style={{ marginBottom: 15 }}>
                     <h3 style={{ color: '#0f0', marginBottom: 10 }}>
@@ -313,7 +345,6 @@ export default function AtaquePanel() {
                 </div>
             )}
 
-            {/* Lista de Habilidades Ativas */}
             <div className="def-box">
                 <h3 style={{ color: '#f0f', marginBottom: 10 }}>Habilidades Ativas</h3>
                 {poderesAtivos.length === 0 ? (
@@ -364,10 +395,16 @@ export default function AtaquePanel() {
                 )}
             </div>
 
-            {/* Botoes */}
             <div style={{ display: 'flex', gap: 10, marginTop: 15 }}>
                 <button className="btn-neon btn-gold" onClick={salvarConfigAtaque} style={{ flex: 1 }}>Salvar Config</button>
-                <button className="btn-neon btn-red" onClick={rolarDano} style={{ flex: 1 }}>ROLAR DANO</button>
+                <button 
+                    className={`btn-neon ${podeRolarDano ? 'btn-red' : ''}`} 
+                    onClick={rolarDano} 
+                    style={{ flex: 1, opacity: podeRolarDano ? 1 : 0.5 }}
+                    disabled={!podeRolarDano}
+                >
+                    {dummieAlvo ? (podeRolarDano ? `ATACAR ${dummieAlvo.nome.toUpperCase()}` : `ACERTO NECESSÁRIO`) : 'ROLAR DANO'}
+                </button>
             </div>
         </div>
     );

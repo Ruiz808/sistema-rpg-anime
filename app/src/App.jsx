@@ -16,10 +16,10 @@ import ElementosPanel from './components/arsenal/ElementosPanel'
 import FeedCombate from './components/feed/FeedCombate'
 import MapaPanel from './components/mapa/MapaPanel'
 import Jukebox from './components/jukebox/Jukebox'
-import { carregarFichaDoFirebase } from './services/firebase-sync'
-
-// 🔥 NOVA IMPORTAÇÃO DO COMPÊNDIO
 import CompendioPanel from './components/compendio/CompendioPanel'
+
+// 🔥 NOVO: Listener de Dummies importado
+import { carregarFichaDoFirebase, iniciarListenerDummies } from './services/firebase-sync'
 
 function MestrePanel() {
     const personagens = useStore(s => s.personagens)
@@ -56,6 +56,7 @@ export default function App() {
     const setMeuNome = useStore(s => s.setMeuNome)
     const carregarDadosFicha = useStore(s => s.carregarDadosFicha)
     const abaAtiva = useStore(s => s.abaAtiva)
+    const setDummies = useStore(s => s.setDummies) // 🔥 NOVO: Estado dos Dummies
     const [pronto, setPronto] = useState(false)
 
     useEffect(() => {
@@ -71,6 +72,16 @@ export default function App() {
             setPronto(true)
         }
     }, [setMeuNome, carregarDadosFicha])
+
+    // 🔥 NOVO: Escuta o Firebase para os Dummies
+    useEffect(() => {
+        const unsubDummies = iniciarListenerDummies((dados) => {
+            setDummies(dados || {})
+        })
+        return () => {
+            if (unsubDummies) unsubDummies()
+        }
+    }, [setDummies])
 
     const { loading } = useFirebase()
 
@@ -122,7 +133,6 @@ export default function App() {
                 <TabPanel id="aba-log"><FeedCombate /></TabPanel>
                 <TabPanel id="aba-mapa"><MapaPanel /></TabPanel>
                 <TabPanel id="aba-musica"><Jukebox /></TabPanel>
-                {/* 🔥 AQUI ESTÁ O REGISTO DA NOVA ABA */}
                 <TabPanel id="aba-compendio"><CompendioPanel /></TabPanel>
             </div>
             <ModalConfirm />
