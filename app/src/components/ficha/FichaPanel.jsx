@@ -114,7 +114,6 @@ export default function FichaPanel() {
         comitarBio({ subClasse: novaSub });
     }
 
-    // --- BERSERKER TRACKER (COM COMPRESSÃO DE VIDA) ---
     let multiplicadorFuriaClasse = 0;
     const scanFuria = (efs) => {
         if (!efs) return;
@@ -135,7 +134,6 @@ export default function FichaPanel() {
         scanFuria(getEfeitosDeClasse(minhaFicha));
     }
 
-    // 🔥 CALCULA A VIDA REAL CONSIDERANDO A COMPRESSÃO DO SEU RPG 🔥
     const rawMaxVida = minhaFicha ? getMaximo(minhaFicha, 'vida', true) : 1;
     const strVal = String(Math.floor(rawMaxVida));
     const pVit = Math.max(0, strVal.length - 8);
@@ -274,7 +272,8 @@ export default function FichaPanel() {
         setDmUnico(d.mUnico ?? '1.0');
     }, [minhaFicha.dano]);
 
-    const buffsDano = minhaFicha ? getBuffs(minhaFicha, 'dano') : { _hasBuff: {}, munico: [] };
+    // 🔥 AQUI RECEBEMOS OS FANTASMAS DA MATRIX
+    const buffsDano = minhaFicha ? getBuffs(minhaFicha, 'dano') : { _hasBuff: {}, munico: [], fontesMgeral: [] };
 
     function salvarMultiplicadores() {
         updateFicha((ficha) => {
@@ -563,7 +562,6 @@ export default function FichaPanel() {
                 </button>
             </div>
 
-            {/* 🔥 PAINEL DO BERSERKER COM SCANNER ABSOLUTO 🔥 */}
             {multiplicadorFuriaClasse > 0 && (
                 <div className="def-box fade-in" style={{ marginTop: 15, background: 'rgba(255, 0, 0, 0.1)', border: '1px solid rgba(255,0,0,0.5)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -590,12 +588,11 @@ export default function FichaPanel() {
                         ↳ Bônus no Multiplicador Geral: <strong style={{ color: '#fff' }}>+{multiplicadorFuriaVisor}x</strong>
                     </p>
                     <p style={{ color: '#aaa', fontSize: '0.75em', marginTop: 5, marginBottom: 0 }}>
-                        <i className="fas fa-info-circle"></i> Lembre-se: O botão de Acalmar Fúria só fará efeito verdadeiro se você <strong>curar a sua vida primeiro</strong>. Se a Vida Atual estiver baixa, a fúria volta de imediato!
+                        <i className="fas fa-info-circle"></i> Com 1% de HP perdido ganha o bônus inicial (+{multiplicadorFuriaClasse}x). A partir de 2%, ganha +1x por cada 1% de HP perdido.
                     </p>
                 </div>
             )}
 
-            {/* Multiplicadores de Dano */}
             <div className="def-box" style={{ marginTop: 15 }}>
                 <h3 style={{ color: '#ff003c', marginBottom: 10 }}>Multiplicadores de Dano</h3>
                 <p style={{ color: '#888', fontSize: '0.8em', margin: '0 0 10px' }}>Valores base. Habilidades ativas somam automaticamente.</p>
@@ -611,6 +608,16 @@ export default function FichaPanel() {
                     <div>
                         <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Geral {buffsDano._hasBuff.mgeral && <span style={{ color: '#0f0', fontSize: '0.8em' }}>(Buff: +{buffsDano.mgeral.toFixed(2)})</span>}</label>
                         <input className="input-neon" type="number" step="0.01" value={dmGeral} onChange={e => setDmGeral(e.target.value)} />
+                        
+                        {/* 🔥 RASTREADOR DE FANTASMAS: MOSTRA DE ONDE VEM O DANO! */}
+                        {buffsDano.fontesMgeral && buffsDano.fontesMgeral.length > 0 && (
+                            <div style={{ marginTop: '5px', padding: '5px', background: 'rgba(0,255,0,0.1)', borderRadius: '4px', borderLeft: '2px solid #0f0' }}>
+                                <span style={{ color: '#aaa', fontSize: '0.7em', fontWeight: 'bold', display: 'block', marginBottom: '2px' }}>🔍 Origem dos Buffs:</span>
+                                {buffsDano.fontesMgeral.map((fnt, idx) => (
+                                    <div key={idx} style={{ color: '#0f0', fontSize: '0.7em' }}>• {fnt}</div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                     <div>
                         <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Formas {buffsDano._hasBuff.mformas && <span style={{ color: '#0f0', fontSize: '0.8em' }}>(Buff: +{buffsDano.mformas.toFixed(2)})</span>}</label>

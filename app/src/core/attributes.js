@@ -39,7 +39,8 @@ export function getEfeitosDeClasse(ficha) {
 }
 
 export function getBuffs(ficha, statKey, ignorarPassivas = false, avoidLoop = false) {
-    let buffs = { base: 0, mbase: 0, mgeral: 0, mformas: 0, mabs: 0, munico: [], reducaoCusto: 0, regeneracao: 0 };
+    // 🔥 RASTREADOR ADICIONADO: 'fontesMgeral' vai gravar os nomes
+    let buffs = { base: 0, mbase: 0, mgeral: 0, mformas: 0, mabs: 0, munico: [], reducaoCusto: 0, regeneracao: 0, fontesMgeral: [] };
     let hasBuff = { mbase: false, mgeral: false, mformas: false, mabs: false };
 
     if (!ficha || !statKey) {
@@ -54,7 +55,8 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false, avoidLoop = fa
 
     let maxFuriaVal = 0; 
 
-    const processarEfeitos = (efeitos) => {
+    // O Motor agora recebe a "origem" para saber quem é o culpado do bónus
+    const processarEfeitos = (efeitos, origemNome) => {
         if (!efeitos) return;
         for (let j = 0; j < efeitos.length; j++) {
             let e = efeitos[j];
@@ -76,7 +78,12 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false, avoidLoop = fa
                 }
                 else if (prop === 'base') buffs.base += val;
                 else if (prop === 'mbase') { buffs.mbase += val; hasBuff.mbase = true; }
-                else if (prop === 'mgeral') { buffs.mgeral += val; hasBuff.mgeral = true; }
+                else if (prop === 'mgeral') { 
+                    buffs.mgeral += val; 
+                    hasBuff.mgeral = true; 
+                    // Grava o nome e o valor para o Mestre ver
+                    buffs.fontesMgeral.push(`[${origemNome}] +${val}x`); 
+                }
                 else if (prop === 'mformas') { buffs.mformas += val; hasBuff.mformas = true; }
                 else if (prop === 'mabs') { buffs.mabs += val; hasBuff.mabs = true; }
                 else if (prop === 'munico') buffs.munico.push(val);
@@ -89,8 +96,8 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false, avoidLoop = fa
     if (ficha.poderes) {
         for (let i = 0; i < ficha.poderes.length; i++) {
             let p = ficha.poderes[i];
-            if (p && p.ativa && p.efeitos) processarEfeitos(p.efeitos);
-            if (p && p.efeitosPassivos) processarEfeitos(p.efeitosPassivos);
+            if (p && p.ativa && p.efeitos) processarEfeitos(p.efeitos, `Poder: ${p.nome}`);
+            if (p && p.efeitosPassivos) processarEfeitos(p.efeitosPassivos, `Poder(Pass): ${p.nome}`);
         }
     }
 
@@ -98,8 +105,8 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false, avoidLoop = fa
         for (let i = 0; i < ficha.inventario.length; i++) {
             let item = ficha.inventario[i];
             if (item && item.equipado) {
-                if (item.efeitos) processarEfeitos(item.efeitos);
-                if (item.efeitosPassivos) processarEfeitos(item.efeitosPassivos);
+                if (item.efeitos) processarEfeitos(item.efeitos, `Item: ${item.nome}`);
+                if (item.efeitosPassivos) processarEfeitos(item.efeitosPassivos, `Item(Pass): ${item.nome}`);
             }
         }
     }
@@ -107,19 +114,17 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false, avoidLoop = fa
     if (!ignorarPassivas && ficha.passivas) {
         for (let i = 0; i < ficha.passivas.length; i++) {
             let p = ficha.passivas[i];
-            if (p && p.efeitos) processarEfeitos(p.efeitos);
+            if (p && p.efeitos) processarEfeitos(p.efeitos, `Passiva: ${p.nome}`);
         }
     }
 
-    processarEfeitos(getEfeitosDeClasse(ficha));
+    processarEfeitos(getEfeitosDeClasse(ficha), `Classe Mística`);
 
-    // 🔥 APLICA A FÚRIA COM A LEITURA CORRETA DE COMPRESSÃO DE HP 🔥
     if (maxFuriaVal > 0 && !avoidLoop) {
         let rawMaxVida = getMaximo(ficha, 'vida', true); 
         let strVal = String(Math.floor(rawMaxVida));
         let pVit = Math.max(0, strVal.length - 8);
         
-        // Pega a Vida Máxima na mesma escala comprimida que a Ficha grava a Vida Atual!
         let maxVida = pVit > 0 ? Math.floor(rawMaxVida / Math.pow(10, pVit)) : rawMaxVida;
         let atualVida = ficha.vida?.atual ?? maxVida;
         
@@ -139,7 +144,10 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false, avoidLoop = fa
         }
         
         buffs.mgeral += multiplicadorGanho;
-        if (multiplicadorGanho > 0) hasBuff.mgeral = true;
+        if (multiplicadorGanho > 0) {
+            hasBuff.mgeral = true;
+            buffs.fontesMgeral.push(`[Fúria Berserker] +${multiplicadorGanho}x`); 
+        }
     }
 
     if (!hasBuff.mbase) buffs.mbase = 1.0;
