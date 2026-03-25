@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import useStore from '../../stores/useStore';
-import { getMaximo, getBuffs, getPoderesDefesa } from '../../core/attributes';
+import { getMaximo, getBuffs, getEfeitosDeClasse } from '../../core/attributes';
 import { calcularDano } from '../../core/engine';
 import { salvarFichaSilencioso, enviarParaFeed, salvarDummie } from '../../services/firebase-sync'; 
 
@@ -51,8 +51,41 @@ export default function AtaquePanel() {
     const dummieAlvo = alvoSelecionado && dummies[alvoSelecionado] ? dummies[alvoSelecionado] : null;
     const [podeRolarDano, setPodeRolarDano] = useState(true);
 
-    // 🔥 PUXA A NOVA MARGEM DE CRÍTICO DA CLASSE!
-    const margemBonus = minhaFicha ? getPoderesDefesa(minhaFicha, 'margem_critico') : 0;
+    // 🔥 LÓGICA DO RASTREADOR DE FÚRIA BERSERKER (SALVAMENTO SEGURO)
+    const efeitosClasse = minhaFicha ? getEfeitosDeClasse(minhaFicha) : [];
+    let multiplicadorFuriaClasse = 0;
+    efeitosClasse.forEach(ef => {
+        let propNormalizada = (ef.propriedade || '').toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        if (propNormalizada === 'furia_berserker') {
+            multiplicadorFuriaClasse += parseFloat(ef.valor) || 0;
+        }
+    });
+
+    const maxVida = minhaFicha ? getMaximo(minhaFicha, 'vida', true) : 1;
+    const atualVida = minhaFicha?.vida?.atual ?? maxVida;
+    const percAtualLostFloor = Math.floor(maxVida > 0 ? Math.max(0, ((maxVida - atualVida) / maxVida) * 100) : 0);
+    const furiaMax = minhaFicha?.combate?.furiaMax || 0;
+
+    // Salva o novo recorde no banco de dados com segurança
+    useEffect(() => {
+        if (multiplicadorFuriaClasse > 0 && percAtualLostFloor > furiaMax) {
+            updateFicha(f => {
+                if (!f.combate) f.combate = {};
+                f.combate.furiaMax = percAtualLostFloor;
+            });
+            salvarFichaSilencioso();
+        }
+    }, [percAtualLostFloor, furiaMax, multiplicadorFuriaClasse, updateFicha]);
+
+    function acalmarFuria() {
+        if(window.confirm('Deseja acalmar a sua Fúria? Os multiplicadores de dor acumulada serão resetados de acordo com a sua cura atual.')){
+            updateFicha(f => {
+                if (!f.combate) f.combate = {};
+                f.combate.furiaMax = percAtualLostFloor; // Reseta para a % de vida que falta no momento exato do clique!
+            });
+            salvarFichaSilencioso();
+        }
+    }
 
     useEffect(() => {
         if (!dummieAlvo) {
@@ -97,18 +130,13 @@ export default function AtaquePanel() {
                     if (nums.length > 0) maxDado = Math.max(...nums);
                 }
             }
-            
-            // 🔥 O SENSOR AGORA USA A MARGEM BÓNUS PARA DETETAR CRÍTICOS MAIS FÁCEIS
-            const efetivoFatalMin = critFatalMin - margemBonus;
-            const efetivoNormalMin = critNormalMin - margemBonus;
-
-            setAutoCritFatal(maxDado >= efetivoFatalMin && maxDado <= critFatalMax);
-            setAutoCritNormal(maxDado >= efetivoNormalMin && maxDado <= critNormalMax);
+            setAutoCritFatal(maxDado >= critFatalMin && maxDado <= critFatalMax);
+            setAutoCritNormal(maxDado >= critNormalMin && maxDado <= critNormalMax);
         } else {
             setAutoCritFatal(false);
             setAutoCritNormal(false);
         }
-    }, [feedCombate, meuNome, critNormalMin, critNormalMax, critFatalMin, critFatalMax, margemBonus]);
+    }, [feedCombate, meuNome, critNormalMin, critNormalMax, critFatalMin, critFatalMax]);
 
     useEffect(() => {
         const poderes = minhaFicha.poderes || [];
@@ -252,15 +280,31 @@ export default function AtaquePanel() {
     return (
         <div className="ataque-panel">
             
-            <div className="def-box" style={{ marginBottom: 15, border: (autoCritFatal ? '2px solid #ff003c' : autoCritNormal ? '2px solid #ffcc00' : 'none') }}>
-                <h3 style={{ color: '#ffcc00', marginBottom: 5 }}>Configurações de Crítico</h3>
-                
-                {/* 🔥 AVISO VISUAL SE A CLASSE MELHORAR O CRÍTICO */}
-                {margemBonus > 0 && (
-                    <p style={{ color: '#0f0', fontSize: '0.85em', margin: '0 0 10px 0', textShadow: '0 0 5px rgba(0,255,0,0.5)' }}>
-                        ✨ Benção da Classe: Margem de Crítico aumentada em +{margemBonus}!
+            {/* 🔥 PAINEL DO BERSERKER SÓ APARECE SE TIVER A CLASSE/PODER 🔥 */}
+            {multiplicadorFuriaClasse > 0 && (
+                <div className="def-box fade-in" style={{ marginBottom: 15, background: 'rgba(255, 0, 0, 0.1)', border: '1px solid rgba(255,0,0,0.5)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h3 style={{ color: '#ff0000', margin: 0, textShadow: '0 0 5px #ff0000' }}>🩸 Fúria Berserker (Mad Enhancement)</h3>
+                        <button className="btn-neon btn-small" onClick={acalmarFuria} style={{ margin: 0, borderColor: '#fff', color: '#fff' }}>Acalmar Fúria</button>
+                    </div>
+                    <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                        <div style={{ background: 'rgba(0,0,0,0.5)', padding: '10px', borderRadius: '5px' }}>
+                            <span style={{ color: '#aaa', fontSize: '0.8em', display: 'block' }}>Vida Perdida Atual:</span>
+                            <span style={{ color: '#ffcc00', fontSize: '1.2em', fontWeight: 'bold' }}>{percAtualLostFloor}%</span>
+                        </div>
+                        <div style={{ background: 'rgba(255,0,0,0.2)', padding: '10px', borderRadius: '5px', borderLeft: '3px solid #ff0000' }}>
+                            <span style={{ color: '#aaa', fontSize: '0.8em', display: 'block' }}>Máximo Atingido (Mantido após Cura):</span>
+                            <span style={{ color: '#ff0000', fontSize: '1.2em', fontWeight: 'bold' }}>{Math.max(percAtualLostFloor, furiaMax)}%</span>
+                        </div>
+                    </div>
+                    <p style={{ color: '#0f0', fontSize: '0.9em', marginTop: 10, marginBottom: 0 }}>
+                        ↳ Multiplicador Geral de Dano / Status: <strong style={{ color: '#fff' }}>+{Math.max(percAtualLostFloor, furiaMax) * multiplicadorFuriaClasse}x</strong>
                     </p>
-                )}
+                </div>
+            )}
+
+            <div className="def-box" style={{ marginBottom: 15, border: (autoCritFatal ? '2px solid #ff003c' : autoCritNormal ? '2px solid #ffcc00' : 'none') }}>
+                <h3 style={{ color: '#ffcc00', marginBottom: 10 }}>Configurações de Crítico</h3>
                 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15, marginBottom: 10 }}>
                     <div style={{ background: 'rgba(255,204,0,0.1)', padding: 8, borderRadius: 5 }}>
@@ -268,9 +312,7 @@ export default function AtaquePanel() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 5 }}>
                             <span style={{ color: '#aaa', fontSize: '0.8em' }}>Min:</span>
                             <input className="input-neon" type="number" value={critNormalMin} onChange={e => setCritNormalMin(e.target.value)} style={{ width: 45, padding: 2 }} />
-                            {margemBonus > 0 && <span style={{ color: '#0f0', fontSize: '0.75em' }}>➔ {critNormalMin - margemBonus}</span>}
-                            
-                            <span style={{ color: '#aaa', fontSize: '0.8em', marginLeft: 10 }}>Max:</span>
+                            <span style={{ color: '#aaa', fontSize: '0.8em' }}>Max:</span>
                             <input className="input-neon" type="number" value={critNormalMax} onChange={e => setCritNormalMax(e.target.value)} style={{ width: 45, padding: 2 }} />
                         </div>
                     </div>
@@ -279,9 +321,7 @@ export default function AtaquePanel() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 5 }}>
                             <span style={{ color: '#aaa', fontSize: '0.8em' }}>Min:</span>
                             <input className="input-neon" type="number" value={critFatalMin} onChange={e => setCritFatalMin(e.target.value)} style={{ width: 45, padding: 2 }} />
-                            {margemBonus > 0 && <span style={{ color: '#0f0', fontSize: '0.75em' }}>➔ {critFatalMin - margemBonus}</span>}
-
-                            <span style={{ color: '#aaa', fontSize: '0.8em', marginLeft: 10 }}>Max:</span>
+                            <span style={{ color: '#aaa', fontSize: '0.8em' }}>Max:</span>
                             <input className="input-neon" type="number" value={critFatalMax} onChange={e => setCritFatalMax(e.target.value)} style={{ width: 45, padding: 2 }} />
                         </div>
                     </div>

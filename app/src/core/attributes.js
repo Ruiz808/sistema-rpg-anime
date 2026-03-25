@@ -1,8 +1,6 @@
 import useStore from '../stores/useStore';
 import { isFisico, isEnergia, tratarUnico } from './utils.js';
 
-// 🔥 FUNÇÃO UNIVERSAL: Lê a classe do jogador e procura a versão editada pelo Mestre no Compêndio
-// AGORA COM SUPORTE À SUB-CLASSE DO ALTER EGO E PRETENDER
 export function getEfeitosDeClasse(ficha) {
     let classeHeroica = (ficha.bio && ficha.bio.classe) ? String(ficha.bio.classe).toLowerCase() : '';
     let subClasse = (ficha.bio && ficha.bio.subClasse) ? String(ficha.bio.subClasse).toLowerCase() : '';
@@ -12,7 +10,6 @@ export function getEfeitosDeClasse(ficha) {
     let state = useStore.getState();
     let mestreOverrides = {};
     
-    // Procura as regras da casa (na ficha do Mestre ou nas de outros jogadores sincronizados)
     if (state.isMestre && state.minhaFicha?.compendioOverrides) {
         mestreOverrides = state.minhaFicha.compendioOverrides;
     } else if (state.personagens) {
@@ -26,17 +23,14 @@ export function getEfeitosDeClasse(ficha) {
 
     let efeitos = [];
 
-    // 1. Puxa os Efeitos da Classe Principal
     let classData = mestreOverrides[classeHeroica];
     if (classData && classData.efeitosMatematicos) {
         efeitos = [...classData.efeitosMatematicos];
     }
 
-    // 🔥 2. MAGIA DO ALTER EGO & PRETENDER: Soma os Efeitos da Sub-Classe!
     if ((classeHeroica === 'alterego' || classeHeroica === 'pretender') && subClasse) {
         let subClassData = mestreOverrides[subClasse];
         if (subClassData && subClassData.efeitosMatematicos) {
-            // Junta os feitiços da Classe Principal com os do Disfarce!
             efeitos = [...efeitos, ...subClassData.efeitosMatematicos];
         }
     }
@@ -44,7 +38,8 @@ export function getEfeitosDeClasse(ficha) {
     return efeitos;
 }
 
-export function getBuffs(ficha, statKey, ignorarPassivas = false) {
+// 🔥 A TRAVA DE SEGURANÇA: 'avoidLoop' impede que o Berserker crie um paradoxo infinito
+export function getBuffs(ficha, statKey, ignorarPassivas = false, avoidLoop = false) {
     let buffs = { base: 0, mbase: 0, mgeral: 0, mformas: 0, mabs: 0, munico: [], reducaoCusto: 0, regeneracao: 0 };
     let hasBuff = { mbase: false, mgeral: false, mformas: false, mabs: false };
 
@@ -58,7 +53,6 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false) {
     let isStatFisico = isFisico(sK);
     let isStatEnergia = isEnergia(sK);
 
-    // FUNÇÃO INTERNA: Processa os efeitos sem precisarmos repetir código
     const processarEfeitos = (efeitos) => {
         if (!efeitos) return;
         for (let j = 0; j < efeitos.length; j++) {
@@ -77,19 +71,43 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false) {
                 (atr === 'dano' && sK === 'dano');
 
             if (afeta) {
-                if (prop === 'base') buffs.base += val;
-                if (prop === 'mbase') { buffs.mbase += val; hasBuff.mbase = true; }
-                if (prop === 'mgeral') { buffs.mgeral += val; hasBuff.mgeral = true; }
-                if (prop === 'mformas') { buffs.mformas += val; hasBuff.mformas = true; }
-                if (prop === 'mabs') { buffs.mabs += val; hasBuff.mabs = true; }
-                if (prop === 'munico') buffs.munico.push(val);
-                if (prop === 'reducaocusto') buffs.reducaoCusto += val;
-                if (prop === 'regeneracao') buffs.regeneracao += val;
+                // 🩸 A MAGIA NEGRA DO BERSERKER
+                if (prop === 'furia_berserker') {
+                    if (avoidLoop) continue; // Trava contra paradoxo temporal!
+                    
+                    // Calcula o HP Máximo em tempo real com a Trava Ativada (Ignora a própria fúria no processo)
+                    let maxVida = getMaximo(ficha, 'vida', true); 
+                    let atualVida = ficha.vida?.atual ?? maxVida;
+                    
+                    // Regra de 3 para descobrir a % de vida perdida dinâmica
+                    let percLost = maxVida > 0 ? Math.max(0, ((maxVida - atualVida) / maxVida) * 100) : 0;
+                    
+                    // Puxa a "Marca Histórica" (o quanto ele já sofreu antes de ser curado)
+                    let furiaMax = (ficha.combate && ficha.combate.furiaMax) !== undefined 
+                                    ? parseFloat(ficha.combate.furiaMax) 
+                                    : 0;
+                                    
+                    // A Fúria Ativa é sempre o MAIOR valor: o dano atual OU o máximo histórico gravado
+                    let percEfetivo = Math.floor(Math.max(percLost, furiaMax));
+                    
+                    // 1% perdido = Multiplicador (Se val for 1.5 e perdeu 20%, ganha 30x de mgeral!)
+                    let multiplicadorGanho = percEfetivo * val; 
+                    
+                    buffs.mgeral += multiplicadorGanho;
+                    hasBuff.mgeral = true;
+                }
+                else if (prop === 'base') buffs.base += val;
+                else if (prop === 'mbase') { buffs.mbase += val; hasBuff.mbase = true; }
+                else if (prop === 'mgeral') { buffs.mgeral += val; hasBuff.mgeral = true; }
+                else if (prop === 'mformas') { buffs.mformas += val; hasBuff.mformas = true; }
+                else if (prop === 'mabs') { buffs.mabs += val; hasBuff.mabs = true; }
+                else if (prop === 'munico') buffs.munico.push(val);
+                else if (prop === 'reducaocusto') buffs.reducaoCusto += val;
+                else if (prop === 'regeneracao') buffs.regeneracao += val;
             }
         }
     };
 
-    // 1. Processar Poderes e Passivas
     if (ficha.poderes) {
         for (let i = 0; i < ficha.poderes.length; i++) {
             let p = ficha.poderes[i];
@@ -98,7 +116,6 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false) {
         }
     }
 
-    // 2. Processar Efeitos de Equipamentos equipados (A contribuição do seu amigo)
     if (ficha.inventario) {
         for (let i = 0; i < ficha.inventario.length; i++) {
             let item = ficha.inventario[i];
@@ -109,7 +126,6 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false) {
         }
     }
 
-    // 3. Processar Passivas
     if (!ignorarPassivas && ficha.passivas) {
         for (let i = 0; i < ficha.passivas.length; i++) {
             let p = ficha.passivas[i];
@@ -117,7 +133,6 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false) {
         }
     }
 
-    // 🔥 4. PROCESSAR EFEITOS MATEMÁTICOS DE CLASSE DO COMPÊNDIO 🔥
     processarEfeitos(getEfeitosDeClasse(ficha));
 
     if (!hasBuff.mbase) buffs.mbase = 1.0;
@@ -133,7 +148,6 @@ export function getPoderesDefesa(ficha, tipo) {
     let t = 0;
     if (!ficha || !ficha.poderes) return 0;
     
-    // Efeitos das habilidades ativas
     for (let i = 0; i < ficha.poderes.length; i++) {
         let p = ficha.poderes[i];
         if (p && p.ativa && p.efeitos) {
@@ -145,7 +159,6 @@ export function getPoderesDefesa(ficha, tipo) {
         }
     }
     
-    // 🔥 Efeitos de defesa/acerto criados no "Motor Matemático" da Classe no Compêndio
     let efeitosClasse = getEfeitosDeClasse(ficha);
     for (let j = 0; j < efeitosClasse.length; j++) {
         if ((efeitosClasse[j].propriedade || '').toLowerCase() === tipo) {
@@ -187,16 +200,17 @@ export function getRawBase(ficha, statKey) {
     return (s && s.base) ? parseFloat(s.base) : 0;
 }
 
-export function getEfetivoBase(ficha, statKey) {
+// Repassa a trava de segurança em todas as cascatas de cálculo
+export function getEfetivoBase(ficha, statKey, avoidLoop = false) {
     let rawBase = getRawBase(ficha, statKey);
     if (isNaN(rawBase)) rawBase = 0;
-    return rawBase + getBuffs(ficha, statKey).base;
+    return rawBase + getBuffs(ficha, statKey, false, avoidLoop).base;
 }
 
-export function getMultiplicadorTotal(ficha, k) {
+export function getMultiplicadorTotal(ficha, k, avoidLoop = false) {
     if (!ficha || !k) return 1.0;
     let s = ficha[k] || {};
-    let b = getBuffs(ficha, k);
+    let b = getBuffs(ficha, k, false, avoidLoop);
 
     const calcAdd = (fichaVal, buffSum, hasBuffFlag) => {
         let v = parseFloat(fichaVal) || 1.0;
@@ -219,9 +233,9 @@ export function getMultiplicadorTotal(ficha, k) {
     return mB * mG * mF * mA * uniFicha * mU;
 }
 
-export function getMaximo(ficha, k) {
-    let b = getEfetivoBase(ficha, k);
-    let mult = getMultiplicadorTotal(ficha, k);
+export function getMaximo(ficha, k, avoidLoop = false) {
+    let b = getEfetivoBase(ficha, k, avoidLoop);
+    let mult = getMultiplicadorTotal(ficha, k, avoidLoop);
     let mx = Math.floor(b * mult);
     return isNaN(mx) ? 0 : mx;
 }
