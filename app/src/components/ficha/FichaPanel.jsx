@@ -53,8 +53,15 @@ export default function FichaPanel() {
     // --- BIO ---
     const [raca, setRaca] = useState('');
     const [classe, setClasse] = useState('');
-    const [subClasse, setSubClasse] = useState(''); 
-    const [classesMemorizadas, setClassesMemorizadas] = useState([]); // 🔥 NOVO: A Memória do Pretender
+    const [subClasse, setSubClasse] = useState(''); // Esta é a variável que o Motor (Engine) lê!
+    
+    // Variáveis exclusivas do Alter Ego
+    const [alterEgoSlot1, setAlterEgoSlot1] = useState('');
+    const [alterEgoSlot2, setAlterEgoSlot2] = useState('');
+    
+    // Variável exclusiva do Pretender
+    const [classesMemorizadas, setClassesMemorizadas] = useState([]); 
+
     const [idade, setIdade] = useState('');
     const [fisico, setFisico] = useState('');
     const [sangue, setSangue] = useState('');
@@ -68,7 +75,9 @@ export default function FichaPanel() {
         setRaca(bio.raca || '');
         setClasse(bio.classe || '');
         setSubClasse(bio.subClasse || ''); 
-        setClassesMemorizadas(bio.classesMemorizadas || []); // 🔥 Carrega a memória
+        setAlterEgoSlot1(bio.alterEgoSlot1 || '');
+        setAlterEgoSlot2(bio.alterEgoSlot2 || '');
+        setClassesMemorizadas(bio.classesMemorizadas || []); 
         setIdade(bio.idade || '');
         setFisico(bio.fisico || '');
         setSangue(bio.sangue || '');
@@ -87,7 +96,9 @@ export default function FichaPanel() {
             ficha.bio.raca = raca;
             ficha.bio.classe = classe;
             ficha.bio.subClasse = subClasse; 
-            ficha.bio.classesMemorizadas = classesMemorizadas; // 🔥 Salva a memória
+            ficha.bio.alterEgoSlot1 = alterEgoSlot1;
+            ficha.bio.alterEgoSlot2 = alterEgoSlot2;
+            ficha.bio.classesMemorizadas = classesMemorizadas; 
             ficha.bio.idade = idade;
             ficha.bio.fisico = fisico;
             ficha.bio.sangue = sangue;
@@ -105,7 +116,7 @@ export default function FichaPanel() {
         setClassesMemorizadas(prev => {
             if (prev.includes(val)) {
                 const novaLista = prev.filter(v => v !== val);
-                if (subClasse === val) setSubClasse(''); // Tira o disfarce se esquecer a classe
+                if (subClasse === val) setSubClasse(''); 
                 return novaLista;
             }
             return [...prev, val];
@@ -263,23 +274,75 @@ export default function FichaPanel() {
                         </select>
                     </div>
 
-                    {/* 🔥 1. A MAGIA DO ALTER EGO (Sub-Classe Livre) */}
+                    {/* 🔥 1. A MAGIA DO ALTER EGO (Dois Slots + Alternância Ativa) */}
                     {(classe === 'alterego') && (
-                        <div className="fade-in" style={{ gridColumn: 'span 2', background: 'rgba(255, 0, 255, 0.1)', padding: '10px', borderRadius: '5px', border: '1px dashed #ff00ff' }}>
-                            <label style={{ color: '#ff00ff', fontSize: '0.85em', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                🎭 Fragmento de Ego (Sub-Classe)
+                        <div className="fade-in" style={{ gridColumn: 'span 2', background: 'rgba(255, 0, 255, 0.1)', padding: '15px', borderRadius: '5px', border: '1px dashed #ff00ff' }}>
+                            <label style={{ color: '#ff00ff', fontSize: '0.9em', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                🎭 Dualidade (Fragmentos de Ego)
                             </label>
-                            <p style={{ color: '#aaa', fontSize: '0.75em', margin: '2px 0 8px 0' }}>Como Alter Ego, as suas emoções podem fundir-se permanentemente a uma classe base.</p>
-                            <select 
-                                className="input-neon" 
-                                value={subClasse} 
-                                onChange={e => setSubClasse(e.target.value)}
-                                style={{ width: '100%', padding: '6px', background: '#111', color: '#ff00ff', border: '1px solid #ff00ff', borderRadius: '4px' }}
-                            >
-                                {CLASSES_OPTIONS.map(opt => (
-                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                ))}
-                            </select>
+                            <p style={{ color: '#aaa', fontSize: '0.75em', margin: '2px 0 12px 0', lineHeight: '1.4' }}>
+                                Escolha as duas classes base que formam a sua personalidade. <strong>Você só pode ativar os poderes de uma delas por vez.</strong>
+                            </p>
+                            
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
+                                <div>
+                                    <label style={{ color: '#ff00ff', fontSize: '0.75em' }}>Fragmento Fixo 1</label>
+                                    <select 
+                                        className="input-neon" 
+                                        value={alterEgoSlot1} 
+                                        onChange={e => { 
+                                            setAlterEgoSlot1(e.target.value); 
+                                            if(subClasse === alterEgoSlot1) setSubClasse(e.target.value); // Atualiza ativo se mudar
+                                        }}
+                                        style={{ width: '100%', padding: '6px', background: '#111', color: '#ff00ff', border: '1px solid #ff00ff', borderRadius: '4px' }}
+                                    >
+                                        {CLASSES_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style={{ color: '#ff00ff', fontSize: '0.75em' }}>Fragmento Fixo 2</label>
+                                    <select 
+                                        className="input-neon" 
+                                        value={alterEgoSlot2} 
+                                        onChange={e => { 
+                                            setAlterEgoSlot2(e.target.value); 
+                                            if(subClasse === alterEgoSlot2) setSubClasse(e.target.value); // Atualiza ativo se mudar
+                                        }}
+                                        style={{ width: '100%', padding: '6px', background: '#111', color: '#ff00ff', border: '1px solid #ff00ff', borderRadius: '4px' }}
+                                    >
+                                        {CLASSES_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <label style={{ color: '#ffcc00', fontSize: '0.8em', display: 'block', marginBottom: '8px' }}>
+                                ⚡ Qual Fragmento de Ego está a dominar o seu corpo neste turno?
+                            </label>
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <button 
+                                    className={`btn-neon ${subClasse === alterEgoSlot1 && alterEgoSlot1 !== '' ? 'btn-gold' : ''}`} 
+                                    onClick={(e) => { e.preventDefault(); setSubClasse(alterEgoSlot1); }}
+                                    disabled={!alterEgoSlot1}
+                                    style={{ flex: 1, padding: '6px', fontSize: '0.75em', margin: 0, opacity: !alterEgoSlot1 ? 0.3 : 1 }}
+                                >
+                                    {alterEgoSlot1 ? `Ativar ${CLASSES_OPTIONS.find(o => o.value === alterEgoSlot1)?.label}` : 'Slot 1 Vazio'}
+                                </button>
+                                <button 
+                                    className={`btn-neon ${subClasse === alterEgoSlot2 && alterEgoSlot2 !== '' ? 'btn-gold' : ''}`} 
+                                    onClick={(e) => { e.preventDefault(); setSubClasse(alterEgoSlot2); }}
+                                    disabled={!alterEgoSlot2}
+                                    style={{ flex: 1, padding: '6px', fontSize: '0.75em', margin: 0, opacity: !alterEgoSlot2 ? 0.3 : 1 }}
+                                >
+                                    {alterEgoSlot2 ? `Ativar ${CLASSES_OPTIONS.find(o => o.value === alterEgoSlot2)?.label}` : 'Slot 2 Vazio'}
+                                </button>
+                                <button 
+                                    className={`btn-neon ${subClasse === '' ? 'btn-red' : ''}`} 
+                                    onClick={(e) => { e.preventDefault(); setSubClasse(''); }}
+                                    style={{ flex: 1, padding: '6px', fontSize: '0.75em', margin: 0 }}
+                                >
+                                    Desativar Ambos
+                                </button>
+                            </div>
                         </div>
                     )}
 
