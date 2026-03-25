@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import useStore from '../../stores/useStore';
 import { contarDigitos } from '../../core/utils.js';
 import { getMaximo, getBuffs } from '../../core/attributes.js';
@@ -53,6 +53,8 @@ export default function FichaPanel() {
     // --- BIO ---
     const [raca, setRaca] = useState('');
     const [classe, setClasse] = useState('');
+    const [subClasse, setSubClasse] = useState(''); 
+    const [classesMemorizadas, setClassesMemorizadas] = useState([]); // 🔥 NOVO: A Memória do Pretender
     const [idade, setIdade] = useState('');
     const [fisico, setFisico] = useState('');
     const [sangue, setSangue] = useState('');
@@ -65,6 +67,8 @@ export default function FichaPanel() {
         const bio = minhaFicha.bio || {};
         setRaca(bio.raca || '');
         setClasse(bio.classe || '');
+        setSubClasse(bio.subClasse || ''); 
+        setClassesMemorizadas(bio.classesMemorizadas || []); // 🔥 Carrega a memória
         setIdade(bio.idade || '');
         setFisico(bio.fisico || '');
         setSangue(bio.sangue || '');
@@ -82,6 +86,8 @@ export default function FichaPanel() {
             if (!ficha.bio) ficha.bio = {};
             ficha.bio.raca = raca;
             ficha.bio.classe = classe;
+            ficha.bio.subClasse = subClasse; 
+            ficha.bio.classesMemorizadas = classesMemorizadas; // 🔥 Salva a memória
             ficha.bio.idade = idade;
             ficha.bio.fisico = fisico;
             ficha.bio.sangue = sangue;
@@ -92,6 +98,26 @@ export default function FichaPanel() {
         salvarFichaSilencioso();
         setSalvandoBio(true);
         setTimeout(() => setSalvandoBio(false), 2000);
+    }
+
+    // 🔥 FUNÇÕES EXCLUSIVAS DO PRETENDER
+    function toggleMemoriaPretender(val) {
+        setClassesMemorizadas(prev => {
+            if (prev.includes(val)) {
+                const novaLista = prev.filter(v => v !== val);
+                if (subClasse === val) setSubClasse(''); // Tira o disfarce se esquecer a classe
+                return novaLista;
+            }
+            return [...prev, val];
+        });
+    }
+
+    function descansoLongoPretender(e) {
+        e.preventDefault();
+        if (window.confirm('O Descanso Longo vai apagar todas as memórias de classe do Pretender e remover o seu Disfarce atual. Confirmar?')) {
+            setClassesMemorizadas([]);
+            setSubClasse('');
+        }
     }
 
     // --- EDITOR DE ATRIBUTOS ---
@@ -171,7 +197,6 @@ export default function FichaPanel() {
         setDmUnico(d.mUnico ?? '1.0');
     }, [minhaFicha.dano]);
 
-    // 🔥 CORREÇÃO: Removido o useMemo para que o cálculo de Dano seja dinâmico e reflita o Motor do Compêndio imediatamente!
     const buffsDano = minhaFicha ? getBuffs(minhaFicha, 'dano') : { _hasBuff: {}, munico: [] };
 
     function salvarMultiplicadores() {
@@ -193,7 +218,6 @@ export default function FichaPanel() {
         setCampos(prev => ({ ...prev, [field]: val }));
     }
 
-    // --- HOLOGRAMA DE BUFFS ---
     const sKeyForBuffs = (selAtributo === 'todos_status') ? 'forca' : (selAtributo === 'todas_energias') ? 'mana' : selAtributo;
     const buffsAtuais = minhaFicha ? getBuffs(minhaFicha, sKeyForBuffs) : null;
 
@@ -238,6 +262,85 @@ export default function FichaPanel() {
                             ))}
                         </select>
                     </div>
+
+                    {/* 🔥 1. A MAGIA DO ALTER EGO (Sub-Classe Livre) */}
+                    {(classe === 'alterego') && (
+                        <div className="fade-in" style={{ gridColumn: 'span 2', background: 'rgba(255, 0, 255, 0.1)', padding: '10px', borderRadius: '5px', border: '1px dashed #ff00ff' }}>
+                            <label style={{ color: '#ff00ff', fontSize: '0.85em', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                🎭 Fragmento de Ego (Sub-Classe)
+                            </label>
+                            <p style={{ color: '#aaa', fontSize: '0.75em', margin: '2px 0 8px 0' }}>Como Alter Ego, as suas emoções podem fundir-se permanentemente a uma classe base.</p>
+                            <select 
+                                className="input-neon" 
+                                value={subClasse} 
+                                onChange={e => setSubClasse(e.target.value)}
+                                style={{ width: '100%', padding: '6px', background: '#111', color: '#ff00ff', border: '1px solid #ff00ff', borderRadius: '4px' }}
+                            >
+                                {CLASSES_OPTIONS.map(opt => (
+                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+
+                    {/* 🔥 2. A MAGIA DO PRETENDER (Memória Dinâmica e Descanso) */}
+                    {(classe === 'pretender') && (
+                        <div className="fade-in" style={{ gridColumn: 'span 2', background: 'rgba(255, 170, 0, 0.1)', padding: '12px', borderRadius: '5px', border: '1px dashed #ffaa00' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                <label style={{ color: '#ffaa00', fontSize: '0.9em', fontWeight: 'bold' }}>
+                                    🤥 O Disfarce Perfeito (Memória)
+                                </label>
+                                <button className="btn-neon btn-red btn-small" onClick={descansoLongoPretender} style={{ margin: 0, padding: '4px 10px', fontSize: '0.7em' }}>
+                                    🏕️ DESCANSO LONGO
+                                </button>
+                            </div>
+                            
+                            <p style={{ color: '#ccc', fontSize: '0.75em', margin: '0 0 10px 0', lineHeight: '1.4' }}>
+                                Para assumir uma classe, o Pretender precisa <strong>ver o inimigo em ação</strong>. Marque as classes que você copiou nesta sessão. Após um Descanso Longo, as suas memórias são apagadas.
+                            </p>
+
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '15px' }}>
+                                {CLASSES_OPTIONS.filter(o => o.value !== '' && o.value !== 'pretender').map(opt => {
+                                    const isMemorizado = classesMemorizadas.includes(opt.value);
+                                    return (
+                                        <label key={opt.value} style={{ 
+                                            fontSize: '0.75em', 
+                                            color: isMemorizado ? '#000' : '#ffaa00', 
+                                            background: isMemorizado ? '#ffaa00' : 'transparent',
+                                            border: `1px solid #ffaa00`, 
+                                            padding: '4px 8px', 
+                                            borderRadius: '4px', 
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s',
+                                            textShadow: isMemorizado ? 'none' : '0 0 5px rgba(255,170,0,0.5)'
+                                        }}>
+                                            <input 
+                                                type="checkbox" 
+                                                style={{ display: 'none' }}
+                                                checked={isMemorizado}
+                                                onChange={() => toggleMemoriaPretender(opt.value)}
+                                            />
+                                            {isMemorizado ? `✓ ${opt.label}` : opt.label}
+                                        </label>
+                                    );
+                                })}
+                            </div>
+
+                            <label style={{ color: '#ffaa00', fontSize: '0.8em', display: 'block', marginBottom: '4px' }}>Disfarce Atual (Puxar da Memória):</label>
+                            <select 
+                                className="input-neon" 
+                                value={subClasse} 
+                                onChange={e => setSubClasse(e.target.value)}
+                                style={{ width: '100%', padding: '6px', background: '#111', color: '#ffaa00', border: '1px solid #ffaa00', borderRadius: '4px' }}
+                            >
+                                <option value="">Nenhum Disfarce</option>
+                                {CLASSES_OPTIONS.filter(o => classesMemorizadas.includes(o.value)).map(opt => (
+                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+
                     <div>
                         <label style={{ color: '#aaa', fontSize: '0.85em' }}>Idade</label>
                         <input className="input-neon" type="text" value={idade} onChange={e => setIdade(e.target.value)} />

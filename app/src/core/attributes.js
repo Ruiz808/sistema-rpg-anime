@@ -2,8 +2,11 @@ import useStore from '../stores/useStore';
 import { isFisico, isEnergia, tratarUnico } from './utils.js';
 
 // 🔥 FUNÇÃO UNIVERSAL: Lê a classe do jogador e procura a versão editada pelo Mestre no Compêndio
+// AGORA COM SUPORTE À SUB-CLASSE DO ALTER EGO E PRETENDER
 export function getEfeitosDeClasse(ficha) {
     let classeHeroica = (ficha.bio && ficha.bio.classe) ? String(ficha.bio.classe).toLowerCase() : '';
+    let subClasse = (ficha.bio && ficha.bio.subClasse) ? String(ficha.bio.subClasse).toLowerCase() : '';
+
     if (!classeHeroica) return [];
 
     let state = useStore.getState();
@@ -21,14 +24,24 @@ export function getEfeitosDeClasse(ficha) {
         }
     }
 
+    let efeitos = [];
+
+    // 1. Puxa os Efeitos da Classe Principal
     let classData = mestreOverrides[classeHeroica];
-    // Se o Mestre editou a classe e guardou regras matemáticas, use-as!
     if (classData && classData.efeitosMatematicos) {
-        return classData.efeitosMatematicos;
+        efeitos = [...classData.efeitosMatematicos];
+    }
+
+    // 🔥 2. MAGIA DO ALTER EGO & PRETENDER: Soma os Efeitos da Sub-Classe!
+    if ((classeHeroica === 'alterego' || classeHeroica === 'pretender') && subClasse) {
+        let subClassData = mestreOverrides[subClasse];
+        if (subClassData && subClassData.efeitosMatematicos) {
+            // Junta os feitiços da Classe Principal com os do Disfarce!
+            efeitos = [...efeitos, ...subClassData.efeitosMatematicos];
+        }
     }
     
-    // Se a classe ainda não foi editada/guardada no Compêndio, retorna vazio
-    return [];
+    return efeitos;
 }
 
 export function getBuffs(ficha, statKey, ignorarPassivas = false) {
@@ -85,7 +98,7 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false) {
         }
     }
 
-    // 2. Processar Efeitos de Equipamentos equipados
+    // 2. Processar Efeitos de Equipamentos equipados (A contribuição do seu amigo)
     if (ficha.inventario) {
         for (let i = 0; i < ficha.inventario.length; i++) {
             let item = ficha.inventario[i];
@@ -104,7 +117,7 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false) {
         }
     }
 
-    // 🔥 2. PROCESSAR EFEITOS MATEMÁTICOS DE CLASSE DO COMPÊNDIO 🔥
+    // 🔥 4. PROCESSAR EFEITOS MATEMÁTICOS DE CLASSE DO COMPÊNDIO 🔥
     processarEfeitos(getEfeitosDeClasse(ficha));
 
     if (!hasBuff.mbase) buffs.mbase = 1.0;
