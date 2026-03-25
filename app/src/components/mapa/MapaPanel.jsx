@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import useStore from '../../stores/useStore';
 import { salvarFichaSilencioso, enviarParaFeed, salvarDummie } from '../../services/firebase-sync'; 
 import { calcularAcerto } from '../../core/engine';
-import { getClassIconById } from '../../core/classIcons'; // 🔥 IMPORTA O RASTREADOR DE BRASÕES
+import { getClassIconById } from '../../core/classIcons'; 
 
 import Tabuleiro3D from './Tabuleiro3D';
 import DummieToken from '../combat/DummieToken'; 
@@ -67,6 +67,19 @@ export default function MapaPanel() {
     const [mapVantagens, setMapVantagens] = useState(minhaFicha.ataqueConfig?.vantagens || 0);
     const [mapDesvantagens, setMapDesvantagens] = useState(minhaFicha.ataqueConfig?.desvantagens || 0);
     const [inputMapaUrl, setInputMapaUrl] = useState('');
+
+    // 🔥 LEITOR DO COMPÊNDIO: Procura pelas imagens personalizadas das classes
+    const overridesCompendio = useMemo(() => {
+        if (!minhaFicha) return {};
+        if (isMestre && minhaFicha.compendioOverrides) return minhaFicha.compendioOverrides;
+        if (personagens) {
+            const chaves = Object.keys(personagens);
+            for(let k of chaves) {
+                if (personagens[k]?.compendioOverrides) return personagens[k].compendioOverrides;
+            }
+        }
+        return {};
+    }, [isMestre, minhaFicha, personagens]);
 
     useEffect(() => {
         setMapVantagens(minhaFicha.ataqueConfig?.vantagens || 0);
@@ -316,12 +329,14 @@ export default function MapaPanel() {
         let fichaBase = jogadorDaVez ? jogadorDaVez.ficha : (acaoExibir ? jogadores[acaoExibir.nome] : null);
         let infoBase = getAvatarInfo(fichaBase);
 
-        // 🔥 PEGA O SÍMBOLO DA CLASSE DA FICHA BASE 🔥
+        // 🔥 LÓGICA DO ÍCONE: Prioriza a imagem do Compêndio, se não achar, usa o Emoji
         let classId = fichaBase?.bio?.classe;
         if ((classId === 'pretender' || classId === 'alterego') && fichaBase?.bio?.subClasse) {
             classId = fichaBase?.bio?.subClasse;
         }
-        const classSymbol = getClassIconById(classId);
+        
+        const customClassIcon = classId ? overridesCompendio[classId]?.iconeUrl : null;
+        const defaultClassSymbol = getClassIconById(classId);
 
         let isCritNormal = false, isCritFatal = false, isFalha = false;
 
@@ -421,9 +436,20 @@ export default function MapaPanel() {
                             boxShadow: 'inset 0 -100px 50px -20px rgba(0,0,0,0.9)' 
                         }}>
                             <div style={{ padding: '20px', zIndex: 2 }}>
-                                {/* 🔥 A FIRULA: BRASÃO E NOME ALINHADOS 🔥 */}
+                                {/* 🔥 A FIRULA: RENDERIZA O ÍCONE DA IMAGEM SE EXISTIR, SENÃO USA O EMOJI 🔥 */}
                                 <h2 style={{ margin: 0, color: '#fff', fontSize: '2em', textShadow: '0 0 10px #000, 2px 2px 0px #000', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    {classSymbol && <span style={{ fontSize: '0.9em', filter: 'drop-shadow(0 0 5px rgba(0,255,204,0.5))' }} title={`Classe Mística: ${classId.toUpperCase()}`}>{classSymbol}</span>}
+                                    {customClassIcon ? (
+                                        <img 
+                                            src={customClassIcon} 
+                                            alt={classId} 
+                                            style={{ height: '1.2em', width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 0 5px rgba(0,255,204,0.5))' }} 
+                                            title={`Classe Mística: ${classId?.toUpperCase()}`} 
+                                        />
+                                    ) : defaultClassSymbol ? (
+                                        <span style={{ fontSize: '0.9em', filter: 'drop-shadow(0 0 5px rgba(0,255,204,0.5))' }} title={`Classe Mística: ${classId?.toUpperCase()}`}>
+                                            {defaultClassSymbol}
+                                        </span>
+                                    ) : null}
                                     {nomeBase}
                                 </h2>
                                 {infoBase.forma && (
