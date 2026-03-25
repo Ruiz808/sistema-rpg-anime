@@ -21,19 +21,19 @@ export default function AcertoPanel() {
     const [dados, setDados] = useState(1);
     const [faces, setFaces] = useState(20);
     const [proficiencia, setProficiencia] = useState(0);
-    const [bonus, setBonus] = useState(0);
+    const [bonus, setBonus] = useState(0); // 🔥 Este campo agora é SÓ para bónus temporários
     
     const vantagens = minhaFicha.ataqueConfig?.vantagens || 0;
     const desvantagens = minhaFicha.ataqueConfig?.desvantagens || 0;
     
     const [statsSelecionados, setStatsSelecionados] = useState(['destreza']);
 
+    // 🔥 PUXA O BÓNUS GERAL DA CLASSE
     const bonusAcertoClasse = minhaFicha ? getPoderesDefesa(minhaFicha, 'bonus_acerto') : 0;
 
     // 🔥 FILTRO SUPREMO PARA VISUALIZAÇÃO DA MAESTRIA DE ARMA
     const itensEquipados = minhaFicha.inventario ? minhaFicha.inventario.filter(i => i.equipado) : [];
     
-    // Pega TUDO o que for de texto do item (nome, categoria, arma, subtipo) e junta!
     const tiposArmasEquipadas = itensEquipados
         .filter(i => i.tipo === 'arma' || i.tipo === 'artefato')
         .map(i => `${i.nome} ${i.arma} ${i.subTipo} ${i.categoria}`.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, ""));
@@ -47,7 +47,6 @@ export default function AcertoPanel() {
         if (propNormalizada === 'proficiencia_arma') {
             const armaAlvo = (ef.atributo || '').toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             
-            // 🔥 Procura se a arma alvo está ESCRITA EM QUALQUER LUGAR do item equipado!
             if (tiposArmasEquipadas.some(textoDoItem => textoDoItem.includes(armaAlvo))) {
                 bonusMaestriaArma += (parseFloat(ef.valor) || 0);
                 nomesMaestriaArma.push(ef.atributo.trim().toUpperCase());
@@ -82,7 +81,7 @@ export default function AcertoPanel() {
         const qD = parseInt(dados) || 1;
         const fD = parseInt(faces) || 20;
         const prof = parseInt(proficiencia) || 0;
-        const bon = parseInt(bonus) || 0;
+        const bon = parseInt(bonus) || 0; // O Motor de Combate já vai somar os buffs de classe sozinho!
         const v = parseInt(vantagens) || 0;
         const d = parseInt(desvantagens) || 0;
         
@@ -110,13 +109,13 @@ export default function AcertoPanel() {
             <div className="def-box">
                 <h3 style={{ color: '#f90', marginBottom: 5 }}>Rolagem de Acerto</h3>
 
+                {/* 🔥 AVISOS VISUAIS DE BUFFS ATIVOS */}
                 {bonusAcertoClasse > 0 && (
                     <p style={{ color: '#0f0', fontSize: '0.85em', margin: '0 0 10px 0', textShadow: '0 0 5px rgba(0,255,0,0.5)' }}>
                         ✨ Instinto de Batalha: A sua classe concede +{bonusAcertoClasse} de Acerto passivo!
                     </p>
                 )}
 
-                {/* 🔥 AVISO VISUAL DA MAESTRIA DE ARMA COM O NOVO FILTRO */}
                 {bonusMaestriaArma > 0 && (
                     <p style={{ color: '#00ffcc', fontSize: '0.85em', margin: '0 0 10px 0', textShadow: '0 0 5px rgba(0,255,204,0.5)' }}>
                         ⚔️ Mestre de Armas: A sua classe concede +{bonusMaestriaArma} de Acerto ao usar [{nomesMaestriaArma.join(', ')}]!
@@ -155,7 +154,15 @@ export default function AcertoPanel() {
                         <input className="input-neon" type="number" value={proficiencia} onChange={e => setProficiencia(e.target.value)} />
                     </div>
                     <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Bônus Fixo</label>
+                        {/* 🔥 AQUI MOSTRA O BUFF DA CLASSE CLARAMENTE PARA O JOGADOR VER */}
+                        <label style={{ color: '#aaa', fontSize: '0.85em', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            Bônus Fixo / Temp.
+                            {(bonusAcertoClasse > 0 || bonusMaestriaArma > 0) && (
+                                <span style={{ color: '#0f0', fontSize: '0.9em', fontWeight: 'bold', textShadow: '0 0 5px rgba(0,255,0,0.3)' }}>
+                                    (Buff Classe: +{bonusAcertoClasse + bonusMaestriaArma})
+                                </span>
+                            )}
+                        </label>
                         <input className="input-neon" type="number" value={bonus} onChange={e => setBonus(e.target.value)} />
                     </div>
                 </div>
