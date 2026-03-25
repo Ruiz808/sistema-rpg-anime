@@ -95,14 +95,17 @@ export default function AtaquePanel() {
         }
     }, [percAtualLostFloor, furiaMax, multiplicadorFuriaClasse, updateFicha]);
 
-    function acalmarFuria() {
-        if(window.confirm('Deseja acalmar a sua Fúria? Os multiplicadores de dor acumulada serão resetados de acordo com a sua cura atual.')){
-            updateFicha(f => {
-                if (!f.combate) f.combate = {};
-                f.combate.furiaMax = percAtualLostFloor; 
-            });
-            salvarFichaSilencioso();
-        }
+    // 🔥 O BOTÃO BLINDADO (Sem pop-up bloqueador)
+    const [furiaAcalmadaMsg, setFuriaAcalmadaMsg] = useState(false);
+    function acalmarFuria(e) {
+        e.preventDefault();
+        updateFicha(f => {
+            if (!f.combate) f.combate = {};
+            f.combate.furiaMax = percAtualLostFloor; 
+        });
+        salvarFichaSilencioso();
+        setFuriaAcalmadaMsg(true);
+        setTimeout(() => setFuriaAcalmadaMsg(false), 2000);
     }
 
     useEffect(() => {
@@ -302,7 +305,13 @@ export default function AtaquePanel() {
                 <div className="def-box fade-in" style={{ marginBottom: 15, background: 'rgba(255, 0, 0, 0.1)', border: '1px solid rgba(255,0,0,0.5)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <h3 style={{ color: '#ff0000', margin: 0, textShadow: '0 0 5px #ff0000' }}>🩸 Fúria Berserker (Mad Enhancement)</h3>
-                        <button className="btn-neon btn-small" onClick={acalmarFuria} style={{ margin: 0, borderColor: '#fff', color: '#fff' }}>Acalmar Fúria</button>
+                        <button 
+                            className="btn-neon btn-small" 
+                            onClick={acalmarFuria} 
+                            style={{ margin: 0, borderColor: furiaAcalmadaMsg ? '#0f0' : '#fff', color: furiaAcalmadaMsg ? '#0f0' : '#fff' }}
+                        >
+                            {furiaAcalmadaMsg ? '✨ FÚRIA RESETADA!' : 'Acalmar Fúria'}
+                        </button>
                     </div>
                     <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                         <div style={{ background: 'rgba(0,0,0,0.5)', padding: '10px', borderRadius: '5px' }}>
@@ -318,7 +327,7 @@ export default function AtaquePanel() {
                         ↳ Bônus no Multiplicador Geral: <strong style={{ color: '#fff' }}>+{multiplicadorFuriaVisor}x</strong>
                     </p>
                     <p style={{ color: '#aaa', fontSize: '0.75em', marginTop: 5, marginBottom: 0 }}>
-                        <i className="fas fa-info-circle"></i> Com 1% de HP perdido ganha o bônus inicial (+{multiplicadorFuriaClasse}x). A partir de 2%, ganha +1x por cada 1% de HP perdido.
+                        <i className="fas fa-info-circle"></i> Lembre-se: O botão de Acalmar Fúria só fará efeito verdadeiro se você <strong>curar a sua vida primeiro</strong>. Se a Vida Atual estiver baixa, a fúria volta de imediato!
                     </p>
                 </div>
             )}

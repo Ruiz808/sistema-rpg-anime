@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import useStore from '../../stores/useStore';
 import { contarDigitos } from '../../core/utils.js';
-import { getMaximo, getBuffs, getEfeitosDeClasse } from '../../core/attributes.js'; 
+import { getMaximo, getBuffs, getEfeitosDeClasse } from '../../core/attributes.js';
 import { salvarFichaSilencioso } from '../../services/firebase-sync.js';
 import TabelaPrestigio from './TabelaPrestigio';
 
@@ -50,16 +50,12 @@ export default function FichaPanel() {
     const minhaFicha = useStore(s => s.minhaFicha);
     const updateFicha = useStore(s => s.updateFicha);
 
-    // --- BIO ---
     const [raca, setRaca] = useState('');
     const [classe, setClasse] = useState('');
     const [subClasse, setSubClasse] = useState(''); 
-    
-    // Variáveis exclusivas
     const [alterEgoSlot1, setAlterEgoSlot1] = useState('');
     const [alterEgoSlot2, setAlterEgoSlot2] = useState('');
     const [classesMemorizadas, setClassesMemorizadas] = useState([]); 
-
     const [idade, setIdade] = useState('');
     const [fisico, setFisico] = useState('');
     const [sangue, setSangue] = useState('');
@@ -118,7 +114,7 @@ export default function FichaPanel() {
         comitarBio({ subClasse: novaSub });
     }
 
-    // 🔥 BERSERKER TRACKER ABSOLUTO (Lê Passivas, Poderes, Inventário e Compêndio)
+    // --- BERSERKER TRACKER ---
     let multiplicadorFuriaClasse = 0;
     const scanFuria = (efs) => {
         if (!efs) return;
@@ -127,7 +123,7 @@ export default function FichaPanel() {
             let p = (e.propriedade || '').toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             if (p === 'furia_berserker') {
                 let v = parseFloat(e.valor) || 0;
-                if (v > multiplicadorFuriaClasse) multiplicadorFuriaClasse = v; // Pega o maior valor de Fúria encontrado!
+                if (v > multiplicadorFuriaClasse) multiplicadorFuriaClasse = v;
             }
         });
     };
@@ -162,18 +158,19 @@ export default function FichaPanel() {
         }
     }, [percAtualLostFloor, furiaMax, multiplicadorFuriaClasse, updateFicha]);
 
+    // 🔥 O BOTÃO BLINDADO (Sem pop-up bloqueador)
+    const [furiaAcalmadaMsg, setFuriaAcalmadaMsg] = useState(false);
     function acalmarFuria(e) {
         e.preventDefault();
-        if(window.confirm('Deseja acalmar a sua Fúria? Os multiplicadores de dor acumulada serão resetados de acordo com a sua cura atual.')){
-            updateFicha(f => {
-                if (!f.combate) f.combate = {};
-                f.combate.furiaMax = percAtualLostFloor; 
-            });
-            salvarFichaSilencioso();
-        }
+        updateFicha(f => {
+            if (!f.combate) f.combate = {};
+            f.combate.furiaMax = percAtualLostFloor; 
+        });
+        salvarFichaSilencioso();
+        setFuriaAcalmadaMsg(true);
+        setTimeout(() => setFuriaAcalmadaMsg(false), 2000);
     }
 
-    // --- FUNÇÕES DO PRETENDER ---
     function toggleMemoriaPretender(val) {
         setClassesMemorizadas(prev => {
             const isRemoving = prev.includes(val);
@@ -198,7 +195,6 @@ export default function FichaPanel() {
         }
     }
 
-    // --- EDITOR DE ATRIBUTOS ---
     const [selAtributo, setSelAtributo] = useState('forca');
     const [campos, setCampos] = useState({ base: 0, mBase: 1, regeneracao: 0 });
 
@@ -256,7 +252,6 @@ export default function FichaPanel() {
         alert('Salvo!');
     }
 
-    // --- MULTIPLICADORES DE DANO ---
     const [dmBase, setDmBase] = useState(1.0);
     const [dmPotencial, setDmPotencial] = useState(1.0);
     const [dmGeral, setDmGeral] = useState(1.0);
@@ -564,12 +559,18 @@ export default function FichaPanel() {
                 </button>
             </div>
 
-            {/* 🔥 PAINEL DO BERSERKER COM SCANNER ABSOLUTO 🔥 */}
+            {/* 🔥 PAINEL DO BERSERKER COM SCANNER ABSOLUTO E BOTÃO DIRETO 🔥 */}
             {multiplicadorFuriaClasse > 0 && (
                 <div className="def-box fade-in" style={{ marginTop: 15, background: 'rgba(255, 0, 0, 0.1)', border: '1px solid rgba(255,0,0,0.5)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <h3 style={{ color: '#ff0000', margin: 0, textShadow: '0 0 5px #ff0000' }}>🩸 Fúria Berserker (Mad Enhancement)</h3>
-                        <button className="btn-neon btn-small" onClick={acalmarFuria} style={{ margin: 0, borderColor: '#fff', color: '#fff' }}>Acalmar Fúria</button>
+                        <button 
+                            className="btn-neon btn-small" 
+                            onClick={acalmarFuria} 
+                            style={{ margin: 0, borderColor: furiaAcalmadaMsg ? '#0f0' : '#fff', color: furiaAcalmadaMsg ? '#0f0' : '#fff' }}
+                        >
+                            {furiaAcalmadaMsg ? '✨ FÚRIA RESETADA!' : 'Acalmar Fúria'}
+                        </button>
                     </div>
                     <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                         <div style={{ background: 'rgba(0,0,0,0.5)', padding: '10px', borderRadius: '5px' }}>
@@ -585,7 +586,7 @@ export default function FichaPanel() {
                         ↳ Bônus no Multiplicador Geral: <strong style={{ color: '#fff' }}>+{multiplicadorFuriaVisor}x</strong>
                     </p>
                     <p style={{ color: '#aaa', fontSize: '0.75em', marginTop: 5, marginBottom: 0 }}>
-                        <i className="fas fa-info-circle"></i> Com 1% de HP perdido ganha o bônus inicial (+{multiplicadorFuriaClasse}x). A partir de 2%, ganha +1x por cada 1% de HP perdido.
+                        <i className="fas fa-info-circle"></i> Lembre-se: O botão de Acalmar Fúria só fará efeito verdadeiro se você <strong>curar a sua vida primeiro</strong>. Se a Vida Atual estiver baixa, a fúria volta de imediato!
                     </p>
                 </div>
             )}
