@@ -9,7 +9,7 @@ const CLASSES_REGULARES_BASE = [
     { id: 'rider', nome: 'Rider', icone: '🏇', titulo: 'Cavaleiro de Montaria', cor: '#ff8800', passiva: 'Montaria (Riding)', desc: 'Espíritos associados a grandes lendas de montarias.', efeito: 'Altíssima velocidade de movimento no mapa e evasão.', efeitosMatematicos: [{ atributo: 'geral', propriedade: 'bonus_evasiva', valor: 200 }] },
     { id: 'caster', nome: 'Caster', icone: '🧙‍♂️', titulo: 'Conjurador Magus', cor: '#cc00ff', passiva: 'Criação de Território', desc: 'Estudiosos dos mistérios mágicos e construtores de domínios.', efeito: 'Fracos no corpo a corpo, mas com Inteligência e Sabedoria supremas.', efeitosMatematicos: [{ atributo: 'inteligencia', propriedade: 'mbase', valor: 0.5 }, { atributo: 'sabedoria', propriedade: 'mbase', valor: 0.5 }, { atributo: 'mana', propriedade: 'mbase', valor: 0.5 }] },
     { id: 'assassin', nome: 'Assassin', icone: '🔪', titulo: 'Assassino Furtivo', cor: '#444444', passiva: 'Ocultação de Presença', desc: 'Mestres da furtividade e ataques críticos.', efeito: 'Aumenta permanentemente o multiplicador dos Críticos.', efeitosMatematicos: [{ atributo: 'geral', propriedade: 'criticonormal', valor: 1 }, { atributo: 'geral', propriedade: 'criticofatal', valor: 1 }] },
-    { id: 'berserker', nome: 'Berserker', icone: '狂', titulo: 'O Guerreiro Insano', cor: '#ff0000', passiva: 'Mad Enhancement', desc: 'Heróis que sucumbiram à fúria ou à loucura.', efeito: 'Monstruoso em Corpo e Pontos Vitais, mas com menos Sanidade/Status.', efeitosMatematicos: [{ atributo: 'vida', propriedade: 'munico', valor: 1.5 }, { atributo: 'corpo', propriedade: 'munico', valor: 1.5 }, { atributo: 'status', propriedade: 'mbase', valor: -0.5 }, { atributo: 'inteligencia', propriedade: 'mbase', valor: -0.5 }] }
+    { id: 'berserker', nome: 'Berserker', icone: '狂', titulo: 'O Guerreiro Insano', cor: '#ff0000', passiva: 'Mad Enhancement', desc: 'Heróis que sucumbiram à fúria ou à loucura.', efeito: 'Quanto mais HP perde, mais forte fica (Dano e Status).', efeitosMatematicos: [{ atributo: 'vida', propriedade: 'munico', valor: 1.5 }, { atributo: 'corpo', propriedade: 'munico', valor: 1.5 }, { atributo: 'dano', propriedade: 'furia_berserker', valor: 1.5 }, { atributo: 'todos_status', propriedade: 'furia_berserker', valor: 1.5 }] }
 ];
 
 const CLASSES_EXTRA_BASE = [
@@ -110,7 +110,6 @@ export default function CompendioPanel() {
     const handleEfMat = (index, campo, valor) => {
         const novosEfeitos = tempEfeitosMat.map((ef, i) => {
             if (i === index) {
-                // Se o Mestre mudar a propriedade de "Maestria" para outra coisa, limpamos o campo de arma para não ficar sujo
                 if (campo === 'propriedade' && valor !== 'proficiencia_arma' && ef.propriedade === 'proficiencia_arma') {
                     return { ...ef, [campo]: valor, atributo: '' };
                 }
@@ -170,7 +169,6 @@ export default function CompendioPanel() {
                             </div>
                         </div>
 
-                        {/* 🔥 MOTOR MATEMÁTICO */}
                         <div style={{ background: 'rgba(0, 255, 204, 0.05)', padding: '15px', borderRadius: '5px', border: '1px solid rgba(0, 255, 204, 0.3)' }}>
                             <h4 style={{ color: '#00ffcc', margin: '0 0 15px 0', fontSize: '0.9em', borderBottom: '1px solid #00ffcc40', paddingBottom: '5px' }}>⚙️ Motor Matemático (Efeitos Base)</h4>
                             
@@ -197,6 +195,9 @@ export default function CompendioPanel() {
                                             <option value="bonus_resistencia">🛡️ Resistência Passiva (+X)</option>
                                             <option value="margem_critico">🩸 Margem de Crítico (Reduz o mínimo)</option>
                                             <option value="letalidade">☠️ Letalidade (+Dano Pós-Defesa)</option>
+                                            
+                                            {/* 🔥 A OPÇÃO DA FÚRIA BERSERKER ESTÁ AQUI 🔥 */}
+                                            <option value="furia_berserker">🩸 Fúria Berserker (+M.Geral por 1% HP Perdido)</option>
                                         </select>
                                     </div>
 
@@ -205,7 +206,6 @@ export default function CompendioPanel() {
                                             {ef.propriedade === 'proficiencia_arma' ? 'Qual Arma?' : 'Qual Alvo? (ex: dano, forca)'}
                                         </label>
                                         
-                                        {/* 🔥 A MÁGICA: Transforma em Dropdown se for Arma! */}
                                         {ef.propriedade === 'proficiencia_arma' ? (
                                             <select 
                                                 className="input-neon" 
@@ -230,7 +230,7 @@ export default function CompendioPanel() {
                                         ) : (
                                             <input 
                                                 type="text" 
-                                                placeholder="dano, forca, todos_status..." 
+                                                placeholder={ef.propriedade === 'furia_berserker' ? "dano, todos_status..." : "dano, forca, geral"} 
                                                 value={ef.atributo} 
                                                 onChange={e => handleEfMat(idx, 'atributo', e.target.value)} 
                                                 className="input-neon" 
