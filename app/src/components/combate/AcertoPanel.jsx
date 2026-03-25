@@ -30,12 +30,13 @@ export default function AcertoPanel() {
 
     const bonusAcertoClasse = minhaFicha ? getPoderesDefesa(minhaFicha, 'bonus_acerto') : 0;
 
-    // 🔥 FILTRO SUPREMO BLINDADO (Com proteção contra itens sem tipo)
+    // 🔥 FILTRO LIMPO E PRECISO
     const itensEquipados = minhaFicha.inventario ? minhaFicha.inventario.filter(i => i.equipado) : [];
     const armasEquipadas = itensEquipados.filter(i => i.tipo === 'arma' || i.tipo === 'artefato');
     
-    const tiposArmasEquipadas = armasEquipadas
-        .map(i => `${i.nome || ''} ${i.arma || ''} ${i.subTipo || ''} ${i.categoria || ''}`.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, ""));
+    const tiposArmasEquipadas = armasEquipadas.map(i => 
+        String(i.armaTipo || '').toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    );
 
     const efeitosClasse = minhaFicha ? getEfeitosDeClasse(minhaFicha) : [];
     let bonusMaestriaArma = 0;
@@ -46,7 +47,8 @@ export default function AcertoPanel() {
         if (propNormalizada === 'proficiencia_arma') {
             const armaAlvo = (ef.atributo || '').toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             
-            if (tiposArmasEquipadas.some(textoDoItem => textoDoItem.includes(armaAlvo))) {
+            // Verifica diretamente se o jogador tem essa arma equipada (rápido e seguro)
+            if (tiposArmasEquipadas.includes(armaAlvo)) {
                 bonusMaestriaArma += (parseFloat(ef.valor) || 0);
                 nomesMaestriaArma.push(ef.atributo.trim().toUpperCase());
             }
@@ -108,7 +110,6 @@ export default function AcertoPanel() {
             <div className="def-box">
                 <h3 style={{ color: '#f90', marginBottom: 5 }}>Rolagem de Acerto</h3>
 
-                {/* 🔥 AVISOS VISUAIS DE BUFFS ATIVOS */}
                 {bonusAcertoClasse > 0 && (
                     <p style={{ color: '#0f0', fontSize: '0.85em', margin: '0 0 10px 0', textShadow: '0 0 5px rgba(0,255,0,0.5)' }}>
                         ✨ Instinto de Batalha: A sua classe concede +{bonusAcertoClasse} de Acerto passivo!
@@ -176,13 +177,13 @@ export default function AcertoPanel() {
                     </div>
                 </div>
 
-                {/* 🔥 SCANNER DE ARSENAL (Ajuda a debugar as armas) */}
+                {/* 🔥 SCANNER DE ARSENAL ATUALIZADO */}
                 {armasEquipadas.length > 0 && (
                     <div style={{ marginTop: 15, padding: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', borderLeft: '2px solid #aaa' }}>
                         <span style={{ color: '#aaa', fontSize: '0.75em', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>🔍 Scanner de Arsenal:</span>
                         {armasEquipadas.map((w, idx) => (
                             <div key={idx} style={{ color: '#ccc', fontSize: '0.8em' }}>
-                                • {w.nome} <span style={{color: '#00ffcc'}}>(Categoria: {w.arma || w.subTipo || w.categoria || 'Nenhuma'})</span>
+                                • {w.nome} <span style={{color: '#00ffcc'}}>(Categoria: {w.armaTipo || 'Nenhuma'})</span>
                             </div>
                         ))}
                     </div>

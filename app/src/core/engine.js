@@ -393,8 +393,8 @@ export function calcularAcerto({ qD, fD, prof, bonus, sels, minhaFicha, itensEqu
         if (item.bonusTipo === 'bonus_acerto') iAcerto += (parseFloat(item.bonusValor) || 0);
         if (item.tipo === 'arma' || item.tipo === 'artefato') {
             nomesArmas.push(item.nome);
-            // 🔥 BLINDAGEM: Lê qualquer categoria e evita falhas se o campo não existir
-            let itemStr = `${item.nome || ''} ${item.arma || ''} ${item.subTipo || ''} ${item.categoria || ''}`.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            // 🔥 ENGINE LIMPA E PRECISA (Lê diretamente o armaTipo do inventário)
+            let itemStr = String(item.armaTipo || '').toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             tiposArmas.push(itemStr);
         }
     });
@@ -420,7 +420,8 @@ export function calcularAcerto({ qD, fD, prof, bonus, sels, minhaFicha, itensEqu
         if (propNormalizada === 'proficiencia_arma') {
             let armaAlvo = (ef.atributo || '').toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             
-            if (tiposArmas.some(textoDoItem => textoDoItem.includes(armaAlvo))) {
+            // Verifica a compatibilidade direta e sem erros
+            if (tiposArmas.includes(armaAlvo)) {
                 bonusProfArma += (parseFloat(ef.valor) || 0);
                 if (!nomesProfArma.includes(armaAlvo)) nomesProfArma.push(ef.atributo.trim().toUpperCase());
             }

@@ -3,7 +3,8 @@ import useStore from '../../stores/useStore';
 import { salvarFichaSilencioso } from '../../services/firebase-sync';
 import { ATRIBUTOS_AGRUPADOS, PROPRIEDADE_OPTIONS } from '../../core/efeitos-constants';
 
-const ARMA_TIPOS = ['espada', 'foice', 'lança', 'cajado', 'adaga'];
+// 🔥 LISTA DE ARMAS PADRONIZADA COM O COMPÊNDIO
+const ARMA_TIPOS = ['espada', 'arco', 'lança', 'machado', 'adaga', 'cajado', 'arma de fogo', 'manopla', 'foice', 'chicote', 'martelo', 'escudo'];
 const RARIDADES = ['comum', 'rara', 'avançada', 'lendaria', 'lendaria (Longuinus)', 'espiritual', 'fantasma nobre'];
 
 const BONUS_OPTIONS = [
@@ -78,7 +79,7 @@ export default function ArsenalPanel() {
             const itemExistente = inventarioAtual.find(i => i.id === itemEditandoId);
             if (itemExistente) {
                 const tinhaEfeitos = (itemExistente.efeitos || []).length > 0 || (itemExistente.efeitosPassivos || []).length > 0;
-                if (tinhaEfeitos && !confirm('Este item tinha efeitos de arma. Mudar o tipo vai remover todos os efeitos. Continuar?')) {
+                if (tinhaEfeitos && !window.confirm('Este item tinha efeitos de arma. Mudar o tipo vai remover todos os efeitos. Continuar?')) {
                     deveLimparEfeitos = false;
                 }
             }
@@ -186,7 +187,7 @@ export default function ArsenalPanel() {
     }
 
     function deletarItem(id) {
-        if (!confirm('Deseja destruir este equipamento permanentemente?')) return;
+        if (!window.confirm('Deseja destruir este equipamento permanentemente?')) return;
         updateFicha((ficha) => {
             ficha.inventario = (ficha.inventario || []).filter(i => i.id !== id);
         });
