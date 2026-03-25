@@ -55,11 +55,9 @@ export default function FichaPanel() {
     const [classe, setClasse] = useState('');
     const [subClasse, setSubClasse] = useState(''); 
     
-    // Variáveis exclusivas do Alter Ego
+    // Variáveis exclusivas
     const [alterEgoSlot1, setAlterEgoSlot1] = useState('');
     const [alterEgoSlot2, setAlterEgoSlot2] = useState('');
-    
-    // Variável exclusiva do Pretender
     const [classesMemorizadas, setClassesMemorizadas] = useState([]); 
 
     const [idade, setIdade] = useState('');
@@ -90,47 +88,50 @@ export default function FichaPanel() {
         carregarBio();
     }, [carregarBio]);
 
-    function salvarBio() {
+    // 🔥 FUNÇÃO INTELIGENTE: Salva tudo o que está na tela para prevenir resets de "Esquecimento" do React
+    function comitarBio(overrides = {}) {
         updateFicha((ficha) => {
             if (!ficha.bio) ficha.bio = {};
-            ficha.bio.raca = raca;
-            ficha.bio.classe = classe;
-            ficha.bio.subClasse = subClasse; 
-            ficha.bio.alterEgoSlot1 = alterEgoSlot1;
-            ficha.bio.alterEgoSlot2 = alterEgoSlot2;
-            ficha.bio.classesMemorizadas = classesMemorizadas; 
-            ficha.bio.idade = idade;
-            ficha.bio.fisico = fisico;
-            ficha.bio.sangue = sangue;
-            ficha.bio.alinhamento = alinhamento;
-            ficha.bio.afiliacao = afiliacao;
-            ficha.bio.dinheiro = dinheiro;
+            ficha.bio.raca = overrides.raca !== undefined ? overrides.raca : raca;
+            ficha.bio.classe = overrides.classe !== undefined ? overrides.classe : classe;
+            ficha.bio.subClasse = overrides.subClasse !== undefined ? overrides.subClasse : subClasse; 
+            ficha.bio.alterEgoSlot1 = overrides.alterEgoSlot1 !== undefined ? overrides.alterEgoSlot1 : alterEgoSlot1;
+            ficha.bio.alterEgoSlot2 = overrides.alterEgoSlot2 !== undefined ? overrides.alterEgoSlot2 : alterEgoSlot2;
+            ficha.bio.classesMemorizadas = overrides.classesMemorizadas !== undefined ? overrides.classesMemorizadas : classesMemorizadas; 
+            ficha.bio.idade = overrides.idade !== undefined ? overrides.idade : idade;
+            ficha.bio.fisico = overrides.fisico !== undefined ? overrides.fisico : fisico;
+            ficha.bio.sangue = overrides.sangue !== undefined ? overrides.sangue : sangue;
+            ficha.bio.alinhamento = overrides.alinhamento !== undefined ? overrides.alinhamento : alinhamento;
+            ficha.bio.afiliacao = overrides.afiliacao !== undefined ? overrides.afiliacao : afiliacao;
+            ficha.bio.dinheiro = overrides.dinheiro !== undefined ? overrides.dinheiro : dinheiro;
         });
         salvarFichaSilencioso();
+    }
+
+    function salvarBio() {
+        comitarBio();
         setSalvandoBio(true);
         setTimeout(() => setSalvandoBio(false), 2000);
     }
 
-    // 🔥 FUNÇÃO NOVA: Troca a classe e salva instantaneamente no Motor!
     function mudarSubClasseDireto(novaSub) {
         setSubClasse(novaSub);
-        updateFicha((ficha) => {
-            if (!ficha.bio) ficha.bio = {};
-            ficha.bio.subClasse = novaSub;
-        });
-        salvarFichaSilencioso();
+        comitarBio({ subClasse: novaSub });
     }
 
     // 🔥 FUNÇÕES EXCLUSIVAS DO PRETENDER
     function toggleMemoriaPretender(val) {
         setClassesMemorizadas(prev => {
-            if (prev.includes(val)) {
-                const novaLista = prev.filter(v => v !== val);
-                // Se ele esquecer a classe que está a usar, tira o disfarce instantaneamente
-                if (subClasse === val) mudarSubClasseDireto(''); 
-                return novaLista;
+            const isRemoving = prev.includes(val);
+            const novaLista = isRemoving ? prev.filter(v => v !== val) : [...prev, val];
+            
+            if (isRemoving && subClasse === val) {
+                setSubClasse(''); 
+                comitarBio({ classesMemorizadas: novaLista, subClasse: '' });
+            } else {
+                comitarBio({ classesMemorizadas: novaLista });
             }
-            return [...prev, val];
+            return novaLista;
         });
     }
 
@@ -138,7 +139,8 @@ export default function FichaPanel() {
         e.preventDefault();
         if (window.confirm('O Descanso Longo vai apagar todas as memórias de classe do Pretender e remover o seu Disfarce atual. Confirmar?')) {
             setClassesMemorizadas([]);
-            mudarSubClasseDireto('');
+            setSubClasse('');
+            comitarBio({ classesMemorizadas: [], subClasse: '' });
         }
     }
 
@@ -277,9 +279,13 @@ export default function FichaPanel() {
                             className="input-neon" 
                             value={classe} 
                             onChange={e => {
-                                setClasse(e.target.value);
-                                if (e.target.value !== 'alterego' && e.target.value !== 'pretender') {
-                                    mudarSubClasseDireto(''); // Limpa o disfarce se mudar para classe normal
+                                const val = e.target.value;
+                                setClasse(val);
+                                if (val !== 'alterego' && val !== 'pretender') {
+                                    setSubClasse('');
+                                    comitarBio({ classe: val, subClasse: '' });
+                                } else {
+                                    comitarBio({ classe: val });
                                 }
                             }}
                             style={{ width: '100%', padding: '6px', background: '#111', color: '#00ffcc', border: '1px solid #00ffcc', borderRadius: '4px' }}
@@ -290,7 +296,7 @@ export default function FichaPanel() {
                         </select>
                     </div>
 
-                    {/* 🔥 1. A MAGIA DO ALTER EGO (Dois Slots + Alternância Ativa Instantânea) */}
+                    {/* 🔥 1. A MAGIA DO ALTER EGO */}
                     {(classe === 'alterego') && (
                         <div className="fade-in" style={{ gridColumn: 'span 2', background: 'rgba(255, 0, 255, 0.1)', padding: '15px', borderRadius: '5px', border: '1px dashed #ff00ff' }}>
                             <label style={{ color: '#ff00ff', fontSize: '0.9em', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
@@ -309,7 +315,12 @@ export default function FichaPanel() {
                                         onChange={e => { 
                                             const val = e.target.value;
                                             setAlterEgoSlot1(val); 
-                                            if(subClasse === alterEgoSlot1 && alterEgoSlot1 !== '') mudarSubClasseDireto(val); 
+                                            if(subClasse === alterEgoSlot1 && alterEgoSlot1 !== '') {
+                                                setSubClasse(val);
+                                                comitarBio({ alterEgoSlot1: val, subClasse: val }); 
+                                            } else {
+                                                comitarBio({ alterEgoSlot1: val });
+                                            }
                                         }}
                                         style={{ width: '100%', padding: '6px', background: '#111', color: '#ff00ff', border: '1px solid #ff00ff', borderRadius: '4px' }}
                                     >
@@ -324,7 +335,12 @@ export default function FichaPanel() {
                                         onChange={e => { 
                                             const val = e.target.value;
                                             setAlterEgoSlot2(val); 
-                                            if(subClasse === alterEgoSlot2 && alterEgoSlot2 !== '') mudarSubClasseDireto(val); 
+                                            if(subClasse === alterEgoSlot2 && alterEgoSlot2 !== '') {
+                                                setSubClasse(val);
+                                                comitarBio({ alterEgoSlot2: val, subClasse: val }); 
+                                            } else {
+                                                comitarBio({ alterEgoSlot2: val });
+                                            }
                                         }}
                                         style={{ width: '100%', padding: '6px', background: '#111', color: '#ff00ff', border: '1px solid #ff00ff', borderRadius: '4px' }}
                                     >
@@ -364,7 +380,7 @@ export default function FichaPanel() {
                         </div>
                     )}
 
-                    {/* 🔥 2. A MAGIA DO PRETENDER (Memória Dinâmica e Descanso) */}
+                    {/* 🔥 2. A MAGIA DO PRETENDER */}
                     {(classe === 'pretender') && (
                         <div className="fade-in" style={{ gridColumn: 'span 2', background: 'rgba(255, 170, 0, 0.1)', padding: '12px', borderRadius: '5px', border: '1px dashed #ffaa00' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
@@ -411,7 +427,7 @@ export default function FichaPanel() {
                             <select 
                                 className="input-neon" 
                                 value={subClasse} 
-                                onChange={e => mudarSubClasseDireto(e.target.value)} // 🔥 Atualiza na hora!
+                                onChange={e => mudarSubClasseDireto(e.target.value)} 
                                 style={{ width: '100%', padding: '6px', background: '#111', color: '#ffaa00', border: '1px solid #ffaa00', borderRadius: '4px' }}
                             >
                                 <option value="">Nenhum Disfarce</option>
