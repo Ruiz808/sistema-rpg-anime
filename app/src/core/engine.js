@@ -393,8 +393,8 @@ export function calcularAcerto({ qD, fD, prof, bonus, sels, minhaFicha, itensEqu
         if (item.bonusTipo === 'bonus_acerto') iAcerto += (parseFloat(item.bonusValor) || 0);
         if (item.tipo === 'arma' || item.tipo === 'artefato') {
             nomesArmas.push(item.nome);
-            // 🔥 FILTRO SUPREMO: Junta o Nome da Arma e todas as Categorias
-            let itemStr = `${item.nome} ${item.arma} ${item.subTipo} ${item.categoria}`.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            // 🔥 BLINDAGEM: Lê qualquer categoria e evita falhas se o campo não existir
+            let itemStr = `${item.nome || ''} ${item.arma || ''} ${item.subTipo || ''} ${item.categoria || ''}`.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             tiposArmas.push(itemStr);
         }
     });
@@ -409,7 +409,6 @@ export function calcularAcerto({ qD, fD, prof, bonus, sels, minhaFicha, itensEqu
 
     let bp = getPoderesDefesa(minhaFicha, 'bonus_acerto');
     
-    // 🔥 LÓGICA SUPREMA: PROFICIÊNCIA ESPECÍFICA DE ARMA 🔥
     let bonusProfArma = 0;
     let nomesProfArma = [];
     let efeitosClasse = getEfeitosDeClasse(minhaFicha);
@@ -421,7 +420,6 @@ export function calcularAcerto({ qD, fD, prof, bonus, sels, minhaFicha, itensEqu
         if (propNormalizada === 'proficiencia_arma') {
             let armaAlvo = (ef.atributo || '').toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             
-            // Verifica se a palavra alvo (ex: "espada") existe no meio das strings guardadas
             if (tiposArmas.some(textoDoItem => textoDoItem.includes(armaAlvo))) {
                 bonusProfArma += (parseFloat(ef.valor) || 0);
                 if (!nomesProfArma.includes(armaAlvo)) nomesProfArma.push(ef.atributo.trim().toUpperCase());
