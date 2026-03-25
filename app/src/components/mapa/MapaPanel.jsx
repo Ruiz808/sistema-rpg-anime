@@ -68,7 +68,9 @@ export default function MapaPanel() {
     const [mapDesvantagens, setMapDesvantagens] = useState(minhaFicha.ataqueConfig?.desvantagens || 0);
     const [inputMapaUrl, setInputMapaUrl] = useState('');
 
-    // 🔥 LEITOR DO COMPÊNDIO: Procura pelas imagens personalizadas das classes
+    // 🔥 STATE DO HOLOGRAMA DE ROLAGEM 🔥
+    const [dadoAnim, setDadoAnim] = useState({ ativo: false, numero: 20, finalResult: null, cor: '#00ffcc' });
+
     const overridesCompendio = useMemo(() => {
         if (!minhaFicha) return {};
         if (isMestre && minhaFicha.compendioOverrides) return minhaFicha.compendioOverrides;
@@ -258,6 +260,7 @@ export default function MapaPanel() {
         setTurnoAtualIndex(0);
     }
 
+    // 🔥 O CORAÇÃO DA NOVA ANIMAÇÃO DE DADOS 🔥
     function rolarAcertoRapido() {
         const qD = parseInt(mapQD) || 1;
         const fD = parseInt(mapFD) || 20;
@@ -266,20 +269,59 @@ export default function MapaPanel() {
         const sels = [mapStat]; 
         const itensEquipados = minhaFicha.inventario ? minhaFicha.inventario.filter(i => i.equipado) : [];
 
+        // 1. Calcula tudo instantaneamente nos bastidores
         const result = calcularAcerto({ 
             qD, fD, prof: 0, bonus, sels, minhaFicha, itensEquipados, 
             vantagens: mapVantagens, desvantagens: mapDesvantagens 
         });
         
-        let extraFeed = {};
-        if (alvoSelecionado && dummies[alvoSelecionado]) {
-            const alvo = dummies[alvoSelecionado];
-            const acertou = result.acertoTotal > alvo.valorDefesa;
-            extraFeed = { alvoNome: alvo.nome, alvoDefesa: alvo.valorDefesa, acertouAlvo: acertou };
+        // 2. Extrai o maior dado cru jogado para mostrar no holograma
+        let rawRoll = 0;
+        let regexStrong = /<strong>(\d+)<\/strong>/g;
+        let match;
+        while ((match = regexStrong.exec(result.rolagem)) !== null) {
+            let v = parseInt(match[1]);
+            if (v > rawRoll) rawRoll = v;
         }
+        if (rawRoll === 0) rawRoll = Math.floor(Math.random() * fD) + 1; // Backup de segurança
 
-        const feedData = { tipo: 'acerto', nome: meuNome, ...result, ...extraFeed };
-        enviarParaFeed(feedData);
+        // 3. Define a cor do impacto dependendo de se foi crítico ou falha
+        const acCfg = minhaFicha.ataqueConfig || {};
+        const cFMin = acCfg.criticoFatalMin || 19;
+        const cNMin = acCfg.criticoNormalMin || 16;
+        
+        let corFinal = '#0088ff'; // Azul (Acerto Normal)
+        if (rawRoll >= cFMin) corFinal = '#ff003c'; // Vermelho (Fatal)
+        else if (rawRoll >= cNMin) corFinal = '#ffcc00'; // Amarelo (Crítico Normal)
+        else if (rawRoll === 1) corFinal = '#660000'; // Escuro (Falha Crítica)
+
+        // 4. Inicia a animação!
+        setDadoAnim({ ativo: true, numero: Math.floor(Math.random() * fD) + 1, finalResult: null, cor: '#00ffcc' });
+
+        let intervalos = 0;
+        const tempoGiro = setInterval(() => {
+            setDadoAnim(prev => ({ ...prev, numero: Math.floor(Math.random() * fD) + 1 }));
+            intervalos++;
+
+            // Ao fim de ~1.2 segundos (15 ticks de 80ms), o dado aterra!
+            if (intervalos > 15) {
+                clearInterval(tempoGiro);
+                setDadoAnim({ ativo: true, numero: rawRoll, finalResult: rawRoll, cor: corFinal });
+                
+                // Deixa o resultado na tela por 1.5s e depois envia para o chat
+                setTimeout(() => {
+                    setDadoAnim({ ativo: false, numero: 20, finalResult: null, cor: '#00ffcc' });
+                    
+                    let extraFeed = {};
+                    if (alvoSelecionado && dummies[alvoSelecionado]) {
+                        const alvo = dummies[alvoSelecionado];
+                        const acertou = result.acertoTotal >= alvo.valorDefesa;
+                        extraFeed = { alvoNome: alvo.nome, alvoDefesa: alvo.valorDefesa, acertouAlvo: acertou };
+                    }
+                    enviarParaFeed({ tipo: 'acerto', nome: meuNome, ...result, ...extraFeed });
+                }, 1500);
+            }
+        }, 80);
     }
 
     const tokenMap = useMemo(() => {
@@ -329,7 +371,6 @@ export default function MapaPanel() {
         let fichaBase = jogadorDaVez ? jogadorDaVez.ficha : (acaoExibir ? jogadores[acaoExibir.nome] : null);
         let infoBase = getAvatarInfo(fichaBase);
 
-        // 🔥 LÓGICA DO ÍCONE: Prioriza a imagem do Compêndio, se não achar, usa o Emoji
         let classId = fichaBase?.bio?.classe;
         if ((classId === 'pretender' || classId === 'alterego') && fichaBase?.bio?.subClasse) {
             classId = fichaBase?.bio?.subClasse;
@@ -436,7 +477,6 @@ export default function MapaPanel() {
                             boxShadow: 'inset 0 -100px 50px -20px rgba(0,0,0,0.9)' 
                         }}>
                             <div style={{ padding: '20px', zIndex: 2 }}>
-                                {/* 🔥 A FIRULA: RENDERIZA O ÍCONE DA IMAGEM SE EXISTIR, SENÃO USA O EMOJI 🔥 */}
                                 <h2 style={{ margin: 0, color: '#fff', fontSize: '2em', textShadow: '0 0 10px #000, 2px 2px 0px #000', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     {customClassIcon ? (
                                         <img 
@@ -532,6 +572,53 @@ export default function MapaPanel() {
     return (
         <div className="mapa-panel" style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
             
+            {/* 🔥 CSS DO HOLOGRAMA DE ROLAGEM 🔥 */}
+            <style dangerouslySetInnerHTML={{__html: `
+                @keyframes d20-spin {
+                    0% { transform: rotate(0deg) scale(1); filter: brightness(1) drop-shadow(0 0 10px #00ffcc); }
+                    25% { transform: rotate(90deg) scale(1.1); filter: brightness(1.2) drop-shadow(0 0 20px #00ffcc); }
+                    50% { transform: rotate(180deg) scale(0.9); filter: brightness(1) drop-shadow(0 0 10px #00ffcc); }
+                    75% { transform: rotate(270deg) scale(1.1); filter: brightness(1.2) drop-shadow(0 0 20px #00ffcc); }
+                    100% { transform: rotate(360deg) scale(1); filter: brightness(1) drop-shadow(0 0 10px #00ffcc); }
+                }
+                @keyframes d20-land {
+                    0% { transform: scale(1.5); filter: brightness(2) drop-shadow(0 0 40px var(--land-color)); }
+                    100% { transform: scale(1); filter: brightness(1) drop-shadow(0 0 15px var(--land-color)); }
+                }
+                .d20-spinning { animation: d20-spin 0.2s infinite linear; }
+                .d20-landed { animation: d20-land 0.4s ease-out forwards; }
+            `}} />
+
+            {/* OVERLAY DA ANIMAÇÃO DO DADO */}
+            {dadoAnim.ativo && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', 
+                    background: 'rgba(0,0,0,0.85)', zIndex: 9999, 
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexDirection: 'column'
+                }}>
+                    <div 
+                        className={dadoAnim.finalResult ? 'd20-landed' : 'd20-spinning'}
+                        style={{ '--land-color': dadoAnim.cor }}
+                    >
+                        <svg viewBox="0 0 100 100" style={{ width: '250px', height: '250px' }}>
+                            <polygon points="50,0 100,25 100,75 50,100 0,75 0,25" fill="rgba(10,10,15,0.9)" stroke={dadoAnim.cor} strokeWidth="4" />
+                            <polyline points="0,25 50,55 100,25" fill="none" stroke={dadoAnim.cor} strokeWidth="2" opacity="0.5" />
+                            <polyline points="50,100 50,55" fill="none" stroke={dadoAnim.cor} strokeWidth="2" opacity="0.5" />
+                            <polyline points="0,75 50,55 100,75" fill="none" stroke={dadoAnim.cor} strokeWidth="2" opacity="0.5" />
+                            <text x="50%" y="60%" dominantBaseline="middle" textAnchor="middle" fill="#fff" fontSize="35" fontWeight="bold" fontFamily="sans-serif">
+                                {dadoAnim.numero}
+                            </text>
+                        </svg>
+                    </div>
+                    {dadoAnim.finalResult && (
+                        <div style={{ marginTop: '30px', color: dadoAnim.cor, fontSize: '2em', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '3px', textShadow: `0 0 20px ${dadoAnim.cor}` }}>
+                            {dadoAnim.cor === '#ff003c' ? 'CRÍTICO FATAL!' : dadoAnim.cor === '#ffcc00' ? 'CRÍTICO!' : dadoAnim.cor === '#660000' ? 'FALHA CRÍTICA' : 'ROLADO!'}
+                        </div>
+                    )}
+                </div>
+            )}
+
             <div style={{ flex: '1 1 70%', minWidth: 0 }}>
                 
                {isMestre && (
@@ -794,8 +881,9 @@ export default function MapaPanel() {
                                         <span style={{ color: '#f00', fontSize: '0.8em', marginLeft: 5, fontWeight: 'bold' }}>D:</span>
                                         <input className="input-neon" type="number" min="0" value={mapDesvantagens} onChange={changeDesvantagem} style={{ width: 45, padding: 4, borderColor: '#f00', color: '#f00' }} title="Desvantagens" />
 
+                                        {/* 🔥 BOTÃO DA NOVA ANIMAÇÃO 🔥 */}
                                         <button className="btn-neon btn-gold" onClick={rolarAcertoRapido} style={{ padding: '4px 10px', fontSize: '0.85em', marginLeft: 5 }}>
-                                            Rolar Acerto
+                                            🎲 Rolar Acerto
                                         </button>
                                     </div>
                                 )}
