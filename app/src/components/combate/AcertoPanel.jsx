@@ -32,9 +32,11 @@ export default function AcertoPanel() {
 
     // 🔥 FILTRO SUPREMO PARA VISUALIZAÇÃO DA MAESTRIA DE ARMA
     const itensEquipados = minhaFicha.inventario ? minhaFicha.inventario.filter(i => i.equipado) : [];
+    
+    // Pega TUDO o que for de texto do item (nome, categoria, arma, subtipo) e junta!
     const tiposArmasEquipadas = itensEquipados
         .filter(i => i.tipo === 'arma' || i.tipo === 'artefato')
-        .map(i => String(i.arma || i.subTipo || i.categoria || '').toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, ""));
+        .map(i => `${i.nome} ${i.arma} ${i.subTipo} ${i.categoria}`.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, ""));
 
     const efeitosClasse = minhaFicha ? getEfeitosDeClasse(minhaFicha) : [];
     let bonusMaestriaArma = 0;
@@ -45,7 +47,8 @@ export default function AcertoPanel() {
         if (propNormalizada === 'proficiencia_arma') {
             const armaAlvo = (ef.atributo || '').toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             
-            if (tiposArmasEquipadas.includes(armaAlvo)) {
+            // 🔥 Procura se a arma alvo está ESCRITA EM QUALQUER LUGAR do item equipado!
+            if (tiposArmasEquipadas.some(textoDoItem => textoDoItem.includes(armaAlvo))) {
                 bonusMaestriaArma += (parseFloat(ef.valor) || 0);
                 nomesMaestriaArma.push(ef.atributo.trim().toUpperCase());
             }

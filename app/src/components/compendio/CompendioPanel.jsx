@@ -166,7 +166,7 @@ export default function CompendioPanel() {
                             </div>
                         </div>
 
-                        {/* 🔥 MOTOR MATEMÁTICO: AGORA COM MUITO ESPAÇO! */}
+                        {/* 🔥 O NOVO MOTOR MATEMÁTICO COM DROP-DOWN (MENU SUSPENSO) 🔥 */}
                         <div style={{ background: 'rgba(0, 255, 204, 0.05)', padding: '15px', borderRadius: '5px', border: '1px solid rgba(0, 255, 204, 0.3)' }}>
                             <h4 style={{ color: '#00ffcc', margin: '0 0 15px 0', fontSize: '0.9em', borderBottom: '1px solid #00ffcc40', paddingBottom: '5px' }}>⚙️ Motor Matemático (Efeitos Base)</h4>
                             
@@ -175,18 +175,39 @@ export default function CompendioPanel() {
                                     display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '15px', 
                                     background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '4px', border: '1px solid #333'
                                 }}>
-                                    <div style={{ flex: '1 1 120px' }}>
-                                        <label style={{ fontSize: '0.7em', color: '#aaa', display: 'block', marginBottom: '3px' }}>Atributo (ex: dano, vida)</label>
-                                        <input type="text" placeholder="dano" value={ef.atributo} onChange={e => handleEfMat(idx, 'atributo', e.target.value)} className="input-neon" style={{ width: '100%', padding: '6px' }} />
+                                    <div style={{ flex: '1 1 180px' }}>
+                                        <label style={{ fontSize: '0.7em', color: '#ffcc00', display: 'block', marginBottom: '3px' }}>Tipo de Poder</label>
+                                        <select 
+                                            className="input-neon" 
+                                            value={ef.propriedade} 
+                                            onChange={e => handleEfMat(idx, 'propriedade', e.target.value)} 
+                                            style={{ width: '100%', padding: '6px', background: '#111', color: '#ffcc00', border: '1px solid #ffcc00', borderRadius: '4px' }}
+                                        >
+                                            <option value="">Selecione um Poder...</option>
+                                            <option value="munico">💥 Multiplicador Único (ex: Dano x10)</option>
+                                            <option value="mbase">📈 Multiplicador Base (ex: Status x2)</option>
+                                            <option value="base">➕ Somar na Base (ex: Força +50)</option>
+                                            <option value="bonus_acerto">🎯 Acerto Geral (Soma +X no d20)</option>
+                                            <option value="proficiencia_arma">⚔️ Maestria com Arma (+ Acerto)</option>
+                                            <option value="bonus_evasiva">🍃 Evasiva Passiva (+X)</option>
+                                            <option value="bonus_resistencia">🛡️ Resistência Passiva (+X)</option>
+                                            <option value="margem_critico">🩸 Margem de Crítico (Reduz o mínimo)</option>
+                                            <option value="letalidade">☠️ Letalidade (+Dano Pós-Defesa)</option>
+                                        </select>
                                     </div>
-                                    <div style={{ flex: '1 1 120px' }}>
-                                        <label style={{ fontSize: '0.7em', color: '#aaa', display: 'block', marginBottom: '3px' }}>Propriedade (ex: munico, mbase)</label>
-                                        <input type="text" placeholder="munico" value={ef.propriedade} onChange={e => handleEfMat(idx, 'propriedade', e.target.value)} className="input-neon" style={{ width: '100%', padding: '6px' }} />
+
+                                    <div style={{ flex: '1 1 140px' }}>
+                                        <label style={{ fontSize: '0.7em', color: '#00ffcc', display: 'block', marginBottom: '3px' }}>
+                                            {ef.propriedade === 'proficiencia_arma' ? 'Qual Arma? (ex: espada, arco)' : 'Qual Alvo? (ex: dano, todos_status)'}
+                                        </label>
+                                        <input type="text" placeholder={ef.propriedade === 'proficiencia_arma' ? "espada, lança..." : "dano, forca, geral"} value={ef.atributo} onChange={e => handleEfMat(idx, 'atributo', e.target.value)} className="input-neon" style={{ width: '100%', padding: '6px', borderColor: '#00ffcc' }} />
                                     </div>
+                                    
                                     <div style={{ flex: '0 0 80px' }}>
-                                        <label style={{ fontSize: '0.7em', color: '#ffcc00', display: 'block', marginBottom: '3px' }}>Valor</label>
-                                        <input type="text" placeholder="Ex: 10" value={ef.valor} onChange={e => handleEfMat(idx, 'valor', e.target.value)} className="input-neon" style={{ width: '100%', padding: '6px', borderColor: '#ffcc00' }} />
+                                        <label style={{ fontSize: '0.7em', color: '#fff', display: 'block', marginBottom: '3px' }}>Valor</label>
+                                        <input type="text" placeholder="Ex: 10" value={ef.valor} onChange={e => handleEfMat(idx, 'valor', e.target.value)} className="input-neon" style={{ width: '100%', padding: '6px', borderColor: '#fff' }} />
                                     </div>
+
                                     <div style={{ display: 'flex', alignItems: 'flex-end' }}>
                                         <button className="btn-neon btn-red" onClick={() => removeEfMat(idx)} style={{ padding: '6px 12px', margin: 0, height: '34px' }}>X</button>
                                     </div>
