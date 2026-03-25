@@ -66,7 +66,7 @@ export default function AtaquePanel() {
     const percAtualLostFloor = Math.floor(maxVida > 0 ? Math.max(0, ((maxVida - atualVida) / maxVida) * 100) : 0);
     const furiaMax = minhaFicha?.combate?.furiaMax || 0;
 
-    // Salva o novo recorde no banco de dados com segurança
+    // Salva o novo recorde no banco de dados com segurança sempre que o jogador toma mais dano!
     useEffect(() => {
         if (multiplicadorFuriaClasse > 0 && percAtualLostFloor > furiaMax) {
             updateFicha(f => {
@@ -81,7 +81,7 @@ export default function AtaquePanel() {
         if(window.confirm('Deseja acalmar a sua Fúria? Os multiplicadores de dor acumulada serão resetados de acordo com a sua cura atual.')){
             updateFicha(f => {
                 if (!f.combate) f.combate = {};
-                f.combate.furiaMax = percAtualLostFloor; // Reseta para a % de vida que falta no momento exato do clique!
+                f.combate.furiaMax = percAtualLostFloor; 
             });
             salvarFichaSilencioso();
         }
@@ -298,7 +298,7 @@ export default function AtaquePanel() {
                         </div>
                     </div>
                     <p style={{ color: '#0f0', fontSize: '0.9em', marginTop: 10, marginBottom: 0 }}>
-                        ↳ Multiplicador Geral de Dano / Status: <strong style={{ color: '#fff' }}>+{Math.max(percAtualLostFloor, furiaMax) * multiplicadorFuriaClasse}x</strong>
+                        ↳ Bônus no Multiplicador Geral de Dano / Status: <strong style={{ color: '#fff' }}>+{Math.max(percAtualLostFloor, furiaMax) * multiplicadorFuriaClasse}x</strong>
                     </p>
                 </div>
             )}

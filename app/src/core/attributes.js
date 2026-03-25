@@ -38,7 +38,7 @@ export function getEfeitosDeClasse(ficha) {
     return efeitos;
 }
 
-// 🔥 A TRAVA DE SEGURANÇA: 'avoidLoop' impede que o Berserker crie um paradoxo infinito
+// 🔥 A TRAVA DE SEGURANÇA E O FIX DO DANO
 export function getBuffs(ficha, statKey, ignorarPassivas = false, avoidLoop = false) {
     let buffs = { base: 0, mbase: 0, mgeral: 0, mformas: 0, mabs: 0, munico: [], reducaoCusto: 0, regeneracao: 0 };
     let hasBuff = { mbase: false, mgeral: false, mformas: false, mabs: false };
@@ -50,8 +50,9 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false, avoidLoop = fa
     }
 
     let sK = String(statKey).toLowerCase();
-    let isStatFisico = isFisico(sK);
-    let isStatEnergia = isEnergia(sK);
+    // Lista de atributos para o motor saber onde aplicar os buffs globais
+    let isStatFisico = ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaesp', 'carisma', 'stamina', 'constituicao'].includes(sK);
+    let isStatEnergia = ['mana', 'aura', 'chakra', 'corpo'].includes(sK);
 
     const processarEfeitos = (efeitos) => {
         if (!efeitos) return;
@@ -64,33 +65,35 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false, avoidLoop = fa
             
             if (isNaN(val)) val = prop.startsWith('m') ? 1.0 : 0;
 
+            // 🔥 CORREÇÃO: 'todos_status' agora afeta também o Dano!
             let afeta = (atr === sK) ||
-                (atr === 'todos_status' && isStatFisico) ||
+                (atr === 'todos_status' && (isStatFisico || sK === 'dano' || sK === 'status')) ||
                 (atr === 'todas_energias' && isStatEnergia) ||
                 (atr === 'geral') ||
                 (atr === 'dano' && sK === 'dano');
 
-            if (afeta) {
-                // 🩸 A MAGIA NEGRA DO BERSERKER
+            // A Fúria é Global para o Berserker, afetando Dano e Físicos automaticamente
+            let isBerserkerBuff = (prop === 'furia_berserker' && (isStatFisico || sK === 'dano' || sK === 'status'));
+
+            if (afeta || isBerserkerBuff) {
+                // 🩸 A MAGIA NEGRA DO BERSERKER (Regra de 3 e Marca Histórica)
                 if (prop === 'furia_berserker') {
-                    if (avoidLoop) continue; // Trava contra paradoxo temporal!
+                    if (avoidLoop) continue; // Trava contra o paradoxo temporal de vida infinita
                     
-                    // Calcula o HP Máximo em tempo real com a Trava Ativada (Ignora a própria fúria no processo)
+                    // Calcula o HP Máximo dinamicamente (com a trava ativa)
                     let maxVida = getMaximo(ficha, 'vida', true); 
                     let atualVida = ficha.vida?.atual ?? maxVida;
                     
-                    // Regra de 3 para descobrir a % de vida perdida dinâmica
                     let percLost = maxVida > 0 ? Math.max(0, ((maxVida - atualVida) / maxVida) * 100) : 0;
                     
-                    // Puxa a "Marca Histórica" (o quanto ele já sofreu antes de ser curado)
+                    // Puxa a "Marca Histórica" (o quanto ele já sofreu antes da cura)
                     let furiaMax = (ficha.combate && ficha.combate.furiaMax) !== undefined 
                                     ? parseFloat(ficha.combate.furiaMax) 
                                     : 0;
                                     
-                    // A Fúria Ativa é sempre o MAIOR valor: o dano atual OU o máximo histórico gravado
                     let percEfetivo = Math.floor(Math.max(percLost, furiaMax));
                     
-                    // 1% perdido = Multiplicador (Se val for 1.5 e perdeu 20%, ganha 30x de mgeral!)
+                    // 🔥 SOMA no Multiplicador Geral
                     let multiplicadorGanho = percEfetivo * val; 
                     
                     buffs.mgeral += multiplicadorGanho;
@@ -200,7 +203,6 @@ export function getRawBase(ficha, statKey) {
     return (s && s.base) ? parseFloat(s.base) : 0;
 }
 
-// Repassa a trava de segurança em todas as cascatas de cálculo
 export function getEfetivoBase(ficha, statKey, avoidLoop = false) {
     let rawBase = getRawBase(ficha, statKey);
     if (isNaN(rawBase)) rawBase = 0;
