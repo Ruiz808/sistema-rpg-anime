@@ -39,7 +39,6 @@ export function getEfeitosDeClasse(ficha) {
 }
 
 export function getBuffs(ficha, statKey, ignorarPassivas = false, avoidLoop = false) {
-    // 🔥 RASTREADOR ADICIONADO: 'fontesMgeral' vai gravar os nomes
     let buffs = { base: 0, mbase: 0, mgeral: 0, mformas: 0, mabs: 0, munico: [], reducaoCusto: 0, regeneracao: 0, fontesMgeral: [] };
     let hasBuff = { mbase: false, mgeral: false, mformas: false, mabs: false };
 
@@ -55,7 +54,6 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false, avoidLoop = fa
 
     let maxFuriaVal = 0; 
 
-    // O Motor agora recebe a "origem" para saber quem é o culpado do bónus
     const processarEfeitos = (efeitos, origemNome) => {
         if (!efeitos) return;
         for (let j = 0; j < efeitos.length; j++) {
@@ -67,8 +65,9 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false, avoidLoop = fa
             
             if (isNaN(val)) val = prop.startsWith('m') ? 1.0 : 0;
 
+            // 🔥 A CORREÇÃO: "todos_status" agora está separado de "dano"!
             let afeta = (atr === sK) ||
-                (atr === 'todos_status' && (isStatFisico || sK === 'dano' || sK === 'status')) ||
+                (atr === 'todos_status' && (isStatFisico || sK === 'status')) ||
                 (atr === 'todas_energias' && isStatEnergia) ||
                 (atr === 'geral');
 
@@ -81,7 +80,6 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false, avoidLoop = fa
                 else if (prop === 'mgeral') { 
                     buffs.mgeral += val; 
                     hasBuff.mgeral = true; 
-                    // Grava o nome e o valor para o Mestre ver
                     buffs.fontesMgeral.push(`[${origemNome}] +${val}x`); 
                 }
                 else if (prop === 'mformas') { buffs.mformas += val; hasBuff.mformas = true; }
