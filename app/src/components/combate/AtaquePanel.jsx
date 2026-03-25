@@ -51,7 +51,6 @@ export default function AtaquePanel() {
     const dummieAlvo = alvoSelecionado && dummies[alvoSelecionado] ? dummies[alvoSelecionado] : null;
     const [podeRolarDano, setPodeRolarDano] = useState(true);
 
-    // 🔥 LÓGICA DO RASTREADOR DE FÚRIA BERSERKER (SALVAMENTO SEGURO)
     const efeitosClasse = minhaFicha ? getEfeitosDeClasse(minhaFicha) : [];
     let multiplicadorFuriaClasse = 0;
     efeitosClasse.forEach(ef => {
@@ -65,8 +64,15 @@ export default function AtaquePanel() {
     const atualVida = minhaFicha?.vida?.atual ?? maxVida;
     const percAtualLostFloor = Math.floor(maxVida > 0 ? Math.max(0, ((maxVida - atualVida) / maxVida) * 100) : 0);
     const furiaMax = minhaFicha?.combate?.furiaMax || 0;
+    const percEfetivoParaDisplay = Math.max(percAtualLostFloor, furiaMax);
 
-    // Salva o novo recorde no banco de dados com segurança sempre que o jogador toma mais dano!
+    let multiplicadorFuriaVisor = 0;
+    if (percEfetivoParaDisplay === 1) {
+        multiplicadorFuriaVisor = multiplicadorFuriaClasse;
+    } else if (percEfetivoParaDisplay >= 2) {
+        multiplicadorFuriaVisor = percEfetivoParaDisplay;
+    }
+
     useEffect(() => {
         if (multiplicadorFuriaClasse > 0 && percAtualLostFloor > furiaMax) {
             updateFicha(f => {
@@ -280,7 +286,6 @@ export default function AtaquePanel() {
     return (
         <div className="ataque-panel">
             
-            {/* 🔥 PAINEL DO BERSERKER SÓ APARECE SE TIVER A CLASSE/PODER 🔥 */}
             {multiplicadorFuriaClasse > 0 && (
                 <div className="def-box fade-in" style={{ marginBottom: 15, background: 'rgba(255, 0, 0, 0.1)', border: '1px solid rgba(255,0,0,0.5)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -294,11 +299,14 @@ export default function AtaquePanel() {
                         </div>
                         <div style={{ background: 'rgba(255,0,0,0.2)', padding: '10px', borderRadius: '5px', borderLeft: '3px solid #ff0000' }}>
                             <span style={{ color: '#aaa', fontSize: '0.8em', display: 'block' }}>Máximo Atingido (Mantido após Cura):</span>
-                            <span style={{ color: '#ff0000', fontSize: '1.2em', fontWeight: 'bold' }}>{Math.max(percAtualLostFloor, furiaMax)}%</span>
+                            <span style={{ color: '#ff0000', fontSize: '1.2em', fontWeight: 'bold' }}>{percEfetivoParaDisplay}%</span>
                         </div>
                     </div>
                     <p style={{ color: '#0f0', fontSize: '0.9em', marginTop: 10, marginBottom: 0 }}>
-                        ↳ Bônus no Multiplicador Geral de Dano / Status: <strong style={{ color: '#fff' }}>+{Math.max(percAtualLostFloor, furiaMax) * multiplicadorFuriaClasse}x</strong>
+                        ↳ Bônus no Multiplicador Geral: <strong style={{ color: '#fff' }}>+{multiplicadorFuriaVisor}x</strong>
+                    </p>
+                    <p style={{ color: '#aaa', fontSize: '0.75em', marginTop: 5, marginBottom: 0 }}>
+                        <i className="fas fa-info-circle"></i> Com 1% de HP perdido ganha o bônus inicial (+{multiplicadorFuriaClasse}x). A partir de 2%, ganha +1x por cada 1% de HP perdido.
                     </p>
                 </div>
             )}

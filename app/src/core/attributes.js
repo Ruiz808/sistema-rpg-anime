@@ -38,7 +38,6 @@ export function getEfeitosDeClasse(ficha) {
     return efeitos;
 }
 
-// 🔥 A TRAVA DE SEGURANÇA E O FIX DO DANO
 export function getBuffs(ficha, statKey, ignorarPassivas = false, avoidLoop = false) {
     let buffs = { base: 0, mbase: 0, mgeral: 0, mformas: 0, mabs: 0, munico: [], reducaoCusto: 0, regeneracao: 0 };
     let hasBuff = { mbase: false, mgeral: false, mformas: false, mabs: false };
@@ -50,7 +49,6 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false, avoidLoop = fa
     }
 
     let sK = String(statKey).toLowerCase();
-    // Lista de atributos para o motor saber onde aplicar os buffs globais
     let isStatFisico = ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaesp', 'carisma', 'stamina', 'constituicao'].includes(sK);
     let isStatEnergia = ['mana', 'aura', 'chakra', 'corpo'].includes(sK);
 
@@ -65,39 +63,39 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false, avoidLoop = fa
             
             if (isNaN(val)) val = prop.startsWith('m') ? 1.0 : 0;
 
-            // 🔥 CORREÇÃO: 'todos_status' agora afeta também o Dano!
             let afeta = (atr === sK) ||
                 (atr === 'todos_status' && (isStatFisico || sK === 'dano' || sK === 'status')) ||
                 (atr === 'todas_energias' && isStatEnergia) ||
                 (atr === 'geral') ||
                 (atr === 'dano' && sK === 'dano');
 
-            // A Fúria é Global para o Berserker, afetando Dano e Físicos automaticamente
             let isBerserkerBuff = (prop === 'furia_berserker' && (isStatFisico || sK === 'dano' || sK === 'status'));
 
             if (afeta || isBerserkerBuff) {
-                // 🩸 A MAGIA NEGRA DO BERSERKER (Regra de 3 e Marca Histórica)
                 if (prop === 'furia_berserker') {
-                    if (avoidLoop) continue; // Trava contra o paradoxo temporal de vida infinita
+                    if (avoidLoop) continue;
                     
-                    // Calcula o HP Máximo dinamicamente (com a trava ativa)
                     let maxVida = getMaximo(ficha, 'vida', true); 
                     let atualVida = ficha.vida?.atual ?? maxVida;
                     
                     let percLost = maxVida > 0 ? Math.max(0, ((maxVida - atualVida) / maxVida) * 100) : 0;
                     
-                    // Puxa a "Marca Histórica" (o quanto ele já sofreu antes da cura)
                     let furiaMax = (ficha.combate && ficha.combate.furiaMax) !== undefined 
                                     ? parseFloat(ficha.combate.furiaMax) 
                                     : 0;
                                     
                     let percEfetivo = Math.floor(Math.max(percLost, furiaMax));
                     
-                    // 🔥 SOMA no Multiplicador Geral
-                    let multiplicadorGanho = percEfetivo * val; 
+                    // 🔥 A SUA NOVA REGRA DO BERSERKER AQUI 🔥
+                    let multiplicadorGanho = 0;
+                    if (percEfetivo === 1) {
+                        multiplicadorGanho = val; // Se perdeu exatamente 1%, ganha o valor base (ex: 1.5)
+                    } else if (percEfetivo >= 2) {
+                        multiplicadorGanho = percEfetivo; // Se for 2% ou mais, ganha o valor exato (ex: 20% = 20x)
+                    }
                     
                     buffs.mgeral += multiplicadorGanho;
-                    hasBuff.mgeral = true;
+                    if (multiplicadorGanho > 0) hasBuff.mgeral = true;
                 }
                 else if (prop === 'base') buffs.base += val;
                 else if (prop === 'mbase') { buffs.mbase += val; hasBuff.mbase = true; }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import useStore from '../../stores/useStore';
 import { contarDigitos } from '../../core/utils.js';
-import { getMaximo, getBuffs } from '../../core/attributes.js';
+import { getMaximo, getBuffs, getEfeitosDeClasse } from '../../core/attributes.js';
 import { salvarFichaSilencioso } from '../../services/firebase-sync.js';
 import TabelaPrestigio from './TabelaPrestigio';
 
@@ -50,16 +50,12 @@ export default function FichaPanel() {
     const minhaFicha = useStore(s => s.minhaFicha);
     const updateFicha = useStore(s => s.updateFicha);
 
-    // --- BIO ---
     const [raca, setRaca] = useState('');
     const [classe, setClasse] = useState('');
     const [subClasse, setSubClasse] = useState(''); 
-    
-    // Variáveis exclusivas
     const [alterEgoSlot1, setAlterEgoSlot1] = useState('');
     const [alterEgoSlot2, setAlterEgoSlot2] = useState('');
     const [classesMemorizadas, setClassesMemorizadas] = useState([]); 
-
     const [idade, setIdade] = useState('');
     const [fisico, setFisico] = useState('');
     const [sangue, setSangue] = useState('');
@@ -88,7 +84,6 @@ export default function FichaPanel() {
         carregarBio();
     }, [carregarBio]);
 
-    // 🔥 FUNÇÃO INTELIGENTE: Salva tudo o que está na tela para prevenir resets de "Esquecimento" do React
     function comitarBio(overrides = {}) {
         updateFicha((ficha) => {
             if (!ficha.bio) ficha.bio = {};
@@ -119,7 +114,51 @@ export default function FichaPanel() {
         comitarBio({ subClasse: novaSub });
     }
 
-    // 🔥 FUNÇÕES EXCLUSIVAS DO PRETENDER
+    // --- BERSERKER TRACKER (Atualizado para a nova regra) ---
+    const efeitosClasse = minhaFicha ? getEfeitosDeClasse(minhaFicha) : [];
+    let multiplicadorFuriaClasse = 0;
+    efeitosClasse.forEach(ef => {
+        let propNormalizada = (ef.propriedade || '').toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        if (propNormalizada === 'furia_berserker') {
+            multiplicadorFuriaClasse += parseFloat(ef.valor) || 0;
+        }
+    });
+
+    const maxVida = minhaFicha ? getMaximo(minhaFicha, 'vida', true) : 1;
+    const atualVida = minhaFicha?.vida?.atual ?? maxVida;
+    const percAtualLostFloor = Math.floor(maxVida > 0 ? Math.max(0, ((maxVida - atualVida) / maxVida) * 100) : 0);
+    const furiaMax = minhaFicha?.combate?.furiaMax || 0;
+    const percEfetivoParaDisplay = Math.max(percAtualLostFloor, furiaMax);
+
+    // O display exato do buff
+    let multiplicadorFuriaVisor = 0;
+    if (percEfetivoParaDisplay === 1) {
+        multiplicadorFuriaVisor = multiplicadorFuriaClasse;
+    } else if (percEfetivoParaDisplay >= 2) {
+        multiplicadorFuriaVisor = percEfetivoParaDisplay;
+    }
+
+    useEffect(() => {
+        if (multiplicadorFuriaClasse > 0 && percAtualLostFloor > furiaMax) {
+            updateFicha(f => {
+                if (!f.combate) f.combate = {};
+                f.combate.furiaMax = percAtualLostFloor;
+            });
+            salvarFichaSilencioso();
+        }
+    }, [percAtualLostFloor, furiaMax, multiplicadorFuriaClasse, updateFicha]);
+
+    function acalmarFuria(e) {
+        e.preventDefault();
+        if(window.confirm('Deseja acalmar a sua Fúria? Os multiplicadores de dor acumulada serão resetados de acordo com a sua cura atual.')){
+            updateFicha(f => {
+                if (!f.combate) f.combate = {};
+                f.combate.furiaMax = percAtualLostFloor; 
+            });
+            salvarFichaSilencioso();
+        }
+    }
+
     function toggleMemoriaPretender(val) {
         setClassesMemorizadas(prev => {
             const isRemoving = prev.includes(val);
@@ -144,7 +183,6 @@ export default function FichaPanel() {
         }
     }
 
-    // --- EDITOR DE ATRIBUTOS ---
     const [selAtributo, setSelAtributo] = useState('forca');
     const [campos, setCampos] = useState({ base: 0, mBase: 1, regeneracao: 0 });
 
@@ -202,7 +240,6 @@ export default function FichaPanel() {
         alert('Salvo!');
     }
 
-    // --- MULTIPLICADORES DE DANO ---
     const [dmBase, setDmBase] = useState(1.0);
     const [dmPotencial, setDmPotencial] = useState(1.0);
     const [dmGeral, setDmGeral] = useState(1.0);
@@ -265,7 +302,6 @@ export default function FichaPanel() {
 
     return (
         <div className="ficha-panel">
-            {/* Bio */}
             <div className="def-box">
                 <h3 style={{ color: '#ffcc00', marginBottom: 10 }}>Ficha Narrativa</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -296,7 +332,6 @@ export default function FichaPanel() {
                         </select>
                     </div>
 
-                    {/* 🔥 1. A MAGIA DO ALTER EGO */}
                     {(classe === 'alterego') && (
                         <div className="fade-in" style={{ gridColumn: 'span 2', background: 'rgba(255, 0, 255, 0.1)', padding: '15px', borderRadius: '5px', border: '1px dashed #ff00ff' }}>
                             <label style={{ color: '#ff00ff', fontSize: '0.9em', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
@@ -380,7 +415,6 @@ export default function FichaPanel() {
                         </div>
                     )}
 
-                    {/* 🔥 2. A MAGIA DO PRETENDER */}
                     {(classe === 'pretender') && (
                         <div className="fade-in" style={{ gridColumn: 'span 2', background: 'rgba(255, 170, 0, 0.1)', padding: '12px', borderRadius: '5px', border: '1px dashed #ffaa00' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
@@ -477,7 +511,6 @@ export default function FichaPanel() {
                 </button>
             </div>
 
-            {/* Editor de Atributos */}
             <div className="def-box" style={{ marginTop: 15 }}>
                 <h3 style={{ color: '#ffcc00', marginBottom: 10 }}>Editor de Atributos</h3>
                 <select
@@ -514,7 +547,32 @@ export default function FichaPanel() {
                 </button>
             </div>
 
-            {/* Multiplicadores de Dano */}
+            {/* 🔥 PAINEL DO BERSERKER VISÍVEL NA FICHA 🔥 */}
+            {multiplicadorFuriaClasse > 0 && (
+                <div className="def-box fade-in" style={{ marginTop: 15, background: 'rgba(255, 0, 0, 0.1)', border: '1px solid rgba(255,0,0,0.5)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h3 style={{ color: '#ff0000', margin: 0, textShadow: '0 0 5px #ff0000' }}>🩸 Fúria Berserker (Mad Enhancement)</h3>
+                        <button className="btn-neon btn-small" onClick={acalmarFuria} style={{ margin: 0, borderColor: '#fff', color: '#fff' }}>Acalmar Fúria</button>
+                    </div>
+                    <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                        <div style={{ background: 'rgba(0,0,0,0.5)', padding: '10px', borderRadius: '5px' }}>
+                            <span style={{ color: '#aaa', fontSize: '0.8em', display: 'block' }}>Vida Perdida Atual:</span>
+                            <span style={{ color: '#ffcc00', fontSize: '1.2em', fontWeight: 'bold' }}>{percAtualLostFloor}%</span>
+                        </div>
+                        <div style={{ background: 'rgba(255,0,0,0.2)', padding: '10px', borderRadius: '5px', borderLeft: '3px solid #ff0000' }}>
+                            <span style={{ color: '#aaa', fontSize: '0.8em', display: 'block' }}>Máximo Atingido (Mantido após Cura):</span>
+                            <span style={{ color: '#ff0000', fontSize: '1.2em', fontWeight: 'bold' }}>{percEfetivoParaDisplay}%</span>
+                        </div>
+                    </div>
+                    <p style={{ color: '#0f0', fontSize: '0.9em', marginTop: 10, marginBottom: 0 }}>
+                        ↳ Bônus no Multiplicador Geral: <strong style={{ color: '#fff' }}>+{multiplicadorFuriaVisor}x</strong>
+                    </p>
+                    <p style={{ color: '#aaa', fontSize: '0.75em', marginTop: 5, marginBottom: 0 }}>
+                        <i className="fas fa-info-circle"></i> 1% de HP perdido dá o bônus base (+{multiplicadorFuriaClasse}x). A partir de 2%, o bônus equivale exatamente à % perdida!
+                    </p>
+                </div>
+            )}
+
             <div className="def-box" style={{ marginTop: 15 }}>
                 <h3 style={{ color: '#ff003c', marginBottom: 10 }}>Multiplicadores de Dano</h3>
                 <p style={{ color: '#888', fontSize: '0.8em', margin: '0 0 10px' }}>Valores base. Habilidades ativas somam automaticamente.</p>
