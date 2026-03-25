@@ -68,8 +68,8 @@ export default function MapaPanel() {
     const [mapDesvantagens, setMapDesvantagens] = useState(minhaFicha.ataqueConfig?.desvantagens || 0);
     const [inputMapaUrl, setInputMapaUrl] = useState('');
 
-    // 🔥 STATE DO HOLOGRAMA DE ROLAGEM 🔥
-    const [dadoAnim, setDadoAnim] = useState({ ativo: false, numero: 20, finalResult: null, cor: '#00ffcc' });
+    const [dadoAnim, setDadoAnim] = useState({ ativo: false, numero: 20, finalResult: null, cor: '#00ffcc', quemRolou: '' });
+    const prevFeedLen = useRef(feedCombate.length);
 
     const overridesCompendio = useMemo(() => {
         if (!minhaFicha) return {};
@@ -82,6 +82,69 @@ export default function MapaPanel() {
         }
         return {};
     }, [isMestre, minhaFicha, personagens]);
+
+    // 🔥 O CÉREBRO DA SINCRONIZAÇÃO GLOBAL DE DADOS 🔥
+    // Este código acorda sempre que alguém no mundo enviar uma rolagem para o Feed
+    useEffect(() => {
+        if (feedCombate.length > prevFeedLen.current) {
+            const newItem = feedCombate[feedCombate.length - 1];
+            
+            // Se for um acerto ou dano e tiver rolagem de dados
+            if (newItem && newItem.rolagem && (newItem.tipo === 'acerto' || newItem.tipo === 'dano')) {
+                
+                // Extrai o maior dado que caiu cru da string do log
+                let rawRoll = 0;
+                let regexStrong = /<strong>(\d+)<\/strong>/g;
+                let match;
+                while ((match = regexStrong.exec(newItem.rolagem)) !== null) {
+                    let v = parseInt(match[1]);
+                    if (v > rawRoll) rawRoll = v;
+                }
+                if (rawRoll === 0) { 
+                    let regexArr = /\[(.*?)\]/;
+                    let mArr = regexArr.exec(newItem.rolagem);
+                    if (mArr) {
+                        let clean = mArr[1].replace(/<[^>]*>?/gm, ''); 
+                        let nums = clean.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n));
+                        if (nums.length > 0) rawRoll = Math.max(...nums);
+                    }
+                }
+                
+                if (rawRoll > 0) {
+                    let corFinal = '#0088ff'; 
+                    // Detecta se o dado foi crítico para alterar a cor e o brilho!
+                    if (newItem.tipo === 'dano') {
+                        if (newItem.armaStr?.includes('FATAL')) corFinal = '#ff003c'; 
+                        else if (newItem.armaStr?.includes('CRÍTICO')) corFinal = '#ffcc00'; 
+                    } else {
+                        if (rawRoll === 20) corFinal = '#ff003c'; 
+                        else if (rawRoll >= 18) corFinal = '#ffcc00'; 
+                        else if (rawRoll === 1) corFinal = '#660000'; 
+                    }
+
+                    // Inicia a animação para o jogador que está a olhar para o mapa
+                    setDadoAnim({ ativo: true, numero: Math.floor(Math.random() * 20) + 1, finalResult: null, cor: '#00ffcc', quemRolou: newItem.nome });
+
+                    let intervalos = 0;
+                    const tempoGiro = setInterval(() => {
+                        setDadoAnim(prev => ({ ...prev, numero: Math.floor(Math.random() * 20) + 1 }));
+                        intervalos++;
+
+                        if (intervalos > 15) { // Para a rotação e bate no chão após ~1.2s
+                            clearInterval(tempoGiro);
+                            setDadoAnim({ ativo: true, numero: rawRoll, finalResult: rawRoll, cor: corFinal, quemRolou: newItem.nome });
+                            
+                            setTimeout(() => {
+                                setDadoAnim({ ativo: false, numero: 20, finalResult: null, cor: '#00ffcc', quemRolou: '' });
+                            }, 2000);
+                        }
+                    }, 80);
+                }
+            }
+        }
+        prevFeedLen.current = feedCombate.length;
+    }, [feedCombate]);
+
 
     useEffect(() => {
         setMapVantagens(minhaFicha.ataqueConfig?.vantagens || 0);
@@ -260,7 +323,8 @@ export default function MapaPanel() {
         setTurnoAtualIndex(0);
     }
 
-    // 🔥 O CORAÇÃO DA NOVA ANIMAÇÃO DE DADOS 🔥
+    // O botão agora apenas envia para o Firebase! 
+    // O useEffect acima captura e mostra a animação para todos (incluindo o próprio)
     function rolarAcertoRapido() {
         const qD = parseInt(mapQD) || 1;
         const fD = parseInt(mapFD) || 20;
@@ -269,59 +333,20 @@ export default function MapaPanel() {
         const sels = [mapStat]; 
         const itensEquipados = minhaFicha.inventario ? minhaFicha.inventario.filter(i => i.equipado) : [];
 
-        // 1. Calcula tudo instantaneamente nos bastidores
         const result = calcularAcerto({ 
             qD, fD, prof: 0, bonus, sels, minhaFicha, itensEquipados, 
             vantagens: mapVantagens, desvantagens: mapDesvantagens 
         });
         
-        // 2. Extrai o maior dado cru jogado para mostrar no holograma
-        let rawRoll = 0;
-        let regexStrong = /<strong>(\d+)<\/strong>/g;
-        let match;
-        while ((match = regexStrong.exec(result.rolagem)) !== null) {
-            let v = parseInt(match[1]);
-            if (v > rawRoll) rawRoll = v;
+        let extraFeed = {};
+        if (alvoSelecionado && dummies[alvoSelecionado]) {
+            const alvo = dummies[alvoSelecionado];
+            const acertou = result.acertoTotal >= alvo.valorDefesa;
+            extraFeed = { alvoNome: alvo.nome, alvoDefesa: alvo.valorDefesa, acertouAlvo: acertou };
         }
-        if (rawRoll === 0) rawRoll = Math.floor(Math.random() * fD) + 1; // Backup de segurança
 
-        // 3. Define a cor do impacto dependendo de se foi crítico ou falha
-        const acCfg = minhaFicha.ataqueConfig || {};
-        const cFMin = acCfg.criticoFatalMin || 19;
-        const cNMin = acCfg.criticoNormalMin || 16;
-        
-        let corFinal = '#0088ff'; // Azul (Acerto Normal)
-        if (rawRoll >= cFMin) corFinal = '#ff003c'; // Vermelho (Fatal)
-        else if (rawRoll >= cNMin) corFinal = '#ffcc00'; // Amarelo (Crítico Normal)
-        else if (rawRoll === 1) corFinal = '#660000'; // Escuro (Falha Crítica)
-
-        // 4. Inicia a animação!
-        setDadoAnim({ ativo: true, numero: Math.floor(Math.random() * fD) + 1, finalResult: null, cor: '#00ffcc' });
-
-        let intervalos = 0;
-        const tempoGiro = setInterval(() => {
-            setDadoAnim(prev => ({ ...prev, numero: Math.floor(Math.random() * fD) + 1 }));
-            intervalos++;
-
-            // Ao fim de ~1.2 segundos (15 ticks de 80ms), o dado aterra!
-            if (intervalos > 15) {
-                clearInterval(tempoGiro);
-                setDadoAnim({ ativo: true, numero: rawRoll, finalResult: rawRoll, cor: corFinal });
-                
-                // Deixa o resultado na tela por 1.5s e depois envia para o chat
-                setTimeout(() => {
-                    setDadoAnim({ ativo: false, numero: 20, finalResult: null, cor: '#00ffcc' });
-                    
-                    let extraFeed = {};
-                    if (alvoSelecionado && dummies[alvoSelecionado]) {
-                        const alvo = dummies[alvoSelecionado];
-                        const acertou = result.acertoTotal >= alvo.valorDefesa;
-                        extraFeed = { alvoNome: alvo.nome, alvoDefesa: alvo.valorDefesa, acertouAlvo: acertou };
-                    }
-                    enviarParaFeed({ tipo: 'acerto', nome: meuNome, ...result, ...extraFeed });
-                }, 1500);
-            }
-        }, 80);
+        const feedData = { tipo: 'acerto', nome: meuNome, ...result, ...extraFeed };
+        enviarParaFeed(feedData); 
     }
 
     const tokenMap = useMemo(() => {
@@ -354,6 +379,17 @@ export default function MapaPanel() {
     const fmt = (n) => Number(n || 0).toLocaleString('pt-BR');
 
     function renderHologramaAcao() {
+        // 🔥 ANTI-SPOILER: Esconde os status e o feed de combate do painel enquanto a animação roda!
+        if (dadoAnim.ativo) {
+            return (
+                <div className="def-box" style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(10, 10, 15, 0.95)', border: `2px solid ${dadoAnim.cor}`, boxShadow: `0 0 30px ${dadoAnim.cor}50` }}>
+                    <h2 style={{ color: dadoAnim.cor, textShadow: `0 0 10px ${dadoAnim.cor}`, textAlign: 'center', letterSpacing: 2, textTransform: 'uppercase' }}>
+                        {dadoAnim.quemRolou}<br/>está a jogar os dados...
+                    </h2>
+                </div>
+            );
+        }
+
         const emCombate = ordemIniciativa.length > 0;
         const acaoNovaNoTurno = feedCombate.length > feedIndexTurnoAtual ? feedCombate[feedCombate.length - 1] : null;
         const acaoGeralForaDeCombate = feedCombate.length > 0 ? feedCombate[feedCombate.length - 1] : null;
@@ -572,7 +608,7 @@ export default function MapaPanel() {
     return (
         <div className="mapa-panel" style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
             
-            {/* 🔥 CSS DO HOLOGRAMA DE ROLAGEM 🔥 */}
+            {/* 🔥 O D20 PERFEITO: GEOMETRIA E ANIMAÇÃO DE ROTAÇÃO 🔥 */}
             <style dangerouslySetInnerHTML={{__html: `
                 @keyframes d20-spin {
                     0% { transform: rotate(0deg) scale(1); filter: brightness(1) drop-shadow(0 0 10px #00ffcc); }
@@ -589,11 +625,10 @@ export default function MapaPanel() {
                 .d20-landed { animation: d20-land 0.4s ease-out forwards; }
             `}} />
 
-            {/* OVERLAY DA ANIMAÇÃO DO DADO */}
             {dadoAnim.ativo && (
                 <div style={{
                     position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', 
-                    background: 'rgba(0,0,0,0.85)', zIndex: 9999, 
+                    background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(3px)', zIndex: 9999, 
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     flexDirection: 'column'
                 }}>
@@ -602,11 +637,25 @@ export default function MapaPanel() {
                         style={{ '--land-color': dadoAnim.cor }}
                     >
                         <svg viewBox="0 0 100 100" style={{ width: '250px', height: '250px' }}>
-                            <polygon points="50,0 100,25 100,75 50,100 0,75 0,25" fill="rgba(10,10,15,0.9)" stroke={dadoAnim.cor} strokeWidth="4" />
-                            <polyline points="0,25 50,55 100,25" fill="none" stroke={dadoAnim.cor} strokeWidth="2" opacity="0.5" />
-                            <polyline points="50,100 50,55" fill="none" stroke={dadoAnim.cor} strokeWidth="2" opacity="0.5" />
-                            <polyline points="0,75 50,55 100,75" fill="none" stroke={dadoAnim.cor} strokeWidth="2" opacity="0.5" />
-                            <text x="50%" y="60%" dominantBaseline="middle" textAnchor="middle" fill="#fff" fontSize="35" fontWeight="bold" fontFamily="sans-serif">
+                            {/* Hexágono Exterior do D20 */}
+                            <polygon points="50,5 95,30 95,75 50,95 5,75 5,30" fill="rgba(10,10,15,0.95)" stroke={dadoAnim.cor} strokeWidth="4" strokeLinejoin="round" />
+                            
+                            {/* Triângulo Central Apontado para Baixo */}
+                            <polygon points="50,85 20,35 80,35" fill="none" stroke={dadoAnim.cor} strokeWidth="3" strokeLinejoin="round" opacity="0.8" />
+                            
+                            {/* Arestas de Conexão do Icosaedro */}
+                            <line x1="50" y1="5" x2="20" y2="35" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
+                            <line x1="50" y1="5" x2="80" y2="35" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
+                            <line x1="95" y1="30" x2="80" y2="35" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
+                            <line x1="95" y1="75" x2="80" y2="35" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
+                            <line x1="95" y1="75" x2="50" y2="85" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
+                            <line x1="50" y1="95" x2="50" y2="85" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
+                            <line x1="5" y1="75" x2="50" y2="85" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
+                            <line x1="5" y1="75" x2="20" y2="35" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
+                            <line x1="5" y1="30" x2="20" y2="35" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
+
+                            {/* Número Centralizado */}
+                            <text x="50%" y="56%" dominantBaseline="middle" textAnchor="middle" fill="#fff" fontSize="32" fontWeight="bold" fontFamily="sans-serif">
                                 {dadoAnim.numero}
                             </text>
                         </svg>
@@ -881,7 +930,6 @@ export default function MapaPanel() {
                                         <span style={{ color: '#f00', fontSize: '0.8em', marginLeft: 5, fontWeight: 'bold' }}>D:</span>
                                         <input className="input-neon" type="number" min="0" value={mapDesvantagens} onChange={changeDesvantagem} style={{ width: 45, padding: 4, borderColor: '#f00', color: '#f00' }} title="Desvantagens" />
 
-                                        {/* 🔥 BOTÃO DA NOVA ANIMAÇÃO 🔥 */}
                                         <button className="btn-neon btn-gold" onClick={rolarAcertoRapido} style={{ padding: '4px 10px', fontSize: '0.85em', marginLeft: 5 }}>
                                             🎲 Rolar Acerto
                                         </button>
