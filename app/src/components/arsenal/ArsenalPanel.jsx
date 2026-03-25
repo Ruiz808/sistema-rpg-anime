@@ -3,6 +3,9 @@ import useStore from '../../stores/useStore';
 import { salvarFichaSilencioso } from '../../services/firebase-sync';
 import { ATRIBUTOS_AGRUPADOS, PROPRIEDADE_OPTIONS } from '../../core/efeitos-constants';
 
+const ARMA_TIPOS = ['espada', 'foice', 'lança', 'cajado', 'adaga'];
+const RARIDADES = ['comum', 'rara', 'avançada', 'lendaria', 'lendaria (Longuinus)', 'espiritual', 'fantasma nobre'];
+
 const BONUS_OPTIONS = [
     { value: 'mult_dano', label: 'Mult Dano' },
     { value: 'dano_bruto', label: 'Dano Bruto' },
@@ -29,6 +32,8 @@ export default function ArsenalPanel() {
     const [bonusValor, setBonusValor] = useState('');
     const [armaDadosQtd, setArmaDadosQtd] = useState(1);
     const [armaDadosFaces, setArmaDadosFaces] = useState(20);
+    const [armaTipo, setArmaTipo] = useState('espada');
+    const [raridade, setRaridade] = useState('comum');
 
     const [novoAtr, setNovoAtr] = useState('forca');
     const [novoProp, setNovoProp] = useState('base');
@@ -90,6 +95,8 @@ export default function ArsenalPanel() {
                     ficha.inventario[ix].elemento = 'Neutro';
                     ficha.inventario[ix].bonusTipo = bonusTipo;
                     ficha.inventario[ix].bonusValor = bonusValor;
+                    ficha.inventario[ix].armaTipo = tipoItem === 'arma' ? armaTipo : '';
+                    ficha.inventario[ix].raridade = raridade;
                     if (tipoItem === 'arma') {
                         ficha.inventario[ix].dadosQtd = parseInt(armaDadosQtd) || 1;
                         ficha.inventario[ix].dadosFaces = parseInt(armaDadosFaces) || 20;
@@ -108,6 +115,8 @@ export default function ArsenalPanel() {
                     elemento: 'Neutro',
                     bonusTipo: bonusTipo,
                     bonusValor: bonusValor,
+                    armaTipo: tipoItem === 'arma' ? armaTipo : '',
+                    raridade: raridade,
                     dadosQtd: tipoItem === 'arma' ? (parseInt(armaDadosQtd) || 1) : 0,
                     dadosFaces: tipoItem === 'arma' ? (parseInt(armaDadosFaces) || 20) : 0,
                     efeitos: tipoItem === 'arma' ? JSON.parse(JSON.stringify(efeitosTempArsenal)) : [],
@@ -138,6 +147,8 @@ export default function ArsenalPanel() {
         setBonusValor(p.bonusValor);
         setArmaDadosQtd(p.dadosQtd || 1);
         setArmaDadosFaces(p.dadosFaces || 20);
+        setArmaTipo(p.armaTipo || 'espada');
+        setRaridade(p.raridade || 'comum');
         setEfeitosTempArsenal(JSON.parse(JSON.stringify(p.efeitos || [])));
         setEfeitosTempPassivosArsenal(JSON.parse(JSON.stringify(p.efeitosPassivos || [])));
         if (formRef.current) formRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -151,6 +162,8 @@ export default function ArsenalPanel() {
         setBonusValor('');
         setArmaDadosQtd(1);
         setArmaDadosFaces(20);
+        setArmaTipo('espada');
+        setRaridade('comum');
         setEfeitosTempArsenal([]);
         setEfeitosTempPassivosArsenal([]);
     }
@@ -198,13 +211,27 @@ export default function ArsenalPanel() {
                     onChange={e => setNomeItem(e.target.value)}
                 />
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginTop: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: tipoItem === 'arma' ? '1fr 1fr 1fr 1fr 1fr' : '1fr 1fr 1fr 1fr', gap: 10, marginTop: 10 }}>
                     <div>
                         <label style={{ color: '#aaa', fontSize: '0.85em' }}>Tipo</label>
                         <select className="input-neon" value={tipoItem} onChange={e => setTipoItem(e.target.value)}>
                             <option value="arma">Arma</option>
                             <option value="armadura">Armadura</option>
                             <option value="artefato">Artefato</option>
+                        </select>
+                    </div>
+                    {tipoItem === 'arma' && (
+                        <div>
+                            <label style={{ color: '#aaa', fontSize: '0.85em' }}>Arma</label>
+                            <select className="input-neon" value={armaTipo} onChange={e => setArmaTipo(e.target.value)}>
+                                {ARMA_TIPOS.map(a => <option key={a} value={a}>{a.charAt(0).toUpperCase() + a.slice(1)}</option>)}
+                            </select>
+                        </div>
+                    )}
+                    <div>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Raridade</label>
+                        <select className="input-neon" value={raridade} onChange={e => setRaridade(e.target.value)}>
+                            {RARIDADES.map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
                         </select>
                     </div>
                     <div>
@@ -352,7 +379,7 @@ export default function ArsenalPanel() {
                                             {icon} {p.nome || 'Item'}
                                         </h3>
                                         <p style={{ color: '#aaa', fontSize: '0.85em', margin: '5px 0 0' }}>
-                                            Classe: {(p.tipo || '').toUpperCase()}{p.tipo === 'arma' && p.dadosQtd ? ` | Dano: ${p.dadosQtd}d${p.dadosFaces || 20}` : ''}
+                                            {(p.tipo || '').toUpperCase()}{p.armaTipo ? ` (${p.armaTipo.charAt(0).toUpperCase() + p.armaTipo.slice(1)})` : ''}{p.raridade ? ` | ${p.raridade.charAt(0).toUpperCase() + p.raridade.slice(1)}` : ''}{p.tipo === 'arma' && p.dadosQtd ? ` | Dano: ${p.dadosQtd}d${p.dadosFaces || 20}` : ''}
                                         </p>
                                         <p style={{ color: '#0ff', fontSize: '0.9em', margin: '5px 0 0' }}>
                                             {propText}: <strong style={{ color: '#ffcc00' }}>{prefixo}{p.bonusValor || 0}</strong>
