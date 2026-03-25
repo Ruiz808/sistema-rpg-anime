@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import useStore from '../../stores/useStore';
 import { calcularAcerto } from '../../core/engine';
-import { getPoderesDefesa, getEfeitosDeClasse } from '../../core/attributes'; // 🔥 IMPORT ATUALIZADO
+import { getPoderesDefesa, getEfeitosDeClasse } from '../../core/attributes'; 
 import { enviarParaFeed, salvarFichaSilencioso } from '../../services/firebase-sync';
 
 const STATS_LIST = [
@@ -28,23 +28,26 @@ export default function AcertoPanel() {
     
     const [statsSelecionados, setStatsSelecionados] = useState(['destreza']);
 
-    // 🔥 PUXA O BÓNUS DE ACERTO DA CLASSE (MOTOR MATEMÁTICO)
     const bonusAcertoClasse = minhaFicha ? getPoderesDefesa(minhaFicha, 'bonus_acerto') : 0;
 
-    // 🔥 LÓGICA DA MAESTRIA DE ARMA VISUAL
+    // 🔥 FILTRO SUPREMO PARA VISUALIZAÇÃO DA MAESTRIA DE ARMA
     const itensEquipados = minhaFicha.inventario ? minhaFicha.inventario.filter(i => i.equipado) : [];
-    const tiposArmasEquipadas = itensEquipados.filter(i => i.tipo === 'arma' || i.tipo === 'artefato').map(i => String(i.arma).toLowerCase());
+    const tiposArmasEquipadas = itensEquipados
+        .filter(i => i.tipo === 'arma' || i.tipo === 'artefato')
+        .map(i => String(i.arma || i.subTipo || i.categoria || '').toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, ""));
 
     const efeitosClasse = minhaFicha ? getEfeitosDeClasse(minhaFicha) : [];
     let bonusMaestriaArma = 0;
     let nomesMaestriaArma = [];
 
     efeitosClasse.forEach(ef => {
-        if ((ef.propriedade || '').toLowerCase() === 'proficiencia_arma') {
-            const armaAlvo = (ef.atributo || '').toLowerCase();
+        let propNormalizada = (ef.propriedade || '').toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        if (propNormalizada === 'proficiencia_arma') {
+            const armaAlvo = (ef.atributo || '').toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            
             if (tiposArmasEquipadas.includes(armaAlvo)) {
                 bonusMaestriaArma += (parseFloat(ef.valor) || 0);
-                nomesMaestriaArma.push(ef.atributo.toUpperCase());
+                nomesMaestriaArma.push(ef.atributo.trim().toUpperCase());
             }
         }
     });
@@ -104,14 +107,13 @@ export default function AcertoPanel() {
             <div className="def-box">
                 <h3 style={{ color: '#f90', marginBottom: 5 }}>Rolagem de Acerto</h3>
 
-                {/* 🔥 AVISO VISUAL SE A CLASSE DER ACERTO BÓNUS GERAL */}
                 {bonusAcertoClasse > 0 && (
                     <p style={{ color: '#0f0', fontSize: '0.85em', margin: '0 0 10px 0', textShadow: '0 0 5px rgba(0,255,0,0.5)' }}>
                         ✨ Instinto de Batalha: A sua classe concede +{bonusAcertoClasse} de Acerto passivo!
                     </p>
                 )}
 
-                {/* 🔥 AVISO VISUAL DA MAESTRIA DE ARMA (Ex: Saber com Espada) */}
+                {/* 🔥 AVISO VISUAL DA MAESTRIA DE ARMA COM O NOVO FILTRO */}
                 {bonusMaestriaArma > 0 && (
                     <p style={{ color: '#00ffcc', fontSize: '0.85em', margin: '0 0 10px 0', textShadow: '0 0 5px rgba(0,255,204,0.5)' }}>
                         ⚔️ Mestre de Armas: A sua classe concede +{bonusMaestriaArma} de Acerto ao usar [{nomesMaestriaArma.join(', ')}]!

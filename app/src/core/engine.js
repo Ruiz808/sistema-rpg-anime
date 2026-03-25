@@ -2,7 +2,7 @@
 // ENGINE RPG — Cálculos de combate (dano, acerto, defesa)
 // ==========================================
 import { contarDigitos, tratarUnico, pegarDoisPrimeirosDigitos } from './utils.js';
-import { getMaximo, getBuffs, getRawBase, getPoderesDefesa, getEfeitosDeClasse } from './attributes.js'; // 🔥 Adicionado getEfeitosDeClasse
+import { getMaximo, getBuffs, getRawBase, getPoderesDefesa, getEfeitosDeClasse } from './attributes.js';
 
 export function rolarDadosComVantagem(qD, fD, vantagens = 0, desvantagens = 0) {
     let netVantagem = (parseInt(vantagens) || 0) - (parseInt(desvantagens) || 0);
@@ -105,14 +105,13 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
     let elementosAtaque = [];
     let nomesArmas = [];
     
-    // 🔥 O CÓDIGO DO SEU AMIGO: Letalidade e Críticos Exclusivos
     let classeHeroica = (minhaFicha.bio && minhaFicha.bio.classe) ? String(minhaFicha.bio.classe).toLowerCase() : '';
     let modCriticoBaseNormal = 2;
     let modCriticoBaseFatal = 4;
     
-    if (classeHeroica === 'archer') iLetalidade += 20; // O Bónus do Arqueiro
+    if (classeHeroica === 'archer') iLetalidade += 20; 
     if (classeHeroica === 'assassin') {
-        modCriticoBaseNormal = 3; // O Assassino pune com críticos colossais
+        modCriticoBaseNormal = 3; 
         modCriticoBaseFatal = 5;
     }
 
@@ -388,13 +387,18 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
 export function calcularAcerto({ qD, fD, prof, bonus, sels, minhaFicha, itensEquipados, vantagens = 0, desvantagens = 0 }) {
     let iAcerto = 0;
     let nomesArmas = [];
-    let tiposArmas = []; // 🔥 Guardamos os tipos das armas equipadas (ex: espada, arco)
+    let tiposArmas = []; 
 
     itensEquipados.forEach(item => {
         if (item.bonusTipo === 'bonus_acerto') iAcerto += (parseFloat(item.bonusValor) || 0);
         if (item.tipo === 'arma' || item.tipo === 'artefato') {
             nomesArmas.push(item.nome);
-            if (item.arma) tiposArmas.push(String(item.arma).toLowerCase()); // Captura a categoria da arma
+            // 🔥 FILTRO SUPREMO: Pega o tipo da arma seja de onde for!
+            let cat = item.arma || item.subTipo || item.categoria || '';
+            if (cat) {
+                let catNormalizada = String(cat).toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                tiposArmas.push(catNormalizada);
+            }
         }
     });
 
@@ -415,12 +419,15 @@ export function calcularAcerto({ qD, fD, prof, bonus, sels, minhaFicha, itensEqu
     
     for (let i = 0; i < efeitosClasse.length; i++) {
         let ef = efeitosClasse[i];
-        if ((ef.propriedade || '').toLowerCase() === 'proficiencia_arma') {
-            let armaAlvo = (ef.atributo || '').toLowerCase();
-            // Verifica se o jogador tem essa arma equipada neste exato momento
+        // 🔥 FILTRO SUPREMO: Remove acentos e espaços invisíveis
+        let propNormalizada = (ef.propriedade || '').toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        
+        if (propNormalizada === 'proficiencia_arma') {
+            let armaAlvo = (ef.atributo || '').toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            
             if (tiposArmas.includes(armaAlvo)) {
                 bonusProfArma += (parseFloat(ef.valor) || 0);
-                if (!nomesProfArma.includes(armaAlvo)) nomesProfArma.push(ef.atributo.toUpperCase());
+                if (!nomesProfArma.includes(armaAlvo)) nomesProfArma.push(ef.atributo.trim().toUpperCase());
             }
         }
     }
@@ -430,14 +437,13 @@ export function calcularAcerto({ qD, fD, prof, bonus, sels, minhaFicha, itensEqu
 
     let armaStr = nomesArmas.length ? ` equipado com <strong>${nomesArmas.join(' e ')}</strong>` : '';
 
-    // Se o bónus for aplicado, vai aparecer na descrição da rolagem no chat para todos verem!
     let profBonusTexto = 'Prof: +' + prof + ' | Bônus Fixo: +' + bonus + 
                          (bp > 0 ? ' | Forma: +' + bp : '') + 
                          (iAcerto > 0 ? ' | Arma: +' + iAcerto : '') +
                          (bonusProfArma > 0 ? ` | Maestria (${nomesProfArma.join(', ')}): +${bonusProfArma}` : '');
 
     return {
-        acertoTotal: Math.floor(vSt + prof + bonus + bp + sD + iAcerto + bonusProfArma), // Soma o bónus aqui
+        acertoTotal: Math.floor(vSt + prof + bonus + bp + sD + iAcerto + bonusProfArma), 
         rolagem: rolagemTexto,
         atributosUsados: atrNames.join(' + '),
         profBonusTexto: profBonusTexto,
