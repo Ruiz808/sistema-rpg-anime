@@ -53,7 +53,7 @@ export default function FichaPanel() {
     // --- BIO ---
     const [raca, setRaca] = useState('');
     const [classe, setClasse] = useState('');
-    const [subClasse, setSubClasse] = useState(''); // Esta é a variável que o Motor (Engine) lê!
+    const [subClasse, setSubClasse] = useState(''); 
     
     // Variáveis exclusivas do Alter Ego
     const [alterEgoSlot1, setAlterEgoSlot1] = useState('');
@@ -111,12 +111,23 @@ export default function FichaPanel() {
         setTimeout(() => setSalvandoBio(false), 2000);
     }
 
+    // 🔥 FUNÇÃO NOVA: Troca a classe e salva instantaneamente no Motor!
+    function mudarSubClasseDireto(novaSub) {
+        setSubClasse(novaSub);
+        updateFicha((ficha) => {
+            if (!ficha.bio) ficha.bio = {};
+            ficha.bio.subClasse = novaSub;
+        });
+        salvarFichaSilencioso();
+    }
+
     // 🔥 FUNÇÕES EXCLUSIVAS DO PRETENDER
     function toggleMemoriaPretender(val) {
         setClassesMemorizadas(prev => {
             if (prev.includes(val)) {
                 const novaLista = prev.filter(v => v !== val);
-                if (subClasse === val) setSubClasse(''); 
+                // Se ele esquecer a classe que está a usar, tira o disfarce instantaneamente
+                if (subClasse === val) mudarSubClasseDireto(''); 
                 return novaLista;
             }
             return [...prev, val];
@@ -127,7 +138,7 @@ export default function FichaPanel() {
         e.preventDefault();
         if (window.confirm('O Descanso Longo vai apagar todas as memórias de classe do Pretender e remover o seu Disfarce atual. Confirmar?')) {
             setClassesMemorizadas([]);
-            setSubClasse('');
+            mudarSubClasseDireto('');
         }
     }
 
@@ -265,7 +276,12 @@ export default function FichaPanel() {
                         <select 
                             className="input-neon" 
                             value={classe} 
-                            onChange={e => setClasse(e.target.value)}
+                            onChange={e => {
+                                setClasse(e.target.value);
+                                if (e.target.value !== 'alterego' && e.target.value !== 'pretender') {
+                                    mudarSubClasseDireto(''); // Limpa o disfarce se mudar para classe normal
+                                }
+                            }}
                             style={{ width: '100%', padding: '6px', background: '#111', color: '#00ffcc', border: '1px solid #00ffcc', borderRadius: '4px' }}
                         >
                             {CLASSES_OPTIONS.map(opt => (
@@ -274,7 +290,7 @@ export default function FichaPanel() {
                         </select>
                     </div>
 
-                    {/* 🔥 1. A MAGIA DO ALTER EGO (Dois Slots + Alternância Ativa) */}
+                    {/* 🔥 1. A MAGIA DO ALTER EGO (Dois Slots + Alternância Ativa Instantânea) */}
                     {(classe === 'alterego') && (
                         <div className="fade-in" style={{ gridColumn: 'span 2', background: 'rgba(255, 0, 255, 0.1)', padding: '15px', borderRadius: '5px', border: '1px dashed #ff00ff' }}>
                             <label style={{ color: '#ff00ff', fontSize: '0.9em', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
@@ -291,8 +307,9 @@ export default function FichaPanel() {
                                         className="input-neon" 
                                         value={alterEgoSlot1} 
                                         onChange={e => { 
-                                            setAlterEgoSlot1(e.target.value); 
-                                            if(subClasse === alterEgoSlot1) setSubClasse(e.target.value); // Atualiza ativo se mudar
+                                            const val = e.target.value;
+                                            setAlterEgoSlot1(val); 
+                                            if(subClasse === alterEgoSlot1 && alterEgoSlot1 !== '') mudarSubClasseDireto(val); 
                                         }}
                                         style={{ width: '100%', padding: '6px', background: '#111', color: '#ff00ff', border: '1px solid #ff00ff', borderRadius: '4px' }}
                                     >
@@ -305,8 +322,9 @@ export default function FichaPanel() {
                                         className="input-neon" 
                                         value={alterEgoSlot2} 
                                         onChange={e => { 
-                                            setAlterEgoSlot2(e.target.value); 
-                                            if(subClasse === alterEgoSlot2) setSubClasse(e.target.value); // Atualiza ativo se mudar
+                                            const val = e.target.value;
+                                            setAlterEgoSlot2(val); 
+                                            if(subClasse === alterEgoSlot2 && alterEgoSlot2 !== '') mudarSubClasseDireto(val); 
                                         }}
                                         style={{ width: '100%', padding: '6px', background: '#111', color: '#ff00ff', border: '1px solid #ff00ff', borderRadius: '4px' }}
                                     >
@@ -321,7 +339,7 @@ export default function FichaPanel() {
                             <div style={{ display: 'flex', gap: '10px' }}>
                                 <button 
                                     className={`btn-neon ${subClasse === alterEgoSlot1 && alterEgoSlot1 !== '' ? 'btn-gold' : ''}`} 
-                                    onClick={(e) => { e.preventDefault(); setSubClasse(alterEgoSlot1); }}
+                                    onClick={(e) => { e.preventDefault(); mudarSubClasseDireto(alterEgoSlot1); }}
                                     disabled={!alterEgoSlot1}
                                     style={{ flex: 1, padding: '6px', fontSize: '0.75em', margin: 0, opacity: !alterEgoSlot1 ? 0.3 : 1 }}
                                 >
@@ -329,7 +347,7 @@ export default function FichaPanel() {
                                 </button>
                                 <button 
                                     className={`btn-neon ${subClasse === alterEgoSlot2 && alterEgoSlot2 !== '' ? 'btn-gold' : ''}`} 
-                                    onClick={(e) => { e.preventDefault(); setSubClasse(alterEgoSlot2); }}
+                                    onClick={(e) => { e.preventDefault(); mudarSubClasseDireto(alterEgoSlot2); }}
                                     disabled={!alterEgoSlot2}
                                     style={{ flex: 1, padding: '6px', fontSize: '0.75em', margin: 0, opacity: !alterEgoSlot2 ? 0.3 : 1 }}
                                 >
@@ -337,7 +355,7 @@ export default function FichaPanel() {
                                 </button>
                                 <button 
                                     className={`btn-neon ${subClasse === '' ? 'btn-red' : ''}`} 
-                                    onClick={(e) => { e.preventDefault(); setSubClasse(''); }}
+                                    onClick={(e) => { e.preventDefault(); mudarSubClasseDireto(''); }}
                                     style={{ flex: 1, padding: '6px', fontSize: '0.75em', margin: 0 }}
                                 >
                                     Desativar Ambos
@@ -389,11 +407,11 @@ export default function FichaPanel() {
                                 })}
                             </div>
 
-                            <label style={{ color: '#ffaa00', fontSize: '0.8em', display: 'block', marginBottom: '4px' }}>Disfarce Atual (Puxar da Memória):</label>
+                            <label style={{ color: '#ffaa00', fontSize: '0.8em', display: 'block', marginBottom: '4px' }}>Disfarce Atual (Aplica os buffs imediatamente):</label>
                             <select 
                                 className="input-neon" 
                                 value={subClasse} 
-                                onChange={e => setSubClasse(e.target.value)}
+                                onChange={e => mudarSubClasseDireto(e.target.value)} // 🔥 Atualiza na hora!
                                 style={{ width: '100%', padding: '6px', background: '#111', color: '#ffaa00', border: '1px solid #ffaa00', borderRadius: '4px' }}
                             >
                                 <option value="">Nenhum Disfarce</option>
