@@ -52,6 +52,8 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false, avoidLoop = fa
     let isStatFisico = ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaesp', 'carisma', 'stamina', 'constituicao'].includes(sK);
     let isStatEnergia = ['mana', 'aura', 'chakra', 'corpo'].includes(sK);
 
+    let maxFuriaVal = 0; // 🔥 GUARDA O VALOR DA FÚRIA PARA APLICAR SÓ UMA VEZ!
+
     const processarEfeitos = (efeitos) => {
         if (!efeitos) return;
         for (let j = 0; j < efeitos.length; j++) {
@@ -66,36 +68,11 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false, avoidLoop = fa
             let afeta = (atr === sK) ||
                 (atr === 'todos_status' && (isStatFisico || sK === 'dano' || sK === 'status')) ||
                 (atr === 'todas_energias' && isStatEnergia) ||
-                (atr === 'geral') ||
-                (atr === 'dano' && sK === 'dano');
+                (atr === 'geral');
 
-            let isBerserkerBuff = (prop === 'furia_berserker' && (isStatFisico || sK === 'dano' || sK === 'status'));
-
-            if (afeta || isBerserkerBuff) {
+            if (afeta) {
                 if (prop === 'furia_berserker') {
-                    if (avoidLoop) continue;
-                    
-                    let maxVida = getMaximo(ficha, 'vida', true); 
-                    let atualVida = ficha.vida?.atual ?? maxVida;
-                    
-                    let percLost = maxVida > 0 ? Math.max(0, ((maxVida - atualVida) / maxVida) * 100) : 0;
-                    
-                    let furiaMax = (ficha.combate && ficha.combate.furiaMax) !== undefined 
-                                    ? parseFloat(ficha.combate.furiaMax) 
-                                    : 0;
-                                    
-                    let percEfetivo = Math.floor(Math.max(percLost, furiaMax));
-                    
-                    // 🔥 A SUA NOVA REGRA DO BERSERKER AQUI 🔥
-                    let multiplicadorGanho = 0;
-                    if (percEfetivo === 1) {
-                        multiplicadorGanho = val; // Se perdeu exatamente 1%, ganha o valor base (ex: 1.5)
-                    } else if (percEfetivo >= 2) {
-                        multiplicadorGanho = percEfetivo; // Se for 2% ou mais, ganha o valor exato (ex: 20% = 20x)
-                    }
-                    
-                    buffs.mgeral += multiplicadorGanho;
-                    if (multiplicadorGanho > 0) hasBuff.mgeral = true;
+                    if (val > maxFuriaVal) maxFuriaVal = val;
                 }
                 else if (prop === 'base') buffs.base += val;
                 else if (prop === 'mbase') { buffs.mbase += val; hasBuff.mbase = true; }
@@ -135,6 +112,30 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false, avoidLoop = fa
     }
 
     processarEfeitos(getEfeitosDeClasse(ficha));
+
+    // 🔥 APLICA A FÚRIA UMA ÚNICA VEZ NO FINAL (Evita o bug de somar +288x)
+    if (maxFuriaVal > 0 && !avoidLoop) {
+        let maxVida = getMaximo(ficha, 'vida', true); 
+        let atualVida = ficha.vida?.atual ?? maxVida;
+        
+        let percLost = maxVida > 0 ? Math.max(0, ((maxVida - atualVida) / maxVida) * 100) : 0;
+        
+        let furiaMax = (ficha.combate && ficha.combate.furiaMax) !== undefined 
+                        ? parseFloat(ficha.combate.furiaMax) 
+                        : 0;
+                        
+        let percEfetivo = Math.floor(Math.max(percLost, furiaMax));
+        
+        let multiplicadorGanho = 0;
+        if (percEfetivo === 1) {
+            multiplicadorGanho = maxFuriaVal; 
+        } else if (percEfetivo >= 2) {
+            multiplicadorGanho = percEfetivo; 
+        }
+        
+        buffs.mgeral += multiplicadorGanho;
+        if (multiplicadorGanho > 0) hasBuff.mgeral = true;
+    }
 
     if (!hasBuff.mbase) buffs.mbase = 1.0;
     if (!hasBuff.mgeral) buffs.mgeral = 1.0;
