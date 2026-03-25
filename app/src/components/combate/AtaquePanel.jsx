@@ -51,14 +51,26 @@ export default function AtaquePanel() {
     const dummieAlvo = alvoSelecionado && dummies[alvoSelecionado] ? dummies[alvoSelecionado] : null;
     const [podeRolarDano, setPodeRolarDano] = useState(true);
 
-    const efeitosClasse = minhaFicha ? getEfeitosDeClasse(minhaFicha) : [];
+    // 🔥 BERSERKER TRACKER ABSOLUTO
     let multiplicadorFuriaClasse = 0;
-    efeitosClasse.forEach(ef => {
-        let propNormalizada = (ef.propriedade || '').toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        if (propNormalizada === 'furia_berserker') {
-            multiplicadorFuriaClasse += parseFloat(ef.valor) || 0;
-        }
-    });
+    const scanFuria = (efs) => {
+        if (!efs) return;
+        efs.forEach(e => {
+            if (!e) return;
+            let p = (e.propriedade || '').toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            if (p === 'furia_berserker') {
+                let v = parseFloat(e.valor) || 0;
+                if (v > multiplicadorFuriaClasse) multiplicadorFuriaClasse = v;
+            }
+        });
+    };
+
+    if (minhaFicha) {
+        (minhaFicha.poderes || []).forEach(p => { if (p && p.ativa) scanFuria(p.efeitos); scanFuria(p.efeitosPassivos); });
+        (minhaFicha.inventario || []).forEach(i => { if (i && i.equipado) { scanFuria(i.efeitos); scanFuria(i.efeitosPassivos); } });
+        (minhaFicha.passivas || []).forEach(p => scanFuria(p.efeitos));
+        scanFuria(getEfeitosDeClasse(minhaFicha));
+    }
 
     const maxVida = minhaFicha ? getMaximo(minhaFicha, 'vida', true) : 1;
     const atualVida = minhaFicha?.vida?.atual ?? maxVida;
