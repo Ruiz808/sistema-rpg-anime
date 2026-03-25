@@ -110,6 +110,10 @@ export default function CompendioPanel() {
     const handleEfMat = (index, campo, valor) => {
         const novosEfeitos = tempEfeitosMat.map((ef, i) => {
             if (i === index) {
+                // Se o Mestre mudar a propriedade de "Maestria" para outra coisa, limpamos o campo de arma para não ficar sujo
+                if (campo === 'propriedade' && valor !== 'proficiencia_arma' && ef.propriedade === 'proficiencia_arma') {
+                    return { ...ef, [campo]: valor, atributo: '' };
+                }
                 return { ...ef, [campo]: valor }; 
             }
             return ef;
@@ -166,7 +170,7 @@ export default function CompendioPanel() {
                             </div>
                         </div>
 
-                        {/* 🔥 O NOVO MOTOR MATEMÁTICO COM DROP-DOWN (MENU SUSPENSO) 🔥 */}
+                        {/* 🔥 MOTOR MATEMÁTICO */}
                         <div style={{ background: 'rgba(0, 255, 204, 0.05)', padding: '15px', borderRadius: '5px', border: '1px solid rgba(0, 255, 204, 0.3)' }}>
                             <h4 style={{ color: '#00ffcc', margin: '0 0 15px 0', fontSize: '0.9em', borderBottom: '1px solid #00ffcc40', paddingBottom: '5px' }}>⚙️ Motor Matemático (Efeitos Base)</h4>
                             
@@ -198,9 +202,41 @@ export default function CompendioPanel() {
 
                                     <div style={{ flex: '1 1 140px' }}>
                                         <label style={{ fontSize: '0.7em', color: '#00ffcc', display: 'block', marginBottom: '3px' }}>
-                                            {ef.propriedade === 'proficiencia_arma' ? 'Qual Arma? (ex: espada, arco)' : 'Qual Alvo? (ex: dano, todos_status)'}
+                                            {ef.propriedade === 'proficiencia_arma' ? 'Qual Arma?' : 'Qual Alvo? (ex: dano, forca)'}
                                         </label>
-                                        <input type="text" placeholder={ef.propriedade === 'proficiencia_arma' ? "espada, lança..." : "dano, forca, geral"} value={ef.atributo} onChange={e => handleEfMat(idx, 'atributo', e.target.value)} className="input-neon" style={{ width: '100%', padding: '6px', borderColor: '#00ffcc' }} />
+                                        
+                                        {/* 🔥 A MÁGICA: Transforma em Dropdown se for Arma! */}
+                                        {ef.propriedade === 'proficiencia_arma' ? (
+                                            <select 
+                                                className="input-neon" 
+                                                value={ef.atributo} 
+                                                onChange={e => handleEfMat(idx, 'atributo', e.target.value)} 
+                                                style={{ width: '100%', padding: '6px', background: '#111', color: '#00ffcc', border: '1px solid #00ffcc', borderRadius: '4px' }}
+                                            >
+                                                <option value="">Escolha a Arma...</option>
+                                                <option value="espada">Espada</option>
+                                                <option value="arco">Arco</option>
+                                                <option value="lança">Lança</option>
+                                                <option value="machado">Machado</option>
+                                                <option value="adaga">Adaga</option>
+                                                <option value="cajado">Cajado</option>
+                                                <option value="arma de fogo">Arma de Fogo</option>
+                                                <option value="manopla">Manopla / Punhos</option>
+                                                <option value="foice">Foice</option>
+                                                <option value="chicote">Chicote</option>
+                                                <option value="martelo">Martelo</option>
+                                                <option value="escudo">Escudo</option>
+                                            </select>
+                                        ) : (
+                                            <input 
+                                                type="text" 
+                                                placeholder="dano, forca, todos_status..." 
+                                                value={ef.atributo} 
+                                                onChange={e => handleEfMat(idx, 'atributo', e.target.value)} 
+                                                className="input-neon" 
+                                                style={{ width: '100%', padding: '6px', borderColor: '#00ffcc' }} 
+                                            />
+                                        )}
                                     </div>
                                     
                                     <div style={{ flex: '0 0 80px' }}>
