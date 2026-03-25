@@ -72,7 +72,11 @@ export default function AtaquePanel() {
         scanFuria(getEfeitosDeClasse(minhaFicha));
     }
 
-    const maxVida = minhaFicha ? getMaximo(minhaFicha, 'vida', true) : 1;
+    const rawMaxVida = minhaFicha ? getMaximo(minhaFicha, 'vida', true) : 1;
+    const strVal = String(Math.floor(rawMaxVida));
+    const pVit = Math.max(0, strVal.length - 8);
+    const maxVida = pVit > 0 ? Math.floor(rawMaxVida / Math.pow(10, pVit)) : rawMaxVida;
+
     const atualVida = minhaFicha?.vida?.atual ?? maxVida;
     const percAtualLostFloor = Math.floor(maxVida > 0 ? Math.max(0, ((maxVida - atualVida) / maxVida) * 100) : 0);
     const furiaMax = minhaFicha?.combate?.furiaMax || 0;

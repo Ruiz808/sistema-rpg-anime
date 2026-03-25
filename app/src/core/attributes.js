@@ -52,7 +52,7 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false, avoidLoop = fa
     let isStatFisico = ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaesp', 'carisma', 'stamina', 'constituicao'].includes(sK);
     let isStatEnergia = ['mana', 'aura', 'chakra', 'corpo'].includes(sK);
 
-    let maxFuriaVal = 0; // 🔥 GUARDA O VALOR DA FÚRIA PARA APLICAR SÓ UMA VEZ!
+    let maxFuriaVal = 0; 
 
     const processarEfeitos = (efeitos) => {
         if (!efeitos) return;
@@ -113,9 +113,14 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false, avoidLoop = fa
 
     processarEfeitos(getEfeitosDeClasse(ficha));
 
-    // 🔥 APLICA A FÚRIA UMA ÚNICA VEZ NO FINAL (Evita o bug de somar +288x)
+    // 🔥 APLICA A FÚRIA COM A LEITURA CORRETA DE COMPRESSÃO DE HP 🔥
     if (maxFuriaVal > 0 && !avoidLoop) {
-        let maxVida = getMaximo(ficha, 'vida', true); 
+        let rawMaxVida = getMaximo(ficha, 'vida', true); 
+        let strVal = String(Math.floor(rawMaxVida));
+        let pVit = Math.max(0, strVal.length - 8);
+        
+        // Pega a Vida Máxima na mesma escala comprimida que a Ficha grava a Vida Atual!
+        let maxVida = pVit > 0 ? Math.floor(rawMaxVida / Math.pow(10, pVit)) : rawMaxVida;
         let atualVida = ficha.vida?.atual ?? maxVida;
         
         let percLost = maxVida > 0 ? Math.max(0, ((maxVida - atualVida) / maxVida) * 100) : 0;

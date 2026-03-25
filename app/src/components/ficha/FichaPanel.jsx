@@ -114,7 +114,7 @@ export default function FichaPanel() {
         comitarBio({ subClasse: novaSub });
     }
 
-    // --- BERSERKER TRACKER ---
+    // --- BERSERKER TRACKER (COM COMPRESSÃO DE VIDA) ---
     let multiplicadorFuriaClasse = 0;
     const scanFuria = (efs) => {
         if (!efs) return;
@@ -135,7 +135,12 @@ export default function FichaPanel() {
         scanFuria(getEfeitosDeClasse(minhaFicha));
     }
 
-    const maxVida = minhaFicha ? getMaximo(minhaFicha, 'vida', true) : 1;
+    // 🔥 CALCULA A VIDA REAL CONSIDERANDO A COMPRESSÃO DO SEU RPG 🔥
+    const rawMaxVida = minhaFicha ? getMaximo(minhaFicha, 'vida', true) : 1;
+    const strVal = String(Math.floor(rawMaxVida));
+    const pVit = Math.max(0, strVal.length - 8);
+    const maxVida = pVit > 0 ? Math.floor(rawMaxVida / Math.pow(10, pVit)) : rawMaxVida;
+
     const atualVida = minhaFicha?.vida?.atual ?? maxVida;
     const percAtualLostFloor = Math.floor(maxVida > 0 ? Math.max(0, ((maxVida - atualVida) / maxVida) * 100) : 0);
     const furiaMax = minhaFicha?.combate?.furiaMax || 0;
@@ -158,7 +163,6 @@ export default function FichaPanel() {
         }
     }, [percAtualLostFloor, furiaMax, multiplicadorFuriaClasse, updateFicha]);
 
-    // 🔥 O BOTÃO BLINDADO (Sem pop-up bloqueador)
     const [furiaAcalmadaMsg, setFuriaAcalmadaMsg] = useState(false);
     function acalmarFuria(e) {
         e.preventDefault();
@@ -559,7 +563,7 @@ export default function FichaPanel() {
                 </button>
             </div>
 
-            {/* 🔥 PAINEL DO BERSERKER COM SCANNER ABSOLUTO E BOTÃO DIRETO 🔥 */}
+            {/* 🔥 PAINEL DO BERSERKER COM SCANNER ABSOLUTO 🔥 */}
             {multiplicadorFuriaClasse > 0 && (
                 <div className="def-box fade-in" style={{ marginTop: 15, background: 'rgba(255, 0, 0, 0.1)', border: '1px solid rgba(255,0,0,0.5)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
