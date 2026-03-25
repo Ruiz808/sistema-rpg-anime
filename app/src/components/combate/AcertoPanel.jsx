@@ -21,22 +21,21 @@ export default function AcertoPanel() {
     const [dados, setDados] = useState(1);
     const [faces, setFaces] = useState(20);
     const [proficiencia, setProficiencia] = useState(0);
-    const [bonus, setBonus] = useState(0); // 🔥 Este campo agora é SÓ para bónus temporários
+    const [bonus, setBonus] = useState(0);
     
     const vantagens = minhaFicha.ataqueConfig?.vantagens || 0;
     const desvantagens = minhaFicha.ataqueConfig?.desvantagens || 0;
     
     const [statsSelecionados, setStatsSelecionados] = useState(['destreza']);
 
-    // 🔥 PUXA O BÓNUS GERAL DA CLASSE
     const bonusAcertoClasse = minhaFicha ? getPoderesDefesa(minhaFicha, 'bonus_acerto') : 0;
 
-    // 🔥 FILTRO SUPREMO PARA VISUALIZAÇÃO DA MAESTRIA DE ARMA
+    // 🔥 FILTRO SUPREMO BLINDADO (Com proteção contra itens sem tipo)
     const itensEquipados = minhaFicha.inventario ? minhaFicha.inventario.filter(i => i.equipado) : [];
+    const armasEquipadas = itensEquipados.filter(i => i.tipo === 'arma' || i.tipo === 'artefato');
     
-    const tiposArmasEquipadas = itensEquipados
-        .filter(i => i.tipo === 'arma' || i.tipo === 'artefato')
-        .map(i => `${i.nome} ${i.arma} ${i.subTipo} ${i.categoria}`.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, ""));
+    const tiposArmasEquipadas = armasEquipadas
+        .map(i => `${i.nome || ''} ${i.arma || ''} ${i.subTipo || ''} ${i.categoria || ''}`.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, ""));
 
     const efeitosClasse = minhaFicha ? getEfeitosDeClasse(minhaFicha) : [];
     let bonusMaestriaArma = 0;
@@ -81,7 +80,7 @@ export default function AcertoPanel() {
         const qD = parseInt(dados) || 1;
         const fD = parseInt(faces) || 20;
         const prof = parseInt(proficiencia) || 0;
-        const bon = parseInt(bonus) || 0; // O Motor de Combate já vai somar os buffs de classe sozinho!
+        const bon = parseInt(bonus) || 0; 
         const v = parseInt(vantagens) || 0;
         const d = parseInt(desvantagens) || 0;
         
@@ -154,7 +153,6 @@ export default function AcertoPanel() {
                         <input className="input-neon" type="number" value={proficiencia} onChange={e => setProficiencia(e.target.value)} />
                     </div>
                     <div>
-                        {/* 🔥 AQUI MOSTRA O BUFF DA CLASSE CLARAMENTE PARA O JOGADOR VER */}
                         <label style={{ color: '#aaa', fontSize: '0.85em', display: 'flex', alignItems: 'center', gap: '5px' }}>
                             Bônus Fixo / Temp.
                             {(bonusAcertoClasse > 0 || bonusMaestriaArma > 0) && (
@@ -177,6 +175,18 @@ export default function AcertoPanel() {
                         <input className="input-neon" type="number" min="0" value={desvantagens} onChange={changeDesvantagem} style={{ borderColor: '#ff003c', color: '#ff003c' }} />
                     </div>
                 </div>
+
+                {/* 🔥 SCANNER DE ARSENAL (Ajuda a debugar as armas) */}
+                {armasEquipadas.length > 0 && (
+                    <div style={{ marginTop: 15, padding: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', borderLeft: '2px solid #aaa' }}>
+                        <span style={{ color: '#aaa', fontSize: '0.75em', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>🔍 Scanner de Arsenal:</span>
+                        {armasEquipadas.map((w, idx) => (
+                            <div key={idx} style={{ color: '#ccc', fontSize: '0.8em' }}>
+                                • {w.nome} <span style={{color: '#00ffcc'}}>(Categoria: {w.arma || w.subTipo || w.categoria || 'Nenhuma'})</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
 
                 <button className="btn-neon btn-gold" onClick={rolarAcerto} style={{ marginTop: 15, width: '100%', borderColor: '#f90', color: '#f90' }}>
                     {alvoSelecionado && dummies[alvoSelecionado] ? `TENTAR ACERTAR ${dummies[alvoSelecionado].nome.toUpperCase()}` : 'ROLAR ACERTO (SEM ALVO)'}
