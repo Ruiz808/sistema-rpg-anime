@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import useStore from '../../stores/useStore';
-import { salvarFichaSilencioso, enviarParaFeed, salvarDummie, uploadImagem, salvarCenarioCompleto, zerarIniciativaGlobal } from '../../services/firebase-sync'; // 🔥 zerarIniciativaGlobal importado!
+import { salvarFichaSilencioso, enviarParaFeed, salvarDummie, uploadImagem, salvarCenarioCompleto, zerarIniciativaGlobal } from '../../services/firebase-sync';
 import { calcularAcerto } from '../../core/engine';
 import { getClassIconById } from '../../core/classIcons';
 import { resolverEfeitosEntidade } from '../../core/efeitos-resolver';
@@ -79,8 +79,14 @@ export default function MapaPanel() {
     const [dadoAnim, setDadoAnim] = useState({ ativo: false, numero: 20, finalResult: null, cor: '#00ffcc', quemRolou: '' });
     const prevFeedLen = useRef(feedCombate.length);
 
-    const cenaAtivaId = cenario?.ativa || 'default';
-    const cenaAtual = cenario?.lista?.[cenaAtivaId] || { nome: 'Desconhecido', img: '', escala: 1.5, unidade: 'm' };
+    // 🔥 O CÉREBRO DA VISÃO DUPLA (GLOBAL vs MESTRE)
+    const [cenaVisualizadaId, setCenaVisualizadaId] = useState(null);
+    const cenaAtivaIdGlobal = cenario?.ativa || 'default';
+    
+    // Se o Mestre clicar para "Ver" uma cena, ele renderiza essa. Senão, renderiza a Global.
+    // Jogadores renderizam SEMPRE a Global.
+    const cenaRenderId = (isMestre && cenaVisualizadaId) ? cenaVisualizadaId : cenaAtivaIdGlobal;
+    const cenaAtual = cenario?.lista?.[cenaRenderId] || { nome: 'Desconhecido', img: '', escala: 1.5, unidade: 'm' };
 
     const overridesCompendio = useMemo(() => {
         if (!minhaFicha) return {};
@@ -201,10 +207,11 @@ export default function MapaPanel() {
                 unidade: novaCenaUnidade
             };
             
-            novoCenario.ativa = novaCenaId; 
+            // 🔥 Ao fazer upload, a cena NÃO é ativada para todos. O Mestre apenas entra nela.
             salvarCenarioCompleto(novoCenario);
-            enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `🗺️ Os heróis chegaram a: ${novaCenaNome}!` });
+            setCenaVisualizadaId(novaCenaId);
             
+            enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `🗺️ O Mestre começou a preparar uma área desconhecida...` });
             setNovaCenaNome('');
         } catch (err) {
             console.error(err);
@@ -218,6 +225,7 @@ export default function MapaPanel() {
         const novoCenario = JSON.parse(JSON.stringify(cenario));
         novoCenario.ativa = id;
         salvarCenarioCompleto(novoCenario);
+        setCenaVisualizadaId(null); // O Mestre volta a seguir a cena global
         enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `🗺️ O cenário mudou para: ${novoCenario.lista[id].nome}!` });
     };
 
@@ -229,6 +237,7 @@ export default function MapaPanel() {
         delete novoCenario.lista[id];
         if(novoCenario.ativa === id) novoCenario.ativa = 'default';
         salvarCenarioCompleto(novoCenario);
+        if(cenaVisualizadaId === id) setCenaVisualizadaId(null);
     };
 
     const coresJogadoresRef = useRef({});
@@ -285,7 +294,7 @@ export default function MapaPanel() {
         return result;
     }, [meuNome, minhaFicha, personagens]);
 
-    // 🔥 CORREÇÃO: Ordem de Iniciativa agora FILTRA pela Cena Atual!
+    // 🔥 Ordem de Iniciativa filtra por quem está na Cena que estamos a RENDERIZAR
     const ordemIniciativa = useMemo(() => {
         const lista = [];
         if (personagens) {
@@ -295,19 +304,20 @@ export default function MapaPanel() {
                 const f = personagens[n];
                 const cenaDoJogador = f.posicao?.cenaId || 'default';
                 
-                if (f && f.iniciativa !== undefined && f.iniciativa > 0 && cenaDoJogador === cenaAtivaId) {
+                if (f && f.iniciativa !== undefined && f.iniciativa > 0 && cenaDoJogador === cenaRenderId) {
                     lista.push({ nome: n, ficha: f, iniciativa: f.iniciativa });
                 }
             }
         }
         lista.sort((a, b) => b.iniciativa - a.iniciativa);
         return lista;
-    }, [personagens, cenaAtivaId]);
+    }, [personagens, cenaRenderId]);
 
+    // 🔥 Move os elementos na Cena que estamos a RENDERIZAR
     function handleCellClick(x, y) {
         if (isMestre && alvoSelecionado && dummies[alvoSelecionado]) {
             const d = dummies[alvoSelecionado];
-            salvarDummie(alvoSelecionado, { ...d, posicao: { x, y }, cenaId: cenaAtivaId });
+            salvarDummie(alvoSelecionado, { ...d, posicao: { x, y }, cenaId: cenaRenderId });
         } else {
             const z = parseInt(altitudeInput) || 0;
             updateFicha((ficha) => {
@@ -315,7 +325,7 @@ export default function MapaPanel() {
                 ficha.posicao.x = x;
                 ficha.posicao.y = y;
                 ficha.posicao.z = z;
-                ficha.posicao.cenaId = cenaAtivaId; 
+                ficha.posicao.cenaId = cenaRenderId; 
             });
             salvarFichaSilencioso();
         }
@@ -335,7 +345,7 @@ export default function MapaPanel() {
         updateFicha((ficha) => {
             ficha.iniciativa = val;
             if (!ficha.posicao) ficha.posicao = {};
-            ficha.posicao.cenaId = cenaAtivaId; // Garante que a iniciativa pertence a esta cena
+            ficha.posicao.cenaId = cenaRenderId; 
         });
         salvarFichaSilencioso();
         setFeedIndexTurnoAtual(feedCombate.length); 
@@ -359,17 +369,14 @@ export default function MapaPanel() {
         setJogadorHistory(null);
     }
 
-    // 🔥 CORREÇÃO: Zerar Combate agora zera a iniciativa de TODOS na cena atual
     function encerrarCombate() {
         if (!window.confirm(`Tem a certeza que deseja ZERAR A INICIATIVA DE TODOS OS JOGADORES presentes na cena "${cenaAtual.nome}"?`)) return;
         
         enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `⚔️ O COMBATE EM ${cenaAtual.nome.toUpperCase()} FOI ENCERRADO PELO MESTRE! ⚔️` });
         
-        // Pega todos os nomes que estão na ordem de iniciativa atual e apaga do Firebase
         const nomesNaCena = ordemIniciativa.map(j => j.nome);
         zerarIniciativaGlobal(nomesNaCena);
 
-        // Apaga também a ficha local do Mestre para garantir sincronia perfeita
         updateFicha(ficha => { ficha.iniciativa = 0; });
         setIniciativaInput(0);
         salvarFichaSilencioso();
@@ -402,6 +409,7 @@ export default function MapaPanel() {
         enviarParaFeed(feedData); 
     }
 
+    // 🔥 FILTRA JOGADORES PELA CENA RENDERIZADA
     const tokenMap = useMemo(() => {
         const map = {};
         const nomes = Object.keys(jogadores);
@@ -409,18 +417,19 @@ export default function MapaPanel() {
             const nome = nomes[i];
             const pos = jogadores[nome].posicao;
             const pCena = pos?.cenaId || 'default'; 
-            if (pos && pos.x !== undefined && pCena === cenaAtivaId) {
+            if (pos && pos.x !== undefined && pCena === cenaRenderId) {
                 const key = `${pos.x},${pos.y}`;
                 if (!map[key]) map[key] = [];
                 map[key].push({ nome, ficha: jogadores[nome] });
             }
         }
         return map;
-    }, [jogadores, cenaAtivaId]);
+    }, [jogadores, cenaRenderId]);
 
+    // 🔥 FILTRA JOGADORES NO 3D PELA CENA RENDERIZADA
     const tokens3D = useMemo(() => {
         return Object.entries(jogadores)
-            .filter(([nome, ficha]) => (ficha.posicao?.cenaId || 'default') === cenaAtivaId)
+            .filter(([nome, ficha]) => (ficha.posicao?.cenaId || 'default') === cenaRenderId)
             .map(([nome, ficha]) => ({
                 nome,
                 x: ficha.posicao?.x || 0,
@@ -428,7 +437,7 @@ export default function MapaPanel() {
                 z: ficha.posicao?.z || 0,
                 cor: corDoJogador(nome)
             }));
-    }, [jogadores, cenaAtivaId]);
+    }, [jogadores, cenaRenderId]);
 
     const jogadorDaVez = ordemIniciativa.length > 0 ? ordemIniciativa[turnoAtualIndex % ordemIniciativa.length] : null;
     const infoDaVez = jogadorDaVez ? getAvatarInfo(jogadorDaVez.ficha) : null;
@@ -717,19 +726,40 @@ export default function MapaPanel() {
 
             <div style={{ flex: '1 1 70%', minWidth: 0 }}>
                 
+               {/* 🔥 BANNER DE ALERTA DO MODO PREPARAÇÃO OCULTA 🔥 */}
+               {isMestre && cenaVisualizadaId && cenaVisualizadaId !== cenaAtivaIdGlobal && (
+                    <div style={{ background: 'rgba(0, 136, 255, 0.2)', border: '2px dashed #0088ff', padding: '10px 15px', borderRadius: '5px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                        <span style={{ color: '#0088ff', fontWeight: 'bold', fontSize: '1.1em' }}>👁️ MODO PREPARAÇÃO OCULTA: Os jogadores não estão a ver este mapa!</span>
+                        <button className="btn-neon btn-green" onClick={() => ativarCena(cenaRenderId)} style={{ padding: '5px 15px', margin: 0 }}>
+                            🌍 PUBLICAR CENA PARA TODOS
+                        </button>
+                    </div>
+               )}
+
                {isMestre && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 15, marginBottom: 15, background: 'rgba(0,0,0,0.5)', padding: 15, borderRadius: 5, border: '1px solid #ffcc00' }}>
                     <h3 style={{ color: '#ffcc00', margin: 0 }}>🎬 Gerenciador de Cenas</h3>
                     
                     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', background: '#0a0a0a', padding: 10, borderRadius: 5 }}>
                         {Object.entries(cenario?.lista || {}).map(([id, cena]) => {
-                            const isAtiva = cenario.ativa === id;
+                            const isAtivaGlobal = cenaAtivaIdGlobal === id;
+                            const isVisualizada = cenaRenderId === id;
+
                             return (
-                                <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 5, background: isAtiva ? 'rgba(0, 255, 136, 0.2)' : '#222', border: `1px solid ${isAtiva ? '#00ff88' : '#555'}`, padding: '5px 10px', borderRadius: 4 }}>
-                                    <span style={{ color: isAtiva ? '#00ff88' : '#fff', fontWeight: 'bold' }}>{cena.nome}</span>
-                                    {!isAtiva && (
-                                        <button className="btn-neon btn-small" onClick={() => ativarCena(id)} style={{ padding: '2px 8px', fontSize: '0.8em', margin: '0 0 0 5px' }}>
-                                            Ativar
+                                <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 5, background: isAtivaGlobal ? 'rgba(0, 255, 136, 0.2)' : isVisualizada ? 'rgba(0, 136, 255, 0.2)' : '#222', border: `1px solid ${isAtivaGlobal ? '#00ff88' : isVisualizada ? '#0088ff' : '#555'}`, padding: '5px 10px', borderRadius: 4, flexWrap: 'wrap' }}>
+                                    <span style={{ color: isAtivaGlobal ? '#00ff88' : isVisualizada ? '#0088ff' : '#fff', fontWeight: 'bold' }}>{cena.nome}</span>
+                                    
+                                    {isAtivaGlobal && <span style={{ fontSize: '0.6em', background: '#00ff88', color: '#000', padding: '2px 4px', borderRadius: 3, fontWeight: 'bold', marginLeft: 4 }}>🌍 PUBLICA</span>}
+                                    {isVisualizada && !isAtivaGlobal && <span style={{ fontSize: '0.6em', background: '#0088ff', color: '#fff', padding: '2px 4px', borderRadius: 3, fontWeight: 'bold', marginLeft: 4 }}>👁️ VENDO</span>}
+
+                                    {!isVisualizada && (
+                                        <button className="btn-neon btn-blue btn-small" onClick={() => setCenaVisualizadaId(id)} style={{ padding: '2px 8px', fontSize: '0.8em', margin: '0 0 0 5px' }}>
+                                            Ver Cena Oculta
+                                        </button>
+                                    )}
+                                    {!isAtivaGlobal && (
+                                        <button className="btn-neon btn-green btn-small" onClick={() => ativarCena(id)} style={{ padding: '2px 8px', fontSize: '0.8em', margin: '0 0 0 5px' }}>
+                                            Publicar para Todos
                                         </button>
                                     )}
                                     <button className="btn-neon btn-red btn-small" onClick={() => deletarCena(id)} style={{ padding: '2px 8px', fontSize: '0.8em', margin: 0 }}>
@@ -800,7 +830,7 @@ export default function MapaPanel() {
                         const dv = parseInt(document.getElementById('dummieDef').value) || 10;
                         const vHp = document.getElementById('dummieVisivel').value;
                         const id = 'dummie_' + Date.now();
-                        salvarDummie(id, { nome: n, hpMax: h, hpAtual: h, tipoDefesa: dt, valorDefesa: dv, visibilidadeHp: vHp, cenaId: cenaAtivaId, posicao: { x: 0, y: 0 } });
+                        salvarDummie(id, { nome: n, hpMax: h, hpAtual: h, tipoDefesa: dt, valorDefesa: dv, visibilidadeHp: vHp, cenaId: cenaRenderId, posicao: { x: 0, y: 0 } });
                     }} style={{ padding: '5px 15px', margin: 0 }}>
                     + Injetar na Cena
                     </button>
@@ -816,7 +846,9 @@ export default function MapaPanel() {
                     </div>
 
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center', borderLeft: '2px solid #333', paddingLeft: 20 }}>
-                        <span style={{ color: '#ffcc00', fontWeight: 'bold' }}>Cena Atual:</span>
+                        <span style={{ color: isMestre && cenaVisualizadaId && cenaVisualizadaId !== cenaAtivaIdGlobal ? '#0088ff' : '#ffcc00', fontWeight: 'bold' }}>
+                            {isMestre && cenaVisualizadaId && cenaVisualizadaId !== cenaAtivaIdGlobal ? '👁️ Preparando:' : 'Cena Atual:'}
+                        </span>
                         <span style={{ color: '#fff', fontWeight: 'bold', background: 'rgba(0,0,0,0.5)', padding: '2px 8px', borderRadius: 4 }}>
                             {cenaAtual.nome} (1Q = {cenaAtual.escala} {cenaAtual.unidade})
                         </span>
@@ -867,7 +899,7 @@ export default function MapaPanel() {
                             
                             const cellDummies = Object.entries(dummies || {}).filter(([id, d]) => {
                                 const dCena = d.cenaId || 'default';
-                                return d.posicao?.x === cell.x && d.posicao?.y === cell.y && dCena === cenaAtivaId;
+                                return d.posicao?.x === cell.x && d.posicao?.y === cell.y && dCena === cenaRenderId;
                             });
 
                             return (
