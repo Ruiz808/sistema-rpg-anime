@@ -5,21 +5,20 @@ export default function FormasEditor({ itemRaridade, formas, formaAtivaId, confi
     const [mostrarFormas, setMostrarFormas] = useState(false);
     const [editando, setEditando] = useState(null);
 
-    const isEspecial = ['espiritual', 'fantasma nobre'].includes((itemRaridade || '').toLowerCase());
     const listaFormas = formas || [];
 
     const criarNovaForma = () => {
         setEditando({
             id: Date.now(),
             nome: '',
-            descricao: '', // 🔥 NOVO: Lore da Forma
-            imagemUrl: '', // 🔥 NOVO: Imagem da Forma
+            descricao: '',
+            imagemUrl: '', 
             acumulaFormaBase: true,
             configs: [{
                 id: Date.now() + 1,
                 nome: 'Padrão',
-                descricao: '', // 🔥 NOVO: Lore da Configuração
-                imagemUrl: '', // 🔥 NOVO: Imagem da Configuração
+                descricao: '', 
+                imagemUrl: '', 
                 efeitos: [], efeitosPassivos: [],
                 tAtrA: 'forca', tPropA: 'base', tValA: '',
                 tAtrP: 'forca', tPropP: 'base', tValP: ''
@@ -59,6 +58,25 @@ export default function FormasEditor({ itemRaridade, formas, formaAtivaId, confi
     const cancelarEdicao = () => setEditando(null);
 
     const handleFormaChange = (campo, valor) => setEditando({ ...editando, [campo]: valor });
+
+    // 🔥 SISTEMA DE UPLOAD DE ARQUIVO (BASE64) 🔥
+    const handleFormaImageUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => handleFormaChange('imagemUrl', reader.result);
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleConfigImageUpload = (cIdx, e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => handleConfigChange(cIdx, 'imagemUrl', reader.result);
+            reader.readAsDataURL(file);
+        }
+    };
 
     const addConfig = () => {
         setEditando({
@@ -188,7 +206,6 @@ export default function FormasEditor({ itemRaridade, formas, formaAtivaId, confi
                                                             </div>
                                                             {cfg.descricao && <p style={{ color: '#aaa', fontSize: '0.85em', margin: '5px 0 0 0', whiteSpace: 'pre-wrap', lineHeight: '1.3' }}>{cfg.descricao}</p>}
                                                             
-                                                            {/* Lista de bónus microscópica para não poluir */}
                                                             <div style={{ display: 'flex', gap: 10, marginTop: 5, flexWrap: 'wrap' }}>
                                                                 {(cfg.efeitos || []).length > 0 && <span style={{ color: '#0ff', fontSize: '0.7em' }}>⚡ {cfg.efeitos.length} Ativos</span>}
                                                                 {(cfg.efeitosPassivos || []).length > 0 && <span style={{ color: '#f0f', fontSize: '0.7em' }}>🛡️ {cfg.efeitosPassivos.length} Passivos</span>}
@@ -216,9 +233,11 @@ export default function FormasEditor({ itemRaridade, formas, formaAtivaId, confi
                                     <label style={{ color: '#00ffcc', fontSize: '0.8em' }}>Nome da Forma</label>
                                     <input className="input-neon" value={editando.nome || ''} onChange={e => handleFormaChange('nome', e.target.value)} placeholder="Ex: Forma dos Pecados" style={{ width: '100%', borderColor: '#00ffcc' }} />
                                 </div>
+                                {/* 🔥 UPLOAD DA IMAGEM DA FORMA 🔥 */}
                                 <div>
-                                    <label style={{ color: '#00ffcc', fontSize: '0.8em' }}>URL da Imagem da Forma (Opcional)</label>
-                                    <input className="input-neon" value={editando.imagemUrl || ''} onChange={e => handleFormaChange('imagemUrl', e.target.value)} placeholder="https://imgur.com/..." style={{ width: '100%' }} />
+                                    <label style={{ color: '#00ffcc', fontSize: '0.8em' }}>Anexar Imagem da Forma</label>
+                                    <input type="file" accept="image/*" onChange={handleFormaImageUpload} style={{ display: 'block', color: '#fff', fontSize: '0.8em', marginTop: '5px' }} />
+                                    {editando.imagemUrl && <img src={editando.imagemUrl} alt="Preview Forma" style={{ height: '30px', marginTop: '5px', borderRadius: '4px', border: '1px solid #00ffcc' }} />}
                                 </div>
                             </div>
 
@@ -239,17 +258,19 @@ export default function FormasEditor({ itemRaridade, formas, formaAtivaId, confi
                                 return (
                                 <div key={cfg.id} style={{ background: 'rgba(0,0,0,0.6)', border: '1px solid #444', padding: 15, marginBottom: 20, borderRadius: 6 }}>
                                     
-                                    <div style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'flex-end' }}>
-                                        <div style={{ flex: 1 }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 10, marginBottom: 10, alignItems: 'flex-start' }}>
+                                        <div>
                                             <label style={{ color: '#ffaa00', fontSize: '0.8em' }}>Nome do Modo / Pecado</label>
                                             <input className="input-neon" value={cfg.nome || ''} onChange={e => handleConfigChange(cIdx, 'nome', e.target.value)} placeholder="Ex: Ganância, Tiamat Verde..." style={{ width: '100%', borderColor: '#ffaa00', color: '#ffaa00' }} />
                                         </div>
-                                        <div style={{ flex: 1 }}>
-                                            <label style={{ color: '#ffaa00', fontSize: '0.8em' }}>URL da Imagem do Modo (Opcional)</label>
-                                            <input className="input-neon" value={cfg.imagemUrl || ''} onChange={e => handleConfigChange(cIdx, 'imagemUrl', e.target.value)} placeholder="https://imgur.com/..." style={{ width: '100%' }} />
+                                        {/* 🔥 UPLOAD DA IMAGEM DA CONFIGURAÇÃO 🔥 */}
+                                        <div>
+                                            <label style={{ color: '#ffaa00', fontSize: '0.8em' }}>Anexar Imagem do Modo</label>
+                                            <input type="file" accept="image/*" onChange={(e) => handleConfigImageUpload(cIdx, e)} style={{ display: 'block', color: '#fff', fontSize: '0.8em', marginTop: '5px' }} />
+                                            {cfg.imagemUrl && <img src={cfg.imagemUrl} alt="Preview Modo" style={{ height: '30px', marginTop: '5px', borderRadius: '4px', border: '1px solid #ffaa00' }} />}
                                         </div>
                                         {(editando.configs || []).length > 1 && (
-                                            <button className="btn-neon btn-red" onClick={() => removerConfig(cIdx)} style={{ padding: '0 15px', height: '36px', margin: 0 }}>APAGAR MODO</button>
+                                            <button className="btn-neon btn-red" onClick={() => removerConfig(cIdx)} style={{ padding: '0 15px', height: '36px', marginTop: '22px' }}>APAGAR MODO</button>
                                         )}
                                     </div>
 
@@ -257,6 +278,7 @@ export default function FormasEditor({ itemRaridade, formas, formaAtivaId, confi
                                     <textarea className="input-neon" value={cfg.descricao || ''} onChange={e => handleConfigChange(cIdx, 'descricao', e.target.value)} placeholder="O que este modo faz mecanicamente ou na história? Ex: 'Área de 4.5m reduz a movimentação...'" style={{ width: '100%', minHeight: '60px', marginBottom: 15, whiteSpace: 'pre-wrap' }} />
 
                                     <h6 style={{ color: '#0ff', margin: '0 0 5px 0', fontSize: '0.85em' }}>Efeitos Ativos (Motor)</h6>
+                                    {/* Layout Grid Blindado */}
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 80px auto', gap: 6, marginBottom: 5 }}>
                                         <select className="input-neon" style={{ padding: 4, fontSize: '0.8em' }} value={cfg.tAtrA || 'forca'} onChange={e => handleConfigChange(cIdx, 'tAtrA', e.target.value)}>
                                             {ATRIBUTOS_AGRUPADOS.map(g => <optgroup key={g.label} label={g.label}>{g.options.map(a => <option key={a} value={a}>{a.replace('_', ' ').toUpperCase()}</option>)}</optgroup>)}
@@ -277,6 +299,7 @@ export default function FormasEditor({ itemRaridade, formas, formaAtivaId, confi
                                     )})}
 
                                     <h6 style={{ color: '#f0f', margin: '15px 0 5px 0', fontSize: '0.85em' }}>Efeitos Passivos (Motor)</h6>
+                                    {/* Layout Grid Blindado */}
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 80px auto', gap: 6, marginBottom: 5 }}>
                                         <select className="input-neon" style={{ padding: 4, fontSize: '0.8em' }} value={cfg.tAtrP || 'forca'} onChange={e => handleConfigChange(cIdx, 'tAtrP', e.target.value)}>
                                             {ATRIBUTOS_AGRUPADOS.map(g => <optgroup key={g.label} label={g.label}>{g.options.map(a => <option key={a} value={a}>{a.replace('_', ' ').toUpperCase()}</option>)}</optgroup>)}
@@ -298,11 +321,9 @@ export default function FormasEditor({ itemRaridade, formas, formaAtivaId, confi
                                 </div>
                             )})}
 
-                            {isEspecial && (
-                                <button className="btn-neon btn-small" onClick={addConfig} style={{ width: '100%', borderStyle: 'dashed', borderColor: '#ffaa00', color: '#ffaa00', marginBottom: 15, padding: '10px' }}>
-                                    + ADICIONAR NOVA CONFIGURAÇÃO (Pecado, Elemento, Estágio...)
-                                </button>
-                            )}
+                            <button className="btn-neon btn-small" onClick={addConfig} style={{ width: '100%', borderStyle: 'dashed', borderColor: '#ffaa00', color: '#ffaa00', marginBottom: 15, padding: '10px' }}>
+                                + ADICIONAR NOVA CONFIGURAÇÃO (Pecado, Elemento, Estágio...)
+                            </button>
 
                             <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
                                 <button className="btn-neon btn-gold" onClick={salvar} style={{ flex: 1, padding: '10px', fontSize: '1.1em' }}>SALVAR FORMA NO COMPÊNDIO</button>
