@@ -49,20 +49,45 @@ function calcularCA(ficha, tipo) {
     return Math.floor(base + bonus);
 }
 
-// 🔥 MOTOR DE SINCRONIZAÇÃO BLINDADO 🔥
+// 🔥 MOTOR DE SINCRONIZAÇÃO BLINDADO (AGORA COM MATEMÁTICA DE PRESTÍGIO) 🔥
 function getStatusLimpo(ficha, chave, threshold, fallbackChave) {
     if (!ficha) return { max: 0, atual: 0, pVit: 0 };
     
+    // Criamos uma cópia temporal para injetar a Matemática do Prestígio sem corromper a ficha original!
+    let f = JSON.parse(JSON.stringify(ficha)); 
+    
+    // Caçador de Prestígio (Procura em 3 formatos diferentes para garantir que acha onde o seu amigo guardou os dados)
+    const getPrest = (k) => {
+        let v = parseFloat(f.prestigio?.[k] || f.prestigios?.[k] || f[k]?.prestigio || 0);
+        return isNaN(v) ? 0 : v;
+    };
+
+    // 💥 A FÓRMULA SAGRADA 💥
+    if (chave === 'pontosVitais' || fallbackChave === 'pontos_vitais') {
+        if (!f.pontosVitais) f.pontosVitais = {};
+        let pVida = getPrest('vitais') || getPrest('vida');
+        let pChakra = getPrest('chakra');
+        let pCorpo = getPrest('corpo');
+        f.pontosVitais.base = Math.floor((pVida + pChakra + pCorpo) / 3);
+    }
+    
+    if (chave === 'pontosMortais' || fallbackChave === 'pontos_mortais') {
+        if (!f.pontosMortais) f.pontosMortais = {};
+        let pMana = getPrest('mana');
+        let pStatus = getPrest('status') || getPrest('todos_status');
+        let pAura = getPrest('aura');
+        f.pontosMortais.base = Math.floor((pMana + pStatus + pAura) / 3);
+    }
+
     let mx = 0;
     try {
-        mx = getMaximo(ficha, chave);
-        if ((!mx || isNaN(mx)) && fallbackChave) mx = getMaximo(ficha, fallbackChave);
+        mx = getMaximo(f, chave);
+        if ((!mx || isNaN(mx)) && fallbackChave) mx = getMaximo(f, fallbackChave);
     } catch (e) { console.warn(e) }
 
-    // Fallback: Se o motor de atributos falhar em ler "pontosMortais", lemos direto do JSON!
     if (!mx || isNaN(mx)) {
-        let baseObj = ficha[chave] || (fallbackChave ? ficha[fallbackChave] : null);
-        if (baseObj && baseObj.base) mx = parseInt(baseObj.base) || 0;
+        let baseObj = f[chave] || (fallbackChave ? f[fallbackChave] : null);
+        if (baseObj && baseObj.base !== undefined) mx = parseInt(baseObj.base) || 0;
     }
     if (isNaN(mx)) mx = 0;
     
@@ -71,9 +96,10 @@ function getStatusLimpo(ficha, chave, threshold, fallbackChave) {
     const maxFinal = pVit > 0 ? Math.floor(mx / Math.pow(10, pVit)) : mx;
 
     let atual = maxFinal;
-    let baseObj = ficha[chave] || (fallbackChave ? ficha[fallbackChave] : null);
-    if (baseObj && baseObj.atual !== undefined) {
-        atual = parseFloat(baseObj.atual);
+    // Puxamos a Vida ATUAL da Ficha Real para não a curar acidentalmente!
+    let baseObjReal = ficha[chave] || (fallbackChave ? ficha[fallbackChave] : null); 
+    if (baseObjReal && baseObjReal.atual !== undefined) {
+        atual = parseFloat(baseObjReal.atual);
         if (isNaN(atual)) atual = maxFinal;
     }
 
