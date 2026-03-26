@@ -92,7 +92,6 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false, avoidLoop = fa
         }
     };
 
-    // 1. Processar Poderes (via ficheiro do seu amigo)
     if (ficha.poderes) {
         for (let i = 0; i < ficha.poderes.length; i++) {
             let p = ficha.poderes[i];
@@ -103,7 +102,6 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false, avoidLoop = fa
         }
     }
 
-    // 🔥 2. INVENTÁRIO COM MÁXIMA PRECISÃO (Leitura de Configurações/Pecados) 🔥
     if (ficha.inventario) {
         for (let i = 0; i < ficha.inventario.length; i++) {
             let item = ficha.inventario[i];
@@ -133,8 +131,12 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false, avoidLoop = fa
                     }
 
                     if (activeConfig) {
-                        if (activeConfig.efeitos) processarEfeitos(activeConfig.efeitos, `[Bankai] ${activeForm.nome} - Modo: ${activeConfig.nome}`);
-                        if (activeConfig.efeitosPassivos) processarEfeitos(activeConfig.efeitosPassivos, `[Bankai Passivo] ${activeForm.nome} - Modo: ${activeConfig.nome}`);
+                        if (activeConfig.efeitos) processarEfeitos(activeConfig.efeitos, `[Bankai] ${activeForm.nome || ''} - ${activeConfig.nome || ''}`);
+                        if (activeConfig.efeitosPassivos) processarEfeitos(activeConfig.efeitosPassivos, `[Bankai Passivo] ${activeForm.nome || ''} - ${activeConfig.nome || ''}`);
+                    } else {
+                        // Retrocompatibilidade se for uma forma antiga gravada sem configs!
+                        if (activeForm.efeitos) processarEfeitos(activeForm.efeitos, `[Bankai] ${activeForm.nome || ''}`);
+                        if (activeForm.efeitosPassivos) processarEfeitos(activeForm.efeitosPassivos, `[Bankai Passivo] ${activeForm.nome || ''}`);
                     }
                 }
             }
@@ -150,7 +152,6 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false, avoidLoop = fa
 
     processarEfeitos(getEfeitosDeClasse(ficha), `Classe Mística`);
 
-    // 🔥 FÚRIA BERSERKER FINAL 🔥
     if (maxFuriaVal > 0 && !avoidLoop) {
         let rawMaxVida = getMaximo(ficha, 'vida', true); 
         let strVal = String(Math.floor(rawMaxVida));

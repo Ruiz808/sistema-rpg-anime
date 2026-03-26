@@ -125,6 +125,8 @@ export default function ArsenalPanel() {
         });
 
         cancelarEdicaoItem();
+        setNomeItem('');
+        setBonusValor('');
         salvarFichaSilencioso();
     }
 
@@ -178,7 +180,6 @@ export default function ArsenalPanel() {
             }
             ficha.inventario[itemIndex].equipado = !ficha.inventario[itemIndex].equipado;
             
-            // 🔥 Reset da Foma ao desequipar!
             if (!ficha.inventario[itemIndex].equipado) {
                 ficha.inventario[itemIndex].formaAtivaId = null;
                 ficha.inventario[itemIndex].configAtivaId = null;
@@ -223,7 +224,6 @@ export default function ArsenalPanel() {
         salvarFichaSilencioso();
     };
 
-    // 🔥 GRAVA A FORMA E A CONFIG (PECADO) ATIVA 🔥
     const ativarFormaItem = (itemId, formaId, configId = null) => {
         const vitais = ['vida', 'mana', 'aura', 'chakra', 'corpo'];
         updateFicha((ficha) => {
@@ -250,7 +250,6 @@ export default function ArsenalPanel() {
 
     return (
         <div className="arsenal-panel">
-            {/* Form */}
             <div className="def-box" ref={formRef} id="form-item-box">
                 <h3 style={{ color: '#ffcc00', marginBottom: 10 }} id="titulo-item-form">
                     {itemEditandoId ? `Editando: ${nomeItem}` : 'Forjar Novo Equipamento'}
@@ -330,11 +329,12 @@ export default function ArsenalPanel() {
                                 <p style={{ color: '#888', fontSize: '0.9em', margin: 0 }}>Nenhum efeito adicionado.</p>
                             ) : (
                                 efeitosTempArsenal.map((e, i) => {
+                                    if (!e) return null;
                                     const prop = (e.propriedade || '').toLowerCase();
                                     const isMult = ['mbase', 'mgeral', 'mformas', 'mabs', 'munico'].includes(prop);
                                     return (
                                         <div key={i} style={{ color: '#0ff', fontSize: '0.9em', marginBottom: 5, background: 'rgba(0,255,255,0.1)', padding: '5px 10px', borderLeft: '2px solid #0ff', display: 'flex', justifyContent: 'space-between' }}>
-                                            <span><strong style={{ color: '#fff' }}>{e.nome || '(Sem nome)'}</strong> [{(e.atributo || '').replace('_', ' ').toUpperCase()}] - [{(e.propriedade || '').toUpperCase()}]: <strong style={{ color: '#ffcc00' }}>{isMult ? '(x)' : '(+)'} {e.valor}</strong></span>
+                                            <span><strong style={{ color: '#fff' }}>{e.nome || '(Sem nome)'}</strong> [{(e.atributo || '').replace('_', ' ').toUpperCase()}] {(e.propriedade || '').toUpperCase()}: <strong style={{ color: '#ffcc00' }}>{isMult ? '(x)' : '(+)'} {e.valor || 0}</strong></span>
                                             <button onClick={() => removerEfeitoTemp(i)} style={{ background: 'transparent', color: '#f00', border: 'none', cursor: 'pointer' }}>X</button>
                                         </div>
                                     );
@@ -342,7 +342,7 @@ export default function ArsenalPanel() {
                             )}
                         </div>
 
-                        <h4 style={{ color: '#f0f', marginTop: 15, marginBottom: 8, fontSize: '0.95em' }}>Efeitos Passivos (sempre ativos)</h4>
+                        <h4 style={{ color: '#f0f', marginTop: 15, marginBottom: 8, fontSize: '0.95em' }}>Efeitos Passivos</h4>
                         <input className="input-neon" type="text" placeholder="Nome do Efeito Passivo" value={nomeEfeitoPassivo} onChange={e => setNomeEfeitoPassivo(e.target.value)} />
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8, marginTop: 5 }}>
                             <select className="input-neon" value={novoAtrPassivo} onChange={e => setNovoAtrPassivo(e.target.value)}>
@@ -364,11 +364,12 @@ export default function ArsenalPanel() {
                                 <p style={{ color: '#888', fontSize: '0.9em', margin: 0 }}>Nenhum efeito passivo adicionado.</p>
                             ) : (
                                 efeitosTempPassivosArsenal.map((e, i) => {
+                                    if (!e) return null;
                                     const prop = (e.propriedade || '').toLowerCase();
                                     const isMult = ['mbase', 'mgeral', 'mformas', 'mabs', 'munico'].includes(prop);
                                     return (
                                         <div key={i} style={{ color: '#f0f', fontSize: '0.9em', marginBottom: 5, background: 'rgba(255,0,255,0.1)', padding: '5px 10px', borderLeft: '2px solid #f0f', display: 'flex', justifyContent: 'space-between' }}>
-                                            <span>PASSIVO: <strong style={{ color: '#fff' }}>{e.nome || '(Sem nome)'}</strong> [{(e.atributo || '').replace('_', ' ').toUpperCase()}] - [{(e.propriedade || '').toUpperCase()}]: <strong style={{ color: '#ffcc00' }}>{isMult ? '(x)' : '(+)'} {e.valor}</strong></span>
+                                            <span>PASSIVO: <strong style={{ color: '#fff' }}>{e.nome || '(Sem nome)'}</strong> [{(e.atributo || '').replace('_', ' ').toUpperCase()}] {(e.propriedade || '').toUpperCase()}: <strong style={{ color: '#ffcc00' }}>{isMult ? '(x)' : '(+)'} {e.valor || 0}</strong></span>
                                             <button onClick={() => removerEfeitoPassivoTemp(i)} style={{ background: 'transparent', color: '#f00', border: 'none', cursor: 'pointer' }}>X</button>
                                         </div>
                                     );
@@ -406,6 +407,9 @@ export default function ArsenalPanel() {
                         const prefixo = isMult ? 'x' : '+';
                         const propText = bTipo.replace('_', ' ').toUpperCase();
 
+                        const efeitosAtivos = p.efeitos || [];
+                        const efeitosPassivos = p.efeitosPassivos || [];
+
                         return (
                             <div key={p.id} className="def-box" style={{ borderLeft: `5px solid ${c}`, background: bg, marginBottom: 10 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 15 }}>
@@ -414,7 +418,7 @@ export default function ArsenalPanel() {
                                             {icon} {p.nome || 'Item'}
                                         </h3>
                                         <p style={{ color: '#aaa', fontSize: '0.85em', margin: '5px 0 0' }}>
-                                            {(p.tipo || '').toUpperCase()}{p.armaTipo ? ` (${p.armaTipo.charAt(0).toUpperCase() + p.armaTipo.slice(1)})` : ''}{p.raridade ? ` | ${p.raridade.charAt(0).toUpperCase() + p.raridade.slice(1)}` : ''}{p.tipo === 'arma' && p.dadosQtd ? ` | Dano: ${p.dadosQtd}d${p.dadosFaces || 20}` : ''}
+                                            {(p.tipo || '').toUpperCase()}{p.armaTipo ? ` (${p.armaTipo.charAt(0).toUpperCase() + p.armaTipo.slice(1)})` : ''}{p.raridade ? ` | ${(p.raridade || '').charAt(0).toUpperCase() + (p.raridade || '').slice(1)}` : ''}{p.tipo === 'arma' && p.dadosQtd ? ` | Dano: ${p.dadosQtd}d${p.dadosFaces || 20}` : ''}
                                         </p>
                                         <p style={{ color: '#0ff', fontSize: '0.9em', margin: '5px 0 0' }}>
                                             {propText}: <strong style={{ color: '#ffcc00' }}>{prefixo}{p.bonusValor || 0}</strong>
