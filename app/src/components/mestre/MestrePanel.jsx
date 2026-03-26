@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import useStore from '../../stores/useStore';
-import { enviarParaFeed, salvarDummie } from '../../services/firebase-sync';
+import { enviarParaFeed, salvarDummie, apagarFicha } from '../../services/firebase-sync';
 import { getMaximo, calcularCA } from '../../core/attributes';
 
 export default function MestrePanel() {
-    const { personagens, isMestre, dummies } = useStore();
+    const { personagens, isMestre, meuNome } = useStore();
     const [msgSistema, setMsgSistema] = useState('');
 
     const [dNome, setDNome] = useState('Goblin Espião');
@@ -46,6 +46,16 @@ export default function MestrePanel() {
         alert(`${dNome} injetado no mapa! ${dOculto ? '(Invisível 👻)' : ''}`);
     };
 
+    const handleApagarJogador = (nome) => {
+        if (nome === meuNome) {
+            alert('Não pode apagar-se a si mesmo enquanto Mestre!');
+            return;
+        }
+        if (window.confirm(`TEM A CERTEZA QUE QUER APAGAR A FICHA DE ${nome.toUpperCase()} DA BASE DE DADOS? ESTA AÇÃO É IRREVERSÍVEL!`)) {
+            apagarFicha(nome);
+        }
+    };
+
     const jogadoresList = Object.entries(personagens || {});
     const fmt = (n) => Number(n || 0).toLocaleString('pt-BR');
 
@@ -59,7 +69,7 @@ export default function MestrePanel() {
                 <div className="def-box" style={{ flex: '1 1 60%', minWidth: '400px', borderLeft: '4px solid #0088ff' }}>
                     <h3 style={{ color: '#0088ff', margin: '0 0 15px 0' }}>👁️ Visor de Jogadores ({jogadoresList.length})</h3>
                     
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '15px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '15px' }}>
                         {jogadoresList.map(([nome, ficha]) => {
                             const hpMax = getMaximo(ficha, 'vida');
                             const hpAtual = ficha.vida?.atual ?? hpMax;
@@ -73,16 +83,28 @@ export default function MestrePanel() {
                             return (
                                 <div key={nome} style={{ background: 'rgba(0,0,0,0.6)', border: '1px solid #333', padding: '15px', borderRadius: '5px', position: 'relative', overflow: 'hidden' }}>
                                     <div style={{ position: 'absolute', top: 0, left: 0, height: '4px', width: `${percHp}%`, background: percHp > 50 ? '#0f0' : percHp > 20 ? '#ffcc00' : '#f00', transition: 'width 0.3s' }} />
+                                    
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', marginTop: '5px' }}>
-                                        <strong style={{ color: '#fff', fontSize: '1.2em' }}>{nome}</strong>
+                                        <strong style={{ color: '#fff', fontSize: '1.2em' }}>{nome} {nome === meuNome && <span style={{color: '#ffcc00', fontSize: '0.6em'}}>(VOCÊ)</span>}</strong>
                                         <span style={{ color: '#aaa', fontSize: '0.8em', fontStyle: 'italic' }}>{classId ? classId.toUpperCase() : 'Mundano'}</span>
                                     </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.85em', color: '#ccc' }}>
+                                    
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.85em', color: '#ccc', marginBottom: '10px' }}>
                                         <div style={{ background: 'rgba(255,0,0,0.1)', padding: '5px', borderRadius: '3px', borderLeft: '2px solid #f00' }}><span style={{ color: '#f00', fontWeight: 'bold' }}>HP:</span> {fmt(hpAtual)} / {fmt(hpMax)}</div>
                                         <div style={{ background: 'rgba(0,136,255,0.1)', padding: '5px', borderRadius: '3px', borderLeft: '2px solid #0088ff' }}><span style={{ color: '#0088ff', fontWeight: 'bold' }}>MP:</span> {fmt(mpAtual)} / {fmt(mpMax)}</div>
                                         <div style={{ background: 'rgba(0,255,204,0.1)', padding: '5px', borderRadius: '3px', borderLeft: '2px solid #00ffcc' }}><span style={{ color: '#00ffcc', fontWeight: 'bold' }}>EVA:</span> {calcularCA(ficha, 'evasiva')}</div>
                                         <div style={{ background: 'rgba(255,204,0,0.1)', padding: '5px', borderRadius: '3px', borderLeft: '2px solid #ffcc00' }}><span style={{ color: '#ffcc00', fontWeight: 'bold' }}>RES:</span> {calcularCA(ficha, 'resistencia')}</div>
                                     </div>
+
+                                    {/* MANTIVE O BOTÃO DE APAGAR DO SEU AMIGO! */}
+                                    <button 
+                                        className="btn-neon btn-red" 
+                                        style={{ width: '100%', padding: '4px', fontSize: '0.8em', margin: 0, opacity: nome === meuNome ? 0.3 : 1 }} 
+                                        onClick={() => handleApagarJogador(nome)}
+                                        disabled={nome === meuNome}
+                                    >
+                                        APAGAR PERSONAGEM
+                                    </button>
                                 </div>
                             );
                         })}
