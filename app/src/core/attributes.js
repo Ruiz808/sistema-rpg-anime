@@ -1,5 +1,6 @@
 import useStore from '../stores/useStore';
 import { isFisico, isEnergia, tratarUnico } from './utils.js';
+import { resolverEfeitosEntidade } from './efeitos-resolver.js';
 
 export function getEfeitosDeClasse(ficha) {
     let classeHeroica = (ficha.bio && ficha.bio.classe) ? String(ficha.bio.classe).toLowerCase() : '';
@@ -91,20 +92,25 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false, avoidLoop = fa
         }
     };
 
+    // 1. Processar Poderes (com resolucao de formas)
     if (ficha.poderes) {
         for (let i = 0; i < ficha.poderes.length; i++) {
             let p = ficha.poderes[i];
-            if (p && p.ativa && p.efeitos) processarEfeitos(p.efeitos, `Poder: ${p.nome}`);
-            if (p && p.efeitosPassivos) processarEfeitos(p.efeitosPassivos, `Poder(Pass): ${p.nome}`);
+            if (!p) continue;
+            let resolved = resolverEfeitosEntidade(p);
+            if (p.ativa) processarEfeitos(resolved.efeitos, `Poder: ${p.nome}`);
+            processarEfeitos(resolved.efeitosPassivos, `Poder(Pass): ${p.nome}`);
         }
     }
 
+    // 2. Processar Efeitos de Equipamentos equipados (com resolucao de formas)
     if (ficha.inventario) {
         for (let i = 0; i < ficha.inventario.length; i++) {
             let item = ficha.inventario[i];
             if (item && item.equipado) {
-                if (item.efeitos) processarEfeitos(item.efeitos, `Item: ${item.nome}`);
-                if (item.efeitosPassivos) processarEfeitos(item.efeitosPassivos, `Item(Pass): ${item.nome}`);
+                let resolved = resolverEfeitosEntidade(item);
+                processarEfeitos(resolved.efeitos, `Item: ${item.nome}`);
+                processarEfeitos(resolved.efeitosPassivos, `Item(Pass): ${item.nome}`);
             }
         }
     }
@@ -161,12 +167,14 @@ export function getPoderesDefesa(ficha, tipo) {
     let t = 0;
     if (!ficha || !ficha.poderes) return 0;
     
+    // Efeitos das habilidades ativas (com resolucao de formas)
     for (let i = 0; i < ficha.poderes.length; i++) {
         let p = ficha.poderes[i];
-        if (p && p.ativa && p.efeitos) {
-            for (let j = 0; j < p.efeitos.length; j++) {
-                if (p.efeitos[j] && (p.efeitos[j].propriedade || '').toLowerCase() === tipo) {
-                    t += (parseFloat(p.efeitos[j].valor) || 0);
+        if (p && p.ativa) {
+            let resolved = resolverEfeitosEntidade(p);
+            for (let j = 0; j < resolved.efeitos.length; j++) {
+                if (resolved.efeitos[j] && (resolved.efeitos[j].propriedade || '').toLowerCase() === tipo) {
+                    t += (parseFloat(resolved.efeitos[j].valor) || 0);
                 }
             }
         }

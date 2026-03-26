@@ -2,51 +2,49 @@ import React, { useState } from 'react';
 import useStore from '../../stores/useStore';
 import { calcularReducao } from '../../core/engine';
 import { salvarFichaSilencioso, enviarParaFeed } from '../../services/firebase-sync';
+import { resolverEfeitosEntidade } from '../../core/efeitos-resolver';
 
-// 🔥 O CÉREBRO DA CLASSE DE ARMADURA (ATUALIZADO PARA LER SÓ 2 DÍGITOS)
 export function calcularCA(ficha, tipo) {
     if (!ficha) return 10;
-    
-    // Função mágica para extrair apenas os dois primeiros algarismos de qualquer número gigante
+
     const getDoisDigitos = (valor) => {
         if (!valor) return 0;
-        const strVal = String(valor).replace(/[^0-9]/g, ''); // Remove o que não for número
+        const strVal = String(valor).replace(/[^0-9]/g, '');
         if (!strVal) return 0;
-        return parseInt(strVal.substring(0, 2), 10); // Corta tudo depois da 2ª casa
+        return parseInt(strVal.substring(0, 2), 10);
     };
 
     let base = 5;
     if (tipo === 'evasiva') base += getDoisDigitos(ficha.destreza?.base);
     if (tipo === 'resistencia') base += getDoisDigitos(ficha.forca?.base);
-    
+
     let bonus = 0;
-    
-    // Verifica Bónus em Poderes e Formas
+
+    const somarBonus = (efeitos) => {
+        (efeitos || []).forEach(e => {
+            if (e && e.atributo === tipo && e.propriedade === 'base') bonus += parseFloat(e.valor) || 0;
+        });
+    };
+
+    // Poderes (com resolucao de formas)
     (ficha.poderes || []).forEach(p => {
-        if (p.ativa) {
-            (p.efeitos || []).forEach(e => {
-                if (e.atributo === tipo && e.propriedade === 'base') bonus += parseFloat(e.valor) || 0;
-            });
-        }
-        (p.efeitosPassivos || []).forEach(e => {
-            if (e.atributo === tipo && e.propriedade === 'base') bonus += parseFloat(e.valor) || 0;
-        });
+        let resolved = resolverEfeitosEntidade(p);
+        if (p.ativa) somarBonus(resolved.efeitos);
+        somarBonus(resolved.efeitosPassivos);
     });
-    
-    // Verifica Bónus em Passivas da Ficha
+
+    // Passivas da Ficha
     (ficha.passivas || []).forEach(p => {
-        (p.efeitos || []).forEach(e => {
-            if (e.atributo === tipo && e.propriedade === 'base') bonus += parseFloat(e.valor) || 0;
-        });
+        somarBonus(p.efeitos);
     });
-    
-    // Verifica Bónus em Itens Equipados
+
+    // Itens Equipados (com resolucao de formas)
     (ficha.inventario || []).filter(i => i.equipado).forEach(i => {
-        (i.efeitos || []).forEach(e => {
-            if (e.atributo === tipo && e.propriedade === 'base') bonus += parseFloat(e.valor) || 0;
-        });
+        let resolved = resolverEfeitosEntidade(i);
+        somarBonus(resolved.efeitos);
+        somarBonus(resolved.efeitosPassivos);
     });
-    
+
     return Math.floor(base + bonus);
 }
 

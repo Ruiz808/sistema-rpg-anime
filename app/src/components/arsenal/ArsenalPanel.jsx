@@ -1,7 +1,9 @@
 import React, { useState, useRef } from 'react';
 import useStore from '../../stores/useStore';
+import { getMaximo } from '../../core/attributes';
 import { salvarFichaSilencioso } from '../../services/firebase-sync';
 import { ATRIBUTOS_AGRUPADOS, PROPRIEDADE_OPTIONS } from '../../core/efeitos-constants';
+import FormasEditor from '../shared/FormasEditor';
 
 // 🔥 LISTA DE ARMAS PADRONIZADA COM O COMPÊNDIO
 const ARMA_TIPOS = ['espada', 'arco', 'lança', 'machado', 'adaga', 'cajado', 'arma de fogo', 'manopla', 'foice', 'chicote', 'martelo', 'escudo'];
@@ -36,9 +38,11 @@ export default function ArsenalPanel() {
     const [armaTipo, setArmaTipo] = useState('espada');
     const [raridade, setRaridade] = useState('comum');
 
+    const [nomeEfeito, setNomeEfeito] = useState('');
     const [novoAtr, setNovoAtr] = useState('forca');
     const [novoProp, setNovoProp] = useState('base');
     const [novoVal, setNovoVal] = useState('');
+    const [nomeEfeitoPassivo, setNomeEfeitoPassivo] = useState('');
     const [novoAtrPassivo, setNovoAtrPassivo] = useState('forca');
     const [novoPropPassivo, setNovoPropPassivo] = useState('base');
     const [novoValPassivo, setNovoValPassivo] = useState('');
@@ -46,9 +50,10 @@ export default function ArsenalPanel() {
     const formRef = useRef(null);
 
     const addEfeitoTemp = () => {
-        if (!novoVal) return;
-        setEfeitosTempArsenal([...efeitosTempArsenal, { atributo: novoAtr, propriedade: novoProp, valor: novoVal }]);
+        if (!novoVal || !nomeEfeito.trim()) { alert('Preencha o nome e o valor do efeito!'); return; }
+        setEfeitosTempArsenal([...efeitosTempArsenal, { nome: nomeEfeito.trim(), atributo: novoAtr, propriedade: novoProp, valor: novoVal }]);
         setNovoVal('');
+        setNomeEfeito('');
     };
 
     const removerEfeitoTemp = (index) => {
@@ -56,9 +61,10 @@ export default function ArsenalPanel() {
     };
 
     const addEfeitoPassivoTemp = () => {
-        if (!novoValPassivo) return;
-        setEfeitosTempPassivosArsenal([...efeitosTempPassivosArsenal, { atributo: novoAtrPassivo, propriedade: novoPropPassivo, valor: novoValPassivo }]);
+        if (!novoValPassivo || !nomeEfeitoPassivo.trim()) { alert('Preencha o nome e o valor do efeito passivo!'); return; }
+        setEfeitosTempPassivosArsenal([...efeitosTempPassivosArsenal, { nome: nomeEfeitoPassivo.trim(), atributo: novoAtrPassivo, propriedade: novoPropPassivo, valor: novoValPassivo }]);
         setNovoValPassivo('');
+        setNomeEfeitoPassivo('');
     };
 
     const removerEfeitoPassivoTemp = (index) => {
@@ -72,8 +78,7 @@ export default function ArsenalPanel() {
             return;
         }
 
-        const ficha = useStore.getState().ficha;
-        const inventarioAtual = ficha?.inventario || [];
+        const inventarioAtual = minhaFicha?.inventario || [];
         let deveLimparEfeitos = true;
         if (itemEditandoId && tipoItem !== 'arma') {
             const itemExistente = inventarioAtual.find(i => i.id === itemEditandoId);
@@ -134,7 +139,7 @@ export default function ArsenalPanel() {
     }
 
     function editarItem(id) {
-        const p = (minhaFicha.inventario || []).find(i => i.id === id);
+        const p = (minhaFicha?.inventario || []).find(i => i.id === id);
         if (!p) return;
         if (p.equipado) {
             toggleEquiparItem(id);
@@ -193,6 +198,50 @@ export default function ArsenalPanel() {
         });
         salvarFichaSilencioso();
     }
+
+    const salvarFormaItem = (itemId, forma) => {
+        updateFicha((ficha) => {
+            const item = (ficha.inventario || []).find(i => i.id === itemId);
+            if (!item) return;
+            if (!item.formas) item.formas = [];
+            const ix = item.formas.findIndex(f => f.id === forma.id);
+            if (ix !== -1) {
+                item.formas[ix] = forma;
+            } else {
+                item.formas.push(forma);
+            }
+        });
+        salvarFichaSilencioso();
+    };
+
+    const deletarFormaItem = (itemId, formaId) => {
+        updateFicha((ficha) => {
+            const item = (ficha.inventario || []).find(i => i.id === itemId);
+            if (!item) return;
+            item.formas = (item.formas || []).filter(f => f.id !== formaId);
+            if (item.formaAtivaId === formaId) item.formaAtivaId = null;
+        });
+        salvarFichaSilencioso();
+    };
+
+    const ativarFormaItem = (itemId, formaId) => {
+        const vitais = ['vida', 'mana', 'aura', 'chakra', 'corpo'];
+        updateFicha((ficha) => {
+            const item = (ficha.inventario || []).find(i => i.id === itemId);
+            if (!item) return;
+            const oldM = {};
+            vitais.forEach(v => { oldM[v] = getMaximo(ficha, v) || 1; });
+            item.formaAtivaId = formaId;
+            vitais.forEach(k => {
+                const nMax = getMaximo(ficha, k) || 1;
+                let atu = parseFloat(ficha[k].atual);
+                if (isNaN(atu)) atu = nMax;
+                ficha[k].atual = Math.floor(atu * (nMax / oldM[k]));
+                if (isNaN(ficha[k].atual) || ficha[k].atual < 0 || ficha[k].atual > nMax) ficha[k].atual = nMax;
+            });
+        });
+        salvarFichaSilencioso();
+    };
 
     const inventario = minhaFicha.inventario || [];
 
@@ -265,7 +314,8 @@ export default function ArsenalPanel() {
 
                 {tipoItem === 'arma' && (
                     <>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8, marginTop: 10 }}>
+                        <input className="input-neon" type="text" placeholder="Nome do Efeito" value={nomeEfeito} onChange={e => setNomeEfeito(e.target.value)} style={{ marginTop: 10 }} />
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8, marginTop: 5 }}>
                             <select className="input-neon" value={novoAtr} onChange={e => setNovoAtr(e.target.value)}>
                                 {ATRIBUTOS_AGRUPADOS.map(grupo => (
                                     <optgroup key={grupo.label} label={grupo.label} style={{ background: '#051010', color: '#0ff' }}>
@@ -293,7 +343,7 @@ export default function ArsenalPanel() {
                                     const isMult = ['mbase', 'mgeral', 'mformas', 'mabs', 'munico'].includes(prop);
                                     return (
                                         <div key={i} style={{ color: '#0ff', fontSize: '0.9em', marginBottom: 5, background: 'rgba(0,255,255,0.1)', padding: '5px 10px', borderLeft: '2px solid #0ff', display: 'flex', justifyContent: 'space-between' }}>
-                                            <span>[{(e.atributo || '').replace('_', ' ').toUpperCase()}] - [{(e.propriedade || '').toUpperCase()}]: <strong style={{ color: '#ffcc00' }}>{isMult ? '(x)' : '(+)'} {e.valor}</strong></span>
+                                            <span><strong style={{ color: '#fff' }}>{e.nome || '(Sem nome)'}</strong> [{(e.atributo || '').replace('_', ' ').toUpperCase()}] - [{(e.propriedade || '').toUpperCase()}]: <strong style={{ color: '#ffcc00' }}>{isMult ? '(x)' : '(+)'} {e.valor}</strong></span>
                                             <button onClick={() => removerEfeitoTemp(i)} style={{ background: 'transparent', color: '#f00', border: 'none', cursor: 'pointer' }}>X</button>
                                         </div>
                                     );
@@ -302,7 +352,8 @@ export default function ArsenalPanel() {
                         </div>
 
                         <h4 style={{ color: '#f0f', marginTop: 15, marginBottom: 8, fontSize: '0.95em' }}>Efeitos Passivos (sempre ativos)</h4>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8 }}>
+                        <input className="input-neon" type="text" placeholder="Nome do Efeito Passivo" value={nomeEfeitoPassivo} onChange={e => setNomeEfeitoPassivo(e.target.value)} />
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8, marginTop: 5 }}>
                             <select className="input-neon" value={novoAtrPassivo} onChange={e => setNovoAtrPassivo(e.target.value)}>
                                 {ATRIBUTOS_AGRUPADOS.map(grupo => (
                                     <optgroup key={grupo.label} label={grupo.label} style={{ background: '#051010', color: '#f0f' }}>
@@ -330,7 +381,7 @@ export default function ArsenalPanel() {
                                     const isMult = ['mbase', 'mgeral', 'mformas', 'mabs', 'munico'].includes(prop);
                                     return (
                                         <div key={i} style={{ color: '#f0f', fontSize: '0.9em', marginBottom: 5, background: 'rgba(255,0,255,0.1)', padding: '5px 10px', borderLeft: '2px solid #f0f', display: 'flex', justifyContent: 'space-between' }}>
-                                            <span>PASSIVO: [{(e.atributo || '').replace('_', ' ').toUpperCase()}] - [{(e.propriedade || '').toUpperCase()}]: <strong style={{ color: '#ffcc00' }}>{isMult ? '(x)' : '(+)'} {e.valor}</strong></span>
+                                            <span>PASSIVO: <strong style={{ color: '#fff' }}>{e.nome || '(Sem nome)'}</strong> [{(e.atributo || '').replace('_', ' ').toUpperCase()}] - [{(e.propriedade || '').toUpperCase()}]: <strong style={{ color: '#ffcc00' }}>{isMult ? '(x)' : '(+)'} {e.valor}</strong></span>
                                             <button onClick={() => removerEfeitoPassivoTemp(i)} style={{ background: 'transparent', color: '#f00', border: 'none', cursor: 'pointer' }}>X</button>
                                         </div>
                                     );
@@ -430,6 +481,15 @@ export default function ArsenalPanel() {
                                         </button>
                                     </div>
                                 </div>
+                                {p.tipo === 'arma' && (
+                                    <FormasEditor
+                                        formas={p.formas || []}
+                                        formaAtivaId={p.formaAtivaId || null}
+                                        onSalvarForma={(forma) => salvarFormaItem(p.id, forma)}
+                                        onDeletarForma={(formaId) => deletarFormaItem(p.id, formaId)}
+                                        onAtivarForma={(formaId) => ativarFormaItem(p.id, formaId)}
+                                    />
+                                )}
                             </div>
                         );
                     })

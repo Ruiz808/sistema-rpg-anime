@@ -1,11 +1,14 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import useStore from '../../stores/useStore';
-import { salvarFichaSilencioso, enviarParaFeed, salvarDummie } from '../../services/firebase-sync'; 
+import { salvarFichaSilencioso, enviarParaFeed, salvarDummie } from '../../services/firebase-sync';
 import { calcularAcerto } from '../../core/engine';
-import { getClassIconById } from '../../core/classIcons'; 
+import { getClassIconById } from '../../core/classIcons';
+import { resolverEfeitosEntidade } from '../../core/efeitos-resolver';
 
 import Tabuleiro3D from './Tabuleiro3D';
-import DummieToken from '../combat/DummieToken'; 
+import DummieToken from '../combat/DummieToken';
+import DummieToken from '../combat/DummieToken';
+>>>>>>> af55c35 (Adicionar sistema de efeitos nomeados e formas para poderes/equipamentos)
 
 const MAP_SIZE = 30;
 const PALETA = ['#ff003c', '#0088ff', '#00ff88', '#ffcc00', '#ff00ff', '#00ffff', '#ff8800', '#88ff00'];
@@ -19,7 +22,8 @@ function urlSeguraParaCss(url) {
 
 export function calcularCA(ficha, tipo) {
     if (!ficha) return 10;
-    
+
+
     const getDoisDigitos = (valor) => {
         if (!valor) return 0;
         const strVal = String(valor).replace(/[^0-9]/g, '');
@@ -30,21 +34,26 @@ export function calcularCA(ficha, tipo) {
     let base = 5;
     if (tipo === 'evasiva') base += getDoisDigitos(ficha.destreza?.base);
     if (tipo === 'resistencia') base += getDoisDigitos(ficha.forca?.base);
-    
+
     let bonus = 0;
+    const somarBonus = (efeitos) => {
+        (efeitos || []).forEach(e => {
+            if (e && e.atributo === tipo && e.propriedade === 'base') bonus += parseFloat(e.valor) || 0;
+        });
+    };
+
     (ficha.poderes || []).forEach(p => {
-        if (p.ativa) {
-            (p.efeitos || []).forEach(e => { if (e.atributo === tipo && e.propriedade === 'base') bonus += parseFloat(e.valor) || 0; });
-        }
-        (p.efeitosPassivos || []).forEach(e => { if (e.atributo === tipo && e.propriedade === 'base') bonus += parseFloat(e.valor) || 0; });
+        let resolved = resolverEfeitosEntidade(p);
+        if (p.ativa) somarBonus(resolved.efeitos);
+        somarBonus(resolved.efeitosPassivos);
     });
-    (ficha.passivas || []).forEach(p => {
-        (p.efeitos || []).forEach(e => { if (e.atributo === tipo && e.propriedade === 'base') bonus += parseFloat(e.valor) || 0; });
-    });
+    (ficha.passivas || []).forEach(p => { somarBonus(p.efeitos); });
     (ficha.inventario || []).filter(i => i.equipado).forEach(i => {
-        (i.efeitos || []).forEach(e => { if (e.atributo === tipo && e.propriedade === 'base') bonus += parseFloat(e.valor) || 0; });
+        let resolved = resolverEfeitosEntidade(i);
+        somarBonus(resolved.efeitos);
+        somarBonus(resolved.efeitosPassivos);
     });
-    
+
     return Math.floor(base + bonus);
 }
 

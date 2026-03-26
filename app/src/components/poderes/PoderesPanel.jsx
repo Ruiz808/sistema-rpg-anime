@@ -3,6 +3,7 @@ import useStore from '../../stores/useStore';
 import { getMaximo } from '../../core/attributes';
 import { salvarFichaSilencioso, salvarFirebaseImediato, uploadImagem } from '../../services/firebase-sync';
 import { ATRIBUTOS_AGRUPADOS, PROPRIEDADE_OPTIONS } from '../../core/efeitos-constants';
+import FormasEditor from '../shared/FormasEditor';
 
 const SINGULAR = {
     'habilidade': 'Habilidade',
@@ -29,10 +30,12 @@ export default function PoderesPanel() {
     const [dadosFaces, setDadosFaces] = useState(20);
     const [custoPercentual, setCustoPercentual] = useState(0);
     const [armaVinculada, setArmaVinculada] = useState('');
+    const [nomeEfeito, setNomeEfeito] = useState('');
     const [novoAtr, setNovoAtr] = useState('forca');
     const [novoProp, setNovoProp] = useState('base');
     const [novoVal, setNovoVal] = useState('');
-    const [novoAtrPassivo, setNovoAtrPassivo] = useState('evasiva'); // Começa com evasiva para incentivar defesas
+    const [nomeEfeitoPassivo, setNomeEfeitoPassivo] = useState('');
+    const [novoAtrPassivo, setNovoAtrPassivo] = useState('evasiva');
     const [novoPropPassivo, setNovoPropPassivo] = useState('base');
     const [novoValPassivo, setNovoValPassivo] = useState('');
 
@@ -54,9 +57,10 @@ export default function PoderesPanel() {
     }, [vincularAberto]);
 
     const addEfeitoTemp = () => {
-        if (!novoVal) return;
-        setEfeitosTemp([...efeitosTemp, { atributo: novoAtr, propriedade: novoProp, valor: novoVal }]);
+        if (!novoVal || !nomeEfeito.trim()) { alert('Preencha o nome e o valor do efeito!'); return; }
+        setEfeitosTemp([...efeitosTemp, { nome: nomeEfeito.trim(), atributo: novoAtr, propriedade: novoProp, valor: novoVal }]);
         setNovoVal('');
+        setNomeEfeito('');
     };
 
     const removerEfeitoTemp = (index) => {
@@ -64,9 +68,10 @@ export default function PoderesPanel() {
     };
 
     const addEfeitoPassivoTemp = () => {
-        if (!novoValPassivo) return;
-        setEfeitosTempPassivos([...efeitosTempPassivos, { atributo: novoAtrPassivo, propriedade: novoPropPassivo, valor: novoValPassivo }]);
+        if (!novoValPassivo || !nomeEfeitoPassivo.trim()) { alert('Preencha o nome e o valor do efeito passivo!'); return; }
+        setEfeitosTempPassivos([...efeitosTempPassivos, { nome: nomeEfeitoPassivo.trim(), atributo: novoAtrPassivo, propriedade: novoPropPassivo, valor: novoValPassivo }]);
         setNovoValPassivo('');
+        setNomeEfeitoPassivo('');
     };
 
     const removerEfeitoPassivoTemp = (index) => {
@@ -218,6 +223,50 @@ export default function PoderesPanel() {
         salvarFichaSilencioso();
     };
 
+    const salvarFormaPoder = (poderId, forma) => {
+        updateFicha((ficha) => {
+            const p = (ficha.poderes || []).find(po => po.id === poderId);
+            if (!p) return;
+            if (!p.formas) p.formas = [];
+            const ix = p.formas.findIndex(f => f.id === forma.id);
+            if (ix !== -1) {
+                p.formas[ix] = forma;
+            } else {
+                p.formas.push(forma);
+            }
+        });
+        salvarFichaSilencioso();
+    };
+
+    const deletarFormaPoder = (poderId, formaId) => {
+        updateFicha((ficha) => {
+            const p = (ficha.poderes || []).find(po => po.id === poderId);
+            if (!p) return;
+            p.formas = (p.formas || []).filter(f => f.id !== formaId);
+            if (p.formaAtivaId === formaId) p.formaAtivaId = null;
+        });
+        salvarFichaSilencioso();
+    };
+
+    const ativarFormaPoder = (poderId, formaId) => {
+        const vitais = ['vida', 'mana', 'aura', 'chakra', 'corpo'];
+        updateFicha((ficha) => {
+            const p = (ficha.poderes || []).find(po => po.id === poderId);
+            if (!p) return;
+            const oldM = {};
+            vitais.forEach(v => { oldM[v] = getMaximo(ficha, v) || 1; });
+            p.formaAtivaId = formaId;
+            vitais.forEach(k => {
+                const nMax = getMaximo(ficha, k) || 1;
+                let atu = parseFloat(ficha[k].atual);
+                if (isNaN(atu)) atu = nMax;
+                ficha[k].atual = Math.floor(atu * (nMax / oldM[k]));
+                if (isNaN(ficha[k].atual) || ficha[k].atual < 0 || ficha[k].atual > nMax) ficha[k].atual = nMax;
+            });
+        });
+        salvarFichaSilencioso();
+    };
+
     const armasEquipadas = (minhaFicha.inventario || []).filter(i => i.tipo === 'arma' && i.equipado);
 
     const poderesGlobais = minhaFicha.poderes || [];
@@ -334,7 +383,8 @@ export default function PoderesPanel() {
                         </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8, marginTop: 10 }}>
+                    <input className="input-neon" type="text" placeholder="Nome do Efeito" value={nomeEfeito} onChange={e => setNomeEfeito(e.target.value)} style={{ marginTop: 10 }} />
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8, marginTop: 5 }}>
                         <select className="input-neon" value={novoAtr} onChange={e => setNovoAtr(e.target.value)}>
                             {ATRIBUTOS_AGRUPADOS.map(grupo => (
                                 <optgroup key={grupo.label} label={grupo.label} style={{ background: '#051010', color: '#0ff' }}>
@@ -354,7 +404,7 @@ export default function PoderesPanel() {
                             const isMult = ['mbase', 'mgeral', 'mformas', 'mabs', 'munico'].includes((e.propriedade || '').toLowerCase());
                             return (
                                 <div key={i} style={{ color: '#0ff', fontSize: '0.9em', marginBottom: 5, background: 'rgba(0,255,255,0.1)', padding: '5px 10px', borderLeft: '2px solid #0ff', display: 'flex', justifyContent: 'space-between' }}>
-                                    <span>[{(e.atributo || '').replace('_', ' ').toUpperCase()}] - [{(e.propriedade || '').toUpperCase()}]: <strong style={{ color: '#ffcc00' }}>{isMult ? '(x)' : '(+)'} {e.valor}</strong></span>
+                                    <span><strong style={{ color: '#fff' }}>{e.nome || '(Sem nome)'}</strong> [{(e.atributo || '').replace('_', ' ').toUpperCase()}] - [{(e.propriedade || '').toUpperCase()}]: <strong style={{ color: '#ffcc00' }}>{isMult ? '(x)' : '(+)'} {e.valor}</strong></span>
                                     <button onClick={() => removerEfeitoTemp(i)} style={{ background: 'transparent', color: '#f00', border: 'none', cursor: 'pointer' }}>X</button>
                                 </div>
                             );
@@ -362,7 +412,8 @@ export default function PoderesPanel() {
                     </div>
 
                     <h4 style={{ color: '#f0f', marginTop: 15, marginBottom: 8, fontSize: '0.95em' }}>Efeitos Passivos (sempre ativos)</h4>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8 }}>
+                    <input className="input-neon" type="text" placeholder="Nome do Efeito Passivo" value={nomeEfeitoPassivo} onChange={e => setNomeEfeitoPassivo(e.target.value)} />
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8, marginTop: 5 }}>
                         <select className="input-neon" value={novoAtrPassivo} onChange={e => setNovoAtrPassivo(e.target.value)}>
                             {ATRIBUTOS_AGRUPADOS.map(grupo => (
                                 <optgroup key={grupo.label} label={grupo.label} style={{ background: '#051010', color: '#f0f' }}>
@@ -382,7 +433,7 @@ export default function PoderesPanel() {
                             const isMult = ['mbase', 'mgeral', 'mformas', 'mabs', 'munico'].includes((e.propriedade || '').toLowerCase());
                             return (
                                 <div key={i} style={{ color: '#f0f', fontSize: '0.9em', marginBottom: 5, background: 'rgba(255,0,255,0.1)', padding: '5px 10px', borderLeft: '2px solid #f0f', display: 'flex', justifyContent: 'space-between' }}>
-                                    <span>PASSIVO: [{(e.atributo || '').replace('_', ' ').toUpperCase()}] - [{(e.propriedade || '').toUpperCase()}]: <strong style={{ color: '#ffcc00' }}>{isMult ? '(x)' : '(+)'} {e.valor}</strong></span>
+                                    <span>PASSIVO: <strong style={{ color: '#fff' }}>{e.nome || '(Sem nome)'}</strong> [{(e.atributo || '').replace('_', ' ').toUpperCase()}] - [{(e.propriedade || '').toUpperCase()}]: <strong style={{ color: '#ffcc00' }}>{isMult ? '(x)' : '(+)'} {e.valor}</strong></span>
                                     <button onClick={() => removerEfeitoPassivoTemp(i)} style={{ background: 'transparent', color: '#f00', border: 'none', cursor: 'pointer' }}>X</button>
                                 </div>
                             );
@@ -460,6 +511,13 @@ export default function PoderesPanel() {
                                             <button className="btn-neon btn-red" style={{ padding: '5px 15px', fontSize: '1em', margin: 0 }} onClick={() => deletarPoder(p.id)}>APAGAR</button>
                                         </div>
                                     </div>
+                                    <FormasEditor
+                                        formas={p.formas || []}
+                                        formaAtivaId={p.formaAtivaId || null}
+                                        onSalvarForma={(forma) => salvarFormaPoder(p.id, forma)}
+                                        onDeletarForma={(formaId) => deletarFormaPoder(p.id, formaId)}
+                                        onAtivarForma={(formaId) => ativarFormaPoder(p.id, formaId)}
+                                    />
                                 </div>
                             );
                         })

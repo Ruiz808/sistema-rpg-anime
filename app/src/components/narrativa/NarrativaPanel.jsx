@@ -30,10 +30,11 @@ export default function NarrativaPanel() {
     const [passivaNome, setPassivaNome] = useState('');
     const [passivaTipo, setPassivaTipo] = useState('Vantagem');
     const [efeitosTempPassiva, setEfeitosTempPassiva] = useState([]);
+    const [nomeEfeito, setNomeEfeito] = useState('');
     const [novoAtr, setNovoAtr] = useState('forca');
     const [novoProp, setNovoProp] = useState('base');
     const [novoVal, setNovoVal] = useState('');
-    const [editIndex, setEditIndex] = useState(-1); // NOVO ESTADO: Índice da passiva a editar
+    const [editIndex, setEditIndex] = useState(-1);
 
     // Save feedback
     const [salvando, setSalvando] = useState(false);
@@ -77,12 +78,15 @@ export default function NarrativaPanel() {
     }
 
     function addEfeitoPassiva() {
+        if (!novoVal || !nomeEfeito.trim()) { alert('Preencha o nome e o valor do efeito!'); return; }
         setEfeitosTempPassiva(prev => [...prev, {
+            nome: nomeEfeito.trim(),
             atributo: novoAtr,
             propriedade: novoProp,
             valor: novoVal
         }]);
         setNovoVal('');
+        setNomeEfeito('');
     }
 
     function removerEfeitoPassiva(i) {
@@ -290,7 +294,8 @@ export default function NarrativaPanel() {
                 </div>
 
                 {/* Add effect to passive */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8, marginTop: 10 }}>
+                <input className="input-neon" type="text" placeholder="Nome do Efeito" value={nomeEfeito} onChange={e => setNomeEfeito(e.target.value)} style={{ marginTop: 10 }} />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8, marginTop: 5 }}>
                     <select className="input-neon" value={novoAtr} onChange={e => setNovoAtr(e.target.value)}>
                         {ATRIBUTO_OPTIONS.map(a => (
                             <option key={a} value={a}>{a.toUpperCase()}</option>
@@ -327,7 +332,7 @@ export default function NarrativaPanel() {
                                 display: 'flex', justifyContent: 'space-between'
                             }}>
                                 <span>
-                                    [{(e.atributo || '').toUpperCase()}] {(e.propriedade || '').toUpperCase()}: {e.valor}
+                                    <strong style={{ color: '#fff' }}>{e.nome || '(Sem nome)'}</strong> [{(e.atributo || '').toUpperCase()}] {(e.propriedade || '').toUpperCase()}: {e.valor}
                                 </span>
                                 <button
                                     onClick={() => removerEfeitoPassiva(i)}
