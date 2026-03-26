@@ -49,12 +49,21 @@ function calcularCA(ficha, tipo) {
     return Math.floor(base + bonus);
 }
 
-// 🔥 MOTOR DE SINCRONIZAÇÃO DE STATUS E VITALIDADE 🔥
-// Calcula o corte de zeros (compressão de vit) exato da Ficha!
+// 🔥 MOTOR DE SINCRONIZAÇÃO BLINDADO 🔥
 function getStatusLimpo(ficha, chave, threshold, fallbackChave) {
     if (!ficha) return { max: 0, atual: 0, pVit: 0 };
-    let mx = getMaximo(ficha, chave);
-    if ((!mx || isNaN(mx)) && fallbackChave) mx = getMaximo(ficha, fallbackChave);
+    
+    let mx = 0;
+    try {
+        mx = getMaximo(ficha, chave);
+        if ((!mx || isNaN(mx)) && fallbackChave) mx = getMaximo(ficha, fallbackChave);
+    } catch (e) { console.warn(e) }
+
+    // Fallback: Se o motor de atributos falhar em ler "pontosMortais", lemos direto do JSON!
+    if (!mx || isNaN(mx)) {
+        let baseObj = ficha[chave] || (fallbackChave ? ficha[fallbackChave] : null);
+        if (baseObj && baseObj.base) mx = parseInt(baseObj.base) || 0;
+    }
     if (isNaN(mx)) mx = 0;
     
     const strVal = String(Math.floor(mx));
@@ -70,7 +79,6 @@ function getStatusLimpo(ficha, chave, threshold, fallbackChave) {
 
     return { max: maxFinal, atual: atual, pVit: pVit };
 }
-
 
 // 🔥 PAINEL DO MESTRE AVANÇADO 🔥
 function MestrePanel() {
@@ -180,7 +188,7 @@ function MestrePanel() {
                                 Nenhuma entidade registada nesta categoria.
                             </p>
                         ) : jogadoresFiltrados.map(([nome, ficha]) => {
-                            // Sincronização e Extração das 7 Barras de Energia!
+                            // Extração Extrema das Energias
                             const vida = getStatusLimpo(ficha, 'vida', 8);
                             const mana = getStatusLimpo(ficha, 'mana', 9);
                             const aura = getStatusLimpo(ficha, 'aura', 9);
@@ -203,35 +211,37 @@ function MestrePanel() {
                                         <span style={{ color: '#aaa', fontSize: '0.8em', fontStyle: 'italic' }}>{classId ? classId.toUpperCase() : 'Mundano'}</span>
                                     </div>
 
-                                    {/* 🔥 Grelha Épica com as 6 Energias + Vida + Defesas 🔥 */}
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.80em', color: '#ccc', marginBottom: '12px' }}>
-                                        <div style={{ gridColumn: 'span 2', background: 'rgba(255,0,0,0.1)', padding: '6px', borderRadius: '3px', borderLeft: '3px solid #f00', display: 'flex', justifyContent: 'space-between' }}>
+                                    {/* 🔥 Grelha 3x3 Perfeita para todas as Barras 🔥 */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', fontSize: '0.75em', color: '#ccc', marginBottom: '12px' }}>
+                                        <div style={{ gridColumn: 'span 3', background: 'rgba(255,0,0,0.1)', padding: '6px', borderRadius: '3px', borderLeft: '3px solid #f00', display: 'flex', justifyContent: 'space-between' }}>
                                             <span><span style={{ color: '#f00', fontWeight: 'bold' }}>HP:</span> {fmt(vida.atual)} / {fmt(vida.max)}</span>
                                             {vida.pVit > 0 && <span style={{ color: '#ffcc00', fontWeight: 'bold' }}>+{vida.pVit} Vit</span>}
                                         </div>
                                         <div style={{ background: 'rgba(0,136,255,0.1)', padding: '4px 6px', borderRadius: '3px', borderLeft: '2px solid #0088ff' }}>
-                                            <span style={{ color: '#0088ff', fontWeight: 'bold' }}>MP:</span> {fmt(mana.atual)} / {fmt(mana.max)}
+                                            <span style={{ color: '#0088ff', fontWeight: 'bold' }}>MP:</span><br/>{fmt(mana.atual)} / {fmt(mana.max)}
                                         </div>
                                         <div style={{ background: 'rgba(170,0,255,0.1)', padding: '4px 6px', borderRadius: '3px', borderLeft: '2px solid #aa00ff' }}>
-                                            <span style={{ color: '#aa00ff', fontWeight: 'bold' }}>AURA:</span> {fmt(aura.atual)} / {fmt(aura.max)}
+                                            <span style={{ color: '#aa00ff', fontWeight: 'bold' }}>AURA:</span><br/>{fmt(aura.atual)} / {fmt(aura.max)}
                                         </div>
                                         <div style={{ background: 'rgba(0,255,170,0.1)', padding: '4px 6px', borderRadius: '3px', borderLeft: '2px solid #00ffaa' }}>
-                                            <span style={{ color: '#00ffaa', fontWeight: 'bold' }}>CHAK:</span> {fmt(chakra.atual)} / {fmt(chakra.max)}
+                                            <span style={{ color: '#00ffaa', fontWeight: 'bold' }}>CHAK:</span><br/>{fmt(chakra.atual)} / {fmt(chakra.max)}
                                         </div>
                                         <div style={{ background: 'rgba(255,136,0,0.1)', padding: '4px 6px', borderRadius: '3px', borderLeft: '2px solid #ff8800' }}>
-                                            <span style={{ color: '#ff8800', fontWeight: 'bold' }}>CORP:</span> {fmt(corpo.atual)} / {fmt(corpo.max)}
+                                            <span style={{ color: '#ff8800', fontWeight: 'bold' }}>CORP:</span><br/>{fmt(corpo.atual)} / {fmt(corpo.max)}
                                         </div>
                                         <div style={{ background: 'rgba(255,255,255,0.1)', padding: '4px 6px', borderRadius: '3px', borderLeft: '2px solid #fff' }}>
-                                            <span style={{ color: '#fff', fontWeight: 'bold' }}>P.VIT:</span> {fmt(pVitais.atual)} / {fmt(pVitais.max)}
+                                            <span style={{ color: '#fff', fontWeight: 'bold' }}>P.VIT:</span><br/>{fmt(pVitais.atual)} / {fmt(pVitais.max)}
                                         </div>
                                         <div style={{ background: 'rgba(150,0,0,0.2)', padding: '4px 6px', borderRadius: '3px', borderLeft: '2px solid #ff3333' }}>
-                                            <span style={{ color: '#ff3333', fontWeight: 'bold' }}>P.MOR:</span> {fmt(pMortais.atual)} / {fmt(pMortais.max)}
+                                            <span style={{ color: '#ff3333', fontWeight: 'bold' }}>P.MOR:</span><br/>{fmt(pMortais.atual)} / {fmt(pMortais.max)}
                                         </div>
-                                        <div style={{ background: 'rgba(0,255,204,0.1)', padding: '4px 6px', borderRadius: '3px', borderLeft: '2px solid #00ffcc' }}>
-                                            <span style={{ color: '#00ffcc', fontWeight: 'bold' }}>EVA:</span> {calcularCA(ficha, 'evasiva')}
-                                        </div>
-                                        <div style={{ background: 'rgba(255,204,0,0.1)', padding: '4px 6px', borderRadius: '3px', borderLeft: '2px solid #ffcc00' }}>
-                                            <span style={{ color: '#ffcc00', fontWeight: 'bold' }}>RES:</span> {calcularCA(ficha, 'resistencia')}
+                                        <div style={{ gridColumn: 'span 3', display: 'flex', gap: '6px' }}>
+                                            <div style={{ flex: 1, background: 'rgba(0,255,204,0.1)', padding: '4px 6px', borderRadius: '3px', borderLeft: '2px solid #00ffcc' }}>
+                                                <span style={{ color: '#00ffcc', fontWeight: 'bold' }}>EVA:</span> {calcularCA(ficha, 'evasiva')}
+                                            </div>
+                                            <div style={{ flex: 1, background: 'rgba(255,204,0,0.1)', padding: '4px 6px', borderRadius: '3px', borderLeft: '2px solid #ffcc00' }}>
+                                                <span style={{ color: '#ffcc00', fontWeight: 'bold' }}>RES:</span> {calcularCA(ficha, 'resistencia')}
+                                            </div>
                                         </div>
                                     </div>
 
