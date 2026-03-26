@@ -10,6 +10,7 @@ import FichaPanel from './components/ficha/FichaPanel'
 import AtaquePanel from './components/combate/AtaquePanel'
 import AcertoPanel from './components/combate/AcertoPanel'
 import DefesaPanel from './components/combate/DefesaPanel'
+import TestesPanel from './components/combate/TestesPanel' // 🔥 IMPORTAMOS O PAINEL AQUI
 import PoderesPanel from './components/poderes/PoderesPanel'
 import ArsenalPanel from './components/arsenal/ArsenalPanel'
 import ElementosPanel from './components/arsenal/ElementosPanel'
@@ -74,7 +75,6 @@ function getEnergiasSupremas(ficha) {
 
     const getRawBase = (attr) => parseFloat(ficha[attr]?.base) || 0;
 
-    // Reconstrói o Prestígio Base a partir dos Zeros!
     const getPrestAtual = (k) => {
         let baseP = 0;
         if (k === 'status') {
@@ -87,7 +87,6 @@ function getEnergiasSupremas(ficha) {
             baseP = Math.floor(getRawBase(k) / (mults[k] || 1));
         }
 
-        // Simula os buffs do 'mFormas' para manter a paridade com a TabelaPrestigio
         const anchor = k === 'status' ? 'forca' : k;
         let mFormas = parseFloat(ficha[anchor]?.mFormas) || 1.0;
         
@@ -123,7 +122,6 @@ function getEnergiasSupremas(ficha) {
         return Math.floor(baseP * multForma);
     };
 
-    // A Fórmula Sagrada do Mestre
     const maxVitais = Math.floor((getPrestAtual('vida') + getPrestAtual('chakra') + getPrestAtual('corpo')) / 3);
     const maxMortais = Math.floor((getPrestAtual('mana') + getPrestAtual('status') + getPrestAtual('aura')) / 3);
 
@@ -254,7 +252,6 @@ function MestrePanel() {
                             const chakra = getStatusLimpo(ficha, 'chakra', 9);
                             const corpo = getStatusLimpo(ficha, 'corpo', 9);
                             
-                            // 🔥 AS ENERGIAS SUPREMAS (Calculadas na hora!) 🔥
                             const supremas = getEnergiasSupremas(ficha);
 
                             const percHp = vida.max > 0 ? (vida.atual / vida.max) * 100 : 0;
@@ -318,7 +315,7 @@ function MestrePanel() {
                     </div>
                 </div>
 
-                <div style={{ flex: '1 1 30%', minWidth: '300px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ flex: '1 1 35%', minWidth: '300px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     <div className="def-box" style={{ borderLeft: '4px solid #ff003c' }}>
                         <h3 style={{ color: '#ff003c', margin: '0 0 15px 0' }}>👹 Injetor de Entidades (Mapa)</h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -434,6 +431,7 @@ export default function App() {
                 <TabPanel id="aba-perfil"><PerfilPanel /></TabPanel>
                 <TabPanel id="aba-mestre"><MestrePanel /></TabPanel>
                 <TabPanel id="aba-status"><StatusPanel /></TabPanel>
+                <TabPanel id="aba-testes"><TestesPanel /></TabPanel> {/* 🔥 NOVA ABA INJETADA AQUI! */}
                 <TabPanel id="aba-ataque"><AtaquePanel /></TabPanel>
                 <TabPanel id="aba-acerto"><AcertoPanel /></TabPanel>
                 <TabPanel id="aba-defesa"><DefesaPanel /></TabPanel>

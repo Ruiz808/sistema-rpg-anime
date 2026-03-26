@@ -5,6 +5,7 @@ const tabs = [
     { id: 'aba-perfil',     emoji: '\u{1F464}', label: 'Sess\u00E3o' },
     { id: 'aba-mestre',     emoji: '\u{1F451}', label: 'Painel do Mestre', mestreOnly: true },
     { id: 'aba-status',     emoji: '\u2764\uFE0F', label: 'Monitor Vital' },
+    { id: 'aba-testes',     emoji: '🎲', label: 'Testes e Saves' }, // 🔥 A NOVA ABA DE TESTES AQUI!
     { id: 'aba-ataque',     emoji: '\u2694\uFE0F', label: 'Rolar Dano' },
     { id: 'aba-acerto',     emoji: '\u{1F3AF}', label: 'Rolar Acerto' },
     { id: 'aba-defesa',     emoji: '\u{1F6E1}\uFE0F', label: 'A\u00E7\u00F5es Defensivas' },

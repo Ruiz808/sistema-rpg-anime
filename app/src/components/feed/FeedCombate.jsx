@@ -19,6 +19,37 @@ export default function FeedCombate() {
     return (
         <div id="feed-combate">
             {reversed.map((d, idx) => {
+                
+                // 🔥 NOVO: TESTE DE HABILIDADE (PERÍCIA)
+                if (d.tipo === 'skill') {
+                    return (
+                        <div key={idx} className="damage-log" style={{ borderLeftColor: '#0088ff', background: 'rgba(0,136,255,0.1)' }}>
+                            <p style={{ color: '#0088ff' }}>
+                                <span dangerouslySetInnerHTML={{ __html: `🎯 <strong>${d.nome}</strong> fez um Teste de <strong>${d.nomeTeste}</strong>:` }} />
+                            </p>
+                            <h1 className="damage-number" style={{ color: '#0088ff', textShadow: '0 0 20px rgba(0,136,255,0.8)' }}>
+                                {d.total}
+                            </h1>
+                            <div className="log-details" dangerouslySetInnerHTML={{ __html: d.detalheCalc }} />
+                        </div>
+                    );
+                }
+
+                // 🔥 NOVO: SAVING THROW (RESISTÊNCIA PURA)
+                if (d.tipo === 'saving') {
+                    return (
+                        <div key={idx} className="damage-log" style={{ borderLeftColor: '#ffcc00', background: 'rgba(255,204,0,0.1)' }}>
+                            <p style={{ color: '#ffcc00' }}>
+                                <span dangerouslySetInnerHTML={{ __html: `🛡️ <strong>${d.nome}</strong> rolou um Saving Throw de <strong>${d.nomeTeste}</strong>:` }} />
+                            </p>
+                            <h1 className="damage-number" style={{ color: '#ffcc00', textShadow: '0 0 20px rgba(255,204,0,0.8)' }}>
+                                {d.total}
+                            </h1>
+                            <div className="log-details" dangerouslySetInnerHTML={{ __html: d.detalheCalc }} />
+                        </div>
+                    );
+                }
+
                 if (d.tipo === 'acerto') {
                     return (
                         <div key={idx} className="damage-log" style={{ borderLeftColor: '#f90', background: 'rgba(255,153,0,0.1)' }}>
@@ -81,6 +112,14 @@ export default function FeedCombate() {
                                 <span dangerouslySetInnerHTML={{ __html: `${(d.escudoReduzido || 0).toLocaleString('pt-BR')}${tg}` }} />
                             </h1>
                             <div className="log-details" dangerouslySetInnerHTML={{ __html: d.detalhe }} />
+                        </div>
+                    );
+                }
+
+                if (d.tipo === 'sistema') {
+                    return (
+                        <div key={idx} className="damage-log" style={{ borderLeftColor: '#ffcc00', background: 'rgba(255,204,0,0.1)', textAlign: 'center' }}>
+                            <h3 style={{ color: '#ffcc00', margin: '10px 0', textShadow: '0 0 10px rgba(255,204,0,0.8)' }}>{d.texto}</h3>
                         </div>
                     );
                 }
