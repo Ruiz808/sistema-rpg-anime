@@ -10,7 +10,7 @@ import FichaPanel from './components/ficha/FichaPanel'
 import AtaquePanel from './components/combate/AtaquePanel'
 import AcertoPanel from './components/combate/AcertoPanel'
 import DefesaPanel from './components/combate/DefesaPanel'
-import TestesPanel from './components/combate/TestesPanel' // 🔥 IMPORTAMOS O PAINEL AQUI
+import TestesPanel from './components/combate/TestesPanel' // 🔥 MANTIDO O TRABALHO DO SEU AMIGO!
 import PoderesPanel from './components/poderes/PoderesPanel'
 import ArsenalPanel from './components/arsenal/ArsenalPanel'
 import ElementosPanel from './components/arsenal/ElementosPanel'
@@ -144,6 +144,11 @@ function MestrePanel() {
     const meuNome = useStore(s => s.meuNome)
     const setPersonagemParaDeletar = useStore(s => s.setPersonagemParaDeletar)
     const isMestre = useStore(s => s.isMestre)
+
+    // 🔥 NOVAS FERRAMENTAS DO ARQUITETO: POSSESSÃO DE FICHAS 🔥
+    const setMeuNome = useStore(s => s.setMeuNome)
+    const carregarDadosFicha = useStore(s => s.carregarDadosFicha)
+    const setAbaAtiva = useStore(s => s.setAbaAtiva)
     
     const [msgSistema, setMsgSistema] = useState('')
 
@@ -194,6 +199,17 @@ function MestrePanel() {
             return;
         }
         setPersonagemParaDeletar(nome); 
+    };
+
+    // 🔥 SISTEMA DE POSSESSÃO: O MESTRE ASSUME A FICHA 🔥
+    const handleAssumirFicha = (nome, ficha) => {
+        if (nome === meuNome) return;
+        if (window.confirm(`🎭 ASSUMIR O CONTROLE DE ${nome.toUpperCase()}?\n\nVocê vai "entrar" na ficha desta entidade. Tudo o que editar nas abas (Ficha, Poderes, Arsenal) será salvo nela.\n\n(O seu Modo Mestre continuará ativo e você pode trocar de ficha a qualquer momento voltando ao Visor!)`)) {
+            setMeuNome(nome);
+            carregarDadosFicha(ficha);
+            localStorage.setItem('rpgNome', nome); 
+            setAbaAtiva('aba-ficha'); 
+        }
     };
 
     const todosJogadores = Object.entries(personagens || {});
@@ -260,11 +276,11 @@ function MestrePanel() {
                             if ((classId === 'pretender' || classId === 'alterego') && ficha?.bio?.subClasse) classId = ficha?.bio?.subClasse;
 
                             return (
-                                <div key={nome} style={{ background: 'rgba(0,0,0,0.6)', border: '1px solid #333', padding: '15px', borderRadius: '5px', position: 'relative', overflow: 'hidden' }}>
+                                <div key={nome} style={{ background: 'rgba(0,0,0,0.6)', border: `1px solid ${nome === meuNome ? '#0f0' : '#333'}`, padding: '15px', borderRadius: '5px', position: 'relative', overflow: 'hidden', boxShadow: nome === meuNome ? '0 0 15px rgba(0,255,0,0.2)' : 'none' }}>
                                     <div style={{ position: 'absolute', top: 0, left: 0, height: '4px', width: `${percHp}%`, background: percHp > 50 ? '#0f0' : percHp > 20 ? '#ffcc00' : '#f00', transition: 'width 0.3s' }} />
 
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', marginTop: '5px' }}>
-                                        <strong style={{ color: '#fff', fontSize: '1.2em' }}>{nome} {nome === meuNome && <span style={{color: '#ffcc00', fontSize: '0.6em'}}>(VOCÊ)</span>}</strong>
+                                        <strong style={{ color: '#fff', fontSize: '1.2em' }}>{nome}</strong>
                                         <span style={{ color: '#aaa', fontSize: '0.8em', fontStyle: 'italic' }}>{classId ? classId.toUpperCase() : 'Mundano'}</span>
                                     </div>
 
@@ -301,21 +317,33 @@ function MestrePanel() {
                                         </div>
                                     </div>
 
-                                    <button
-                                        className="btn-neon btn-red"
-                                        style={{ width: '100%', padding: '4px', fontSize: '0.8em', margin: 0, opacity: nome === meuNome ? 0.3 : 1 }}
-                                        onClick={() => handleApagarJogador(nome)}
-                                        disabled={nome === meuNome}
-                                    >
-                                        APAGAR ENTIDADE
-                                    </button>
+                                    {/* 🔥 BOTÕES DE CONTROLO DO MESTRE 🔥 */}
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        <button
+                                            className={`btn-neon ${nome === meuNome ? 'btn-green' : 'btn-gold'}`}
+                                            style={{ flex: 1, padding: '4px', fontSize: '0.8em', margin: 0, opacity: nome === meuNome ? 0.6 : 1 }}
+                                            onClick={() => handleAssumirFicha(nome, ficha)}
+                                            disabled={nome === meuNome}
+                                        >
+                                            {nome === meuNome ? '👁️ CONTROLANDO' : '✏️ EDITAR FICHA'}
+                                        </button>
+                                        <button
+                                            className="btn-neon btn-red"
+                                            style={{ flex: 1, padding: '4px', fontSize: '0.8em', margin: 0, opacity: nome === meuNome ? 0.3 : 1 }}
+                                            onClick={() => handleApagarJogador(nome)}
+                                            disabled={nome === meuNome}
+                                        >
+                                            ❌ APAGAR
+                                        </button>
+                                    </div>
+
                                 </div>
                             );
                         })}
                     </div>
                 </div>
 
-                <div style={{ flex: '1 1 35%', minWidth: '300px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ flex: '1 1 30%', minWidth: '300px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     <div className="def-box" style={{ borderLeft: '4px solid #ff003c' }}>
                         <h3 style={{ color: '#ff003c', margin: '0 0 15px 0' }}>👹 Injetor de Entidades (Mapa)</h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
