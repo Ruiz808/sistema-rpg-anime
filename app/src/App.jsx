@@ -10,7 +10,7 @@ import FichaPanel from './components/ficha/FichaPanel'
 import AtaquePanel from './components/combate/AtaquePanel'
 import AcertoPanel from './components/combate/AcertoPanel'
 import DefesaPanel from './components/combate/DefesaPanel'
-import TestesPanel from './components/combate/TestesPanel' // 🔥 MANTIDO O TRABALHO DO SEU AMIGO!
+import TestesPanel from './components/combate/TestesPanel'
 import PoderesPanel from './components/poderes/PoderesPanel'
 import ArsenalPanel from './components/arsenal/ArsenalPanel'
 import ElementosPanel from './components/arsenal/ElementosPanel'
@@ -145,7 +145,6 @@ function MestrePanel() {
     const setPersonagemParaDeletar = useStore(s => s.setPersonagemParaDeletar)
     const isMestre = useStore(s => s.isMestre)
 
-    // 🔥 NOVAS FERRAMENTAS DO ARQUITETO: POSSESSÃO DE FICHAS 🔥
     const setMeuNome = useStore(s => s.setMeuNome)
     const carregarDadosFicha = useStore(s => s.carregarDadosFicha)
     const setAbaAtiva = useStore(s => s.setAbaAtiva)
@@ -201,14 +200,44 @@ function MestrePanel() {
         setPersonagemParaDeletar(nome); 
     };
 
-    // 🔥 SISTEMA DE POSSESSÃO: O MESTRE ASSUME A FICHA 🔥
     const handleAssumirFicha = (nome, ficha) => {
         if (nome === meuNome) return;
-        if (window.confirm(`🎭 ASSUMIR O CONTROLE DE ${nome.toUpperCase()}?\n\nVocê vai "entrar" na ficha desta entidade. Tudo o que editar nas abas (Ficha, Poderes, Arsenal) será salvo nela.\n\n(O seu Modo Mestre continuará ativo e você pode trocar de ficha a qualquer momento voltando ao Visor!)`)) {
+        if (window.confirm(`🎭 ASSUMIR O CONTROLE DE ${nome.toUpperCase()}?\n\nVocê vai "entrar" na ficha desta entidade. Tudo o que editar nas abas será salvo nela.`)) {
             setMeuNome(nome);
             carregarDadosFicha(ficha);
             localStorage.setItem('rpgNome', nome); 
             setAbaAtiva('aba-ficha'); 
+        }
+    };
+
+    // 🔥 NOVO: SISTEMA DE CLONAGEM DE FICHAS 🔥
+    const handleClonarFicha = (nomeOriginal, fichaOriginal) => {
+        const novoNome = window.prompt(`🖨️ CLONAR ENTIDADE: ${nomeOriginal}\nDigite o nome exato para a nova linha temporal ou clone:`, `${nomeOriginal} (Futuro)`);
+        
+        if (!novoNome || novoNome.trim() === '') return;
+        
+        const nomeSanitizado = sanitizarNome(novoNome);
+        if (personagens[nomeSanitizado]) {
+            alert('❌ Já existe uma entidade com esse nome! Escolha outro nome para o clone.');
+            return;
+        }
+
+        if (window.confirm(`Deseja criar a entidade duplicada "${nomeSanitizado}" e assumir o controle dela agora?`)) {
+            // 1. Assumimos o novo nome fantasma
+            setMeuNome(nomeSanitizado);
+            localStorage.setItem('rpgNome', nomeSanitizado);
+            
+            // 2. Fazemos a cópia profunda e perfeita de todos os dados do original
+            const fichaClone = JSON.parse(JSON.stringify(fichaOriginal));
+            
+            // 3. Injetamos o clone na nossa ficha local
+            carregarDadosFicha(fichaClone);
+            setAbaAtiva('aba-ficha'); // Teleporta para a Ficha
+            
+            // Aviso de como consolidar a criação na base de dados
+            setTimeout(() => {
+                alert(`✨ O CLONE FOI CRIADO E CARREGADO: ${nomeSanitizado} ✨\n\n⚠️ IMPORTANTE: A ficha ainda só existe no seu ecrã! Vá até a "Ficha Narrativa" ou "Editor de Atributos" e clique em "SALVAR" para que o clone seja definitivamente forjado no Servidor/Base de Dados!`);
+            }, 600);
         }
     };
 
@@ -317,15 +346,22 @@ function MestrePanel() {
                                         </div>
                                     </div>
 
-                                    {/* 🔥 BOTÕES DE CONTROLO DO MESTRE 🔥 */}
-                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                    {/* 🔥 BOTÕES DE CONTROLO E CLONAGEM 🔥 */}
+                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                                         <button
                                             className={`btn-neon ${nome === meuNome ? 'btn-green' : 'btn-gold'}`}
                                             style={{ flex: 1, padding: '4px', fontSize: '0.8em', margin: 0, opacity: nome === meuNome ? 0.6 : 1 }}
                                             onClick={() => handleAssumirFicha(nome, ficha)}
                                             disabled={nome === meuNome}
                                         >
-                                            {nome === meuNome ? '👁️ CONTROLANDO' : '✏️ EDITAR FICHA'}
+                                            {nome === meuNome ? '👁️ CONTROLANDO' : '✏️ EDITAR'}
+                                        </button>
+                                        <button
+                                            className="btn-neon btn-blue"
+                                            style={{ flex: 1, padding: '4px', fontSize: '0.8em', margin: 0 }}
+                                            onClick={() => handleClonarFicha(nome, ficha)}
+                                        >
+                                            🖨️ CLONAR
                                         </button>
                                         <button
                                             className="btn-neon btn-red"
@@ -343,7 +379,7 @@ function MestrePanel() {
                     </div>
                 </div>
 
-                <div style={{ flex: '1 1 30%', minWidth: '300px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ flex: '1 1 35%', minWidth: '300px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     <div className="def-box" style={{ borderLeft: '4px solid #ff003c' }}>
                         <h3 style={{ color: '#ff003c', margin: '0 0 15px 0' }}>👹 Injetor de Entidades (Mapa)</h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -459,7 +495,7 @@ export default function App() {
                 <TabPanel id="aba-perfil"><PerfilPanel /></TabPanel>
                 <TabPanel id="aba-mestre"><MestrePanel /></TabPanel>
                 <TabPanel id="aba-status"><StatusPanel /></TabPanel>
-                <TabPanel id="aba-testes"><TestesPanel /></TabPanel> {/* 🔥 NOVA ABA INJETADA AQUI! */}
+                <TabPanel id="aba-testes"><TestesPanel /></TabPanel>
                 <TabPanel id="aba-ataque"><AtaquePanel /></TabPanel>
                 <TabPanel id="aba-acerto"><AcertoPanel /></TabPanel>
                 <TabPanel id="aba-defesa"><DefesaPanel /></TabPanel>
