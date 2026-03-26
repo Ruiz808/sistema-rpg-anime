@@ -39,6 +39,9 @@ export default function CompendioPanel() {
     const [tempEfeito, setTempEfeito] = useState('');
     const [tempIconeUrl, setTempIconeUrl] = useState('');
     const [tempEfeitosMat, setTempEfeitosMat] = useState([]);
+    
+    // 🔥 ESTADO PARA AS DUAS MESAS DE GRAND CLASSES 🔥
+    const [mesaGrand, setMesaGrand] = useState('presente');
 
     const overridesCompendio = useMemo(() => {
         if (!minhaFicha) return {};
@@ -73,33 +76,26 @@ export default function CompendioPanel() {
 
     const regulares = mesclarComOverrides(CLASSES_REGULARES_BASE);
     const extras = mesclarComOverrides(CLASSES_EXTRA_BASE);
-    const todasClasses = [...regulares, ...extras]; // 🔥 TODAS AS CLASSES UNIDAS PARA O TRONO 🔥
+    const todasClasses = [...regulares, ...extras];
 
-    // 🔥 SISTEMA DE GRAND CLASSES 🔥
-    const nomesPersonagens = useMemo(() => Object.keys(personagens || {}), [personagens]);
+    // 🔥 SISTEMA DE GRAND CLASSES COM MESAS SEPARADAS 🔥
     const grands = overridesCompendio.grands || {};
 
     const handleDefinirGrand = (classeId, nomeTitular) => {
         updateFicha(f => {
             if (!f.compendioOverrides) f.compendioOverrides = {};
             if (!f.compendioOverrides.grands) f.compendioOverrides.grands = {};
-            f.compendioOverrides.grands[classeId] = nomeTitular;
-            
-            // Se o Trono ficar vago, também limpamos o avatar personalizado para voltar ao ícone normal
-            if (!nomeTitular) {
-                delete f.compendioOverrides.grands[`${classeId}_icone`];
-            }
+            f.compendioOverrides.grands[`${classeId}_${mesaGrand}`] = nomeTitular;
         });
         salvarFichaSilencioso();
         
         if (nomeTitular) {
-            enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `🏛️ O Trono da Ascensão ressoou! ${nomeTitular.toUpperCase()} foi reconhecido(a) como o(a) novo(a) GRAND ${classeId.toUpperCase()}!` });
+            enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `🏛️ O Trono da Ascensão (${mesaGrand.toUpperCase()}) ressoou! ${nomeTitular.toUpperCase()} foi reconhecido(a) como o(a) novo(a) GRAND ${classeId.toUpperCase()}!` });
         } else {
-            enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `🩸 O Trono da Ascensão de GRAND ${classeId.toUpperCase()} está agora VAGO! Uma nova lenda deverá erguer-se.` });
+            enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `🩸 O Trono da Ascensão (${mesaGrand.toUpperCase()}) de GRAND ${classeId.toUpperCase()} está agora VAGO!` });
         }
     };
 
-    // 🔥 NOVO: UPLOAD DE AVATAR DO TITULAR DO TRONO 🔥
     const handleDefinirIconeGrand = (classeId, e) => {
         const file = e.target.files[0];
         if (file) {
@@ -108,12 +104,21 @@ export default function CompendioPanel() {
                 updateFicha(f => {
                     if (!f.compendioOverrides) f.compendioOverrides = {};
                     if (!f.compendioOverrides.grands) f.compendioOverrides.grands = {};
-                    f.compendioOverrides.grands[`${classeId}_icone`] = reader.result;
+                    f.compendioOverrides.grands[`${classeId}_${mesaGrand}_icone`] = reader.result;
                 });
                 salvarFichaSilencioso();
             };
             reader.readAsDataURL(file);
         }
+    };
+
+    const limparIconeGrand = (classeId) => {
+        updateFicha(f => {
+            if (f.compendioOverrides?.grands) {
+                delete f.compendioOverrides.grands[`${classeId}_${mesaGrand}_icone`];
+            }
+        });
+        salvarFichaSilencioso();
     };
 
     const iniciarEdicao = (classe) => {
@@ -145,9 +150,7 @@ export default function CompendioPanel() {
         enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: '📜 O Mestre reescreveu os registos matemáticos do Compêndio!' });
     };
 
-    const cancelarEdicao = () => {
-        setEditandoId(null);
-    };
+    const cancelarEdicao = () => setEditandoId(null);
 
     const handleEfMat = (index, campo, valor) => {
         const novosEfeitos = tempEfeitosMat.map((ef, i) => {
@@ -333,16 +336,23 @@ export default function CompendioPanel() {
     };
 
     const renderGrandCard = (classe) => {
-        const titular = grands[classe.id] || '';
-        const customIcon = grands[`${classe.id}_icone`]; // 🔥 RASTREADOR DO AVATAR CUSTOMIZADO 🔥
+        const titular = grands[`${classe.id}_${mesaGrand}`] || '';
+        const customIcon = grands[`${classe.id}_${mesaGrand}_icone`]; 
         const isVago = !titular;
 
-        // Lógica de Display do Ícone: Se tiver customizado usa o Avatar, senão tenta o da Classe, senão usa o Emoji.
         const iconDisplay = customIcon ? (
-            <img src={customIcon} alt={titular} style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '50%', border: `2px solid ${classe.cor}`, boxShadow: `0 0 15px ${classe.cor}` }} />
+            <img src={customIcon} alt={titular || classe.nome} style={{ width: '85px', height: '85px', objectFit: 'cover', borderRadius: '50%', border: `2px solid ${classe.cor}`, boxShadow: `0 0 15px ${classe.cor}` }} />
         ) : (
             classe.iconeUrl ? <img src={classe.iconeUrl} alt={classe.nome} style={{ width: '60px', height: '60px', objectFit: 'contain' }} /> : classe.icone
         );
+
+        // Filtra apenas os jogadores da mesa atual (ou npcs) para o dropdown
+        const opcoesPersonagens = Object.entries(personagens || {})
+            .filter(([n, f]) => {
+                const m = f?.bio?.mesa || 'presente';
+                return m === mesaGrand || m === 'npc';
+            })
+            .map(([n]) => n);
 
         return (
             <div key={classe.id} style={{ 
@@ -353,9 +363,24 @@ export default function CompendioPanel() {
                 textAlign: 'center', 
                 boxShadow: isVago ? 'none' : '0 0 20px rgba(255,204,0,0.2)',
                 transition: 'all 0.3s',
-                display: 'flex', flexDirection: 'column'
+                display: 'flex', flexDirection: 'column',
+                position: 'relative'
             }}>
-                <div style={{ fontSize: '3em', textShadow: isVago ? 'none' : `0 0 15px ${classe.cor}`, filter: isVago ? 'grayscale(100%) opacity(50%)' : 'none', minHeight: '85px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                
+                {/* BOTÃO DO MESTRE: ALTERAR AVATAR SEMPRE VISÍVEL */}
+                {isMestre && (
+                    <div style={{ position: 'absolute', top: '10px', right: '10px', display: 'flex', gap: '5px' }}>
+                        {customIcon && (
+                            <button className="btn-neon btn-red btn-small" onClick={() => limparIconeGrand(classe.id)} style={{ padding: '4px', margin: 0, fontSize: '0.6em' }} title="Remover Imagem">❌</button>
+                        )}
+                        <label className="btn-neon btn-gold btn-small" style={{ cursor: 'pointer', padding: '4px 8px', margin: 0, fontSize: '0.7em' }} title="Mudar Imagem da Classe">
+                            📸
+                            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleDefinirIconeGrand(classe.id, e)} />
+                        </label>
+                    </div>
+                )}
+
+                <div style={{ fontSize: '3em', textShadow: isVago ? 'none' : `0 0 15px ${classe.cor}`, filter: isVago && !customIcon ? 'grayscale(100%) opacity(50%)' : 'none', minHeight: '90px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {iconDisplay}
                 </div>
                 <h3 style={{ color: isVago ? '#888' : '#ffcc00', margin: '15px 0 5px 0', letterSpacing: '2px', textShadow: isVago ? 'none' : '0 0 10px rgba(255,204,0,0.5)' }}>
@@ -364,35 +389,25 @@ export default function CompendioPanel() {
                 <div style={{ color: '#aaa', fontSize: '0.75em', fontStyle: 'italic', marginBottom: '15px', flex: 1 }}>{classe.titulo}</div>
                 
                 <div style={{ padding: '15px 10px', background: 'rgba(0,0,0,0.5)', borderRadius: '5px', borderTop: `2px solid ${isVago ? '#333' : '#ffcc00'}`, marginTop: 'auto' }}>
-                    <div style={{ fontSize: '0.7em', color: '#888', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '5px' }}>Receptáculo Atual</div>
+                    <div style={{ fontSize: '0.7em', color: '#888', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '5px' }}>Receptáculo {mesaGrand === 'presente' ? 'do Presente' : 'do Futuro'}</div>
                     
                     {isMestre ? (
-                        <>
-                            <select 
-                                className="input-neon" 
-                                value={titular} 
-                                onChange={(e) => handleDefinirGrand(classe.id, e.target.value)}
-                                style={{ 
-                                    width: '100%', 
-                                    borderColor: isVago ? '#444' : '#ffcc00', 
-                                    color: isVago ? '#888' : '#fff', 
-                                    fontWeight: 'bold', 
-                                    textAlign: 'center',
-                                    background: '#111',
-                                    marginBottom: titular ? '10px' : '0'
-                                }}
-                            >
-                                <option value="">-- TRONO VAGO --</option>
-                                {nomesPersonagens.map(n => <option key={n} value={n}>{n}</option>)}
-                            </select>
-                            
-                            {titular && (
-                                <label style={{ fontSize: '0.7em', color: '#00ffcc', cursor: 'pointer', display: 'block', padding: '6px', background: 'rgba(0,255,204,0.1)', borderRadius: '4px', border: '1px dashed #00ffcc', transition: 'all 0.2s' }}>
-                                    📸 Trocar Avatar
-                                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleDefinirIconeGrand(classe.id, e)} />
-                                </label>
-                            )}
-                        </>
+                        <select 
+                            className="input-neon" 
+                            value={titular} 
+                            onChange={(e) => handleDefinirGrand(classe.id, e.target.value)}
+                            style={{ 
+                                width: '100%', 
+                                borderColor: isVago ? '#444' : '#ffcc00', 
+                                color: isVago ? '#888' : '#fff', 
+                                fontWeight: 'bold', 
+                                textAlign: 'center',
+                                background: '#111'
+                            }}
+                        >
+                            <option value="">-- TRONO VAGO --</option>
+                            {opcoesPersonagens.map(n => <option key={n} value={n}>{n}</option>)}
+                        </select>
                     ) : (
                         <div style={{ 
                             fontSize: '1.4em', 
@@ -431,11 +446,28 @@ export default function CompendioPanel() {
                             {isMestre && <span style={{ color: '#ffcc00', fontStyle: 'italic', fontSize: '0.8em' }}>O Árbitro do Destino 👑</span>}
                         </div>
                         
-                        <p style={{ color: '#ccc', fontSize: '0.95em', lineHeight: '1.6', marginBottom: '40px', background: 'rgba(255,204,0,0.05)', padding: '15px', borderRadius: '5px', borderLeft: '3px solid #ffcc00' }}>
+                        <p style={{ color: '#ccc', fontSize: '0.95em', lineHeight: '1.6', marginBottom: '20px', background: 'rgba(255,204,0,0.05)', padding: '15px', borderRadius: '5px', borderLeft: '3px solid #ffcc00' }}>
                             <strong style={{ color: '#ffcc00' }}>A Regra Absoluta do Trono dos Heróis:</strong> Apenas um receptáculo em toda a existência tem o direito de se sentar no Trono de cada classe, alcançando o auge do seu Caminho Místico. Para que uma nova lenda possa ascender e reivindicar o título de "Grand", o detentor atual tem primeiro de cair... ou abdicar.
                         </p>
 
-                        {/* 🔥 AGORA COM TODAS AS CLASSES (Regulares e Extras) 🔥 */}
+                        {/* 🔥 FILTROS DAS MESAS 🔥 */}
+                        <div style={{ display: 'flex', gap: '10px', marginBottom: '30px' }}>
+                            <button 
+                                className={`btn-neon ${mesaGrand === 'presente' ? 'btn-gold' : ''}`} 
+                                onClick={() => setMesaGrand('presente')} 
+                                style={{ flex: 1, padding: '10px', fontSize: '1em', margin: 0 }}
+                            >
+                                ⚔️ Lendas do Presente
+                            </button>
+                            <button 
+                                className={`btn-neon ${mesaGrand === 'futuro' ? 'btn-gold' : ''}`} 
+                                onClick={() => setMesaGrand('futuro')} 
+                                style={{ flex: 1, padding: '10px', fontSize: '1em', margin: 0 }}
+                            >
+                                🚀 Lendas do Futuro
+                            </button>
+                        </div>
+
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '25px' }}>
                             {todasClasses.map((classe) => renderGrandCard(classe))}
                         </div>
