@@ -49,62 +49,68 @@ function calcularCA(ficha, tipo) {
     return Math.floor(base + bonus);
 }
 
-// 🔥 MOTOR DE SINCRONIZAÇÃO BLINDADO (AGORA COM MATEMÁTICA DE PRESTÍGIO) 🔥
-function getStatusLimpo(ficha, chave, threshold, fallbackChave) {
+// 🔥 MOTOR DE SINCRONIZAÇÃO BÁSICO 🔥
+function getStatusLimpo(ficha, chave, threshold) {
     if (!ficha) return { max: 0, atual: 0, pVit: 0 };
-    
-    // Criamos uma cópia temporal para injetar a Matemática do Prestígio sem corromper a ficha original!
-    let f = JSON.parse(JSON.stringify(ficha)); 
-    
-    // Caçador de Prestígio (Procura em 3 formatos diferentes para garantir que acha onde o seu amigo guardou os dados)
-    const getPrest = (k) => {
-        let v = parseFloat(f.prestigio?.[k] || f.prestigios?.[k] || f[k]?.prestigio || 0);
-        return isNaN(v) ? 0 : v;
-    };
-
-    // 💥 A FÓRMULA SAGRADA 💥
-    if (chave === 'pontosVitais' || fallbackChave === 'pontos_vitais') {
-        if (!f.pontosVitais) f.pontosVitais = {};
-        let pVida = getPrest('vitais') || getPrest('vida');
-        let pChakra = getPrest('chakra');
-        let pCorpo = getPrest('corpo');
-        f.pontosVitais.base = Math.floor((pVida + pChakra + pCorpo) / 3);
-    }
-    
-    if (chave === 'pontosMortais' || fallbackChave === 'pontos_mortais') {
-        if (!f.pontosMortais) f.pontosMortais = {};
-        let pMana = getPrest('mana');
-        let pStatus = getPrest('status') || getPrest('todos_status');
-        let pAura = getPrest('aura');
-        f.pontosMortais.base = Math.floor((pMana + pStatus + pAura) / 3);
-    }
-
     let mx = 0;
-    try {
-        mx = getMaximo(f, chave);
-        if ((!mx || isNaN(mx)) && fallbackChave) mx = getMaximo(f, fallbackChave);
-    } catch (e) { console.warn(e) }
-
-    if (!mx || isNaN(mx)) {
-        let baseObj = f[chave] || (fallbackChave ? f[fallbackChave] : null);
-        if (baseObj && baseObj.base !== undefined) mx = parseInt(baseObj.base) || 0;
-    }
-    if (isNaN(mx)) mx = 0;
+    try { mx = getMaximo(ficha, chave); } catch(e){}
+    if (!mx || isNaN(mx)) mx = parseInt(ficha[chave]?.base) || 0;
     
     const strVal = String(Math.floor(mx));
     const pVit = Math.max(0, strVal.length - threshold);
     const maxFinal = pVit > 0 ? Math.floor(mx / Math.pow(10, pVit)) : mx;
 
     let atual = maxFinal;
-    // Puxamos a Vida ATUAL da Ficha Real para não a curar acidentalmente!
-    let baseObjReal = ficha[chave] || (fallbackChave ? ficha[fallbackChave] : null); 
-    if (baseObjReal && baseObjReal.atual !== undefined) {
-        atual = parseFloat(baseObjReal.atual);
-        if (isNaN(atual)) atual = maxFinal;
+    if (ficha[chave] && ficha[chave].atual !== undefined) {
+        let at = parseFloat(ficha[chave].atual);
+        if (!isNaN(at)) atual = (pVit > 0 && at > maxFinal * 10) ? Math.floor(at / Math.pow(10, pVit)) : at;
     }
-
     return { max: maxFinal, atual: atual, pVit: pVit };
 }
+
+// 🔥 NOVO: RASTREADOR SUPREMO DE PRESTÍGIOS 🔥
+function getEnergiasSupremas(ficha) {
+    if (!ficha) return { vitais: {max:0, atual:0}, mortais: {max:0, atual:0} };
+    
+    // Função caçadora: vasculha a ficha inteira atrás do Prestígio!
+    const getP = (k1, k2) => {
+        let v1 = parseFloat(ficha.prestigio?.[k1] || ficha.prestigios?.[k1] || ficha[k1]?.prestigio || 0);
+        let v2 = k2 ? parseFloat(ficha.prestigio?.[k2] || ficha.prestigios?.[k2] || ficha[k2]?.prestigio || 0) : 0;
+        return (!isNaN(v1) && v1 > 0) ? v1 : ((!isNaN(v2) && v2 > 0) ? v2 : 0);
+    };
+
+    // A Média Sagrada do seu Universo
+    let baseVitais = Math.floor((getP('vida', 'vitais') + getP('chakra') + getP('corpo')) / 3);
+    let baseMortais = Math.floor((getP('mana', 'mortais') + getP('status', 'todos_status') + getP('aura')) / 3);
+
+    const calcFinal = (chave, baseCalc) => {
+        let mx = 0;
+        try { mx = getMaximo(ficha, chave); } catch(e){}
+        
+        // Se o Motor não encontrou a Base, nós injetamos a Média do Prestígio à força!
+        if (!mx || isNaN(mx) || mx === 0) {
+            let mBase = parseFloat(ficha[chave]?.mBase || 1);
+            mx = Math.floor(baseCalc * mBase);
+        }
+        
+        const strVal = String(Math.floor(mx));
+        const pVit = Math.max(0, strVal.length - 9);
+        const maxFinal = pVit > 0 ? Math.floor(mx / Math.pow(10, pVit)) : mx;
+
+        let atual = maxFinal;
+        if (ficha[chave] && ficha[chave].atual !== undefined) {
+            let at = parseFloat(ficha[chave].atual);
+            if (!isNaN(at)) atual = (pVit > 0 && at > maxFinal * 10) ? Math.floor(at / Math.pow(10, pVit)) : at;
+        }
+        return { max: maxFinal, atual: atual };
+    };
+
+    return {
+        vitais: calcFinal('pontosVitais', baseVitais),
+        mortais: calcFinal('pontosMortais', baseMortais)
+    };
+}
+
 
 // 🔥 PAINEL DO MESTRE AVANÇADO 🔥
 function MestrePanel() {
@@ -214,14 +220,14 @@ function MestrePanel() {
                                 Nenhuma entidade registada nesta categoria.
                             </p>
                         ) : jogadoresFiltrados.map(([nome, ficha]) => {
-                            // Extração Extrema das Energias
                             const vida = getStatusLimpo(ficha, 'vida', 8);
                             const mana = getStatusLimpo(ficha, 'mana', 9);
                             const aura = getStatusLimpo(ficha, 'aura', 9);
                             const chakra = getStatusLimpo(ficha, 'chakra', 9);
                             const corpo = getStatusLimpo(ficha, 'corpo', 9);
-                            const pVitais = getStatusLimpo(ficha, 'pontosVitais', 9, 'pontos_vitais');
-                            const pMortais = getStatusLimpo(ficha, 'pontosMortais', 9, 'pontos_mortais');
+                            
+                            // A Magia Acontece Aqui! ⚡
+                            const supremas = getEnergiasSupremas(ficha);
 
                             const percHp = vida.max > 0 ? (vida.atual / vida.max) * 100 : 0;
 
@@ -237,7 +243,6 @@ function MestrePanel() {
                                         <span style={{ color: '#aaa', fontSize: '0.8em', fontStyle: 'italic' }}>{classId ? classId.toUpperCase() : 'Mundano'}</span>
                                     </div>
 
-                                    {/* 🔥 Grelha 3x3 Perfeita para todas as Barras 🔥 */}
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', fontSize: '0.75em', color: '#ccc', marginBottom: '12px' }}>
                                         <div style={{ gridColumn: 'span 3', background: 'rgba(255,0,0,0.1)', padding: '6px', borderRadius: '3px', borderLeft: '3px solid #f00', display: 'flex', justifyContent: 'space-between' }}>
                                             <span><span style={{ color: '#f00', fontWeight: 'bold' }}>HP:</span> {fmt(vida.atual)} / {fmt(vida.max)}</span>
@@ -256,10 +261,10 @@ function MestrePanel() {
                                             <span style={{ color: '#ff8800', fontWeight: 'bold' }}>CORP:</span><br/>{fmt(corpo.atual)} / {fmt(corpo.max)}
                                         </div>
                                         <div style={{ background: 'rgba(255,255,255,0.1)', padding: '4px 6px', borderRadius: '3px', borderLeft: '2px solid #fff' }}>
-                                            <span style={{ color: '#fff', fontWeight: 'bold' }}>P.VIT:</span><br/>{fmt(pVitais.atual)} / {fmt(pVitais.max)}
+                                            <span style={{ color: '#fff', fontWeight: 'bold' }}>P.VIT:</span><br/>{fmt(supremas.vitais.atual)} / {fmt(supremas.vitais.max)}
                                         </div>
                                         <div style={{ background: 'rgba(150,0,0,0.2)', padding: '4px 6px', borderRadius: '3px', borderLeft: '2px solid #ff3333' }}>
-                                            <span style={{ color: '#ff3333', fontWeight: 'bold' }}>P.MOR:</span><br/>{fmt(pMortais.atual)} / {fmt(pMortais.max)}
+                                            <span style={{ color: '#ff3333', fontWeight: 'bold' }}>P.MOR:</span><br/>{fmt(supremas.mortais.atual)} / {fmt(supremas.mortais.max)}
                                         </div>
                                         <div style={{ gridColumn: 'span 3', display: 'flex', gap: '6px' }}>
                                             <div style={{ flex: 1, background: 'rgba(0,255,204,0.1)', padding: '4px 6px', borderRadius: '3px', borderLeft: '2px solid #00ffcc' }}>
