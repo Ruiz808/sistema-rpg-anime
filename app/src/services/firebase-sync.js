@@ -180,3 +180,13 @@ export function salvarCenarioCompleto(dadosCenario) {
     const cenarioRef = ref(db, 'cenario');
     set(cenarioRef, dadosCenario).catch(err => console.error('[Sync] Erro ao salvar Cenario:', err));
 }
+
+// 🔥 MOTOR DE INICIATIVA GLOBAL
+export function zerarIniciativaGlobal(nomesArray) {
+    if (!db) return;
+    nomesArray.forEach(nome => {
+        const nomeSanitizado = sanitizarNome(nome);
+        const refIni = ref(db, `personagens/${nomeSanitizado}/iniciativa`);
+        set(refIni, 0).catch(err => console.error('[Sync] Erro ao zerar iniciativa:', err));
+    });
+}

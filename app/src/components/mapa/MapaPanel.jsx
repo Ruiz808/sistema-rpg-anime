@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import useStore from '../../stores/useStore';
-import { salvarFichaSilencioso, enviarParaFeed, salvarDummie, uploadImagem, salvarCenarioCompleto } from '../../services/firebase-sync';
+import { salvarFichaSilencioso, enviarParaFeed, salvarDummie, uploadImagem, salvarCenarioCompleto, zerarIniciativaGlobal } from '../../services/firebase-sync'; // 🔥 zerarIniciativaGlobal importado!
 import { calcularAcerto } from '../../core/engine';
 import { getClassIconById } from '../../core/classIcons';
 import { resolverEfeitosEntidade } from '../../core/efeitos-resolver';
@@ -79,7 +79,6 @@ export default function MapaPanel() {
     const [dadoAnim, setDadoAnim] = useState({ ativo: false, numero: 20, finalResult: null, cor: '#00ffcc', quemRolou: '' });
     const prevFeedLen = useRef(feedCombate.length);
 
-    // O CÉREBRO DA CENA ATUAL
     const cenaAtivaId = cenario?.ativa || 'default';
     const cenaAtual = cenario?.lista?.[cenaAtivaId] || { nome: 'Desconhecido', img: '', escala: 1.5, unidade: 'm' };
 
@@ -286,6 +285,7 @@ export default function MapaPanel() {
         return result;
     }, [meuNome, minhaFicha, personagens]);
 
+    // 🔥 CORREÇÃO: Ordem de Iniciativa agora FILTRA pela Cena Atual!
     const ordemIniciativa = useMemo(() => {
         const lista = [];
         if (personagens) {
@@ -293,20 +293,20 @@ export default function MapaPanel() {
             for (let i = 0; i < nomes.length; i++) {
                 const n = nomes[i];
                 const f = personagens[n];
-                if (f && f.iniciativa !== undefined && f.iniciativa > 0) {
+                const cenaDoJogador = f.posicao?.cenaId || 'default';
+                
+                if (f && f.iniciativa !== undefined && f.iniciativa > 0 && cenaDoJogador === cenaAtivaId) {
                     lista.push({ nome: n, ficha: f, iniciativa: f.iniciativa });
                 }
             }
         }
         lista.sort((a, b) => b.iniciativa - a.iniciativa);
         return lista;
-    }, [personagens]);
+    }, [personagens, cenaAtivaId]);
 
-    // 🔥 O SEGREDO DO PASSAPORTE DIMENSIONAL (cenaId)
     function handleCellClick(x, y) {
         if (isMestre && alvoSelecionado && dummies[alvoSelecionado]) {
             const d = dummies[alvoSelecionado];
-            // Move e prende o Dummie à cena atual
             salvarDummie(alvoSelecionado, { ...d, posicao: { x, y }, cenaId: cenaAtivaId });
         } else {
             const z = parseInt(altitudeInput) || 0;
@@ -315,7 +315,6 @@ export default function MapaPanel() {
                 ficha.posicao.x = x;
                 ficha.posicao.y = y;
                 ficha.posicao.z = z;
-                // Move e prende o Jogador à cena atual
                 ficha.posicao.cenaId = cenaAtivaId; 
             });
             salvarFichaSilencioso();
@@ -335,6 +334,8 @@ export default function MapaPanel() {
         const val = parseInt(iniciativaInput) || 0;
         updateFicha((ficha) => {
             ficha.iniciativa = val;
+            if (!ficha.posicao) ficha.posicao = {};
+            ficha.posicao.cenaId = cenaAtivaId; // Garante que a iniciativa pertence a esta cena
         });
         salvarFichaSilencioso();
         setFeedIndexTurnoAtual(feedCombate.length); 
@@ -358,9 +359,22 @@ export default function MapaPanel() {
         setJogadorHistory(null);
     }
 
+    // 🔥 CORREÇÃO: Zerar Combate agora zera a iniciativa de TODOS na cena atual
     function encerrarCombate() {
-        enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: '⚔️ O COMBATE FOI ENCERRADO PELO MESTRE! ⚔️' });
-        sairDoCombate();
+        if (!window.confirm(`Tem a certeza que deseja ZERAR A INICIATIVA DE TODOS OS JOGADORES presentes na cena "${cenaAtual.nome}"?`)) return;
+        
+        enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `⚔️ O COMBATE EM ${cenaAtual.nome.toUpperCase()} FOI ENCERRADO PELO MESTRE! ⚔️` });
+        
+        // Pega todos os nomes que estão na ordem de iniciativa atual e apaga do Firebase
+        const nomesNaCena = ordemIniciativa.map(j => j.nome);
+        zerarIniciativaGlobal(nomesNaCena);
+
+        // Apaga também a ficha local do Mestre para garantir sincronia perfeita
+        updateFicha(ficha => { ficha.iniciativa = 0; });
+        setIniciativaInput(0);
+        salvarFichaSilencioso();
+
+        setJogadorHistory(null);
         setTurnoAtualIndex(0);
     }
 
@@ -388,7 +402,6 @@ export default function MapaPanel() {
         enviarParaFeed(feedData); 
     }
 
-    // 🔥 FILTRA JOGADORES PELA CENA ATUAL
     const tokenMap = useMemo(() => {
         const map = {};
         const nomes = Object.keys(jogadores);
@@ -405,7 +418,6 @@ export default function MapaPanel() {
         return map;
     }, [jogadores, cenaAtivaId]);
 
-    // 🔥 FILTRA JOGADORES NO 3D PELA CENA ATUAL
     const tokens3D = useMemo(() => {
         return Object.entries(jogadores)
             .filter(([nome, ficha]) => (ficha.posicao?.cenaId || 'default') === cenaAtivaId)
@@ -853,7 +865,6 @@ export default function MapaPanel() {
                             const key = `${cell.x},${cell.y}`;
                             const tokens = tokenMap[key] || [];
                             
-                            // 🔥 FILTRO DE DUMMIES PELA CENA
                             const cellDummies = Object.entries(dummies || {}).filter(([id, d]) => {
                                 const dCena = d.cenaId || 'default';
                                 return d.posicao?.x === cell.x && d.posicao?.y === cell.y && dCena === cenaAtivaId;
