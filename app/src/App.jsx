@@ -68,46 +68,74 @@ function getStatusLimpo(ficha, chave, threshold) {
     return { max: maxFinal, atual: atual, pVit: pVit };
 }
 
-// 🔥 NOVO: RASTREADOR SUPREMO DE PRESTÍGIOS 🔥
+// 🔥 MOTOR DA MATRIZ: RASTREAMENTO DO PRESTÍGIO PELA ENGENHARIA REVERSA 🔥
 function getEnergiasSupremas(ficha) {
     if (!ficha) return { vitais: {max:0, atual:0}, mortais: {max:0, atual:0} };
+
+    const getRawBase = (attr) => parseFloat(ficha[attr]?.base) || 0;
+
+    // Reconstrói o Prestígio Base a partir dos Zeros!
+    const getPrestAtual = (k) => {
+        let baseP = 0;
+        if (k === 'status') {
+            const STATS = ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'];
+            let m = 0;
+            STATS.forEach(s => m += getRawBase(s));
+            baseP = Math.floor((m / 8) / 1000);
+        } else {
+            const mults = { vida: 1000000, mana: 10000000, aura: 10000000, chakra: 10000000, corpo: 10000000 };
+            baseP = Math.floor(getRawBase(k) / (mults[k] || 1));
+        }
+
+        // Simula os buffs do 'mFormas' para manter a paridade com a TabelaPrestigio
+        const anchor = k === 'status' ? 'forca' : k;
+        let mFormas = parseFloat(ficha[anchor]?.mFormas) || 1.0;
+        
+        let bMFormas = 0;
+        let hasMFormas = false;
+        const processarEfeitos = (efeitos) => {
+            if(!efeitos) return;
+            efeitos.forEach(e => {
+                let atr = (e.atributo||'').toLowerCase();
+                let prop = (e.propriedade||'').toLowerCase();
+                let afeta = (atr === anchor) || (atr === 'todos_status' && k==='status') || (atr === 'todas_energias' && k!=='status');
+                if(afeta && prop === 'mformas') {
+                    bMFormas += parseFloat(e.valor) || 0;
+                    hasMFormas = true;
+                }
+            });
+        };
+        (ficha.inventario || []).filter(i => i.equipado).forEach(i => {
+            processarEfeitos(i.efeitos);
+            if (i.formaAtivaId && i.formas) {
+                let activeForm = i.formas.find(f => f.id === i.formaAtivaId);
+                if (activeForm && activeForm.acumulaFormaBase !== false) {
+                   let activeConfig = (activeForm.configs || []).find(c => c.id === i.configAtivaId) || activeForm.configs?.[0];
+                   if (activeConfig) processarEfeitos(activeConfig.efeitos);
+                }
+            }
+        });
+        (ficha.poderes || []).filter(p => p.ativa).forEach(p => processarEfeitos(p.efeitos));
+
+        let efetivoMFormas = (mFormas === 1.0 && hasMFormas ? 0 : mFormas) + bMFormas;
+        const multForma = efetivoMFormas >= 10 ? (efetivoMFormas / 10) : 1;
+        
+        return Math.floor(baseP * multForma);
+    };
+
+    // A Fórmula Sagrada do Mestre
+    const maxVitais = Math.floor((getPrestAtual('vida') + getPrestAtual('chakra') + getPrestAtual('corpo')) / 3);
+    const maxMortais = Math.floor((getPrestAtual('mana') + getPrestAtual('status') + getPrestAtual('aura')) / 3);
+
+    let atualVitais = ficha.pontosVitais?.atual;
+    if (atualVitais === undefined || isNaN(atualVitais)) atualVitais = maxVitais;
     
-    // Função caçadora: vasculha a ficha inteira atrás do Prestígio!
-    const getP = (k1, k2) => {
-        let v1 = parseFloat(ficha.prestigio?.[k1] || ficha.prestigios?.[k1] || ficha[k1]?.prestigio || 0);
-        let v2 = k2 ? parseFloat(ficha.prestigio?.[k2] || ficha.prestigios?.[k2] || ficha[k2]?.prestigio || 0) : 0;
-        return (!isNaN(v1) && v1 > 0) ? v1 : ((!isNaN(v2) && v2 > 0) ? v2 : 0);
-    };
-
-    // A Média Sagrada do seu Universo
-    let baseVitais = Math.floor((getP('vida', 'vitais') + getP('chakra') + getP('corpo')) / 3);
-    let baseMortais = Math.floor((getP('mana', 'mortais') + getP('status', 'todos_status') + getP('aura')) / 3);
-
-    const calcFinal = (chave, baseCalc) => {
-        let mx = 0;
-        try { mx = getMaximo(ficha, chave); } catch(e){}
-        
-        // Se o Motor não encontrou a Base, nós injetamos a Média do Prestígio à força!
-        if (!mx || isNaN(mx) || mx === 0) {
-            let mBase = parseFloat(ficha[chave]?.mBase || 1);
-            mx = Math.floor(baseCalc * mBase);
-        }
-        
-        const strVal = String(Math.floor(mx));
-        const pVit = Math.max(0, strVal.length - 9);
-        const maxFinal = pVit > 0 ? Math.floor(mx / Math.pow(10, pVit)) : mx;
-
-        let atual = maxFinal;
-        if (ficha[chave] && ficha[chave].atual !== undefined) {
-            let at = parseFloat(ficha[chave].atual);
-            if (!isNaN(at)) atual = (pVit > 0 && at > maxFinal * 10) ? Math.floor(at / Math.pow(10, pVit)) : at;
-        }
-        return { max: maxFinal, atual: atual };
-    };
+    let atualMortais = ficha.pontosMortais?.atual;
+    if (atualMortais === undefined || isNaN(atualMortais)) atualMortais = maxMortais;
 
     return {
-        vitais: calcFinal('pontosVitais', baseVitais),
-        mortais: calcFinal('pontosMortais', baseMortais)
+        vitais: { max: maxVitais, atual: atualVitais },
+        mortais: { max: maxMortais, atual: atualMortais }
     };
 }
 
@@ -226,7 +254,7 @@ function MestrePanel() {
                             const chakra = getStatusLimpo(ficha, 'chakra', 9);
                             const corpo = getStatusLimpo(ficha, 'corpo', 9);
                             
-                            // A Magia Acontece Aqui! ⚡
+                            // 🔥 AS ENERGIAS SUPREMAS (Calculadas na hora!) 🔥
                             const supremas = getEnergiasSupremas(ficha);
 
                             const percHp = vida.max > 0 ? (vida.atual / vida.max) * 100 : 0;
