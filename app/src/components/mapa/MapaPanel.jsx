@@ -7,8 +7,6 @@ import { resolverEfeitosEntidade } from '../../core/efeitos-resolver';
 
 import Tabuleiro3D from './Tabuleiro3D';
 import DummieToken from '../combat/DummieToken';
-import DummieToken from '../combat/DummieToken';
->>>>>>> af55c35 (Adicionar sistema de efeitos nomeados e formas para poderes/equipamentos)
 
 const MAP_SIZE = 30;
 const PALETA = ['#ff003c', '#0088ff', '#00ff88', '#ffcc00', '#ff00ff', '#00ffff', '#ff8800', '#88ff00'];
