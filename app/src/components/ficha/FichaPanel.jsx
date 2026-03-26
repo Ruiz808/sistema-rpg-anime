@@ -50,6 +50,9 @@ export default function FichaPanel() {
     const minhaFicha = useStore(s => s.minhaFicha);
     const updateFicha = useStore(s => s.updateFicha);
 
+    // 🔥 NOVO ESTADO: MESA / CATEGORIA DA ENTIDADE 🔥
+    const [mesa, setMesa] = useState('presente'); 
+
     const [raca, setRaca] = useState('');
     const [classe, setClasse] = useState('');
     const [subClasse, setSubClasse] = useState(''); 
@@ -66,6 +69,7 @@ export default function FichaPanel() {
 
     const carregarBio = useCallback(() => {
         const bio = minhaFicha.bio || {};
+        setMesa(bio.mesa || 'presente'); // 🔥 Carrega a Mesa (por padrão: presente)
         setRaca(bio.raca || '');
         setClasse(bio.classe || '');
         setSubClasse(bio.subClasse || ''); 
@@ -87,6 +91,7 @@ export default function FichaPanel() {
     function comitarBio(overrides = {}) {
         updateFicha((ficha) => {
             if (!ficha.bio) ficha.bio = {};
+            ficha.bio.mesa = overrides.mesa !== undefined ? overrides.mesa : mesa; // 🔥 Salva a Mesa
             ficha.bio.raca = overrides.raca !== undefined ? overrides.raca : raca;
             ficha.bio.classe = overrides.classe !== undefined ? overrides.classe : classe;
             ficha.bio.subClasse = overrides.subClasse !== undefined ? overrides.subClasse : subClasse; 
@@ -272,7 +277,6 @@ export default function FichaPanel() {
         setDmUnico(d.mUnico ?? '1.0');
     }, [minhaFicha.dano]);
 
-    // 🔥 AQUI RECEBEMOS OS FANTASMAS DA MATRIX
     const buffsDano = minhaFicha ? getBuffs(minhaFicha, 'dano') : { _hasBuff: {}, munico: [], fontesMgeral: [] };
 
     function salvarMultiplicadores() {
@@ -319,6 +323,28 @@ export default function FichaPanel() {
         <div className="ficha-panel">
             <div className="def-box">
                 <h3 style={{ color: '#ffcc00', marginBottom: 10 }}>Ficha Narrativa</h3>
+                
+                {/* 🔥 AQUI FICA A SELEÇÃO DE MESA/CATEGORIA 🔥 */}
+                <div style={{ background: 'rgba(255, 204, 0, 0.1)', padding: 15, borderRadius: 5, border: '1px dashed #ffcc00', marginBottom: 15 }}>
+                    <label style={{ color: '#ffcc00', fontSize: '0.9em', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                        🛡️ Categoria da Entidade / Mesa
+                    </label>
+                    <select 
+                        className="input-neon" 
+                        value={mesa} 
+                        onChange={e => { 
+                            setMesa(e.target.value); 
+                            comitarBio({ mesa: e.target.value }); 
+                        }} 
+                        style={{ width: '100%', borderColor: '#ffcc00', color: '#ffcc00', fontWeight: 'bold' }}
+                    >
+                        <option value="presente">Marcado (RPG Referências Presente)</option>
+                        <option value="futuro">Marcado (RPG Referências Futuro)</option>
+                        <option value="npc">NPC / Inimigo</option>
+                    </select>
+                    <p style={{ color: '#aaa', fontSize: '0.75em', margin: '5px 0 0 0' }}>Define em qual aba do Domínio do Mestre esta ficha vai aparecer.</p>
+                </div>
+
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                     <div>
                         <label style={{ color: '#aaa', fontSize: '0.85em' }}>Raça</label>
@@ -609,7 +635,6 @@ export default function FichaPanel() {
                         <label style={{ color: '#aaa', fontSize: '0.85em' }}>Mult Geral {buffsDano._hasBuff.mgeral && <span style={{ color: '#0f0', fontSize: '0.8em' }}>(Buff: +{buffsDano.mgeral.toFixed(2)})</span>}</label>
                         <input className="input-neon" type="number" step="0.01" value={dmGeral} onChange={e => setDmGeral(e.target.value)} />
                         
-                        {/* 🔥 RASTREADOR DE FANTASMAS: MOSTRA DE ONDE VEM O DANO! */}
                         {buffsDano.fontesMgeral && buffsDano.fontesMgeral.length > 0 && (
                             <div style={{ marginTop: '5px', padding: '5px', background: 'rgba(0,255,0,0.1)', borderRadius: '4px', borderLeft: '2px solid #0f0' }}>
                                 <span style={{ color: '#aaa', fontSize: '0.7em', fontWeight: 'bold', display: 'block', marginBottom: '2px' }}>🔍 Origem dos Buffs:</span>

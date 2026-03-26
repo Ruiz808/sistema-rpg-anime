@@ -49,7 +49,7 @@ function calcularCA(ficha, tipo) {
     return Math.floor(base + bonus);
 }
 
-// 🔥 PAINEL DO MESTRE AVANÇADO 🔥
+// 🔥 PAINEL DO MESTRE AVANÇADO (COM FILTROS DE MESAS) 🔥
 function MestrePanel() {
     const personagens = useStore(s => s.personagens)
     const meuNome = useStore(s => s.meuNome)
@@ -65,6 +65,9 @@ function MestrePanel() {
     const [dDef, setDDef] = useState(10)
     const [dVisivelHp, setDVisivelHp] = useState('todos')
     const [dOculto, setDOculto] = useState(false)
+
+    // 🔥 Estado que controla qual mesa estamos a ver 🔥
+    const [mesaVisor, setMesaVisor] = useState('presente')
 
     if (!isMestre) {
         return <div style={{ color: '#ff003c', textAlign: 'center', padding: 50, fontSize: '1.5em', fontWeight: 'bold' }}>Acesso Negado. Apenas o Mestre pode aceder a este domínio.</div>;
@@ -105,7 +108,13 @@ function MestrePanel() {
         setPersonagemParaDeletar(nome); 
     };
 
-    const jogadoresList = Object.entries(personagens || {});
+    // 🔥 FILTRA OS JOGADORES COM BASE NA ABA SELECIONADA 🔥
+    const todosJogadores = Object.entries(personagens || {});
+    const jogadoresFiltrados = todosJogadores.filter(([nome, ficha]) => {
+        const m = ficha?.bio?.mesa || 'presente'; // Por padrão, quem não tem mesa cai no Presente
+        return m === mesaVisor;
+    });
+
     const fmt = (n) => Number(n || 0).toLocaleString('pt-BR');
 
     return (
@@ -116,10 +125,40 @@ function MestrePanel() {
 
             <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
                 <div className="def-box" style={{ flex: '1 1 60%', minWidth: '400px', borderLeft: '4px solid #0088ff' }}>
-                    <h3 style={{ color: '#0088ff', margin: '0 0 15px 0' }}>👁️ Visor de Jogadores ({jogadoresList.length})</h3>
+                    
+                    {/* 🔥 AS ABAS DAS MESAS 🔥 */}
+                    <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '15px' }}>
+                        <button 
+                            className={`btn-neon ${mesaVisor === 'presente' ? 'btn-gold' : ''}`} 
+                            onClick={() => setMesaVisor('presente')} 
+                            style={{ flex: 1, padding: '8px', fontSize: '0.9em', margin: 0 }}
+                        >
+                            ⚔️ Marcados (Presente)
+                        </button>
+                        <button 
+                            className={`btn-neon ${mesaVisor === 'futuro' ? 'btn-gold' : ''}`} 
+                            onClick={() => setMesaVisor('futuro')} 
+                            style={{ flex: 1, padding: '8px', fontSize: '0.9em', margin: 0 }}
+                        >
+                            🚀 Marcados (Futuro)
+                        </button>
+                        <button 
+                            className={`btn-neon ${mesaVisor === 'npc' ? 'btn-red' : ''}`} 
+                            onClick={() => setMesaVisor('npc')} 
+                            style={{ flex: 1, padding: '8px', fontSize: '0.9em', margin: 0 }}
+                        >
+                            👹 NPCs / Inimigos
+                        </button>
+                    </div>
+
+                    <h3 style={{ color: '#0088ff', margin: '0 0 15px 0' }}>👁️ Visor de Entidades ({jogadoresFiltrados.length})</h3>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '15px' }}>
-                        {jogadoresList.map(([nome, ficha]) => {
+                        {jogadoresFiltrados.length === 0 ? (
+                            <p style={{ color: '#888', gridColumn: '1 / -1', textAlign: 'center', fontStyle: 'italic', padding: '20px' }}>
+                                Nenhuma entidade registada nesta categoria.
+                            </p>
+                        ) : jogadoresFiltrados.map(([nome, ficha]) => {
                             const hpMax = getMaximo(ficha, 'vida');
                             const hpAtual = ficha.vida?.atual ?? hpMax;
                             const percHp = hpMax > 0 ? (hpAtual / hpMax) * 100 : 0;
@@ -151,7 +190,7 @@ function MestrePanel() {
                                         onClick={() => handleApagarJogador(nome)}
                                         disabled={nome === meuNome}
                                     >
-                                        APAGAR PERSONAGEM
+                                        APAGAR ENTIDADE
                                     </button>
                                 </div>
                             );
@@ -199,7 +238,7 @@ export default function App() {
     const setMeuNome = useStore(s => s.setMeuNome)
     const carregarDadosFicha = useStore(s => s.carregarDadosFicha)
     const abaAtiva = useStore(s => s.abaAtiva)
-    const setCenario = useStore(s => s.setCenario) // 🔥 NOVO
+    const setCenario = useStore(s => s.setCenario) 
     const setDummies = useStore(s => s.setDummies) 
     const [pronto, setPronto] = useState(false)
 
@@ -226,7 +265,6 @@ export default function App() {
         }
     }, [setDummies])
 
-    // 🔥 NOVO: Escuta as Cenas do Mapa
     useEffect(() => {
         const unsubCenario = iniciarListenerCenario((dados) => {
             setCenario(dados);
