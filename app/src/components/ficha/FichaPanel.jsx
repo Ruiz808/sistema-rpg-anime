@@ -6,7 +6,7 @@ import { salvarFichaSilencioso } from '../../services/firebase-sync.js';
 import TabelaPrestigio from './TabelaPrestigio';
 
 const STATS = ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'];
-const ENERGIAS = ['mana', 'aura', 'chakra', 'corpo'];
+const ENERGIAS = ['mana', 'aura', 'chakra', 'corpo', 'pontosVitais', 'pontosMortais'];
 
 const ATRIBUTO_OPTIONS = [
     { value: 'forca', label: 'Forca' },
@@ -22,6 +22,8 @@ const ATRIBUTO_OPTIONS = [
     { value: 'aura', label: 'Aura' },
     { value: 'chakra', label: 'Chakra' },
     { value: 'corpo', label: 'Corpo' },
+    { value: 'pontosVitais', label: 'Pontos Vitais' },
+    { value: 'pontosMortais', label: 'Pontos Mortais' },
     { value: 'todos_status', label: 'TODOS OS STATUS' },
     { value: 'todas_energias', label: 'TODAS AS ENERGIAS' },
 ];
@@ -49,10 +51,10 @@ const CLASSES_OPTIONS = [
 export default function FichaPanel() {
     const minhaFicha = useStore(s => s.minhaFicha);
     const updateFicha = useStore(s => s.updateFicha);
+    const personagens = useStore(s => s.personagens);
+    const meuNome = useStore(s => s.meuNome);
 
-    // 🔥 NOVO ESTADO: MESA / CATEGORIA DA ENTIDADE 🔥
-    const [mesa, setMesa] = useState('presente'); 
-
+    const [mesa, setMesa] = useState('presente'); // 🔥 NOVO: SELETOR DE MESA!
     const [raca, setRaca] = useState('');
     const [classe, setClasse] = useState('');
     const [subClasse, setSubClasse] = useState(''); 
@@ -67,9 +69,26 @@ export default function FichaPanel() {
     const [dinheiro, setDinheiro] = useState('');
     const [salvandoBio, setSalvandoBio] = useState(false);
 
+    // 🔥 LEITOR DA COROA (Verifica quem domina o Trono no Compêndio) 🔥
+    const overridesCompendio = useMemo(() => {
+        if (!minhaFicha) return {};
+        if (minhaFicha.compendioOverrides) return minhaFicha.compendioOverrides;
+        if (personagens) {
+            const chaves = Object.keys(personagens);
+            for (let k of chaves) {
+                if (personagens[k]?.compendioOverrides) return personagens[k].compendioOverrides;
+            }
+        }
+        return {};
+    }, [minhaFicha, personagens]);
+
+    const grands = overridesCompendio.grands || {};
+    // Verifica se a classe atual e a mesa atual estão coroadas com o nome do jogador
+    const isGrand = classe && grands[`${classe}_${mesa}`] === meuNome;
+
     const carregarBio = useCallback(() => {
-        const bio = minhaFicha.bio || {};
-        setMesa(bio.mesa || 'presente'); // 🔥 Carrega a Mesa (por padrão: presente)
+        const bio = minhaFicha?.bio || {};
+        setMesa(bio.mesa || 'presente');
         setRaca(bio.raca || '');
         setClasse(bio.classe || '');
         setSubClasse(bio.subClasse || ''); 
@@ -82,7 +101,7 @@ export default function FichaPanel() {
         setAlinhamento(bio.alinhamento || '');
         setAfiliacao(bio.afiliacao || '');
         setDinheiro(bio.dinheiro || '');
-    }, [minhaFicha.bio]);
+    }, [minhaFicha?.bio]);
 
     useEffect(() => {
         carregarBio();
@@ -91,7 +110,7 @@ export default function FichaPanel() {
     function comitarBio(overrides = {}) {
         updateFicha((ficha) => {
             if (!ficha.bio) ficha.bio = {};
-            ficha.bio.mesa = overrides.mesa !== undefined ? overrides.mesa : mesa; // 🔥 Salva a Mesa
+            ficha.bio.mesa = overrides.mesa !== undefined ? overrides.mesa : mesa;
             ficha.bio.raca = overrides.raca !== undefined ? overrides.raca : raca;
             ficha.bio.classe = overrides.classe !== undefined ? overrides.classe : classe;
             ficha.bio.subClasse = overrides.subClasse !== undefined ? overrides.subClasse : subClasse; 
@@ -208,7 +227,10 @@ export default function FichaPanel() {
     const carregarAtributoNaTela = useCallback(() => {
         const s = selAtributo;
         const k = (s === 'todos_status') ? 'forca' : (s === 'todas_energias') ? 'mana' : s;
-        if (!minhaFicha || !minhaFicha[k]) return;
+        if (!minhaFicha || !minhaFicha[k]) {
+            setCampos({ base: 0, mBase: 1, regeneracao: 0 });
+            return;
+        }
         const st = minhaFicha[k];
         setCampos({
             base: st.base || 0,
@@ -237,12 +259,12 @@ export default function FichaPanel() {
         updateFicha((ficha) => {
             for (let i = 0; i < chs.length; i++) {
                 const c = chs[i];
-                if (!ficha[c]) continue;
+                if (!ficha[c]) ficha[c] = {}; 
                 ficha[c].base = v.b;
                 ficha[c].mBase = v.mb;
                 ficha[c].regeneracao = v.rg;
 
-                if (['vida', 'mana', 'aura', 'chakra', 'corpo'].includes(c)) {
+                if (['vida', 'mana', 'aura', 'chakra', 'corpo', 'pontosVitais', 'pontosMortais'].includes(c)) {
                     let mx = getMaximo(ficha, c);
                     if (c === 'vida') {
                         const p = Math.max(0, contarDigitos(mx) - 8);
@@ -268,14 +290,14 @@ export default function FichaPanel() {
     const [salvandoMult, setSalvandoMult] = useState(false);
 
     useEffect(() => {
-        const d = minhaFicha.dano || {};
+        const d = minhaFicha?.dano || {};
         setDmBase(d.mBase ?? 1.0);
         setDmPotencial(d.mPotencial ?? 1.0);
         setDmGeral(d.mGeral ?? 1.0);
         setDmFormas(d.mFormas ?? 1.0);
         setDmAbsoluto(d.mAbsoluto ?? 1.0);
         setDmUnico(d.mUnico ?? '1.0');
-    }, [minhaFicha.dano]);
+    }, [minhaFicha?.dano]);
 
     const buffsDano = minhaFicha ? getBuffs(minhaFicha, 'dano') : { _hasBuff: {}, munico: [], fontesMgeral: [] };
 
@@ -321,37 +343,51 @@ export default function FichaPanel() {
 
     return (
         <div className="ficha-panel">
-            <div className="def-box">
-                <h3 style={{ color: '#ffcc00', marginBottom: 10 }}>Ficha Narrativa</h3>
+            <div className="def-box" style={{ position: 'relative', overflow: 'hidden' }}>
                 
-                {/* 🔥 AQUI FICA A SELEÇÃO DE MESA/CATEGORIA 🔥 */}
-                <div style={{ background: 'rgba(255, 204, 0, 0.1)', padding: 15, borderRadius: 5, border: '1px dashed #ffcc00', marginBottom: 15 }}>
-                    <label style={{ color: '#ffcc00', fontSize: '0.9em', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                        🛡️ Categoria da Entidade / Mesa
-                    </label>
-                    <select 
-                        className="input-neon" 
-                        value={mesa} 
-                        onChange={e => { 
-                            setMesa(e.target.value); 
-                            comitarBio({ mesa: e.target.value }); 
-                        }} 
-                        style={{ width: '100%', borderColor: '#ffcc00', color: '#ffcc00', fontWeight: 'bold' }}
-                    >
-                        <option value="presente">Marcado (RPG Referências Presente)</option>
-                        <option value="futuro">Marcado (RPG Referências Futuro)</option>
-                        <option value="npc">NPC / Inimigo</option>
-                    </select>
-                    <p style={{ color: '#aaa', fontSize: '0.75em', margin: '5px 0 0 0' }}>Define em qual aba do Domínio do Mestre esta ficha vai aparecer.</p>
-                </div>
+                {/* 🔥 EFEITO GRAND CLASS ATIVO 🔥 */}
+                {isGrand && (
+                    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'linear-gradient(135deg, rgba(255,204,0,0.2) 0%, rgba(0,0,0,0) 60%)', pointerEvents: 'none' }} />
+                )}
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <h3 style={{ color: isGrand ? '#ffcc00' : '#ffcc00', marginBottom: 10, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    Ficha Narrativa {isGrand && <span style={{ fontSize: '0.6em', background: '#ffcc00', color: '#000', padding: '3px 8px', borderRadius: '15px', fontWeight: 'bold' }}>TÍTULO GRAND</span>}
+                </h3>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15, position: 'relative', zIndex: 1 }}>
+                    
+                    {/* 🔥 SELETOR DE MESA (Linha Temporal) 🔥 */}
+                    <div style={{ gridColumn: 'span 2', background: 'rgba(0,0,0,0.4)', padding: '10px', borderRadius: '5px', border: '1px solid #444', display: 'flex', gap: '15px', alignItems: 'center' }}>
+                        <label style={{ color: '#aaa', fontSize: '0.9em', fontWeight: 'bold', margin: 0 }}>⏳ Linha Temporal (Mesa):</label>
+                        <select 
+                            className="input-neon" 
+                            value={mesa} 
+                            onChange={e => { 
+                                setMesa(e.target.value); 
+                                comitarBio({ mesa: e.target.value }); 
+                            }} 
+                            style={{ flex: 1, padding: '8px', borderColor: '#444' }}
+                        >
+                            <option value="presente">⚔️ Lendas do Presente</option>
+                            <option value="futuro">🚀 Lendas do Futuro</option>
+                            <option value="npc">👹 NPC / Inimigo / Invocações</option>
+                        </select>
+                    </div>
+
+                    {isGrand && (
+                        <div className="fade-in" style={{ gridColumn: 'span 2', textAlign: 'center', borderBottom: '1px solid #ffcc00', paddingBottom: '15px', marginBottom: '5px' }}>
+                            <div style={{ fontSize: '3em', textShadow: '0 0 20px #ffcc00' }}>👑</div>
+                            <h2 style={{ color: '#ffcc00', margin: '5px 0 0 0', letterSpacing: '3px', textShadow: '0 0 10px #ffcc00' }}>RECEPTÁCULO GRAND {classe.toUpperCase()}</h2>
+                            <p style={{ color: '#aaa', fontSize: '0.8em', fontStyle: 'italic', margin: '5px 0 0 0' }}>Reconhecido pelo Trono da Ascensão</p>
+                        </div>
+                    )}
+
                     <div>
                         <label style={{ color: '#aaa', fontSize: '0.85em' }}>Raça</label>
                         <input className="input-neon" type="text" value={raca} onChange={e => setRaca(e.target.value)} />
                     </div>
                     <div>
-                        <label style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold' }}>Classe Mística</label>
+                        <label style={{ color: isGrand ? '#ffcc00' : '#00ffcc', fontSize: '0.85em', fontWeight: 'bold' }}>Classe Mística</label>
                         <select 
                             className="input-neon" 
                             value={classe} 
@@ -365,7 +401,7 @@ export default function FichaPanel() {
                                     comitarBio({ classe: val });
                                 }
                             }}
-                            style={{ width: '100%', padding: '6px', background: '#111', color: '#00ffcc', border: '1px solid #00ffcc', borderRadius: '4px' }}
+                            style={{ width: '100%', padding: '6px', background: '#111', color: isGrand ? '#ffcc00' : '#00ffcc', border: `1px solid ${isGrand ? '#ffcc00' : '#00ffcc'}`, borderRadius: '4px', boxShadow: isGrand ? '0 0 10px rgba(255,204,0,0.3)' : 'none' }}
                         >
                             {CLASSES_OPTIONS.map(opt => (
                                 <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -542,7 +578,7 @@ export default function FichaPanel() {
                     className="btn-neon btn-gold"
                     onClick={salvarBio}
                     style={{
-                        marginTop: 15, width: '100%',
+                        marginTop: 15, width: '100%', position: 'relative', zIndex: 1,
                         backgroundColor: salvandoBio ? 'rgba(0, 255, 100, 0.2)' : undefined,
                         borderColor: salvandoBio ? '#00ffcc' : undefined,
                         color: salvandoBio ? '#fff' : undefined
