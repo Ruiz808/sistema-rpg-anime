@@ -21,7 +21,7 @@ import CompendioPanel from './components/compendio/CompendioPanel'
 import { carregarFichaDoFirebase, iniciarListenerDummies, enviarParaFeed, salvarDummie, iniciarListenerCenario } from './services/firebase-sync'
 import { getMaximo } from './core/attributes'
 
-// 🔥 CORREÇÃO: Função de CA embutida aqui para não quebrar os imports do sistema! 🔥
+// 🔥 CÁLCULO DE CA E DEFESAS 🔥
 function calcularCA(ficha, tipo) {
     if (!ficha) return 10;
     const getDoisDigitos = (valor) => {
@@ -49,7 +49,30 @@ function calcularCA(ficha, tipo) {
     return Math.floor(base + bonus);
 }
 
-// 🔥 PAINEL DO MESTRE AVANÇADO (COM FILTROS DE MESAS E LORE) 🔥
+// 🔥 MOTOR DE SINCRONIZAÇÃO DE STATUS E VITALIDADE 🔥
+// Calcula o corte de zeros (compressão de vit) exato da Ficha!
+function getStatusLimpo(ficha, chave, threshold, fallbackChave) {
+    if (!ficha) return { max: 0, atual: 0, pVit: 0 };
+    let mx = getMaximo(ficha, chave);
+    if ((!mx || isNaN(mx)) && fallbackChave) mx = getMaximo(ficha, fallbackChave);
+    if (isNaN(mx)) mx = 0;
+    
+    const strVal = String(Math.floor(mx));
+    const pVit = Math.max(0, strVal.length - threshold);
+    const maxFinal = pVit > 0 ? Math.floor(mx / Math.pow(10, pVit)) : mx;
+
+    let atual = maxFinal;
+    let baseObj = ficha[chave] || (fallbackChave ? ficha[fallbackChave] : null);
+    if (baseObj && baseObj.atual !== undefined) {
+        atual = parseFloat(baseObj.atual);
+        if (isNaN(atual)) atual = maxFinal;
+    }
+
+    return { max: maxFinal, atual: atual, pVit: pVit };
+}
+
+
+// 🔥 PAINEL DO MESTRE AVANÇADO 🔥
 function MestrePanel() {
     const personagens = useStore(s => s.personagens)
     const meuNome = useStore(s => s.meuNome)
@@ -66,7 +89,6 @@ function MestrePanel() {
     const [dVisivelHp, setDVisivelHp] = useState('todos')
     const [dOculto, setDOculto] = useState(false)
 
-    // 🔥 Estado que controla qual mesa estamos a ver 🔥
     const [mesaVisor, setMesaVisor] = useState('presente')
 
     if (!isMestre) {
@@ -108,16 +130,13 @@ function MestrePanel() {
         setPersonagemParaDeletar(nome); 
     };
 
-    // 🔥 FILTRA OS JOGADORES COM BASE NA ABA SELECIONADA 🔥
     const todosJogadores = Object.entries(personagens || {});
     const jogadoresFiltrados = todosJogadores.filter(([nome, ficha]) => {
-        const m = ficha?.bio?.mesa || 'presente'; // Por padrão, quem não tem mesa cai no Presente
+        const m = ficha?.bio?.mesa || 'presente';
         return m === mesaVisor;
     });
 
     const fmt = (n) => Number(n || 0).toLocaleString('pt-BR');
-
-    // Título dinâmico dependendo da aba escolhida!
     const tituloVisor = mesaVisor === 'npc' ? '👁️ Visor da Entidade' : '👁️ Visor da Realidade';
 
     return (
@@ -127,9 +146,8 @@ function MestrePanel() {
             </h2>
 
             <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                <div className="def-box" style={{ flex: '1 1 60%', minWidth: '400px', borderLeft: '4px solid #0088ff' }}>
+                <div className="def-box" style={{ flex: '1 1 65%', minWidth: '400px', borderLeft: '4px solid #0088ff' }}>
                     
-                    {/* 🔥 AS ABAS DAS MESAS 🔥 */}
                     <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '15px' }}>
                         <button 
                             className={`btn-neon ${mesaVisor === 'presente' ? 'btn-gold' : ''}`} 
@@ -156,17 +174,22 @@ function MestrePanel() {
 
                     <h3 style={{ color: '#0088ff', margin: '0 0 15px 0' }}>{tituloVisor} ({jogadoresFiltrados.length})</h3>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '15px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '15px' }}>
                         {jogadoresFiltrados.length === 0 ? (
                             <p style={{ color: '#888', gridColumn: '1 / -1', textAlign: 'center', fontStyle: 'italic', padding: '20px' }}>
                                 Nenhuma entidade registada nesta categoria.
                             </p>
                         ) : jogadoresFiltrados.map(([nome, ficha]) => {
-                            const hpMax = getMaximo(ficha, 'vida');
-                            const hpAtual = ficha.vida?.atual ?? hpMax;
-                            const percHp = hpMax > 0 ? (hpAtual / hpMax) * 100 : 0;
-                            const mpMax = getMaximo(ficha, 'mana');
-                            const mpAtual = ficha.mana?.atual ?? mpMax;
+                            // Sincronização e Extração das 7 Barras de Energia!
+                            const vida = getStatusLimpo(ficha, 'vida', 8);
+                            const mana = getStatusLimpo(ficha, 'mana', 9);
+                            const aura = getStatusLimpo(ficha, 'aura', 9);
+                            const chakra = getStatusLimpo(ficha, 'chakra', 9);
+                            const corpo = getStatusLimpo(ficha, 'corpo', 9);
+                            const pVitais = getStatusLimpo(ficha, 'pontosVitais', 9, 'pontos_vitais');
+                            const pMortais = getStatusLimpo(ficha, 'pontosMortais', 9, 'pontos_mortais');
+
+                            const percHp = vida.max > 0 ? (vida.atual / vida.max) * 100 : 0;
 
                             let classId = ficha?.bio?.classe;
                             if ((classId === 'pretender' || classId === 'alterego') && ficha?.bio?.subClasse) classId = ficha?.bio?.subClasse;
@@ -180,11 +203,36 @@ function MestrePanel() {
                                         <span style={{ color: '#aaa', fontSize: '0.8em', fontStyle: 'italic' }}>{classId ? classId.toUpperCase() : 'Mundano'}</span>
                                     </div>
 
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.85em', color: '#ccc', marginBottom: '10px' }}>
-                                        <div style={{ background: 'rgba(255,0,0,0.1)', padding: '5px', borderRadius: '3px', borderLeft: '2px solid #f00' }}><span style={{ color: '#f00', fontWeight: 'bold' }}>HP:</span> {fmt(hpAtual)} / {fmt(hpMax)}</div>
-                                        <div style={{ background: 'rgba(0,136,255,0.1)', padding: '5px', borderRadius: '3px', borderLeft: '2px solid #0088ff' }}><span style={{ color: '#0088ff', fontWeight: 'bold' }}>MP:</span> {fmt(mpAtual)} / {fmt(mpMax)}</div>
-                                        <div style={{ background: 'rgba(0,255,204,0.1)', padding: '5px', borderRadius: '3px', borderLeft: '2px solid #00ffcc' }}><span style={{ color: '#00ffcc', fontWeight: 'bold' }}>EVA:</span> {calcularCA(ficha, 'evasiva')}</div>
-                                        <div style={{ background: 'rgba(255,204,0,0.1)', padding: '5px', borderRadius: '3px', borderLeft: '2px solid #ffcc00' }}><span style={{ color: '#ffcc00', fontWeight: 'bold' }}>RES:</span> {calcularCA(ficha, 'resistencia')}</div>
+                                    {/* 🔥 Grelha Épica com as 6 Energias + Vida + Defesas 🔥 */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.80em', color: '#ccc', marginBottom: '12px' }}>
+                                        <div style={{ gridColumn: 'span 2', background: 'rgba(255,0,0,0.1)', padding: '6px', borderRadius: '3px', borderLeft: '3px solid #f00', display: 'flex', justifyContent: 'space-between' }}>
+                                            <span><span style={{ color: '#f00', fontWeight: 'bold' }}>HP:</span> {fmt(vida.atual)} / {fmt(vida.max)}</span>
+                                            {vida.pVit > 0 && <span style={{ color: '#ffcc00', fontWeight: 'bold' }}>+{vida.pVit} Vit</span>}
+                                        </div>
+                                        <div style={{ background: 'rgba(0,136,255,0.1)', padding: '4px 6px', borderRadius: '3px', borderLeft: '2px solid #0088ff' }}>
+                                            <span style={{ color: '#0088ff', fontWeight: 'bold' }}>MP:</span> {fmt(mana.atual)} / {fmt(mana.max)}
+                                        </div>
+                                        <div style={{ background: 'rgba(170,0,255,0.1)', padding: '4px 6px', borderRadius: '3px', borderLeft: '2px solid #aa00ff' }}>
+                                            <span style={{ color: '#aa00ff', fontWeight: 'bold' }}>AURA:</span> {fmt(aura.atual)} / {fmt(aura.max)}
+                                        </div>
+                                        <div style={{ background: 'rgba(0,255,170,0.1)', padding: '4px 6px', borderRadius: '3px', borderLeft: '2px solid #00ffaa' }}>
+                                            <span style={{ color: '#00ffaa', fontWeight: 'bold' }}>CHAK:</span> {fmt(chakra.atual)} / {fmt(chakra.max)}
+                                        </div>
+                                        <div style={{ background: 'rgba(255,136,0,0.1)', padding: '4px 6px', borderRadius: '3px', borderLeft: '2px solid #ff8800' }}>
+                                            <span style={{ color: '#ff8800', fontWeight: 'bold' }}>CORP:</span> {fmt(corpo.atual)} / {fmt(corpo.max)}
+                                        </div>
+                                        <div style={{ background: 'rgba(255,255,255,0.1)', padding: '4px 6px', borderRadius: '3px', borderLeft: '2px solid #fff' }}>
+                                            <span style={{ color: '#fff', fontWeight: 'bold' }}>P.VIT:</span> {fmt(pVitais.atual)} / {fmt(pVitais.max)}
+                                        </div>
+                                        <div style={{ background: 'rgba(150,0,0,0.2)', padding: '4px 6px', borderRadius: '3px', borderLeft: '2px solid #ff3333' }}>
+                                            <span style={{ color: '#ff3333', fontWeight: 'bold' }}>P.MOR:</span> {fmt(pMortais.atual)} / {fmt(pMortais.max)}
+                                        </div>
+                                        <div style={{ background: 'rgba(0,255,204,0.1)', padding: '4px 6px', borderRadius: '3px', borderLeft: '2px solid #00ffcc' }}>
+                                            <span style={{ color: '#00ffcc', fontWeight: 'bold' }}>EVA:</span> {calcularCA(ficha, 'evasiva')}
+                                        </div>
+                                        <div style={{ background: 'rgba(255,204,0,0.1)', padding: '4px 6px', borderRadius: '3px', borderLeft: '2px solid #ffcc00' }}>
+                                            <span style={{ color: '#ffcc00', fontWeight: 'bold' }}>RES:</span> {calcularCA(ficha, 'resistencia')}
+                                        </div>
                                     </div>
 
                                     <button
@@ -201,7 +249,7 @@ function MestrePanel() {
                     </div>
                 </div>
 
-                <div style={{ flex: '1 1 35%', minWidth: '300px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ flex: '1 1 30%', minWidth: '300px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     <div className="def-box" style={{ borderLeft: '4px solid #ff003c' }}>
                         <h3 style={{ color: '#ff003c', margin: '0 0 15px 0' }}>👹 Injetor de Entidades (Mapa)</h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -241,7 +289,7 @@ export default function App() {
     const setMeuNome = useStore(s => s.setMeuNome)
     const carregarDadosFicha = useStore(s => s.carregarDadosFicha)
     const abaAtiva = useStore(s => s.abaAtiva)
-    const setCenario = useStore(s => s.setCenario) // 🔥 NOVO
+    const setCenario = useStore(s => s.setCenario) 
     const setDummies = useStore(s => s.setDummies) 
     const [pronto, setPronto] = useState(false)
 
@@ -268,7 +316,6 @@ export default function App() {
         }
     }, [setDummies])
 
-    // 🔥 NOVO: Escuta as Cenas do Mapa
     useEffect(() => {
         const unsubCenario = iniciarListenerCenario((dados) => {
             setCenario(dados);
