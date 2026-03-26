@@ -74,6 +74,25 @@ export default function CompendioPanel() {
     const regulares = mesclarComOverrides(CLASSES_REGULARES_BASE);
     const extras = mesclarComOverrides(CLASSES_EXTRA_BASE);
 
+    // 🔥 SISTEMA DE GRAND CLASSES 🔥
+    const nomesPersonagens = useMemo(() => Object.keys(personagens || {}), [personagens]);
+    const grands = overridesCompendio.grands || {};
+
+    const handleDefinirGrand = (classeId, nomeTitular) => {
+        updateFicha(f => {
+            if (!f.compendioOverrides) f.compendioOverrides = {};
+            if (!f.compendioOverrides.grands) f.compendioOverrides.grands = {};
+            f.compendioOverrides.grands[classeId] = nomeTitular;
+        });
+        salvarFichaSilencioso();
+        
+        if (nomeTitular) {
+            enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `🏛️ O Trono da Ascensão ressoou! ${nomeTitular.toUpperCase()} foi reconhecido(a) como o(a) novo(a) GRAND ${classeId.toUpperCase()}!` });
+        } else {
+            enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `🩸 O Trono da Ascensão de GRAND ${classeId.toUpperCase()} está agora VAGO! Uma nova lenda deverá erguer-se.` });
+        }
+    };
+
     const iniciarEdicao = (classe) => {
         setEditandoId(classe.id);
         setTempNome(classe.nome || '');
@@ -195,8 +214,6 @@ export default function CompendioPanel() {
                                             <option value="bonus_resistencia">🛡️ Resistência Passiva (+X)</option>
                                             <option value="margem_critico">🩸 Margem de Crítico (Reduz o mínimo)</option>
                                             <option value="letalidade">☠️ Letalidade (+Dano Pós-Defesa)</option>
-                                            
-                                            {/* 🔥 A OPÇÃO DA FÚRIA BERSERKER ESTÁ AQUI 🔥 */}
                                             <option value="furia_berserker">🩸 Fúria Berserker (+M.Geral por 1% HP Perdido)</option>
                                         </select>
                                     </div>
@@ -292,18 +309,96 @@ export default function CompendioPanel() {
         );
     };
 
+    const renderGrandCard = (classe) => {
+        const titular = grands[classe.id] || '';
+        const isVago = !titular;
+
+        return (
+            <div key={classe.id} style={{ 
+                background: isVago ? 'rgba(0,0,0,0.8)' : 'linear-gradient(135deg, rgba(255,204,0,0.15), rgba(0,0,0,0.9))', 
+                border: `1px solid ${isVago ? '#444' : '#ffcc00'}`, 
+                padding: '20px', 
+                borderRadius: '10px', 
+                textAlign: 'center', 
+                boxShadow: isVago ? 'none' : '0 0 20px rgba(255,204,0,0.2)',
+                transition: 'all 0.3s'
+            }}>
+                <div style={{ fontSize: '3em', textShadow: isVago ? 'none' : `0 0 15px ${classe.cor}`, filter: isVago ? 'grayscale(100%) opacity(50%)' : 'none' }}>
+                    {classe.iconeUrl ? <img src={classe.iconeUrl} alt={classe.nome} style={{ width: '60px', height: '60px', objectFit: 'contain' }} /> : classe.icone}
+                </div>
+                <h3 style={{ color: isVago ? '#888' : '#ffcc00', margin: '15px 0 5px 0', letterSpacing: '2px', textShadow: isVago ? 'none' : '0 0 10px rgba(255,204,0,0.5)' }}>
+                    GRAND {classe.nome.toUpperCase()}
+                </h3>
+                <div style={{ color: '#aaa', fontSize: '0.75em', fontStyle: 'italic', marginBottom: '15px' }}>{classe.titulo}</div>
+                
+                <div style={{ padding: '15px 10px', background: 'rgba(0,0,0,0.5)', borderRadius: '5px', borderTop: `2px solid ${isVago ? '#333' : '#ffcc00'}` }}>
+                    <div style={{ fontSize: '0.7em', color: '#888', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '5px' }}>Receptáculo Atual</div>
+                    
+                    {isMestre ? (
+                        <select 
+                            className="input-neon" 
+                            value={titular} 
+                            onChange={(e) => handleDefinirGrand(classe.id, e.target.value)}
+                            style={{ 
+                                width: '100%', 
+                                borderColor: isVago ? '#444' : '#ffcc00', 
+                                color: isVago ? '#888' : '#fff', 
+                                fontWeight: 'bold', 
+                                textAlign: 'center',
+                                background: '#111'
+                            }}
+                        >
+                            <option value="">-- TRONO VAGO --</option>
+                            {nomesPersonagens.map(n => <option key={n} value={n}>{n}</option>)}
+                        </select>
+                    ) : (
+                        <div style={{ 
+                            fontSize: '1.4em', 
+                            fontWeight: 'bold', 
+                            color: isVago ? '#555' : '#fff', 
+                            textShadow: isVago ? 'none' : '0 0 10px #ffcc00',
+                            letterSpacing: '1px'
+                        }}>
+                            {isVago ? 'VAGO' : titular}
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div style={{ display: 'flex', gap: '20px', minHeight: '70vh', alignItems: 'flex-start' }}>
             <div style={{ flex: '0 0 220px', background: 'rgba(0,0,0,0.6)', padding: '20px', borderRadius: '8px', border: '1px solid #00ffcc', boxShadow: '0 0 15px rgba(0, 255, 204, 0.1)' }}>
                 <h3 style={{ color: '#00ffcc', marginTop: 0, textAlign: 'center', borderBottom: '1px solid #00ffcc', paddingBottom: '15px', letterSpacing: '2px' }}>📖 GRIMÓRIO</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '20px' }}>
-                    <button className={`btn-neon ${secaoAtiva === 'classes' ? 'btn-gold' : ''}`} onClick={() => setSecaoAtiva('classes')} style={{ textAlign: 'left', paddingLeft: '15px' }}>🛡️ Classes</button>
+                    <button className={`btn-neon ${secaoAtiva === 'grands' ? 'btn-gold' : ''}`} onClick={() => setSecaoAtiva('grands')} style={{ textAlign: 'left', paddingLeft: '15px', fontWeight: 'bold' }}>🏛️ Trono dos Heróis</button>
+                    <button className={`btn-neon ${secaoAtiva === 'classes' ? 'btn-gold' : ''}`} onClick={() => setSecaoAtiva('classes')} style={{ textAlign: 'left', paddingLeft: '15px' }}>🛡️ Classes Regulares</button>
                     <button className={`btn-neon ${secaoAtiva === 'condicoes' ? 'btn-gold' : ''}`} onClick={() => setSecaoAtiva('condicoes')} style={{ textAlign: 'left', paddingLeft: '15px' }}>🩸 Condições</button>
                     <button className={`btn-neon ${secaoAtiva === 'danos' ? 'btn-gold' : ''}`} onClick={() => setSecaoAtiva('danos')} style={{ textAlign: 'left', paddingLeft: '15px' }}>⚔️ Tipos de Dano</button>
                     <button className={`btn-neon ${secaoAtiva === 'regras' ? 'btn-gold' : ''}`} onClick={() => setSecaoAtiva('regras')} style={{ textAlign: 'left', paddingLeft: '15px' }}>📜 Regras da Casa</button>
                 </div>
             </div>
+            
             <div style={{ flex: '1', background: 'rgba(20, 20, 30, 0.8)', padding: '30px', borderRadius: '8px', border: '1px solid #444', height: '70vh', overflowY: 'auto' }}>
+                
+                {secaoAtiva === 'grands' && (
+                    <div className="fade-in">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid #ffcc00', paddingBottom: '10px', marginBottom: '20px' }}>
+                            <h2 style={{ color: '#ffcc00', margin: 0, textShadow: '0 0 15px #ffcc00', letterSpacing: '2px' }}>🏛️ O Trono da Ascensão</h2>
+                            {isMestre && <span style={{ color: '#ffcc00', fontStyle: 'italic', fontSize: '0.8em' }}>O Árbitro do Destino 👑</span>}
+                        </div>
+                        
+                        <p style={{ color: '#ccc', fontSize: '0.95em', lineHeight: '1.6', marginBottom: '40px', background: 'rgba(255,204,0,0.05)', padding: '15px', borderRadius: '5px', borderLeft: '3px solid #ffcc00' }}>
+                            <strong style={{ color: '#ffcc00' }}>A Regra Absoluta do Trono dos Heróis:</strong> Apenas um receptáculo em toda a existência tem o direito de se sentar no Trono de cada classe, alcançando o auge do seu Caminho Místico. Para que uma nova lenda possa ascender e reivindicar o título de "Grand", o detentor atual tem primeiro de cair... ou abdicar.
+                        </p>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '25px' }}>
+                            {regulares.map((classe) => renderGrandCard(classe))}
+                        </div>
+                    </div>
+                )}
+
                 {secaoAtiva === 'classes' && (
                     <div className="fade-in">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid #ffcc00', paddingBottom: '10px', marginBottom: '30px' }}>
