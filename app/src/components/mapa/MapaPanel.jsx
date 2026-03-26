@@ -21,7 +21,6 @@ function urlSeguraParaCss(url) {
 export function calcularCA(ficha, tipo) {
     if (!ficha) return 10;
 
-
     const getDoisDigitos = (valor) => {
         if (!valor) return 0;
         const strVal = String(valor).replace(/[^0-9]/g, '');
@@ -73,7 +72,11 @@ export default function MapaPanel() {
     
     const [mapVantagens, setMapVantagens] = useState(minhaFicha.ataqueConfig?.vantagens || 0);
     const [mapDesvantagens, setMapDesvantagens] = useState(minhaFicha.ataqueConfig?.desvantagens || 0);
-    const [inputMapaUrl, setInputMapaUrl] = useState('');
+    
+    // 🔥 NOVOS ESTADOS PARA CONFIGURAÇÃO DO MAPA PELO MESTRE
+    const [inputMapaUrl, setInputMapaUrl] = useState(minhaFicha.mapaGlobalUrl || '');
+    const [inputEscala, setInputEscala] = useState(minhaFicha.mapaEscala || 1.5);
+    const [inputUnidade, setInputUnidade] = useState(minhaFicha.mapaEscalaUnidade || 'm');
 
     const [dadoAnim, setDadoAnim] = useState({ ativo: false, numero: 20, finalResult: null, cor: '#00ffcc', quemRolou: '' });
     const prevFeedLen = useRef(feedCombate.length);
@@ -90,16 +93,11 @@ export default function MapaPanel() {
         return {};
     }, [isMestre, minhaFicha, personagens]);
 
-    // 🔥 O CÉREBRO DA SINCRONIZAÇÃO GLOBAL DE DADOS 🔥
-    // Este código acorda sempre que alguém no mundo enviar uma rolagem para o Feed
+    // O CÉREBRO DA SINCRONIZAÇÃO GLOBAL DE DADOS 
     useEffect(() => {
         if (feedCombate.length > prevFeedLen.current) {
             const newItem = feedCombate[feedCombate.length - 1];
-            
-            // Se for um acerto ou dano e tiver rolagem de dados
             if (newItem && newItem.rolagem && (newItem.tipo === 'acerto' || newItem.tipo === 'dano')) {
-                
-                // Extrai o maior dado que caiu cru da string do log
                 let rawRoll = 0;
                 let regexStrong = /<strong>(\d+)<\/strong>/g;
                 let match;
@@ -119,7 +117,6 @@ export default function MapaPanel() {
                 
                 if (rawRoll > 0) {
                     let corFinal = '#0088ff'; 
-                    // Detecta se o dado foi crítico para alterar a cor e o brilho!
                     if (newItem.tipo === 'dano') {
                         if (newItem.armaStr?.includes('FATAL')) corFinal = '#ff003c'; 
                         else if (newItem.armaStr?.includes('CRÍTICO')) corFinal = '#ffcc00'; 
@@ -129,7 +126,6 @@ export default function MapaPanel() {
                         else if (rawRoll === 1) corFinal = '#660000'; 
                     }
 
-                    // Inicia a animação para o jogador que está a olhar para o mapa
                     setDadoAnim({ ativo: true, numero: Math.floor(Math.random() * 20) + 1, finalResult: null, cor: '#00ffcc', quemRolou: newItem.nome });
 
                     let intervalos = 0;
@@ -137,7 +133,7 @@ export default function MapaPanel() {
                         setDadoAnim(prev => ({ ...prev, numero: Math.floor(Math.random() * 20) + 1 }));
                         intervalos++;
 
-                        if (intervalos > 15) { // Para a rotação e bate no chão após ~1.2s
+                        if (intervalos > 15) {
                             clearInterval(tempoGiro);
                             setDadoAnim({ ativo: true, numero: rawRoll, finalResult: rawRoll, cor: corFinal, quemRolou: newItem.nome });
                             
@@ -151,7 +147,6 @@ export default function MapaPanel() {
         }
         prevFeedLen.current = feedCombate.length;
     }, [feedCombate]);
-
 
     useEffect(() => {
         setMapVantagens(minhaFicha.ataqueConfig?.vantagens || 0);
@@ -182,24 +177,42 @@ export default function MapaPanel() {
         salvarFichaSilencioso();
     }
 
-    function aplicarUrlDoMapa() {
+    // 🔥 NOVA FUNÇÃO: Salva tanto o URL do Mapa quanto a Escala
+    function salvarConfigMapa() {
         updateFicha(f => {
             f.mapaGlobalUrl = inputMapaUrl;
+            f.mapaEscala = parseFloat(inputEscala) || 1.5;
+            f.mapaEscalaUnidade = inputUnidade;
         });
         salvarFichaSilencioso();
-        enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: '🗺️ O Mestre alterou o cenário de combate!' });
+        enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: '🗺️ O Mestre alterou as configurações e a escala do cenário!' });
     }
 
-    const urlMapaGlobal = useMemo(() => {
-        if (isMestre && minhaFicha.mapaGlobalUrl) return minhaFicha.mapaGlobalUrl;
+    // 🔥 NOVO MEMO: Lê a Configuração do Mapa globalmente para todos os jogadores
+    const configMapa = useMemo(() => {
+        if (isMestre && minhaFicha.mapaEscala) {
+            return {
+                url: minhaFicha.mapaGlobalUrl,
+                escala: minhaFicha.mapaEscala,
+                unidade: minhaFicha.mapaEscalaUnidade || 'm'
+            };
+        }
         if (personagens) {
             const chaves = Object.keys(personagens);
             for(let k of chaves) {
-                if (personagens[k]?.mapaGlobalUrl) return personagens[k].mapaGlobalUrl;
+                const p = personagens[k];
+                if (p && p.mapaEscala) {
+                    return {
+                        url: p.mapaGlobalUrl,
+                        escala: p.mapaEscala,
+                        unidade: p.mapaEscalaUnidade || 'm'
+                    };
+                }
             }
         }
-        return null;
-    }, [isMestre, minhaFicha.mapaGlobalUrl, personagens]);
+        return { url: null, escala: 1.5, unidade: 'm' };
+    }, [isMestre, minhaFicha.mapaGlobalUrl, minhaFicha.mapaEscala, minhaFicha.mapaEscalaUnidade, personagens]);
+
 
     const coresJogadoresRef = useRef({});
     const corIndexRef = useRef(0);
@@ -330,8 +343,6 @@ export default function MapaPanel() {
         setTurnoAtualIndex(0);
     }
 
-    // O botão agora apenas envia para o Firebase! 
-    // O useEffect acima captura e mostra a animação para todos (incluindo o próprio)
     function rolarAcertoRapido() {
         const qD = parseInt(mapQD) || 1;
         const fD = parseInt(mapFD) || 20;
@@ -386,7 +397,6 @@ export default function MapaPanel() {
     const fmt = (n) => Number(n || 0).toLocaleString('pt-BR');
 
     function renderHologramaAcao() {
-        // 🔥 ANTI-SPOILER: Esconde os status e o feed de combate do painel enquanto a animação roda!
         if (dadoAnim.ativo) {
             return (
                 <div className="def-box" style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(10, 10, 15, 0.95)', border: `2px solid ${dadoAnim.cor}`, boxShadow: `0 0 30px ${dadoAnim.cor}50` }}>
@@ -644,13 +654,8 @@ export default function MapaPanel() {
                         style={{ '--land-color': dadoAnim.cor }}
                     >
                         <svg viewBox="0 0 100 100" style={{ width: '250px', height: '250px' }}>
-                            {/* Hexágono Exterior do D20 */}
                             <polygon points="50,5 95,30 95,75 50,95 5,75 5,30" fill="rgba(10,10,15,0.95)" stroke={dadoAnim.cor} strokeWidth="4" strokeLinejoin="round" />
-                            
-                            {/* Triângulo Central Apontado para Baixo */}
                             <polygon points="50,85 20,35 80,35" fill="none" stroke={dadoAnim.cor} strokeWidth="3" strokeLinejoin="round" opacity="0.8" />
-                            
-                            {/* Arestas de Conexão do Icosaedro */}
                             <line x1="50" y1="5" x2="20" y2="35" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
                             <line x1="50" y1="5" x2="80" y2="35" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
                             <line x1="95" y1="30" x2="80" y2="35" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
@@ -660,8 +665,6 @@ export default function MapaPanel() {
                             <line x1="5" y1="75" x2="50" y2="85" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
                             <line x1="5" y1="75" x2="20" y2="35" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
                             <line x1="5" y1="30" x2="20" y2="35" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
-
-                            {/* Número Centralizado */}
                             <text x="50%" y="56%" dominantBaseline="middle" textAnchor="middle" fill="#fff" fontSize="32" fontWeight="bold" fontFamily="sans-serif">
                                 {dadoAnim.numero}
                             </text>
@@ -677,6 +680,48 @@ export default function MapaPanel() {
 
             <div style={{ flex: '1 1 70%', minWidth: 0 }}>
                 
+               {/* 🔥 NOVO: PAINEL DE CONFIGURAÇÕES GLOBAIS DO MAPA (Visível para o Mestre) */}
+               {isMestre && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 15, background: 'rgba(0,0,0,0.5)', padding: 10, borderRadius: 5, border: '1px solid #ffcc00' }}>
+                    <h4 style={{ color: '#ffcc00', margin: '0 0 5px 0' }}>⚙️ Configurações do Cenário</h4>
+                    
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span style={{ color: '#ffcc00', fontWeight: 'bold' }}>🗺️ Link (3D):</span>
+                        <input
+                            className="input-neon"
+                            type="text"
+                            placeholder="URL da imagem (.png, .jpg)..."
+                            value={inputMapaUrl}
+                            onChange={e => setInputMapaUrl(e.target.value)}
+                            style={{ flex: 1, minWidth: '200px', padding: 4, borderColor: '#ffcc00', color: '#fff' }}
+                        />
+                    </div>
+                    
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span style={{ color: '#ffcc00', fontWeight: 'bold' }}>📏 Escala (1 quadrado =):</span>
+                        <input
+                            className="input-neon"
+                            type="number"
+                            min="0.1"
+                            step="0.1"
+                            value={inputEscala}
+                            onChange={e => setInputEscala(e.target.value)}
+                            style={{ width: 80, padding: 4, borderColor: '#ffcc00', color: '#fff' }}
+                        />
+                        <select className="input-neon" value={inputUnidade} onChange={e => setInputUnidade(e.target.value)} style={{ padding: 4, borderColor: '#ffcc00', color: '#fff' }}>
+                            <option value="m">Metros (m)</option>
+                            <option value="km">Quilômetros (km)</option>
+                            <option value="milhas">Milhas</option>
+                            <option value="anos-luz">Anos-luz</option>
+                            <option value="galaxias">Galáxias</option>
+                        </select>
+                        <button className="btn-neon btn-gold" onClick={salvarConfigMapa} style={{ padding: '4px 15px', margin: '0 0 0 auto' }}>
+                            APLICAR MUDANÇAS
+                        </button>
+                    </div>
+                </div>
+               )}
+
                {isMestre && (
                 <div style={{ marginBottom: 15, padding: 10, border: '1px solid #ffcc00', borderRadius: 5, background: 'rgba(0,0,0,0.5)' }}>
                 <h4 style={{ color: '#ffcc00', marginTop: 0, marginBottom: 10 }}>🤖 Gerador de Entidades</h4>
@@ -729,6 +774,14 @@ export default function MapaPanel() {
                         <button className="btn-neon" onClick={() => alterarZoom(1)} style={{ padding: '5px 15px' }} disabled={modo3D}>+</button>
                     </div>
 
+                    {/* 🔥 NOVO: INDICADOR DE ESCALA GLOBAL PARA TODOS OS JOGADORES */}
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', borderLeft: '2px solid #333', paddingLeft: 20 }}>
+                        <span style={{ color: '#ffcc00', fontWeight: 'bold' }}>📏 Escala:</span>
+                        <span style={{ color: '#fff', fontWeight: 'bold', background: 'rgba(0,0,0,0.5)', padding: '2px 8px', borderRadius: 4 }}>
+                            1 Quadrado = {configMapa.escala} {configMapa.unidade}
+                        </span>
+                    </div>
+
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center', borderLeft: '2px solid #333', paddingLeft: 20 }}>
                         <span style={{ color: '#00ccff', fontWeight: 'bold' }}>Altitude (Z):</span>
                         <input
@@ -751,30 +804,13 @@ export default function MapaPanel() {
                     </button>
                 </div>
 
-                {isMestre && modo3D && (
-                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 10, background: 'rgba(0,0,0,0.5)', padding: 10, borderRadius: 5, border: '1px solid #ffcc00' }}>
-                        <span style={{ color: '#ffcc00', fontWeight: 'bold' }}>🗺️ Link do Cenário (Discord/Imgur):</span>
-                        <input
-                            className="input-neon"
-                            type="text"
-                            placeholder="Cole o link da imagem terminando em .png ou .jpg..."
-                            value={inputMapaUrl}
-                            onChange={e => setInputMapaUrl(e.target.value)}
-                            style={{ flex: 1, padding: 4, borderColor: '#ffcc00', color: '#fff' }}
-                        />
-                        <button className="btn-neon btn-gold" onClick={aplicarUrlDoMapa} style={{ padding: '4px 15px', margin: 0 }}>
-                            GERAR MUNDO
-                        </button>
-                    </div>
-                )}
-
                 {modo3D && (
                     <div style={{ height: '60vh', background: '#000', borderRadius: 5, overflow: 'hidden', border: '2px solid #0088ff', boxShadow: '0 0 20px rgba(0, 136, 255, 0.4)' }}>
                         <Tabuleiro3D 
                             mapSize={MAP_SIZE} 
                             tokens={tokens3D} 
                             moverJogador={handleCellClick} 
-                            mapUrl={urlMapaGlobal} 
+                            mapUrl={configMapa.url} 
                         />
                     </div>
                 )}
