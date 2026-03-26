@@ -5,7 +5,6 @@ import { salvarFichaSilencioso } from '../../services/firebase-sync';
 import { ATRIBUTOS_AGRUPADOS, PROPRIEDADE_OPTIONS } from '../../core/efeitos-constants';
 import FormasEditor from '../shared/FormasEditor';
 
-// 🔥 LISTA DE ARMAS PADRONIZADA COM O COMPÊNDIO
 const ARMA_TIPOS = ['espada', 'arco', 'lança', 'machado', 'adaga', 'cajado', 'arma de fogo', 'manopla', 'foice', 'chicote', 'martelo', 'escudo'];
 const RARIDADES = ['comum', 'rara', 'avançada', 'lendaria', 'lendaria (Longuinus)', 'espiritual', 'fantasma nobre'];
 
@@ -56,9 +55,7 @@ export default function ArsenalPanel() {
         setNomeEfeito('');
     };
 
-    const removerEfeitoTemp = (index) => {
-        setEfeitosTempArsenal(efeitosTempArsenal.filter((_, i) => i !== index));
-    };
+    const removerEfeitoTemp = (index) => setEfeitosTempArsenal(efeitosTempArsenal.filter((_, i) => i !== index));
 
     const addEfeitoPassivoTemp = () => {
         if (!novoValPassivo || !nomeEfeitoPassivo.trim()) { alert('Preencha o nome e o valor do efeito passivo!'); return; }
@@ -67,16 +64,11 @@ export default function ArsenalPanel() {
         setNomeEfeitoPassivo('');
     };
 
-    const removerEfeitoPassivoTemp = (index) => {
-        setEfeitosTempPassivosArsenal(efeitosTempPassivosArsenal.filter((_, i) => i !== index));
-    };
+    const removerEfeitoPassivoTemp = (index) => setEfeitosTempPassivosArsenal(efeitosTempPassivosArsenal.filter((_, i) => i !== index));
 
     function salvarNovoItem() {
         const n = nomeItem.trim();
-        if (!n) {
-            alert('Falta o nome do Equipamento!');
-            return;
-        }
+        if (!n) { alert('Falta o nome do Equipamento!'); return; }
 
         const inventarioAtual = minhaFicha?.inventario || [];
         let deveLimparEfeitos = true;
@@ -133,8 +125,6 @@ export default function ArsenalPanel() {
         });
 
         cancelarEdicaoItem();
-        setNomeItem('');
-        setBonusValor('');
         salvarFichaSilencioso();
     }
 
@@ -187,6 +177,12 @@ export default function ArsenalPanel() {
                 });
             }
             ficha.inventario[itemIndex].equipado = !ficha.inventario[itemIndex].equipado;
+            
+            // 🔥 Reset da Foma ao desequipar!
+            if (!ficha.inventario[itemIndex].equipado) {
+                ficha.inventario[itemIndex].formaAtivaId = null;
+                ficha.inventario[itemIndex].configAtivaId = null;
+            }
         });
         salvarFichaSilencioso();
     }
@@ -219,19 +215,26 @@ export default function ArsenalPanel() {
             const item = (ficha.inventario || []).find(i => i.id === itemId);
             if (!item) return;
             item.formas = (item.formas || []).filter(f => f.id !== formaId);
-            if (item.formaAtivaId === formaId) item.formaAtivaId = null;
+            if (item.formaAtivaId === formaId) {
+                item.formaAtivaId = null;
+                item.configAtivaId = null;
+            }
         });
         salvarFichaSilencioso();
     };
 
-    const ativarFormaItem = (itemId, formaId) => {
+    // 🔥 GRAVA A FORMA E A CONFIG (PECADO) ATIVA 🔥
+    const ativarFormaItem = (itemId, formaId, configId = null) => {
         const vitais = ['vida', 'mana', 'aura', 'chakra', 'corpo'];
         updateFicha((ficha) => {
             const item = (ficha.inventario || []).find(i => i.id === itemId);
             if (!item) return;
             const oldM = {};
             vitais.forEach(v => { oldM[v] = getMaximo(ficha, v) || 1; });
+            
             item.formaAtivaId = formaId;
+            item.configAtivaId = configId; 
+            
             vitais.forEach(k => {
                 const nMax = getMaximo(ficha, k) || 1;
                 let atu = parseFloat(ficha[k].atual);
@@ -253,13 +256,7 @@ export default function ArsenalPanel() {
                     {itemEditandoId ? `Editando: ${nomeItem}` : 'Forjar Novo Equipamento'}
                 </h3>
 
-                <input
-                    className="input-neon"
-                    type="text"
-                    placeholder="Nome do Equipamento"
-                    value={nomeItem}
-                    onChange={e => setNomeItem(e.target.value)}
-                />
+                <input className="input-neon" type="text" placeholder="Nome do Equipamento" value={nomeItem} onChange={e => setNomeItem(e.target.value)} />
 
                 <div style={{ display: 'grid', gridTemplateColumns: tipoItem === 'arma' ? '1fr 1fr 1fr 1fr 1fr' : '1fr 1fr 1fr 1fr', gap: 10, marginTop: 10 }}>
                     <div>
@@ -287,9 +284,7 @@ export default function ArsenalPanel() {
                     <div>
                         <label style={{ color: '#aaa', fontSize: '0.85em' }}>Bonus</label>
                         <select className="input-neon" value={bonusTipo} onChange={e => setBonusTipo(e.target.value)}>
-                            {BONUS_OPTIONS.map(b => (
-                                <option key={b.value} value={b.value}>{b.label}</option>
-                            ))}
+                            {BONUS_OPTIONS.map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
                         </select>
                     </div>
                     <div>
@@ -319,11 +314,7 @@ export default function ArsenalPanel() {
                             <select className="input-neon" value={novoAtr} onChange={e => setNovoAtr(e.target.value)}>
                                 {ATRIBUTOS_AGRUPADOS.map(grupo => (
                                     <optgroup key={grupo.label} label={grupo.label} style={{ background: '#051010', color: '#0ff' }}>
-                                        {grupo.options.map(a => (
-                                            <option key={a} value={a}>
-                                                {a.replace('_', ' ').toUpperCase()}
-                                            </option>
-                                        ))}
+                                        {grupo.options.map(a => <option key={a} value={a}>{a.replace('_', ' ').toUpperCase()}</option>)}
                                     </optgroup>
                                 ))}
                             </select>
@@ -357,11 +348,7 @@ export default function ArsenalPanel() {
                             <select className="input-neon" value={novoAtrPassivo} onChange={e => setNovoAtrPassivo(e.target.value)}>
                                 {ATRIBUTOS_AGRUPADOS.map(grupo => (
                                     <optgroup key={grupo.label} label={grupo.label} style={{ background: '#051010', color: '#f0f' }}>
-                                        {grupo.options.map(a => (
-                                            <option key={a} value={a}>
-                                                {a.replace('_', ' ').toUpperCase()}
-                                            </option>
-                                        ))}
+                                        {grupo.options.map(a => <option key={a} value={a}>{a.replace('_', ' ').toUpperCase()}</option>)}
                                     </optgroup>
                                 ))}
                             </select>
@@ -403,7 +390,6 @@ export default function ArsenalPanel() {
                 </div>
             </div>
 
-            {/* Items list */}
             <div id="lista-inventario-salvos" style={{ marginTop: 15 }}>
                 {inventario.length === 0 ? (
                     <p style={{ color: '#888' }}>Nenhum equipamento na sua forja.</p>
@@ -420,9 +406,6 @@ export default function ArsenalPanel() {
                         const prefixo = isMult ? 'x' : '+';
                         const propText = bTipo.replace('_', ' ').toUpperCase();
 
-                        const efeitosAtivos = p.efeitos || [];
-                        const efeitosPassivos = p.efeitosPassivos || [];
-
                         return (
                             <div key={p.id} className="def-box" style={{ borderLeft: `5px solid ${c}`, background: bg, marginBottom: 10 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 15 }}>
@@ -436,58 +419,24 @@ export default function ArsenalPanel() {
                                         <p style={{ color: '#0ff', fontSize: '0.9em', margin: '5px 0 0' }}>
                                             {propText}: <strong style={{ color: '#ffcc00' }}>{prefixo}{p.bonusValor || 0}</strong>
                                         </p>
-                                        {efeitosAtivos.length > 0 && (
-                                            <p style={{ color: '#0ff', fontSize: '0.85em', margin: '5px 0 0' }}>
-                                                {efeitosAtivos.map(e => {
-                                                    if (!e) return '';
-                                                    const pr = (e.propriedade || '').toLowerCase();
-                                                    const isM = ['mbase', 'mgeral', 'mformas', 'mabs', 'munico'].includes(pr);
-                                                    return `[${(e.atributo || '').replace('_', ' ').toUpperCase()}] ${(e.propriedade || '').toUpperCase()}: ${isM ? 'x' : '+'}${e.valor || 0}`;
-                                                }).filter(Boolean).join(' | ')}
-                                            </p>
-                                        )}
-                                        {efeitosPassivos.length > 0 && (
-                                            <p style={{ color: '#f0f', fontSize: '0.85em', margin: '5px 0 0' }}>
-                                                {efeitosPassivos.map(e => {
-                                                    if (!e) return '';
-                                                    const pr = (e.propriedade || '').toLowerCase();
-                                                    const isM = ['mbase', 'mgeral', 'mformas', 'mabs', 'munico'].includes(pr);
-                                                    return `PASSIVO: [${(e.atributo || '').replace('_', ' ').toUpperCase()}] ${(e.propriedade || '').toUpperCase()}: ${isM ? 'x' : '+'}${e.valor || 0}`;
-                                                }).filter(Boolean).join(' | ')}
-                                            </p>
-                                        )}
                                     </div>
                                     <div style={{ display: 'flex', gap: 10 }}>
-                                        <button
-                                            className="btn-neon"
-                                            style={{ borderColor: c, color: c, padding: '5px 15px', fontSize: '1.1em', margin: 0 }}
-                                            onClick={() => toggleEquiparItem(p.id)}
-                                        >
+                                        <button className="btn-neon" style={{ borderColor: c, color: c, padding: '5px 15px', fontSize: '1.1em', margin: 0 }} onClick={() => toggleEquiparItem(p.id)}>
                                             {isEquipped ? 'EQUIPADO' : 'GUARDADO'}
                                         </button>
-                                        <button
-                                            className="btn-neon btn-blue"
-                                            style={{ padding: '5px 15px', fontSize: '1em', margin: 0 }}
-                                            onClick={() => editarItem(p.id)}
-                                        >
-                                            EDITAR
-                                        </button>
-                                        <button
-                                            className="btn-neon btn-red"
-                                            style={{ padding: '5px 15px', fontSize: '1em', margin: 0 }}
-                                            onClick={() => deletarItem(p.id)}
-                                        >
-                                            APAGAR
-                                        </button>
+                                        <button className="btn-neon btn-blue" style={{ padding: '5px 15px', fontSize: '1em', margin: 0 }} onClick={() => editarItem(p.id)}>EDITAR</button>
+                                        <button className="btn-neon btn-red" style={{ padding: '5px 15px', fontSize: '1em', margin: 0 }} onClick={() => deletarItem(p.id)}>APAGAR</button>
                                     </div>
                                 </div>
                                 {p.tipo === 'arma' && (
                                     <FormasEditor
+                                        itemRaridade={p.raridade}
                                         formas={p.formas || []}
                                         formaAtivaId={p.formaAtivaId || null}
+                                        configAtivaId={p.configAtivaId || null}
                                         onSalvarForma={(forma) => salvarFormaItem(p.id, forma)}
                                         onDeletarForma={(formaId) => deletarFormaItem(p.id, formaId)}
-                                        onAtivarForma={(formaId) => ativarFormaItem(p.id, formaId)}
+                                        onAtivarForma={(formaId, configId) => ativarFormaItem(p.id, formaId, configId)}
                                     />
                                 )}
                             </div>
