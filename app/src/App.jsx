@@ -18,7 +18,7 @@ import MapaPanel from './components/mapa/MapaPanel'
 import Jukebox from './components/jukebox/Jukebox'
 import CompendioPanel from './components/compendio/CompendioPanel'
 
-import { carregarFichaDoFirebase, iniciarListenerDummies, enviarParaFeed, salvarDummie } from './services/firebase-sync'
+import { carregarFichaDoFirebase, iniciarListenerDummies, enviarParaFeed, salvarDummie, iniciarListenerCenario } from './services/firebase-sync'
 import { getMaximo } from './core/attributes'
 
 // 🔥 CORREÇÃO: Função de CA embutida aqui para não quebrar os imports do sistema! 🔥
@@ -199,6 +199,7 @@ export default function App() {
     const setMeuNome = useStore(s => s.setMeuNome)
     const carregarDadosFicha = useStore(s => s.carregarDadosFicha)
     const abaAtiva = useStore(s => s.abaAtiva)
+    const setCenario = useStore(s => s.setCenario) // 🔥 NOVO
     const setDummies = useStore(s => s.setDummies) 
     const [pronto, setPronto] = useState(false)
 
@@ -224,6 +225,16 @@ export default function App() {
             if (unsubDummies) unsubDummies()
         }
     }, [setDummies])
+
+    // 🔥 NOVO: Escuta as Cenas do Mapa
+    useEffect(() => {
+        const unsubCenario = iniciarListenerCenario((dados) => {
+            setCenario(dados);
+        });
+        return () => {
+            if (unsubCenario) unsubCenario();
+        };
+    }, [setCenario])
 
     const { loading } = useFirebase()
 

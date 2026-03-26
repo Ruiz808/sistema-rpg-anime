@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import useStore from '../../stores/useStore';
-import { salvarFichaSilencioso, enviarParaFeed, salvarDummie } from '../../services/firebase-sync';
+import { salvarFichaSilencioso, enviarParaFeed, salvarDummie, uploadImagem, salvarCenarioCompleto } from '../../services/firebase-sync';
 import { calcularAcerto } from '../../core/engine';
 import { getClassIconById } from '../../core/classIcons';
 import { resolverEfeitosEntidade } from '../../core/efeitos-resolver';
@@ -20,14 +20,12 @@ function urlSeguraParaCss(url) {
 
 export function calcularCA(ficha, tipo) {
     if (!ficha) return 10;
-
     const getDoisDigitos = (valor) => {
         if (!valor) return 0;
         const strVal = String(valor).replace(/[^0-9]/g, '');
         if (!strVal) return 0;
         return parseInt(strVal.substring(0, 2), 10);
     };
-
     let base = 5;
     if (tipo === 'evasiva') base += getDoisDigitos(ficha.destreza?.base);
     if (tipo === 'resistencia') base += getDoisDigitos(ficha.forca?.base);
@@ -55,7 +53,7 @@ export function calcularCA(ficha, tipo) {
 }
 
 export default function MapaPanel() {
-    const { minhaFicha, meuNome, personagens, updateFicha, feedCombate = [], isMestre, dummies, alvoSelecionado } = useStore(); 
+    const { minhaFicha, meuNome, personagens, updateFicha, feedCombate = [], isMestre, dummies, alvoSelecionado, cenario } = useStore(); 
 
     const [modo3D, setModo3D] = useState(false);
     const [tamanhoCelula, setTamanhoCelula] = useState(35);
@@ -73,13 +71,18 @@ export default function MapaPanel() {
     const [mapVantagens, setMapVantagens] = useState(minhaFicha.ataqueConfig?.vantagens || 0);
     const [mapDesvantagens, setMapDesvantagens] = useState(minhaFicha.ataqueConfig?.desvantagens || 0);
     
-    // 🔥 NOVOS ESTADOS PARA CONFIGURAÇÃO DO MAPA PELO MESTRE
-    const [inputMapaUrl, setInputMapaUrl] = useState(minhaFicha.mapaGlobalUrl || '');
-    const [inputEscala, setInputEscala] = useState(minhaFicha.mapaEscala || 1.5);
-    const [inputUnidade, setInputUnidade] = useState(minhaFicha.mapaEscalaUnidade || 'm');
+    // 🔥 ESTADOS PARA CRIAR NOVA CENA (UPLOAD)
+    const [novaCenaNome, setNovaCenaNome] = useState('');
+    const [novaCenaEscala, setNovaCenaEscala] = useState(1.5);
+    const [novaCenaUnidade, setNovaCenaUnidade] = useState('m');
+    const [uploadingMap, setUploadingMap] = useState(false);
 
     const [dadoAnim, setDadoAnim] = useState({ ativo: false, numero: 20, finalResult: null, cor: '#00ffcc', quemRolou: '' });
     const prevFeedLen = useRef(feedCombate.length);
+
+    // 🔥 O CÉREBRO DA CENA ATUAL
+    const cenaAtivaId = cenario?.ativa || 'default';
+    const cenaAtual = cenario?.lista?.[cenaAtivaId] || { nome: 'Desconhecido', img: '', escala: 1.5, unidade: 'm' };
 
     const overridesCompendio = useMemo(() => {
         if (!minhaFicha) return {};
@@ -93,7 +96,6 @@ export default function MapaPanel() {
         return {};
     }, [isMestre, minhaFicha, personagens]);
 
-    // O CÉREBRO DA SINCRONIZAÇÃO GLOBAL DE DADOS 
     useEffect(() => {
         if (feedCombate.length > prevFeedLen.current) {
             const newItem = feedCombate[feedCombate.length - 1];
@@ -177,46 +179,63 @@ export default function MapaPanel() {
         salvarFichaSilencioso();
     }
 
-    // 🔥 NOVA FUNÇÃO: Salva tanto o URL do Mapa quanto a Escala
-    function salvarConfigMapa() {
-        updateFicha(f => {
-            f.mapaGlobalUrl = inputMapaUrl;
-            f.mapaEscala = parseFloat(inputEscala) || 1.5;
-            f.mapaEscalaUnidade = inputUnidade;
-        });
-        salvarFichaSilencioso();
-        enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: '🗺️ O Mestre alterou as configurações e a escala do cenário!' });
-    }
+    // 🔥 GESTÃO DE CENAS PELO MESTRE (COM UPLOAD!)
+    const handleUploadNovaCena = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        if (!novaCenaNome.trim()) {
+            alert('Por favor, dê um nome à cena antes de anexar o mapa!');
+            return;
+        }
 
-    // 🔥 NOVO MEMO: Lê a Configuração do Mapa globalmente para todos os jogadores
-    const configMapa = useMemo(() => {
-        if (isMestre && minhaFicha.mapaEscala) {
-            return {
-                url: minhaFicha.mapaGlobalUrl,
-                escala: minhaFicha.mapaEscala,
-                unidade: minhaFicha.mapaEscalaUnidade || 'm'
+        setUploadingMap(true);
+        try {
+            const urlPermanente = await uploadImagem(file, `mapas/${Date.now()}`);
+            const novaCenaId = 'cena_' + Date.now();
+            
+            const novoCenario = JSON.parse(JSON.stringify(cenario));
+            if (!novoCenario.lista) novoCenario.lista = {};
+            
+            novoCenario.lista[novaCenaId] = {
+                nome: novaCenaNome,
+                img: urlPermanente,
+                escala: parseFloat(novaCenaEscala) || 1.5,
+                unidade: novaCenaUnidade
             };
+            
+            novoCenario.ativa = novaCenaId; // Muda ativamente
+            salvarCenarioCompleto(novoCenario);
+            enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `🗺️ Os heróis chegaram a: ${novaCenaNome}!` });
+            
+            setNovaCenaNome('');
+        } catch (err) {
+            console.error(err);
+            alert('Erro ao enviar a imagem para o Mapa. Verifique o Firebase Storage.');
+        } finally {
+            setUploadingMap(false);
         }
-        if (personagens) {
-            const chaves = Object.keys(personagens);
-            for(let k of chaves) {
-                const p = personagens[k];
-                if (p && p.mapaEscala) {
-                    return {
-                        url: p.mapaGlobalUrl,
-                        escala: p.mapaEscala,
-                        unidade: p.mapaEscalaUnidade || 'm'
-                    };
-                }
-            }
-        }
-        return { url: null, escala: 1.5, unidade: 'm' };
-    }, [isMestre, minhaFicha.mapaGlobalUrl, minhaFicha.mapaEscala, minhaFicha.mapaEscalaUnidade, personagens]);
+    };
 
+    const ativarCena = (id) => {
+        const novoCenario = JSON.parse(JSON.stringify(cenario));
+        novoCenario.ativa = id;
+        salvarCenarioCompleto(novoCenario);
+        enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `🗺️ O cenário mudou para: ${novoCenario.lista[id].nome}!` });
+    };
+
+    const deletarCena = (id) => {
+        if(id === 'default') return alert("A cena inicial não pode ser apagada.");
+        if(!window.confirm("Tem certeza que deseja apagar esta cena?")) return;
+        
+        const novoCenario = JSON.parse(JSON.stringify(cenario));
+        delete novoCenario.lista[id];
+        if(novoCenario.ativa === id) novoCenario.ativa = 'default';
+        salvarCenarioCompleto(novoCenario);
+    };
 
     const coresJogadoresRef = useRef({});
     const corIndexRef = useRef(0);
-
     function corDoJogador(nome) {
         if (!coresJogadoresRef.current[nome]) {
             coresJogadoresRef.current[nome] = PALETA[corIndexRef.current % PALETA.length];
@@ -625,7 +644,6 @@ export default function MapaPanel() {
     return (
         <div className="mapa-panel" style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
             
-            {/* 🔥 O D20 PERFEITO: GEOMETRIA E ANIMAÇÃO DE ROTAÇÃO 🔥 */}
             <style dangerouslySetInnerHTML={{__html: `
                 @keyframes d20-spin {
                     0% { transform: rotate(0deg) scale(1); filter: brightness(1) drop-shadow(0 0 10px #00ffcc); }
@@ -680,51 +698,58 @@ export default function MapaPanel() {
 
             <div style={{ flex: '1 1 70%', minWidth: 0 }}>
                 
-               {/* 🔥 NOVO: PAINEL DE CONFIGURAÇÕES GLOBAIS DO MAPA (Visível para o Mestre) */}
+               {/* 🔥 🎬 GERENCIADOR DE CENAS (Mestre) 🔥 */}
                {isMestre && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 15, background: 'rgba(0,0,0,0.5)', padding: 10, borderRadius: 5, border: '1px solid #ffcc00' }}>
-                    <h4 style={{ color: '#ffcc00', margin: '0 0 5px 0' }}>⚙️ Configurações do Cenário</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 15, marginBottom: 15, background: 'rgba(0,0,0,0.5)', padding: 15, borderRadius: 5, border: '1px solid #ffcc00' }}>
+                    <h3 style={{ color: '#ffcc00', margin: 0 }}>🎬 Gerenciador de Cenas</h3>
                     
-                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                        <span style={{ color: '#ffcc00', fontWeight: 'bold' }}>🗺️ Link (3D):</span>
-                        <input
-                            className="input-neon"
-                            type="text"
-                            placeholder="URL da imagem (.png, .jpg)..."
-                            value={inputMapaUrl}
-                            onChange={e => setInputMapaUrl(e.target.value)}
-                            style={{ flex: 1, minWidth: '200px', padding: 4, borderColor: '#ffcc00', color: '#fff' }}
-                        />
+                    {/* Lista de Cenas Existentes */}
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', background: '#0a0a0a', padding: 10, borderRadius: 5 }}>
+                        {Object.entries(cenario?.lista || {}).map(([id, cena]) => {
+                            const isAtiva = cenario.ativa === id;
+                            return (
+                                <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 5, background: isAtiva ? 'rgba(0, 255, 136, 0.2)' : '#222', border: `1px solid ${isAtiva ? '#00ff88' : '#555'}`, padding: '5px 10px', borderRadius: 4 }}>
+                                    <span style={{ color: isAtiva ? '#00ff88' : '#fff', fontWeight: 'bold' }}>{cena.nome}</span>
+                                    {!isAtiva && (
+                                        <button className="btn-neon btn-small" onClick={() => ativarCena(id)} style={{ padding: '2px 8px', fontSize: '0.8em', margin: '0 0 0 5px' }}>
+                                            Ativar
+                                        </button>
+                                    )}
+                                    <button className="btn-neon btn-red btn-small" onClick={() => deletarCena(id)} style={{ padding: '2px 8px', fontSize: '0.8em', margin: 0 }}>
+                                        X
+                                    </button>
+                                </div>
+                            );
+                        })}
                     </div>
-                    
-                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                        <span style={{ color: '#ffcc00', fontWeight: 'bold' }}>📏 Escala (1 quadrado =):</span>
-                        <input
-                            className="input-neon"
-                            type="number"
-                            min="0.1"
-                            step="0.1"
-                            value={inputEscala}
-                            onChange={e => setInputEscala(e.target.value)}
-                            style={{ width: 80, padding: 4, borderColor: '#ffcc00', color: '#fff' }}
-                        />
-                        <select className="input-neon" value={inputUnidade} onChange={e => setInputUnidade(e.target.value)} style={{ padding: 4, borderColor: '#ffcc00', color: '#fff' }}>
-                            <option value="m">Metros (m)</option>
-                            <option value="km">Quilômetros (km)</option>
-                            <option value="milhas">Milhas</option>
-                            <option value="anos-luz">Anos-luz</option>
-                            <option value="galaxias">Galáxias</option>
-                        </select>
-                        <button className="btn-neon btn-gold" onClick={salvarConfigMapa} style={{ padding: '4px 15px', margin: '0 0 0 auto' }}>
-                            APLICAR MUDANÇAS
-                        </button>
+
+                    {/* Criar Nova Cena */}
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', borderTop: '1px solid #444', paddingTop: 10 }}>
+                        <span style={{ color: '#ffcc00', fontWeight: 'bold' }}>Nova Cena:</span>
+                        <input className="input-neon" type="text" placeholder="Nome (Ex: Taverna)" value={novaCenaNome} onChange={e => setNovaCenaNome(e.target.value)} style={{ width: 150, padding: 5 }}/>
+                        
+                        <label className="btn-neon btn-blue" style={{ cursor: 'pointer', padding: '5px 15px', margin: 0, opacity: uploadingMap ? 0.5 : 1 }}>
+                            {uploadingMap ? 'Enviando...' : '📁 Anexar Fundo'}
+                            <input type="file" accept="image/png, image/jpeg, image/webp" onChange={handleUploadNovaCena} style={{ display: 'none' }} disabled={uploadingMap} />
+                        </label>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#111', padding: '3px 8px', borderRadius: 5, border: '1px solid #444' }}>
+                            <span style={{ color: '#aaa', fontSize: '0.8em' }}>Escala:</span>
+                            <input className="input-neon" type="number" min="0.1" step="0.1" value={novaCenaEscala} onChange={e => setNovaCenaEscala(e.target.value)} style={{ width: 60, padding: 4, margin: 0 }} />
+                            <select className="input-neon" value={novaCenaUnidade} onChange={e => setNovaCenaUnidade(e.target.value)} style={{ padding: 4, margin: 0 }}>
+                                <option value="m">m</option>
+                                <option value="km">km</option>
+                                <option value="milhas">mi</option>
+                                <option value="anos-luz">Ly</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
                )}
 
                {isMestre && (
-                <div style={{ marginBottom: 15, padding: 10, border: '1px solid #ffcc00', borderRadius: 5, background: 'rgba(0,0,0,0.5)' }}>
-                <h4 style={{ color: '#ffcc00', marginTop: 0, marginBottom: 10 }}>🤖 Gerador de Entidades</h4>
+                <div style={{ marginBottom: 15, padding: 10, border: '1px solid #0088ff', borderRadius: 5, background: 'rgba(0, 136, 255, 0.1)' }}>
+                <h4 style={{ color: '#0088ff', marginTop: 0, marginBottom: 10 }}>🤖 Gerador de Entidades (Nesta Cena)</h4>
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
                 <input className="input-neon" type="text" placeholder="Nome" id="dummieNome" defaultValue="Boneco" style={{ width: 100, padding: 5 }}/>
             
@@ -749,7 +774,7 @@ export default function MapaPanel() {
                     <option value="mestre">HP Oculto</option>
                     </select>
 
-                    <button className="btn-neon btn-gold" onClick={() => {
+                    <button className="btn-neon btn-blue" onClick={() => {
                         const n = document.getElementById('dummieNome').value || 'Entidade';
                         const hBase = parseInt(document.getElementById('dummieHp').value) || 100;
                         const vit = parseInt(document.getElementById('dummieVitalidade').value) || 0;
@@ -759,9 +784,10 @@ export default function MapaPanel() {
                         const dv = parseInt(document.getElementById('dummieDef').value) || 10;
                         const vHp = document.getElementById('dummieVisivel').value;
                         const id = 'dummie_' + Date.now();
-                        salvarDummie(id, { nome: n, hpMax: h, hpAtual: h, tipoDefesa: dt, valorDefesa: dv, visibilidadeHp: vHp, posicao: { x: 0, y: 0 } });
+                        // 🔥 Prende o Dummie à cena ativa atual
+                        salvarDummie(id, { nome: n, hpMax: h, hpAtual: h, tipoDefesa: dt, valorDefesa: dv, visibilidadeHp: vHp, cenaId: cenaAtivaId, posicao: { x: 0, y: 0 } });
                     }} style={{ padding: '5px 15px', margin: 0 }}>
-                    + Injetar no Mapa
+                    + Injetar na Cena
                     </button>
                     </div>
                     </div>
@@ -774,11 +800,11 @@ export default function MapaPanel() {
                         <button className="btn-neon" onClick={() => alterarZoom(1)} style={{ padding: '5px 15px' }} disabled={modo3D}>+</button>
                     </div>
 
-                    {/* 🔥 NOVO: INDICADOR DE ESCALA GLOBAL PARA TODOS OS JOGADORES */}
+                    {/* 🔥 INDICADOR DE ESCALA GLOBAL */}
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center', borderLeft: '2px solid #333', paddingLeft: 20 }}>
-                        <span style={{ color: '#ffcc00', fontWeight: 'bold' }}>📏 Escala:</span>
+                        <span style={{ color: '#ffcc00', fontWeight: 'bold' }}>Cena Atual:</span>
                         <span style={{ color: '#fff', fontWeight: 'bold', background: 'rgba(0,0,0,0.5)', padding: '2px 8px', borderRadius: 4 }}>
-                            1 Quadrado = {configMapa.escala} {configMapa.unidade}
+                            {cenaAtual.nome} (1Q = {cenaAtual.escala} {cenaAtual.unidade})
                         </span>
                     </div>
 
@@ -810,18 +836,25 @@ export default function MapaPanel() {
                             mapSize={MAP_SIZE} 
                             tokens={tokens3D} 
                             moverJogador={handleCellClick} 
-                            mapUrl={configMapa.url} 
+                            mapUrl={cenaAtual.img} 
                         />
                     </div>
                 )}
 
                 {!modo3D && (
-                    <div id="combat-grid" style={{ display: 'grid', gridTemplateColumns: `repeat(${MAP_SIZE}, ${tamanhoCelula}px)`, gap: 1, overflow: 'auto', maxHeight: '60vh', background: 'rgba(0,0,0,0.3)', padding: 5, borderRadius: 5 }}>
+                    <div id="combat-grid" style={{ 
+                        display: 'grid', gridTemplateColumns: `repeat(${MAP_SIZE}, ${tamanhoCelula}px)`, gap: 1, 
+                        overflow: 'auto', maxHeight: '60vh', background: 'rgba(0,0,0,0.3)', padding: 5, borderRadius: 5,
+                        backgroundImage: urlSeguraParaCss(cenaAtual.img), backgroundSize: 'cover', backgroundPosition: 'center'
+                    }}>
                         {cells.map((cell) => {
                             const key = `${cell.x},${cell.y}`;
                             const tokens = tokenMap[key] || [];
                             
-                            const cellDummies = Object.entries(dummies || {}).filter(([id, d]) => d.posicao?.x === cell.x && d.posicao?.y === cell.y);
+                            // 🔥 Dummies filtrados pela Cena Atual!
+                            const cellDummies = Object.entries(dummies || {}).filter(([id, d]) => 
+                                d.posicao?.x === cell.x && d.posicao?.y === cell.y && (!d.cenaId || d.cenaId === cenaAtivaId)
+                            );
 
                             return (
                                 <div key={key} className="map-cell" data-x={cell.x} data-y={cell.y} onClick={() => handleCellClick(cell.x, cell.y)}

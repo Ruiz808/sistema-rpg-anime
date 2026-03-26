@@ -59,32 +59,36 @@ const useStore = create(
         feedCombate: [],
         
         // 🔥 SISTEMA DE COMBATE E ALVOS
-        dummies: {},
-        alvoSelecionado: null,
-
-        setMinhaFicha: (ficha) => set((state) => { state.minhaFicha = ficha; }),
-        setMeuNome: (nome) => set((state) => { state.meuNome = nome; }),
-        setIsMestre: (val) => set((state) => { state.isMestre = val; }),
-        setEfeitosTemp: (efeitos) => set((state) => { state.efeitosTemp = efeitos; }),
-        setEfeitosTempPassivos: (efeitos) => set((state) => { state.efeitosTempPassivos = efeitos; }),
-        setEfeitosTempArsenal: (efeitos) => set((state) => { state.efeitosTempArsenal = efeitos; }),
-        setEfeitosTempPassivosArsenal: (efeitos) => set((state) => { state.efeitosTempPassivosArsenal = efeitos; }),
-        setEfeitosTempForma: (efeitos) => set((state) => { state.efeitosTempForma = efeitos; }),
-        setEfeitosTempPassivosForma: (efeitos) => set((state) => { state.efeitosTempPassivosForma = efeitos; }),
-        setFormaEditandoId: (id) => set((state) => { state.formaEditandoId = id; }),
-        setPoderEditandoId: (id) => set((state) => { state.poderEditandoId = id; }),
-        setItemEditandoId: (id) => set((state) => { state.itemEditandoId = id; }),
-        setElemEditandoId: (id) => set((state) => { state.elemEditandoId = id; }),
-        setPersonagemParaDeletar: (nome) => set((state) => { state.personagemParaDeletar = nome; }),
-        setAbaAtiva: (aba) => set((state) => { state.abaAtiva = aba; }),
-        setPersonagens: (personagens) => set((state) => { state.personagens = personagens; }),
-        addFeedEntry: (entry) => set((state) => { state.feedCombate.push(entry); }),
+            dummies: {},
+            alvoSelecionado: null,
         
-        // 🔥 AÇÕES DE COMBATE
-        setDummies: (dummies) => set((state) => { state.dummies = dummies || {}; }),
-        setAlvoSelecionado: (id) => set((state) => { state.alvoSelecionado = id; }),
+        // 🔥 SISTEMA DE CENAS
+            cenario: { ativa: 'default', lista: { default: { nome: 'Cenário Inicial', img: '', escala: 1.5, unidade: 'm' } } },
 
-        updateFicha: (callback) => set((state) => {
+            setMinhaFicha: (ficha) => set((state) => { state.minhaFicha = ficha; }),
+            setMeuNome: (nome) => set((state) => { state.meuNome = nome; }),
+            setIsMestre: (val) => set((state) => { state.isMestre = val; }),
+            setEfeitosTemp: (efeitos) => set((state) => { state.efeitosTemp = efeitos; }),
+            setEfeitosTempPassivos: (efeitos) => set((state) => { state.efeitosTempPassivos = efeitos; }),
+            setEfeitosTempArsenal: (efeitos) => set((state) => { state.efeitosTempArsenal = efeitos; }),
+            setEfeitosTempPassivosArsenal: (efeitos) => set((state) => { state.efeitosTempPassivosArsenal = efeitos; }),
+            setEfeitosTempForma: (efeitos) => set((state) => { state.efeitosTempForma = efeitos; }),
+            setEfeitosTempPassivosForma: (efeitos) => set((state) => { state.efeitosTempPassivosForma = efeitos; }),
+            setFormaEditandoId: (id) => set((state) => { state.formaEditandoId = id; }),
+            setPoderEditandoId: (id) => set((state) => { state.poderEditandoId = id; }),
+            setItemEditandoId: (id) => set((state) => { state.itemEditandoId = id; }),
+            setElemEditandoId: (id) => set((state) => { state.elemEditandoId = id; }),
+            setPersonagemParaDeletar: (nome) => set((state) => { state.personagemParaDeletar = nome; }),
+            setAbaAtiva: (aba) => set((state) => { state.abaAtiva = aba; }),
+            setPersonagens: (personagens) => set((state) => { state.personagens = personagens; }),
+            addFeedEntry: (entry) => set((state) => { state.feedCombate.push(entry); }),
+        
+            // 🔥 AÇÕES DE COMBATE E CENAS
+            setDummies: (dummies) => set((state) => { state.dummies = dummies || {}; }),
+            setAlvoSelecionado: (id) => set((state) => { state.alvoSelecionado = id; }),
+            setCenario: (dados) => set((state) => { state.cenario = dados; }),
+
+            updateFicha: (callback) => set((state) => {
             callback(state.minhaFicha);
         }),
 

@@ -162,3 +162,21 @@ export function deletarDummie(id) {
         console.error('[Sync] Erro ao deletar Dummie:', err);
     });
 }
+
+// 🔥 MOTOR DE SINCRONIZAÇÃO DE CENAS (MAPAS)
+export function iniciarListenerCenario(callback) {
+    if (!db) return () => {};
+    const cenarioRef = ref(db, 'cenario');
+    return onValue(cenarioRef, (snapshot) => {
+        const dados = snapshot.val() || { ativa: 'default', lista: { default: { nome: 'Cenário Inicial', img: '', escala: 1.5, unidade: 'm' } } };
+        if (callback) callback(dados);
+    }, (err) => {
+        console.error('[Sync] Erro no listener de cenario:', err);
+    });
+}
+
+export function salvarCenarioCompleto(dadosCenario) {
+    if (!db) return;
+    const cenarioRef = ref(db, 'cenario');
+    set(cenarioRef, dadosCenario).catch(err => console.error('[Sync] Erro ao salvar Cenario:', err));
+}
