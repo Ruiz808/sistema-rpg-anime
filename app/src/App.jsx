@@ -19,11 +19,43 @@ import Jukebox from './components/jukebox/Jukebox'
 import CompendioPanel from './components/compendio/CompendioPanel'
 
 import { carregarFichaDoFirebase, iniciarListenerDummies, enviarParaFeed, salvarDummie } from './services/firebase-sync'
-import { getMaximo, calcularCA } from './core/attributes'
+import { getMaximo } from './core/attributes'
+
+// 🔥 CORREÇÃO: Função de CA embutida aqui para não quebrar os imports do sistema! 🔥
+function calcularCA(ficha, tipo) {
+    if (!ficha) return 10;
+    const getDoisDigitos = (valor) => {
+        if (!valor) return 0;
+        const strVal = String(valor).replace(/[^0-9]/g, '');
+        if (!strVal) return 0;
+        return parseInt(strVal.substring(0, 2), 10);
+    };
+    let base = 5;
+    if (tipo === 'evasiva') base += getDoisDigitos(ficha.destreza?.base);
+    if (tipo === 'resistencia') base += getDoisDigitos(ficha.forca?.base);
+    let bonus = 0;
+    (ficha.poderes || []).forEach(p => {
+        if (p.ativa) {
+            (p.efeitos || []).forEach(e => { if (e.atributo === tipo && e.propriedade === 'base') bonus += parseFloat(e.valor) || 0; });
+        }
+        (p.efeitosPassivos || []).forEach(e => { if (e.atributo === tipo && e.propriedade === 'base') bonus += parseFloat(e.valor) || 0; });
+    });
+    (ficha.passivas || []).forEach(p => {
+        (p.efeitos || []).forEach(e => { if (e.atributo === tipo && e.propriedade === 'base') bonus += parseFloat(e.valor) || 0; });
+    });
+    (ficha.inventario || []).filter(i => i.equipado).forEach(i => {
+        (i.efeitos || []).forEach(e => { if (e.atributo === tipo && e.propriedade === 'base') bonus += parseFloat(e.valor) || 0; });
+    });
+    return Math.floor(base + bonus);
+}
 
 // 🔥 PAINEL DO MESTRE AVANÇADO 🔥
 function MestrePanel() {
-    const { personagens, isMestre, meuNome, setPersonagemParaDeletar } = useStore()
+    const personagens = useStore(s => s.personagens)
+    const meuNome = useStore(s => s.meuNome)
+    const setPersonagemParaDeletar = useStore(s => s.setPersonagemParaDeletar)
+    const isMestre = useStore(s => s.isMestre)
+    
     const [msgSistema, setMsgSistema] = useState('')
 
     const [dNome, setDNome] = useState('Goblin Espião')
@@ -70,7 +102,7 @@ function MestrePanel() {
             alert('Não pode apagar a si mesmo enquanto Mestre!');
             return;
         }
-        setPersonagemParaDeletar(nome); // Chama o sistema do seu amigo!
+        setPersonagemParaDeletar(nome); 
     };
 
     const jogadoresList = Object.entries(personagens || {});
