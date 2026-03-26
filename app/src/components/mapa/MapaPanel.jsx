@@ -68,6 +68,9 @@ export default function MapaPanel() {
     const [mapBonus, setMapBonus] = useState(0);
     const [mapStat, setMapStat] = useState('destreza'); 
     
+    const [mapUsarProf, setMapUsarProf] = useState(false); // 🔥 NOVO ESTADO
+    const profGlobal = parseInt(minhaFicha.proficienciaBase) || 0; // 🔥 NOVO ESTADO
+    
     const [mapVantagens, setMapVantagens] = useState(minhaFicha.ataqueConfig?.vantagens || 0);
     const [mapDesvantagens, setMapDesvantagens] = useState(minhaFicha.ataqueConfig?.desvantagens || 0);
     
@@ -79,12 +82,10 @@ export default function MapaPanel() {
     const [dadoAnim, setDadoAnim] = useState({ ativo: false, numero: 20, finalResult: null, cor: '#00ffcc', quemRolou: '' });
     const prevFeedLen = useRef(feedCombate.length);
 
-    // 🔥 O CÉREBRO DA VISÃO DUPLA (GLOBAL vs MESTRE)
+    // O CÉREBRO DA VISÃO DUPLA (GLOBAL vs MESTRE)
     const [cenaVisualizadaId, setCenaVisualizadaId] = useState(null);
     const cenaAtivaIdGlobal = cenario?.ativa || 'default';
     
-    // Se o Mestre clicar para "Ver" uma cena, ele renderiza essa. Senão, renderiza a Global.
-    // Jogadores renderizam SEMPRE a Global.
     const cenaRenderId = (isMestre && cenaVisualizadaId) ? cenaVisualizadaId : cenaAtivaIdGlobal;
     const cenaAtual = cenario?.lista?.[cenaRenderId] || { nome: 'Desconhecido', img: '', escala: 1.5, unidade: 'm' };
 
@@ -207,7 +208,6 @@ export default function MapaPanel() {
                 unidade: novaCenaUnidade
             };
             
-            // 🔥 Ao fazer upload, a cena NÃO é ativada para todos. O Mestre apenas entra nela.
             salvarCenarioCompleto(novoCenario);
             setCenaVisualizadaId(novaCenaId);
             
@@ -225,7 +225,7 @@ export default function MapaPanel() {
         const novoCenario = JSON.parse(JSON.stringify(cenario));
         novoCenario.ativa = id;
         salvarCenarioCompleto(novoCenario);
-        setCenaVisualizadaId(null); // O Mestre volta a seguir a cena global
+        setCenaVisualizadaId(null); 
         enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `🗺️ O cenário mudou para: ${novoCenario.lista[id].nome}!` });
     };
 
@@ -294,7 +294,6 @@ export default function MapaPanel() {
         return result;
     }, [meuNome, minhaFicha, personagens]);
 
-    // 🔥 Ordem de Iniciativa filtra por quem está na Cena que estamos a RENDERIZAR
     const ordemIniciativa = useMemo(() => {
         const lista = [];
         if (personagens) {
@@ -313,7 +312,6 @@ export default function MapaPanel() {
         return lista;
     }, [personagens, cenaRenderId]);
 
-    // 🔥 Move os elementos na Cena que estamos a RENDERIZAR
     function handleCellClick(x, y) {
         if (isMestre && alvoSelecionado && dummies[alvoSelecionado]) {
             const d = dummies[alvoSelecionado];
@@ -390,11 +388,14 @@ export default function MapaPanel() {
         const fD = parseInt(mapFD) || 20;
         const bonus = parseInt(mapBonus) || 0;
         
+        // 🔥 Usa a nova Proficiência se ativado na caixa
+        const prof = mapUsarProf ? profGlobal : 0;
+        
         const sels = [mapStat]; 
         const itensEquipados = minhaFicha.inventario ? minhaFicha.inventario.filter(i => i.equipado) : [];
 
         const result = calcularAcerto({ 
-            qD, fD, prof: 0, bonus, sels, minhaFicha, itensEquipados, 
+            qD, fD, prof, bonus, sels, minhaFicha, itensEquipados, 
             vantagens: mapVantagens, desvantagens: mapDesvantagens 
         });
         
@@ -409,7 +410,6 @@ export default function MapaPanel() {
         enviarParaFeed(feedData); 
     }
 
-    // 🔥 FILTRA JOGADORES PELA CENA RENDERIZADA
     const tokenMap = useMemo(() => {
         const map = {};
         const nomes = Object.keys(jogadores);
@@ -426,7 +426,6 @@ export default function MapaPanel() {
         return map;
     }, [jogadores, cenaRenderId]);
 
-    // 🔥 FILTRA JOGADORES NO 3D PELA CENA RENDERIZADA
     const tokens3D = useMemo(() => {
         return Object.entries(jogadores)
             .filter(([nome, ficha]) => (ficha.posicao?.cenaId || 'default') === cenaRenderId)
@@ -537,6 +536,8 @@ export default function MapaPanel() {
                 case 'resistencia': corImpacto = '#ccc'; tituloImpacto = 'BLOQUEIO'; valorImpacto = acaoExibir.total; break;
                 case 'escudo': corImpacto = '#f0f'; tituloImpacto = 'ESCUDO'; valorImpacto = acaoExibir.escudoReduzido; break;
                 case 'sistema': corImpacto = '#ffcc00'; tituloImpacto = 'AVISO DO SISTEMA'; valorImpacto = 0; break;
+                case 'skill': corImpacto = '#0088ff'; tituloImpacto = 'TESTE DE PERÍCIA'; valorImpacto = acaoExibir.total; break;
+                case 'saving': corImpacto = '#ffcc00'; tituloImpacto = 'RESISTÊNCIA'; valorImpacto = acaoExibir.total; break;
                 default: break;
             }
         }
@@ -1052,7 +1053,13 @@ export default function MapaPanel() {
                                         <span style={{ color: '#f00', fontSize: '0.8em', marginLeft: 5, fontWeight: 'bold' }}>D:</span>
                                         <input className="input-neon" type="number" min="0" value={mapDesvantagens} onChange={changeDesvantagem} style={{ width: 45, padding: 4, borderColor: '#f00', color: '#f00' }} title="Desvantagens" />
 
-                                        <button className="btn-neon btn-gold" onClick={rolarAcertoRapido} style={{ padding: '4px 10px', fontSize: '0.85em', marginLeft: 5 }}>
+                                        {/* 🔥 NOVO: CHECKBOX DA PROFICIÊNCIA NO MAPA */}
+                                        <label style={{ color: '#00ffcc', fontSize: '0.85em', marginLeft: 10, fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer' }}>
+                                            <input type="checkbox" checked={mapUsarProf} onChange={e => setMapUsarProf(e.target.checked)} style={{ transform: 'scale(1.2)' }} />
+                                            Prof.
+                                        </label>
+
+                                        <button className="btn-neon btn-gold" onClick={rolarAcertoRapido} style={{ padding: '4px 10px', fontSize: '0.85em', marginLeft: 10 }}>
                                             🎲 Rolar Acerto
                                         </button>
                                     </div>

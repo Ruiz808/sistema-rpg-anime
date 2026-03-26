@@ -4,6 +4,11 @@ import { immer } from 'zustand/middleware/immer';
 export const fichaPadrao = {
     ascensaoBase: 1, poderes: [], inventario: [], ataquesElementais: [],
     passivas: [],
+
+    // 🔥 NOVO: SISTEMA DE PROFICIÊNCIA
+    proficienciaBase: 2,
+    proficiencias: {},
+
     avatar: { base: "" },
     bio: { raca: "", classe: "", idade: "", fisico: "", sangue: "", alinhamento: "", afiliacao: "", dinheiro: "" },
     notas: { base: "", geral: "", abs: "" },
@@ -59,36 +64,36 @@ const useStore = create(
         feedCombate: [],
         
         // 🔥 SISTEMA DE COMBATE E ALVOS
-            dummies: {},
-            alvoSelecionado: null,
+        dummies: {},
+        alvoSelecionado: null,
         
         // 🔥 SISTEMA DE CENAS
-            cenario: { ativa: 'default', lista: { default: { nome: 'Cenário Inicial', img: '', escala: 1.5, unidade: 'm' } } },
+        cenario: { ativa: 'default', lista: { default: { nome: 'Cenário Inicial', img: '', escala: 1.5, unidade: 'm' } } },
 
-            setMinhaFicha: (ficha) => set((state) => { state.minhaFicha = ficha; }),
-            setMeuNome: (nome) => set((state) => { state.meuNome = nome; }),
-            setIsMestre: (val) => set((state) => { state.isMestre = val; }),
-            setEfeitosTemp: (efeitos) => set((state) => { state.efeitosTemp = efeitos; }),
-            setEfeitosTempPassivos: (efeitos) => set((state) => { state.efeitosTempPassivos = efeitos; }),
-            setEfeitosTempArsenal: (efeitos) => set((state) => { state.efeitosTempArsenal = efeitos; }),
-            setEfeitosTempPassivosArsenal: (efeitos) => set((state) => { state.efeitosTempPassivosArsenal = efeitos; }),
-            setEfeitosTempForma: (efeitos) => set((state) => { state.efeitosTempForma = efeitos; }),
-            setEfeitosTempPassivosForma: (efeitos) => set((state) => { state.efeitosTempPassivosForma = efeitos; }),
-            setFormaEditandoId: (id) => set((state) => { state.formaEditandoId = id; }),
-            setPoderEditandoId: (id) => set((state) => { state.poderEditandoId = id; }),
-            setItemEditandoId: (id) => set((state) => { state.itemEditandoId = id; }),
-            setElemEditandoId: (id) => set((state) => { state.elemEditandoId = id; }),
-            setPersonagemParaDeletar: (nome) => set((state) => { state.personagemParaDeletar = nome; }),
-            setAbaAtiva: (aba) => set((state) => { state.abaAtiva = aba; }),
-            setPersonagens: (personagens) => set((state) => { state.personagens = personagens; }),
-            addFeedEntry: (entry) => set((state) => { state.feedCombate.push(entry); }),
-        
-            // 🔥 AÇÕES DE COMBATE E CENAS
-            setDummies: (dummies) => set((state) => { state.dummies = dummies || {}; }),
-            setAlvoSelecionado: (id) => set((state) => { state.alvoSelecionado = id; }),
-            setCenario: (dados) => set((state) => { state.cenario = dados; }),
+        setMinhaFicha: (ficha) => set((state) => { state.minhaFicha = ficha; }),
+        setMeuNome: (nome) => set((state) => { state.meuNome = nome; }),
+        setIsMestre: (val) => set((state) => { state.isMestre = val; }),
+        setEfeitosTemp: (efeitos) => set((state) => { state.efeitosTemp = efeitos; }),
+        setEfeitosTempPassivos: (efeitos) => set((state) => { state.efeitosTempPassivos = efeitos; }),
+        setEfeitosTempArsenal: (efeitos) => set((state) => { state.efeitosTempArsenal = efeitos; }),
+        setEfeitosTempPassivosArsenal: (efeitos) => set((state) => { state.efeitosTempPassivosArsenal = efeitos; }),
+        setEfeitosTempForma: (efeitos) => set((state) => { state.efeitosTempForma = efeitos; }),
+        setEfeitosTempPassivosForma: (efeitos) => set((state) => { state.efeitosTempPassivosForma = efeitos; }),
+        setFormaEditandoId: (id) => set((state) => { state.formaEditandoId = id; }),
+        setPoderEditandoId: (id) => set((state) => { state.poderEditandoId = id; }),
+        setItemEditandoId: (id) => set((state) => { state.itemEditandoId = id; }),
+        setElemEditandoId: (id) => set((state) => { state.elemEditandoId = id; }),
+        setPersonagemParaDeletar: (nome) => set((state) => { state.personagemParaDeletar = nome; }),
+        setAbaAtiva: (aba) => set((state) => { state.abaAtiva = aba; }),
+        setPersonagens: (personagens) => set((state) => { state.personagens = personagens; }),
+        addFeedEntry: (entry) => set((state) => { state.feedCombate.push(entry); }),
+    
+        // 🔥 AÇÕES DE COMBATE E CENAS
+        setDummies: (dummies) => set((state) => { state.dummies = dummies || {}; }),
+        setAlvoSelecionado: (id) => set((state) => { state.alvoSelecionado = id; }),
+        setCenario: (dados) => set((state) => { state.cenario = dados; }),
 
-            updateFicha: (callback) => set((state) => {
+        updateFicha: (callback) => set((state) => {
             callback(state.minhaFicha);
         }),
 
@@ -99,6 +104,10 @@ const useStore = create(
 
             if (dados.ascensaoBase !== undefined) state.minhaFicha.ascensaoBase = parseInt(dados.ascensaoBase) || 1;
             if (dados.iniciativa !== undefined) state.minhaFicha.iniciativa = parseInt(dados.iniciativa) || 0;
+            
+            // 🔥 LEITURA DA PROFICIÊNCIA
+            if (dados.proficienciaBase !== undefined) state.minhaFicha.proficienciaBase = parseInt(dados.proficienciaBase) || 0;
+            if (dados.proficiencias !== undefined) state.minhaFicha.proficiencias = dados.proficiencias || {};
             
             if (dados.divisores) state.minhaFicha.divisores = Object.assign({}, fichaPadrao.divisores, dados.divisores);
             if (dados.ataqueConfig) state.minhaFicha.ataqueConfig = Object.assign({}, fichaPadrao.ataqueConfig, dados.ataqueConfig);
@@ -130,7 +139,8 @@ const useStore = create(
                     ch !== 'ascensaoBase' && ch !== 'poderes' && ch !== 'divisores' &&
                     ch !== 'inventario' && ch !== 'ataquesElementais' && ch !== 'ataqueConfig' &&
                     ch !== 'avatar' && ch !== 'bio' && ch !== 'notas' && ch !== 'passivas' &&
-                    ch !== 'posicao' && ch !== 'iniciativa' && ch !== 'acoes'
+                    ch !== 'posicao' && ch !== 'iniciativa' && ch !== 'acoes' &&
+                    ch !== 'proficienciaBase' && ch !== 'proficiencias'
                 ) {
                     if (typeof fichaPadrao[ch] === 'object' && !Array.isArray(fichaPadrao[ch])) {
                         state.minhaFicha[ch] = Object.assign({}, fichaPadrao[ch], dados[ch]);

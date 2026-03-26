@@ -20,11 +20,12 @@ export default function AcertoPanel() {
 
     const [dados, setDados] = useState(1);
     const [faces, setFaces] = useState(20);
-    const [proficiencia, setProficiencia] = useState(0);
+    const [usarProficiencia, setUsarProficiencia] = useState(false); // 🔥 Novo Checkbox
     const [bonus, setBonus] = useState(0);
     
     const vantagens = minhaFicha.ataqueConfig?.vantagens || 0;
     const desvantagens = minhaFicha.ataqueConfig?.desvantagens || 0;
+    const profGlobal = parseInt(minhaFicha.proficienciaBase) || 0; // 🔥 Lê a Base Global
     
     const [statsSelecionados, setStatsSelecionados] = useState(['destreza']);
 
@@ -47,7 +48,6 @@ export default function AcertoPanel() {
         if (propNormalizada === 'proficiencia_arma') {
             const armaAlvo = (ef.atributo || '').toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             
-            // Verifica diretamente se o jogador tem essa arma equipada (rápido e seguro)
             if (tiposArmasEquipadas.includes(armaAlvo)) {
                 bonusMaestriaArma += (parseFloat(ef.valor) || 0);
                 nomesMaestriaArma.push(ef.atributo.trim().toUpperCase());
@@ -81,8 +81,9 @@ export default function AcertoPanel() {
     function rolarAcerto() {
         const qD = parseInt(dados) || 1;
         const fD = parseInt(faces) || 20;
-        const prof = parseInt(proficiencia) || 0;
         const bon = parseInt(bonus) || 0; 
+        const prof = usarProficiencia ? profGlobal : 0; // 🔥 Injeta a Prof se ativa
+        
         const v = parseInt(vantagens) || 0;
         const d = parseInt(desvantagens) || 0;
         
@@ -140,7 +141,7 @@ export default function AcertoPanel() {
                     </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10 }}>
                     <div>
                         <label style={{ color: '#aaa', fontSize: '0.85em' }}>Dados Base</label>
                         <input className="input-neon" type="number" value={dados} onChange={e => setDados(e.target.value)} />
@@ -150,15 +151,24 @@ export default function AcertoPanel() {
                         <input className="input-neon" type="number" value={faces} onChange={e => setFaces(e.target.value)} />
                     </div>
                     <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Proficiência</label>
-                        <input className="input-neon" type="number" value={proficiencia} onChange={e => setProficiencia(e.target.value)} />
+                        <label style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold' }}>Arma Proficiente?</label>
+                        <div style={{ display: 'flex', alignItems: 'center', height: '34px' }}>
+                            <input 
+                                type="checkbox" 
+                                checked={usarProficiencia} 
+                                onChange={e => setUsarProficiencia(e.target.checked)} 
+                                style={{ transform: 'scale(1.5)', marginLeft: 10 }} 
+                                title={`Soma a sua Proficiência Global (+${profGlobal}) ao Acerto`}
+                            />
+                            {usarProficiencia && <span style={{ color: '#00ffcc', marginLeft: 8, fontWeight: 'bold' }}>+{profGlobal}</span>}
+                        </div>
                     </div>
                     <div>
                         <label style={{ color: '#aaa', fontSize: '0.85em', display: 'flex', alignItems: 'center', gap: '5px' }}>
                             Bônus Fixo / Temp.
                             {(bonusAcertoClasse > 0 || bonusMaestriaArma > 0) && (
                                 <span style={{ color: '#0f0', fontSize: '0.9em', fontWeight: 'bold', textShadow: '0 0 5px rgba(0,255,0,0.3)' }}>
-                                    (Buff Classe: +{bonusAcertoClasse + bonusMaestriaArma})
+                                    (Buff: +{bonusAcertoClasse + bonusMaestriaArma})
                                 </span>
                             )}
                         </label>
