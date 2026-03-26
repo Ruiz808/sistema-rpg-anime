@@ -1,288 +1,317 @@
-import useStore from '../stores/useStore';
-import { isFisico, isEnergia, tratarUnico } from './utils.js';
-import { resolverEfeitosEntidade } from './efeitos-resolver.js';
+import React, { useState } from 'react';
+import { ATRIBUTOS_AGRUPADOS, PROPRIEDADE_OPTIONS } from '../../core/efeitos-constants';
 
-export function getEfeitosDeClasse(ficha) {
-    let classeHeroica = (ficha.bio && ficha.bio.classe) ? String(ficha.bio.classe).toLowerCase() : '';
-    let subClasse = (ficha.bio && ficha.bio.subClasse) ? String(ficha.bio.subClasse).toLowerCase() : '';
+export default function FormasEditor({ itemRaridade, formas, formaAtivaId, configAtivaId, onSalvarForma, onDeletarForma, onAtivarForma }) {
+    const [mostrarFormas, setMostrarFormas] = useState(false);
+    const [editando, setEditando] = useState(null);
 
-    if (!classeHeroica) return [];
+    const isEspecial = ['espiritual', 'fantasma nobre'].includes((itemRaridade || '').toLowerCase());
+    const listaFormas = formas || [];
 
-    let state = useStore.getState();
-    let mestreOverrides = {};
-    
-    if (state.isMestre && state.minhaFicha?.compendioOverrides) {
-        mestreOverrides = state.minhaFicha.compendioOverrides;
-    } else if (state.personagens) {
-        for (let k of Object.keys(state.personagens)) {
-            if (state.personagens[k]?.compendioOverrides) {
-                mestreOverrides = state.personagens[k].compendioOverrides;
-                break;
-            }
-        }
-    }
-
-    let efeitos = [];
-
-    let classData = mestreOverrides[classeHeroica];
-    if (classData && classData.efeitosMatematicos) {
-        efeitos = [...classData.efeitosMatematicos];
-    }
-
-    if ((classeHeroica === 'alterego' || classeHeroica === 'pretender') && subClasse) {
-        let subClassData = mestreOverrides[subClasse];
-        if (subClassData && subClassData.efeitosMatematicos) {
-            efeitos = [...efeitos, ...subClassData.efeitosMatematicos];
-        }
-    }
-    
-    return efeitos;
-}
-
-export function getBuffs(ficha, statKey, ignorarPassivas = false, avoidLoop = false) {
-    let buffs = { base: 0, mbase: 0, mgeral: 0, mformas: 0, mabs: 0, munico: [], reducaoCusto: 0, regeneracao: 0, fontesMgeral: [] };
-    let hasBuff = { mbase: false, mgeral: false, mformas: false, mabs: false };
-
-    if (!ficha || !statKey) {
-        buffs.mbase = 1.0; buffs.mgeral = 1.0; buffs.mformas = 1.0; buffs.mabs = 1.0;
-        buffs._hasBuff = hasBuff;
-        return buffs;
-    }
-
-    let sK = String(statKey).toLowerCase();
-    let isStatFisico = ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaesp', 'carisma', 'stamina', 'constituicao'].includes(sK);
-    let isStatEnergia = ['mana', 'aura', 'chakra', 'corpo'].includes(sK);
-
-    let maxFuriaVal = 0; 
-
-    const processarEfeitos = (efeitos, origemNome) => {
-        if (!efeitos) return;
-        for (let j = 0; j < efeitos.length; j++) {
-            let e = efeitos[j];
-            if (!e) continue;
-            let prop = (e.propriedade || '').toLowerCase();
-            let atr = (e.atributo || '').toLowerCase();
-            let val = parseFloat(e.valor);
-            
-            if (isNaN(val)) val = prop.startsWith('m') ? 1.0 : 0;
-
-            let afeta = (atr === sK) ||
-                (atr === 'todos_status' && (isStatFisico || sK === 'status')) ||
-                (atr === 'todas_energias' && isStatEnergia) ||
-                (atr === 'geral') ||
-                (atr === 'dano' && sK === 'dano');
-
-            if (afeta) {
-                if (prop === 'furia_berserker') {
-                    if (val > maxFuriaVal) maxFuriaVal = val;
-                }
-                else if (prop === 'base') buffs.base += val;
-                else if (prop === 'mbase') { buffs.mbase += val; hasBuff.mbase = true; }
-                else if (prop === 'mgeral') { 
-                    buffs.mgeral += val; 
-                    hasBuff.mgeral = true; 
-                    buffs.fontesMgeral.push(`[${origemNome}] +${val}x`); 
-                }
-                else if (prop === 'mformas') { buffs.mformas += val; hasBuff.mformas = true; }
-                else if (prop === 'mabs') { buffs.mabs += val; hasBuff.mabs = true; }
-                else if (prop === 'munico') buffs.munico.push(val);
-                else if (prop === 'reducaocusto') buffs.reducaoCusto += val;
-                else if (prop === 'regeneracao') buffs.regeneracao += val;
-            }
-        }
+    const criarNovaForma = () => {
+        setEditando({
+            id: Date.now(),
+            nome: '',
+            descricao: '', // 🔥 NOVO: Lore da Forma
+            imagemUrl: '', // 🔥 NOVO: Imagem da Forma
+            acumulaFormaBase: true,
+            configs: [{
+                id: Date.now() + 1,
+                nome: 'Padrão',
+                descricao: '', // 🔥 NOVO: Lore da Configuração
+                imagemUrl: '', // 🔥 NOVO: Imagem da Configuração
+                efeitos: [], efeitosPassivos: [],
+                tAtrA: 'forca', tPropA: 'base', tValA: '',
+                tAtrP: 'forca', tPropP: 'base', tValP: ''
+            }]
+        });
+        setMostrarFormas(true);
     };
 
-    if (ficha.poderes) {
-        for (let i = 0; i < ficha.poderes.length; i++) {
-            let p = ficha.poderes[i];
-            if (!p) continue;
-            let resolved = resolverEfeitosEntidade(p);
-            if (p.ativa) processarEfeitos(resolved.efeitos, `Poder: ${p.nome}`);
-            processarEfeitos(resolved.efeitosPassivos, `Poder(Pass): ${p.nome}`);
-        }
-    }
-
-    if (ficha.inventario) {
-        for (let i = 0; i < ficha.inventario.length; i++) {
-            let item = ficha.inventario[i];
-            if (item && item.equipado) {
-                let applyBase = true;
-                let activeForm = null;
-
-                if (item.formaAtivaId && item.formas) {
-                    activeForm = item.formas.find(f => f.id === item.formaAtivaId);
-                    if (activeForm && activeForm.acumulaFormaBase === false) {
-                        applyBase = false;
-                    }
-                }
-
-                if (applyBase) {
-                    if (item.efeitos) processarEfeitos(item.efeitos, `Item: ${item.nome}`);
-                    if (item.efeitosPassivos) processarEfeitos(item.efeitosPassivos, `Item(Pass): ${item.nome}`);
-                }
-
-                if (activeForm) {
-                    let activeConfig = null;
-                    if (item.configAtivaId) {
-                        activeConfig = (activeForm.configs || []).find(c => c.id === item.configAtivaId);
-                    }
-                    if (!activeConfig && activeForm.configs && activeForm.configs.length > 0) {
-                        activeConfig = activeForm.configs[0];
-                    }
-
-                    if (activeConfig) {
-                        if (activeConfig.efeitos) processarEfeitos(activeConfig.efeitos, `[Bankai] ${activeForm.nome || ''} - ${activeConfig.nome || ''}`);
-                        if (activeConfig.efeitosPassivos) processarEfeitos(activeConfig.efeitosPassivos, `[Bankai Passivo] ${activeForm.nome || ''} - ${activeConfig.nome || ''}`);
-                    } else {
-                        // Retrocompatibilidade se for uma forma antiga gravada sem configs!
-                        if (activeForm.efeitos) processarEfeitos(activeForm.efeitos, `[Bankai] ${activeForm.nome || ''}`);
-                        if (activeForm.efeitosPassivos) processarEfeitos(activeForm.efeitosPassivos, `[Bankai Passivo] ${activeForm.nome || ''}`);
-                    }
-                }
-            }
-        }
-    }
-
-    if (!ignorarPassivas && ficha.passivas) {
-        for (let i = 0; i < ficha.passivas.length; i++) {
-            let p = ficha.passivas[i];
-            if (p && p.efeitos) processarEfeitos(p.efeitos, `Passiva: ${p.nome}`);
-        }
-    }
-
-    processarEfeitos(getEfeitosDeClasse(ficha), `Classe Mística`);
-
-    if (maxFuriaVal > 0 && !avoidLoop) {
-        let rawMaxVida = getMaximo(ficha, 'vida', true); 
-        let strVal = String(Math.floor(rawMaxVida));
-        let pVit = Math.max(0, strVal.length - 8);
+    const iniciarEdicao = (forma) => {
+        if (!forma) return;
+        const copia = JSON.parse(JSON.stringify(forma));
         
-        let maxVida = pVit > 0 ? Math.floor(rawMaxVida / Math.pow(10, pVit)) : rawMaxVida;
-        let atualVida = ficha.vida?.atual ?? maxVida;
+        copia.descricao = copia.descricao || '';
+        copia.imagemUrl = copia.imagemUrl || '';
+
+        copia.configs = (copia.configs || []).map(c => ({
+            ...c,
+            descricao: c.descricao || '',
+            imagemUrl: c.imagemUrl || '',
+            efeitos: c.efeitos || [], efeitosPassivos: c.efeitosPassivos || [],
+            tAtrA: c.tAtrA || 'forca', tPropA: c.tPropA || 'base', tValA: c.tValA || '',
+            tAtrP: c.tAtrP || 'forca', tPropP: c.tPropP || 'base', tValP: c.tValP || ''
+        }));
         
-        let percLost = maxVida > 0 ? Math.max(0, ((maxVida - atualVida) / maxVida) * 100) : 0;
-        
-        let furiaMax = (ficha.combate && ficha.combate.furiaMax) !== undefined 
-                        ? parseFloat(ficha.combate.furiaMax) 
-                        : 0;
-                        
-        let percEfetivo = Math.floor(Math.max(percLost, furiaMax));
-        
-        let multiplicadorGanho = 0;
-        if (percEfetivo === 1) {
-            multiplicadorGanho = maxFuriaVal; 
-        } else if (percEfetivo >= 2) {
-            multiplicadorGanho = percEfetivo; 
+        if (!copia.configs.length) {
+            copia.configs.push({
+                id: Date.now(), nome: 'Padrão', 
+                descricao: '', imagemUrl: '',
+                efeitos: copia.efeitos || [], 
+                efeitosPassivos: copia.efeitosPassivos || [],
+                tAtrA: 'forca', tPropA: 'base', tValA: '', tAtrP: 'forca', tPropP: 'base', tValP: ''
+            });
         }
-        
-        buffs.mgeral += multiplicadorGanho;
-        if (multiplicadorGanho > 0) {
-            hasBuff.mgeral = true;
-            buffs.fontesMgeral.push(`[Fúria Berserker] +${multiplicadorGanho}x`); 
-        }
-    }
-
-    if (!hasBuff.mbase) buffs.mbase = 1.0;
-    if (!hasBuff.mgeral) buffs.mgeral = 1.0;
-    if (!hasBuff.mformas) buffs.mformas = 1.0;
-    if (!hasBuff.mabs) buffs.mabs = 1.0;
-
-    buffs._hasBuff = hasBuff;
-    return buffs;
-}
-
-export function getPoderesDefesa(ficha, tipo) {
-    let t = 0;
-    if (!ficha || !ficha.poderes) return 0;
-    
-    for (let i = 0; i < ficha.poderes.length; i++) {
-        let p = ficha.poderes[i];
-        if (p && p.ativa) {
-            let resolved = resolverEfeitosEntidade(p);
-            for (let j = 0; j < resolved.efeitos.length; j++) {
-                if (resolved.efeitos[j] && (resolved.efeitos[j].propriedade || '').toLowerCase() === tipo) {
-                    t += (parseFloat(resolved.efeitos[j].valor) || 0);
-                }
-            }
-        }
-    }
-    
-    let efeitosClasse = getEfeitosDeClasse(ficha);
-    for (let j = 0; j < efeitosClasse.length; j++) {
-        if ((efeitosClasse[j].propriedade || '').toLowerCase() === tipo) {
-            t += (parseFloat(efeitosClasse[j].valor) || 0);
-        }
-    }
-    
-    return t;
-}
-
-export function getPoderTotalDaAbaPoderes(ficha, statKey) {
-    let b = getBuffs(ficha, statKey);
-    let mU = 1.0;
-    for (let i = 0; i < b.munico.length; i++) mU *= b.munico[i];
-
-    let mB = b._hasBuff.mbase ? b.mbase : 1.0;
-    let mG = b._hasBuff.mgeral ? b.mgeral : 1.0;
-    let mF = b._hasBuff.mformas ? b.mformas : 1.0;
-    let mA = b._hasBuff.mabs ? b.mabs : 1.0;
-
-    return mB * mG * mF * mA * mU;
-}
-
-export function isStatBuffed(ficha, statKey) {
-    if (statKey === 'status') {
-        let sFisicos = ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'];
-        for (let i = 0; i < sFisicos.length; i++) {
-            if (getPoderTotalDaAbaPoderes(ficha, sFisicos[i]) > 1.0) return true;
-        }
-        return false;
-    } else {
-        return getPoderTotalDaAbaPoderes(ficha, statKey) > 1.0;
-    }
-}
-
-export function getRawBase(ficha, statKey) {
-    if (!ficha || !statKey) return 0;
-    let s = ficha[statKey];
-    return (s && s.base) ? parseFloat(s.base) : 0;
-}
-
-export function getEfetivoBase(ficha, statKey, avoidLoop = false) {
-    let rawBase = getRawBase(ficha, statKey);
-    if (isNaN(rawBase)) rawBase = 0;
-    return rawBase + getBuffs(ficha, statKey, false, avoidLoop).base;
-}
-
-export function getMultiplicadorTotal(ficha, k, avoidLoop = false) {
-    if (!ficha || !k) return 1.0;
-    let s = ficha[k] || {};
-    let b = getBuffs(ficha, k, false, avoidLoop);
-
-    const calcAdd = (fichaVal, buffSum, hasBuffFlag) => {
-        let v = parseFloat(fichaVal) || 1.0;
-        if (!hasBuffFlag) return v; 
-        return (v === 1.0 ? 0 : v) + buffSum; 
+        setEditando(copia);
     };
 
-    let mB = calcAdd(s.mBase, b.mbase, b._hasBuff.mbase);
-    let mG = calcAdd(s.mGeral, b.mgeral, b._hasBuff.mgeral);
-    let mF = calcAdd(s.mFormas, b.mformas, b._hasBuff.mformas);
-    let mA = calcAdd(s.mAbsoluto, b.mabs, b._hasBuff.mabs);
+    const cancelarEdicao = () => setEditando(null);
 
-    let u1 = tratarUnico(s.mUnico || "1.0");
-    let uniFicha = 1.0;
-    for (let i = 0; i < u1.length; i++) { uniFicha *= u1[i]; }
+    const handleFormaChange = (campo, valor) => setEditando({ ...editando, [campo]: valor });
 
-    let mU = 1.0;
-    for (let i = 0; i < b.munico.length; i++) mU *= b.munico[i];
+    const addConfig = () => {
+        setEditando({
+            ...editando,
+            configs: [...(editando.configs || []), {
+                id: Date.now(), nome: 'Nova Configuração', descricao: '', imagemUrl: '', efeitos: [], efeitosPassivos: [],
+                tAtrA: 'forca', tPropA: 'base', tValA: '', tAtrP: 'forca', tPropP: 'base', tValP: ''
+            }]
+        });
+    };
 
-    return mB * mG * mF * mA * uniFicha * mU;
-}
+    const removerConfig = (cIdx) => {
+        const novas = (editando.configs || []).filter((_, i) => i !== cIdx);
+        setEditando({ ...editando, configs: novas });
+    };
 
-export function getMaximo(ficha, k, avoidLoop = false) {
-    let b = getEfetivoBase(ficha, k, avoidLoop);
-    let mult = getMultiplicadorTotal(ficha, k, avoidLoop);
-    let mx = Math.floor(b * mult);
-    return isNaN(mx) ? 0 : mx;
+    const handleConfigChange = (cIdx, campo, valor) => {
+        const novas = [...(editando.configs || [])];
+        if(novas[cIdx]) novas[cIdx][campo] = valor;
+        setEditando({ ...editando, configs: novas });
+    };
+
+    const addEfeitoToConfig = (cIdx, isAtivo) => {
+        const novas = [...(editando.configs || [])];
+        const cfg = novas[cIdx];
+        if (!cfg) return;
+        
+        if (isAtivo) {
+            if (!cfg.tValA) return alert('Preencha o valor do efeito!');
+            if (!cfg.efeitos) cfg.efeitos = [];
+            cfg.efeitos.push({ atributo: cfg.tAtrA || 'forca', propriedade: cfg.tPropA || 'base', valor: cfg.tValA });
+            cfg.tValA = '';
+        } else {
+            if (!cfg.tValP) return alert('Preencha o valor do efeito passivo!');
+            if (!cfg.efeitosPassivos) cfg.efeitosPassivos = [];
+            cfg.efeitosPassivos.push({ atributo: cfg.tAtrP || 'forca', propriedade: cfg.tPropP || 'base', valor: cfg.tValP });
+            cfg.tValP = '';
+        }
+        setEditando({ ...editando, configs: novas });
+    };
+
+    const removeEfeitoFromConfig = (cIdx, eIdx, isAtivo) => {
+        const novas = [...(editando.configs || [])];
+        if (!novas[cIdx]) return;
+        
+        if (isAtivo) {
+            novas[cIdx].efeitos = (novas[cIdx].efeitos || []).filter((_, i) => i !== eIdx);
+        } else {
+            novas[cIdx].efeitosPassivos = (novas[cIdx].efeitosPassivos || []).filter((_, i) => i !== eIdx);
+        }
+        setEditando({ ...editando, configs: novas });
+    };
+
+    const salvar = () => {
+        if (!editando.nome || !editando.nome.trim()) return alert('Dê um nome à Forma!');
+        const formaLimpa = JSON.parse(JSON.stringify(editando));
+        
+        formaLimpa.configs = (formaLimpa.configs || []).map(c => {
+            delete c.tAtrA; delete c.tPropA; delete c.tValA;
+            delete c.tAtrP; delete c.tPropP; delete c.tValP;
+            return c;
+        });
+        
+        formaLimpa.efeitos = []; 
+        formaLimpa.efeitosPassivos = [];
+
+        onSalvarForma(formaLimpa);
+        setEditando(null);
+    };
+
+    return (
+        <div style={{ marginTop: 10 }}>
+            <button className="btn-neon" onClick={() => setMostrarFormas(!mostrarFormas)} style={{ padding: '4px 12px', fontSize: '0.85em', margin: 0, borderColor: '#ff8800', color: '#ff8800' }}>
+                {mostrarFormas ? '▼' : '▶'} FORMAS MÍSTICAS ({listaFormas.length})
+            </button>
+
+            {mostrarFormas && (
+                <div style={{ marginTop: 8, padding: 10, background: 'rgba(255,136,0,0.05)', borderLeft: '3px solid #ff8800', borderRadius: 4 }}>
+                    
+                    {/* MODO VISÃO LORE / COMPÊNDIO */}
+                    {!editando ? (
+                        <>
+                            {listaFormas.map(forma => {
+                                if (!forma) return null;
+                                const isAtiva = formaAtivaId === forma.id;
+                                const totalEfeitos = (forma.configs || []).reduce((acc, c) => acc + ((c.efeitos || []).length) + ((c.efeitosPassivos || []).length), 0);
+
+                                return (
+                                    <div key={forma.id} style={{ marginBottom: 15, padding: '15px', background: isAtiva ? 'rgba(255,136,0,0.15)' : 'rgba(0,0,0,0.4)', borderRadius: 4, borderLeft: isAtiva ? '4px solid #ff8800' : '4px solid #555' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                                            <div style={{ display: 'flex', gap: 15 }}>
+                                                {forma.imagemUrl && (
+                                                    <img src={forma.imagemUrl} alt={forma.nome} style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8, border: '2px solid #ff8800' }} />
+                                                )}
+                                                <div>
+                                                    <h3 style={{ margin: 0, color: isAtiva ? '#ff8800' : '#aaa', textShadow: isAtiva ? '0 0 10px #ff8800' : 'none' }}>{forma.nome || '(Sem Nome)'}</h3>
+                                                    <span style={{ color: '#666', fontSize: '0.85em' }}>{forma.acumulaFormaBase !== false ? '+ Acumula com os bónus base da arma' : 'Substitui os bónus base da arma'}</span>
+                                                    {forma.descricao && <p style={{ color: '#ccc', fontSize: '0.9em', fontStyle: 'italic', margin: '8px 0 0 0', whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>{forma.descricao}</p>}
+                                                </div>
+                                            </div>
+                                            <div style={{ display: 'flex', gap: 6, flexDirection: 'column' }}>
+                                                <button className="btn-neon btn-blue" style={{ padding: '3px 12px', fontSize: '0.8em', margin: 0 }} onClick={() => iniciarEdicao(forma)}>EDITAR</button>
+                                                <button className="btn-neon btn-red" style={{ padding: '3px 12px', fontSize: '0.8em', margin: 0 }} onClick={() => onDeletarForma(forma.id)}>APAGAR</button>
+                                            </div>
+                                        </div>
+
+                                        {/* RENDERIZAÇÃO DAS CONFIGURAÇÕES (PECADOS) COM IMAGENS */}
+                                        <div style={{ marginTop: 15, display: 'grid', gridTemplateColumns: '1fr', gap: '10px' }}>
+                                            {(forma.configs || []).map(cfg => {
+                                                if (!cfg) return null;
+                                                const isConfigAtiva = isAtiva && configAtivaId === cfg.id;
+                                                return (
+                                                    <div key={cfg.id} style={{ background: isConfigAtiva ? 'rgba(255, 204, 0, 0.1)' : 'rgba(0,0,0,0.5)', border: isConfigAtiva ? '1px solid #ffcc00' : '1px solid #333', padding: 10, borderRadius: 5, display: 'flex', gap: 15, alignItems: 'center' }}>
+                                                        {cfg.imagemUrl && (
+                                                            <img src={cfg.imagemUrl} alt={cfg.nome} style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 4, border: '1px solid #ffcc00' }} />
+                                                        )}
+                                                        <div style={{ flex: 1 }}>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                <strong style={{ color: isConfigAtiva ? '#ffcc00' : '#ffaa00', fontSize: '1.1em' }}>{cfg.nome || 'Modo Padrão'}</strong>
+                                                                <button 
+                                                                    className={`btn-neon ${isConfigAtiva ? 'btn-gold' : ''}`}
+                                                                    onClick={() => onAtivarForma(isConfigAtiva ? null : forma.id, isConfigAtiva ? null : cfg.id)}
+                                                                    style={{ padding: '4px 12px', fontSize: '0.8em', margin: 0, borderColor: isConfigAtiva ? '#ffcc00' : '#444', color: isConfigAtiva ? '#fff' : '#aaa' }}
+                                                                >
+                                                                    {isConfigAtiva ? 'DESATIVAR MODO' : 'ATIVAR MODO'}
+                                                                </button>
+                                                            </div>
+                                                            {cfg.descricao && <p style={{ color: '#aaa', fontSize: '0.85em', margin: '5px 0 0 0', whiteSpace: 'pre-wrap', lineHeight: '1.3' }}>{cfg.descricao}</p>}
+                                                            
+                                                            {/* Lista de bónus microscópica para não poluir */}
+                                                            <div style={{ display: 'flex', gap: 10, marginTop: 5, flexWrap: 'wrap' }}>
+                                                                {(cfg.efeitos || []).length > 0 && <span style={{ color: '#0ff', fontSize: '0.7em' }}>⚡ {cfg.efeitos.length} Ativos</span>}
+                                                                {(cfg.efeitosPassivos || []).length > 0 && <span style={{ color: '#f0f', fontSize: '0.7em' }}>🛡️ {cfg.efeitosPassivos.length} Passivos</span>}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            <button className="btn-neon btn-gold" onClick={criarNovaForma} style={{ width: '100%', padding: '8px', fontSize: '1em' }}>+ FORJAR NOVA FORMA MÍSTICA</button>
+                        </>
+
+                    // MODO EDIÇÃO DO MESTRE
+                    ) : (
+                        <div style={{ background: 'rgba(20,20,20,0.9)', borderLeft: '4px solid #00ffcc', padding: 15, borderRadius: 4 }}>
+                            <h4 style={{ color: '#00ffcc', margin: '0 0 15px 0', borderBottom: '1px solid #00ffcc40', paddingBottom: 5 }}>
+                                {editando.id ? '⚙️ Editando Forma Base' : '⚙️ Forjando Nova Forma'}
+                            </h4>
+                            
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+                                <div>
+                                    <label style={{ color: '#00ffcc', fontSize: '0.8em' }}>Nome da Forma</label>
+                                    <input className="input-neon" value={editando.nome || ''} onChange={e => handleFormaChange('nome', e.target.value)} placeholder="Ex: Forma dos Pecados" style={{ width: '100%', borderColor: '#00ffcc' }} />
+                                </div>
+                                <div>
+                                    <label style={{ color: '#00ffcc', fontSize: '0.8em' }}>URL da Imagem da Forma (Opcional)</label>
+                                    <input className="input-neon" value={editando.imagemUrl || ''} onChange={e => handleFormaChange('imagemUrl', e.target.value)} placeholder="https://imgur.com/..." style={{ width: '100%' }} />
+                                </div>
+                            </div>
+
+                            <label style={{ color: '#aaa', fontSize: '0.85em', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 10 }}>
+                                <input type="checkbox" checked={editando.acumulaFormaBase !== false} onChange={e => handleFormaChange('acumulaFormaBase', e.target.checked)} />
+                                <span style={{ color: '#ffcc00' }}>Acumula com os atributos base da arma</span> (Se desmarcar, a arma perde os buffs normais enquanto transformada)
+                            </label>
+
+                            <label style={{ color: '#00ffcc', fontSize: '0.8em' }}>Lore / Descrição Visual da Forma</label>
+                            <textarea className="input-neon" value={editando.descricao || ''} onChange={e => handleFormaChange('descricao', e.target.value)} placeholder="Descreva como a arma muda fisicamente..." style={{ width: '100%', minHeight: '60px', marginBottom: 20, whiteSpace: 'pre-wrap' }} />
+
+                            <h4 style={{ color: '#ffaa00', margin: '0 0 10px 0', borderBottom: '1px solid #ffaa0040', paddingBottom: 5 }}>
+                                ⚙️ Configurações / Modos desta Forma
+                            </h4>
+
+                            {(editando.configs || []).map((cfg, cIdx) => {
+                                if (!cfg) return null;
+                                return (
+                                <div key={cfg.id} style={{ background: 'rgba(0,0,0,0.6)', border: '1px solid #444', padding: 15, marginBottom: 20, borderRadius: 6 }}>
+                                    
+                                    <div style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'flex-end' }}>
+                                        <div style={{ flex: 1 }}>
+                                            <label style={{ color: '#ffaa00', fontSize: '0.8em' }}>Nome do Modo / Pecado</label>
+                                            <input className="input-neon" value={cfg.nome || ''} onChange={e => handleConfigChange(cIdx, 'nome', e.target.value)} placeholder="Ex: Ganância, Tiamat Verde..." style={{ width: '100%', borderColor: '#ffaa00', color: '#ffaa00' }} />
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <label style={{ color: '#ffaa00', fontSize: '0.8em' }}>URL da Imagem do Modo (Opcional)</label>
+                                            <input className="input-neon" value={cfg.imagemUrl || ''} onChange={e => handleConfigChange(cIdx, 'imagemUrl', e.target.value)} placeholder="https://imgur.com/..." style={{ width: '100%' }} />
+                                        </div>
+                                        {(editando.configs || []).length > 1 && (
+                                            <button className="btn-neon btn-red" onClick={() => removerConfig(cIdx)} style={{ padding: '0 15px', height: '36px', margin: 0 }}>APAGAR MODO</button>
+                                        )}
+                                    </div>
+
+                                    <label style={{ color: '#ffaa00', fontSize: '0.8em' }}>Mecânicas e Lore deste Modo</label>
+                                    <textarea className="input-neon" value={cfg.descricao || ''} onChange={e => handleConfigChange(cIdx, 'descricao', e.target.value)} placeholder="O que este modo faz mecanicamente ou na história? Ex: 'Área de 4.5m reduz a movimentação...'" style={{ width: '100%', minHeight: '60px', marginBottom: 15, whiteSpace: 'pre-wrap' }} />
+
+                                    <h6 style={{ color: '#0ff', margin: '0 0 5px 0', fontSize: '0.85em' }}>Efeitos Ativos (Motor)</h6>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 80px auto', gap: 6, marginBottom: 5 }}>
+                                        <select className="input-neon" style={{ padding: 4, fontSize: '0.8em' }} value={cfg.tAtrA || 'forca'} onChange={e => handleConfigChange(cIdx, 'tAtrA', e.target.value)}>
+                                            {ATRIBUTOS_AGRUPADOS.map(g => <optgroup key={g.label} label={g.label}>{g.options.map(a => <option key={a} value={a}>{a.replace('_', ' ').toUpperCase()}</option>)}</optgroup>)}
+                                        </select>
+                                        <select className="input-neon" style={{ padding: 4, fontSize: '0.8em' }} value={cfg.tPropA || 'base'} onChange={e => handleConfigChange(cIdx, 'tPropA', e.target.value)}>
+                                            {PROPRIEDADE_OPTIONS.map(p => <option key={p} value={p}>{p.toUpperCase()}</option>)}
+                                        </select>
+                                        <input className="input-neon" type="text" placeholder="Val" style={{ padding: 4, fontSize: '0.8em' }} value={cfg.tValA || ''} onChange={e => handleConfigChange(cIdx, 'tValA', e.target.value)} />
+                                        <button className="btn-neon btn-blue" onClick={() => addEfeitoToConfig(cIdx, true)} style={{ padding: '4px 10px', margin: 0 }}>+</button>
+                                    </div>
+                                    {(cfg.efeitos || []).map((e, eIdx) => {
+                                        if(!e) return null;
+                                        return (
+                                        <div key={eIdx} style={{ color: '#0ff', fontSize: '0.8em', display: 'flex', justifyContent: 'space-between', background: 'rgba(0,255,255,0.05)', padding: 4, marginBottom: 2 }}>
+                                            <span>[{(e.atributo || '').replace('_', ' ').toUpperCase()}] {(e.propriedade || '').toUpperCase()}: {e.valor}</span>
+                                            <span style={{ color: '#f00', cursor: 'pointer' }} onClick={() => removeEfeitoFromConfig(cIdx, eIdx, true)}>X</span>
+                                        </div>
+                                    )})}
+
+                                    <h6 style={{ color: '#f0f', margin: '15px 0 5px 0', fontSize: '0.85em' }}>Efeitos Passivos (Motor)</h6>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 80px auto', gap: 6, marginBottom: 5 }}>
+                                        <select className="input-neon" style={{ padding: 4, fontSize: '0.8em' }} value={cfg.tAtrP || 'forca'} onChange={e => handleConfigChange(cIdx, 'tAtrP', e.target.value)}>
+                                            {ATRIBUTOS_AGRUPADOS.map(g => <optgroup key={g.label} label={g.label}>{g.options.map(a => <option key={a} value={a}>{a.replace('_', ' ').toUpperCase()}</option>)}</optgroup>)}
+                                        </select>
+                                        <select className="input-neon" style={{ padding: 4, fontSize: '0.8em' }} value={cfg.tPropP || 'base'} onChange={e => handleConfigChange(cIdx, 'tPropP', e.target.value)}>
+                                            {PROPRIEDADE_OPTIONS.map(p => <option key={p} value={p}>{p.toUpperCase()}</option>)}
+                                        </select>
+                                        <input className="input-neon" type="text" placeholder="Val" style={{ padding: 4, fontSize: '0.8em' }} value={cfg.tValP || ''} onChange={e => handleConfigChange(cIdx, 'tValP', e.target.value)} />
+                                        <button className="btn-neon" onClick={() => addEfeitoToConfig(cIdx, false)} style={{ padding: '4px 10px', margin: 0, borderColor: '#f0f', color: '#f0f' }}>+</button>
+                                    </div>
+                                    {(cfg.efeitosPassivos || []).map((e, eIdx) => {
+                                        if(!e) return null;
+                                        return (
+                                        <div key={eIdx} style={{ color: '#f0f', fontSize: '0.8em', display: 'flex', justifyContent: 'space-between', background: 'rgba(255,0,255,0.05)', padding: 4, marginBottom: 2 }}>
+                                            <span>[{(e.atributo || '').replace('_', ' ').toUpperCase()}] {(e.propriedade || '').toUpperCase()}: {e.valor}</span>
+                                            <span style={{ color: '#f00', cursor: 'pointer' }} onClick={() => removeEfeitoFromConfig(cIdx, eIdx, false)}>X</span>
+                                        </div>
+                                    )})}
+                                </div>
+                            )})}
+
+                            {isEspecial && (
+                                <button className="btn-neon btn-small" onClick={addConfig} style={{ width: '100%', borderStyle: 'dashed', borderColor: '#ffaa00', color: '#ffaa00', marginBottom: 15, padding: '10px' }}>
+                                    + ADICIONAR NOVA CONFIGURAÇÃO (Pecado, Elemento, Estágio...)
+                                </button>
+                            )}
+
+                            <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+                                <button className="btn-neon btn-gold" onClick={salvar} style={{ flex: 1, padding: '10px', fontSize: '1.1em' }}>SALVAR FORMA NO COMPÊNDIO</button>
+                                <button className="btn-neon btn-red" onClick={cancelarEdicao} style={{ flex: 1, padding: '10px', fontSize: '1.1em' }}>CANCELAR</button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
 }
