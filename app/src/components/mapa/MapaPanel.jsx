@@ -71,7 +71,6 @@ export default function MapaPanel() {
     const [mapVantagens, setMapVantagens] = useState(minhaFicha.ataqueConfig?.vantagens || 0);
     const [mapDesvantagens, setMapDesvantagens] = useState(minhaFicha.ataqueConfig?.desvantagens || 0);
     
-    // 🔥 ESTADOS PARA CRIAR NOVA CENA (UPLOAD)
     const [novaCenaNome, setNovaCenaNome] = useState('');
     const [novaCenaEscala, setNovaCenaEscala] = useState(1.5);
     const [novaCenaUnidade, setNovaCenaUnidade] = useState('m');
@@ -80,7 +79,7 @@ export default function MapaPanel() {
     const [dadoAnim, setDadoAnim] = useState({ ativo: false, numero: 20, finalResult: null, cor: '#00ffcc', quemRolou: '' });
     const prevFeedLen = useRef(feedCombate.length);
 
-    // 🔥 O CÉREBRO DA CENA ATUAL
+    // O CÉREBRO DA CENA ATUAL
     const cenaAtivaId = cenario?.ativa || 'default';
     const cenaAtual = cenario?.lista?.[cenaAtivaId] || { nome: 'Desconhecido', img: '', escala: 1.5, unidade: 'm' };
 
@@ -179,7 +178,6 @@ export default function MapaPanel() {
         salvarFichaSilencioso();
     }
 
-    // 🔥 GESTÃO DE CENAS PELO MESTRE (COM UPLOAD!)
     const handleUploadNovaCena = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -204,7 +202,7 @@ export default function MapaPanel() {
                 unidade: novaCenaUnidade
             };
             
-            novoCenario.ativa = novaCenaId; // Muda ativamente
+            novoCenario.ativa = novaCenaId; 
             salvarCenarioCompleto(novoCenario);
             enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `🗺️ Os heróis chegaram a: ${novaCenaNome}!` });
             
@@ -304,10 +302,12 @@ export default function MapaPanel() {
         return lista;
     }, [personagens]);
 
+    // 🔥 O SEGREDO DO PASSAPORTE DIMENSIONAL (cenaId)
     function handleCellClick(x, y) {
         if (isMestre && alvoSelecionado && dummies[alvoSelecionado]) {
             const d = dummies[alvoSelecionado];
-            salvarDummie(alvoSelecionado, { ...d, posicao: { x, y } });
+            // Move e prende o Dummie à cena atual
+            salvarDummie(alvoSelecionado, { ...d, posicao: { x, y }, cenaId: cenaAtivaId });
         } else {
             const z = parseInt(altitudeInput) || 0;
             updateFicha((ficha) => {
@@ -315,6 +315,8 @@ export default function MapaPanel() {
                 ficha.posicao.x = x;
                 ficha.posicao.y = y;
                 ficha.posicao.z = z;
+                // Move e prende o Jogador à cena atual
+                ficha.posicao.cenaId = cenaAtivaId; 
             });
             salvarFichaSilencioso();
         }
@@ -386,30 +388,35 @@ export default function MapaPanel() {
         enviarParaFeed(feedData); 
     }
 
+    // 🔥 FILTRA JOGADORES PELA CENA ATUAL
     const tokenMap = useMemo(() => {
         const map = {};
         const nomes = Object.keys(jogadores);
         for (let i = 0; i < nomes.length; i++) {
             const nome = nomes[i];
             const pos = jogadores[nome].posicao;
-            if (pos && pos.x !== undefined) {
+            const pCena = pos?.cenaId || 'default'; 
+            if (pos && pos.x !== undefined && pCena === cenaAtivaId) {
                 const key = `${pos.x},${pos.y}`;
                 if (!map[key]) map[key] = [];
                 map[key].push({ nome, ficha: jogadores[nome] });
             }
         }
         return map;
-    }, [jogadores]);
+    }, [jogadores, cenaAtivaId]);
 
+    // 🔥 FILTRA JOGADORES NO 3D PELA CENA ATUAL
     const tokens3D = useMemo(() => {
-        return Object.entries(jogadores).map(([nome, ficha]) => ({
-            nome,
-            x: ficha.posicao?.x || 0,
-            y: ficha.posicao?.y || 0,
-            z: ficha.posicao?.z || 0,
-            cor: corDoJogador(nome)
-        }));
-    }, [jogadores]);
+        return Object.entries(jogadores)
+            .filter(([nome, ficha]) => (ficha.posicao?.cenaId || 'default') === cenaAtivaId)
+            .map(([nome, ficha]) => ({
+                nome,
+                x: ficha.posicao?.x || 0,
+                y: ficha.posicao?.y || 0,
+                z: ficha.posicao?.z || 0,
+                cor: corDoJogador(nome)
+            }));
+    }, [jogadores, cenaAtivaId]);
 
     const jogadorDaVez = ordemIniciativa.length > 0 ? ordemIniciativa[turnoAtualIndex % ordemIniciativa.length] : null;
     const infoDaVez = jogadorDaVez ? getAvatarInfo(jogadorDaVez.ficha) : null;
@@ -698,12 +705,10 @@ export default function MapaPanel() {
 
             <div style={{ flex: '1 1 70%', minWidth: 0 }}>
                 
-               {/* 🔥 🎬 GERENCIADOR DE CENAS (Mestre) 🔥 */}
                {isMestre && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 15, marginBottom: 15, background: 'rgba(0,0,0,0.5)', padding: 15, borderRadius: 5, border: '1px solid #ffcc00' }}>
                     <h3 style={{ color: '#ffcc00', margin: 0 }}>🎬 Gerenciador de Cenas</h3>
                     
-                    {/* Lista de Cenas Existentes */}
                     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', background: '#0a0a0a', padding: 10, borderRadius: 5 }}>
                         {Object.entries(cenario?.lista || {}).map(([id, cena]) => {
                             const isAtiva = cenario.ativa === id;
@@ -723,7 +728,6 @@ export default function MapaPanel() {
                         })}
                     </div>
 
-                    {/* Criar Nova Cena */}
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', borderTop: '1px solid #444', paddingTop: 10 }}>
                         <span style={{ color: '#ffcc00', fontWeight: 'bold' }}>Nova Cena:</span>
                         <input className="input-neon" type="text" placeholder="Nome (Ex: Taverna)" value={novaCenaNome} onChange={e => setNovaCenaNome(e.target.value)} style={{ width: 150, padding: 5 }}/>
@@ -784,7 +788,6 @@ export default function MapaPanel() {
                         const dv = parseInt(document.getElementById('dummieDef').value) || 10;
                         const vHp = document.getElementById('dummieVisivel').value;
                         const id = 'dummie_' + Date.now();
-                        // 🔥 Prende o Dummie à cena ativa atual
                         salvarDummie(id, { nome: n, hpMax: h, hpAtual: h, tipoDefesa: dt, valorDefesa: dv, visibilidadeHp: vHp, cenaId: cenaAtivaId, posicao: { x: 0, y: 0 } });
                     }} style={{ padding: '5px 15px', margin: 0 }}>
                     + Injetar na Cena
@@ -800,7 +803,6 @@ export default function MapaPanel() {
                         <button className="btn-neon" onClick={() => alterarZoom(1)} style={{ padding: '5px 15px' }} disabled={modo3D}>+</button>
                     </div>
 
-                    {/* 🔥 INDICADOR DE ESCALA GLOBAL */}
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center', borderLeft: '2px solid #333', paddingLeft: 20 }}>
                         <span style={{ color: '#ffcc00', fontWeight: 'bold' }}>Cena Atual:</span>
                         <span style={{ color: '#fff', fontWeight: 'bold', background: 'rgba(0,0,0,0.5)', padding: '2px 8px', borderRadius: 4 }}>
@@ -851,10 +853,11 @@ export default function MapaPanel() {
                             const key = `${cell.x},${cell.y}`;
                             const tokens = tokenMap[key] || [];
                             
-                            // 🔥 Dummies filtrados pela Cena Atual!
-                            const cellDummies = Object.entries(dummies || {}).filter(([id, d]) => 
-                                d.posicao?.x === cell.x && d.posicao?.y === cell.y && (!d.cenaId || d.cenaId === cenaAtivaId)
-                            );
+                            // 🔥 FILTRO DE DUMMIES PELA CENA
+                            const cellDummies = Object.entries(dummies || {}).filter(([id, d]) => {
+                                const dCena = d.cenaId || 'default';
+                                return d.posicao?.x === cell.x && d.posicao?.y === cell.y && dCena === cenaAtivaId;
+                            });
 
                             return (
                                 <div key={key} className="map-cell" data-x={cell.x} data-y={cell.y} onClick={() => handleCellClick(cell.x, cell.y)}
