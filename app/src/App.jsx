@@ -49,7 +49,7 @@ function calcularCA(ficha, tipo) {
     return Math.floor(base + bonus);
 }
 
-// 🔥 PAINEL DO MESTRE AVANÇADO (COM FILTROS DE MESAS) 🔥
+// 🔥 PAINEL DO MESTRE AVANÇADO (COM FILTROS DE MESAS E LORE) 🔥
 function MestrePanel() {
     const personagens = useStore(s => s.personagens)
     const meuNome = useStore(s => s.meuNome)
@@ -117,6 +117,9 @@ function MestrePanel() {
 
     const fmt = (n) => Number(n || 0).toLocaleString('pt-BR');
 
+    // Título dinâmico dependendo da aba escolhida!
+    const tituloVisor = mesaVisor === 'npc' ? '👁️ Visor da Entidade' : '👁️ Visor da Realidade';
+
     return (
         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <h2 style={{ color: '#ffcc00', textShadow: '0 0 10px #ffcc00', borderBottom: '2px solid #ffcc00', paddingBottom: 10, margin: 0 }}>
@@ -151,7 +154,7 @@ function MestrePanel() {
                         </button>
                     </div>
 
-                    <h3 style={{ color: '#0088ff', margin: '0 0 15px 0' }}>👁️ Visor de Entidades ({jogadoresFiltrados.length})</h3>
+                    <h3 style={{ color: '#0088ff', margin: '0 0 15px 0' }}>{tituloVisor} ({jogadoresFiltrados.length})</h3>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '15px' }}>
                         {jogadoresFiltrados.length === 0 ? (
@@ -238,7 +241,7 @@ export default function App() {
     const setMeuNome = useStore(s => s.setMeuNome)
     const carregarDadosFicha = useStore(s => s.carregarDadosFicha)
     const abaAtiva = useStore(s => s.abaAtiva)
-    const setCenario = useStore(s => s.setCenario) 
+    const setCenario = useStore(s => s.setCenario) // 🔥 NOVO
     const setDummies = useStore(s => s.setDummies) 
     const [pronto, setPronto] = useState(false)
 
@@ -265,6 +268,7 @@ export default function App() {
         }
     }, [setDummies])
 
+    // 🔥 NOVO: Escuta as Cenas do Mapa
     useEffect(() => {
         const unsubCenario = iniciarListenerCenario((dados) => {
             setCenario(dados);
