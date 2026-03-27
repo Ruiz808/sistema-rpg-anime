@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import useStore from '../../stores/useStore';
 import { enviarParaFeed, salvarDummie, apagarFicha } from '../../services/firebase-sync';
-import { getMaximo, calcularCA } from '../../core/attributes';
+import { getMaximo } from '../../core/attributes';
+import { calcularCA } from '../combate/DefesaPanel';
 
 export default function MestrePanel() {
     const { personagens, isMestre, meuNome } = useStore();
