@@ -78,22 +78,59 @@ export default function CompendioPanel() {
     const extras = mesclarComOverrides(CLASSES_EXTRA_BASE);
     const todasClasses = [...regulares, ...extras];
 
-    // 🔥 SISTEMA DE GRAND CLASSES COM MESAS SEPARADAS 🔥
+    // 🔥 SISTEMA DE GRAND CLASSES & CANDIDATOS 🔥
     const grands = overridesCompendio.grands || {};
 
     const handleDefinirGrand = (classeId, nomeTitular) => {
         updateFicha(f => {
             if (!f.compendioOverrides) f.compendioOverrides = {};
             if (!f.compendioOverrides.grands) f.compendioOverrides.grands = {};
+            
             f.compendioOverrides.grands[`${classeId}_${mesaGrand}`] = nomeTitular;
+
+            // Se for nomeado um Grand, remover o nome dele da lista de candidatos caso esteja lá
+            if (nomeTitular) {
+                const keyCand = `${classeId}_${mesaGrand}_candidatos`;
+                const listaCandidatos = f.compendioOverrides.grands[keyCand] || [];
+                if (listaCandidatos.includes(nomeTitular)) {
+                    f.compendioOverrides.grands[keyCand] = listaCandidatos.filter(n => n !== nomeTitular);
+                }
+            }
         });
         salvarFichaSilencioso();
         
         if (nomeTitular) {
-            enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `🏛️ O Trono da Ascensão (${mesaGrand.toUpperCase()}) ressoou! ${nomeTitular.toUpperCase()} foi reconhecido(a) como o(a) novo(a) GRAND ${classeId.toUpperCase()}!` });
+            enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `🏛️ O Trono da Ascensão (${mesaGrand.toUpperCase()}) ressoou! ${nomeTitular.toUpperCase()} foi coroado(a) como GRAND ${classeId.toUpperCase()}!` });
         } else {
             enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `🩸 O Trono da Ascensão (${mesaGrand.toUpperCase()}) de GRAND ${classeId.toUpperCase()} está agora VAGO!` });
         }
+    };
+
+    const handleAdicionarCandidato = (classeId, nomeCandidato) => {
+        if (!nomeCandidato) return;
+        updateFicha(f => {
+            if (!f.compendioOverrides) f.compendioOverrides = {};
+            if (!f.compendioOverrides.grands) f.compendioOverrides.grands = {};
+            
+            const keyCand = `${classeId}_${mesaGrand}_candidatos`;
+            const lista = f.compendioOverrides.grands[keyCand] || [];
+            
+            if (!lista.includes(nomeCandidato)) {
+                f.compendioOverrides.grands[keyCand] = [...lista, nomeCandidato];
+            }
+        });
+        salvarFichaSilencioso();
+        enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `🌟 O sistema reconhece o poder divino! ${nomeCandidato.toUpperCase()} é agora oficialmente um(a) CANDIDATO(A) A GRAND ${classeId.toUpperCase()} (${mesaGrand})!` });
+    };
+
+    const handleRemoverCandidato = (classeId, nomeCandidato) => {
+        updateFicha(f => {
+            if (!f.compendioOverrides?.grands) return;
+            const keyCand = `${classeId}_${mesaGrand}_candidatos`;
+            const lista = f.compendioOverrides.grands[keyCand] || [];
+            f.compendioOverrides.grands[keyCand] = lista.filter(n => n !== nomeCandidato);
+        });
+        salvarFichaSilencioso();
     };
 
     const handleDefinirIconeGrand = (classeId, e) => {
@@ -338,6 +375,7 @@ export default function CompendioPanel() {
     const renderGrandCard = (classe) => {
         const titular = grands[`${classe.id}_${mesaGrand}`] || '';
         const customIcon = grands[`${classe.id}_${mesaGrand}_icone`]; 
+        const candidatos = grands[`${classe.id}_${mesaGrand}_candidatos`] || [];
         const isVago = !titular;
 
         const iconDisplay = customIcon ? (
@@ -346,13 +384,15 @@ export default function CompendioPanel() {
             classe.iconeUrl ? <img src={classe.iconeUrl} alt={classe.nome} style={{ width: '60px', height: '60px', objectFit: 'contain' }} /> : classe.icone
         );
 
-        // Filtra apenas os jogadores da mesa atual (ou npcs) para o dropdown
+        // Filtra os jogadores da mesa atual (ou npcs) para o dropdown do Trono e Candidatos
         const opcoesPersonagens = Object.entries(personagens || {})
             .filter(([n, f]) => {
                 const m = f?.bio?.mesa || 'presente';
                 return m === mesaGrand || m === 'npc';
             })
             .map(([n]) => n);
+
+        const disponiveisCandidatos = opcoesPersonagens.filter(n => n !== titular && !candidatos.includes(n));
 
         return (
             <div key={classe.id} style={{ 
@@ -388,36 +428,55 @@ export default function CompendioPanel() {
                 </h3>
                 <div style={{ color: '#aaa', fontSize: '0.75em', fontStyle: 'italic', marginBottom: '15px', flex: 1 }}>{classe.titulo}</div>
                 
-                <div style={{ padding: '15px 10px', background: 'rgba(0,0,0,0.5)', borderRadius: '5px', borderTop: `2px solid ${isVago ? '#333' : '#ffcc00'}`, marginTop: 'auto' }}>
-                    <div style={{ fontSize: '0.7em', color: '#888', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '5px' }}>Receptáculo {mesaGrand === 'presente' ? 'do Presente' : 'do Futuro'}</div>
+                <div style={{ padding: '15px 10px', background: 'rgba(0,0,0,0.5)', borderRadius: '5px', borderTop: `2px solid ${isVago ? '#333' : '#ffcc00'}` }}>
+                    <div style={{ fontSize: '0.7em', color: '#888', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '5px' }}>Receptáculo Divino</div>
                     
                     {isMestre ? (
                         <select 
                             className="input-neon" 
                             value={titular} 
                             onChange={(e) => handleDefinirGrand(classe.id, e.target.value)}
-                            style={{ 
-                                width: '100%', 
-                                borderColor: isVago ? '#444' : '#ffcc00', 
-                                color: isVago ? '#888' : '#fff', 
-                                fontWeight: 'bold', 
-                                textAlign: 'center',
-                                background: '#111'
-                            }}
+                            style={{ width: '100%', borderColor: isVago ? '#444' : '#ffcc00', color: isVago ? '#888' : '#fff', fontWeight: 'bold', textAlign: 'center', background: '#111' }}
                         >
                             <option value="">-- TRONO VAGO --</option>
                             {opcoesPersonagens.map(n => <option key={n} value={n}>{n}</option>)}
                         </select>
                     ) : (
-                        <div style={{ 
-                            fontSize: '1.4em', 
-                            fontWeight: 'bold', 
-                            color: isVago ? '#555' : '#fff', 
-                            textShadow: isVago ? 'none' : '0 0 10px #ffcc00',
-                            letterSpacing: '1px'
-                        }}>
+                        <div style={{ fontSize: '1.4em', fontWeight: 'bold', color: isVago ? '#555' : '#fff', textShadow: isVago ? 'none' : '0 0 10px #ffcc00', letterSpacing: '1px' }}>
                             {isVago ? 'VAGO' : titular}
                         </div>
+                    )}
+                </div>
+
+                {/* 🔥 ÁREA DOS CANDIDATOS AO TRONO 🔥 */}
+                <div style={{ marginTop: '10px', padding: '10px', background: 'rgba(0, 136, 255, 0.1)', borderRadius: '5px', borderTop: '2px solid #0088ff' }}>
+                    <div style={{ fontSize: '0.7em', color: '#0088ff', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px', fontWeight: 'bold' }}>🌟 Candidatos ao Trono</div>
+                    
+                    {candidatos.length === 0 ? (
+                        <div style={{ fontSize: '0.85em', color: '#666', fontStyle: 'italic' }}>Nenhum candidato reconhecido.</div>
+                    ) : (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', justifyContent: 'center' }}>
+                            {candidatos.map(c => (
+                                <div key={c} style={{ background: 'rgba(0,0,0,0.6)', border: '1px solid #0088ff', color: '#00ccff', padding: '2px 8px', borderRadius: '12px', fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                    {c}
+                                    {isMestre && (
+                                        <span style={{ cursor: 'pointer', color: '#ff003c', fontWeight: 'bold', marginLeft: '3px' }} onClick={() => handleRemoverCandidato(classe.id, c)} title="Remover Candidatura">×</span>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {isMestre && disponiveisCandidatos.length > 0 && (
+                        <select 
+                            className="input-neon" 
+                            onChange={(e) => { handleAdicionarCandidato(classe.id, e.target.value); e.target.value = ""; }}
+                            style={{ width: '100%', borderColor: '#0088ff', color: '#fff', marginTop: '10px', fontSize: '0.8em', padding: '4px' }}
+                            defaultValue=""
+                        >
+                            <option value="" disabled>+ Nomear Candidato...</option>
+                            {disponiveisCandidatos.map(n => <option key={n} value={n}>{n}</option>)}
+                        </select>
                     )}
                 </div>
             </div>
