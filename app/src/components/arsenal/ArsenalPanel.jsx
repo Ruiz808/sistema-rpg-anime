@@ -34,6 +34,7 @@ export default function ArsenalPanel() {
     const [bonusValor, setBonusValor] = useState('');
     const [armaDadosQtd, setArmaDadosQtd] = useState(1);
     const [armaDadosFaces, setArmaDadosFaces] = useState(20);
+    const [armaAlcance, setArmaAlcance] = useState(1); // 🔥 NOVO: Alcance da Arma
     const [armaTipo, setArmaTipo] = useState('espada');
     const [raridade, setRaridade] = useState('comum');
 
@@ -98,6 +99,7 @@ export default function ArsenalPanel() {
                     if (tipoItem === 'arma') {
                         ficha.inventario[ix].dadosQtd = parseInt(armaDadosQtd) || 1;
                         ficha.inventario[ix].dadosFaces = parseInt(armaDadosFaces) || 20;
+                        ficha.inventario[ix].alcance = parseFloat(armaAlcance) || 1; // 🔥 Salva Alcance
                         ficha.inventario[ix].efeitos = JSON.parse(JSON.stringify(efeitosTempArsenal));
                         ficha.inventario[ix].efeitosPassivos = JSON.parse(JSON.stringify(efeitosTempPassivosArsenal));
                     } else if (deveLimparEfeitos) {
@@ -117,6 +119,7 @@ export default function ArsenalPanel() {
                     raridade: raridade,
                     dadosQtd: tipoItem === 'arma' ? (parseInt(armaDadosQtd) || 1) : 0,
                     dadosFaces: tipoItem === 'arma' ? (parseInt(armaDadosFaces) || 20) : 0,
+                    alcance: tipoItem === 'arma' ? (parseFloat(armaAlcance) || 1) : 0, // 🔥 Salva Alcance
                     efeitos: tipoItem === 'arma' ? JSON.parse(JSON.stringify(efeitosTempArsenal)) : [],
                     efeitosPassivos: tipoItem === 'arma' ? JSON.parse(JSON.stringify(efeitosTempPassivosArsenal)) : [],
                     equipado: false
@@ -145,6 +148,7 @@ export default function ArsenalPanel() {
         setBonusValor(p.bonusValor);
         setArmaDadosQtd(p.dadosQtd || 1);
         setArmaDadosFaces(p.dadosFaces || 20);
+        setArmaAlcance(p.alcance || 1); // 🔥 Lê Alcance
         setArmaTipo(p.armaTipo || 'espada');
         setRaridade(p.raridade || 'comum');
         setEfeitosTempArsenal(JSON.parse(JSON.stringify(p.efeitos || [])));
@@ -160,6 +164,7 @@ export default function ArsenalPanel() {
         setBonusValor('');
         setArmaDadosQtd(1);
         setArmaDadosFaces(20);
+        setArmaAlcance(1); // 🔥 Reseta Alcance
         setArmaTipo('espada');
         setRaridade('comum');
         setEfeitosTempArsenal([]);
@@ -293,14 +298,19 @@ export default function ArsenalPanel() {
                 </div>
 
                 {tipoItem === 'arma' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginTop: 10 }}>
                         <div>
                             <label style={{ color: '#aaa', fontSize: '0.85em' }}>Dados de Dano (qtd)</label>
                             <input className="input-neon" type="number" min="1" value={armaDadosQtd} onChange={e => setArmaDadosQtd(e.target.value)} />
                         </div>
                         <div>
                             <label style={{ color: '#aaa', fontSize: '0.85em' }}>Faces (d)</label>
-                            <input className="input-neon" type="number" min="1" value={armaDadosFaces} onChange={e => setArmaDadosFaces(e.target.value)} />
+                            <input className="input-neon" type="number" min="1" value={armaDadosFaces} onChange={e => setArmDadosFaces(e.target.value)} />
+                        </div>
+                        {/* 🔥 NOVO: ALCANCE DA ARMA */}
+                        <div>
+                            <label style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold' }}>Alcance (Quadrados)</label>
+                            <input className="input-neon" type="number" min="1" step="0.5" value={armaAlcance} onChange={e => setArmaAlcance(e.target.value)} style={{ borderColor: '#00ffcc', color: '#00ffcc' }} />
                         </div>
                     </div>
                 )}
@@ -407,9 +417,6 @@ export default function ArsenalPanel() {
                         const prefixo = isMult ? 'x' : '+';
                         const propText = bTipo.replace('_', ' ').toUpperCase();
 
-                        const efeitosAtivos = p.efeitos || [];
-                        const efeitosPassivos = p.efeitosPassivos || [];
-
                         return (
                             <div key={p.id} className="def-box" style={{ borderLeft: `5px solid ${c}`, background: bg, marginBottom: 10 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 15 }}>
@@ -418,7 +425,7 @@ export default function ArsenalPanel() {
                                             {icon} {p.nome || 'Item'}
                                         </h3>
                                         <p style={{ color: '#aaa', fontSize: '0.85em', margin: '5px 0 0' }}>
-                                            {(p.tipo || '').toUpperCase()}{p.armaTipo ? ` (${p.armaTipo.charAt(0).toUpperCase() + p.armaTipo.slice(1)})` : ''}{p.raridade ? ` | ${(p.raridade || '').charAt(0).toUpperCase() + (p.raridade || '').slice(1)}` : ''}{p.tipo === 'arma' && p.dadosQtd ? ` | Dano: ${p.dadosQtd}d${p.dadosFaces || 20}` : ''}
+                                            {(p.tipo || '').toUpperCase()}{p.armaTipo ? ` (${p.armaTipo.charAt(0).toUpperCase() + p.armaTipo.slice(1)})` : ''}{p.raridade ? ` | ${(p.raridade || '').charAt(0).toUpperCase() + (p.raridade || '').slice(1)}` : ''}{p.tipo === 'arma' && p.dadosQtd ? ` | Dano: ${p.dadosQtd}d${p.dadosFaces || 20}` : ''}{p.tipo === 'arma' ? ` | Alcance: ${p.alcance || 1}Q` : ''}
                                         </p>
                                         <p style={{ color: '#0ff', fontSize: '0.9em', margin: '5px 0 0' }}>
                                             {propText}: <strong style={{ color: '#ffcc00' }}>{prefixo}{p.bonusValor || 0}</strong>

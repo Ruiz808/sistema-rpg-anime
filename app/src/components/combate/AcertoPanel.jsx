@@ -16,22 +16,21 @@ const STATS_LIST = [
 ];
 
 export default function AcertoPanel() {
-    const { minhaFicha, meuNome, setAbaAtiva, updateFicha, alvoSelecionado, dummies } = useStore(); 
+    const { minhaFicha, meuNome, setAbaAtiva, updateFicha, alvoSelecionado, dummies, cenario } = useStore(); 
 
     const [dados, setDados] = useState(1);
     const [faces, setFaces] = useState(20);
-    const [usarProficiencia, setUsarProficiencia] = useState(false); // 🔥 Novo Checkbox
+    const [usarProficiencia, setUsarProficiencia] = useState(false);
     const [bonus, setBonus] = useState(0);
     
     const vantagens = minhaFicha.ataqueConfig?.vantagens || 0;
     const desvantagens = minhaFicha.ataqueConfig?.desvantagens || 0;
-    const profGlobal = parseInt(minhaFicha.proficienciaBase) || 0; // 🔥 Lê a Base Global
+    const profGlobal = parseInt(minhaFicha.proficienciaBase) || 0;
     
     const [statsSelecionados, setStatsSelecionados] = useState(['destreza']);
 
     const bonusAcertoClasse = minhaFicha ? getPoderesDefesa(minhaFicha, 'bonus_acerto') : 0;
 
-    // 🔥 FILTRO LIMPO E PRECISO
     const itensEquipados = minhaFicha.inventario ? minhaFicha.inventario.filter(i => i.equipado) : [];
     const armasEquipadas = itensEquipados.filter(i => i.tipo === 'arma' || i.tipo === 'artefato');
     
@@ -54,6 +53,36 @@ export default function AcertoPanel() {
             }
         }
     });
+
+    // 🔥 O RADAR TÁTICO: Cálculo de Distância (Chebyshev para Grid)
+    const alvoDummie = alvoSelecionado && dummies[alvoSelecionado] ? dummies[alvoSelecionado] : null;
+    let distQuadrados = 0;
+    let distReal = 0;
+    let maxAlcance = 1;
+    let isForaDeAlcance = false;
+    let unidadeEscala = 'm';
+
+    if (alvoDummie && minhaFicha.posicao && alvoDummie.posicao) {
+        const cenaAtivaId = cenario?.ativa || 'default';
+        const cenaAtual = cenario?.lista?.[cenaAtivaId] || { escala: 1.5, unidade: 'm' };
+        const escala = cenaAtual.escala || 1.5;
+        unidadeEscala = cenaAtual.unidade || 'm';
+
+        const dx = Math.abs((minhaFicha.posicao.x || 0) - (alvoDummie.posicao.x || 0));
+        const dy = Math.abs((minhaFicha.posicao.y || 0) - (alvoDummie.posicao.y || 0));
+        const dz = Math.abs((minhaFicha.posicao.z || 0) - (alvoDummie.posicao.z || 0)) / escala;
+
+        distQuadrados = Math.max(dx, dy, Math.floor(dz));
+        distReal = distQuadrados * escala;
+
+        // O seu alcance efetivo é o maior entre as armas equipadas ou poderes ativos
+        const maxAlcanceArmas = armasEquipadas.length > 0 ? Math.max(...armasEquipadas.map(a => a.alcance || 1)) : 1;
+        const poderesAtivos = (minhaFicha.poderes || []).filter(p => p.ativa);
+        const maxAlcancePoderes = poderesAtivos.length > 0 ? Math.max(...poderesAtivos.map(p => p.alcance || 1)) : 1;
+        
+        maxAlcance = Math.max(maxAlcanceArmas, maxAlcancePoderes);
+        isForaDeAlcance = distQuadrados > maxAlcance;
+    }
 
     function changeVantagem(e) {
         updateFicha(f => {
@@ -79,10 +108,15 @@ export default function AcertoPanel() {
     }
 
     function rolarAcerto() {
+        if (isForaDeAlcance) {
+            alert('Aviso: O alvo está fora do seu alcance efetivo!');
+            return;
+        }
+
         const qD = parseInt(dados) || 1;
         const fD = parseInt(faces) || 20;
         const bon = parseInt(bonus) || 0; 
-        const prof = usarProficiencia ? profGlobal : 0; // 🔥 Injeta a Prof se ativa
+        const prof = usarProficiencia ? profGlobal : 0;
         
         const v = parseInt(vantagens) || 0;
         const d = parseInt(desvantagens) || 0;
@@ -95,10 +129,9 @@ export default function AcertoPanel() {
         });
 
         let extraData = {};
-        if (alvoSelecionado && dummies[alvoSelecionado]) {
-            const alvo = dummies[alvoSelecionado];
-            const acertou = result.acertoTotal >= alvo.valorDefesa; 
-            extraData = { alvoNome: alvo.nome, alvoDefesa: alvo.valorDefesa, acertouAlvo: acertou };
+        if (alvoDummie) {
+            const acertou = result.acertoTotal >= alvoDummie.valorDefesa; 
+            extraData = { alvoNome: alvoDummie.nome, alvoDefesa: alvoDummie.valorDefesa, acertouAlvo: acertou };
         }
 
         const feedData = { tipo: 'acerto', nome: meuNome, ...result, ...extraData };
@@ -187,7 +220,6 @@ export default function AcertoPanel() {
                     </div>
                 </div>
 
-                {/* 🔥 SCANNER DE ARSENAL ATUALIZADO */}
                 {armasEquipadas.length > 0 && (
                     <div style={{ marginTop: 15, padding: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', borderLeft: '2px solid #aaa' }}>
                         <span style={{ color: '#aaa', fontSize: '0.75em', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>🔍 Scanner de Arsenal:</span>
@@ -199,8 +231,27 @@ export default function AcertoPanel() {
                     </div>
                 )}
 
-                <button className="btn-neon btn-gold" onClick={rolarAcerto} style={{ marginTop: 15, width: '100%', borderColor: '#f90', color: '#f90' }}>
-                    {alvoSelecionado && dummies[alvoSelecionado] ? `TENTAR ACERTAR ${dummies[alvoSelecionado].nome.toUpperCase()}` : 'ROLAR ACERTO (SEM ALVO)'}
+                {/* 🔥 HUD DE DISTÂNCIA E ALCANCE */}
+                {alvoDummie && (
+                    <div style={{ marginTop: 15, padding: '10px', background: isForaDeAlcance ? 'rgba(255,0,0,0.1)' : 'rgba(0,255,0,0.1)', border: `1px solid ${isForaDeAlcance ? '#ff003c' : '#0f0'}`, borderRadius: '5px', textAlign: 'center' }}>
+                        <span style={{ color: isForaDeAlcance ? '#ff003c' : '#0f0', fontWeight: 'bold', fontSize: '1.1em' }}>
+                            🎯 Alvo: {alvoDummie.nome} | Distância: {distQuadrados}Q ({distReal.toFixed(1)} {unidadeEscala})
+                        </span>
+                        <br/>
+                        <span style={{ color: '#aaa', fontSize: '0.85em' }}>Seu Alcance Efetivo: {maxAlcance}Q</span>
+                        {isForaDeAlcance && <div style={{ color: '#ff003c', marginTop: 5, fontWeight: 'bold', textShadow: '0 0 5px #ff003c' }}>⚠️ FORA DE ALCANCE! APROXIME-SE!</div>}
+                    </div>
+                )}
+
+                <button 
+                    className="btn-neon btn-gold" 
+                    onClick={rolarAcerto} 
+                    disabled={isForaDeAlcance}
+                    style={{ marginTop: 15, width: '100%', borderColor: isForaDeAlcance ? '#555' : '#f90', color: isForaDeAlcance ? '#555' : '#f90', opacity: isForaDeAlcance ? 0.5 : 1 }}
+                >
+                    {alvoSelecionado && alvoDummie 
+                        ? (isForaDeAlcance ? 'MUITO LONGE PARA ATACAR' : `TENTAR ACERTAR ${alvoDummie.nome.toUpperCase()}`) 
+                        : 'ROLAR ACERTO (SEM ALVO)'}
                 </button>
             </div>
         </div>

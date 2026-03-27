@@ -579,8 +579,6 @@ export default function MapaPanel() {
                 case 'resistencia': corImpacto = '#ccc'; tituloImpacto = 'BLOQUEIO'; valorImpacto = acaoExibir.total; break;
                 case 'escudo': corImpacto = '#f0f'; tituloImpacto = 'ESCUDO'; valorImpacto = acaoExibir.escudoReduzido; break;
                 case 'sistema': corImpacto = '#ffcc00'; tituloImpacto = 'AVISO DO SISTEMA'; valorImpacto = 0; break;
-                case 'skill': corImpacto = '#0088ff'; tituloImpacto = 'TESTE DE PERÍCIA'; valorImpacto = acaoExibir.total; break;
-                case 'saving': corImpacto = '#ffcc00'; tituloImpacto = 'RESISTÊNCIA'; valorImpacto = acaoExibir.total; break;
                 default: break;
             }
         }
@@ -713,7 +711,6 @@ export default function MapaPanel() {
         );
     }
 
-    // 🔥 CÁLCULO DO TAMANHO DA CÂMERA (Responsivo com limite de 5+) 🔥
     const playerCount = playersNaTaverna.length;
     let cardSize = '280px'; 
     if (playerCount === 1) cardSize = '400px';
@@ -778,7 +775,6 @@ export default function MapaPanel() {
 
             <div style={{ flex: '1 1 70%', minWidth: 0 }}>
                 
-               {/* 🔥 BANNER DE CONTROLE DO MODO TAVERNA (APENAS MESTRE) 🔥 */}
                {isMestre && (
                     <div style={{ background: isModoRP ? 'rgba(255, 0, 255, 0.2)' : 'rgba(0, 255, 136, 0.2)', border: `2px dashed ${isModoRP ? '#ff00ff' : '#00ff88'}`, padding: '10px 15px', borderRadius: '5px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
                         <span style={{ color: isModoRP ? '#ff00ff' : '#00ff88', fontWeight: 'bold', fontSize: '1.1em' }}>
@@ -797,7 +793,6 @@ export default function MapaPanel() {
                     </div>
                )}
 
-               {/* 🔥 BANNER DE ALERTA DE PREPARAÇÃO OCULTA (QUANDO O MESTRE OLHA PARA OUTRAS CENAS) 🔥 */}
                {isMestre && cenaVisualizadaId && cenaVisualizadaId !== cenaAtivaIdGlobal && (
                     <div style={{ background: 'rgba(0, 136, 255, 0.2)', border: '2px dashed #0088ff', padding: '10px 15px', borderRadius: '5px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
                         <span style={{ color: '#0088ff', fontWeight: 'bold', fontSize: '1.1em' }}>👁️ MODO EDIÇÃO OCULTA: Apenas você vê a cena "{cenaAtual.nome}".</span>
@@ -909,7 +904,6 @@ export default function MapaPanel() {
                     </div>
                 )}
 
-                {/* 🔥 LÓGICA DE EXIBIÇÃO: TAVERNA (JOGADORES + MESTRE VENDO RP) VS MAPA 🔥 */}
                 {isModoRP && (!isMestre || mestreVendoRP) ? (
                     <div className="fade-in" style={{ 
                         minHeight: '60vh', 
@@ -924,7 +918,6 @@ export default function MapaPanel() {
                             {playersNaTaverna.length} Lenda(s) Presente(s). O Mestre está a moldar o tecido da realidade...
                         </p>
                         
-                        {/* 🔥 BOTÃO DE ENTRAR NA SALA DE RP 🔥 */}
                         <button 
                             className={`btn-neon ${isPresenteNaTaverna ? 'btn-red' : 'btn-green'}`} 
                             onClick={togglePresencaTaverna} 
@@ -933,7 +926,6 @@ export default function MapaPanel() {
                             {isPresenteNaTaverna ? '🚪 SAIR DA MESA (ESCONDER CÂMERA)' : '🚪 SENTAR NA MESA (LIGAR CÂMERA)'}
                         </button>
                         
-                        {/* 🔥 O GRID DE "CÂMERAS" DOS JOGADORES ESTILO ORDEM PARANORMAL 🔥 */}
                         {playersNaTaverna.length > 0 && (
                             <div style={{ width: '100%', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '15px', marginBottom: '40px' }}>
                                 {playersNaTaverna.map(([n, f]) => {
@@ -947,11 +939,9 @@ export default function MapaPanel() {
                                             backgroundSize: 'cover', backgroundPosition: 'top center',
                                             boxShadow: '0 0 15px rgba(0,0,0,0.8)'
                                         }}>
-                                            {/* HUD Holográfico de Energias */}
                                             <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', display: 'flex', flexDirection: 'column', background: 'rgba(10,10,15,0.9)', borderTop: '2px solid #222', padding: '6px 10px', backdropFilter: 'blur(3px)' }}>
                                                 <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '0.8em', textTransform: 'uppercase', marginBottom: 4, letterSpacing: 1, textShadow: '1px 1px 2px #000', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{n}</span>
                                                 
-                                                {/* BARRA DE VIDA */}
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
                                                     <span style={{ color: '#ff003c', fontSize: '0.6em', fontWeight: 'bold', width: '15px' }}>HP</span>
                                                     <div style={{ flex: 1, background: '#300', height: 6, border: '1px solid #000', position: 'relative' }}>
@@ -960,7 +950,6 @@ export default function MapaPanel() {
                                                     <span style={{ color: '#fff', fontSize: '0.6em', fontWeight: 'bold', minWidth: '35px', textAlign: 'right' }}>{fmt(f.vida?.atual)}</span>
                                                 </div>
 
-                                                {/* GRID DAS 6 ENERGIAS */}
                                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '2px 6px', fontSize: '0.55em', fontWeight: 'bold' }}>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', color: '#0088ff', textShadow: '0 0 3px #0088ff' }}><span>MP</span> <span>{fmt(f.mana?.atual)}</span></div>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', color: '#aa00ff', textShadow: '0 0 3px #aa00ff' }}><span>AU</span> <span>{fmt(f.aura?.atual)}</span></div>
@@ -1015,14 +1004,46 @@ export default function MapaPanel() {
                                 </label>
                             </div>
 
-                            <button className="btn-neon btn-gold" onClick={rolarAcertoRapido} style={{ padding: '12px', fontSize: '1.2em', width: '100%', marginTop: 5, letterSpacing: 1 }}>
-                                🎲 ROLAR DADOS
-                            </button>
+                            {/* 🔥 RADAR TÁTICO NA TAVERNA 🔥 */}
+                            {alvoSelecionado && dummies[alvoSelecionado] ? (() => {
+                                const alvoD = dummies[alvoSelecionado];
+                                const dx = Math.abs((minhaFicha.posicao?.x || 0) - (alvoD.posicao?.x || 0));
+                                const dy = Math.abs((minhaFicha.posicao?.y || 0) - (alvoD.posicao?.y || 0));
+                                const dz = Math.abs((minhaFicha.posicao?.z || 0) - (alvoD.posicao?.z || 0)) / (cenaAtual.escala || 1.5);
+                                const dQuad = Math.max(dx, dy, Math.floor(dz));
+                                
+                                const armasEq = (minhaFicha.inventario || []).filter(i => i.tipo === 'arma' && i.equipado);
+                                const maxAlcArmas = armasEq.length > 0 ? Math.max(...armasEq.map(a => a.alcance || 1)) : 1;
+                                const podAt = (minhaFicha.poderes || []).filter(p => p.ativa);
+                                const maxAlcPoderes = podAt.length > 0 ? Math.max(...podAt.map(p => p.alcance || 1)) : 1;
+                                const alcanceEf = Math.max(maxAlcArmas, maxAlcPoderes);
+
+                                const foraAlc = dQuad > alcanceEf;
+
+                                return (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 5 }}>
+                                        <div style={{ textAlign: 'center', color: foraAlc ? '#ff003c' : '#0f0', fontWeight: 'bold', fontSize: '0.9em' }}>
+                                            🎯 Alvo a {dQuad}Q | Alcance: {alcanceEf}Q {foraAlc ? '(MUITO LONGE!)' : '(EM ALCANCE)'}
+                                        </div>
+                                        <button 
+                                            className="btn-neon btn-gold" 
+                                            onClick={() => !foraAlc && rolarAcertoRapido()} 
+                                            disabled={foraAlc}
+                                            style={{ padding: '12px', fontSize: '1.2em', width: '100%', letterSpacing: 1, opacity: foraAlc ? 0.5 : 1, borderColor: foraAlc ? '#555' : '#ffcc00' }}
+                                        >
+                                            🎲 ROLAR ACERTO
+                                        </button>
+                                    </div>
+                                );
+                            })() : (
+                                <button className="btn-neon btn-gold" onClick={rolarAcertoRapido} style={{ padding: '12px', fontSize: '1.2em', width: '100%', marginTop: 5, letterSpacing: 1 }}>
+                                    🎲 ROLAR DADOS LIVRE
+                                </button>
+                            )}
                         </div>
                     </div>
                 ) : (
                     <>
-                        {/* 🔥 VISUALIZAÇÃO DO MAPA (PADRÃO OU MESTRE) 🔥 */}
                         <div style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                             <div style={{ display: 'flex', gap: 10, alignItems: 'center', opacity: modo3D ? 0.3 : 1 }}>
                                 <button className="btn-neon" onClick={() => alterarZoom(-1)} style={{ padding: '5px 15px' }} disabled={modo3D}>-</button>
@@ -1129,7 +1150,6 @@ export default function MapaPanel() {
                     </>
                 )}
 
-                {/* 🔥 SISTEMA DE INICIATIVA MANTIDO PARA TODOS (INCLUINDO NA TAVERNA) 🔥 */}
                 <div className="def-box" style={{ marginTop: 15 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 10 }}>
                         <h3 style={{ color: '#00ffcc', margin: 0 }}>Sistema de Iniciativa</h3>
@@ -1215,39 +1235,74 @@ export default function MapaPanel() {
                                 {infoDaVez && infoDaVez.forma && (<div id="turno-forma" style={{ color: '#00ffcc', fontSize: '0.9em' }}>{infoDaVez.forma}</div>)}
                                 
                                 {jogadorDaVez.nome === meuNome && (
-                                    <div style={{ marginTop: 8, padding: 8, background: 'rgba(0, 255, 204, 0.1)', border: '1px solid #00ffcc', borderRadius: 8, display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'wrap' }}>
+                                    <div style={{ marginTop: 8, padding: 8, background: 'rgba(0, 255, 204, 0.1)', border: '1px solid #00ffcc', borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 5 }}>
                                         
-                                        <select className="input-neon" value={mapStat} onChange={e => setMapStat(e.target.value)} style={{ padding: 4, width: 100 }} title="Atributo">
-                                            <option value="forca">Força</option>
-                                            <option value="destreza">Destreza</option>
-                                            <option value="inteligencia">Intelig.</option>
-                                            <option value="sabedoria">Sabedoria</option>
-                                            <option value="energiaEsp">Energ. Esp.</option>
-                                            <option value="carisma">Carisma</option>
-                                            <option value="stamina">Stamina</option>
-                                            <option value="constituicao">Constit.</option>
-                                        </select>
+                                        <div style={{ display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'wrap' }}>
+                                            <select className="input-neon" value={mapStat} onChange={e => setMapStat(e.target.value)} style={{ padding: 4, width: 100 }} title="Atributo">
+                                                <option value="forca">Força</option>
+                                                <option value="destreza">Destreza</option>
+                                                <option value="inteligencia">Intelig.</option>
+                                                <option value="sabedoria">Sabedoria</option>
+                                                <option value="energiaEsp">Energ. Esp.</option>
+                                                <option value="carisma">Carisma</option>
+                                                <option value="stamina">Stamina</option>
+                                                <option value="constituicao">Constit.</option>
+                                            </select>
 
-                                        <input className="input-neon" type="number" value={mapQD} onChange={e => setMapQD(e.target.value)} style={{ width: 45, padding: 4 }} title="Dados" />
-                                        <span style={{ color: '#aaa', fontSize: '0.8em' }}>D</span>
-                                        <input className="input-neon" type="number" value={mapFD} onChange={e => setMapFD(e.target.value)} style={{ width: 55, padding: 4 }} title="Faces" />
-                                        <span style={{ color: '#aaa', fontSize: '0.8em' }}>+</span>
-                                        <input className="input-neon" type="number" value={mapBonus} onChange={e => setMapBonus(e.target.value)} style={{ width: 60, padding: 4 }} title="Bônus" />
-                                        
-                                        <span style={{ color: '#0f0', fontSize: '0.8em', marginLeft: 5, fontWeight: 'bold' }}>V:</span>
-                                        <input className="input-neon" type="number" min="0" value={mapVantagens} onChange={changeVantagem} style={{ width: 45, padding: 4, borderColor: '#0f0', color: '#0f0' }} title="Vantagens" />
-                                        
-                                        <span style={{ color: '#f00', fontSize: '0.8em', marginLeft: 5, fontWeight: 'bold' }}>D:</span>
-                                        <input className="input-neon" type="number" min="0" value={mapDesvantagens} onChange={changeDesvantagem} style={{ width: 45, padding: 4, borderColor: '#f00', color: '#f00' }} title="Desvantagens" />
+                                            <input className="input-neon" type="number" value={mapQD} onChange={e => setMapQD(e.target.value)} style={{ width: 45, padding: 4 }} title="Dados" />
+                                            <span style={{ color: '#aaa', fontSize: '0.8em' }}>D</span>
+                                            <input className="input-neon" type="number" value={mapFD} onChange={e => setMapFD(e.target.value)} style={{ width: 55, padding: 4 }} title="Faces" />
+                                            <span style={{ color: '#aaa', fontSize: '0.8em' }}>+</span>
+                                            <input className="input-neon" type="number" value={mapBonus} onChange={e => setMapBonus(e.target.value)} style={{ width: 60, padding: 4 }} title="Bônus" />
+                                            
+                                            <span style={{ color: '#0f0', fontSize: '0.8em', marginLeft: 5, fontWeight: 'bold' }}>V:</span>
+                                            <input className="input-neon" type="number" min="0" value={mapVantagens} onChange={changeVantagem} style={{ width: 45, padding: 4, borderColor: '#0f0', color: '#0f0' }} title="Vantagens" />
+                                            
+                                            <span style={{ color: '#f00', fontSize: '0.8em', marginLeft: 5, fontWeight: 'bold' }}>D:</span>
+                                            <input className="input-neon" type="number" min="0" value={mapDesvantagens} onChange={changeDesvantagem} style={{ width: 45, padding: 4, borderColor: '#f00', color: '#f00' }} title="Desvantagens" />
 
-                                        <label style={{ color: '#00ffcc', fontSize: '0.85em', marginLeft: 10, fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer' }}>
-                                            <input type="checkbox" checked={mapUsarProf} onChange={e => setMapUsarProf(e.target.checked)} style={{ transform: 'scale(1.2)' }} />
-                                            Prof.
-                                        </label>
+                                            <label style={{ color: '#00ffcc', fontSize: '0.85em', marginLeft: 10, fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer' }}>
+                                                <input type="checkbox" checked={mapUsarProf} onChange={e => setMapUsarProf(e.target.checked)} style={{ transform: 'scale(1.2)' }} />
+                                                Prof.
+                                            </label>
+                                        </div>
 
-                                        <button className="btn-neon btn-gold" onClick={rolarAcertoRapido} style={{ padding: '4px 10px', fontSize: '0.85em', marginLeft: 10 }}>
-                                            🎲 Rolar Acerto
-                                        </button>
+                                        {/* 🔥 RADAR TÁTICO NO MAPA 🔥 */}
+                                        {alvoSelecionado && dummies[alvoSelecionado] ? (() => {
+                                            const alvoD = dummies[alvoSelecionado];
+                                            const dx = Math.abs((minhaFicha.posicao?.x || 0) - (alvoD.posicao?.x || 0));
+                                            const dy = Math.abs((minhaFicha.posicao?.y || 0) - (alvoD.posicao?.y || 0));
+                                            const dz = Math.abs((minhaFicha.posicao?.z || 0) - (alvoD.posicao?.z || 0)) / (cenaAtual.escala || 1.5);
+                                            const dQuad = Math.max(dx, dy, Math.floor(dz));
+                                            
+                                            const armasEq = (minhaFicha.inventario || []).filter(i => i.tipo === 'arma' && i.equipado);
+                                            const maxAlcArmas = armasEq.length > 0 ? Math.max(...armasEq.map(a => a.alcance || 1)) : 1;
+                                            const podAt = (minhaFicha.poderes || []).filter(p => p.ativa);
+                                            const maxAlcPoderes = podAt.length > 0 ? Math.max(...podAt.map(p => p.alcance || 1)) : 1;
+                                            const alcanceEf = Math.max(maxAlcArmas, maxAlcPoderes);
+
+                                            const foraAlc = dQuad > alcanceEf;
+
+                                            return (
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 5, padding: '5px 10px', background: 'rgba(0,0,0,0.5)', borderRadius: 5 }}>
+                                                    <div style={{ color: foraAlc ? '#ff003c' : '#0f0', fontWeight: 'bold', fontSize: '0.85em' }}>
+                                                        🎯 Alvo a {dQuad}Q | Alcance: {alcanceEf}Q {foraAlc ? '(LONGE)' : '(OK)'}
+                                                    </div>
+                                                    <button 
+                                                        className="btn-neon btn-gold" 
+                                                        onClick={() => !foraAlc && rolarAcertoRapido()} 
+                                                        disabled={foraAlc}
+                                                        style={{ padding: '4px 10px', fontSize: '0.85em', opacity: foraAlc ? 0.5 : 1, borderColor: foraAlc ? '#555' : '#ffcc00' }}
+                                                    >
+                                                        🎲 Rolar Acerto
+                                                    </button>
+                                                </div>
+                                            );
+                                        })() : (
+                                            <button className="btn-neon btn-gold" onClick={rolarAcertoRapido} style={{ padding: '4px 10px', fontSize: '0.85em', marginTop: 5, alignSelf: 'flex-start' }}>
+                                                🎲 Rolar Acerto Livre
+                                            </button>
+                                        )}
                                     </div>
                                 )}
                             </div>

@@ -29,6 +29,7 @@ export default function PoderesPanel() {
     const [dadosQtd, setDadosQtd] = useState(0);
     const [dadosFaces, setDadosFaces] = useState(20);
     const [custoPercentual, setCustoPercentual] = useState(0);
+    const [poderAlcance, setPoderAlcance] = useState(1); // 🔥 NOVO: Alcance do Poder
     const [armaVinculada, setArmaVinculada] = useState('');
     const [nomeEfeito, setNomeEfeito] = useState('');
     const [novoAtr, setNovoAtr] = useState('forca');
@@ -96,8 +97,8 @@ export default function PoderesPanel() {
 
     const salvarNovoPoder = () => {
         const n = nomePoder.trim();
-        if (!n || (!efeitosTemp.length && !efeitosTempPassivos.length)) {
-            alert('Falta nome ou efeitos!');
+        if (!n || (!efeitosTemp.length && !efeitosTempPassivos.length && dadosQtd === 0)) {
+            alert('Falta nome ou efeitos (ou dados de dano)!');
             return;
         }
 
@@ -115,6 +116,7 @@ export default function PoderesPanel() {
                     ficha.poderes[ix].dadosQtd = parseInt(dadosQtd) || 0;
                     ficha.poderes[ix].dadosFaces = parseInt(dadosFaces) || 20;
                     ficha.poderes[ix].custoPercentual = parseFloat(custoPercentual) || 0;
+                    ficha.poderes[ix].alcance = parseFloat(poderAlcance) || 1; // 🔥 Salva Alcance
                     ficha.poderes[ix].armaVinculada = armaVinculada;
                 }
             } else {
@@ -129,6 +131,7 @@ export default function PoderesPanel() {
                     dadosQtd: parseInt(dadosQtd) || 0,
                     dadosFaces: parseInt(dadosFaces) || 20,
                     custoPercentual: parseFloat(custoPercentual) || 0,
+                    alcance: parseFloat(poderAlcance) || 1, // 🔥 Salva Alcance
                     armaVinculada: armaVinculada
                 });
             }
@@ -157,6 +160,7 @@ export default function PoderesPanel() {
         setDadosQtd(p.dadosQtd || 0);
         setDadosFaces(p.dadosFaces || 20);
         setCustoPercentual(p.custoPercentual || 0);
+        setPoderAlcance(p.alcance || 1); // 🔥 Lê Alcance
         setArmaVinculada(p.armaVinculada || '');
         setEfeitosTemp(JSON.parse(JSON.stringify(p.efeitos || [])));
         setEfeitosTempPassivos(JSON.parse(JSON.stringify(p.efeitosPassivos || [])));
@@ -171,6 +175,7 @@ export default function PoderesPanel() {
         setDadosQtd(0);
         setDadosFaces(20);
         setCustoPercentual(0);
+        setPoderAlcance(1); // 🔥 Reseta Alcance
         setArmaVinculada('');
         setEfeitosTemp([]);
         setEfeitosTempPassivos([]);
@@ -359,7 +364,7 @@ export default function PoderesPanel() {
                         </label>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8, marginTop: 10 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', gap: 8, marginTop: 10 }}>
                         <div>
                             <label style={{ color: '#aaa', fontSize: '0.85em' }}>Dados de Dano (qtd)</label>
                             <input className="input-neon" type="number" min="0" value={dadosQtd} onChange={e => setDadosQtd(e.target.value)} placeholder="0" />
@@ -372,8 +377,13 @@ export default function PoderesPanel() {
                             <label style={{ color: '#aaa', fontSize: '0.85em' }}>Custo (% Energia)</label>
                             <input className="input-neon" type="number" min="0" value={custoPercentual} onChange={e => setCustoPercentual(e.target.value)} placeholder="0" />
                         </div>
+                        {/* 🔥 NOVO: ALCANCE DO PODER */}
                         <div>
-                            <label style={{ color: '#aaa', fontSize: '0.85em' }}>Vincular a Arma</label>
+                            <label style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold' }}>Alcance (Q)</label>
+                            <input className="input-neon" type="number" min="0" step="0.5" value={poderAlcance} onChange={e => setPoderAlcance(e.target.value)} style={{ borderColor: '#00ffcc', color: '#00ffcc' }} />
+                        </div>
+                        <div>
+                            <label style={{ color: '#aaa', fontSize: '0.85em' }}>Vincular Arma</label>
                             <select className="input-neon" value={armaVinculada} onChange={e => setArmaVinculada(e.target.value)}>
                                 <option value="">Nenhuma (Livre)</option>
                                 {(minhaFicha.inventario || []).filter(i => i.tipo === 'arma').map(arma => (
@@ -463,7 +473,7 @@ export default function PoderesPanel() {
                                 <div key={p.id} className="def-box" style={{ borderLeft: `5px solid ${c}`, background: bg, marginBottom: 10 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 15 }}>
                                         <div>
-                                            <h3 style={{ margin: 0, color: c, textShadow: `0 0 10px ${c}` }}>{p.nome || 'Poder'}</h3>
+                                            <h3 style={{ margin: 0, color: c, textShadow: `0 0 10px ${c}` }}>{p.nome || 'Poder'} <span style={{fontSize: '0.6em', color: '#fff'}}>(Alcance: {p.alcance || 1}Q)</span></h3>
                                             <p style={{ color: '#aaa', fontSize: '0.85em', margin: '5px 0 0' }}>{txtArr.join(' | ') || 'Sem efeitos ativos.'}
                                             {(p.efeitosPassivos || []).length > 0 && (
                                                 <span style={{ color: '#f0f', display: 'block', marginTop: '4px' }}>{(p.efeitosPassivos || []).map(e => {
