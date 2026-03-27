@@ -591,6 +591,8 @@ function StatusPanelCore() {
     );
 }
 
+export { RadarChart, AtributosLista, StatusPanelCore };
+
 export default function StatusPanel() {
     return (
         <StatusErrorBoundary>

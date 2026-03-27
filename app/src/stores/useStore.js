@@ -31,7 +31,8 @@ export const fichaPadrao = {
     aura: { base: 100000000, mBase: 1.0, mGeral: 1.0, mFormas: 1.0, mUnico: "1.0", mAbsoluto: 1.0, reducaoCusto: 0, regeneracao: 0, atual: 100000000 },
     chakra: { base: 100000000, mBase: 1.0, mGeral: 1.0, mFormas: 1.0, mUnico: "1.0", mAbsoluto: 1.0, reducaoCusto: 0, regeneracao: 0, atual: 100000000 },
     corpo: { base: 100000000, mBase: 1.0, mGeral: 1.0, mFormas: 1.0, mUnico: "1.0", mAbsoluto: 1.0, reducaoCusto: 0, regeneracao: 0, atual: 100000000 },
-    compendioOverrides: {}
+    compendioOverrides: {},
+    cores: {}
 };
 
 export function sanitizarNome(n) {
@@ -121,6 +122,7 @@ const useStore = create(
             state.minhaFicha.poderes = dados.poderes || [];
             state.minhaFicha.ataquesElementais = dados.ataquesElementais || [];
             state.minhaFicha.passivas = dados.passivas || [];
+            if (dados.cores !== undefined) state.minhaFicha.cores = Object.assign({}, fichaPadrao.cores, dados.cores || {});
 
             if (dados.acoes) {
                 state.minhaFicha.acoes = {
@@ -140,7 +142,8 @@ const useStore = create(
                     ch !== 'inventario' && ch !== 'ataquesElementais' && ch !== 'ataqueConfig' &&
                     ch !== 'avatar' && ch !== 'bio' && ch !== 'notas' && ch !== 'passivas' &&
                     ch !== 'posicao' && ch !== 'iniciativa' && ch !== 'acoes' &&
-                    ch !== 'proficienciaBase' && ch !== 'proficiencias'
+                    ch !== 'proficienciaBase' && ch !== 'proficiencias' &&
+                    ch !== 'cores'
                 ) {
                     if (typeof fichaPadrao[ch] === 'object' && !Array.isArray(fichaPadrao[ch])) {
                         state.minhaFicha[ch] = Object.assign({}, fichaPadrao[ch], dados[ch]);

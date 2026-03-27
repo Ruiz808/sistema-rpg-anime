@@ -3,9 +3,20 @@ import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage
 import { db, storage } from './firebase-config';
 import useStore, { sanitizarNome } from '../stores/useStore';
 
+let _modoPlasmic = false;
+
+export function setModoPlasmic(ativo) {
+    _modoPlasmic = ativo;
+}
+
+function isInPlasmicCanvas() {
+    return _modoPlasmic;
+}
+
 let debounceTimer = null;
 
 export function salvarFichaSilencioso() {
+    if (isInPlasmicCanvas()) return;
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
         salvarFirebaseImediato().catch(() => { /* erro ja logado em salvarFirebaseImediato */ });
@@ -13,6 +24,7 @@ export function salvarFichaSilencioso() {
 }
 
 export function salvarFirebaseImediato() {
+    if (isInPlasmicCanvas()) return Promise.resolve();
     const { minhaFicha, meuNome } = useStore.getState();
     const nomeSanitizado = sanitizarNome(meuNome);
 
@@ -40,6 +52,7 @@ export function salvarFirebaseImediato() {
 }
 
 export async function carregarFichaDoFirebase(nome) {
+    if (isInPlasmicCanvas()) return null;
     const nomeSanitizado = sanitizarNome(nome);
     if (!nomeSanitizado || !db) return null;
 
@@ -54,6 +67,7 @@ export async function carregarFichaDoFirebase(nome) {
 }
 
 export function iniciarListenerPersonagens(callback) {
+    if (isInPlasmicCanvas()) return () => {};
     if (!db) return () => {};
 
     const personagensRef = ref(db, 'personagens');
@@ -66,6 +80,7 @@ export function iniciarListenerPersonagens(callback) {
 }
 
 export function iniciarListenerFeed(callback) {
+    if (isInPlasmicCanvas()) return () => {};
     if (!db) return () => {};
 
     const feedRef = query(ref(db, 'feed_combate'), limitToLast(1));
@@ -78,6 +93,7 @@ export function iniciarListenerFeed(callback) {
 }
 
 export function enviarParaFeed(d) {
+    if (isInPlasmicCanvas()) return;
     if (!db) return;
 
     const feedRef = ref(db, 'feed_combate');
@@ -87,6 +103,7 @@ export function enviarParaFeed(d) {
 }
 
 export async function deletarPersonagem(nome) {
+    if (isInPlasmicCanvas()) return;
     const nomeSanitizado = sanitizarNome(nome);
     if (!nomeSanitizado) return;
 
@@ -107,6 +124,7 @@ export async function deletarPersonagem(nome) {
 }
 
 export function enviarParaJukebox(estado) {
+    if (isInPlasmicCanvas()) return;
     if (!db) return;
     const jukeboxRef = ref(db, 'jukebox');
     set(jukeboxRef, estado).catch((err) => {
@@ -115,6 +133,7 @@ export function enviarParaJukebox(estado) {
 }
 
 export function iniciarListenerJukebox(callback) {
+    if (isInPlasmicCanvas()) return () => {};
     if (!db) return () => {};
     const jukeboxRef = ref(db, 'jukebox');
     return onValue(jukeboxRef, (snapshot) => {
@@ -126,6 +145,7 @@ export function iniciarListenerJukebox(callback) {
 }
 
 export async function uploadImagem(file, pasta = 'imagens') {
+    if (isInPlasmicCanvas()) return '';
     if (!storage) throw new Error("Firebase Storage não está inicializado.");
     const extensao = file.name.split('.').pop();
     const nomeUnico = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${extensao}`;
@@ -137,6 +157,7 @@ export async function uploadImagem(file, pasta = 'imagens') {
 
 // 🔥 MOTOR DE SINCRONIZAÇÃO DOS DUMMIES (ALVOS DE TREINO)
 export function iniciarListenerDummies(callback) {
+    if (isInPlasmicCanvas()) return () => {};
     if (!db) return () => {};
     const dummiesRef = ref(db, 'dummies');
     return onValue(dummiesRef, (snapshot) => {
@@ -148,6 +169,7 @@ export function iniciarListenerDummies(callback) {
 }
 
 export function salvarDummie(id, dadosDummie) {
+    if (isInPlasmicCanvas()) return;
     if (!db) return;
     const dummieRef = ref(db, `dummies/${id}`);
     set(dummieRef, dadosDummie).catch((err) => {
@@ -156,6 +178,7 @@ export function salvarDummie(id, dadosDummie) {
 }
 
 export function deletarDummie(id) {
+    if (isInPlasmicCanvas()) return;
     if (!db) return;
     const dummieRef = ref(db, `dummies/${id}`);
     remove(dummieRef).catch((err) => {
@@ -165,6 +188,7 @@ export function deletarDummie(id) {
 
 // 🔥 MOTOR DE SINCRONIZAÇÃO DE CENAS (MAPAS)
 export function iniciarListenerCenario(callback) {
+    if (isInPlasmicCanvas()) return () => {};
     if (!db) return () => {};
     const cenarioRef = ref(db, 'cenario');
     return onValue(cenarioRef, (snapshot) => {
@@ -176,6 +200,7 @@ export function iniciarListenerCenario(callback) {
 }
 
 export function salvarCenarioCompleto(dadosCenario) {
+    if (isInPlasmicCanvas()) return;
     if (!db) return;
     const cenarioRef = ref(db, 'cenario');
     set(cenarioRef, dadosCenario).catch(err => console.error('[Sync] Erro ao salvar Cenario:', err));
@@ -183,6 +208,7 @@ export function salvarCenarioCompleto(dadosCenario) {
 
 // 🔥 MOTOR DE INICIATIVA GLOBAL
 export function zerarIniciativaGlobal(nomesArray) {
+    if (isInPlasmicCanvas()) return;
     if (!db) return;
     nomesArray.forEach(nome => {
         const nomeSanitizado = sanitizarNome(nome);
