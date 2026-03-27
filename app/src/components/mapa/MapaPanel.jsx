@@ -91,6 +91,7 @@ export default function MapaPanel() {
 
     // 🔥 MODO TAVERNA / ROLEPLAY (Global para os Jogadores) 🔥
     const isModoRP = cenario?.modoRP === true;
+    const [mestreVendoRP, setMestreVendoRP] = useState(false);
 
     const toggleModoRP = () => {
         const novoCenario = JSON.parse(JSON.stringify(cenario || {}));
@@ -309,6 +310,9 @@ export default function MapaPanel() {
         }
         return result;
     }, [meuNome, minhaFicha, personagens]);
+
+    // 🔥 FILTRA JOGADORES PRESENTES NA CENA ATUAL PARA A TAVERNA 🔥
+    const playersInScene = Object.entries(jogadores).filter(([n, f]) => (f.posicao?.cenaId || 'default') === cenaRenderId);
 
     const ordemIniciativa = useMemo(() => {
         const lista = [];
@@ -748,9 +752,16 @@ export default function MapaPanel() {
                         <span style={{ color: isModoRP ? '#ff00ff' : '#00ff88', fontWeight: 'bold', fontSize: '1.1em' }}>
                             {isModoRP ? '🍻 MODO TAVERNA ATIVO: Os jogadores não vêem o mapa! (Apenas Sala de RP)' : '🌍 MODO COMBATE ATIVO: O Mapa está visível para todos os jogadores!'}
                         </span>
-                        <button className={`btn-neon ${isModoRP ? 'btn-green' : 'btn-purple'}`} onClick={toggleModoRP} style={{ padding: '5px 15px', margin: 0 }}>
-                            {isModoRP ? '🌍 REVELAR A REALIDADE (MOSTRAR MAPA)' : '🍻 ATIVAR TAVERNA (OCULTAR MAPA)'}
-                        </button>
+                        <div style={{ display: 'flex', gap: 10 }}>
+                            {isModoRP && (
+                                <button className={`btn-neon ${mestreVendoRP ? 'btn-blue' : 'btn-gold'}`} onClick={() => setMestreVendoRP(!mestreVendoRP)} style={{ padding: '5px 15px', margin: 0 }}>
+                                    {mestreVendoRP ? '🗺️ VER MAPA OCULTO' : '👁️ ESPIAR SALA DE RP'}
+                                </button>
+                            )}
+                            <button className={`btn-neon ${isModoRP ? 'btn-green' : 'btn-purple'}`} onClick={toggleModoRP} style={{ padding: '5px 15px', margin: 0 }}>
+                                {isModoRP ? '🌍 REVELAR A REALIDADE (MOSTRAR MAPA)' : '🍻 ATIVAR TAVERNA (OCULTAR MAPA)'}
+                            </button>
+                        </div>
                     </div>
                )}
 
@@ -764,7 +775,7 @@ export default function MapaPanel() {
                     </div>
                )}
 
-               {isMestre && (
+               {isMestre && (!isModoRP || !mestreVendoRP) && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 15, marginBottom: 15, background: 'rgba(0,0,0,0.5)', padding: 15, borderRadius: 5, border: '1px solid #ffcc00' }}>
                     <h3 style={{ color: '#ffcc00', margin: 0 }}>🎬 Gerenciador de Cenas</h3>
                     
@@ -821,7 +832,7 @@ export default function MapaPanel() {
                 </div>
                )}
 
-               {isMestre && (
+               {isMestre && (!isModoRP || !mestreVendoRP) && (
                 <div style={{ marginBottom: 15, padding: 10, border: '1px solid #0088ff', borderRadius: 5, background: 'rgba(0, 136, 255, 0.1)' }}>
                 <h4 style={{ color: '#0088ff', marginTop: 0, marginBottom: 10 }}>🤖 Gerador de Entidades (Nesta Cena)</h4>
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -866,19 +877,62 @@ export default function MapaPanel() {
                     </div>
                 )}
 
-                {/* 🔥 LÓGICA DE EXIBIÇÃO: TAVERNA VS MAPA 🔥 */}
-                {isModoRP && !isMestre ? (
+                {/* 🔥 LÓGICA DE EXIBIÇÃO: TAVERNA (JOGADORES + MESTRE VENDO RP) VS MAPA 🔥 */}
+                {isModoRP && (!isMestre || mestreVendoRP) ? (
                     <div className="fade-in" style={{ 
-                        height: '60vh', 
+                        minHeight: '60vh', 
                         background: 'radial-gradient(circle, rgba(30,10,20,0.9) 0%, rgba(0,0,0,1) 100%)', 
                         borderRadius: 5, border: '2px solid #ffcc00', boxShadow: '0 0 30px rgba(255, 204, 0, 0.2)', 
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', 
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', 
                         padding: 20, marginBottom: 15 
                     }}>
-                        <div style={{ fontSize: '5em', marginBottom: 10, filter: 'drop-shadow(0 0 10px #ffcc00)' }}>🎲</div>
-                        <h1 style={{ color: '#ffcc00', textShadow: '0 0 15px #ffcc00', margin: 0, letterSpacing: 3 }}>SALA DE ROLEPLAY</h1>
-                        <p style={{ color: '#aaa', fontStyle: 'italic', marginBottom: 30, fontSize: '1.1em' }}>Aguarde... O Mestre está a moldar o tecido da realidade.</p>
+                        <div style={{ fontSize: '3em', marginBottom: 10, filter: 'drop-shadow(0 0 10px #ffcc00)' }}>🎲</div>
+                        <h1 style={{ color: '#ffcc00', textShadow: '0 0 15px #ffcc00', margin: 0, letterSpacing: 3 }}>SESSÃO RP</h1>
+                        <p style={{ color: '#aaa', fontStyle: 'italic', marginBottom: 30, fontSize: '1.1em' }}>
+                            {playersInScene.length} Lenda(s) Presente(s). O Mestre está a moldar o tecido da realidade...
+                        </p>
                         
+                        {/* 🔥 O GRID DE "CÂMERAS" DOS JOGADORES ESTILO ORDEM PARANORMAL 🔥 */}
+                        <div style={{ width: '100%', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '15px', marginBottom: '40px' }}>
+                            {playersInScene.map(([n, f]) => {
+                                const info = getAvatarInfo(f);
+                                
+                                return (
+                                    <div key={n} style={{
+                                        position: 'relative', width: '100%', aspectRatio: '4/3', background: '#111',
+                                        border: '2px solid #333', borderRadius: 6, overflow: 'hidden',
+                                        backgroundImage: urlSeguraParaCss(info.img) || 'none',
+                                        backgroundSize: 'cover', backgroundPosition: 'center',
+                                        boxShadow: '0 0 15px rgba(0,0,0,0.8)'
+                                    }}>
+                                        {/* HUD Holográfico de Energias */}
+                                        <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', display: 'flex', flexDirection: 'column', background: 'rgba(10,10,15,0.9)', borderTop: '2px solid #222', padding: '6px 10px', backdropFilter: 'blur(3px)' }}>
+                                            <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '0.9em', textTransform: 'uppercase', marginBottom: 6, letterSpacing: 1, textShadow: '1px 1px 2px #000', textAlign: 'center' }}>{n}</span>
+                                            
+                                            {/* BARRA DE VIDA */}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
+                                                <span style={{ color: '#ff003c', fontSize: '0.7em', fontWeight: 'bold', width: '20px' }}>HP</span>
+                                                <div style={{ flex: 1, background: '#300', height: 6, border: '1px solid #000', position: 'relative' }}>
+                                                    <div style={{ width: '100%', height: '100%', background: '#ff003c', boxShadow: '0 0 5px #ff003c' }}></div>
+                                                </div>
+                                                <span style={{ color: '#fff', fontSize: '0.7em', fontWeight: 'bold', minWidth: '40px', textAlign: 'right' }}>{fmt(f.vida?.atual)}</span>
+                                            </div>
+
+                                            {/* GRID DAS 6 ENERGIAS */}
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '4px 8px', fontSize: '0.65em', fontWeight: 'bold' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#0088ff', textShadow: '0 0 3px #0088ff' }}><span>MP</span> <span>{fmt(f.mana?.atual)}</span></div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#aa00ff', textShadow: '0 0 3px #aa00ff' }}><span>AU</span> <span>{fmt(f.aura?.atual)}</span></div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#00ffaa', textShadow: '0 0 3px #00ffaa' }}><span>CK</span> <span>{fmt(f.chakra?.atual)}</span></div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ff8800', textShadow: '0 0 3px #ff8800' }}><span>CP</span> <span>{fmt(f.corpo?.atual)}</span></div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#fff', textShadow: '0 0 3px #fff' }}><span>PV</span> <span>{fmt(f.pontosVitais?.atual)}</span></div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ff3333', textShadow: '0 0 3px #ff3333' }}><span>PM</span> <span>{fmt(f.pontosMortais?.atual)}</span></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
                         <div style={{ background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255, 204, 0, 0.3)', padding: 25, borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 15, width: '100%', maxWidth: '600px' }}>
                             <h3 style={{ color: '#00ffcc', margin: '0 0 5px 0', textAlign: 'center', textTransform: 'uppercase', letterSpacing: 1 }}>Rolagem Livre (Teste de Perícia)</h3>
                             
