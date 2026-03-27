@@ -28,7 +28,6 @@ const safeGetRawBase = safeFn(getRawBase, 0);
 const safeGetPrestigioReal = safeFn(getPrestigioReal, 0);
 const safeGetRank = safeFn(getRank, { l: 'F', c: '#ffffff', a: 1 });
 
-// 🔥 FUNÇÃO DE CONVERSÃO DE CORES PARA OS RADARES 🔥
 function hexToRgba(hex, alpha) {
     if (!hex) return `rgba(255,255,255,${alpha})`;
     let c = hex.substring(1).split('');
@@ -39,7 +38,6 @@ function hexToRgba(hex, alpha) {
     return 'rgba('+[(c>>16)&255, (c>>8)&255, c&255].join(',')+','+alpha+')';
 }
 
-// 🔥 AUMENTAMOS O TAMANHO DOS GRÁFICOS (Raio R) 🔥
 const CX = 100, CY = 100, R = 75; 
 const VITALS_RADAR = ['vida', 'mana', 'aura', 'chakra', 'corpo', 'status'];
 const VITALS_LABELS = ['VIDA', 'MANA', 'AURA', 'CHAKRA', 'CORPO', 'STATUS'];
@@ -108,7 +106,7 @@ function RadarChart({ ficha, isAtual }) {
         return safeGetRank(pAtualValor, ficha?.ascensaoBase || 1);
     });
 
-    const labelR = R + 18; // Distância maior para as letras não encostarem no gráfico
+    const labelR = R + 18;
     const labelPos = ANGLES.map((a) => [CX + labelR * Math.cos(a), CY + labelR * Math.sin(a)]);
 
     const baseColor = ficha?.cores?.radarBase || '#00ffff';
@@ -186,6 +184,7 @@ function StatusPanelCore() {
     const [inputLetalidade, setInputLetalidade] = useState('0');
     
     const [showCores, setShowCores] = useState(false);
+    const [salvandoCores, setSalvandoCores] = useState(false);
     
     const inicializado = useRef(false);
 
@@ -216,12 +215,19 @@ function StatusPanelCore() {
         { key: 'radarAtual', label: 'Radar (Atual)', default: '#ffcc00' },
     ];
 
+    // 🔥 ATUALIZA APENAS O ESTADO LOCAL (EFEITO IMEDIATO, SEM SPAM NO SERVIDOR) 🔥
     const handleColorChange = (key, color) => {
         updateFicha(f => {
             if (!f.cores) f.cores = {};
             f.cores[key] = color;
         });
+    };
+
+    // 🔥 O BOTÃO QUE EFETIVAMENTE GRAVA AS CORES NO FIREBASE 🔥
+    const salvarCores = () => {
         salvarFichaSilencioso();
+        setSalvandoCores(true);
+        setTimeout(() => setSalvandoCores(false), 2000);
     };
 
     const getVitalMax = useCallback((key, f) => {
@@ -403,7 +409,6 @@ function StatusPanelCore() {
 
         return (
             <div key={key} className="vital-container" style={gridStyle}>
-                {/* 🔥 AQUI ESTÁ A COR DO TÍTULO DINÂMICA 🔥 */}
                 <div className="vital-label" style={{ color: color, textShadow: `0 0 8px ${color}80`, letterSpacing: '1px', fontWeight: 'bold', fontSize: '0.85em', textTransform: 'uppercase' }}>
                     {label} {extra && <span style={{fontSize: '0.9em', color: '#aaa', textShadow: 'none'}}>{extra}</span>}
                 </div>
@@ -434,10 +439,11 @@ function StatusPanelCore() {
                 </button>
             </div>
 
+            {/* 🔥 MENU DE CORES COM BOTÃO DE SALVAR 🔥 */}
             {showCores && (
                 <div className="fade-in" style={{ marginBottom: '20px', background: 'rgba(0,0,0,0.6)', padding: '20px', borderRadius: '8px', border: '1px dashed #ffcc00', boxShadow: 'inset 0 0 20px rgba(255,204,0,0.1)' }}>
                     <h4 style={{ color: '#ffcc00', margin: '0 0 15px 0', letterSpacing: '1px' }}>🎨 Paleta da Alma</h4>
-                    <p style={{ color: '#aaa', fontSize: '0.85em', marginTop: '-10px', marginBottom: '20px' }}>Selecione as cores que definem a energia desta entidade.</p>
+                    <p style={{ color: '#aaa', fontSize: '0.85em', marginTop: '-10px', marginBottom: '20px' }}>Selecione as cores e grave na Forja quando estiver satisfeito!</p>
                     
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '15px' }}>
                         {colorConfigs.map(c => (
@@ -453,13 +459,27 @@ function StatusPanelCore() {
                         ))}
                     </div>
                     
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '15px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
                         <button className="btn-neon btn-red btn-small" onClick={() => {
                             if(window.confirm('Tem certeza que deseja resetar todas as cores para o padrão do sistema?')) {
                                 updateFicha(f => { f.cores = {} });
                                 salvarFichaSilencioso();
                             }
                         }} style={{ margin: 0 }}>🔄 Resetar Cores</button>
+                        
+                        {/* 🔥 BOTÃO QUE SALVA DE VERDADE 🔥 */}
+                        <button 
+                            className="btn-neon btn-gold btn-small" 
+                            onClick={salvarCores} 
+                            style={{ 
+                                margin: 0, 
+                                backgroundColor: salvandoCores ? 'rgba(0, 255, 100, 0.2)' : undefined,
+                                borderColor: salvandoCores ? '#00ffcc' : undefined,
+                                color: salvandoCores ? '#fff' : undefined
+                            }}
+                        >
+                            {salvandoCores ? '✅ PALETA SALVA!' : '💾 SALVAR PALETA'}
+                        </button>
                     </div>
                 </div>
             )}
