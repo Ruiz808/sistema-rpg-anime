@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import useStore, { sanitizarNome } from './stores/useStore'
 import useFirebase from './hooks/useFirebase'
 import Sidebar from './components/layout/Sidebar'
@@ -210,7 +210,6 @@ function MestrePanel() {
         }
     };
 
-    // 🔥 NOVO: SISTEMA DE CLONAGEM DE FICHAS 🔥
     const handleClonarFicha = (nomeOriginal, fichaOriginal) => {
         const novoNome = window.prompt(`🖨️ CLONAR ENTIDADE: ${nomeOriginal}\nDigite o nome exato para a nova linha temporal ou clone:`, `${nomeOriginal} (Futuro)`);
         
@@ -223,23 +222,33 @@ function MestrePanel() {
         }
 
         if (window.confirm(`Deseja criar a entidade duplicada "${nomeSanitizado}" e assumir o controle dela agora?`)) {
-            // 1. Assumimos o novo nome fantasma
             setMeuNome(nomeSanitizado);
             localStorage.setItem('rpgNome', nomeSanitizado);
             
-            // 2. Fazemos a cópia profunda e perfeita de todos os dados do original
             const fichaClone = JSON.parse(JSON.stringify(fichaOriginal));
             
-            // 3. Injetamos o clone na nossa ficha local
             carregarDadosFicha(fichaClone);
-            setAbaAtiva('aba-ficha'); // Teleporta para a Ficha
+            setAbaAtiva('aba-ficha'); 
             
-            // Aviso de como consolidar a criação na base de dados
             setTimeout(() => {
                 alert(`✨ O CLONE FOI CRIADO E CARREGADO: ${nomeSanitizado} ✨\n\n⚠️ IMPORTANTE: A ficha ainda só existe no seu ecrã! Vá até a "Ficha Narrativa" ou "Editor de Atributos" e clique em "SALVAR" para que o clone seja definitivamente forjado no Servidor/Base de Dados!`);
             }, 600);
         }
     };
+
+    // 🔥 LEITOR DA COROA GLOBAL DO MESTRE 🔥
+    const grandsGlobais = useMemo(() => {
+        let g = {};
+        if (personagens) {
+            Object.values(personagens).forEach(p => {
+                if (p?.compendioOverrides?.grands) {
+                    g = { ...g, ...p.compendioOverrides.grands };
+                }
+            });
+        }
+        return g;
+    }, [personagens]);
+
 
     const todosJogadores = Object.entries(personagens || {});
     const jogadoresFiltrados = todosJogadores.filter(([nome, ficha]) => {
@@ -298,22 +307,50 @@ function MestrePanel() {
                             const corpo = getStatusLimpo(ficha, 'corpo', 9);
                             
                             const supremas = getEnergiasSupremas(ficha);
-
                             const percHp = vida.max > 0 ? (vida.atual / vida.max) * 100 : 0;
 
-                            let classId = ficha?.bio?.classe;
-                            if ((classId === 'pretender' || classId === 'alterego') && ficha?.bio?.subClasse) classId = ficha?.bio?.subClasse;
+                            // 🔥 VERIFICAÇÃO ÉPICA: ESTA ENTIDADE É UM GRAND? 🔥
+                            const mesaAtual = ficha?.bio?.mesa || 'presente';
+                            const classeReal = ficha?.bio?.classe;
+                            const isGrand = classeReal && grandsGlobais[`${classeReal}_${mesaAtual}`] === nome;
+
+                            let classId = classeReal;
+                            if (!isGrand && (classId === 'pretender' || classId === 'alterego') && ficha?.bio?.subClasse) {
+                                classId = ficha?.bio?.subClasse;
+                            }
 
                             return (
-                                <div key={nome} style={{ background: 'rgba(0,0,0,0.6)', border: `1px solid ${nome === meuNome ? '#0f0' : '#333'}`, padding: '15px', borderRadius: '5px', position: 'relative', overflow: 'hidden', boxShadow: nome === meuNome ? '0 0 15px rgba(0,255,0,0.2)' : 'none' }}>
-                                    <div style={{ position: 'absolute', top: 0, left: 0, height: '4px', width: `${percHp}%`, background: percHp > 50 ? '#0f0' : percHp > 20 ? '#ffcc00' : '#f00', transition: 'width 0.3s' }} />
+                                <div key={nome} style={{ 
+                                    background: 'rgba(0,0,0,0.6)', 
+                                    border: isGrand ? '2px solid #ffcc00' : `1px solid ${nome === meuNome ? '#0f0' : '#333'}`, 
+                                    padding: '15px', borderRadius: '5px', position: 'relative', overflow: 'hidden', 
+                                    boxShadow: isGrand ? '0 0 20px rgba(255,0,60,0.4), inset 0 0 20px rgba(255,204,0,0.1)' : (nome === meuNome ? '0 0 15px rgba(0,255,0,0.2)' : 'none') 
+                                }}>
+                                    
+                                    {/* 🔥 AURA DA CALAMIDADE SE FOR GRAND 🔥 */}
+                                    {isGrand && (
+                                        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'linear-gradient(135deg, rgba(255,0,60,0.25) 0%, rgba(255,204,0,0.1) 50%, rgba(0,0,0,0) 100%)', pointerEvents: 'none', zIndex: 1 }} />
+                                    )}
 
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', marginTop: '5px' }}>
-                                        <strong style={{ color: '#fff', fontSize: '1.2em' }}>{nome}</strong>
-                                        <span style={{ color: '#aaa', fontSize: '0.8em', fontStyle: 'italic' }}>{classId ? classId.toUpperCase() : 'Mundano'}</span>
+                                    <div style={{ position: 'absolute', top: 0, left: 0, height: '4px', width: `${percHp}%`, background: percHp > 50 ? '#0f0' : percHp > 20 ? '#ffcc00' : '#f00', transition: 'width 0.3s', zIndex: 2 }} />
+
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', marginTop: '5px', position: 'relative', zIndex: 2 }}>
+                                        <strong style={{ color: isGrand ? '#ffcc00' : '#fff', fontSize: '1.2em', textShadow: isGrand ? '0 0 10px #ff003c' : 'none' }}>
+                                            {nome} {nome === meuNome && <span style={{color: '#0f0', fontSize: '0.6em', textShadow: 'none'}}>(VOCÊ)</span>}
+                                        </strong>
+                                        <span style={{ 
+                                            color: isGrand ? '#ffcc00' : '#aaa', 
+                                            fontSize: isGrand ? '0.85em' : '0.8em', 
+                                            fontStyle: 'italic',
+                                            fontWeight: isGrand ? 'bold' : 'normal',
+                                            textShadow: isGrand ? '0 0 5px #ff003c' : 'none',
+                                            letterSpacing: isGrand ? '1px' : 'normal'
+                                        }}>
+                                            {isGrand ? `👑 GRAND ${classeReal.toUpperCase()}` : (classId ? classId.toUpperCase() : 'Mundano')}
+                                        </span>
                                     </div>
 
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', fontSize: '0.75em', color: '#ccc', marginBottom: '12px' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', fontSize: '0.75em', color: '#ccc', marginBottom: '12px', position: 'relative', zIndex: 2 }}>
                                         <div style={{ gridColumn: 'span 3', background: 'rgba(255,0,0,0.1)', padding: '6px', borderRadius: '3px', borderLeft: '3px solid #f00', display: 'flex', justifyContent: 'space-between' }}>
                                             <span><span style={{ color: '#f00', fontWeight: 'bold' }}>HP:</span> {fmt(vida.atual)} / {fmt(vida.max)}</span>
                                             {vida.pVit > 0 && <span style={{ color: '#ffcc00', fontWeight: 'bold' }}>+{vida.pVit} Vit</span>}
@@ -347,7 +384,7 @@ function MestrePanel() {
                                     </div>
 
                                     {/* 🔥 BOTÕES DE CONTROLO E CLONAGEM 🔥 */}
-                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', position: 'relative', zIndex: 2 }}>
                                         <button
                                             className={`btn-neon ${nome === meuNome ? 'btn-green' : 'btn-gold'}`}
                                             style={{ flex: 1, padding: '4px', fontSize: '0.8em', margin: 0, opacity: nome === meuNome ? 0.6 : 1 }}
