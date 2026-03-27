@@ -54,7 +54,7 @@ export default function FichaPanel() {
     const personagens = useStore(s => s.personagens);
     const meuNome = useStore(s => s.meuNome);
 
-    const [mesa, setMesa] = useState('presente'); // 🔥 NOVO: SELETOR DE MESA!
+    const [mesa, setMesa] = useState('presente'); 
     const [raca, setRaca] = useState('');
     const [classe, setClasse] = useState('');
     const [subClasse, setSubClasse] = useState(''); 
@@ -83,8 +83,9 @@ export default function FichaPanel() {
     }, [minhaFicha, personagens]);
 
     const grands = overridesCompendio.grands || {};
-    // Verifica se a classe atual e a mesa atual estão coroadas com o nome do jogador
+    // 🔥 VERIFICAÇÃO ÉPICA: É O GRAND? TEM AVATAR? 🔥
     const isGrand = classe && grands[`${classe}_${mesa}`] === meuNome;
+    const grandIcone = isGrand ? grands[`${classe}_${mesa}_icone`] : null;
 
     const carregarBio = useCallback(() => {
         const bio = minhaFicha?.bio || {};
@@ -343,21 +344,26 @@ export default function FichaPanel() {
 
     return (
         <div className="ficha-panel">
-            <div className="def-box" style={{ position: 'relative', overflow: 'hidden' }}>
+            <div className="def-box" style={{ 
+                position: 'relative', 
+                overflow: 'hidden', 
+                border: isGrand ? '2px solid #ff003c' : '', 
+                boxShadow: isGrand ? '0 0 30px rgba(255, 0, 60, 0.3), inset 0 0 50px rgba(255, 204, 0, 0.1)' : '' 
+            }}>
                 
-                {/* 🔥 EFEITO GRAND CLASS ATIVO 🔥 */}
+                {/* 🔥 EFEITO GRAND CLASS ATIVO (Sombra Vermelha e Dourada da Calamidade) 🔥 */}
                 {isGrand && (
-                    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'linear-gradient(135deg, rgba(255,204,0,0.2) 0%, rgba(0,0,0,0) 60%)', pointerEvents: 'none' }} />
+                    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'linear-gradient(135deg, rgba(255,0,60,0.25) 0%, rgba(255,204,0,0.1) 40%, rgba(0,0,0,0) 100%)', pointerEvents: 'none' }} />
                 )}
 
-                <h3 style={{ color: isGrand ? '#ffcc00' : '#ffcc00', marginBottom: 10, display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    Ficha Narrativa {isGrand && <span style={{ fontSize: '0.6em', background: '#ffcc00', color: '#000', padding: '3px 8px', borderRadius: '15px', fontWeight: 'bold' }}>TÍTULO GRAND</span>}
+                <h3 style={{ color: isGrand ? '#ffcc00' : '#ffcc00', marginBottom: 15, display: 'flex', alignItems: 'center', gap: '10px', textShadow: isGrand ? '0 0 10px #ffcc00' : 'none' }}>
+                    Ficha Narrativa {isGrand && <span style={{ fontSize: '0.6em', background: 'linear-gradient(90deg, #ffcc00, #ff003c)', color: '#000', padding: '4px 10px', borderRadius: '15px', fontWeight: 'bold', textShadow: 'none', boxShadow: '0 0 10px rgba(255,204,0,0.8)' }}>ENTIDADE SUPREMA</span>}
                 </h3>
                 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15, position: 'relative', zIndex: 1 }}>
                     
                     {/* 🔥 SELETOR DE MESA (Linha Temporal) 🔥 */}
-                    <div style={{ gridColumn: 'span 2', background: 'rgba(0,0,0,0.4)', padding: '10px', borderRadius: '5px', border: '1px solid #444', display: 'flex', gap: '15px', alignItems: 'center' }}>
+                    <div style={{ gridColumn: 'span 2', background: 'rgba(0,0,0,0.6)', padding: '10px', borderRadius: '5px', border: '1px solid #444', display: 'flex', gap: '15px', alignItems: 'center' }}>
                         <label style={{ color: '#aaa', fontSize: '0.9em', fontWeight: 'bold', margin: 0 }}>⏳ Linha Temporal (Mesa):</label>
                         <select 
                             className="input-neon" 
@@ -374,11 +380,24 @@ export default function FichaPanel() {
                         </select>
                     </div>
 
+                    {/* 🔥 O AVATAR DA CALAMIDADE: SUBSTITUI O SELETOR DE CLASSE 🔥 */}
                     {isGrand && (
-                        <div className="fade-in" style={{ gridColumn: 'span 2', textAlign: 'center', borderBottom: '1px solid #ffcc00', paddingBottom: '15px', marginBottom: '5px' }}>
-                            <div style={{ fontSize: '3em', textShadow: '0 0 20px #ffcc00' }}>👑</div>
-                            <h2 style={{ color: '#ffcc00', margin: '5px 0 0 0', letterSpacing: '3px', textShadow: '0 0 10px #ffcc00' }}>RECEPTÁCULO GRAND {classe.toUpperCase()}</h2>
-                            <p style={{ color: '#aaa', fontSize: '0.8em', fontStyle: 'italic', margin: '5px 0 0 0' }}>Reconhecido pelo Trono da Ascensão</p>
+                        <div className="fade-in" style={{ gridColumn: 'span 2', textAlign: 'center', borderBottom: '1px solid rgba(255,204,0,0.3)', paddingBottom: '25px', marginBottom: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', zIndex: 2 }}>
+                            <div style={{
+                                width: '140px', height: '140px', borderRadius: '50%',
+                                border: '3px solid #ffcc00', boxShadow: '0 0 30px rgba(255,0,60,0.8), inset 0 0 20px rgba(255,204,0,0.5)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                background: 'rgba(0,0,0,0.8)', overflow: 'hidden', marginBottom: '15px',
+                                fontSize: '4em', textShadow: '0 0 20px #ffcc00'
+                            }}>
+                                {grandIcone ? <img src={grandIcone} alt="Avatar Grand" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '👑'}
+                            </div>
+                            <h2 style={{ color: '#ffcc00', margin: '0', letterSpacing: '5px', textShadow: '0 0 20px #ff003c, 0 0 10px #ffcc00', textTransform: 'uppercase', fontSize: '2.2em' }}>
+                                GRAND {classe}
+                            </h2>
+                            <p style={{ color: '#ffcc00', fontSize: '1em', fontWeight: 'bold', margin: '10px 0 0 0', textShadow: '0 0 5px #ff003c', letterSpacing: '2px' }}>
+                                O RECEPTÁCULO ABSOLUTO DO TRONO DA ASCENSÃO
+                            </p>
                         </div>
                     )}
 
@@ -386,30 +405,34 @@ export default function FichaPanel() {
                         <label style={{ color: '#aaa', fontSize: '0.85em' }}>Raça</label>
                         <input className="input-neon" type="text" value={raca} onChange={e => setRaca(e.target.value)} />
                     </div>
-                    <div>
-                        <label style={{ color: isGrand ? '#ffcc00' : '#00ffcc', fontSize: '0.85em', fontWeight: 'bold' }}>Classe Mística</label>
-                        <select 
-                            className="input-neon" 
-                            value={classe} 
-                            onChange={e => {
-                                const val = e.target.value;
-                                setClasse(val);
-                                if (val !== 'alterego' && val !== 'pretender') {
-                                    setSubClasse('');
-                                    comitarBio({ classe: val, subClasse: '' });
-                                } else {
-                                    comitarBio({ classe: val });
-                                }
-                            }}
-                            style={{ width: '100%', padding: '6px', background: '#111', color: isGrand ? '#ffcc00' : '#00ffcc', border: `1px solid ${isGrand ? '#ffcc00' : '#00ffcc'}`, borderRadius: '4px', boxShadow: isGrand ? '0 0 10px rgba(255,204,0,0.3)' : 'none' }}
-                        >
-                            {CLASSES_OPTIONS.map(opt => (
-                                <option key={opt.value} value={opt.value}>{opt.label}</option>
-                            ))}
-                        </select>
-                    </div>
 
-                    {(classe === 'alterego') && (
+                    {/* 🔥 SELETOR MUNDANO OCULTO PARA OS GRANDS 🔥 */}
+                    {!isGrand && (
+                        <div>
+                            <label style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold' }}>Classe Mística</label>
+                            <select 
+                                className="input-neon" 
+                                value={classe} 
+                                onChange={e => {
+                                    const val = e.target.value;
+                                    setClasse(val);
+                                    if (val !== 'alterego' && val !== 'pretender') {
+                                        setSubClasse('');
+                                        comitarBio({ classe: val, subClasse: '' });
+                                    } else {
+                                        comitarBio({ classe: val });
+                                    }
+                                }}
+                                style={{ width: '100%', padding: '6px', background: '#111', color: '#00ffcc', border: '1px solid #00ffcc', borderRadius: '4px' }}
+                            >
+                                {CLASSES_OPTIONS.map(opt => (
+                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+
+                    {(!isGrand && classe === 'alterego') && (
                         <div className="fade-in" style={{ gridColumn: 'span 2', background: 'rgba(255, 0, 255, 0.1)', padding: '15px', borderRadius: '5px', border: '1px dashed #ff00ff' }}>
                             <label style={{ color: '#ff00ff', fontSize: '0.9em', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
                                 🎭 Dualidade (Fragmentos de Ego)
@@ -492,7 +515,7 @@ export default function FichaPanel() {
                         </div>
                     )}
 
-                    {(classe === 'pretender') && (
+                    {(!isGrand && classe === 'pretender') && (
                         <div className="fade-in" style={{ gridColumn: 'span 2', background: 'rgba(255, 170, 0, 0.1)', padding: '12px', borderRadius: '5px', border: '1px dashed #ffaa00' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                                 <label style={{ color: '#ffaa00', fontSize: '0.9em', fontWeight: 'bold' }}>
@@ -549,6 +572,7 @@ export default function FichaPanel() {
                         </div>
                     )}
 
+                    {/* RESTANTES CAMPOS MANTÊM-SE IGUAIS */}
                     <div>
                         <label style={{ color: '#aaa', fontSize: '0.85em' }}>Idade</label>
                         <input className="input-neon" type="text" value={idade} onChange={e => setIdade(e.target.value)} />
