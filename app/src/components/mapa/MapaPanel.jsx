@@ -82,12 +82,14 @@ export default function MapaPanel() {
     const [dadoAnim, setDadoAnim] = useState({ ativo: false, numero: 20, finalResult: null, cor: '#00ffcc', quemRolou: '' });
     const prevFeedLen = useRef(feedCombate.length);
 
+    // O CÉREBRO DA VISÃO DUPLA (GLOBAL vs MESTRE)
     const [cenaVisualizadaId, setCenaVisualizadaId] = useState(null);
     const cenaAtivaIdGlobal = cenario?.ativa || 'default';
     
     const cenaRenderId = (isMestre && cenaVisualizadaId) ? cenaVisualizadaId : cenaAtivaIdGlobal;
     const cenaAtual = cenario?.lista?.[cenaRenderId] || { nome: 'Desconhecido', img: '', escala: 1.5, unidade: 'm' };
 
+    // 🔥 MODO TAVERNA / ROLEPLAY (SISTEMA DE LOBBY CROSS-TIMELINE) 🔥
     const isModoRP = cenario?.modoRP === true;
     const [mestreVendoRP, setMestreVendoRP] = useState(false);
     
@@ -711,6 +713,14 @@ export default function MapaPanel() {
         );
     }
 
+    // 🔥 CÁLCULO DO TAMANHO DA CÂMERA (Responsivo com limite de 5+) 🔥
+    const playerCount = playersNaTaverna.length;
+    let cardSize = '280px'; 
+    if (playerCount === 1) cardSize = '400px';
+    else if (playerCount === 2) cardSize = '350px';
+    else if (playerCount === 3 || playerCount === 4) cardSize = '280px';
+    else cardSize = '220px';
+
     return (
         <div className="mapa-panel" style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
             
@@ -931,10 +941,10 @@ export default function MapaPanel() {
                                     
                                     return (
                                         <div key={n} className="fade-in" style={{
-                                            position: 'relative', width: '220px', aspectRatio: '4/3', background: '#111',
+                                            position: 'relative', width: cardSize, aspectRatio: '4/3', background: '#111',
                                             border: '2px solid #333', borderRadius: 6, overflow: 'hidden',
                                             backgroundImage: urlSeguraParaCss(info.img) || 'none',
-                                            backgroundSize: 'cover', backgroundPosition: 'center',
+                                            backgroundSize: 'cover', backgroundPosition: 'top center',
                                             boxShadow: '0 0 15px rgba(0,0,0,0.8)'
                                         }}>
                                             {/* HUD Holográfico de Energias */}
@@ -1119,6 +1129,7 @@ export default function MapaPanel() {
                     </>
                 )}
 
+                {/* 🔥 SISTEMA DE INICIATIVA MANTIDO PARA TODOS (INCLUINDO NA TAVERNA) 🔥 */}
                 <div className="def-box" style={{ marginTop: 15 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 10 }}>
                         <h3 style={{ color: '#00ffcc', margin: 0 }}>Sistema de Iniciativa</h3>
