@@ -207,6 +207,8 @@ export function salvarCenarioCompleto(dadosCenario) {
 }
 
 // 🔥 MOTOR DE INICIATIVA GLOBAL
+export const apagarFicha = deletarPersonagem;
+
 export function zerarIniciativaGlobal(nomesArray) {
     if (isInPlasmicCanvas()) return;
     if (!db) return;
