@@ -28,6 +28,17 @@ const safeGetRawBase = safeFn(getRawBase, 0);
 const safeGetPrestigioReal = safeFn(getPrestigioReal, 0);
 const safeGetRank = safeFn(getRank, { l: 'F', c: '#ffffff', a: 1 });
 
+// 🔥 FUNÇÃO DE CONVERSÃO DE CORES PARA OS RADARES 🔥
+function hexToRgba(hex, alpha) {
+    if (!hex) return `rgba(255,255,255,${alpha})`;
+    let c = hex.substring(1).split('');
+    if(c.length === 3){
+        c= [c[0], c[0], c[1], c[1], c[2], c[2]];
+    }
+    c= '0x'+c.join('');
+    return 'rgba('+[(c>>16)&255, (c>>8)&255, c&255].join(',')+','+alpha+')';
+}
+
 const CX = 100, CY = 100, R = 70;
 const VITALS_RADAR = ['vida', 'mana', 'aura', 'chakra', 'corpo', 'status'];
 const VITALS_LABELS = ['VIDA', 'MANA', 'AURA', 'CHAKRA', 'CORPO', 'STATUS'];
@@ -63,7 +74,6 @@ function calcularPrestAtual(ficha, attrKey, baseP) {
     return Math.floor(baseP * multForma);
 }
 
-// 🔥 Esta função lê o Prestígio Base, IGNORANDO qualquer buff ou forma!
 const getBasePFor = (ficha, k) => {
     if (k === 'status') {
         let m = 0;
@@ -100,9 +110,13 @@ function RadarChart({ ficha, isAtual }) {
     const labelR = R + 15;
     const labelPos = ANGLES.map((a) => [CX + labelR * Math.cos(a), CY + labelR * Math.sin(a)]);
 
-    const polyColor = isAtual ? 'rgba(255, 204, 0, 0.2)' : 'rgba(0, 255, 255, 0.2)';
-    const strokeColor = isAtual ? '#ffcc00' : '#0ff';
-    const gridStroke = isAtual ? 'rgba(255, 204, 0, 0.1)' : 'rgba(255, 255, 255, 0.1)';
+    // 🔥 APLICAÇÃO DAS CORES CUSTOMIZADAS NO RADAR 🔥
+    const baseColor = ficha?.cores?.radarBase || '#00ffff';
+    const atualColor = ficha?.cores?.radarAtual || '#ffcc00';
+
+    const polyColor = isAtual ? hexToRgba(atualColor, 0.2) : hexToRgba(baseColor, 0.2);
+    const strokeColor = isAtual ? atualColor : baseColor;
+    const gridStroke = isAtual ? hexToRgba(atualColor, 0.1) : hexToRgba(baseColor, 0.1);
 
     return (
         <svg viewBox="0 0 200 200" className={`radar-svg ${isAtual ? 'atual' : ''}`} style={{ width: '100%', height: 'auto', maxHeight: '250px' }}>
@@ -171,24 +185,48 @@ function StatusPanelCore() {
     const [inputDano, setInputDano] = useState('');
     const [inputLetalidade, setInputLetalidade] = useState('0');
     
+    // 🔥 ESTADO DO PAINEL DE CORES 🔥
+    const [showCores, setShowCores] = useState(false);
+    
     const inicializado = useRef(false);
 
+    // 🔥 AS BARRAS AGORA ABSORVEM AS CORES DA FICHA (Ou usam o Default) 🔥
     const vitalsBars = useMemo(() => [
-        { key: 'vida',   label: 'VIDA (HP)', color: '#ff4d4d', classColor: 'label-color-vida', borderC: '#ff0000' },
-        { key: 'mana',   label: 'MANA',      color: '#00ffff', classColor: 'label-color-mana' },
-        { key: 'aura',   label: 'AURA',      color: '#ffcc00', classColor: 'label-color-aura' },
-        { key: 'chakra', label: 'CHAKRA',    color: '#e6ffff', classColor: 'label-color-chakra' },
-        { key: 'corpo',  label: 'CORPO',     color: '#ff66ff', classColor: 'label-color-corpo' },
-    ], []);
+        { key: 'vida',   label: 'VIDA (HP)', color: ficha?.cores?.vida || '#ff4d4d', classColor: 'label-color-vida', borderC: ficha?.cores?.vida || '#ff0000' },
+        { key: 'mana',   label: 'MANA',      color: ficha?.cores?.mana || '#00ffff', classColor: 'label-color-mana' },
+        { key: 'aura',   label: 'AURA',      color: ficha?.cores?.aura || '#ffcc00', classColor: 'label-color-aura' },
+        { key: 'chakra', label: 'CHAKRA',    color: ficha?.cores?.chakra || '#e6ffff', classColor: 'label-color-chakra' },
+        { key: 'corpo',  label: 'CORPO',     color: ficha?.cores?.corpo || '#ff66ff', classColor: 'label-color-corpo' },
+    ], [ficha?.cores]);
 
     const vitaisEspeciais = useMemo(() => [
-        { key: 'pv', label: 'PONTOS VITAIS (PV)', color: '#00ff88', classColor: 'label-color-pv', borderC: '#00ff88' },
-        { key: 'pm', label: 'PONTOS MORTAIS (PM)', color: '#cc00ff', classColor: 'label-color-pm', borderC: '#cc00ff' },
-    ], []);
+        { key: 'pv', label: 'PONTOS VITAIS (PV)', color: ficha?.cores?.pv || '#00ff88', classColor: 'label-color-pv', borderC: ficha?.cores?.pv || '#00ff88' },
+        { key: 'pm', label: 'PONTOS MORTAIS (PM)', color: ficha?.cores?.pm || '#cc00ff', classColor: 'label-color-pm', borderC: ficha?.cores?.pm || '#cc00ff' },
+    ], [ficha?.cores]);
 
     const allVitals = useMemo(() => [...vitalsBars, ...vitaisEspeciais], [vitalsBars, vitaisEspeciais]);
 
-    // 🔥 O CÁLCULO BLINDADO: Apenas Prestígio Base * Multiplicador
+    // 🔥 LISTA DE CONFIGURAÇÕES DE COR PARA O EDITOR 🔥
+    const colorConfigs = [
+        { key: 'vida', label: 'Vida (HP)', default: '#ff4d4d' },
+        { key: 'mana', label: 'Mana', default: '#00ffff' },
+        { key: 'aura', label: 'Aura', default: '#ffcc00' },
+        { key: 'chakra', label: 'Chakra', default: '#e6ffff' },
+        { key: 'corpo', label: 'Corpo', default: '#ff66ff' },
+        { key: 'pv', label: 'P. Vitais', default: '#00ff88' },
+        { key: 'pm', label: 'P. Mortais', default: '#cc00ff' },
+        { key: 'radarBase', label: 'Radar (Base)', default: '#00ffff' },
+        { key: 'radarAtual', label: 'Radar (Atual)', default: '#ffcc00' },
+    ];
+
+    const handleColorChange = (key, color) => {
+        updateFicha(f => {
+            if (!f.cores) f.cores = {};
+            f.cores[key] = color;
+        });
+        salvarFichaSilencioso();
+    };
+
     const getVitalMax = useCallback((key, f) => {
         if (key === 'pv') {
             const bC = getBasePFor(f, 'corpo');
@@ -273,7 +311,6 @@ function StatusPanelCore() {
         salvarFichaSilencioso();
     }, [updateFicha, allVitals, getVitalMax]);
 
-    // 🔥 SISTEMA DE AÇÕES: Lógica
     const resetarTurno = useCallback(() => {
         updateFicha(f => {
             if (!f.acoes) return;
@@ -341,7 +378,6 @@ function StatusPanelCore() {
 
     if (!ficha) return <div style={{ color: '#888', textAlign: 'center', marginTop: '50px' }}>Carregando dados vitais...</div>;
 
-    // 🔥 O RENDERIZADOR UNIVERSAL DE BARRAS
     const renderBar = (item, index, isSpecial = false) => {
         const { key, label, color, classColor, borderC } = item;
         const rawMx = getVitalMax(key, ficha);
@@ -360,9 +396,9 @@ function StatusPanelCore() {
             <div style={{
                 position: 'absolute', left: '8px', zIndex: 3, display: 'flex', alignItems: 'center', justifyContent: 'center',
                 width: '32px', height: '32px', background: 'rgba(20, 0, 0, 0.9)', 
-                border: `3px solid ${borderC}`, boxShadow: `0 0 10px ${borderC}, inset 0 0 5px ${borderC}80`,
+                border: `3px solid ${borderC || color}`, boxShadow: `0 0 10px ${borderC || color}, inset 0 0 5px ${borderC || color}80`,
                 borderRadius: '4px', color: '#fff', fontWeight: 'bold', fontSize: '18px',
-                fontFamily: 'arial, sans-serif', textShadow: `0 0 5px ${borderC}`
+                fontFamily: 'arial, sans-serif', textShadow: `0 0 5px ${borderC || color}`
             }}>
                 {p}
             </div>
@@ -389,6 +425,49 @@ function StatusPanelCore() {
     return (
         <div className="status-panel-container">
             
+            {/* 🔥 CABEÇALHO COM BOTÃO DE PERSONALIZAÇÃO 🔥 */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                <h3 className="section-title-mint-spaced" style={{ margin: 0, color: '#fff', fontSize: '1.2em' }}>&gt; STATUS PRINCIPAIS</h3>
+                <button 
+                    className="btn-neon btn-small" 
+                    onClick={() => setShowCores(!showCores)} 
+                    style={{ margin: 0, padding: '6px 15px', fontSize: '0.8em', borderColor: showCores ? '#ff003c' : '#ffcc00', color: showCores ? '#ff003c' : '#ffcc00' }}
+                >
+                    {showCores ? '❌ FECHAR PALETA' : '🎨 PERSONALIZAR CORES'}
+                </button>
+            </div>
+
+            {/* 🔥 PAINEL SECRETO DA PALETA DA ALMA 🔥 */}
+            {showCores && (
+                <div className="fade-in" style={{ marginBottom: '20px', background: 'rgba(0,0,0,0.6)', padding: '20px', borderRadius: '8px', border: '1px dashed #ffcc00', boxShadow: 'inset 0 0 20px rgba(255,204,0,0.1)' }}>
+                    <h4 style={{ color: '#ffcc00', margin: '0 0 15px 0', letterSpacing: '1px' }}>🎨 Paleta da Alma</h4>
+                    <p style={{ color: '#aaa', fontSize: '0.85em', marginTop: '-10px', marginBottom: '20px' }}>Selecione as cores que definem a energia desta entidade.</p>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '15px' }}>
+                        {colorConfigs.map(c => (
+                            <div key={c.key} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(255,255,255,0.05)', padding: '5px 10px', borderRadius: '5px' }}>
+                                <input 
+                                    type="color" 
+                                    value={ficha?.cores?.[c.key] || c.default} 
+                                    onChange={e => handleColorChange(c.key, e.target.value)}
+                                    style={{ width: '35px', height: '35px', padding: 0, border: 'none', borderRadius: '5px', cursor: 'pointer', background: 'transparent' }}
+                                />
+                                <label style={{ color: '#fff', fontSize: '0.85em', fontWeight: 'bold' }}>{c.label}</label>
+                            </div>
+                        ))}
+                    </div>
+                    
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '15px' }}>
+                        <button className="btn-neon btn-red btn-small" onClick={() => {
+                            if(window.confirm('Tem certeza que deseja resetar todas as cores para o padrão do sistema?')) {
+                                updateFicha(f => { f.cores = {} });
+                                salvarFichaSilencioso();
+                            }
+                        }} style={{ margin: 0 }}>🔄 Resetar Cores</button>
+                    </div>
+                </div>
+            )}
+
             {/* 🔥 BARRAS CLÁSSICAS */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
                 {vitalsBars.map((item, i) => renderBar(item, i, false))}
