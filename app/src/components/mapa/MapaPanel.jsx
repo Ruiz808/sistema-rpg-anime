@@ -82,14 +82,12 @@ export default function MapaPanel() {
     const [dadoAnim, setDadoAnim] = useState({ ativo: false, numero: 20, finalResult: null, cor: '#00ffcc', quemRolou: '' });
     const prevFeedLen = useRef(feedCombate.length);
 
-    // O CÉREBRO DA VISÃO DUPLA (GLOBAL vs MESTRE)
     const [cenaVisualizadaId, setCenaVisualizadaId] = useState(null);
     const cenaAtivaIdGlobal = cenario?.ativa || 'default';
     
     const cenaRenderId = (isMestre && cenaVisualizadaId) ? cenaVisualizadaId : cenaAtivaIdGlobal;
     const cenaAtual = cenario?.lista?.[cenaRenderId] || { nome: 'Desconhecido', img: '', escala: 1.5, unidade: 'm' };
 
-    // 🔥 MODO TAVERNA / ROLEPLAY (SISTEMA DE LOBBY CROSS-TIMELINE) 🔥
     const isModoRP = cenario?.modoRP === true;
     const [mestreVendoRP, setMestreVendoRP] = useState(false);
     
@@ -100,7 +98,6 @@ export default function MapaPanel() {
         const novoCenario = JSON.parse(JSON.stringify(cenario || {}));
         novoCenario.modoRP = !novoCenario.modoRP;
         
-        // Limpa a sala de RP quando o modo é desativado
         if (!novoCenario.modoRP) {
             novoCenario.tavernaAtivos = [];
         }
@@ -332,12 +329,11 @@ export default function MapaPanel() {
         return result;
     }, [meuNome, minhaFicha, personagens]);
 
-    // 🔥 FILTRA JOGADORES QUE "ENTRARAM NA SALA" PARA O LOBBY RP 🔥
     const playersNaTaverna = useMemo(() => {
         return tavernaAtivos.map(nome => {
             const f = (nome === meuNome) ? minhaFicha : personagens?.[nome];
             return [nome, f];
-        }).filter(([n, f]) => f != null); // Só exibe se a ficha for válida
+        }).filter(([n, f]) => f != null);
     }, [tavernaAtivos, meuNome, minhaFicha, personagens]);
 
     const ordemIniciativa = useMemo(() => {
@@ -929,13 +925,13 @@ export default function MapaPanel() {
                         
                         {/* 🔥 O GRID DE "CÂMERAS" DOS JOGADORES ESTILO ORDEM PARANORMAL 🔥 */}
                         {playersNaTaverna.length > 0 && (
-                            <div style={{ width: '100%', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '15px', marginBottom: '40px' }}>
+                            <div style={{ width: '100%', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '15px', marginBottom: '40px' }}>
                                 {playersNaTaverna.map(([n, f]) => {
                                     const info = getAvatarInfo(f);
                                     
                                     return (
                                         <div key={n} className="fade-in" style={{
-                                            position: 'relative', width: '100%', aspectRatio: '4/3', background: '#111',
+                                            position: 'relative', width: '220px', aspectRatio: '4/3', background: '#111',
                                             border: '2px solid #333', borderRadius: 6, overflow: 'hidden',
                                             backgroundImage: urlSeguraParaCss(info.img) || 'none',
                                             backgroundSize: 'cover', backgroundPosition: 'center',
@@ -943,19 +939,19 @@ export default function MapaPanel() {
                                         }}>
                                             {/* HUD Holográfico de Energias */}
                                             <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', display: 'flex', flexDirection: 'column', background: 'rgba(10,10,15,0.9)', borderTop: '2px solid #222', padding: '6px 10px', backdropFilter: 'blur(3px)' }}>
-                                                <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '0.9em', textTransform: 'uppercase', marginBottom: 6, letterSpacing: 1, textShadow: '1px 1px 2px #000', textAlign: 'center' }}>{n}</span>
+                                                <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '0.8em', textTransform: 'uppercase', marginBottom: 4, letterSpacing: 1, textShadow: '1px 1px 2px #000', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{n}</span>
                                                 
                                                 {/* BARRA DE VIDA */}
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
-                                                    <span style={{ color: '#ff003c', fontSize: '0.7em', fontWeight: 'bold', width: '20px' }}>HP</span>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
+                                                    <span style={{ color: '#ff003c', fontSize: '0.6em', fontWeight: 'bold', width: '15px' }}>HP</span>
                                                     <div style={{ flex: 1, background: '#300', height: 6, border: '1px solid #000', position: 'relative' }}>
                                                         <div style={{ width: '100%', height: '100%', background: '#ff003c', boxShadow: '0 0 5px #ff003c' }}></div>
                                                     </div>
-                                                    <span style={{ color: '#fff', fontSize: '0.7em', fontWeight: 'bold', minWidth: '40px', textAlign: 'right' }}>{fmt(f.vida?.atual)}</span>
+                                                    <span style={{ color: '#fff', fontSize: '0.6em', fontWeight: 'bold', minWidth: '35px', textAlign: 'right' }}>{fmt(f.vida?.atual)}</span>
                                                 </div>
 
                                                 {/* GRID DAS 6 ENERGIAS */}
-                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '4px 8px', fontSize: '0.65em', fontWeight: 'bold' }}>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '2px 6px', fontSize: '0.55em', fontWeight: 'bold' }}>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', color: '#0088ff', textShadow: '0 0 3px #0088ff' }}><span>MP</span> <span>{fmt(f.mana?.atual)}</span></div>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', color: '#aa00ff', textShadow: '0 0 3px #aa00ff' }}><span>AU</span> <span>{fmt(f.aura?.atual)}</span></div>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', color: '#00ffaa', textShadow: '0 0 3px #00ffaa' }}><span>CK</span> <span>{fmt(f.chakra?.atual)}</span></div>
@@ -1123,7 +1119,6 @@ export default function MapaPanel() {
                     </>
                 )}
 
-                {/* 🔥 SISTEMA DE INICIATIVA MANTIDO PARA TODOS (INCLUINDO NA TAVERNA) 🔥 */}
                 <div className="def-box" style={{ marginTop: 15 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 10 }}>
                         <h3 style={{ color: '#00ffcc', margin: 0 }}>Sistema de Iniciativa</h3>
