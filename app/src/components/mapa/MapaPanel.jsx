@@ -55,10 +55,13 @@ export function calcularCA(ficha, tipo) {
 export default function MapaPanel() {
     const { minhaFicha, meuNome, personagens, updateFicha, feedCombate = [], isMestre, dummies, alvoSelecionado, cenario } = useStore(); 
 
+    // 🔥 BLINDAGEM MÁXIMA AQUI: Garantir que se a ficha for null, usamos um objeto vazio para o ecrã não explodir 🔥
+    const fichaSegura = minhaFicha || {};
+
     const [modo3D, setModo3D] = useState(false);
     const [tamanhoCelula, setTamanhoCelula] = useState(35);
-    const [iniciativaInput, setIniciativaInput] = useState(minhaFicha.iniciativa || 0);
-    const [altitudeInput, setAltitudeInput] = useState(minhaFicha.posicao?.z || 0);
+    const [iniciativaInput, setIniciativaInput] = useState(() => fichaSegura.iniciativa || 0);
+    const [altitudeInput, setAltitudeInput] = useState(() => fichaSegura.posicao?.z || 0);
     const [turnoAtualIndex, setTurnoAtualIndex] = useState(0);
     const [feedIndexTurnoAtual, setFeedIndexTurnoAtual] = useState(0);
     const [jogadorHistory, setJogadorHistory] = useState(null);
@@ -69,10 +72,10 @@ export default function MapaPanel() {
     const [mapStat, setMapStat] = useState('destreza'); 
     
     const [mapUsarProf, setMapUsarProf] = useState(false);
-    const profGlobal = parseInt(minhaFicha.proficienciaBase) || 0; 
+    const profGlobal = parseInt(fichaSegura.proficienciaBase) || 0; 
     
-    const [mapVantagens, setMapVantagens] = useState(minhaFicha.ataqueConfig?.vantagens || 0);
-    const [mapDesvantagens, setMapDesvantagens] = useState(minhaFicha.ataqueConfig?.desvantagens || 0);
+    const [mapVantagens, setMapVantagens] = useState(() => fichaSegura.ataqueConfig?.vantagens || 0);
+    const [mapDesvantagens, setMapDesvantagens] = useState(() => fichaSegura.ataqueConfig?.desvantagens || 0);
     
     const [novaCenaNome, setNovaCenaNome] = useState('');
     const [novaCenaEscala, setNovaCenaEscala] = useState(1.5);
@@ -93,7 +96,7 @@ export default function MapaPanel() {
     const isModoRP = cenario?.modoRP === true;
     const [mestreVendoRP, setMestreVendoRP] = useState(false);
     
-    const tavernaAtivos = cenario?.tavernaAtivos || [];
+    const tavernaAtivos = Array.isArray(cenario?.tavernaAtivos) ? cenario.tavernaAtivos : [];
     const isPresenteNaTaverna = tavernaAtivos.includes(meuNome);
 
     const toggleModoRP = () => {
@@ -116,7 +119,7 @@ export default function MapaPanel() {
 
     const togglePresencaTaverna = () => {
         const novoCenario = JSON.parse(JSON.stringify(cenario || {}));
-        if (!novoCenario.tavernaAtivos) novoCenario.tavernaAtivos = [];
+        if (!Array.isArray(novoCenario.tavernaAtivos)) novoCenario.tavernaAtivos = [];
         
         if (isPresenteNaTaverna) {
             novoCenario.tavernaAtivos = novoCenario.tavernaAtivos.filter(n => n !== meuNome);
@@ -193,13 +196,13 @@ export default function MapaPanel() {
     }, [feedCombate]);
 
     useEffect(() => {
-        setMapVantagens(minhaFicha.ataqueConfig?.vantagens || 0);
-        setMapDesvantagens(minhaFicha.ataqueConfig?.desvantagens || 0);
-    }, [minhaFicha.ataqueConfig?.vantagens, minhaFicha.ataqueConfig?.desvantagens]);
+        setMapVantagens(fichaSegura.ataqueConfig?.vantagens || 0);
+        setMapDesvantagens(fichaSegura.ataqueConfig?.desvantagens || 0);
+    }, [fichaSegura.ataqueConfig?.vantagens, fichaSegura.ataqueConfig?.desvantagens]);
 
     useEffect(() => {
-        setAltitudeInput(minhaFicha.posicao?.z || 0);
-    }, [minhaFicha.posicao?.z]);
+        setAltitudeInput(fichaSegura.posicao?.z || 0);
+    }, [fichaSegura.posicao?.z]);
 
     function changeVantagem(e) {
         const val = parseInt(e.target.value) || 0;
@@ -314,7 +317,7 @@ export default function MapaPanel() {
 
     const jogadores = useMemo(() => {
         const result = {};
-        if (meuNome && minhaFicha.posicao && minhaFicha.posicao.x !== undefined) {
+        if (meuNome && minhaFicha?.posicao && minhaFicha.posicao.x !== undefined) {
             result[meuNome] = minhaFicha;
         }
         if (personagens) {
@@ -345,7 +348,7 @@ export default function MapaPanel() {
             for (let i = 0; i < nomes.length; i++) {
                 const n = nomes[i];
                 const f = personagens[n];
-                const cenaDoJogador = f.posicao?.cenaId || 'default';
+                const cenaDoJogador = f?.posicao?.cenaId || 'default';
                 
                 if (f && f.iniciativa !== undefined && f.iniciativa > 0 && cenaDoJogador === cenaRenderId) {
                     lista.push({ nome: n, ficha: f, iniciativa: f.iniciativa });
@@ -435,7 +438,7 @@ export default function MapaPanel() {
         const prof = mapUsarProf ? profGlobal : 0;
         
         const sels = [mapStat]; 
-        const itensEquipados = minhaFicha.inventario ? minhaFicha.inventario.filter(i => i.equipado) : [];
+        const itensEquipados = minhaFicha?.inventario ? minhaFicha.inventario.filter(i => i.equipado) : [];
 
         const result = calcularAcerto({ 
             qD, fD, prof, bonus, sels, minhaFicha, itensEquipados, 
@@ -513,10 +516,17 @@ export default function MapaPanel() {
         let fichaBase = jogadorDaVez ? jogadorDaVez.ficha : (acaoExibir ? jogadores[acaoExibir.nome] : null);
         let infoBase = getAvatarInfo(fichaBase);
 
+        // 🔥 A MÁGICA DA COROA DO GRAND/CANDIDATO NO HOLOGRAMA 🔥
         let classId = fichaBase?.bio?.classe;
         if ((classId === 'pretender' || classId === 'alterego') && fichaBase?.bio?.subClasse) {
             classId = fichaBase?.bio?.subClasse;
         }
+
+        let mesaBase = fichaBase?.bio?.mesa || 'presente';
+        const isGrand = classId && overridesCompendio?.grands?.[`${classId}_${mesaBase}`] === nomeBase;
+        const listaCands = overridesCompendio?.grands?.[`${classId}_${mesaBase}_candidatos`] || [];
+        const isCandidato = classId && !isGrand && listaCands.includes(nomeBase);
+        const grandIconUrl = overridesCompendio?.grands?.[`${classId}_${mesaBase}_icone`];
         
         const customClassIcon = classId ? overridesCompendio[classId]?.iconeUrl : null;
         const defaultClassSymbol = getClassIconById(classId);
@@ -542,7 +552,7 @@ export default function MapaPanel() {
                 }
             }
 
-            const acCfg = fichaBase?.ataqueConfig || minhaFicha.ataqueConfig || {};
+            const acCfg = fichaBase?.ataqueConfig || minhaFicha?.ataqueConfig || {};
             const cNMin = acCfg.criticoNormalMin || 16;
             const cNMax = acCfg.criticoNormalMax || 18;
             const cFMin = acCfg.criticoFatalMin || 19;
@@ -599,7 +609,11 @@ export default function MapaPanel() {
         }
 
         return (
-            <div className="def-box" style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', border: `2px solid ${corImpacto}`, boxShadow: `0 0 20px ${corImpacto}40` }}>
+            <div className="def-box" style={{ 
+                height: '100%', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', 
+                border: isGrand ? `3px solid #ffcc00` : (isCandidato ? `2px solid #00ccff` : `2px solid ${corImpacto}`), 
+                boxShadow: isGrand ? `0 0 30px rgba(255,0,60,0.6), inset 0 0 20px rgba(255,204,0,0.3)` : (isCandidato ? `0 0 20px rgba(0,204,255,0.4)` : `0 0 20px ${corImpacto}40`) 
+            }}>
                 
                 <div style={{ background: corHeader, color: corTextoHeader, padding: '10px', textAlign: 'center', fontWeight: '900', letterSpacing: 2, fontSize: '1.2em', textTransform: 'uppercase' }}>
                     {tituloImpacto}
@@ -618,22 +632,28 @@ export default function MapaPanel() {
                             position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
                             boxShadow: 'inset 0 -100px 50px -20px rgba(0,0,0,0.9)' 
                         }}>
-                            <div style={{ padding: '20px', zIndex: 2 }}>
-                                <h2 style={{ margin: 0, color: '#fff', fontSize: '2em', textShadow: '0 0 10px #000, 2px 2px 0px #000', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    {customClassIcon ? (
-                                        <img 
-                                            src={customClassIcon} 
-                                            alt={classId} 
-                                            style={{ height: '1.2em', width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 0 5px rgba(0,255,204,0.5))' }} 
-                                            title={`Classe Mística: ${classId?.toUpperCase()}`} 
-                                        />
+                            {/* 🔥 O GRADIENTE ÉPICO DOS GRANDS E CANDIDATOS 🔥 */}
+                            <div style={{ 
+                                padding: '20px', zIndex: 2, 
+                                background: isGrand ? 'linear-gradient(to top, rgba(255,0,60,0.9), transparent)' : (isCandidato ? 'linear-gradient(to top, rgba(0,136,255,0.8), transparent)' : 'none') 
+                            }}>
+                                
+                                {isGrand && <div style={{ color: '#ffcc00', fontSize: '0.85em', fontWeight: 'bold', textShadow: '0 0 5px #ff003c', letterSpacing: 2, marginBottom: '5px' }}>👑 GRAND {classId?.toUpperCase()}</div>}
+                                {isCandidato && <div style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold', textShadow: '0 0 5px #0088ff', letterSpacing: 2, marginBottom: '5px' }}>🌟 CANDIDATO A {classId?.toUpperCase()}</div>}
+
+                                <h2 style={{ margin: 0, color: '#fff', fontSize: '2em', textShadow: isGrand ? '0 0 15px #ffcc00, 2px 2px 0px #000' : '0 0 10px #000, 2px 2px 0px #000', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    
+                                    {isGrand && grandIconUrl ? (
+                                        <img src={grandIconUrl} alt="Grand" style={{ height: '1.5em', width: '1.5em', objectFit: 'cover', borderRadius: '50%', border: '2px solid #ffcc00', boxShadow: '0 0 10px #ff003c' }} />
+                                    ) : customClassIcon ? (
+                                        <img src={customClassIcon} alt={classId} style={{ height: '1.2em', width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 0 5px rgba(0,255,204,0.5))' }} />
                                     ) : defaultClassSymbol ? (
-                                        <span style={{ fontSize: '0.9em', filter: 'drop-shadow(0 0 5px rgba(0,255,204,0.5))' }} title={`Classe Mística: ${classId?.toUpperCase()}`}>
-                                            {defaultClassSymbol}
-                                        </span>
+                                        <span style={{ fontSize: '0.9em', filter: 'drop-shadow(0 0 5px rgba(0,255,204,0.5))' }}>{defaultClassSymbol}</span>
                                     ) : null}
+                                    
                                     {nomeBase}
                                 </h2>
+                                
                                 {infoBase.forma && (
                                     <div style={{ color: '#00ffcc', fontSize: '1.2em', fontWeight: 'bold', textShadow: '0 0 5px #000' }}>
                                         ☄️ {infoBase.forma}
@@ -947,16 +967,16 @@ export default function MapaPanel() {
                                                     <div style={{ flex: 1, background: '#300', height: 6, border: '1px solid #000', position: 'relative' }}>
                                                         <div style={{ width: '100%', height: '100%', background: '#ff003c', boxShadow: '0 0 5px #ff003c' }}></div>
                                                     </div>
-                                                    <span style={{ color: '#fff', fontSize: '0.6em', fontWeight: 'bold', minWidth: '35px', textAlign: 'right' }}>{fmt(f.vida?.atual)}</span>
+                                                    <span style={{ color: '#fff', fontSize: '0.6em', fontWeight: 'bold', minWidth: '35px', textAlign: 'right' }}>{fmt(f?.vida?.atual)}</span>
                                                 </div>
 
                                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '2px 6px', fontSize: '0.55em', fontWeight: 'bold' }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#0088ff', textShadow: '0 0 3px #0088ff' }}><span>MP</span> <span>{fmt(f.mana?.atual)}</span></div>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#aa00ff', textShadow: '0 0 3px #aa00ff' }}><span>AU</span> <span>{fmt(f.aura?.atual)}</span></div>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#00ffaa', textShadow: '0 0 3px #00ffaa' }}><span>CK</span> <span>{fmt(f.chakra?.atual)}</span></div>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ff8800', textShadow: '0 0 3px #ff8800' }}><span>CP</span> <span>{fmt(f.corpo?.atual)}</span></div>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#fff', textShadow: '0 0 3px #fff' }}><span>PV</span> <span>{fmt(f.pontosVitais?.atual)}</span></div>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ff3333', textShadow: '0 0 3px #ff3333' }}><span>PM</span> <span>{fmt(f.pontosMortais?.atual)}</span></div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#0088ff', textShadow: '0 0 3px #0088ff' }}><span>MP</span> <span>{fmt(f?.mana?.atual)}</span></div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#aa00ff', textShadow: '0 0 3px #aa00ff' }}><span>AU</span> <span>{fmt(f?.aura?.atual)}</span></div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#00ffaa', textShadow: '0 0 3px #00ffaa' }}><span>CK</span> <span>{fmt(f?.chakra?.atual)}</span></div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ff8800', textShadow: '0 0 3px #ff8800' }}><span>CP</span> <span>{fmt(f?.corpo?.atual)}</span></div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#fff', textShadow: '0 0 3px #fff' }}><span>PV</span> <span>{fmt(f?.pontosVitais?.atual)}</span></div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ff3333', textShadow: '0 0 3px #ff3333' }}><span>PM</span> <span>{fmt(f?.pontosMortais?.atual)}</span></div>
                                                 </div>
                                             </div>
                                         </div>
@@ -1005,16 +1025,16 @@ export default function MapaPanel() {
                             </div>
 
                             {/* 🔥 RADAR TÁTICO NA TAVERNA 🔥 */}
-                            {alvoSelecionado && dummies[alvoSelecionado] ? (() => {
+                            {alvoSelecionado && dummies?.[alvoSelecionado] ? (() => {
                                 const alvoD = dummies[alvoSelecionado];
-                                const dx = Math.abs((minhaFicha.posicao?.x || 0) - (alvoD.posicao?.x || 0));
-                                const dy = Math.abs((minhaFicha.posicao?.y || 0) - (alvoD.posicao?.y || 0));
-                                const dz = Math.abs((minhaFicha.posicao?.z || 0) - (alvoD.posicao?.z || 0)) / (cenaAtual.escala || 1.5);
+                                const dx = Math.abs((fichaSegura?.posicao?.x || 0) - (alvoD.posicao?.x || 0));
+                                const dy = Math.abs((fichaSegura?.posicao?.y || 0) - (alvoD.posicao?.y || 0));
+                                const dz = Math.abs((fichaSegura?.posicao?.z || 0) - (alvoD.posicao?.z || 0)) / (cenaAtual.escala || 1.5);
                                 const dQuad = Math.max(dx, dy, Math.floor(dz));
                                 
-                                const armasEq = (minhaFicha.inventario || []).filter(i => i.tipo === 'arma' && i.equipado);
+                                const armasEq = (fichaSegura?.inventario || []).filter(i => i.tipo === 'arma' && i.equipado);
                                 const maxAlcArmas = armasEq.length > 0 ? Math.max(...armasEq.map(a => a.alcance || 1)) : 1;
-                                const podAt = (minhaFicha.poderes || []).filter(p => p.ativa);
+                                const podAt = (fichaSegura?.poderes || []).filter(p => p.ativa);
                                 const maxAlcPoderes = podAt.length > 0 ? Math.max(...podAt.map(p => p.alcance || 1)) : 1;
                                 const alcanceEf = Math.max(maxAlcArmas, maxAlcPoderes);
 
@@ -1119,17 +1139,39 @@ export default function MapaPanel() {
                                             {tokens.map((tk) => {
                                                 const info = getAvatarInfo(tk.ficha);
                                                 const isMe = tk.nome === meuNome;
-                                                const altitude = tk.ficha.posicao?.z || 0;
+                                                const altitude = tk.ficha?.posicao?.z || 0;
                                                 const isFlying = altitude > 0;
+                                                
+                                                // 🔥 TOKENS ÉPICOS NO MAPA PARA OS GRANDS E CANDIDATOS 🔥
+                                                const tkMesa = tk.ficha?.bio?.mesa || 'presente';
+                                                let tkClass = tk.ficha?.bio?.classe;
+                                                if ((tkClass === 'pretender' || tkClass === 'alterego') && tk.ficha?.bio?.subClasse) {
+                                                    tkClass = tk.ficha?.bio?.subClasse;
+                                                }
+
+                                                const tkGrand = tkClass && overridesCompendio?.grands?.[`${tkClass}_${tkMesa}`] === tk.nome;
+                                                const tkCand = tkClass && !tkGrand && (overridesCompendio?.grands?.[`${tkClass}_${tkMesa}_candidatos`] || []).includes(tk.nome);
+
+                                                let bordaToken = isFlying ? '3px solid #00ccff' : (isMe ? '2px solid #00ffcc' : '1px solid rgba(255,255,255,0.3)');
+                                                let sombraToken = isFlying ? '0 10px 15px rgba(0, 204, 255, 0.5)' : 'none';
+
+                                                if (tkGrand) {
+                                                    bordaToken = '3px solid #ffcc00';
+                                                    sombraToken = '0 0 15px #ff003c, inset 0 0 10px #ffcc00';
+                                                } else if (tkCand) {
+                                                    bordaToken = '2px solid #0088ff';
+                                                    sombraToken = '0 0 10px #00ccff';
+                                                }
+
                                                 const style = {
                                                     position: 'absolute', top: 2, left: 2, width: tamanhoCelula - 4, height: tamanhoCelula - 4,
                                                     borderRadius: '50%', backgroundColor: corDoJogador(tk.nome), display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                     color: '#fff', fontSize: '0.7em', fontWeight: 'bold',
-                                                    border: isFlying ? '3px solid #00ccff' : (isMe ? '2px solid #00ffcc' : '1px solid rgba(255,255,255,0.3)'),
-                                                    boxShadow: isFlying ? '0 10px 15px rgba(0, 204, 255, 0.5)' : 'none',
+                                                    border: bordaToken,
+                                                    boxShadow: sombraToken,
                                                     transform: isFlying ? 'translateY(-5px)' : 'none',
                                                     backgroundImage: urlSeguraParaCss(info.img) || 'none', backgroundSize: 'cover', backgroundPosition: 'center',
-                                                    zIndex: isFlying ? 10 : 1
+                                                    zIndex: isFlying ? 10 : (tkGrand ? 5 : 1)
                                                 };
                                                 return (
                                                     <div key={tk.nome} className={`player-token${isMe ? ' my-token' : ''}`} title={`${tk.nome} | Altura: ${altitude}m`} style={style}>
@@ -1154,7 +1196,7 @@ export default function MapaPanel() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 10 }}>
                         <h3 style={{ color: '#00ffcc', margin: 0 }}>Sistema de Iniciativa</h3>
                         <div style={{ display: 'flex', gap: 10 }}>
-                            {minhaFicha.iniciativa > 0 && (
+                            {minhaFicha?.iniciativa > 0 && (
                                 <button className="btn-neon btn-red" onClick={sairDoCombate} style={{ padding: '4px 10px', fontSize: '0.8em' }}>Sair do Combate</button>
                             )}
                             {isMestre && (
@@ -1268,16 +1310,16 @@ export default function MapaPanel() {
                                         </div>
 
                                         {/* 🔥 RADAR TÁTICO NO MAPA 🔥 */}
-                                        {alvoSelecionado && dummies[alvoSelecionado] ? (() => {
+                                        {alvoSelecionado && dummies?.[alvoSelecionado] ? (() => {
                                             const alvoD = dummies[alvoSelecionado];
-                                            const dx = Math.abs((minhaFicha.posicao?.x || 0) - (alvoD.posicao?.x || 0));
-                                            const dy = Math.abs((minhaFicha.posicao?.y || 0) - (alvoD.posicao?.y || 0));
-                                            const dz = Math.abs((minhaFicha.posicao?.z || 0) - (alvoD.posicao?.z || 0)) / (cenaAtual.escala || 1.5);
+                                            const dx = Math.abs((fichaSegura?.posicao?.x || 0) - (alvoD.posicao?.x || 0));
+                                            const dy = Math.abs((fichaSegura?.posicao?.y || 0) - (alvoD.posicao?.y || 0));
+                                            const dz = Math.abs((fichaSegura?.posicao?.z || 0) - (alvoD.posicao?.z || 0)) / (cenaAtual.escala || 1.5);
                                             const dQuad = Math.max(dx, dy, Math.floor(dz));
                                             
-                                            const armasEq = (minhaFicha.inventario || []).filter(i => i.tipo === 'arma' && i.equipado);
+                                            const armasEq = (fichaSegura?.inventario || []).filter(i => i.tipo === 'arma' && i.equipado);
                                             const maxAlcArmas = armasEq.length > 0 ? Math.max(...armasEq.map(a => a.alcance || 1)) : 1;
-                                            const podAt = (minhaFicha.poderes || []).filter(p => p.ativa);
+                                            const podAt = (fichaSegura?.poderes || []).filter(p => p.ativa);
                                             const maxAlcPoderes = podAt.length > 0 ? Math.max(...podAt.map(p => p.alcance || 1)) : 1;
                                             const alcanceEf = Math.max(maxAlcArmas, maxAlcPoderes);
 

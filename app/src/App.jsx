@@ -161,7 +161,6 @@ function MestrePanel() {
 
     const [mesaVisor, setMesaVisor] = useState('presente')
 
-    // 🔥 LEITOR DA COROA GLOBAL DO MESTRE (MOVIDO PARA CIMA PARA NÃO QUEBRAR O REACT) 🔥
     const grandsGlobais = useMemo(() => {
         let g = {};
         if (personagens) {
@@ -249,7 +248,6 @@ function MestrePanel() {
         }
     };
 
-
     const todosJogadores = Object.entries(personagens || {});
     const jogadoresFiltrados = todosJogadores.filter(([nome, ficha]) => {
         const m = ficha?.bio?.mesa || 'presente';
@@ -309,44 +307,66 @@ function MestrePanel() {
                             const supremas = getEnergiasSupremas(ficha);
                             const percHp = vida.max > 0 ? (vida.atual / vida.max) * 100 : 0;
 
-                            // 🔥 VERIFICAÇÃO ÉPICA: ESTA ENTIDADE É UM GRAND? 🔥
+                            // 🔥 VERIFICAÇÃO ÉPICA: ESTA ENTIDADE É UM GRAND OU CANDIDATO? 🔥
                             const mesaAtual = ficha?.bio?.mesa || 'presente';
                             const classeReal = ficha?.bio?.classe || '';
-                            const isGrand = classeReal && grandsGlobais[`${classeReal}_${mesaAtual}`] === nome;
-
                             let classId = classeReal;
-                            if (!isGrand && (classId === 'pretender' || classId === 'alterego') && ficha?.bio?.subClasse) {
-                                classId = ficha?.bio?.subClasse;
+                            if (classId === 'pretender' || classId === 'alterego') classId = ficha?.bio?.subClasse || classId;
+
+                            const isGrand = classeReal && grandsGlobais[`${classeReal}_${mesaAtual}`] === nome;
+                            const listaCandidatos = grandsGlobais[`${classeReal}_${mesaAtual}_candidatos`] || [];
+                            const isCandidato = classeReal && !isGrand && listaCandidatos.includes(nome);
+
+                            let boxBorder = `1px solid ${nome === meuNome ? '#0f0' : '#333'}`;
+                            let boxShadow = nome === meuNome ? '0 0 15px rgba(0,255,0,0.2)' : 'none';
+                            let titleColor = '#fff';
+                            let subColor = '#aaa';
+                            let subText = classId ? String(classId).toUpperCase() : 'Mundano';
+                            let gradOverlay = null;
+
+                            if (isGrand) {
+                                boxBorder = '2px solid #ffcc00';
+                                boxShadow = '0 0 20px rgba(255,0,60,0.4), inset 0 0 20px rgba(255,204,0,0.1)';
+                                titleColor = '#ffcc00';
+                                subColor = '#ffcc00';
+                                subText = `👑 GRAND ${String(classeReal).toUpperCase()}`;
+                                gradOverlay = 'linear-gradient(135deg, rgba(255,0,60,0.25) 0%, rgba(255,204,0,0.1) 50%, rgba(0,0,0,0) 100%)';
+                            } else if (isCandidato) {
+                                boxBorder = '2px solid #00ccff';
+                                boxShadow = '0 0 15px rgba(0,136,255,0.4), inset 0 0 15px rgba(0,204,255,0.1)';
+                                titleColor = '#00ccff';
+                                subColor = '#00ccff';
+                                subText = `🌟 CANDIDATO A ${String(classeReal).toUpperCase()}`;
+                                gradOverlay = 'linear-gradient(135deg, rgba(0,136,255,0.2) 0%, rgba(0,204,255,0.1) 50%, rgba(0,0,0,0) 100%)';
                             }
 
                             return (
                                 <div key={nome} style={{ 
                                     background: 'rgba(0,0,0,0.6)', 
-                                    border: isGrand ? '2px solid #ffcc00' : `1px solid ${nome === meuNome ? '#0f0' : '#333'}`, 
+                                    border: boxBorder, 
                                     padding: '15px', borderRadius: '5px', position: 'relative', overflow: 'hidden', 
-                                    boxShadow: isGrand ? '0 0 20px rgba(255,0,60,0.4), inset 0 0 20px rgba(255,204,0,0.1)' : (nome === meuNome ? '0 0 15px rgba(0,255,0,0.2)' : 'none') 
+                                    boxShadow: boxShadow 
                                 }}>
                                     
-                                    {/* 🔥 AURA DA CALAMIDADE SE FOR GRAND 🔥 */}
-                                    {isGrand && (
-                                        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'linear-gradient(135deg, rgba(255,0,60,0.25) 0%, rgba(255,204,0,0.1) 50%, rgba(0,0,0,0) 100%)', pointerEvents: 'none', zIndex: 1 }} />
+                                    {gradOverlay && (
+                                        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: gradOverlay, pointerEvents: 'none', zIndex: 1 }} />
                                     )}
 
                                     <div style={{ position: 'absolute', top: 0, left: 0, height: '4px', width: `${percHp}%`, background: percHp > 50 ? '#0f0' : percHp > 20 ? '#ffcc00' : '#f00', transition: 'width 0.3s', zIndex: 2 }} />
 
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', marginTop: '5px', position: 'relative', zIndex: 2 }}>
-                                        <strong style={{ color: isGrand ? '#ffcc00' : '#fff', fontSize: '1.2em', textShadow: isGrand ? '0 0 10px #ff003c' : 'none' }}>
+                                        <strong style={{ color: titleColor, fontSize: '1.2em', textShadow: isGrand ? '0 0 10px #ff003c' : (isCandidato ? '0 0 10px #0088ff' : 'none') }}>
                                             {nome} {nome === meuNome && <span style={{color: '#0f0', fontSize: '0.6em', textShadow: 'none'}}>(VOCÊ)</span>}
                                         </strong>
                                         <span style={{ 
-                                            color: isGrand ? '#ffcc00' : '#aaa', 
-                                            fontSize: isGrand ? '0.85em' : '0.8em', 
+                                            color: subColor, 
+                                            fontSize: (isGrand || isCandidato) ? '0.85em' : '0.8em', 
                                             fontStyle: 'italic',
-                                            fontWeight: isGrand ? 'bold' : 'normal',
-                                            textShadow: isGrand ? '0 0 5px #ff003c' : 'none',
-                                            letterSpacing: isGrand ? '1px' : 'normal'
+                                            fontWeight: (isGrand || isCandidato) ? 'bold' : 'normal',
+                                            textShadow: isGrand ? '0 0 5px #ff003c' : (isCandidato ? '0 0 5px #0088ff' : 'none'),
+                                            letterSpacing: (isGrand || isCandidato) ? '1px' : 'normal'
                                         }}>
-                                            {isGrand ? `👑 GRAND ${String(classeReal).toUpperCase()}` : (classId ? String(classId).toUpperCase() : 'Mundano')}
+                                            {subText}
                                         </span>
                                     </div>
 
@@ -460,6 +480,9 @@ export default function App() {
     const setDummies = useStore(s => s.setDummies) 
     const [pronto, setPronto] = useState(false)
 
+    // 🔥 O FIREBASE É CARREGADO AQUI, SEM VARIÁVEIS FANTASMAS QUE QUEBRAM O COMPILADOR 🔥
+    useFirebase()
+
     useEffect(() => {
         let nomeLocal = localStorage.getItem('rpgNome')
         if (!nomeLocal) nomeLocal = localStorage.getItem('rpg_nome')
@@ -491,8 +514,6 @@ export default function App() {
             if (unsubCenario) unsubCenario();
         };
     }, [setCenario])
-
-    const { loading } = useFirebase()
 
     const handleNameSubmit = async (e) => {
         e.preventDefault()
@@ -542,7 +563,10 @@ export default function App() {
                 <TabPanel id="aba-elementos"><ElementosPanel /></TabPanel>
                 <TabPanel id="aba-log"><FeedCombate /></TabPanel>
                 <TabPanel id="aba-mapa"><MapaPanel /></TabPanel>
+                
+                {/* 🔥 O SEU JUKEBOX ORIGINAL INTACTO 🔥 */}
                 <TabPanel id="aba-musica"><Jukebox /></TabPanel>
+                
                 <TabPanel id="aba-compendio"><CompendioPanel /></TabPanel>
             </div>
             <ModalConfirm />
