@@ -68,8 +68,8 @@ export default function MapaPanel() {
     const [mapBonus, setMapBonus] = useState(0);
     const [mapStat, setMapStat] = useState('destreza'); 
     
-    const [mapUsarProf, setMapUsarProf] = useState(false); // 🔥 NOVO ESTADO
-    const profGlobal = parseInt(minhaFicha.proficienciaBase) || 0; // 🔥 NOVO ESTADO
+    const [mapUsarProf, setMapUsarProf] = useState(false); 
+    const profGlobal = parseInt(minhaFicha.proficienciaBase) || 0; 
     
     const [mapVantagens, setMapVantagens] = useState(minhaFicha.ataqueConfig?.vantagens || 0);
     const [mapDesvantagens, setMapDesvantagens] = useState(minhaFicha.ataqueConfig?.desvantagens || 0);
@@ -88,6 +88,22 @@ export default function MapaPanel() {
     
     const cenaRenderId = (isMestre && cenaVisualizadaId) ? cenaVisualizadaId : cenaAtivaIdGlobal;
     const cenaAtual = cenario?.lista?.[cenaRenderId] || { nome: 'Desconhecido', img: '', escala: 1.5, unidade: 'm' };
+
+    // 🔥 MODO TAVERNA / ROLEPLAY (Global para os Jogadores) 🔥
+    const isModoRP = cenario?.modoRP === true;
+
+    const toggleModoRP = () => {
+        const novoCenario = JSON.parse(JSON.stringify(cenario || {}));
+        novoCenario.modoRP = !novoCenario.modoRP;
+        salvarCenarioCompleto(novoCenario);
+        enviarParaFeed({ 
+            tipo: 'sistema', 
+            nome: 'SISTEMA', 
+            texto: novoCenario.modoRP 
+                ? '🍻 A Party entrou na Sala de Espera! O Mestre está a moldar a realidade...' 
+                : '🌍 O VÉU FOI LEVANTADO! A REALIDADE É REVELADA!' 
+        });
+    };
 
     const overridesCompendio = useMemo(() => {
         if (!minhaFicha) return {};
@@ -388,7 +404,6 @@ export default function MapaPanel() {
         const fD = parseInt(mapFD) || 20;
         const bonus = parseInt(mapBonus) || 0;
         
-        // 🔥 Usa a nova Proficiência se ativado na caixa
         const prof = mapUsarProf ? profGlobal : 0;
         
         const sels = [mapStat]; 
@@ -630,40 +645,40 @@ export default function MapaPanel() {
                             </div>
                         )}
 
-                {fichaBase && (
-                        <div style={{ padding: '15px', background: '#050505' }}>
-                        <div style={{
-                            display: 'flex', flexDirection: 'column', gap: 6,
-                            background: 'rgba(0,0,0,0.7)', padding: 12, borderRadius: 8,
-                            border: '1px solid rgba(255,255,255,0.1)'
-                        }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ff4d4d', fontWeight: 'bold' }}>
-                    <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>HP</span><span>{fmt(fichaBase.vida?.atual)}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#4dffff', fontWeight: 'bold' }}>
-                        <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>MP</span><span>{fmt(fichaBase.mana?.atual)}</span>
-                        </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ffff4d', fontWeight: 'bold' }}>
-                    <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>AU</span><span>{fmt(fichaBase.aura?.atual)}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#00ffcc', fontWeight: 'bold' }}>
-                    <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>CK</span><span>{fmt(fichaBase.chakra?.atual)}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ff66ff', fontWeight: 'bold' }}>
-                        <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>CP</span><span>{fmt(fichaBase.corpo?.atual)}</span>
-                    </div>
+                        {fichaBase && (
+                            <div style={{ padding: '15px', background: '#050505' }}>
+                                <div style={{
+                                    display: 'flex', flexDirection: 'column', gap: 6,
+                                    background: 'rgba(0,0,0,0.7)', padding: 12, borderRadius: 8,
+                                    border: '1px solid rgba(255,255,255,0.1)'
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ff4d4d', fontWeight: 'bold' }}>
+                                        <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>HP</span><span>{fmt(fichaBase.vida?.atual)}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#4dffff', fontWeight: 'bold' }}>
+                                        <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>MP</span><span>{fmt(fichaBase.mana?.atual)}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ffff4d', fontWeight: 'bold' }}>
+                                        <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>AU</span><span>{fmt(fichaBase.aura?.atual)}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#00ffcc', fontWeight: 'bold' }}>
+                                        <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>CK</span><span>{fmt(fichaBase.chakra?.atual)}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ff66ff', fontWeight: 'bold' }}>
+                                        <span style={{ fontSize: '0.8em', alignSelf: 'center' }}>CP</span><span>{fmt(fichaBase.corpo?.atual)}</span>
+                                    </div>
 
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-                                    <div style={{ color: '#0088ff', fontWeight: 'bold', fontSize: '0.9em', textShadow: '0 0 5px #0088ff' }}>
-                                        🛡️ EVA: {calcularCA(fichaBase, 'evasiva')}
-                                </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                                        <div style={{ color: '#0088ff', fontWeight: 'bold', fontSize: '0.9em', textShadow: '0 0 5px #0088ff' }}>
+                                            🛡️ EVA: {calcularCA(fichaBase, 'evasiva')}
+                                        </div>
                                         <div style={{ color: '#ccc', fontWeight: 'bold', fontSize: '0.9em', textShadow: '0 0 5px #ccc' }}>
                                             🛡️ RES: {calcularCA(fichaBase, 'resistencia')}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        )}
                     </>
                 )}
             </div>
@@ -727,12 +742,24 @@ export default function MapaPanel() {
 
             <div style={{ flex: '1 1 70%', minWidth: 0 }}>
                 
-               {/* 🔥 BANNER DE ALERTA DO MODO PREPARAÇÃO OCULTA 🔥 */}
+               {/* 🔥 BANNER DE CONTROLE DO MODO TAVERNA (APENAS MESTRE) 🔥 */}
+               {isMestre && (
+                    <div style={{ background: isModoRP ? 'rgba(255, 0, 255, 0.2)' : 'rgba(0, 255, 136, 0.2)', border: `2px dashed ${isModoRP ? '#ff00ff' : '#00ff88'}`, padding: '10px 15px', borderRadius: '5px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                        <span style={{ color: isModoRP ? '#ff00ff' : '#00ff88', fontWeight: 'bold', fontSize: '1.1em' }}>
+                            {isModoRP ? '🍻 MODO TAVERNA ATIVO: Os jogadores não vêem o mapa! (Apenas Sala de RP)' : '🌍 MODO COMBATE ATIVO: O Mapa está visível para todos os jogadores!'}
+                        </span>
+                        <button className={`btn-neon ${isModoRP ? 'btn-green' : 'btn-purple'}`} onClick={toggleModoRP} style={{ padding: '5px 15px', margin: 0 }}>
+                            {isModoRP ? '🌍 REVELAR A REALIDADE (MOSTRAR MAPA)' : '🍻 ATIVAR TAVERNA (OCULTAR MAPA)'}
+                        </button>
+                    </div>
+               )}
+
+               {/* 🔥 BANNER DE ALERTA DE PREPARAÇÃO OCULTA (QUANDO O MESTRE OLHA PARA OUTRAS CENAS) 🔥 */}
                {isMestre && cenaVisualizadaId && cenaVisualizadaId !== cenaAtivaIdGlobal && (
                     <div style={{ background: 'rgba(0, 136, 255, 0.2)', border: '2px dashed #0088ff', padding: '10px 15px', borderRadius: '5px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-                        <span style={{ color: '#0088ff', fontWeight: 'bold', fontSize: '1.1em' }}>👁️ MODO PREPARAÇÃO OCULTA: Os jogadores não estão a ver este mapa!</span>
+                        <span style={{ color: '#0088ff', fontWeight: 'bold', fontSize: '1.1em' }}>👁️ MODO EDIÇÃO OCULTA: Apenas você vê a cena "{cenaAtual.nome}".</span>
                         <button className="btn-neon btn-green" onClick={() => ativarCena(cenaRenderId)} style={{ padding: '5px 15px', margin: 0 }}>
-                            🌍 PUBLICAR CENA PARA TODOS
+                            🌍 PUBLICAR ESTA CENA PARA TODOS
                         </button>
                     </div>
                )}
@@ -839,110 +866,173 @@ export default function MapaPanel() {
                     </div>
                 )}
 
-                <div style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', opacity: modo3D ? 0.3 : 1 }}>
-                        <button className="btn-neon" onClick={() => alterarZoom(-1)} style={{ padding: '5px 15px' }} disabled={modo3D}>-</button>
-                        <span style={{ color: '#aaa' }}>Zoom: {tamanhoCelula}px</span>
-                        <button className="btn-neon" onClick={() => alterarZoom(1)} style={{ padding: '5px 15px' }} disabled={modo3D}>+</button>
-                    </div>
-
-                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', borderLeft: '2px solid #333', paddingLeft: 20 }}>
-                        <span style={{ color: isMestre && cenaVisualizadaId && cenaVisualizadaId !== cenaAtivaIdGlobal ? '#0088ff' : '#ffcc00', fontWeight: 'bold' }}>
-                            {isMestre && cenaVisualizadaId && cenaVisualizadaId !== cenaAtivaIdGlobal ? '👁️ Preparando:' : 'Cena Atual:'}
-                        </span>
-                        <span style={{ color: '#fff', fontWeight: 'bold', background: 'rgba(0,0,0,0.5)', padding: '2px 8px', borderRadius: 4 }}>
-                            {cenaAtual.nome} (1Q = {cenaAtual.escala} {cenaAtual.unidade})
-                        </span>
-                    </div>
-
-                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', borderLeft: '2px solid #333', paddingLeft: 20 }}>
-                        <span style={{ color: '#00ccff', fontWeight: 'bold' }}>Altitude (Z):</span>
-                        <input
-                            className="input-neon"
-                            type="number"
-                            value={altitudeInput}
-                            onChange={e => setAltitudeInput(e.target.value)}
-                            style={{ width: 70, padding: 4, borderColor: '#00ccff', color: '#fff' }}
-                            title="0 = chao. Valores maiores = voo."
-                        />
-                        <span style={{ fontSize: '0.8em', color: '#888' }}>m</span>
-                    </div>
-
-                    <button 
-                        className={`btn-neon ${modo3D ? 'btn-gold' : ''}`} 
-                        onClick={() => setModo3D(!modo3D)} 
-                        style={{ marginLeft: 'auto', padding: '5px 15px', borderColor: modo3D ? '#ffcc00' : '#00ffcc' }}
-                    >
-                        {modo3D ? '🌌 VOLTAR AO 2D' : '🌌 VISÃO 3D'}
-                    </button>
-                </div>
-
-                {modo3D && (
-                    <div style={{ height: '60vh', background: '#000', borderRadius: 5, overflow: 'hidden', border: '2px solid #0088ff', boxShadow: '0 0 20px rgba(0, 136, 255, 0.4)' }}>
-                        <Tabuleiro3D 
-                            mapSize={MAP_SIZE} 
-                            tokens={tokens3D} 
-                            moverJogador={handleCellClick} 
-                            mapUrl={cenaAtual.img} 
-                        />
-                    </div>
-                )}
-
-                {!modo3D && (
-                    <div id="combat-grid" style={{ 
-                        display: 'grid', gridTemplateColumns: `repeat(${MAP_SIZE}, ${tamanhoCelula}px)`, gap: 1, 
-                        overflow: 'auto', maxHeight: '60vh', background: 'rgba(0,0,0,0.3)', padding: 5, borderRadius: 5,
-                        backgroundImage: urlSeguraParaCss(cenaAtual.img), backgroundSize: 'cover', backgroundPosition: 'center'
+                {/* 🔥 LÓGICA DE EXIBIÇÃO: TAVERNA VS MAPA 🔥 */}
+                {isModoRP && !isMestre ? (
+                    <div className="fade-in" style={{ 
+                        height: '60vh', 
+                        background: 'radial-gradient(circle, rgba(30,10,20,0.9) 0%, rgba(0,0,0,1) 100%)', 
+                        borderRadius: 5, border: '2px solid #ffcc00', boxShadow: '0 0 30px rgba(255, 204, 0, 0.2)', 
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', 
+                        padding: 20, marginBottom: 15 
                     }}>
-                        {cells.map((cell) => {
-                            const key = `${cell.x},${cell.y}`;
-                            const tokens = tokenMap[key] || [];
+                        <div style={{ fontSize: '5em', marginBottom: 10, filter: 'drop-shadow(0 0 10px #ffcc00)' }}>🎲</div>
+                        <h1 style={{ color: '#ffcc00', textShadow: '0 0 15px #ffcc00', margin: 0, letterSpacing: 3 }}>SALA DE ROLEPLAY</h1>
+                        <p style={{ color: '#aaa', fontStyle: 'italic', marginBottom: 30, fontSize: '1.1em' }}>Aguarde... O Mestre está a moldar o tecido da realidade.</p>
+                        
+                        <div style={{ background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255, 204, 0, 0.3)', padding: 25, borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 15, width: '100%', maxWidth: '600px' }}>
+                            <h3 style={{ color: '#00ffcc', margin: '0 0 5px 0', textAlign: 'center', textTransform: 'uppercase', letterSpacing: 1 }}>Rolagem Livre (Teste de Perícia)</h3>
                             
-                            const cellDummies = Object.entries(dummies || {}).filter(([id, d]) => {
-                                const dCena = d.cenaId || 'default';
-                                return d.posicao?.x === cell.x && d.posicao?.y === cell.y && dCena === cenaRenderId;
-                            });
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', alignItems: 'center' }}>
+                                <select className="input-neon" value={mapStat} onChange={e => setMapStat(e.target.value)} style={{ padding: 8, flex: 1, minWidth: 120, fontSize: '1.1em' }} title="Atributo">
+                                    <option value="forca">Força</option>
+                                    <option value="destreza">Destreza</option>
+                                    <option value="inteligencia">Inteligência</option>
+                                    <option value="sabedoria">Sabedoria</option>
+                                    <option value="energiaEsp">Energia Espiritual</option>
+                                    <option value="carisma">Carisma</option>
+                                    <option value="stamina">Stamina</option>
+                                    <option value="constituicao">Constituição</option>
+                                </select>
 
-                            return (
-                                <div key={key} className="map-cell" data-x={cell.x} data-y={cell.y} onClick={() => handleCellClick(cell.x, cell.y)}
-                                    style={{ width: tamanhoCelula, height: tamanhoCelula, border: '1px solid rgba(255,255,255,0.1)', position: 'relative', cursor: 'pointer' }}>
-                                    
-                                    {cellDummies.map(([id, d]) => (
-                                        <DummieToken key={id} id={id} dummie={d} />
-                                    ))}
-
-                                    {tokens.map((tk) => {
-                                        const info = getAvatarInfo(tk.ficha);
-                                        const isMe = tk.nome === meuNome;
-                                        const altitude = tk.ficha.posicao?.z || 0;
-                                        const isFlying = altitude > 0;
-                                        const style = {
-                                            position: 'absolute', top: 2, left: 2, width: tamanhoCelula - 4, height: tamanhoCelula - 4,
-                                            borderRadius: '50%', backgroundColor: corDoJogador(tk.nome), display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            color: '#fff', fontSize: '0.7em', fontWeight: 'bold',
-                                            border: isFlying ? '3px solid #00ccff' : (isMe ? '2px solid #00ffcc' : '1px solid rgba(255,255,255,0.3)'),
-                                            boxShadow: isFlying ? '0 10px 15px rgba(0, 204, 255, 0.5)' : 'none',
-                                            transform: isFlying ? 'translateY(-5px)' : 'none',
-                                            backgroundImage: urlSeguraParaCss(info.img) || 'none', backgroundSize: 'cover', backgroundPosition: 'center',
-                                            zIndex: isFlying ? 10 : 1
-                                        };
-                                        return (
-                                            <div key={tk.nome} className={`player-token${isMe ? ' my-token' : ''}`} title={`${tk.nome} | Altura: ${altitude}m`} style={style}>
-                                                {!info.img && tk.nome.charAt(0).toUpperCase()}
-                                                {isFlying && (
-                                                    <div style={{ position: 'absolute', bottom: '-15px', background: '#00ccff', color: '#000', fontSize: '0.8em', padding: '0 4px', borderRadius: '4px', fontWeight: 'bold' }}>
-                                                        {altitude}m
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                                    <input className="input-neon" type="number" value={mapQD} onChange={e => setMapQD(e.target.value)} style={{ width: 55, padding: 8, fontSize: '1.1em' }} title="Quantidade de Dados" />
+                                    <span style={{ color: '#aaa', fontSize: '1.2em', fontWeight: 'bold' }}>D</span>
+                                    <input className="input-neon" type="number" value={mapFD} onChange={e => setMapFD(e.target.value)} style={{ width: 65, padding: 8, fontSize: '1.1em' }} title="Faces do Dado" />
+                                    <span style={{ color: '#aaa', fontSize: '1.2em', fontWeight: 'bold' }}>+</span>
+                                    <input className="input-neon" type="number" value={mapBonus} onChange={e => setMapBonus(e.target.value)} style={{ width: 65, padding: 8, fontSize: '1.1em' }} title="Bônus" />
                                 </div>
-                            );
-                        })}
+                            </div>
+
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 15, justifyContent: 'center', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: 10, borderRadius: 5 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                                    <span style={{ color: '#0f0', fontSize: '0.9em', fontWeight: 'bold' }}>VANTAGEM:</span>
+                                    <input className="input-neon" type="number" min="0" value={mapVantagens} onChange={changeVantagem} style={{ width: 50, padding: 6, borderColor: '#0f0', color: '#0f0', fontSize: '1em' }} />
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                                    <span style={{ color: '#f00', fontSize: '0.9em', fontWeight: 'bold' }}>DESVANTAGEM:</span>
+                                    <input className="input-neon" type="number" min="0" value={mapDesvantagens} onChange={changeDesvantagem} style={{ width: 50, padding: 6, borderColor: '#f00', color: '#f00', fontSize: '1em' }} />
+                                </div>
+                                <label style={{ color: '#00ffcc', fontSize: '1em', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', marginLeft: 10 }}>
+                                    <input type="checkbox" checked={mapUsarProf} onChange={e => setMapUsarProf(e.target.checked)} style={{ transform: 'scale(1.3)' }} />
+                                    Somar Proficiência
+                                </label>
+                            </div>
+
+                            <button className="btn-neon btn-gold" onClick={rolarAcertoRapido} style={{ padding: '12px', fontSize: '1.2em', width: '100%', marginTop: 5, letterSpacing: 1 }}>
+                                🎲 ROLAR DADOS
+                            </button>
+                        </div>
                     </div>
+                ) : (
+                    <>
+                        {/* 🔥 VISUALIZAÇÃO DO MAPA (PADRÃO OU MESTRE) 🔥 */}
+                        <div style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', gap: 10, alignItems: 'center', opacity: modo3D ? 0.3 : 1 }}>
+                                <button className="btn-neon" onClick={() => alterarZoom(-1)} style={{ padding: '5px 15px' }} disabled={modo3D}>-</button>
+                                <span style={{ color: '#aaa' }}>Zoom: {tamanhoCelula}px</span>
+                                <button className="btn-neon" onClick={() => alterarZoom(1)} style={{ padding: '5px 15px' }} disabled={modo3D}>+</button>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: 10, alignItems: 'center', borderLeft: '2px solid #333', paddingLeft: 20 }}>
+                                <span style={{ color: isMestre && cenaVisualizadaId && cenaVisualizadaId !== cenaAtivaIdGlobal ? '#0088ff' : '#ffcc00', fontWeight: 'bold' }}>
+                                    {isMestre && cenaVisualizadaId && cenaVisualizadaId !== cenaAtivaIdGlobal ? '👁️ Preparando:' : 'Cena Atual:'}
+                                </span>
+                                <span style={{ color: '#fff', fontWeight: 'bold', background: 'rgba(0,0,0,0.5)', padding: '2px 8px', borderRadius: 4 }}>
+                                    {cenaAtual.nome} (1Q = {cenaAtual.escala} {cenaAtual.unidade})
+                                </span>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: 10, alignItems: 'center', borderLeft: '2px solid #333', paddingLeft: 20 }}>
+                                <span style={{ color: '#00ccff', fontWeight: 'bold' }}>Altitude (Z):</span>
+                                <input
+                                    className="input-neon"
+                                    type="number"
+                                    value={altitudeInput}
+                                    onChange={e => setAltitudeInput(e.target.value)}
+                                    style={{ width: 70, padding: 4, borderColor: '#00ccff', color: '#fff' }}
+                                    title="0 = chao. Valores maiores = voo."
+                                />
+                                <span style={{ fontSize: '0.8em', color: '#888' }}>m</span>
+                            </div>
+
+                            <button 
+                                className={`btn-neon ${modo3D ? 'btn-gold' : ''}`} 
+                                onClick={() => setModo3D(!modo3D)} 
+                                style={{ marginLeft: 'auto', padding: '5px 15px', borderColor: modo3D ? '#ffcc00' : '#00ffcc' }}
+                            >
+                                {modo3D ? '🌌 VOLTAR AO 2D' : '🌌 VISÃO 3D'}
+                            </button>
+                        </div>
+
+                        {modo3D && (
+                            <div style={{ height: '60vh', background: '#000', borderRadius: 5, overflow: 'hidden', border: '2px solid #0088ff', boxShadow: '0 0 20px rgba(0, 136, 255, 0.4)' }}>
+                                <Tabuleiro3D 
+                                    mapSize={MAP_SIZE} 
+                                    tokens={tokens3D} 
+                                    moverJogador={handleCellClick} 
+                                    mapUrl={cenaAtual.img} 
+                                />
+                            </div>
+                        )}
+
+                        {!modo3D && (
+                            <div id="combat-grid" style={{ 
+                                display: 'grid', gridTemplateColumns: `repeat(${MAP_SIZE}, ${tamanhoCelula}px)`, gap: 1, 
+                                overflow: 'auto', maxHeight: '60vh', background: 'rgba(0,0,0,0.3)', padding: 5, borderRadius: 5,
+                                backgroundImage: urlSeguraParaCss(cenaAtual.img), backgroundSize: 'cover', backgroundPosition: 'center'
+                            }}>
+                                {cells.map((cell) => {
+                                    const key = `${cell.x},${cell.y}`;
+                                    const tokens = tokenMap[key] || [];
+                                    
+                                    const cellDummies = Object.entries(dummies || {}).filter(([id, d]) => {
+                                        const dCena = d.cenaId || 'default';
+                                        return d.posicao?.x === cell.x && d.posicao?.y === cell.y && dCena === cenaRenderId;
+                                    });
+
+                                    return (
+                                        <div key={key} className="map-cell" data-x={cell.x} data-y={cell.y} onClick={() => handleCellClick(cell.x, cell.y)}
+                                            style={{ width: tamanhoCelula, height: tamanhoCelula, border: '1px solid rgba(255,255,255,0.1)', position: 'relative', cursor: 'pointer' }}>
+                                            
+                                            {cellDummies.map(([id, d]) => (
+                                                <DummieToken key={id} id={id} dummie={d} />
+                                            ))}
+
+                                            {tokens.map((tk) => {
+                                                const info = getAvatarInfo(tk.ficha);
+                                                const isMe = tk.nome === meuNome;
+                                                const altitude = tk.ficha.posicao?.z || 0;
+                                                const isFlying = altitude > 0;
+                                                const style = {
+                                                    position: 'absolute', top: 2, left: 2, width: tamanhoCelula - 4, height: tamanhoCelula - 4,
+                                                    borderRadius: '50%', backgroundColor: corDoJogador(tk.nome), display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    color: '#fff', fontSize: '0.7em', fontWeight: 'bold',
+                                                    border: isFlying ? '3px solid #00ccff' : (isMe ? '2px solid #00ffcc' : '1px solid rgba(255,255,255,0.3)'),
+                                                    boxShadow: isFlying ? '0 10px 15px rgba(0, 204, 255, 0.5)' : 'none',
+                                                    transform: isFlying ? 'translateY(-5px)' : 'none',
+                                                    backgroundImage: urlSeguraParaCss(info.img) || 'none', backgroundSize: 'cover', backgroundPosition: 'center',
+                                                    zIndex: isFlying ? 10 : 1
+                                                };
+                                                return (
+                                                    <div key={tk.nome} className={`player-token${isMe ? ' my-token' : ''}`} title={`${tk.nome} | Altura: ${altitude}m`} style={style}>
+                                                        {!info.img && tk.nome.charAt(0).toUpperCase()}
+                                                        {isFlying && (
+                                                            <div style={{ position: 'absolute', bottom: '-15px', background: '#00ccff', color: '#000', fontSize: '0.8em', padding: '0 4px', borderRadius: '4px', fontWeight: 'bold' }}>
+                                                                {altitude}m
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </>
                 )}
 
+                {/* 🔥 SISTEMA DE INICIATIVA MANTIDO PARA TODOS (INCLUINDO NA TAVERNA) 🔥 */}
                 <div className="def-box" style={{ marginTop: 15 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 10 }}>
                         <h3 style={{ color: '#00ffcc', margin: 0 }}>Sistema de Iniciativa</h3>
@@ -1014,7 +1104,8 @@ export default function MapaPanel() {
                         </div>
                     )}
 
-                    {jogadorDaVez && (
+                    {/* 🔥 PAINEL DO JOGADOR DA VEZ É OCULTO NA TAVERNA PARA JOGADORES 🔥 */}
+                    {jogadorDaVez && (!isModoRP || isMestre) && (
                         <div style={{ marginTop: 15, display: 'flex', gap: 15, alignItems: 'center' }}>
                             <div id="turno-destaque" style={{
                                 width: 80, height: 80, borderRadius: '50%', border: '3px solid #00ffcc',
@@ -1053,7 +1144,6 @@ export default function MapaPanel() {
                                         <span style={{ color: '#f00', fontSize: '0.8em', marginLeft: 5, fontWeight: 'bold' }}>D:</span>
                                         <input className="input-neon" type="number" min="0" value={mapDesvantagens} onChange={changeDesvantagem} style={{ width: 45, padding: 4, borderColor: '#f00', color: '#f00' }} title="Desvantagens" />
 
-                                        {/* 🔥 NOVO: CHECKBOX DA PROFICIÊNCIA NO MAPA */}
                                         <label style={{ color: '#00ffcc', fontSize: '0.85em', marginLeft: 10, fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer' }}>
                                             <input type="checkbox" checked={mapUsarProf} onChange={e => setMapUsarProf(e.target.checked)} style={{ transform: 'scale(1.2)' }} />
                                             Prof.
