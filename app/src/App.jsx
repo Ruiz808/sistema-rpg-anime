@@ -161,6 +161,19 @@ function MestrePanel() {
 
     const [mesaVisor, setMesaVisor] = useState('presente')
 
+    // 🔥 LEITOR DA COROA GLOBAL DO MESTRE (MOVIDO PARA CIMA PARA NÃO QUEBRAR O REACT) 🔥
+    const grandsGlobais = useMemo(() => {
+        let g = {};
+        if (personagens) {
+            Object.values(personagens).forEach(p => {
+                if (p?.compendioOverrides?.grands) {
+                    g = { ...g, ...p.compendioOverrides.grands };
+                }
+            });
+        }
+        return g;
+    }, [personagens]);
+
     if (!isMestre) {
         return <div style={{ color: '#ff003c', textAlign: 'center', padding: 50, fontSize: '1.5em', fontWeight: 'bold' }}>Acesso Negado. Apenas o Mestre pode aceder a este domínio.</div>;
     }
@@ -236,19 +249,6 @@ function MestrePanel() {
         }
     };
 
-    // 🔥 LEITOR DA COROA GLOBAL DO MESTRE 🔥
-    const grandsGlobais = useMemo(() => {
-        let g = {};
-        if (personagens) {
-            Object.values(personagens).forEach(p => {
-                if (p?.compendioOverrides?.grands) {
-                    g = { ...g, ...p.compendioOverrides.grands };
-                }
-            });
-        }
-        return g;
-    }, [personagens]);
-
 
     const todosJogadores = Object.entries(personagens || {});
     const jogadoresFiltrados = todosJogadores.filter(([nome, ficha]) => {
@@ -311,7 +311,7 @@ function MestrePanel() {
 
                             // 🔥 VERIFICAÇÃO ÉPICA: ESTA ENTIDADE É UM GRAND? 🔥
                             const mesaAtual = ficha?.bio?.mesa || 'presente';
-                            const classeReal = ficha?.bio?.classe;
+                            const classeReal = ficha?.bio?.classe || '';
                             const isGrand = classeReal && grandsGlobais[`${classeReal}_${mesaAtual}`] === nome;
 
                             let classId = classeReal;
@@ -346,7 +346,7 @@ function MestrePanel() {
                                             textShadow: isGrand ? '0 0 5px #ff003c' : 'none',
                                             letterSpacing: isGrand ? '1px' : 'normal'
                                         }}>
-                                            {isGrand ? `👑 GRAND ${classeReal.toUpperCase()}` : (classId ? classId.toUpperCase() : 'Mundano')}
+                                            {isGrand ? `👑 GRAND ${String(classeReal).toUpperCase()}` : (classId ? String(classId).toUpperCase() : 'Mundano')}
                                         </span>
                                     </div>
 
