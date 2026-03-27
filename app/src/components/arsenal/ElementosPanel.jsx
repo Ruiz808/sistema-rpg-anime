@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo } from 'react';
 import useStore from '../../stores/useStore';
-import { salvarFichaSilencioso } from '../../services/firebase-sync';
+import { salvarFichaSilencioso, enviarParaFeed } from '../../services/firebase-sync'; // 🔥 enviarParaFeed importado!
 
 const emogis = {
     'Fogo': '\uD83D\uDD25', 'Agua': '\uD83D\uDCA7', 'Raio': '\u26A1', 'Terra': '\uD83E\uDEA8', 'Vento': '\uD83C\uDF2A\uFE0F',
@@ -28,8 +28,9 @@ const cores = {
     'Elemento Velocidade': '#e6ffff', 'Elemento Poeira': '#d9d9d9', 'Elemento Calor': '#ff6600', 'Elemento Cal': '#e6ccb3', 'Elemento Carbono': '#595959', 'Elemento Veneno': '#9933ff', 'Elemento Magnetismo': '#4169e1', 'Elemento Som': '#a6a6a6'
 };
 
-// 🔥 HIERARQUIA ELEMENTAL DINÂMICA
+// 🔥 TRUQUES ADICIONADOS À HIERARQUIA
 const CATEGORIAS_ELEMENTOS = [
+    { titulo: 'Truques (Sem Custo)', itens: ['Truques Arcanos/Negros', 'Truques de Ciclo', 'Truques Ancestrais'] },
     { titulo: 'Elementos Básicos', itens: ['Fogo', 'Raio', 'Agua', 'Vento', 'Terra'] },
     { titulo: 'Elementos Básicos Verdadeiros', itens: ['Fogo Verdadeiro', 'Raio Verdadeiro', 'Agua Verdadeira', 'Vento Verdadeiro', 'Terra Verdadeira'] },
     { titulo: 'Elementos Avançados', itens: ['Solar', 'Energia', 'Gelo', 'Vacuo', 'Natureza'] },
@@ -46,7 +47,6 @@ const CATEGORIAS_ELEMENTOS = [
     { titulo: 'Neutro (Sem Elemento)', itens: ['Neutro'] }
 ];
 
-// O Motor captura todas as magias que não estão na lista acima para não perder nada do seu banco de dados
 const itensJáCategorizados = CATEGORIAS_ELEMENTOS.flatMap(c => c.itens);
 const magiasSobressalentes = Object.keys(cores).filter(k => !itensJáCategorizados.includes(k));
 
@@ -62,8 +62,7 @@ const BONUS_OPTIONS = [
 ];
 
 export default function ElementosPanel() {
-    const minhaFicha = useStore(s => s.minhaFicha);
-    const updateFicha = useStore(s => s.updateFicha);
+    const { minhaFicha, meuNome, updateFicha, setAbaAtiva } = useStore();
     const elemEditandoId = useStore(s => s.elemEditandoId);
     const setElemEditandoId = useStore(s => s.setElemEditandoId);
 
@@ -74,11 +73,29 @@ export default function ElementosPanel() {
     const [custoValor, setCustoValor] = useState(0);
     const [dadosQtd, setDadosQtd] = useState(0);
     const [dadosFaces, setDadosFaces] = useState(20);
+    
+    // 🔥 NOVAS PROPRIEDADES DA MAGIA
+    const [energiaCombustao, setEnergiaCombustao] = useState('mana');
+    const [tipoMecanica, setTipoMecanica] = useState('ataque'); // ataque, saving, infusao, suporte
+    const [savingAttr, setSavingAttr] = useState('destreza'); 
+    const [alcanceQuad, setAlcanceQuad] = useState(1);
 
     const formRef = useRef(null);
+    const profGlobal = parseInt(minhaFicha.proficienciaBase) || 2;
+
+    const getModificadorDoisDigitos = (valorAttr) => {
+        if (!valorAttr) return 0;
+        const strVal = String(valorAttr).replace(/[^0-9]/g, '');
+        if (!strVal) return 0;
+        return parseInt(strVal.substring(0, 2), 10);
+    };
 
     function selecionarElemento(nome) {
         setElemSelecionado(nome);
+        // Pre-selecionar Energia baseada na Lore
+        if (nome.includes('Kekkei') || nome.includes('Elemento')) setEnergiaCombustao('chakra');
+        else if (nome.includes('Truque')) setEnergiaCombustao('livre');
+        else setEnergiaCombustao('mana');
     }
 
     function salvarNovoElem() {
@@ -92,29 +109,31 @@ export default function ElementosPanel() {
             updateFicha((ficha) => {
                 if (!ficha.ataquesElementais) ficha.ataquesElementais = [];
 
+                const novaMagia = {
+                    nome: n,
+                    elemento: elemSelecionado,
+                    bonusTipo: bonusTipo,
+                    bonusValor: bonusValor,
+                    custoValor: parseFloat(custoValor) || 0,
+                    dadosExtraQtd: parseInt(dadosQtd) || 0,
+                    dadosExtraFaces: parseInt(dadosFaces) || 20,
+                    energiaCombustao: energiaCombustao,
+                    tipoMecanica: tipoMecanica,
+                    savingAttr: savingAttr,
+                    alcanceQuad: parseFloat(alcanceQuad) || 1,
+                    equipado: false
+                };
+
                 if (elemEditandoId) {
                     const ix = ficha.ataquesElementais.findIndex(i => i.id === elemEditandoId);
                     if (ix !== -1) {
-                        ficha.ataquesElementais[ix].nome = n;
-                        ficha.ataquesElementais[ix].elemento = elemSelecionado;
-                        ficha.ataquesElementais[ix].bonusTipo = bonusTipo;
-                        ficha.ataquesElementais[ix].bonusValor = bonusValor;
-                        ficha.ataquesElementais[ix].custoValor = parseFloat(custoValor) || 0;
-                        ficha.ataquesElementais[ix].dadosExtraQtd = parseInt(dadosQtd) || 0;
-                        ficha.ataquesElementais[ix].dadosExtraFaces = parseInt(dadosFaces) || 20;
+                        novaMagia.id = ficha.ataquesElementais[ix].id;
+                        novaMagia.equipado = ficha.ataquesElementais[ix].equipado;
+                        ficha.ataquesElementais[ix] = novaMagia;
                     }
                 } else {
-                    ficha.ataquesElementais.push({
-                        id: Date.now(),
-                        nome: n,
-                        elemento: elemSelecionado,
-                        bonusTipo: bonusTipo,
-                        bonusValor: bonusValor,
-                        custoValor: parseFloat(custoValor) || 0,
-                        dadosExtraQtd: parseInt(dadosQtd) || 0,
-                        dadosExtraFaces: parseInt(dadosFaces) || 20,
-                        equipado: false
-                    });
+                    novaMagia.id = Date.now();
+                    ficha.ataquesElementais.push(novaMagia);
                 }
             });
 
@@ -142,6 +161,10 @@ export default function ElementosPanel() {
         setCustoValor(p.custoValor || 0);
         setDadosQtd(p.dadosExtraQtd || 0);
         setDadosFaces(p.dadosExtraFaces || 20);
+        setEnergiaCombustao(p.energiaCombustao || 'mana');
+        setTipoMecanica(p.tipoMecanica || 'ataque');
+        setSavingAttr(p.savingAttr || 'destreza');
+        setAlcanceQuad(p.alcanceQuad || 1);
 
         if (formRef.current) formRef.current.scrollIntoView({ behavior: 'smooth' });
     }
@@ -150,6 +173,9 @@ export default function ElementosPanel() {
         setElemEditandoId(null);
         setNomeElem('');
         setElemSelecionado('Neutro');
+        setEnergiaCombustao('mana');
+        setTipoMecanica('ataque');
+        setAlcanceQuad(1);
     }
 
     function toggleEquiparElem(id) {
@@ -163,11 +189,62 @@ export default function ElementosPanel() {
     }
 
     function deletarElem(id) {
-        if (!confirm('Deseja apagar este ataque elemental do grimorio?')) return;
+        if (!window.confirm('Deseja apagar este ataque elemental do grimorio?')) return;
         updateFicha((ficha) => {
             ficha.ataquesElementais = (ficha.ataquesElementais || []).filter(i => i.id !== id);
         });
         salvarFichaSilencioso();
+    }
+
+    // 🔥 MOTOR DE CONJURAÇÃO DIRETA 🔥
+    function conjurarMagia(magia) {
+        const energiaToAttr = { 'mana': 'inteligencia', 'aura': 'energiaEsp', 'chakra': 'stamina', 'livre': 'inteligencia' };
+        const attrRegente = energiaToAttr[magia.energiaCombustao] || 'inteligencia';
+        const modRegente = getModificadorDoisDigitos(minhaFicha[attrRegente]?.base);
+
+        if (magia.tipoMecanica === 'ataque') {
+            const roll = Math.floor(Math.random() * 20) + 1;
+            const total = roll + modRegente + profGlobal;
+            
+            let rollStr = `[${roll}]`;
+            if (roll === 20) rollStr = `[<strong>20</strong>] (CRÍTICO!)`;
+            if (roll === 1) rollStr = `[<strong style="color:#ff003c;">1</strong>] (FALHA CRÍTICA!)`;
+
+            enviarParaFeed({
+                tipo: 'acerto',
+                nome: meuNome,
+                acertoTotal: total,
+                profBonusTexto: `Mod. Magia (${attrRegente}): +${modRegente} | Proficiência: +${profGlobal}`,
+                rolagem: rollStr,
+                armaStr: ` com ${magia.nome} (${magia.elemento})`
+            });
+            setAbaAtiva('aba-log');
+        } 
+        else if (magia.tipoMecanica === 'saving') {
+            const cd = 8 + modRegente + profGlobal;
+            enviarParaFeed({
+                tipo: 'sistema',
+                nome: meuNome,
+                texto: `🌀 CONJUROU: ${magia.nome}! O alvo precisa de passar num Saving Throw de ${magia.savingAttr.toUpperCase()} (CD: ${cd}).`
+            });
+            setAbaAtiva('aba-log');
+        }
+        else if (magia.tipoMecanica === 'infusao') {
+            enviarParaFeed({
+                tipo: 'sistema',
+                nome: meuNome,
+                texto: `✨ INFUSÃO ELEMENTAL: As armas e poderes de ${meuNome} estão envoltos em ${magia.elemento} através da técnica ${magia.nome}!`
+            });
+            setAbaAtiva('aba-log');
+        }
+        else {
+            enviarParaFeed({
+                tipo: 'sistema',
+                nome: meuNome,
+                texto: `✨ SUPORTE MÁGICO: ${meuNome} conjurou ${magia.nome} (${magia.elemento})!`
+            });
+            setAbaAtiva('aba-log');
+        }
     }
 
     const ataquesElementais = minhaFicha.ataquesElementais || [];
@@ -197,46 +274,47 @@ export default function ElementosPanel() {
 
         const elemText = p.elemento || 'Neutro';
         const bTipo = p.bonusTipo || 'nenhum';
-        const isMult = bTipo.includes('mult_');
-        const prefixo = isMult ? 'x' : '+';
-        const propText = bTipo === 'nenhum' ? 'Apenas Elemento' : bTipo.replace('_', ' ').toUpperCase();
+        const prefixo = bTipo.includes('mult_') ? 'x' : '+';
+        const propText = bTipo === 'nenhum' ? 'Sem bônus atrelado' : bTipo.replace('_', ' ').toUpperCase();
         const bValorStr = bTipo === 'nenhum' ? '' : `: ${prefixo}${p.bonusValor || 0}`;
         const dadosStr = p.dadosExtraQtd > 0 ? ` | Dados: +${p.dadosExtraQtd}d${p.dadosExtraFaces || 20}` : '';
-        const custoStr = p.custoValor > 0 ? ` | Custo: ${p.custoValor}%` : '';
+        const custoStr = p.custoValor > 0 ? ` | Custo: ${p.custoValor}% (${p.energiaCombustao?.toUpperCase()})` : ` | Custo: Livre`;
+
+        const mec = p.tipoMecanica || 'ataque';
+        const energiaToAttr = { 'mana': 'inteligencia', 'aura': 'energiaEsp', 'chakra': 'stamina', 'livre': 'inteligencia' };
+        const regente = energiaToAttr[p.energiaCombustao || 'mana'];
+        const modBase = getModificadorDoisDigitos(minhaFicha[regente]?.base);
+        const cd = 8 + modBase + profGlobal;
+        const bonusAcerto = modBase + profGlobal;
 
         return (
-            <div key={p.id} className="def-box" style={{ borderLeft: `5px solid ${c}`, background: bg, marginTop: 15, padding: 15, transition: 'all 0.3s' }}>
+            <div key={p.id} className="def-box" style={{ borderLeft: `5px solid ${c}`, background: bg, marginTop: 15, padding: 15, transition: 'all 0.3s', position: 'relative' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 15 }}>
                     <div>
                         <h3 style={{ margin: 0, color: c, textShadow: `0 0 10px ${c}` }}>
-                            {emogis[elemText] || '\u2728'} {p.nome || 'Ataque'}
+                            {emogis[elemText] || '\u2728'} {p.nome || 'Magia'} <span style={{fontSize: '0.6em', color: '#fff'}}>(Alc: {p.alcanceQuad || 1}Q)</span>
                         </h3>
                         <p style={{ color: '#0ff', fontSize: '0.9em', margin: '5px 0 0' }}>
-                            Afinidade: <strong>{elemText.toUpperCase()}</strong> | Bonus: {propText}{bValorStr}{dadosStr}{custoStr}
+                            Mecânica: <strong>{mec.toUpperCase()}</strong> {mec === 'saving' ? `(CD ${cd} - ${p.savingAttr?.toUpperCase()})` : mec === 'ataque' ? `(+${bonusAcerto} Acerto)` : ''}
+                        </p>
+                        <p style={{ color: '#aaa', fontSize: '0.85em', margin: '2px 0 0' }}>
+                            Bônus: {propText}{bValorStr}{dadosStr}{custoStr}
                         </p>
                     </div>
-                    <div style={{ display: 'flex', gap: 10 }}>
-                        <button
-                            className="btn-neon"
-                            style={{ borderColor: c, color: c, padding: '5px 15px', fontSize: '1.1em', margin: 0 }}
-                            onClick={() => toggleEquiparElem(p.id)}
-                        >
-                            {isEquipped ? 'CONJURADO' : 'GUARDADO'}
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                        
+                        {/* 🔥 BOTÃO DE CONJURAÇÃO DIRETA 🔥 */}
+                        {isEquipped && (
+                            <button className="btn-neon btn-gold" onClick={() => conjurarMagia(p)} style={{ padding: '5px 15px', fontSize: '1.1em', margin: 0, boxShadow: `0 0 10px ${c}` }}>
+                                🪄 CONJURAR
+                            </button>
+                        )}
+
+                        <button className="btn-neon" style={{ borderColor: c, color: c, padding: '5px 15px', fontSize: '1em', margin: 0 }} onClick={() => toggleEquiparElem(p.id)}>
+                            {isEquipped ? 'PREPARADA' : 'MEMORIZAR'}
                         </button>
-                        <button
-                            className="btn-neon btn-blue"
-                            style={{ padding: '5px 15px', fontSize: '1em', margin: 0 }}
-                            onClick={() => editarElem(p.id)}
-                        >
-                            EDITAR
-                        </button>
-                        <button
-                            className="btn-neon btn-red"
-                            style={{ padding: '5px 15px', fontSize: '1em', margin: 0 }}
-                            onClick={() => deletarElem(p.id)}
-                        >
-                            APAGAR
-                        </button>
+                        <button className="btn-neon btn-blue" style={{ padding: '5px 15px', fontSize: '0.9em', margin: 0 }} onClick={() => editarElem(p.id)}>EDITAR</button>
+                        <button className="btn-neon btn-red" style={{ padding: '5px 15px', fontSize: '0.9em', margin: 0 }} onClick={() => deletarElem(p.id)}>APAGAR</button>
                     </div>
                 </div>
             </div>
@@ -245,7 +323,6 @@ export default function ElementosPanel() {
 
     return (
         <div className="elementos-panel">
-            {/* Element badge selector HIERÁRQUICO */}
             <div className="def-box">
                 <h3 style={{ color: '#f90', marginBottom: 15 }}>Grimório Elemental</h3>
                 
@@ -264,20 +341,12 @@ export default function ElementosPanel() {
                                 const isActive = elem === elemSelecionado;
                                 return (
                                     <button
-                                        key={elem}
-                                        className="badge-elem"
-                                        data-elem={elem}
-                                        data-color={cor}
+                                        key={elem} className="badge-elem"
                                         onClick={() => selecionarElemento(elem)}
                                         style={{
-                                            padding: '4px 8px',
-                                            fontSize: '0.75em',
-                                            border: `1px solid ${isActive ? cor : '#444'}`,
-                                            borderRadius: 4,
-                                            background: 'transparent',
-                                            color: isActive ? cor : '#aaa',
-                                            cursor: 'pointer',
-                                            boxShadow: isActive ? `inset 0 0 10px ${cor}` : 'none'
+                                            padding: '4px 8px', fontSize: '0.75em', border: `1px solid ${isActive ? cor : '#444'}`,
+                                            borderRadius: 4, background: 'transparent', color: isActive ? cor : '#aaa',
+                                            cursor: 'pointer', boxShadow: isActive ? `inset 0 0 10px ${cor}` : 'none'
                                         }}
                                     >
                                         {emogis[elem] || '\u2728'} {elem}
@@ -289,88 +358,103 @@ export default function ElementosPanel() {
                 ))}
             </div>
 
-            {/* Form */}
+            {/* FORMULÁRIO COMPLETO */}
             <div className="def-box" ref={formRef} id="form-elem-box" style={{ marginTop: 15 }}>
-                <h3 style={{ color: '#0ff', marginBottom: 10 }} id="titulo-elem-form">
-                    {elemEditandoId ? `Editando: ${nomeElem}` : 'Criar Ataque Elemental'}
-                </h3>
+                <h3 style={{ color: '#0ff', marginBottom: 10 }}>{elemEditandoId ? `Editando: ${nomeElem}` : 'Criar Nova Magia'}</h3>
 
-                <input
-                    className="input-neon"
-                    type="text"
-                    placeholder="Nome da Magia/Ataque"
-                    value={nomeElem}
-                    onChange={e => setNomeElem(e.target.value)}
-                />
+                <input className="input-neon" type="text" placeholder="Nome da Magia/Técnica" value={nomeElem} onChange={e => setNomeElem(e.target.value)} />
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+                {/* 🔥 NOVAS REGRAS DE CONJURAÇÃO */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, marginTop: 10, padding: 10, background: 'rgba(0,136,255,0.1)', border: '1px solid #0088ff', borderRadius: 5 }}>
                     <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Tipo Bonus</label>
+                        <label style={{ color: '#0088ff', fontSize: '0.85em', fontWeight: 'bold' }}>Mecânica de Uso</label>
+                        <select className="input-neon" value={tipoMecanica} onChange={e => setTipoMecanica(e.target.value)}>
+                            <option value="ataque">Rolagem de Acerto</option>
+                            <option value="saving">Alvo Rola Saving Throw (CD)</option>
+                            <option value="infusao">Infusão em Arma</option>
+                            <option value="suporte">Suporte / Cura</option>
+                        </select>
+                    </div>
+                    
+                    {tipoMecanica === 'saving' && (
+                        <div>
+                            <label style={{ color: '#ffcc00', fontSize: '0.85em', fontWeight: 'bold' }}>Qual Resistência o Alvo rola?</label>
+                            <select className="input-neon" value={savingAttr} onChange={e => setSavingAttr(e.target.value)}>
+                                <option value="forca">Força</option>
+                                <option value="destreza">Destreza</option>
+                                <option value="constituicao">Constituição</option>
+                                <option value="sabedoria">Sabedoria</option>
+                                <option value="inteligencia">Inteligência</option>
+                                <option value="stamina">Stamina</option>
+                                <option value="carisma">Carisma</option>
+                                <option value="energiaEsp">Energia Espiritual</option>
+                            </select>
+                        </div>
+                    )}
+
+                    <div>
+                        <label style={{ color: '#0088ff', fontSize: '0.85em', fontWeight: 'bold' }}>Energia Usada</label>
+                        <select className="input-neon" value={energiaCombustao} onChange={e => setEnergiaCombustao(e.target.value)}>
+                            <option value="mana">Mana (Base: Inteligência)</option>
+                            <option value="aura">Aura (Base: Energia Esp.)</option>
+                            <option value="chakra">Chakra (Base: Stamina)</option>
+                            <option value="livre">Truque / Livre</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label style={{ color: '#0088ff', fontSize: '0.85em', fontWeight: 'bold' }}>Alcance (Q)</label>
+                        <input className="input-neon" type="number" min="0" step="0.5" value={alcanceQuad} onChange={e => setAlcanceQuad(e.target.value)} />
+                    </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginTop: 10 }}>
+                    <div>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Efeito de Bônus</label>
                         <select className="input-neon" value={bonusTipo} onChange={e => setBonusTipo(e.target.value)}>
-                            {BONUS_OPTIONS.map(b => (
-                                <option key={b.value} value={b.value}>{b.label}</option>
-                            ))}
+                            {BONUS_OPTIONS.map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
                         </select>
                     </div>
                     <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Valor Bonus</label>
-                        <input className="input-neon" type="text" value={bonusValor} onChange={e => setBonusValor(e.target.value)} />
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Valor Bônus</label>
+                        <input className="input-neon" type="text" value={bonusValor} onChange={e => setBonusValor(e.target.value)} disabled={bonusTipo === 'nenhum'} />
                     </div>
                     <div>
                         <label style={{ color: '#aaa', fontSize: '0.85em' }}>Custo % Energia</label>
-                        <input className="input-neon" type="number" value={custoValor} onChange={e => setCustoValor(e.target.value)} />
+                        <input className="input-neon" type="number" value={custoValor} onChange={e => setCustoValor(e.target.value)} disabled={energiaCombustao === 'livre'} />
                     </div>
                     <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Dados Extra Qtd</label>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Extra (Qtd Dano)</label>
                         <input className="input-neon" type="number" value={dadosQtd} onChange={e => setDadosQtd(e.target.value)} />
                     </div>
                     <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Dados Extra Faces</label>
+                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Extra (Faces)</label>
                         <input className="input-neon" type="number" value={dadosFaces} onChange={e => setDadosFaces(e.target.value)} />
                     </div>
                 </div>
 
                 <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
-                    <button className="btn-neon btn-gold" onClick={salvarNovoElem} style={{ flex: 1 }}>
-                        {elemEditandoId ? 'Salvar Edicao' : 'Criar Ataque'}
-                    </button>
-                    {elemEditandoId && (
-                        <button className="btn-neon btn-red" onClick={cancelarEdicaoElem} style={{ flex: 1 }}>
-                            Cancelar
-                        </button>
-                    )}
+                    <button className="btn-neon btn-gold" onClick={salvarNovoElem} style={{ flex: 1 }}>{elemEditandoId ? 'Salvar Edição' : 'Inscrever no Grimório'}</button>
+                    {elemEditandoId && <button className="btn-neon btn-red" onClick={cancelarEdicaoElem} style={{ flex: 1 }}>Cancelar</button>}
                 </div>
             </div>
 
-            {/* Filtered list */}
             <div id="lista-elementos-salvos" style={{ marginTop: 15 }}>
                 {magiasDoGrupo.length > 0 ? (
                     <>
-                        <h3 style={{
-                            color: cores[elemSelecionado] || '#ccc',
-                            marginTop: 10,
-                            borderBottom: `1px solid ${cores[elemSelecionado] || '#ccc'}`,
-                            paddingBottom: 5,
-                            textTransform: 'uppercase'
-                        }}>
+                        <h3 style={{ color: cores[elemSelecionado] || '#ccc', marginTop: 10, borderBottom: `1px solid ${cores[elemSelecionado] || '#ccc'}`, paddingBottom: 5, textTransform: 'uppercase' }}>
                             {emogis[elemSelecionado] || '\u2728'} Magias de {elemSelecionado}
                         </h3>
                         {magiasDoGrupo.map(p => renderMagiaCard(p))}
                     </>
                 ) : (
-                    <p style={{ color: '#888', fontStyle: 'italic', marginTop: 20 }}>
-                        Nenhuma magia de <strong>{elemSelecionado}</strong> forjada.
-                    </p>
+                    <p style={{ color: '#888', fontStyle: 'italic', marginTop: 20 }}>Nenhuma magia de <strong>{elemSelecionado}</strong> inscrita.</p>
                 )}
 
                 {magiasConjuradasOutros.length > 0 && (
                     <>
-                        <h3 style={{
-                            color: '#ffcc00', marginTop: 40,
-                            borderBottom: '1px solid #ffcc00', paddingBottom: 5,
-                            textTransform: 'uppercase', textShadow: '0 0 10px #ffcc00'
-                        }}>
-                            Outras Magias Ativas (Conjuradas)
+                        <h3 style={{ color: '#ffcc00', marginTop: 40, borderBottom: '1px solid #ffcc00', paddingBottom: 5, textTransform: 'uppercase', textShadow: '0 0 10px #ffcc00' }}>
+                            Outras Magias Memorizadas
                         </h3>
                         {magiasConjuradasOutros.map(p => renderMagiaCard(p))}
                     </>
