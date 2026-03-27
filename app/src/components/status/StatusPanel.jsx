@@ -82,7 +82,7 @@ const getBasePFor = (ficha, k) => {
     return safeGetPrestigioReal(k, safeGetRawBase(ficha, k));
 };
 
-function RadarChart({ ficha, isAtual }) {
+function RadarChart({ ficha, isAtual, tempCores }) {
     const LIMIT = 100; 
     const chartValues = VITALS_RADAR.map((k) => {
         const baseP = getBasePFor(ficha, k);
@@ -109,8 +109,9 @@ function RadarChart({ ficha, isAtual }) {
     const labelR = R + 18;
     const labelPos = ANGLES.map((a) => [CX + labelR * Math.cos(a), CY + labelR * Math.sin(a)]);
 
-    const baseColor = ficha?.cores?.radarBase || '#00ffff';
-    const atualColor = ficha?.cores?.radarAtual || '#ffcc00';
+    // 🔥 AGORA LÊ O COFRE TEMPORÁRIO DE CORES 🔥
+    const baseColor = tempCores?.radarBase || '#00ffff';
+    const atualColor = tempCores?.radarAtual || '#ffcc00';
 
     const polyColor = isAtual ? hexToRgba(atualColor, 0.2) : hexToRgba(baseColor, 0.2);
     const strokeColor = isAtual ? atualColor : baseColor;
@@ -186,20 +187,31 @@ function StatusPanelCore() {
     const [showCores, setShowCores] = useState(false);
     const [salvandoCores, setSalvandoCores] = useState(false);
     
+    // 🔥 COFRE TEMPORÁRIO DE CORES (Impede o Spam no Servidor) 🔥
+    const [tempCores, setTempCores] = useState(ficha?.cores || {});
+
     const inicializado = useRef(false);
 
+    // Se o Mestre/Jogador abrir a página, carregamos as cores salvas para o Cofre
+    useEffect(() => {
+        if (!showCores && ficha?.cores) {
+            setTempCores(ficha.cores);
+        }
+    }, [ficha?.cores, showCores]);
+
+    // 🔥 AS BARRAS AGORA LÊEM O COFRE EM TEMPO REAL 🔥
     const vitalsBars = useMemo(() => [
-        { key: 'vida',   label: 'VIDA (HP)', color: ficha?.cores?.vida || '#ff4d4d', borderC: ficha?.cores?.vida || '#ff0000' },
-        { key: 'mana',   label: 'MANA',      color: ficha?.cores?.mana || '#00ffff' },
-        { key: 'aura',   label: 'AURA',      color: ficha?.cores?.aura || '#ffcc00' },
-        { key: 'chakra', label: 'CHAKRA',    color: ficha?.cores?.chakra || '#e6ffff' },
-        { key: 'corpo',  label: 'CORPO',     color: ficha?.cores?.corpo || '#ff66ff' },
-    ], [ficha?.cores]);
+        { key: 'vida',   label: 'VIDA (HP)', color: tempCores?.vida || '#ff4d4d', borderC: tempCores?.vida || '#ff0000' },
+        { key: 'mana',   label: 'MANA',      color: tempCores?.mana || '#00ffff' },
+        { key: 'aura',   label: 'AURA',      color: tempCores?.aura || '#ffcc00' },
+        { key: 'chakra', label: 'CHAKRA',    color: tempCores?.chakra || '#e6ffff' },
+        { key: 'corpo',  label: 'CORPO',     color: tempCores?.corpo || '#ff66ff' },
+    ], [tempCores]);
 
     const vitaisEspeciais = useMemo(() => [
-        { key: 'pv', label: 'PONTOS VITAIS (PV)', color: ficha?.cores?.pv || '#00ff88', borderC: ficha?.cores?.pv || '#00ff88' },
-        { key: 'pm', label: 'PONTOS MORTAIS (PM)', color: ficha?.cores?.pm || '#cc00ff', borderC: ficha?.cores?.pm || '#cc00ff' },
-    ], [ficha?.cores]);
+        { key: 'pv', label: 'PONTOS VITAIS (PV)', color: tempCores?.pv || '#00ff88', borderC: tempCores?.pv || '#00ff88' },
+        { key: 'pm', label: 'PONTOS MORTAIS (PM)', color: tempCores?.pm || '#cc00ff', borderC: tempCores?.pm || '#cc00ff' },
+    ], [tempCores]);
 
     const allVitals = useMemo(() => [...vitalsBars, ...vitaisEspeciais], [vitalsBars, vitaisEspeciais]);
 
@@ -215,17 +227,17 @@ function StatusPanelCore() {
         { key: 'radarAtual', label: 'Radar (Atual)', default: '#ffcc00' },
     ];
 
-    // 🔥 ATUALIZA APENAS O ESTADO LOCAL (EFEITO IMEDIATO, SEM SPAM NO SERVIDOR) 🔥
+    // Atualiza apenas o ecrã instantaneamente
     const handleColorChange = (key, color) => {
-        updateFicha(f => {
-            if (!f.cores) f.cores = {};
-            f.cores[key] = color;
-        });
+        setTempCores(prev => ({ ...prev, [key]: color }));
     };
 
-    // 🔥 O BOTÃO QUE EFETIVAMENTE GRAVA AS CORES NO FIREBASE 🔥
+    // 🔥 O BOTÃO QUE EFETIVAMENTE GRAVA NA FORJA/FIREBASE 🔥
     const salvarCores = () => {
-        salvarFichaSilencioso();
+        updateFicha(f => {
+            f.cores = { ...tempCores };
+        });
+        salvarFichaSilencioso(); // Agora salva de verdade!
         setSalvandoCores(true);
         setTimeout(() => setSalvandoCores(false), 2000);
     };
@@ -439,7 +451,6 @@ function StatusPanelCore() {
                 </button>
             </div>
 
-            {/* 🔥 MENU DE CORES COM BOTÃO DE SALVAR 🔥 */}
             {showCores && (
                 <div className="fade-in" style={{ marginBottom: '20px', background: 'rgba(0,0,0,0.6)', padding: '20px', borderRadius: '8px', border: '1px dashed #ffcc00', boxShadow: 'inset 0 0 20px rgba(255,204,0,0.1)' }}>
                     <h4 style={{ color: '#ffcc00', margin: '0 0 15px 0', letterSpacing: '1px' }}>🎨 Paleta da Alma</h4>
@@ -450,7 +461,7 @@ function StatusPanelCore() {
                             <div key={c.key} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(255,255,255,0.05)', padding: '5px 10px', borderRadius: '5px' }}>
                                 <input 
                                     type="color" 
-                                    value={ficha?.cores?.[c.key] || c.default} 
+                                    value={tempCores[c.key] || c.default} 
                                     onChange={e => handleColorChange(c.key, e.target.value)}
                                     style={{ width: '35px', height: '35px', padding: 0, border: 'none', borderRadius: '5px', cursor: 'pointer', background: 'transparent' }}
                                 />
@@ -462,12 +473,12 @@ function StatusPanelCore() {
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
                         <button className="btn-neon btn-red btn-small" onClick={() => {
                             if(window.confirm('Tem certeza que deseja resetar todas as cores para o padrão do sistema?')) {
+                                setTempCores({});
                                 updateFicha(f => { f.cores = {} });
                                 salvarFichaSilencioso();
                             }
                         }} style={{ margin: 0 }}>🔄 Resetar Cores</button>
                         
-                        {/* 🔥 BOTÃO QUE SALVA DE VERDADE 🔥 */}
                         <button 
                             className="btn-neon btn-gold btn-small" 
                             onClick={salvarCores} 
@@ -567,12 +578,12 @@ function StatusPanelCore() {
             <div className="analise-grid" style={{ marginTop: '15px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                 <div className="radar-container" style={{ background: 'rgba(25, 25, 40, 0.6)', padding: '30px 20px', borderRadius: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <h4 style={{ color: '#fff', textAlign: 'center', marginBottom: '25px', letterSpacing: '2px', fontSize: '0.95em' }}>STATUS (RANK BASE)<br/><span style={{ fontSize: '0.85em', color: '#0ff' }}>[A]</span></h4>
-                    <RadarChart ficha={ficha} isAtual={false} />
+                    <RadarChart ficha={ficha} isAtual={false} tempCores={tempCores} />
                     <AtributosLista ficha={ficha} isAtual={false} />
                 </div>
                 <div className="radar-container atual" style={{ background: 'rgba(30, 25, 10, 0.6)', padding: '30px 20px', borderRadius: '10px', borderColor: 'rgba(255, 204, 0, 0.3)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <h4 style={{ color: '#ffcc00', textAlign: 'center', marginBottom: '25px', letterSpacing: '2px', fontSize: '0.95em' }}>PODER ATUAL (C/ FORMAS)<br/><span style={{ fontSize: '0.85em', color: '#0f0' }}>[A]</span></h4>
-                    <RadarChart ficha={ficha} isAtual={true} />
+                    <RadarChart ficha={ficha} isAtual={true} tempCores={tempCores} />
                     <AtributosLista ficha={ficha} isAtual={true} />
                 </div>
             </div>
