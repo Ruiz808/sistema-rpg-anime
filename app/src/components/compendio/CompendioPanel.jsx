@@ -446,9 +446,16 @@ export default function CompendioPanel() {
                             {isMestre && <span style={{ color: '#ffcc00', fontStyle: 'italic', fontSize: '0.8em' }}>O Árbitro do Destino 👑</span>}
                         </div>
                         
-                        <p style={{ color: '#ccc', fontSize: '0.95em', lineHeight: '1.6', marginBottom: '20px', background: 'rgba(255,204,0,0.05)', padding: '15px', borderRadius: '5px', borderLeft: '3px solid #ffcc00' }}>
-                            <strong style={{ color: '#ffcc00' }}>A Regra Absoluta do Trono dos Heróis:</strong> Apenas um receptáculo em toda a existência tem o direito de se sentar no Trono de cada classe, alcançando o auge do seu Caminho Místico. Para que uma nova lenda possa ascender e reivindicar o título de "Grand", o detentor atual tem primeiro de cair... ou abdicar.
-                        </p>
+                        {/* 🔥 BLOCO DA LORE: GRANDS E CANDIDATOS 🔥 */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '30px' }}>
+                            <p style={{ color: '#ccc', fontSize: '0.95em', lineHeight: '1.6', margin: 0, background: 'rgba(255,204,0,0.05)', padding: '15px', borderRadius: '5px', borderLeft: '3px solid #ffcc00' }}>
+                                <strong style={{ color: '#ffcc00' }}>👑 A Regra Absoluta do Trono dos Heróis:</strong> Apenas um receptáculo em toda a existência tem o direito de se sentar no Trono de cada classe, alcançando o auge do seu Caminho Místico. Para que uma nova lenda possa ascender e reivindicar o título de "Grand", o detentor atual tem primeiro de cair... ou abdicar.
+                            </p>
+
+                            <p style={{ color: '#ccc', fontSize: '0.95em', lineHeight: '1.6', margin: 0, background: 'rgba(0, 136, 255, 0.05)', padding: '15px', borderRadius: '5px', borderLeft: '3px solid #0088ff' }}>
+                                <strong style={{ color: '#0088ff', textShadow: '0 0 5px #0088ff' }}>🌟 Candidatos a Grand Class:</strong> Entidades que atingiram o pináculo mortal da sua classe. Eles possuem a centelha divina, mas ainda não superaram a lenda que ocupa o Trono (ou aguardam que ele fique vago). Ao contrário dos Grands, podem existir múltiplos Candidatos simultaneamente, gerando rivalidades brutais pela coroa.
+                            </p>
+                        </div>
 
                         {/* 🔥 FILTROS DAS MESAS 🔥 */}
                         <div style={{ display: 'flex', gap: '10px', marginBottom: '30px' }}>
