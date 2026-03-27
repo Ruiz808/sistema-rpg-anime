@@ -39,7 +39,8 @@ function hexToRgba(hex, alpha) {
     return 'rgba('+[(c>>16)&255, (c>>8)&255, c&255].join(',')+','+alpha+')';
 }
 
-const CX = 100, CY = 100, R = 70;
+// 🔥 AUMENTAMOS O TAMANHO DOS GRÁFICOS (Raio R) 🔥
+const CX = 100, CY = 100, R = 75; 
 const VITALS_RADAR = ['vida', 'mana', 'aura', 'chakra', 'corpo', 'status'];
 const VITALS_LABELS = ['VIDA', 'MANA', 'AURA', 'CHAKRA', 'CORPO', 'STATUS'];
 const STATS = ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'];
@@ -107,10 +108,9 @@ function RadarChart({ ficha, isAtual }) {
         return safeGetRank(pAtualValor, ficha?.ascensaoBase || 1);
     });
 
-    const labelR = R + 15;
+    const labelR = R + 18; // Distância maior para as letras não encostarem no gráfico
     const labelPos = ANGLES.map((a) => [CX + labelR * Math.cos(a), CY + labelR * Math.sin(a)]);
 
-    // 🔥 APLICAÇÃO DAS CORES CUSTOMIZADAS NO RADAR 🔥
     const baseColor = ficha?.cores?.radarBase || '#00ffff';
     const atualColor = ficha?.cores?.radarAtual || '#ffcc00';
 
@@ -119,22 +119,22 @@ function RadarChart({ ficha, isAtual }) {
     const gridStroke = isAtual ? hexToRgba(atualColor, 0.1) : hexToRgba(baseColor, 0.1);
 
     return (
-        <svg viewBox="0 0 200 200" className={`radar-svg ${isAtual ? 'atual' : ''}`} style={{ width: '100%', height: 'auto', maxHeight: '250px' }}>
+        <svg viewBox="0 0 200 200" className={`radar-svg ${isAtual ? 'atual' : ''}`} style={{ width: '100%', height: 'auto', maxHeight: '400px', overflow: 'visible' }}>
             {[0.25, 0.5, 0.75, 1.0].map((s, i) => (
-                <polygon key={i} points={hexPoints(CX, CY, R * s)} fill="none" stroke={gridStroke} strokeWidth="1" />
+                <polygon key={i} points={hexPoints(CX, CY, R * s)} fill="none" stroke={gridStroke} strokeWidth="1.5" />
             ))}
             {ANGLES.map((a, i) => (
                 <line key={i} x1={CX} y1={CY} x2={CX + R * Math.cos(a)} y2={CY + R * Math.sin(a)} stroke="rgba(255,255,255,0.15)" strokeWidth="1" strokeDasharray="4" />
             ))}
-            <polygon points={dataPoly} fill={polyColor} stroke={strokeColor} strokeWidth="2" style={{ transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)' }} />
+            <polygon points={dataPoly} fill={polyColor} stroke={strokeColor} strokeWidth="2.5" style={{ transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)' }} />
             {dataPoints.map(([x, y], i) => (
-                <circle key={i} cx={x || 0} cy={y || 0} r="3" fill={strokeColor} style={{ transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)' }} />
+                <circle key={i} cx={x || 0} cy={y || 0} r="4" fill={strokeColor} style={{ transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)' }} />
             ))}
             {VITALS_LABELS.map((lbl, i) => {
                 const [lx, ly] = labelPos[i];
                 const rk = rankInfos[i];
                 return (
-                    <text key={i} x={lx || 0} y={ly || 0} textAnchor="middle" dominantBaseline="central" fill={rk.c || '#fff'} fontSize="10" fontWeight="bold" style={{ textShadow: '0 0 5px #000' }}>
+                    <text key={i} x={lx || 0} y={ly || 0} textAnchor="middle" dominantBaseline="central" fill={rk.c || '#fff'} fontSize="11" fontWeight="bold" style={{ textShadow: '0 0 5px #000' }}>
                         [{rk.l || 'F'}] A{rk.a || 1} {lbl}
                     </text>
                 );
@@ -166,11 +166,11 @@ function AtributosLista({ ficha, isAtual }) {
     }), [ficha, isAtual]);
 
     return (
-        <div className="atributo-lista">
+        <div className="atributo-lista" style={{ marginTop: '20px' }}>
             {valores.map(({ key, label, valor }) => (
-                <div key={key} className="atributo-row">
-                    <span>{label}</span>
-                    <span className={isAtual ? 'atributo-valor-atual' : 'atributo-valor-base'}>{valor.toLocaleString('pt-BR')}</span>
+                <div key={key} className="atributo-row" style={{ padding: '6px 0' }}>
+                    <span style={{ fontSize: '1.05em' }}>{label}</span>
+                    <span className={isAtual ? 'atributo-valor-atual' : 'atributo-valor-base'} style={{ fontSize: '1.1em', fontWeight: 'bold' }}>{valor.toLocaleString('pt-BR')}</span>
                 </div>
             ))}
         </div>
@@ -185,28 +185,25 @@ function StatusPanelCore() {
     const [inputDano, setInputDano] = useState('');
     const [inputLetalidade, setInputLetalidade] = useState('0');
     
-    // 🔥 ESTADO DO PAINEL DE CORES 🔥
     const [showCores, setShowCores] = useState(false);
     
     const inicializado = useRef(false);
 
-    // 🔥 AS BARRAS AGORA ABSORVEM AS CORES DA FICHA (Ou usam o Default) 🔥
     const vitalsBars = useMemo(() => [
-        { key: 'vida',   label: 'VIDA (HP)', color: ficha?.cores?.vida || '#ff4d4d', classColor: 'label-color-vida', borderC: ficha?.cores?.vida || '#ff0000' },
-        { key: 'mana',   label: 'MANA',      color: ficha?.cores?.mana || '#00ffff', classColor: 'label-color-mana' },
-        { key: 'aura',   label: 'AURA',      color: ficha?.cores?.aura || '#ffcc00', classColor: 'label-color-aura' },
-        { key: 'chakra', label: 'CHAKRA',    color: ficha?.cores?.chakra || '#e6ffff', classColor: 'label-color-chakra' },
-        { key: 'corpo',  label: 'CORPO',     color: ficha?.cores?.corpo || '#ff66ff', classColor: 'label-color-corpo' },
+        { key: 'vida',   label: 'VIDA (HP)', color: ficha?.cores?.vida || '#ff4d4d', borderC: ficha?.cores?.vida || '#ff0000' },
+        { key: 'mana',   label: 'MANA',      color: ficha?.cores?.mana || '#00ffff' },
+        { key: 'aura',   label: 'AURA',      color: ficha?.cores?.aura || '#ffcc00' },
+        { key: 'chakra', label: 'CHAKRA',    color: ficha?.cores?.chakra || '#e6ffff' },
+        { key: 'corpo',  label: 'CORPO',     color: ficha?.cores?.corpo || '#ff66ff' },
     ], [ficha?.cores]);
 
     const vitaisEspeciais = useMemo(() => [
-        { key: 'pv', label: 'PONTOS VITAIS (PV)', color: ficha?.cores?.pv || '#00ff88', classColor: 'label-color-pv', borderC: ficha?.cores?.pv || '#00ff88' },
-        { key: 'pm', label: 'PONTOS MORTAIS (PM)', color: ficha?.cores?.pm || '#cc00ff', classColor: 'label-color-pm', borderC: ficha?.cores?.pm || '#cc00ff' },
+        { key: 'pv', label: 'PONTOS VITAIS (PV)', color: ficha?.cores?.pv || '#00ff88', borderC: ficha?.cores?.pv || '#00ff88' },
+        { key: 'pm', label: 'PONTOS MORTAIS (PM)', color: ficha?.cores?.pm || '#cc00ff', borderC: ficha?.cores?.pm || '#cc00ff' },
     ], [ficha?.cores]);
 
     const allVitals = useMemo(() => [...vitalsBars, ...vitaisEspeciais], [vitalsBars, vitaisEspeciais]);
 
-    // 🔥 LISTA DE CONFIGURAÇÕES DE COR PARA O EDITOR 🔥
     const colorConfigs = [
         { key: 'vida', label: 'Vida (HP)', default: '#ff4d4d' },
         { key: 'mana', label: 'Mana', default: '#00ffff' },
@@ -379,7 +376,7 @@ function StatusPanelCore() {
     if (!ficha) return <div style={{ color: '#888', textAlign: 'center', marginTop: '50px' }}>Carregando dados vitais...</div>;
 
     const renderBar = (item, index, isSpecial = false) => {
-        const { key, label, color, classColor, borderC } = item;
+        const { key, label, color, borderC } = item;
         const rawMx = getVitalMax(key, ficha);
         const { p, mxDisplay } = calcVitalScale(rawMx, key);
         
@@ -406,8 +403,9 @@ function StatusPanelCore() {
 
         return (
             <div key={key} className="vital-container" style={gridStyle}>
-                <div className={`vital-label ${classColor || ''}`} style={{ color: isSpecial ? color : '' }}>
-                    {label} {extra && <span style={{fontSize: '0.8em', color: '#aaa'}}>{extra}</span>}
+                {/* 🔥 AQUI ESTÁ A COR DO TÍTULO DINÂMICA 🔥 */}
+                <div className="vital-label" style={{ color: color, textShadow: `0 0 8px ${color}80`, letterSpacing: '1px', fontWeight: 'bold', fontSize: '0.85em', textTransform: 'uppercase' }}>
+                    {label} {extra && <span style={{fontSize: '0.9em', color: '#aaa', textShadow: 'none'}}>{extra}</span>}
                 </div>
                 <div className="bar-bg" style={{ position: 'relative', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: isSpecial ? `1px solid ${color}40` : '' }}>
                     <div className="bar-fill" style={{ width: `${percent}%`, backgroundColor: color, position: 'absolute', left: 0, top: 0, height: '100%', borderRadius: 'inherit', transition: 'width 0.3s' }}></div>
@@ -425,7 +423,6 @@ function StatusPanelCore() {
     return (
         <div className="status-panel-container">
             
-            {/* 🔥 CABEÇALHO COM BOTÃO DE PERSONALIZAÇÃO 🔥 */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                 <h3 className="section-title-mint-spaced" style={{ margin: 0, color: '#fff', fontSize: '1.2em' }}>&gt; STATUS PRINCIPAIS</h3>
                 <button 
@@ -437,7 +434,6 @@ function StatusPanelCore() {
                 </button>
             </div>
 
-            {/* 🔥 PAINEL SECRETO DA PALETA DA ALMA 🔥 */}
             {showCores && (
                 <div className="fade-in" style={{ marginBottom: '20px', background: 'rgba(0,0,0,0.6)', padding: '20px', borderRadius: '8px', border: '1px dashed #ffcc00', boxShadow: 'inset 0 0 20px rgba(255,204,0,0.1)' }}>
                     <h4 style={{ color: '#ffcc00', margin: '0 0 15px 0', letterSpacing: '1px' }}>🎨 Paleta da Alma</h4>
@@ -468,18 +464,15 @@ function StatusPanelCore() {
                 </div>
             )}
 
-            {/* 🔥 BARRAS CLÁSSICAS */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
                 {vitalsBars.map((item, i) => renderBar(item, i, false))}
             </div>
 
-            {/* 🔥 BARRAS DAS NOVAS ENERGIAS */}
             <h3 className="section-title-mint-spaced" style={{ marginTop: 0, color: '#fff', fontSize: '1.2em' }}>&gt; ENERGIAS PRIMORDIAIS</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
                 {vitaisEspeciais.map((item, i) => renderBar(item, i, true))}
             </div>
 
-            {/* 🔥 MULTIPLICADORES ESPECIAIS */}
             <div style={{ display: 'flex', gap: '15px', marginBottom: '30px' }}>
                 <div className="input-group" style={{ flex: 1, background: 'rgba(0, 255, 136, 0.05)', padding: '10px', borderRadius: '8px', border: '1px solid #00ff88', margin: 0 }}>
                     <label style={{ color: '#00ff88', fontSize: '0.8em', marginBottom: '5px', display: 'block' }}>MULT. DE VIDA (PV)</label>
@@ -491,7 +484,6 @@ function StatusPanelCore() {
                 </div>
             </div>
 
-            {/* 🔥 SISTEMA DE AÇÕES INJETADO AQUI 🔥 */}
             <h3 className="section-title-mint-spaced" style={{ marginTop: 0, color: '#fff', fontSize: '1.2em' }}>&gt; ECONOMIA DE AÇÕES (TURNO)</h3>
             <div style={{ background: 'rgba(10, 10, 20, 0.6)', border: '1px solid #333', borderRadius: '8px', padding: '15px', marginBottom: '30px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
@@ -506,11 +498,8 @@ function StatusPanelCore() {
                 </div>
             </div>
 
-            {/* 🔥 CONTROLE RÁPIDO AGORA SELECIONA QUALQUER BARRA */}
             <h3 className="section-title-mint-spaced" style={{ marginTop: 0, color: '#fff', fontSize: '1.2em' }}>&gt; CONTROLE RÁPIDO</h3>
             <div className="form-row-dark" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr 1fr auto auto', gap: '10px', alignItems: 'end', background: 'transparent', padding: 0 }}>
-                
-                {/* O NOVO SELETOR DE ALVO */}
                 <div className="input-group" style={{ margin: 0 }}>
                     <label style={{ fontSize: '0.8em', color: '#aaa' }}>ALVO</label>
                     <select value={targetBar} onChange={e => setTargetBar(e.target.value)} style={{ padding: '9px', background: '#111', color: '#00ffcc', border: '1px solid #00ffcc', borderRadius: '5px', fontWeight: 'bold' }}>
@@ -556,13 +545,13 @@ function StatusPanelCore() {
                 (Para editar a Ascensão e Divisores, utilize a aba <b>Ficha</b>)
             </p>
             <div className="analise-grid" style={{ marginTop: '15px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                <div className="radar-container" style={{ background: 'rgba(25, 25, 40, 0.6)', padding: '20px', borderRadius: '10px' }}>
-                    <h4 style={{ color: '#fff', textAlign: 'center', marginBottom: '20px', letterSpacing: '2px', fontSize: '0.9em' }}>STATUS (RANK BASE)<br/><span style={{ fontSize: '0.8em', color: '#0ff' }}>[A]</span></h4>
+                <div className="radar-container" style={{ background: 'rgba(25, 25, 40, 0.6)', padding: '30px 20px', borderRadius: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <h4 style={{ color: '#fff', textAlign: 'center', marginBottom: '25px', letterSpacing: '2px', fontSize: '0.95em' }}>STATUS (RANK BASE)<br/><span style={{ fontSize: '0.85em', color: '#0ff' }}>[A]</span></h4>
                     <RadarChart ficha={ficha} isAtual={false} />
                     <AtributosLista ficha={ficha} isAtual={false} />
                 </div>
-                <div className="radar-container atual" style={{ background: 'rgba(30, 25, 10, 0.6)', padding: '20px', borderRadius: '10px', borderColor: 'rgba(255, 204, 0, 0.3)' }}>
-                    <h4 style={{ color: '#ffcc00', textAlign: 'center', marginBottom: '20px', letterSpacing: '2px', fontSize: '0.9em' }}>PODER ATUAL (C/ FORMAS)<br/><span style={{ fontSize: '0.8em', color: '#0f0' }}>[A]</span></h4>
+                <div className="radar-container atual" style={{ background: 'rgba(30, 25, 10, 0.6)', padding: '30px 20px', borderRadius: '10px', borderColor: 'rgba(255, 204, 0, 0.3)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <h4 style={{ color: '#ffcc00', textAlign: 'center', marginBottom: '25px', letterSpacing: '2px', fontSize: '0.95em' }}>PODER ATUAL (C/ FORMAS)<br/><span style={{ fontSize: '0.85em', color: '#0f0' }}>[A]</span></h4>
                     <RadarChart ficha={ficha} isAtual={true} />
                     <AtributosLista ficha={ficha} isAtual={true} />
                 </div>
