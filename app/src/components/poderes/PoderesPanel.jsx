@@ -26,7 +26,7 @@ export default function PoderesPanel() {
     const [abaAtual, setAbaAtual] = useState('habilidade');
 
     const [nomePoder, setNomePoder] = useState('');
-    const [descricaoPoder, setDescricaoPoder] = useState(''); // 🔥 NOVO: Descrição Narrativa
+    const [descricaoPoder, setDescricaoPoder] = useState(''); 
     const [imagemUrl, setImagemUrl] = useState('');
     const [dadosQtd, setDadosQtd] = useState(0);
     const [dadosFaces, setDadosFaces] = useState(20);
@@ -111,7 +111,7 @@ export default function PoderesPanel() {
                 const ix = ficha.poderes.findIndex(p => p.id === poderEditandoId);
                 if (ix !== -1) {
                     ficha.poderes[ix].nome = n;
-                    ficha.poderes[ix].descricao = descricaoPoder; // 🔥 Salva Descrição
+                    ficha.poderes[ix].descricao = descricaoPoder; 
                     ficha.poderes[ix].categoria = abaAtual;
                     ficha.poderes[ix].efeitos = JSON.parse(JSON.stringify(efeitosTemp));
                     ficha.poderes[ix].efeitosPassivos = JSON.parse(JSON.stringify(efeitosTempPassivos));
@@ -126,7 +126,7 @@ export default function PoderesPanel() {
                 ficha.poderes.push({
                     id: Date.now(),
                     nome: n,
-                    descricao: descricaoPoder, // 🔥 Salva Descrição
+                    descricao: descricaoPoder, 
                     categoria: abaAtual,
                     ativa: false,
                     efeitos: JSON.parse(JSON.stringify(efeitosTemp)),
@@ -160,7 +160,7 @@ export default function PoderesPanel() {
         setPoderEditandoId(p.id);
         setAbaAtual(p.categoria || 'poder');
         setNomePoder(p.nome);
-        setDescricaoPoder(p.descricao || ''); // 🔥 Lê Descrição
+        setDescricaoPoder(p.descricao || ''); 
         setImagemUrl(p.imagemUrl || '');
         setDadosQtd(p.dadosQtd || 0);
         setDadosFaces(p.dadosFaces || 20);
@@ -176,7 +176,7 @@ export default function PoderesPanel() {
     const cancelarEdicaoPoder = () => {
         setPoderEditandoId(null);
         setNomePoder('');
-        setDescricaoPoder(''); // 🔥 Reseta Descrição
+        setDescricaoPoder(''); 
         setImagemUrl('');
         setDadosQtd(0);
         setDadosFaces(20);
@@ -278,11 +278,34 @@ export default function PoderesPanel() {
         salvarFichaSilencioso();
     };
 
-    // 🔥 LÓGICA DA HIERARQUIA DE DOMÍNIOS 🔥
+    // 🔥 LÓGICA DA HIERARQUIA DE DOMÍNIOS E TEXTOS NARRATIVOS 🔥
     const hierarquia = minhaFicha?.hierarquia || {};
     const hPoder = hierarquia.poder || false;
     const hInfinity = hierarquia.infinity || false;
     const hSingularidade = hierarquia.singularidade || '';
+
+    const [hTextos, setHTextos] = useState({
+        poderNome: '', poderDesc: '',
+        infinityNome: '', infinityDesc: '',
+        singularidadeNome: '', singularidadeDesc: ''
+    });
+    const [salvandoClassificacao, setSalvandoClassificacao] = useState(false);
+
+    useEffect(() => {
+        const h = minhaFicha?.hierarquia || {};
+        setHTextos({
+            poderNome: h.poderNome || '',
+            poderDesc: h.poderDesc || '',
+            infinityNome: h.infinityNome || '',
+            infinityDesc: h.infinityDesc || '',
+            singularidadeNome: h.singularidadeNome || '',
+            singularidadeDesc: h.singularidadeDesc || ''
+        });
+    }, [
+        minhaFicha?.hierarquia?.poderNome, minhaFicha?.hierarquia?.poderDesc, 
+        minhaFicha?.hierarquia?.infinityNome, minhaFicha?.hierarquia?.infinityDesc, 
+        minhaFicha?.hierarquia?.singularidadeNome, minhaFicha?.hierarquia?.singularidadeDesc
+    ]);
 
     const salvarHierarquia = (p, i, s) => {
         updateFicha(f => {
@@ -294,34 +317,56 @@ export default function PoderesPanel() {
         salvarFichaSilencioso();
     };
 
+    const salvarTextosHierarquia = () => {
+        updateFicha(f => {
+            if (!f.hierarquia) f.hierarquia = {};
+            f.hierarquia.poderNome = hTextos.poderNome;
+            f.hierarquia.poderDesc = hTextos.poderDesc;
+            f.hierarquia.infinityNome = hTextos.infinityNome;
+            f.hierarquia.infinityDesc = hTextos.infinityDesc;
+            f.hierarquia.singularidadeNome = hTextos.singularidadeNome;
+            f.hierarquia.singularidadeDesc = hTextos.singularidadeDesc;
+        });
+        salvarFichaSilencioso();
+        setSalvandoClassificacao(true);
+        setTimeout(() => setSalvandoClassificacao(false), 2000);
+    };
+
     let tituloSupremo = 'MUNDANO';
     let corSuprema = '#555';
     let glowSupremo = 'none';
+    let nomeHabilidadeDestaque = '';
 
     if (hSingularidade === '0') {
         tituloSupremo = 'SINGULARIDADE GRAU 0 (MARCADO)';
         corSuprema = '#ff00ff';
         glowSupremo = '0 0 20px rgba(255, 0, 255, 0.8)';
+        nomeHabilidadeDestaque = hTextos.singularidadeNome;
     } else if (hSingularidade === '1') {
         tituloSupremo = 'SINGULARIDADE GRAU 1 (NASCIDA)';
         corSuprema = '#ff003c';
         glowSupremo = '0 0 20px rgba(255, 0, 60, 0.8)';
+        nomeHabilidadeDestaque = hTextos.singularidadeNome;
     } else if (hSingularidade === '2') {
         tituloSupremo = 'SINGULARIDADE GRAU 2 (DESENVOLVIDA)';
         corSuprema = '#ff8800';
         glowSupremo = '0 0 20px rgba(255, 136, 0, 0.8)';
+        nomeHabilidadeDestaque = hTextos.singularidadeNome;
     } else if (hSingularidade === '3') {
         tituloSupremo = 'SINGULARIDADE GRAU 3 (HERDADA)';
         corSuprema = '#ffcc00';
         glowSupremo = '0 0 20px rgba(255, 204, 0, 0.8)';
+        nomeHabilidadeDestaque = hTextos.singularidadeNome;
     } else if (hInfinity) {
         tituloSupremo = 'INFINITY (MANIPULAÇÃO ABSOLUTA)';
         corSuprema = '#00ccff';
         glowSupremo = '0 0 20px rgba(0, 204, 255, 0.8)';
+        nomeHabilidadeDestaque = hTextos.infinityNome;
     } else if (hPoder) {
         tituloSupremo = 'PODER (RESSONÂNCIA NATURAL)';
         corSuprema = '#00ffcc';
         glowSupremo = '0 0 20px rgba(0, 255, 204, 0.8)';
+        nomeHabilidadeDestaque = hTextos.poderNome;
     }
 
     const armasEquipadas = (minhaFicha?.inventario || []).filter(i => i.tipo === 'arma' && i.equipado);
@@ -413,9 +458,17 @@ export default function PoderesPanel() {
                         <div className="def-box" style={{ textAlign: 'center', padding: '30px', border: `2px solid ${corSuprema}`, boxShadow: glowSupremo, background: 'rgba(0,0,0,0.8)', position: 'relative', overflow: 'hidden' }}>
                             <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: `radial-gradient(circle, ${corSuprema}30 0%, rgba(0,0,0,0) 70%)`, pointerEvents: 'none' }} />
                             <h2 style={{ color: '#fff', fontSize: '1.2em', margin: '0 0 10px 0', letterSpacing: '2px', textTransform: 'uppercase', position: 'relative', zIndex: 1 }}>Grau de Calamidade Atual</h2>
+                            
                             <div style={{ fontSize: '2.5em', fontWeight: '900', color: corSuprema, textShadow: glowSupremo, textTransform: 'uppercase', letterSpacing: '3px', position: 'relative', zIndex: 1 }}>
                                 {tituloSupremo}
                             </div>
+                            
+                            {nomeHabilidadeDestaque && (
+                                <div style={{ color: '#fff', fontSize: '1.8em', fontWeight: 'bold', fontStyle: 'italic', marginTop: '10px', textShadow: '0 0 10px #000', position: 'relative', zIndex: 1 }}>
+                                    "{nomeHabilidadeDestaque}"
+                                </div>
+                            )}
+
                             <p style={{ color: '#aaa', fontSize: '0.9em', marginTop: '15px', fontStyle: 'italic', position: 'relative', zIndex: 1 }}>
                                 O sistema rastreia as suas capacidades e irradia a anomalia mais forte que corre nas suas veias.
                             </p>
@@ -424,22 +477,43 @@ export default function PoderesPanel() {
                         <div className="def-box" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                             <h3 style={{ color: '#0ff', margin: 0, borderBottom: '1px solid rgba(0,255,255,0.3)', paddingBottom: '10px' }}>Domínios Místicos</h3>
 
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '15px', background: hPoder ? 'rgba(0, 255, 204, 0.1)' : 'rgba(255,255,255,0.02)', border: `1px solid ${hPoder ? '#00ffcc' : '#333'}`, borderRadius: '8px', cursor: 'pointer', transition: 'all 0.3s' }}>
-                                <input type="checkbox" checked={hPoder} onChange={e => salvarHierarquia(e.target.checked, hInfinity, hSingularidade)} style={{ transform: 'scale(1.5)', marginLeft: '5px' }} />
-                                <div>
-                                    <div style={{ color: hPoder ? '#00ffcc' : '#fff', fontWeight: 'bold', fontSize: '1.1em', textShadow: hPoder ? '0 0 10px #00ffcc' : 'none' }}>✨ Categoria 1: Poder</div>
-                                    <div style={{ color: '#aaa', fontSize: '0.85em', marginTop: '4px' }}>Ressonância Natural. Habilidade inata que usa as 3 energias (Mana, Aura e Chakra) para escalar o seu impacto, mas <strong>não gasta nenhuma (Custo Zero)</strong>.</div>
-                                </div>
-                            </label>
+                            {/* 🔥 BLOCO DA CATEGORIA 1: PODER 🔥 */}
+                            <div style={{ padding: '15px', background: hPoder ? 'rgba(0, 255, 204, 0.1)' : 'rgba(255,255,255,0.02)', border: `1px solid ${hPoder ? '#00ffcc' : '#333'}`, borderRadius: '8px', transition: 'all 0.3s' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: 'pointer' }}>
+                                    <input type="checkbox" checked={hPoder} onChange={e => salvarHierarquia(e.target.checked, hInfinity, hSingularidade)} style={{ transform: 'scale(1.5)', marginLeft: '5px' }} />
+                                    <div>
+                                        <div style={{ color: hPoder ? '#00ffcc' : '#fff', fontWeight: 'bold', fontSize: '1.1em', textShadow: hPoder ? '0 0 10px #00ffcc' : 'none' }}>✨ Categoria 1: Poder</div>
+                                        <div style={{ color: '#aaa', fontSize: '0.85em', marginTop: '4px' }}>Ressonância Natural. Habilidade inata que usa as 3 energias (Mana, Aura e Chakra) para escalar o seu impacto, mas <strong>não gasta nenhuma (Custo Zero)</strong>.</div>
+                                    </div>
+                                </label>
+                                
+                                {hPoder && (
+                                    <div className="fade-in" style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px dashed rgba(0, 255, 204, 0.3)' }}>
+                                        <input className="input-neon" type="text" placeholder="Nome do seu Poder (Ex: Chamas do Purgatório)" value={hTextos.poderNome} onChange={e => setHTextos({...hTextos, poderNome: e.target.value})} style={{ width: '100%', marginBottom: '10px', borderColor: '#00ffcc', color: '#fff', fontWeight: 'bold' }} />
+                                        <textarea className="input-neon" placeholder="Descreva como a ressonância da sua habilidade se manifesta na realidade..." value={hTextos.poderDesc} onChange={e => setHTextos({...hTextos, poderDesc: e.target.value})} style={{ width: '100%', minHeight: '60px', borderColor: '#00ffcc', color: '#ccc', fontStyle: 'italic' }} />
+                                    </div>
+                                )}
+                            </div>
 
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '15px', background: hInfinity ? 'rgba(0, 204, 255, 0.1)' : 'rgba(255,255,255,0.02)', border: `1px solid ${hInfinity ? '#00ccff' : '#333'}`, borderRadius: '8px', cursor: 'pointer', transition: 'all 0.3s' }}>
-                                <input type="checkbox" checked={hInfinity} onChange={e => salvarHierarquia(hPoder, e.target.checked, hSingularidade)} style={{ transform: 'scale(1.5)', marginLeft: '5px' }} />
-                                <div>
-                                    <div style={{ color: hInfinity ? '#00ccff' : '#fff', fontWeight: 'bold', fontSize: '1.1em', textShadow: hInfinity ? '0 0 10px #00ccff' : 'none' }}>🌌 Categoria 2: Infinity</div>
-                                    <div style={{ color: '#aaa', fontSize: '0.85em', marginTop: '4px' }}>Manipulação Absoluta. Controle infinito e conceitual de uma habilidade, seja ela uma força física (Gelo Absoluto) ou abstrata (Adaptação).</div>
-                                </div>
-                            </label>
+                            {/* 🔥 BLOCO DA CATEGORIA 2: INFINITY 🔥 */}
+                            <div style={{ padding: '15px', background: hInfinity ? 'rgba(0, 204, 255, 0.1)' : 'rgba(255,255,255,0.02)', border: `1px solid ${hInfinity ? '#00ccff' : '#333'}`, borderRadius: '8px', transition: 'all 0.3s' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: 'pointer' }}>
+                                    <input type="checkbox" checked={hInfinity} onChange={e => salvarHierarquia(hPoder, e.target.checked, hSingularidade)} style={{ transform: 'scale(1.5)', marginLeft: '5px' }} />
+                                    <div>
+                                        <div style={{ color: hInfinity ? '#00ccff' : '#fff', fontWeight: 'bold', fontSize: '1.1em', textShadow: hInfinity ? '0 0 10px #00ccff' : 'none' }}>🌌 Categoria 2: Infinity</div>
+                                        <div style={{ color: '#aaa', fontSize: '0.85em', marginTop: '4px' }}>Manipulação Absoluta. Controle infinito e conceitual de uma habilidade, seja ela uma força física (Gelo Absoluto) ou abstrata (Adaptação).</div>
+                                    </div>
+                                </label>
 
+                                {hInfinity && (
+                                    <div className="fade-in" style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px dashed rgba(0, 204, 255, 0.3)' }}>
+                                        <input className="input-neon" type="text" placeholder="Nome do seu Infinity (Ex: Frio Zero Absoluto)" value={hTextos.infinityNome} onChange={e => setHTextos({...hTextos, infinityNome: e.target.value})} style={{ width: '100%', marginBottom: '10px', borderColor: '#00ccff', color: '#fff', fontWeight: 'bold' }} />
+                                        <textarea className="input-neon" placeholder="Descreva as leis conceituais e limites dessa manipulação infinita..." value={hTextos.infinityDesc} onChange={e => setHTextos({...hTextos, infinityDesc: e.target.value})} style={{ width: '100%', minHeight: '60px', borderColor: '#00ccff', color: '#ccc', fontStyle: 'italic' }} />
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* 🔥 BLOCO DA CATEGORIA 3: SINGULARIDADE 🔥 */}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '15px', background: hSingularidade ? 'rgba(255, 0, 255, 0.1)' : 'rgba(255,255,255,0.02)', border: `1px solid ${hSingularidade ? '#ff00ff' : '#333'}`, borderRadius: '8px', transition: 'all 0.3s' }}>
                                 <label style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: 'pointer' }}>
                                     <input type="checkbox" checked={!!hSingularidade} onChange={e => { const val = e.target.checked ? '3' : ''; salvarHierarquia(hPoder, hInfinity, val); }} style={{ transform: 'scale(1.5)', marginLeft: '5px' }} />
@@ -456,20 +530,38 @@ export default function PoderesPanel() {
                                             className="input-neon" 
                                             value={hSingularidade} 
                                             onChange={e => salvarHierarquia(hPoder, hInfinity, e.target.value)} 
-                                            style={{ width: '100%', marginTop: '8px', borderColor: corSuprema, color: corSuprema, background: '#111', fontSize: '1em', padding: '10px', textShadow: `0 0 5px ${corSuprema}` }}
+                                            style={{ width: '100%', marginTop: '8px', marginBottom: '15px', borderColor: corSuprema, color: corSuprema, background: '#111', fontSize: '1em', padding: '10px', textShadow: `0 0 5px ${corSuprema}` }}
                                         >
                                             <option value="3">Grau 3: Herdada (Poder transferido ou roubado)</option>
                                             <option value="2">Grau 2: Desenvolvida (Evoluída além do limite de um Poder/Infinity)</option>
                                             <option value="1">Grau 1: Nascida (Anomalia inata desde o berço)</option>
                                             <option value="0">Grau 0: Marcado Nascido (O próprio Marcado já nasce como Singularidade)</option>
                                         </select>
+
+                                        <div style={{ paddingTop: '15px', borderTop: '1px dashed rgba(255, 0, 255, 0.3)' }}>
+                                            <input className="input-neon" type="text" placeholder="Nome da Singularidade (Ex: All For One)" value={hTextos.singularidadeNome} onChange={e => setHTextos({...hTextos, singularidadeNome: e.target.value})} style={{ width: '100%', marginBottom: '10px', borderColor: '#ff00ff', color: '#fff', fontWeight: 'bold' }} />
+                                            <textarea className="input-neon" placeholder="Descreva como essa anomalia cósmica quebra as regras do universo..." value={hTextos.singularidadeDesc} onChange={e => setHTextos({...hTextos, singularidadeDesc: e.target.value})} style={{ width: '100%', minHeight: '60px', borderColor: '#ff00ff', color: '#ccc', fontStyle: 'italic' }} />
+                                        </div>
                                     </div>
                                 )}
                             </div>
+
+                            <button 
+                                className="btn-neon btn-gold" 
+                                onClick={salvarTextosHierarquia} 
+                                style={{ 
+                                    marginTop: '10px', width: '100%', padding: '12px', fontSize: '1.1em', letterSpacing: '1px',
+                                    backgroundColor: salvandoClassificacao ? 'rgba(0, 255, 100, 0.2)' : undefined,
+                                    borderColor: salvandoClassificacao ? '#00ffcc' : undefined,
+                                    color: salvandoClassificacao ? '#fff' : undefined
+                                }}
+                            >
+                                {salvandoClassificacao ? '💾 REGISTROS MÍSTICOS SALVOS!' : '💾 SALVAR NOMES E DESCRIÇÕES'}
+                            </button>
                         </div>
                     </div>
                 ) : (
-                    // FORMULÁRIO PADRÃO E LISTA
+                    // FORMULÁRIO PADRÃO DE HABILIDADES/PODERES E LISTA
                     <>
                         <div className="def-box" ref={formRef} id="form-poder-box">
                             <h3 style={{ color: '#0ff', marginBottom: 10 }}>{poderEditandoId ? `Editando: ${nomePoder}` : `Criar ${SINGULAR[abaAtual]}`}</h3>
