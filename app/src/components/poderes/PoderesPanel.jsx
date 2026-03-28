@@ -46,6 +46,10 @@ export default function PoderesPanel() {
     const [uploadingImg, setUploadingImg] = useState(false);
     const [vincularAberto, setVincularAberto] = useState(null);
 
+    // 🔥 NOVOS ESTADOS PARA A CENTRAL DE DISPARO 🔥
+    const [poderPreparandoId, setPoderPreparandoId] = useState(null);
+    const [overchargeAtivo, setOverchargeAtivo] = useState(false);
+
     const formRef = useRef(null);
     const vincularRef = useRef(null);
 
@@ -279,7 +283,7 @@ export default function PoderesPanel() {
         salvarFichaSilencioso();
     };
 
-    // 🔥 LÓGICA DA HIERARQUIA DE DOMÍNIOS E TEXTOS NARRATIVOS 🔥
+    // 🔥 LÓGICA DA HIERARQUIA DE DOMÍNIOS 🔥
     const hierarquia = minhaFicha?.hierarquia || {};
     const hPoder = hierarquia.poder || false;
     const hInfinity = hierarquia.infinity || false;
@@ -438,6 +442,76 @@ export default function PoderesPanel() {
         return sections;
     }, [poderesGlobais, passivas]);
 
+
+    // 🔥🔥🔥 LÓGICA DO SIMULADOR DE ATAQUE / ELEMENTAL 🔥🔥🔥
+    const getAtualVital = (key) => {
+        if (!minhaFicha) return 0;
+        const max = getMaximo(minhaFicha, key);
+        if (minhaFicha[key] && minhaFicha[key].atual !== undefined) return minhaFicha[key].atual;
+        return max;
+    };
+
+    const curMana = getAtualVital('mana');
+    const curAura = getAtualVital('aura');
+    const curChakra = getAtualVital('chakra');
+    const energiaElemental = curMana + curAura + curChakra;
+    const mPotencial = minhaFicha?.dano?.mPotencial || 1;
+    const danoBruto = minhaFicha?.dano?.danoBruto || 0;
+
+    const isFichaElemental = (minhaFicha?.hierarquia?.poderVertente === 'Elemental' && minhaFicha?.hierarquia?.poder) ||
+                             (minhaFicha?.hierarquia?.infinityVertente === 'Elemental' && minhaFicha?.hierarquia?.infinity);
+
+    const dispararAtaque = (poder) => {
+        let custoFinalPerc = poder.custoPercentual || 0;
+
+        if (isFichaElemental) {
+            // Se for Elemental, custa 0 por defeito, a não ser que aplique Overcharge (custa 2x o normal)
+            custoFinalPerc = overchargeAtivo ? (poder.custoPercentual * 2) : 0;
+        }
+
+        // Aplicar o Dreno de Energia na Ficha
+        if (custoFinalPerc > 0) {
+            updateFicha(ficha => {
+                ['mana', 'aura', 'chakra'].forEach(v => {
+                    let max = getMaximo(ficha, v);
+                    let drain = Math.floor(max * (custoFinalPerc / 100));
+                    let curr = ficha[v]?.atual !== undefined ? ficha[v].atual : max;
+                    if (!ficha[v]) ficha[v] = {};
+                    ficha[v].atual = Math.max(0, curr - drain);
+                });
+            });
+            salvarFichaSilencioso();
+        }
+
+        // Construir o Registo de Combate (Log)
+        let msg = `[ ${poder.nome.toUpperCase()} ] disparado!\n\n`;
+        msg += `🎲 Dano Base dos Dados: ${poder.dadosQtd}d${poder.dadosFaces}\n`;
+        msg += `➕ Dano Bruto da Ficha: +${danoBruto}\n`;
+
+        if (isFichaElemental) {
+            msg += `🌪️ Ressonância Elemental: +${energiaElemental}\n`;
+            if (overchargeAtivo) {
+                msg += `\n🔥 OVERCHARGE ATIVADO!\n`;
+                msg += `   ↳ Multiplicador Potencial Aplicado: x${mPotencial}\n`;
+                let danoTotalFlat = Math.floor((danoBruto + energiaElemental) * mPotencial);
+                msg += `💥 Dano Flat Estimado (Sem os dados): ${danoTotalFlat}\n`;
+                msg += `🔻 Custo Aplicado: ${custoFinalPerc}% drenado da Mana, Aura e Chakra.\n`;
+            } else {
+                let danoTotalFlat = danoBruto + energiaElemental;
+                msg += `💥 Dano Flat Estimado (Sem os dados): ${danoTotalFlat}\n`;
+                msg += `💸 Custo: ZERO (Ressonância da Natureza).\n`;
+            }
+        } else {
+            let danoTotalFlat = danoBruto;
+            msg += `💥 Dano Flat Estimado (Sem os dados): ${danoTotalFlat}\n`;
+            msg += `🔻 Custo Aplicado: ${custoFinalPerc}% drenado das Energias.\n`;
+        }
+
+        alert(msg);
+        setPoderPreparandoId(null);
+        setOverchargeAtivo(false);
+    };
+
     return (
         <div className="poderes-panel" style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
             <div className="def-box" style={{ flex: '0 0 230px', padding: '15px', position: 'sticky', top: '20px' }}>
@@ -499,7 +573,6 @@ export default function PoderesPanel() {
                         <div className="def-box" style={{ display: 'flex', flexDirection: 'column', gap: '15px', opacity: isMestre ? 1 : 0.8 }}>
                             <h3 style={{ color: '#0ff', margin: 0, borderBottom: '1px solid rgba(0,255,255,0.3)', paddingBottom: '10px' }}>Domínios Místicos</h3>
 
-                            {/* 🔥 BLOCO DA CATEGORIA 1: PODER 🔥 */}
                             <div style={{ padding: '15px', background: hPoder ? 'rgba(0, 255, 204, 0.1)' : 'rgba(255,255,255,0.02)', border: `1px solid ${hPoder ? '#00ffcc' : '#333'}`, borderRadius: '8px', transition: 'all 0.3s' }}>
                                 <label style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: isMestre ? 'pointer' : 'not-allowed' }}>
                                     <input type="checkbox" checked={hPoder} onChange={e => salvarHierarquia(e.target.checked, hInfinity, hSingularidade)} disabled={!isMestre} style={{ transform: 'scale(1.5)', marginLeft: '5px', cursor: isMestre ? 'pointer' : 'not-allowed' }} />
@@ -511,7 +584,6 @@ export default function PoderesPanel() {
                                 
                                 {hPoder && (
                                     <div className="fade-in" style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px dashed rgba(0, 255, 204, 0.3)' }}>
-                                        {/* 🔥 NOVO: SELETOR DE VERTENTE (PODER) 🔥 */}
                                         <label style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Vertente do Poder:</label>
                                         <select
                                             className="input-neon"
@@ -521,7 +593,8 @@ export default function PoderesPanel() {
                                             style={{ width: '100%', marginBottom: '10px', borderColor: '#00ffcc', color: '#fff', opacity: isMestre ? 1 : 0.7 }}
                                         >
                                             <option value="">Selecione a Vertente...</option>
-                                            <option value="Acumulativo">📈 Acumulativo (Escalonamento e absorção longa)</option>
+                                            <option value="Acumulativo (Combate)">⚔️ Acumulativo de Combate (Escala na luta e reseta)</option>
+                                            <option value="Acumulativo (Absorção)">📈 Acumulativo de Absorção (Armazena permanentemente)</option>
                                             <option value="Elemental">🌪️ Elemental (Força da natureza / Fenômenos)</option>
                                             <option value="Conceitual">🧩 Conceitual (Distorção de ideias e regras)</option>
                                             <option value="Utilitario">🛠️ Utilitário (Manipulação, Suporte, Cópia)</option>
@@ -533,7 +606,6 @@ export default function PoderesPanel() {
                                 )}
                             </div>
 
-                            {/* 🔥 BLOCO DA CATEGORIA 2: INFINITY 🔥 */}
                             <div style={{ padding: '15px', background: hInfinity ? 'rgba(0, 204, 255, 0.1)' : 'rgba(255,255,255,0.02)', border: `1px solid ${hInfinity ? '#00ccff' : '#333'}`, borderRadius: '8px', transition: 'all 0.3s' }}>
                                 <label style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: isMestre ? 'pointer' : 'not-allowed' }}>
                                     <input type="checkbox" checked={hInfinity} onChange={e => salvarHierarquia(hPoder, e.target.checked, hSingularidade)} disabled={!isMestre} style={{ transform: 'scale(1.5)', marginLeft: '5px', cursor: isMestre ? 'pointer' : 'not-allowed' }} />
@@ -547,7 +619,6 @@ export default function PoderesPanel() {
 
                                 {hInfinity && (
                                     <div className="fade-in" style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px dashed rgba(0, 204, 255, 0.3)' }}>
-                                        {/* 🔥 NOVO: SELETOR DE VERTENTE (INFINITY) 🔥 */}
                                         <label style={{ color: '#00ccff', fontSize: '0.85em', fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Vertente do Infinity:</label>
                                         <select
                                             className="input-neon"
@@ -557,7 +628,8 @@ export default function PoderesPanel() {
                                             style={{ width: '100%', marginBottom: '10px', borderColor: '#00ccff', color: '#fff', opacity: isMestre ? 1 : 0.7 }}
                                         >
                                             <option value="">Selecione a Vertente...</option>
-                                            <option value="Acumulativo">📈 Acumulativo (Escalonamento absoluto e absorção)</option>
+                                            <option value="Acumulativo (Combate)">⚔️ Acumulativo de Combate (Escala na luta e reseta)</option>
+                                            <option value="Acumulativo (Absorção)">📈 Acumulativo de Absorção (Armazena permanentemente)</option>
                                             <option value="Elemental">🌪️ Elemental (Domínio absoluto de forças e natureza)</option>
                                             <option value="Conceitual">🧩 Conceitual (Quebra de regras absolutas e espaço/tempo)</option>
                                             <option value="Utilitario">🛠️ Utilitário (Hackers da realidade, Mimetismo, Anulação)</option>
@@ -569,7 +641,6 @@ export default function PoderesPanel() {
                                 )}
                             </div>
 
-                            {/* 🔥 BLOCO DA CATEGORIA 3: SINGULARIDADE (SEM VERTENTE) 🔥 */}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '15px', background: hSingularidade ? 'rgba(255, 0, 255, 0.1)' : 'rgba(255,255,255,0.02)', border: `1px solid ${hSingularidade ? '#ff00ff' : '#333'}`, borderRadius: '8px', transition: 'all 0.3s' }}>
                                 <label style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: isMestre ? 'pointer' : 'not-allowed' }}>
                                     <input type="checkbox" checked={!!hSingularidade} onChange={e => { const val = e.target.checked ? '3' : ''; salvarHierarquia(hPoder, hInfinity, val); }} disabled={!isMestre} style={{ transform: 'scale(1.5)', marginLeft: '5px', cursor: isMestre ? 'pointer' : 'not-allowed' }} />
@@ -622,7 +693,6 @@ export default function PoderesPanel() {
                         </div>
                     </div>
                 ) : (
-                    // FORMULÁRIO PADRÃO DE HABILIDADES/PODERES E LISTA
                     <>
                         <div className="def-box" ref={formRef} id="form-poder-box">
                             <h3 style={{ color: '#0ff', marginBottom: 10 }}>{poderEditandoId ? `Editando: ${nomePoder}` : `Criar ${SINGULAR[abaAtual]}`}</h3>
@@ -770,6 +840,22 @@ export default function PoderesPanel() {
                                                     )}</p>
                                                 </div>
                                                 <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                                                    {/* 🔥 BOTÃO DE DISPARO AQUI 🔥 */}
+                                                    <button 
+                                                        className={`btn-neon ${poderPreparandoId === p.id ? 'btn-gold' : 'btn-blue'}`} 
+                                                        style={{ padding: '5px 15px', fontSize: '1em', margin: 0 }} 
+                                                        onClick={() => {
+                                                            if (poderPreparandoId === p.id) {
+                                                                setPoderPreparandoId(null);
+                                                            } else {
+                                                                setPoderPreparandoId(p.id);
+                                                                setOverchargeAtivo(false);
+                                                            }
+                                                        }}
+                                                    >
+                                                        ⚔️ PREPARAR
+                                                    </button>
+
                                                     <button className="btn-neon" style={{ borderColor: c, color: c, padding: '5px 15px', fontSize: '1.1em', margin: 0 }} onClick={() => togglePoder(p.id)}>{p.ativa ? 'LIGADO' : 'DESLIGADO'}</button>
                                                     <div style={{ position: 'relative' }} ref={vincularAberto === p.id ? vincularRef : null}>
                                                             <button
@@ -808,6 +894,51 @@ export default function PoderesPanel() {
                                                     <button className="btn-neon btn-red" style={{ padding: '5px 15px', fontSize: '1em', margin: 0 }} onClick={() => deletarPoder(p.id)}>APAGAR</button>
                                                 </div>
                                             </div>
+                                            
+                                            {/* 🔥 PAINEL EXPANSÍVEL DE DISPARO (SIMULADOR ELEMENTAL) 🔥 */}
+                                            {poderPreparandoId === p.id && (
+                                                <div className="fade-in" style={{ width: '100%', marginTop: '15px', background: 'rgba(0, 0, 0, 0.7)', border: '1px solid #0ff', borderRadius: '8px', padding: '15px' }}>
+                                                    <h4 style={{ color: '#0ff', margin: '0 0 10px 0', textTransform: 'uppercase' }}>⚙️ Central de Disparo: {p.nome}</h4>
+
+                                                    {isFichaElemental ? (
+                                                        <div style={{ background: 'rgba(0, 255, 204, 0.1)', borderLeft: '3px solid #00ffcc', padding: '10px', marginBottom: '15px', borderRadius: '4px' }}>
+                                                            <p style={{ color: '#00ffcc', margin: '0 0 5px 0', fontWeight: 'bold' }}>🌪️ RESSONÂNCIA ELEMENTAL DETETADA</p>
+                                                            <p style={{ color: '#aaa', fontSize: '0.85em', margin: 0 }}>
+                                                                A Força da Natureza funde as suas energias Atuais (<span style={{color:'#0cf'}}>Mana: {curMana}</span> + <span style={{color:'#0cf'}}>Aura: {curAura}</span> + <span style={{color:'#0cf'}}>Chakra: {curChakra}</span>).<br/>
+                                                                <strong>Poder Bruto Acumulado: +{energiaElemental} de Dano.</strong><br/>
+                                                                Custo Base: <strong style={{color:'#0f0'}}>ZERO (Gratuito)</strong>.
+                                                            </p>
+
+                                                            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px', cursor: 'pointer', background: overchargeAtivo ? 'rgba(255,0,60,0.2)' : 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '5px', border: overchargeAtivo ? '1px solid #ff003c' : '1px solid #444', transition: 'all 0.3s' }}>
+                                                                <input type="checkbox" checked={overchargeAtivo} onChange={e => setOverchargeAtivo(e.target.checked)} style={{ transform: 'scale(1.3)' }} />
+                                                                <div>
+                                                                    <div style={{ color: overchargeAtivo ? '#ff003c' : '#fff', fontWeight: 'bold', textShadow: overchargeAtivo ? '0 0 5px #ff003c' : 'none' }}>🔥 MODO OVERCHARGE (Queimar Motor)</div>
+                                                                    <div style={{ color: '#aaa', fontSize: '0.8em' }}>
+                                                                        Dobra o custo da habilidade (pagará <strong>{p.custoPercentual * 2}%</strong> da sua Mana, Aura e Chakra atuais) para aplicar o seu <strong>Multiplicador Potencial (x{mPotencial})</strong> ao Dano Total Estimado!
+                                                                    </div>
+                                                                </div>
+                                                            </label>
+                                                        </div>
+                                                    ) : (
+                                                        <div style={{ background: 'rgba(255, 255, 255, 0.05)', borderLeft: '3px solid #888', padding: '10px', marginBottom: '15px', borderRadius: '4px' }}>
+                                                            <p style={{ color: '#fff', margin: '0 0 5px 0', fontWeight: 'bold' }}>🎯 Disparo Padrão</p>
+                                                            <p style={{ color: '#aaa', fontSize: '0.85em', margin: 0 }}>
+                                                                Custo: <strong style={{color: '#f00'}}>{p.custoPercentual}% das Energias</strong>. <br/>
+                                                                Dano Base dos Dados: {p.dadosQtd}d{p.dadosFaces} + Dano Bruto ({danoBruto})
+                                                            </p>
+                                                        </div>
+                                                    )}
+
+                                                    <button 
+                                                        className={`btn-neon ${overchargeAtivo ? 'btn-red' : 'btn-gold'}`} 
+                                                        style={{ width: '100%', margin: 0, padding: '12px', fontSize: '1.1em', letterSpacing: '1px' }} 
+                                                        onClick={() => dispararAtaque(p)}
+                                                    >
+                                                        {overchargeAtivo ? '💥 DISPARAR OVERCHARGE FATAL!' : '⚔️ EXECUTAR HABILIDADE'}
+                                                    </button>
+                                                </div>
+                                            )}
+
                                             <FormasEditor
                                                 formas={p.formas || []}
                                                 formaAtivaId={p.formaAtivaId || null}
