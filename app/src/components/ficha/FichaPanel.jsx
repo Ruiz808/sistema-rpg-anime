@@ -786,27 +786,31 @@ export default function FichaPanel() {
                         Para habilidades que acumulam durante a batalha (ex: +8 de Acerto por turno). Adicione os stacks em tempo real. O valor final é apenas visual para você somar no seu teste de dados.
                     </p>
 
-                    {/* Criar Novo Marcador */}
-                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '15px' }}>
+                    {/* 🔥 CORREÇÃO DO CSS DO INPUT AQUI 👇 🔥 */}
+                    <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '15px' }}>
                         <input 
                             className="input-neon" 
                             type="text" 
                             placeholder="Nome (Ex: Acerto, CA...)" 
                             value={novoTrackerNome} 
                             onChange={e => setNovoTrackerNome(e.target.value)} 
-                            style={{ flex: 2, margin: 0 }} 
+                            style={{ flex: '2 1 200px', minHeight: '48px', fontSize: '1.1em', padding: '10px', borderColor: '#ff8800', color: '#fff', margin: 0 }} 
                         />
                         <input 
                             className="input-neon" 
                             type="number" 
                             step="0.1"
-                            placeholder="Valor por Stack (Ex: 8)" 
+                            placeholder="Bônus por Stack (Ex: 8)" 
                             value={novoTrackerValor} 
                             onChange={e => setNovoTrackerValor(e.target.value)} 
-                            style={{ flex: 1, margin: 0 }} 
+                            style={{ flex: '1 1 120px', minHeight: '48px', fontSize: '1.1em', padding: '10px', borderColor: '#ff8800', color: '#fff', margin: 0 }} 
                         />
-                        <button className="btn-neon" style={{ borderColor: '#ff8800', color: '#ff8800', margin: 0 }} onClick={addTrackerCena}>
-                            + Adicionar
+                        <button 
+                            className="btn-neon" 
+                            style={{ flex: '1 1 150px', minHeight: '48px', borderColor: '#ff8800', color: '#ff8800', margin: 0, padding: '10px', fontSize: '1.1em', fontWeight: 'bold', background: 'rgba(255, 136, 0, 0.1)' }} 
+                            onClick={addTrackerCena}
+                        >
+                            + ADICIONAR
                         </button>
                     </div>
 
