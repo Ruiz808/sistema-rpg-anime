@@ -15,7 +15,7 @@ const SINGULAR = {
 export default function PoderesPanel() {
     const minhaFicha = useStore(s => s.minhaFicha);
     const meuNome = useStore(s => s.meuNome);
-    const isMestre = useStore(s => s.isMestre); // 🔥 A CHAVE DO ARQUITETO 🔥
+    const isMestre = useStore(s => s.isMestre);
     const updateFicha = useStore(s => s.updateFicha);
     const efeitosTemp = useStore(s => s.efeitosTemp);
     const setEfeitosTemp = useStore(s => s.setEfeitosTemp);
@@ -309,7 +309,7 @@ export default function PoderesPanel() {
     ]);
 
     const salvarHierarquia = (p, i, s) => {
-        if (!isMestre) return; // Proteção extra no código
+        if (!isMestre) return;
         updateFicha(f => {
             if (!f.hierarquia) f.hierarquia = {};
             f.hierarquia.poder = p;
@@ -320,7 +320,7 @@ export default function PoderesPanel() {
     };
 
     const salvarTextosHierarquia = () => {
-        if (!isMestre) return; // Proteção extra no código
+        if (!isMestre) return;
         updateFicha(f => {
             if (!f.hierarquia) f.hierarquia = {};
             f.hierarquia.poderNome = hTextos.poderNome;
@@ -510,7 +510,10 @@ export default function PoderesPanel() {
                                     <input type="checkbox" checked={hInfinity} onChange={e => salvarHierarquia(hPoder, e.target.checked, hSingularidade)} disabled={!isMestre} style={{ transform: 'scale(1.5)', marginLeft: '5px', cursor: isMestre ? 'pointer' : 'not-allowed' }} />
                                     <div>
                                         <div style={{ color: hInfinity ? '#00ccff' : '#fff', fontWeight: 'bold', fontSize: '1.1em', textShadow: hInfinity ? '0 0 10px #00ccff' : 'none' }}>🌌 Categoria 2: Infinity</div>
-                                        <div style={{ color: '#aaa', fontSize: '0.85em', marginTop: '4px' }}>Manipulação Absoluta. Controle infinito e conceitual de uma habilidade, seja ela uma força física (Gelo Absoluto) ou abstrata (Adaptação).</div>
+                                        {/* 🔥 AVISO DE LORE AQUI 🔥 */}
+                                        <div style={{ color: '#aaa', fontSize: '0.85em', marginTop: '4px' }}>
+                                            Manipulação Absoluta. Controle infinito e conceitual de uma habilidade, seja ela uma força física (Gelo Absoluto) ou abstrata (Adaptação). <strong style={{color: '#00ccff'}}>⚠️ Permite Cópia (Mimetismo).</strong>
+                                        </div>
                                     </div>
                                 </label>
 
@@ -528,7 +531,10 @@ export default function PoderesPanel() {
                                     <input type="checkbox" checked={!!hSingularidade} onChange={e => { const val = e.target.checked ? '3' : ''; salvarHierarquia(hPoder, hInfinity, val); }} disabled={!isMestre} style={{ transform: 'scale(1.5)', marginLeft: '5px', cursor: isMestre ? 'pointer' : 'not-allowed' }} />
                                     <div>
                                         <div style={{ color: hSingularidade ? '#ff00ff' : '#fff', fontWeight: 'bold', fontSize: '1.1em', textShadow: hSingularidade ? '0 0 10px #ff00ff' : 'none' }}>👑 Categoria 3: Singularidade</div>
-                                        <div style={{ color: '#aaa', fontSize: '0.85em', marginTop: '4px' }}>A Anomalia Máxima. Uma falha na própria realidade. Existem menos de 200 no multiverso inteiro (Trilhões de anos).</div>
+                                        {/* 🔥 AVISO DE LORE (REGRA ABSOLUTA) AQUI 🔥 */}
+                                        <div style={{ color: '#aaa', fontSize: '0.85em', marginTop: '4px' }}>
+                                            A Anomalia Máxima. Uma falha na própria realidade. Existem menos de 200 no multiverso inteiro. <strong style={{color: '#ff00ff'}}>🚫 REGRA ABSOLUTA: Impossível ser copiada por qualquer habilidade de Mimetismo.</strong>
+                                        </div>
                                     </div>
                                 </label>
 

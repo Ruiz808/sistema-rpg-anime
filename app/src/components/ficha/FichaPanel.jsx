@@ -69,7 +69,6 @@ export default function FichaPanel() {
     const [dinheiro, setDinheiro] = useState('');
     const [salvandoBio, setSalvandoBio] = useState(false);
 
-    // 🔥 LEITOR DA COROA (Verifica quem domina o Trono no Compêndio) 🔥
     const overridesCompendio = useMemo(() => {
         if (!minhaFicha) return {};
         if (minhaFicha.compendioOverrides) return minhaFicha.compendioOverrides;
@@ -83,7 +82,6 @@ export default function FichaPanel() {
     }, [minhaFicha, personagens]);
 
     const grands = overridesCompendio.grands || {};
-    // 🔥 VERIFICAÇÃO ÉPICA: É O GRAND? TEM AVATAR? 🔥
     const isGrand = classe && grands[`${classe}_${mesa}`] === meuNome;
     const grandIcone = isGrand ? grands[`${classe}_${mesa}_icone`] : null;
 
@@ -748,19 +746,22 @@ export default function FichaPanel() {
                         </label>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '15px', alignItems: 'stretch' }}>
-                        <div style={{ flex: 1 }}>
-                            <input 
-                                className="input-neon" 
-                                type="number" 
-                                step="0.01"
-                                placeholder="Valor Final Calculado (Ex: 25000 ou 1.5)" 
-                                value={valorInjecao} 
-                                onChange={e => setValorInjecao(e.target.value)} 
-                                style={{ width: '100%', height: '100%', fontSize: '1.2em', padding: '10px', borderColor: '#00ccff', color: '#fff' }} 
-                            />
-                        </div>
-                        <button className="btn-neon" style={{ borderColor: '#00ccff', color: '#00ccff', padding: '10px 20px', fontSize: '1.1em', margin: 0, background: 'rgba(0, 204, 255, 0.1)', fontWeight: 'bold' }} onClick={injetarAnomalia}>
+                    {/* CORREÇÃO DO CSS DO INPUT AQUI 👇 */}
+                    <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <input 
+                            className="input-neon" 
+                            type="number" 
+                            step="0.01"
+                            placeholder="Valor Final (Ex: 25000)" 
+                            value={valorInjecao} 
+                            onChange={e => setValorInjecao(e.target.value)} 
+                            style={{ flex: '1 1 200px', minHeight: '48px', fontSize: '1.2em', padding: '10px', borderColor: '#00ccff', color: '#fff' }} 
+                        />
+                        <button 
+                            className="btn-neon" 
+                            style={{ flex: '2 1 300px', minHeight: '48px', borderColor: '#00ccff', color: '#00ccff', padding: '10px 20px', fontSize: '1.1em', margin: 0, background: 'rgba(0, 204, 255, 0.1)', fontWeight: 'bold' }} 
+                            onClick={injetarAnomalia}
+                        >
                             ⚡ INJETAR EVOLUÇÃO
                         </button>
                     </div>
@@ -810,7 +811,6 @@ export default function FichaPanel() {
                         <input className="input-neon" type="text" value={dmUnico} onChange={e => setDmUnico(e.target.value)} />
                     </div>
                     
-                    {/* 🔥 O CAMPO DE DANO BRUTO (FLAT DAMAGE) 🔥 */}
                     <div style={{ gridColumn: 'span 3', background: 'rgba(0, 255, 170, 0.05)', padding: '10px', borderRadius: '5px', borderLeft: '3px solid #00ffaa' }}>
                         <label style={{ color: '#00ffaa', fontSize: '0.85em', fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Dano Bruto Adicional (+) (Acumulado de Anomalias)</label>
                         <input className="input-neon" type="number" step="0.01" value={danoBruto} onChange={e => setDanoBruto(e.target.value)} style={{ width: '100%', borderColor: '#00ffaa', color: '#00ffaa', fontSize: '1.2em', fontWeight: 'bold' }} />
