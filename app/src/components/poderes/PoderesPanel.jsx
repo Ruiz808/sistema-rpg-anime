@@ -286,8 +286,8 @@ export default function PoderesPanel() {
     const hSingularidade = hierarquia.singularidade || '';
 
     const [hTextos, setHTextos] = useState({
-        poderNome: '', poderDesc: '',
-        infinityNome: '', infinityDesc: '',
+        poderNome: '', poderDesc: '', poderVertente: '',
+        infinityNome: '', infinityDesc: '', infinityVertente: '',
         singularidadeNome: '', singularidadeDesc: ''
     });
     const [salvandoClassificacao, setSalvandoClassificacao] = useState(false);
@@ -297,14 +297,16 @@ export default function PoderesPanel() {
         setHTextos({
             poderNome: h.poderNome || '',
             poderDesc: h.poderDesc || '',
+            poderVertente: h.poderVertente || '',
             infinityNome: h.infinityNome || '',
             infinityDesc: h.infinityDesc || '',
+            infinityVertente: h.infinityVertente || '',
             singularidadeNome: h.singularidadeNome || '',
             singularidadeDesc: h.singularidadeDesc || ''
         });
     }, [
-        minhaFicha?.hierarquia?.poderNome, minhaFicha?.hierarquia?.poderDesc, 
-        minhaFicha?.hierarquia?.infinityNome, minhaFicha?.hierarquia?.infinityDesc, 
+        minhaFicha?.hierarquia?.poderNome, minhaFicha?.hierarquia?.poderDesc, minhaFicha?.hierarquia?.poderVertente, 
+        minhaFicha?.hierarquia?.infinityNome, minhaFicha?.hierarquia?.infinityDesc, minhaFicha?.hierarquia?.infinityVertente, 
         minhaFicha?.hierarquia?.singularidadeNome, minhaFicha?.hierarquia?.singularidadeDesc
     ]);
 
@@ -325,8 +327,10 @@ export default function PoderesPanel() {
             if (!f.hierarquia) f.hierarquia = {};
             f.hierarquia.poderNome = hTextos.poderNome;
             f.hierarquia.poderDesc = hTextos.poderDesc;
+            f.hierarquia.poderVertente = hTextos.poderVertente;
             f.hierarquia.infinityNome = hTextos.infinityNome;
             f.hierarquia.infinityDesc = hTextos.infinityDesc;
+            f.hierarquia.infinityVertente = hTextos.infinityVertente;
             f.hierarquia.singularidadeNome = hTextos.singularidadeNome;
             f.hierarquia.singularidadeDesc = hTextos.singularidadeDesc;
         });
@@ -339,6 +343,7 @@ export default function PoderesPanel() {
     let corSuprema = '#555';
     let glowSupremo = 'none';
     let nomeHabilidadeDestaque = '';
+    let vertenteDestaque = '';
 
     if (hSingularidade === '0') {
         tituloSupremo = 'SINGULARIDADE GRAU 0 (MARCADO)';
@@ -365,11 +370,13 @@ export default function PoderesPanel() {
         corSuprema = '#00ccff';
         glowSupremo = '0 0 20px rgba(0, 204, 255, 0.8)';
         nomeHabilidadeDestaque = hTextos.infinityNome;
+        vertenteDestaque = hTextos.infinityVertente;
     } else if (hPoder) {
         tituloSupremo = 'PODER (RESSONÂNCIA NATURAL)';
         corSuprema = '#00ffcc';
         glowSupremo = '0 0 20px rgba(0, 255, 204, 0.8)';
         nomeHabilidadeDestaque = hTextos.poderNome;
+        vertenteDestaque = hTextos.poderVertente;
     }
 
     const armasEquipadas = (minhaFicha?.inventario || []).filter(i => i.tipo === 'arma' && i.equipado);
@@ -478,6 +485,12 @@ export default function PoderesPanel() {
                                 </div>
                             )}
 
+                            {vertenteDestaque && (
+                                <div style={{ display: 'inline-block', marginTop: '12px', padding: '4px 15px', background: 'rgba(0,0,0,0.5)', border: `1px solid ${corSuprema}`, borderRadius: '20px', color: corSuprema, fontSize: '0.85em', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', position: 'relative', zIndex: 1 }}>
+                                    🎯 Vertente: {vertenteDestaque}
+                                </div>
+                            )}
+
                             <p style={{ color: '#aaa', fontSize: '0.9em', marginTop: '15px', fontStyle: 'italic', position: 'relative', zIndex: 1 }}>
                                 O sistema rastreia as suas capacidades e irradia a anomalia mais forte que corre nas suas veias.
                             </p>
@@ -498,6 +511,22 @@ export default function PoderesPanel() {
                                 
                                 {hPoder && (
                                     <div className="fade-in" style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px dashed rgba(0, 255, 204, 0.3)' }}>
+                                        {/* 🔥 NOVO: SELETOR DE VERTENTE (PODER) 🔥 */}
+                                        <label style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Vertente do Poder:</label>
+                                        <select
+                                            className="input-neon"
+                                            value={hTextos.poderVertente}
+                                            onChange={e => setHTextos({...hTextos, poderVertente: e.target.value})}
+                                            disabled={!isMestre}
+                                            style={{ width: '100%', marginBottom: '10px', borderColor: '#00ffcc', color: '#fff', opacity: isMestre ? 1 : 0.7 }}
+                                        >
+                                            <option value="">Selecione a Vertente...</option>
+                                            <option value="Acumulativo">📈 Acumulativo (Escalonamento e absorção longa)</option>
+                                            <option value="Elemental">🌪️ Elemental (Força da natureza / Fenômenos)</option>
+                                            <option value="Conceitual">🧩 Conceitual (Distorção de ideias e regras)</option>
+                                            <option value="Utilitario">🛠️ Utilitário (Manipulação, Suporte, Cópia)</option>
+                                        </select>
+
                                         <input className="input-neon" type="text" placeholder="Nome do seu Poder (Ex: Chamas do Purgatório)" value={hTextos.poderNome} onChange={e => setHTextos({...hTextos, poderNome: e.target.value})} disabled={!isMestre} style={{ width: '100%', marginBottom: '10px', borderColor: '#00ffcc', color: '#fff', fontWeight: 'bold', opacity: isMestre ? 1 : 0.7 }} />
                                         <textarea className="input-neon" placeholder="Descreva como a ressonância da sua habilidade se manifesta na realidade..." value={hTextos.poderDesc} onChange={e => setHTextos({...hTextos, poderDesc: e.target.value})} disabled={!isMestre} style={{ width: '100%', minHeight: '60px', borderColor: '#00ffcc', color: '#ccc', fontStyle: 'italic', opacity: isMestre ? 1 : 0.7 }} />
                                     </div>
@@ -510,7 +539,6 @@ export default function PoderesPanel() {
                                     <input type="checkbox" checked={hInfinity} onChange={e => salvarHierarquia(hPoder, e.target.checked, hSingularidade)} disabled={!isMestre} style={{ transform: 'scale(1.5)', marginLeft: '5px', cursor: isMestre ? 'pointer' : 'not-allowed' }} />
                                     <div>
                                         <div style={{ color: hInfinity ? '#00ccff' : '#fff', fontWeight: 'bold', fontSize: '1.1em', textShadow: hInfinity ? '0 0 10px #00ccff' : 'none' }}>🌌 Categoria 2: Infinity</div>
-                                        {/* 🔥 AVISO DE LORE AQUI 🔥 */}
                                         <div style={{ color: '#aaa', fontSize: '0.85em', marginTop: '4px' }}>
                                             Manipulação Absoluta. Controle infinito e conceitual de uma habilidade, seja ela uma força física (Gelo Absoluto) ou abstrata (Adaptação). <strong style={{color: '#00ccff'}}>⚠️ Permite Cópia (Mimetismo).</strong>
                                         </div>
@@ -519,19 +547,34 @@ export default function PoderesPanel() {
 
                                 {hInfinity && (
                                     <div className="fade-in" style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px dashed rgba(0, 204, 255, 0.3)' }}>
+                                        {/* 🔥 NOVO: SELETOR DE VERTENTE (INFINITY) 🔥 */}
+                                        <label style={{ color: '#00ccff', fontSize: '0.85em', fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Vertente do Infinity:</label>
+                                        <select
+                                            className="input-neon"
+                                            value={hTextos.infinityVertente}
+                                            onChange={e => setHTextos({...hTextos, infinityVertente: e.target.value})}
+                                            disabled={!isMestre}
+                                            style={{ width: '100%', marginBottom: '10px', borderColor: '#00ccff', color: '#fff', opacity: isMestre ? 1 : 0.7 }}
+                                        >
+                                            <option value="">Selecione a Vertente...</option>
+                                            <option value="Acumulativo">📈 Acumulativo (Escalonamento absoluto e absorção)</option>
+                                            <option value="Elemental">🌪️ Elemental (Domínio absoluto de forças e natureza)</option>
+                                            <option value="Conceitual">🧩 Conceitual (Quebra de regras absolutas e espaço/tempo)</option>
+                                            <option value="Utilitario">🛠️ Utilitário (Hackers da realidade, Mimetismo, Anulação)</option>
+                                        </select>
+
                                         <input className="input-neon" type="text" placeholder="Nome do seu Infinity (Ex: Frio Zero Absoluto)" value={hTextos.infinityNome} onChange={e => setHTextos({...hTextos, infinityNome: e.target.value})} disabled={!isMestre} style={{ width: '100%', marginBottom: '10px', borderColor: '#00ccff', color: '#fff', fontWeight: 'bold', opacity: isMestre ? 1 : 0.7 }} />
                                         <textarea className="input-neon" placeholder="Descreva as leis conceituais e limites dessa manipulação infinita..." value={hTextos.infinityDesc} onChange={e => setHTextos({...hTextos, infinityDesc: e.target.value})} disabled={!isMestre} style={{ width: '100%', minHeight: '60px', borderColor: '#00ccff', color: '#ccc', fontStyle: 'italic', opacity: isMestre ? 1 : 0.7 }} />
                                     </div>
                                 )}
                             </div>
 
-                            {/* 🔥 BLOCO DA CATEGORIA 3: SINGULARIDADE 🔥 */}
+                            {/* 🔥 BLOCO DA CATEGORIA 3: SINGULARIDADE (SEM VERTENTE) 🔥 */}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '15px', background: hSingularidade ? 'rgba(255, 0, 255, 0.1)' : 'rgba(255,255,255,0.02)', border: `1px solid ${hSingularidade ? '#ff00ff' : '#333'}`, borderRadius: '8px', transition: 'all 0.3s' }}>
                                 <label style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: isMestre ? 'pointer' : 'not-allowed' }}>
                                     <input type="checkbox" checked={!!hSingularidade} onChange={e => { const val = e.target.checked ? '3' : ''; salvarHierarquia(hPoder, hInfinity, val); }} disabled={!isMestre} style={{ transform: 'scale(1.5)', marginLeft: '5px', cursor: isMestre ? 'pointer' : 'not-allowed' }} />
                                     <div>
                                         <div style={{ color: hSingularidade ? '#ff00ff' : '#fff', fontWeight: 'bold', fontSize: '1.1em', textShadow: hSingularidade ? '0 0 10px #ff00ff' : 'none' }}>👑 Categoria 3: Singularidade</div>
-                                        {/* 🔥 AVISO DE LORE (REGRA ABSOLUTA) AQUI 🔥 */}
                                         <div style={{ color: '#aaa', fontSize: '0.85em', marginTop: '4px' }}>
                                             A Anomalia Máxima. Uma falha na própria realidade. Existem menos de 200 no multiverso inteiro. <strong style={{color: '#ff00ff'}}>🚫 REGRA ABSOLUTA: Impossível ser copiada por qualquer habilidade de Mimetismo.</strong>
                                         </div>
