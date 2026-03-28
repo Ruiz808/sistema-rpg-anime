@@ -341,19 +341,68 @@ export default function FichaPanel() {
         );
     };
 
-    // 🔥 LÓGICA DO REATOR UNIVERSAL DE ANOMALIAS (INFINITY/SINGULARIDADE) 🔥
+    // 🔥 VERIFICAÇÕES DE ANOMALIA 🔥
+    const hierarquia = minhaFicha?.hierarquia || {};
+    const hasAnomalia = hierarquia.poder || hierarquia.infinity || hierarquia.singularidade;
+
+    // 🔥 1. SISTEMA DE MARCADORES (ESCALONAMENTO EM CENA) 🔥
+    const trackersCena = minhaFicha?.combate?.trackers || [];
+    const [novoTrackerNome, setNovoTrackerNome] = useState('');
+    const [novoTrackerValor, setNovoTrackerValor] = useState('');
+
+    function addTrackerCena() {
+        if (!novoTrackerNome.trim()) return;
+        updateFicha(f => {
+            if (!f.combate) f.combate = {};
+            if (!f.combate.trackers) f.combate.trackers = [];
+            f.combate.trackers.push({
+                id: Date.now(),
+                nome: novoTrackerNome,
+                valor: parseFloat(novoTrackerValor) || 0,
+                stacks: 0
+            });
+        });
+        salvarFichaSilencioso();
+        setNovoTrackerNome('');
+        setNovoTrackerValor('');
+    }
+
+    function modTrackerCena(id, delta) {
+        updateFicha(f => {
+            if (!f.combate || !f.combate.trackers) return;
+            const t = f.combate.trackers.find(x => x.id === id);
+            if (t) t.stacks = Math.max(0, t.stacks + delta);
+        });
+        salvarFichaSilencioso();
+    }
+
+    function removeTrackerCena(id) {
+        updateFicha(f => {
+            if (!f.combate || !f.combate.trackers) return;
+            f.combate.trackers = f.combate.trackers.filter(x => x.id !== id);
+        });
+        salvarFichaSilencioso();
+    }
+
+    function resetarTrackersCena() {
+        if (!window.confirm('A cena terminou? Isso vai zerar todos os seus stacks acumulados na batalha.')) return;
+        updateFicha(f => {
+            if (!f.combate || !f.combate.trackers) return;
+            f.combate.trackers.forEach(t => t.stacks = 0);
+        });
+        salvarFichaSilencioso();
+    }
+
+    // 🔥 2. REATOR UNIVERSAL DE ANOMALIAS (PÓS-COMBATE) 🔥
     const [valorInjecao, setValorInjecao] = useState('');
     const [alvosInjecao, setAlvosInjecao] = useState({
         vida: true,
         energias: true,
-        status: false, // 🔥 NOVO: Status Base
+        status: false,
         danoBruto: true,
         multGeral: false
     });
     const [showAbsorverMsg, setShowAbsorverMsg] = useState('');
-    
-    const hierarquia = minhaFicha?.hierarquia || {};
-    const hasInfinity = hierarquia.infinity || hierarquia.singularidade;
 
     const toggleAlvo = (k) => setAlvosInjecao(prev => ({...prev, [k]: !prev[k]}));
 
@@ -373,7 +422,6 @@ export default function FichaPanel() {
                 ['mana', 'aura', 'chakra', 'corpo'].forEach(addBase);
             }
 
-            // 🔥 INJETA O VALOR NOS ATRIBUTOS BASE (Força, Destreza, etc.)
             if (alvosInjecao.status) {
                 STATS.forEach(addBase);
             }
@@ -725,10 +773,76 @@ export default function FichaPanel() {
                 </div>
             )}
 
-            {/* 🔥 FORJA DE CALAMIDADE UNIVERSAL 🔥 */}
-            {hasInfinity && (
+            {/* 🔥 MARCADORES DE CENA (ESCALONAMENTO TEMPORÁRIO) 🔥 */}
+            {hasAnomalia && (
+                <div className="def-box fade-in" style={{ marginTop: 15, background: 'rgba(255, 136, 0, 0.05)', border: '1px solid #ff8800', boxShadow: '0 0 15px rgba(255, 136, 0, 0.2)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                        <h3 style={{ color: '#ff8800', margin: 0, textShadow: '0 0 5px #ff8800' }}>⚔️ Marcadores de Cena (Escalonamento)</h3>
+                        <button className="btn-neon btn-small btn-red" onClick={resetarTrackersCena} style={{ margin: 0 }}>
+                            🧹 RESETAR CENA
+                        </button>
+                    </div>
+                    <p style={{ color: '#aaa', fontSize: '0.85em', margin: '0 0 15px 0' }}>
+                        Para habilidades que acumulam durante a batalha (ex: +8 de Acerto por turno). Adicione os stacks em tempo real. O valor final é apenas visual para você somar no seu teste de dados.
+                    </p>
+
+                    {/* Criar Novo Marcador */}
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '15px' }}>
+                        <input 
+                            className="input-neon" 
+                            type="text" 
+                            placeholder="Nome (Ex: Acerto, CA...)" 
+                            value={novoTrackerNome} 
+                            onChange={e => setNovoTrackerNome(e.target.value)} 
+                            style={{ flex: 2, margin: 0 }} 
+                        />
+                        <input 
+                            className="input-neon" 
+                            type="number" 
+                            step="0.1"
+                            placeholder="Valor por Stack (Ex: 8)" 
+                            value={novoTrackerValor} 
+                            onChange={e => setNovoTrackerValor(e.target.value)} 
+                            style={{ flex: 1, margin: 0 }} 
+                        />
+                        <button className="btn-neon" style={{ borderColor: '#ff8800', color: '#ff8800', margin: 0 }} onClick={addTrackerCena}>
+                            + Adicionar
+                        </button>
+                    </div>
+
+                    {/* Lista de Marcadores Ativos */}
+                    {trackersCena.length > 0 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            {trackersCena.map(tracker => {
+                                const totalCalculado = tracker.stacks * tracker.valor;
+                                return (
+                                    <div key={tracker.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.5)', padding: '10px', borderRadius: '5px', borderLeft: '3px solid #ff8800' }}>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ color: '#fff', fontWeight: 'bold' }}>{tracker.nome} <span style={{ color: '#aaa', fontSize: '0.8em', fontWeight: 'normal' }}>(+{tracker.valor} por stack)</span></div>
+                                            <div style={{ color: '#ffcc00', fontSize: '1.1em', marginTop: '4px' }}>
+                                                Bônus Total na Cena: <strong style={{ color: '#0f0' }}>+{totalCalculado}</strong>
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                            <button className="btn-neon btn-small btn-red" onClick={() => modTrackerCena(tracker.id, -1)} style={{ padding: '5px 15px', fontSize: '1.2em' }}>-</button>
+                                            <span style={{ color: '#fff', fontSize: '1.2em', fontWeight: 'bold', minWidth: '30px', textAlign: 'center' }}>{tracker.stacks}</span>
+                                            <button className="btn-neon btn-small" style={{ borderColor: '#0f0', color: '#0f0', padding: '5px 15px', fontSize: '1.2em' }} onClick={() => modTrackerCena(tracker.id, 1)}>+</button>
+                                            <button className="btn-neon btn-small" style={{ borderColor: '#555', color: '#888', marginLeft: '10px' }} onClick={() => removeTrackerCena(tracker.id)}>X</button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div style={{ color: '#555', fontStyle: 'italic', textAlign: 'center', padding: '10px' }}>Nenhum marcador ativo nesta cena.</div>
+                    )}
+                </div>
+            )}
+
+            {/* 🔥 FORJA DE CALAMIDADE UNIVERSAL (PÓS-CENA) 🔥 */}
+            {hasAnomalia && (
                 <div className="def-box fade-in" style={{ marginTop: 15, background: 'rgba(0, 204, 255, 0.05)', border: '1px solid #00ccff', boxShadow: '0 0 15px rgba(0, 204, 255, 0.2)' }}>
-                    <h3 style={{ color: '#00ccff', marginBottom: 10, textShadow: '0 0 5px #00ccff' }}>🌌 Forja de Calamidade Universal</h3>
+                    <h3 style={{ color: '#00ccff', marginBottom: 10, textShadow: '0 0 5px #00ccff' }}>🌌 Forja de Calamidade Universal (Pós-Luta)</h3>
                     <p style={{ color: '#aaa', fontSize: '0.85em', margin: '0 0 15px 0' }}>
                         Como cada Infinity ou Singularidade tem regras únicas, use este painel para injetar os ganhos após o combate. <strong>Calcule o valor final da sua habilidade e escolha onde ele será injetado.</strong>
                     </p>
@@ -742,7 +856,6 @@ export default function FichaPanel() {
                             <input type="checkbox" checked={alvosInjecao.energias} onChange={() => toggleAlvo('energias')} style={{ transform: 'scale(1.2)' }} />
                             <span style={{ color: alvosInjecao.energias ? '#0f0' : '#888', fontWeight: alvosInjecao.energias ? 'bold' : 'normal' }}>Energias Base (Mana/Aura/Chak/Corp)</span>
                         </label>
-                        {/* 🔥 O NOVO STATUS AQUI 🔥 */}
                         <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                             <input type="checkbox" checked={alvosInjecao.status} onChange={() => toggleAlvo('status')} style={{ transform: 'scale(1.2)' }} />
                             <span style={{ color: alvosInjecao.status ? '#0f0' : '#888', fontWeight: alvosInjecao.status ? 'bold' : 'normal' }}>Status Base (Força, Destreza, etc.)</span>
