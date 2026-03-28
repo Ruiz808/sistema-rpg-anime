@@ -341,9 +341,22 @@ export default function FichaPanel() {
         );
     };
 
-    // 🔥 VERIFICAÇÕES DE ANOMALIA 🔥
+    // 🔥 VERIFICAÇÕES DE VERTENTE (SISTEMAS ACUMULATIVOS) 🔥
     const hierarquia = minhaFicha?.hierarquia || {};
-    const hasAnomalia = hierarquia.poder || hierarquia.infinity || hierarquia.singularidade;
+    
+    const isAcumulativoCombate = 
+        (hierarquia.poder && hierarquia.poderVertente === 'Acumulativo (Combate)') ||
+        (hierarquia.infinity && hierarquia.infinityVertente === 'Acumulativo (Combate)');
+        
+    const isAcumulativoAbsorcao = 
+        (hierarquia.poder && hierarquia.poderVertente === 'Acumulativo (Absorção)') ||
+        (hierarquia.infinity && hierarquia.infinityVertente === 'Acumulativo (Absorção)');
+
+    // Se o jogador tiver alguma habilidade individual criada com a vertente 'Acumulativo'
+    const temPoderIndividualAcumulativo = (minhaFicha?.poderes || []).some(p => p.vertente === 'Acumulativo');
+
+    const showMarcadoresCena = isAcumulativoCombate || isAcumulativoAbsorcao || temPoderIndividualAcumulativo;
+    const showForjaCalamidade = isAcumulativoAbsorcao || temPoderIndividualAcumulativo;
 
     // 🔥 1. SISTEMA DE MARCADORES (ESCALONAMENTO EM CENA) 🔥
     const trackersCena = minhaFicha?.combate?.trackers || [];
@@ -774,7 +787,7 @@ export default function FichaPanel() {
             )}
 
             {/* 🔥 MARCADORES DE CENA (ESCALONAMENTO TEMPORÁRIO) 🔥 */}
-            {hasAnomalia && (
+            {showMarcadoresCena && (
                 <div className="def-box fade-in" style={{ marginTop: 15, background: 'rgba(255, 136, 0, 0.05)', border: '1px solid #ff8800', boxShadow: '0 0 15px rgba(255, 136, 0, 0.2)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                         <h3 style={{ color: '#ff8800', margin: 0, textShadow: '0 0 5px #ff8800' }}>⚔️ Marcadores de Cena (Escalonamento)</h3>
@@ -786,7 +799,6 @@ export default function FichaPanel() {
                         Para habilidades que acumulam durante a batalha (ex: +8 de Acerto por turno). Adicione os stacks em tempo real. O valor final é apenas visual para você somar no seu teste de dados.
                     </p>
 
-                    {/* 🔥 CORREÇÃO DO CSS DO INPUT AQUI 👇 🔥 */}
                     <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '15px' }}>
                         <input 
                             className="input-neon" 
@@ -814,7 +826,6 @@ export default function FichaPanel() {
                         </button>
                     </div>
 
-                    {/* Lista de Marcadores Ativos */}
                     {trackersCena.length > 0 ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             {trackersCena.map(tracker => {
@@ -844,7 +855,7 @@ export default function FichaPanel() {
             )}
 
             {/* 🔥 FORJA DE CALAMIDADE UNIVERSAL (PÓS-CENA) 🔥 */}
-            {hasAnomalia && (
+            {showForjaCalamidade && (
                 <div className="def-box fade-in" style={{ marginTop: 15, background: 'rgba(0, 204, 255, 0.05)', border: '1px solid #00ccff', boxShadow: '0 0 15px rgba(0, 204, 255, 0.2)' }}>
                     <h3 style={{ color: '#00ccff', marginBottom: 10, textShadow: '0 0 5px #00ccff' }}>🌌 Forja de Calamidade Universal (Pós-Luta)</h3>
                     <p style={{ color: '#aaa', fontSize: '0.85em', margin: '0 0 15px 0' }}>
