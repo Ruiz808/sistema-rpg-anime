@@ -341,22 +341,26 @@ export default function FichaPanel() {
         );
     };
 
-    // 🔥 LEITURA DAS VERTENTES DA MATRIX 🔥
+    // 🔥 LEITURA INTELIGENTE DAS VERTENTES (Corrige o "Sumiu Metade") 🔥
     const hierarquia = minhaFicha?.hierarquia || {};
     const poderesGlobais = minhaFicha?.poderes || [];
     
-    // Condições para exibir os Painéis Dinâmicos
-    const isAcumulativoCombate = (hierarquia.poderVertente === 'Acumulativo (Combate)') || (hierarquia.infinityVertente === 'Acumulativo (Combate)');
-    const isAcumulativoAbsorcao = (hierarquia.poderVertente === 'Acumulativo (Absorção)') || (hierarquia.infinityVertente === 'Acumulativo (Absorção)');
-    const isElemental = (hierarquia.poderVertente === 'Elemental') || (hierarquia.infinityVertente === 'Elemental');
-    const isConceitual = (hierarquia.poderVertente === 'Conceitual') || (hierarquia.infinityVertente === 'Conceitual');
-    const isUtilitario = (hierarquia.poderVertente === 'Utilitario') || (hierarquia.infinityVertente === 'Utilitario');
+    // Deixei o `.includes` para que o sistema reconheça saves antigos apenas com "Acumulativo"
+    const hPoderVertente = hierarquia.poderVertente || '';
+    const hInfinityVertente = hierarquia.infinityVertente || '';
 
-    const showMarcadoresCena = isAcumulativoCombate || isAcumulativoAbsorcao || poderesGlobais.some(p => p.vertente === 'Acumulativo (Combate)' || p.vertente === 'Acumulativo (Absorção)');
-    const showForjaCalamidade = isAcumulativoAbsorcao || poderesGlobais.some(p => p.vertente === 'Acumulativo (Absorção)');
-    const showElemental = isElemental || poderesGlobais.some(p => p.vertente === 'Elemental');
-    const showConceitual = isConceitual || poderesGlobais.some(p => p.vertente === 'Conceitual');
-    const showUtilitario = isUtilitario || poderesGlobais.some(p => p.vertente === 'Utilitario');
+    const isAcumulativoCombate = hPoderVertente.includes('Acumulativo') || hInfinityVertente.includes('Acumulativo');
+    const isAcumulativoAbsorcao = hPoderVertente.includes('Absorção') || hInfinityVertente.includes('Absorção') || hPoderVertente === 'Acumulativo' || hInfinityVertente === 'Acumulativo';
+    const isElemental = hPoderVertente.includes('Elemental') || hInfinityVertente.includes('Elemental');
+    const isConceitual = hPoderVertente.includes('Conceitual') || hInfinityVertente.includes('Conceitual');
+    const isUtilitario = hPoderVertente.includes('Utilitario') || hInfinityVertente.includes('Utilitario');
+
+    // A Forja e os Marcadores aparecem se o jogador tiver na Hierarquia OU tiver um poder solto com essa vertente
+    const showMarcadoresCena = isAcumulativoCombate || isAcumulativoAbsorcao || poderesGlobais.some(p => (p.vertente || '').includes('Acumulativo'));
+    const showForjaCalamidade = isAcumulativoAbsorcao || poderesGlobais.some(p => (p.vertente || '').includes('Absorção') || p.vertente === 'Acumulativo');
+    const showElemental = isElemental || poderesGlobais.some(p => (p.vertente || '').includes('Elemental'));
+    const showConceitual = isConceitual || poderesGlobais.some(p => (p.vertente || '').includes('Conceitual'));
+    const showUtilitario = isUtilitario || poderesGlobais.some(p => (p.vertente || '').includes('Utilitario'));
 
     // 🔥 1. MARCADORES DE CENA 🔥
     const trackersCena = minhaFicha?.combate?.trackers || [];
@@ -472,6 +476,14 @@ export default function FichaPanel() {
         salvarFichaSilencioso();
     }
 
+    // 🔥🔥🔥 LÓGICA DO SIMULADOR ELEMENTAL 🔥🔥🔥
+    const getAtualVital = (key) => {
+        if (!minhaFicha) return 0;
+        const max = getMaximo(minhaFicha, key);
+        if (minhaFicha[key] && minhaFicha[key].atual !== undefined) return minhaFicha[key].atual;
+        return max;
+    };
+
     if (!minhaFicha) return <div style={{ color: '#aaa', textAlign: 'center' }}>Carregando ficha...</div>;
 
     return (
@@ -572,7 +584,7 @@ export default function FichaPanel() {
                     <p style={{ color: '#aaa', fontSize: '0.85em', margin: '0 0 15px 0' }}>Anomalias conceituais reescrevem as leis da realidade. Decrete as "Leis da Cena" em vigor.</p>
                     
                     <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '15px' }}>
-                        <input className="input-neon" type="text" placeholder="Decrete uma nova Lei (Ex: Oponentes não podem usar Mana)" value={novaLeiNome} onChange={e => setNovaLeiNome(e.target.value)} style={{ flex: 1, borderColor: '#ff00ff', color: '#fff', margin: 0 }} />
+                        <input className="input-neon" type="text" placeholder="Decrete uma nova Lei (Ex: Oponentes não podem esquivar)" value={novaLeiNome} onChange={e => setNovaLeiNome(e.target.value)} style={{ flex: 1, borderColor: '#ff00ff', color: '#fff', margin: 0 }} />
                         <button className="btn-neon" style={{ borderColor: '#ff00ff', color: '#ff00ff', margin: 0, padding: '10px 20px', fontWeight: 'bold', background: 'rgba(255, 0, 255, 0.1)' }} onClick={addLeiCena}>+ DECRETAR</button>
                     </div>
 
