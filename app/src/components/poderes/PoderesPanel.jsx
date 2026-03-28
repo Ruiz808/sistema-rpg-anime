@@ -26,6 +26,7 @@ export default function PoderesPanel() {
     const [abaAtual, setAbaAtual] = useState('habilidade');
 
     const [nomePoder, setNomePoder] = useState('');
+    const [descricaoPoder, setDescricaoPoder] = useState(''); // 🔥 NOVO: Descrição Narrativa
     const [imagemUrl, setImagemUrl] = useState('');
     const [dadosQtd, setDadosQtd] = useState(0);
     const [dadosFaces, setDadosFaces] = useState(20);
@@ -98,8 +99,8 @@ export default function PoderesPanel() {
 
     const salvarNovoPoder = () => {
         const n = nomePoder.trim();
-        if (!n || (!efeitosTemp.length && !efeitosTempPassivos.length && dadosQtd === 0)) {
-            alert('Falta nome ou efeitos (ou dados de dano)!');
+        if (!n || (!efeitosTemp.length && !efeitosTempPassivos.length && dadosQtd === 0 && !descricaoPoder.trim())) {
+            alert('Falta nome ou efeitos (ou dados/descrição)!');
             return;
         }
 
@@ -110,6 +111,7 @@ export default function PoderesPanel() {
                 const ix = ficha.poderes.findIndex(p => p.id === poderEditandoId);
                 if (ix !== -1) {
                     ficha.poderes[ix].nome = n;
+                    ficha.poderes[ix].descricao = descricaoPoder; // 🔥 Salva Descrição
                     ficha.poderes[ix].categoria = abaAtual;
                     ficha.poderes[ix].efeitos = JSON.parse(JSON.stringify(efeitosTemp));
                     ficha.poderes[ix].efeitosPassivos = JSON.parse(JSON.stringify(efeitosTempPassivos));
@@ -124,6 +126,7 @@ export default function PoderesPanel() {
                 ficha.poderes.push({
                     id: Date.now(),
                     nome: n,
+                    descricao: descricaoPoder, // 🔥 Salva Descrição
                     categoria: abaAtual,
                     ativa: false,
                     efeitos: JSON.parse(JSON.stringify(efeitosTemp)),
@@ -157,6 +160,7 @@ export default function PoderesPanel() {
         setPoderEditandoId(p.id);
         setAbaAtual(p.categoria || 'poder');
         setNomePoder(p.nome);
+        setDescricaoPoder(p.descricao || ''); // 🔥 Lê Descrição
         setImagemUrl(p.imagemUrl || '');
         setDadosQtd(p.dadosQtd || 0);
         setDadosFaces(p.dadosFaces || 20);
@@ -172,6 +176,7 @@ export default function PoderesPanel() {
     const cancelarEdicaoPoder = () => {
         setPoderEditandoId(null);
         setNomePoder('');
+        setDescricaoPoder(''); // 🔥 Reseta Descrição
         setImagemUrl('');
         setDadosQtd(0);
         setDadosFaces(20);
@@ -394,7 +399,6 @@ export default function PoderesPanel() {
                     <button className={`btn-neon ${abaAtual === 'poder' ? 'btn-gold' : ''}`} onClick={() => { setAbaAtual('poder'); cancelarEdicaoPoder(); }} style={{ padding: '12px 10px', justifyContent: 'flex-start', margin: 0 }}>
                         ✨ PODERES
                     </button>
-                    {/* 🔥 A NOVA ABA DE CLASSIFICAÇÃO 🔥 */}
                     <button className={`btn-neon ${abaAtual === 'classificacao' ? 'btn-gold' : ''}`} onClick={() => { setAbaAtual('classificacao'); cancelarEdicaoPoder(); }} style={{ padding: '12px 10px', justifyContent: 'flex-start', margin: 0 }}>
                         👑 CLASSIFICAÇÃO
                     </button>
@@ -403,7 +407,6 @@ export default function PoderesPanel() {
 
             <div style={{ flex: '1 1 500px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                 
-                {/* LÓGICA DE RENDENRIZAÇÃO CONDICIONAL */}
                 {abaAtual === 'classificacao' ? (
                     <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                         
@@ -508,7 +511,17 @@ export default function PoderesPanel() {
                                 </div>
                             </div>
 
-                            <input className="input-neon" type="text" placeholder="Nome do Efeito" value={nomeEfeito} onChange={e => setNomeEfeito(e.target.value)} style={{ marginTop: 10 }} />
+                            {/* 🔥 CAMPO DE DESCRIÇÃO NARRATIVA AQUI 🔥 */}
+                            <textarea 
+                                className="input-neon" 
+                                placeholder="Descrição / Efeito Narrativo (O que essa habilidade faz visualmente e narrativamente?)" 
+                                value={descricaoPoder} 
+                                onChange={e => setDescricaoPoder(e.target.value)} 
+                                style={{ width: '100%', minHeight: '60px', marginTop: 15, borderColor: '#555', color: '#ccc', fontStyle: 'italic' }} 
+                            />
+
+                            <h4 style={{ color: '#0ff', marginTop: 15, marginBottom: 8, fontSize: '0.95em' }}>Efeitos Matemáticos Ativos</h4>
+                            <input className="input-neon" type="text" placeholder="Nome do Efeito" value={nomeEfeito} onChange={e => setNomeEfeito(e.target.value)} style={{ marginTop: 5 }} />
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8, marginTop: 5 }}>
                                 <select className="input-neon" value={novoAtr} onChange={e => setNovoAtr(e.target.value)}>
                                     {ATRIBUTOS_AGRUPADOS.map(grupo => (
@@ -587,8 +600,16 @@ export default function PoderesPanel() {
                                     return (
                                         <div key={p.id} className="def-box" style={{ borderLeft: `5px solid ${c}`, background: bg, marginBottom: 10 }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 15 }}>
-                                                <div>
+                                                <div style={{ flex: 1 }}>
                                                     <h3 style={{ margin: 0, color: c, textShadow: `0 0 10px ${c}` }}>{p.nome || 'Poder'} <span style={{fontSize: '0.6em', color: '#fff'}}>(Alcance: {p.alcance || 1}Q)</span></h3>
+                                                    
+                                                    {/* 🔥 EXIBIÇÃO DA DESCRIÇÃO NARRATIVA 🔥 */}
+                                                    {p.descricao && (
+                                                        <div style={{ color: '#ccc', fontSize: '0.85em', fontStyle: 'italic', margin: '8px 0', padding: '8px', background: 'rgba(0,0,0,0.3)', borderRadius: '4px', borderLeft: `2px solid ${c}` }}>
+                                                            "{p.descricao}"
+                                                        </div>
+                                                    )}
+
                                                     <p style={{ color: '#aaa', fontSize: '0.85em', margin: '5px 0 0' }}>{txtArr.join(' | ') || 'Sem efeitos ativos.'}
                                                     {(p.efeitosPassivos || []).length > 0 && (
                                                         <span style={{ color: '#f0f', display: 'block', marginTop: '4px' }}>{(p.efeitosPassivos || []).map(e => {
@@ -597,7 +618,7 @@ export default function PoderesPanel() {
                                                         }).filter(Boolean).join(' | ')}</span>
                                                     )}</p>
                                                 </div>
-                                                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                                                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flexWrap: 'wrap' }}>
                                                     <button className="btn-neon" style={{ borderColor: c, color: c, padding: '5px 15px', fontSize: '1.1em', margin: 0 }} onClick={() => togglePoder(p.id)}>{p.ativa ? 'LIGADO' : 'DESLIGADO'}</button>
                                                     <div style={{ position: 'relative' }} ref={vincularAberto === p.id ? vincularRef : null}>
                                                             <button
@@ -608,7 +629,7 @@ export default function PoderesPanel() {
                                                                 {p.armaVinculada ? `⚔️ ${((minhaFicha?.inventario || []).find(i => String(i.id) === String(p.armaVinculada))?.nome) || 'Arma'}` : '🔗 VINCULAR'}
                                                             </button>
                                                             {vincularAberto === p.id && (
-                                                                <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 10, background: '#0a0a1a', border: '1px solid #0ff', borderRadius: 6, padding: 5, minWidth: 180, marginTop: 4 }}>
+                                                                <div style={{ position: 'absolute', top: '100%', right: 0, zIndex: 10, background: '#0a0a1a', border: '1px solid #0ff', borderRadius: 6, padding: 5, minWidth: 180, marginTop: 4 }}>
                                                                     <button
                                                                         className="btn-neon"
                                                                         style={{ width: '100%', padding: '5px 10px', fontSize: '0.85em', margin: '2px 0', borderColor: !p.armaVinculada ? '#0f0' : '#555', color: !p.armaVinculada ? '#0f0' : '#aaa' }}
