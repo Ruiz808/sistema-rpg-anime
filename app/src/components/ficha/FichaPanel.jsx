@@ -346,6 +346,7 @@ export default function FichaPanel() {
     const [alvosInjecao, setAlvosInjecao] = useState({
         vida: true,
         energias: true,
+        status: false, // 🔥 NOVO: Status Base
         danoBruto: true,
         multGeral: false
     });
@@ -370,6 +371,11 @@ export default function FichaPanel() {
             
             if (alvosInjecao.energias) {
                 ['mana', 'aura', 'chakra', 'corpo'].forEach(addBase);
+            }
+
+            // 🔥 INJETA O VALOR NOS ATRIBUTOS BASE (Força, Destreza, etc.)
+            if (alvosInjecao.status) {
+                STATS.forEach(addBase);
             }
 
             if (alvosInjecao.danoBruto || alvosInjecao.multGeral) {
@@ -736,6 +742,11 @@ export default function FichaPanel() {
                             <input type="checkbox" checked={alvosInjecao.energias} onChange={() => toggleAlvo('energias')} style={{ transform: 'scale(1.2)' }} />
                             <span style={{ color: alvosInjecao.energias ? '#0f0' : '#888', fontWeight: alvosInjecao.energias ? 'bold' : 'normal' }}>Energias Base (Mana/Aura/Chak/Corp)</span>
                         </label>
+                        {/* 🔥 O NOVO STATUS AQUI 🔥 */}
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                            <input type="checkbox" checked={alvosInjecao.status} onChange={() => toggleAlvo('status')} style={{ transform: 'scale(1.2)' }} />
+                            <span style={{ color: alvosInjecao.status ? '#0f0' : '#888', fontWeight: alvosInjecao.status ? 'bold' : 'normal' }}>Status Base (Força, Destreza, etc.)</span>
+                        </label>
                         <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                             <input type="checkbox" checked={alvosInjecao.danoBruto} onChange={() => toggleAlvo('danoBruto')} style={{ transform: 'scale(1.2)' }} />
                             <span style={{ color: alvosInjecao.danoBruto ? '#0f0' : '#888', fontWeight: alvosInjecao.danoBruto ? 'bold' : 'normal' }}>Dano Bruto Flat (+)</span>
@@ -746,7 +757,6 @@ export default function FichaPanel() {
                         </label>
                     </div>
 
-                    {/* CORREÇÃO DO CSS DO INPUT AQUI 👇 */}
                     <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
                         <input 
                             className="input-neon" 
