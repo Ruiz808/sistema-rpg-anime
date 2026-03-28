@@ -26,14 +26,19 @@ export default function PoderesPanel() {
 
     const [abaAtual, setAbaAtual] = useState('habilidade');
 
+    // 🔥 CAMPOS DE CRIAÇÃO DO PODER 🔥
     const [nomePoder, setNomePoder] = useState('');
     const [descricaoPoder, setDescricaoPoder] = useState(''); 
+    const [poderVertente, setPoderVertente] = useState(''); // NOVO: Vertente da Habilidade
+    const [poderElemento, setPoderElemento] = useState(''); // NOVO: Elemento Base
     const [imagemUrl, setImagemUrl] = useState('');
     const [dadosQtd, setDadosQtd] = useState(0);
     const [dadosFaces, setDadosFaces] = useState(20);
     const [custoPercentual, setCustoPercentual] = useState(0);
     const [poderAlcance, setPoderAlcance] = useState(1); 
     const [armaVinculada, setArmaVinculada] = useState('');
+    
+    // EFEITOS
     const [nomeEfeito, setNomeEfeito] = useState('');
     const [novoAtr, setNovoAtr] = useState('forca');
     const [novoProp, setNovoProp] = useState('base');
@@ -46,7 +51,7 @@ export default function PoderesPanel() {
     const [uploadingImg, setUploadingImg] = useState(false);
     const [vincularAberto, setVincularAberto] = useState(null);
 
-    // 🔥 NOVOS ESTADOS PARA A CENTRAL DE DISPARO 🔥
+    // 🔥 CENTRAL DE DISPARO 🔥
     const [poderPreparandoId, setPoderPreparandoId] = useState(null);
     const [overchargeAtivo, setOverchargeAtivo] = useState(false);
 
@@ -117,6 +122,8 @@ export default function PoderesPanel() {
                 if (ix !== -1) {
                     ficha.poderes[ix].nome = n;
                     ficha.poderes[ix].descricao = descricaoPoder; 
+                    ficha.poderes[ix].vertente = poderVertente; // 🔥 SALVA A VERTENTE
+                    ficha.poderes[ix].elemento = poderElemento; // 🔥 SALVA O ELEMENTO
                     ficha.poderes[ix].categoria = abaAtual;
                     ficha.poderes[ix].efeitos = JSON.parse(JSON.stringify(efeitosTemp));
                     ficha.poderes[ix].efeitosPassivos = JSON.parse(JSON.stringify(efeitosTempPassivos));
@@ -132,6 +139,8 @@ export default function PoderesPanel() {
                     id: Date.now(),
                     nome: n,
                     descricao: descricaoPoder, 
+                    vertente: poderVertente, // 🔥 SALVA A VERTENTE
+                    elemento: poderElemento, // 🔥 SALVA O ELEMENTO
                     categoria: abaAtual,
                     ativa: false,
                     efeitos: JSON.parse(JSON.stringify(efeitosTemp)),
@@ -166,6 +175,8 @@ export default function PoderesPanel() {
         setAbaAtual(p.categoria || 'poder');
         setNomePoder(p.nome);
         setDescricaoPoder(p.descricao || ''); 
+        setPoderVertente(p.vertente || ''); // 🔥 LÊ A VERTENTE
+        setPoderElemento(p.elemento || ''); // 🔥 LÊ O ELEMENTO
         setImagemUrl(p.imagemUrl || '');
         setDadosQtd(p.dadosQtd || 0);
         setDadosFaces(p.dadosFaces || 20);
@@ -182,6 +193,8 @@ export default function PoderesPanel() {
         setPoderEditandoId(null);
         setNomePoder('');
         setDescricaoPoder(''); 
+        setPoderVertente('');
+        setPoderElemento('');
         setImagemUrl('');
         setDadosQtd(0);
         setDadosFaces(20);
@@ -283,7 +296,7 @@ export default function PoderesPanel() {
         salvarFichaSilencioso();
     };
 
-    // 🔥 LÓGICA DA HIERARQUIA DE DOMÍNIOS 🔥
+    // LÓGICA DA HIERARQUIA DE DOMÍNIOS E TEXTOS NARRATIVOS (CLASSIFICAÇÃO)
     const hierarquia = minhaFicha?.hierarquia || {};
     const hPoder = hierarquia.poder || false;
     const hInfinity = hierarquia.infinity || false;
@@ -299,14 +312,9 @@ export default function PoderesPanel() {
     useEffect(() => {
         const h = minhaFicha?.hierarquia || {};
         setHTextos({
-            poderNome: h.poderNome || '',
-            poderDesc: h.poderDesc || '',
-            poderVertente: h.poderVertente || '',
-            infinityNome: h.infinityNome || '',
-            infinityDesc: h.infinityDesc || '',
-            infinityVertente: h.infinityVertente || '',
-            singularidadeNome: h.singularidadeNome || '',
-            singularidadeDesc: h.singularidadeDesc || ''
+            poderNome: h.poderNome || '', poderDesc: h.poderDesc || '', poderVertente: h.poderVertente || '',
+            infinityNome: h.infinityNome || '', infinityDesc: h.infinityDesc || '', infinityVertente: h.infinityVertente || '',
+            singularidadeNome: h.singularidadeNome || '', singularidadeDesc: h.singularidadeDesc || ''
         });
     }, [
         minhaFicha?.hierarquia?.poderNome, minhaFicha?.hierarquia?.poderDesc, minhaFicha?.hierarquia?.poderVertente, 
@@ -350,37 +358,17 @@ export default function PoderesPanel() {
     let vertenteDestaque = '';
 
     if (hSingularidade === '0') {
-        tituloSupremo = 'SINGULARIDADE GRAU 0 (MARCADO)';
-        corSuprema = '#ff00ff';
-        glowSupremo = '0 0 20px rgba(255, 0, 255, 0.8)';
-        nomeHabilidadeDestaque = hTextos.singularidadeNome;
+        tituloSupremo = 'SINGULARIDADE GRAU 0 (MARCADO)'; corSuprema = '#ff00ff'; glowSupremo = '0 0 20px rgba(255, 0, 255, 0.8)'; nomeHabilidadeDestaque = hTextos.singularidadeNome;
     } else if (hSingularidade === '1') {
-        tituloSupremo = 'SINGULARIDADE GRAU 1 (NASCIDA)';
-        corSuprema = '#ff003c';
-        glowSupremo = '0 0 20px rgba(255, 0, 60, 0.8)';
-        nomeHabilidadeDestaque = hTextos.singularidadeNome;
+        tituloSupremo = 'SINGULARIDADE GRAU 1 (NASCIDA)'; corSuprema = '#ff003c'; glowSupremo = '0 0 20px rgba(255, 0, 60, 0.8)'; nomeHabilidadeDestaque = hTextos.singularidadeNome;
     } else if (hSingularidade === '2') {
-        tituloSupremo = 'SINGULARIDADE GRAU 2 (DESENVOLVIDA)';
-        corSuprema = '#ff8800';
-        glowSupremo = '0 0 20px rgba(255, 136, 0, 0.8)';
-        nomeHabilidadeDestaque = hTextos.singularidadeNome;
+        tituloSupremo = 'SINGULARIDADE GRAU 2 (DESENVOLVIDA)'; corSuprema = '#ff8800'; glowSupremo = '0 0 20px rgba(255, 136, 0, 0.8)'; nomeHabilidadeDestaque = hTextos.singularidadeNome;
     } else if (hSingularidade === '3') {
-        tituloSupremo = 'SINGULARIDADE GRAU 3 (HERDADA)';
-        corSuprema = '#ffcc00';
-        glowSupremo = '0 0 20px rgba(255, 204, 0, 0.8)';
-        nomeHabilidadeDestaque = hTextos.singularidadeNome;
+        tituloSupremo = 'SINGULARIDADE GRAU 3 (HERDADA)'; corSuprema = '#ffcc00'; glowSupremo = '0 0 20px rgba(255, 204, 0, 0.8)'; nomeHabilidadeDestaque = hTextos.singularidadeNome;
     } else if (hInfinity) {
-        tituloSupremo = 'INFINITY (MANIPULAÇÃO ABSOLUTA)';
-        corSuprema = '#00ccff';
-        glowSupremo = '0 0 20px rgba(0, 204, 255, 0.8)';
-        nomeHabilidadeDestaque = hTextos.infinityNome;
-        vertenteDestaque = hTextos.infinityVertente;
+        tituloSupremo = 'INFINITY (MANIPULAÇÃO ABSOLUTA)'; corSuprema = '#00ccff'; glowSupremo = '0 0 20px rgba(0, 204, 255, 0.8)'; nomeHabilidadeDestaque = hTextos.infinityNome; vertenteDestaque = hTextos.infinityVertente;
     } else if (hPoder) {
-        tituloSupremo = 'PODER (RESSONÂNCIA NATURAL)';
-        corSuprema = '#00ffcc';
-        glowSupremo = '0 0 20px rgba(0, 255, 204, 0.8)';
-        nomeHabilidadeDestaque = hTextos.poderNome;
-        vertenteDestaque = hTextos.poderVertente;
+        tituloSupremo = 'PODER (RESSONÂNCIA NATURAL)'; corSuprema = '#00ffcc'; glowSupremo = '0 0 20px rgba(0, 255, 204, 0.8)'; nomeHabilidadeDestaque = hTextos.poderNome; vertenteDestaque = hTextos.poderVertente;
     }
 
     const armasEquipadas = (minhaFicha?.inventario || []).filter(i => i.tipo === 'arma' && i.equipado);
@@ -458,18 +446,14 @@ export default function PoderesPanel() {
     const mPotencial = minhaFicha?.dano?.mPotencial || 1;
     const danoBruto = minhaFicha?.dano?.danoBruto || 0;
 
-    const isFichaElemental = (minhaFicha?.hierarquia?.poderVertente === 'Elemental' && minhaFicha?.hierarquia?.poder) ||
-                             (minhaFicha?.hierarquia?.infinityVertente === 'Elemental' && minhaFicha?.hierarquia?.infinity);
-
     const dispararAtaque = (poder) => {
         let custoFinalPerc = poder.custoPercentual || 0;
+        const isHabilidadeElemental = poder.vertente === 'Elemental'; // 🔥 AGORA LÊ DA PRÓPRIA TÉCNICA
 
-        if (isFichaElemental) {
-            // Se for Elemental, custa 0 por defeito, a não ser que aplique Overcharge (custa 2x o normal)
+        if (isHabilidadeElemental) {
             custoFinalPerc = overchargeAtivo ? (poder.custoPercentual * 2) : 0;
         }
 
-        // Aplicar o Dreno de Energia na Ficha
         if (custoFinalPerc > 0) {
             updateFicha(ficha => {
                 ['mana', 'aura', 'chakra'].forEach(v => {
@@ -483,13 +467,12 @@ export default function PoderesPanel() {
             salvarFichaSilencioso();
         }
 
-        // Construir o Registo de Combate (Log)
         let msg = `[ ${poder.nome.toUpperCase()} ] disparado!\n\n`;
         msg += `🎲 Dano Base dos Dados: ${poder.dadosQtd}d${poder.dadosFaces}\n`;
         msg += `➕ Dano Bruto da Ficha: +${danoBruto}\n`;
 
-        if (isFichaElemental) {
-            msg += `🌪️ Ressonância Elemental: +${energiaElemental}\n`;
+        if (isHabilidadeElemental) {
+            msg += `🌪️ Ressonância do Elemento (${poder.elemento}): +${energiaElemental}\n`;
             if (overchargeAtivo) {
                 msg += `\n🔥 OVERCHARGE ATIVADO!\n`;
                 msg += `   ↳ Multiplicador Potencial Aplicado: x${mPotencial}\n`;
@@ -696,9 +679,30 @@ export default function PoderesPanel() {
                     <>
                         <div className="def-box" ref={formRef} id="form-poder-box">
                             <h3 style={{ color: '#0ff', marginBottom: 10 }}>{poderEditandoId ? `Editando: ${nomePoder}` : `Criar ${SINGULAR[abaAtual]}`}</h3>
+                            
                             <input className="input-neon" type="text" placeholder={`Nome da ${SINGULAR[abaAtual]}`} value={nomePoder} onChange={e => setNomePoder(e.target.value)} />
                             
-                            <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 5 }}>
+                            {/* 🔥 NOVO: SELETORES DE VERTENTE DENTRO DA CRIAÇÃO DA HABILIDADE 🔥 */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10, marginBottom: 5 }}>
+                                <div>
+                                    <label style={{ color: '#0ff', fontSize: '0.85em', fontWeight: 'bold' }}>Natureza da Habilidade / Poder</label>
+                                    <select className="input-neon" value={poderVertente} onChange={e => setPoderVertente(e.target.value)} style={{ borderColor: '#0ff', color: '#0ff', margin: 0 }}>
+                                        <option value="">Padrão (Dano / Efeito Direto)</option>
+                                        <option value="Elemental">🌪️ Elemental / Fenomenal (Ressonância Ativa)</option>
+                                        <option value="Acumulativo">📈 Acumulativo (Requer Marcadores ou Forja)</option>
+                                        <option value="Conceitual">🧩 Conceitual (Distorção de Regras)</option>
+                                        <option value="Utilitario">🛠️ Utilitário (Cópia / Suporte / Buff)</option>
+                                    </select>
+                                </div>
+                                {poderVertente === 'Elemental' && (
+                                    <div className="fade-in">
+                                        <label style={{ color: '#ff8800', fontSize: '0.85em', fontWeight: 'bold' }}>Elemento / Fenômeno (Ex: Fogo Infinito)</label>
+                                        <input className="input-neon" type="text" placeholder="Qual o elemento dominado?" value={poderElemento} onChange={e => setPoderElemento(e.target.value)} style={{ borderColor: '#ff8800', color: '#ff8800', margin: 0 }} />
+                                    </div>
+                                )}
+                            </div>
+
+                            <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 10 }}>
                                 <input className="input-neon" type="text" placeholder="URL da Imagem (Ou anexe ao lado 👉)" value={imagemUrl} onChange={e => setImagemUrl(e.target.value)} style={{ flex: 1, margin: 0 }} />
                                 <label className="btn-neon btn-blue" style={{ cursor: 'pointer', padding: '5px 15px', margin: 0, whiteSpace: 'nowrap', opacity: uploadingImg ? 0.5 : 1 }}>
                                     {uploadingImg ? 'Enviando...' : '📁 Anexar'}
@@ -772,7 +776,7 @@ export default function PoderesPanel() {
                             </div>
 
                             <h4 style={{ color: '#f0f', marginTop: 15, marginBottom: 8, fontSize: '0.95em' }}>Efeitos Passivos (sempre ativos)</h4>
-                            <input className="input-neon" type="text" placeholder="Nome do Efeito Passivo" value={nomeEfeitoPassivo} onChange={e => setNomeEfeitoPassivo(e.target.value)} />
+                            <input className="input-neon" type="text" placeholder="Nome do Efeito Passivo (Ex: +10 CA Fogo)" value={nomeEfeitoPassivo} onChange={e => setNomeEfeitoPassivo(e.target.value)} />
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8, marginTop: 5 }}>
                                 <select className="input-neon" value={novoAtrPassivo} onChange={e => setNovoAtrPassivo(e.target.value)}>
                                     {ATRIBUTOS_AGRUPADOS.map(grupo => (
@@ -823,7 +827,16 @@ export default function PoderesPanel() {
                                         <div key={p.id} className="def-box" style={{ borderLeft: `5px solid ${c}`, background: bg, marginBottom: 10 }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 15 }}>
                                                 <div style={{ flex: 1 }}>
-                                                    <h3 style={{ margin: 0, color: c, textShadow: `0 0 10px ${c}` }}>{p.nome || 'Poder'} <span style={{fontSize: '0.6em', color: '#fff'}}>(Alcance: {p.alcance || 1}Q)</span></h3>
+                                                    <h3 style={{ margin: 0, color: c, textShadow: `0 0 10px ${c}` }}>
+                                                        {p.nome || 'Poder'} 
+                                                        <span style={{fontSize: '0.6em', color: '#fff'}}> (Alcance: {p.alcance || 1}Q)</span>
+                                                        {/* 🔥 BADGE DE VERTENTE NA LISTA 🔥 */}
+                                                        {p.vertente && (
+                                                            <span style={{ marginLeft: '10px', fontSize: '0.55em', padding: '2px 8px', borderRadius: '10px', background: 'rgba(255,255,255,0.1)', color: '#0ff', border: '1px solid #0ff' }}>
+                                                                {p.vertente === 'Elemental' ? `🌪️ ELEMENTAL: ${p.elemento}` : p.vertente.toUpperCase()}
+                                                            </span>
+                                                        )}
+                                                    </h3>
                                                     
                                                     {p.descricao && (
                                                         <div style={{ color: '#ccc', fontSize: '0.85em', fontStyle: 'italic', margin: '8px 0', padding: '8px', background: 'rgba(0,0,0,0.3)', borderRadius: '4px', borderLeft: `2px solid ${c}` }}>
@@ -840,7 +853,6 @@ export default function PoderesPanel() {
                                                     )}</p>
                                                 </div>
                                                 <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                                                    {/* 🔥 BOTÃO DE DISPARO AQUI 🔥 */}
                                                     <button 
                                                         className={`btn-neon ${poderPreparandoId === p.id ? 'btn-gold' : 'btn-blue'}`} 
                                                         style={{ padding: '5px 15px', fontSize: '1em', margin: 0 }} 
@@ -895,12 +907,13 @@ export default function PoderesPanel() {
                                                 </div>
                                             </div>
                                             
-                                            {/* 🔥 PAINEL EXPANSÍVEL DE DISPARO (SIMULADOR ELEMENTAL) 🔥 */}
+                                            {/* 🔥 PAINEL EXPANSÍVEL DE DISPARO 🔥 */}
                                             {poderPreparandoId === p.id && (
                                                 <div className="fade-in" style={{ width: '100%', marginTop: '15px', background: 'rgba(0, 0, 0, 0.7)', border: '1px solid #0ff', borderRadius: '8px', padding: '15px' }}>
                                                     <h4 style={{ color: '#0ff', margin: '0 0 10px 0', textTransform: 'uppercase' }}>⚙️ Central de Disparo: {p.nome}</h4>
 
-                                                    {isFichaElemental ? (
+                                                    {/* 🔥 LÊ A VERTENTE DA PRÓPRIA TÉCNICA E NÃO DA FICHA GLOBAL 🔥 */}
+                                                    {p.vertente === 'Elemental' ? (
                                                         <div style={{ background: 'rgba(0, 255, 204, 0.1)', borderLeft: '3px solid #00ffcc', padding: '10px', marginBottom: '15px', borderRadius: '4px' }}>
                                                             <p style={{ color: '#00ffcc', margin: '0 0 5px 0', fontWeight: 'bold' }}>🌪️ RESSONÂNCIA ELEMENTAL DETETADA</p>
                                                             <p style={{ color: '#aaa', fontSize: '0.85em', margin: 0 }}>
@@ -918,6 +931,14 @@ export default function PoderesPanel() {
                                                                     </div>
                                                                 </div>
                                                             </label>
+                                                        </div>
+                                                    ) : p.vertente === 'Acumulativo' ? (
+                                                        <div style={{ background: 'rgba(255, 136, 0, 0.1)', borderLeft: '3px solid #ff8800', padding: '10px', marginBottom: '15px', borderRadius: '4px' }}>
+                                                            <p style={{ color: '#ff8800', margin: '0 0 5px 0', fontWeight: 'bold' }}>📈 TÉCNICA ACUMULATIVA DETETADA</p>
+                                                            <p style={{ color: '#aaa', fontSize: '0.85em', margin: 0 }}>
+                                                                Use os Marcadores de Cena ou a Forja Pós-Combate (Aba Ficha) para processar os ganhos de atributos desta habilidade.<br/>
+                                                                Custo Padrão: <strong style={{color: '#f00'}}>{p.custoPercentual}% das Energias</strong>. <br/>
+                                                            </p>
                                                         </div>
                                                     ) : (
                                                         <div style={{ background: 'rgba(255, 255, 255, 0.05)', borderLeft: '3px solid #888', padding: '10px', marginBottom: '15px', borderRadius: '4px' }}>
