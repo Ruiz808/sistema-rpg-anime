@@ -341,24 +341,29 @@ export default function FichaPanel() {
         );
     };
 
-    // 🔥 VERIFICAÇÕES DE VERTENTE DA MATRIX 🔥
+    // 🔥 BLINDAGEM DE VERTENTES DA MATRIX (A CORREÇÃO DO BUG DE VISIBILIDADE) 🔥
     const hierarquia = minhaFicha?.hierarquia || {};
     const poderesGlobais = minhaFicha?.poderes || [];
     
+    const hPoder = hierarquia.poder || false;
+    const hInfinity = hierarquia.infinity || false;
+
     const hPoderVertente = hierarquia.poderVertente || '';
     const hInfinityVertente = hierarquia.infinityVertente || '';
 
-    const isAcumulativoCombate = hPoderVertente.includes('Acumulativo (Combate)') || hInfinityVertente.includes('Acumulativo (Combate)');
-    const isAcumulativoAbsorcao = hPoderVertente.includes('Absorção') || hInfinityVertente.includes('Absorção') || hPoderVertente === 'Acumulativo' || hInfinityVertente === 'Acumulativo';
-    const isElemental = hPoderVertente.includes('Elemental') || hInfinityVertente.includes('Elemental');
-    const isConceitual = hPoderVertente.includes('Conceitual') || hInfinityVertente.includes('Conceitual');
-    const isUtilitario = hPoderVertente.includes('Utilitario') || hInfinityVertente.includes('Utilitario');
+    // Verifica a Classificação (Aba Grimório), MAS APENAS SE a categoria estiver marcada (hPoder ou hInfinity)
+    const classAcumulativoCombate = (hPoder && hPoderVertente.includes('Combate')) || (hInfinity && hInfinityVertente.includes('Combate'));
+    const classAcumulativoAbsorcao = (hPoder && (hPoderVertente.includes('Absorção') || hPoderVertente === 'Acumulativo')) || (hInfinity && (hInfinityVertente.includes('Absorção') || hInfinityVertente === 'Acumulativo'));
+    const classElemental = (hPoder && hPoderVertente.includes('Elemental')) || (hInfinity && hInfinityVertente.includes('Elemental'));
+    const classConceitual = (hPoder && hPoderVertente.includes('Conceitual')) || (hInfinity && hInfinityVertente.includes('Conceitual'));
+    const classUtilitario = (hPoder && hPoderVertente.includes('Utilitario')) || (hInfinity && hInfinityVertente.includes('Utilitario'));
 
-    const showMarcadoresCena = isAcumulativoCombate || isAcumulativoAbsorcao || poderesGlobais.some(p => (p.vertente || '').includes('Acumulativo'));
-    const showForjaCalamidade = isAcumulativoAbsorcao || poderesGlobais.some(p => (p.vertente || '').includes('Absorção') || p.vertente === 'Acumulativo');
-    const showElemental = isElemental || poderesGlobais.some(p => (p.vertente || '').includes('Elemental'));
-    const showConceitual = isConceitual || poderesGlobais.some(p => (p.vertente || '').includes('Conceitual'));
-    const showUtilitario = isUtilitario || poderesGlobais.some(p => (p.vertente || '').includes('Utilitario'));
+    // O Painel aparece se a Classificação exigir OU se o jogador tiver um poder Ativo (LIGADO) com essa vertente!
+    const showMarcadoresCena = classAcumulativoCombate || classAcumulativoAbsorcao || poderesGlobais.some(p => p.ativa && (p.vertente || '').includes('Acumulativo'));
+    const showForjaCalamidade = classAcumulativoAbsorcao || poderesGlobais.some(p => p.ativa && ((p.vertente || '').includes('Absorção') || p.vertente === 'Acumulativo'));
+    const showElemental = classElemental || poderesGlobais.some(p => p.ativa && (p.vertente || '').includes('Elemental'));
+    const showConceitual = classConceitual || poderesGlobais.some(p => p.ativa && (p.vertente || '').includes('Conceitual'));
+    const showUtilitario = classUtilitario || poderesGlobais.some(p => p.ativa && (p.vertente || '').includes('Utilitario'));
 
 
     // 🔥 1. SISTEMA DE MARCADORES (ESCALONAMENTO EM CENA) 🔥
@@ -502,7 +507,7 @@ export default function FichaPanel() {
         salvarFichaSilencioso();
     }
 
-    // 🔥🔥🔥 LÓGICA DO SIMULADOR ELEMENTAL 🔥🔥🔥
+    // 🔥 LÓGICA DO REATOR ELEMENTAL 🔥
     const getAtualVital = (key) => {
         if (!minhaFicha) return 0;
         const max = getMaximo(minhaFicha, key);
@@ -813,106 +818,6 @@ export default function FichaPanel() {
                 </button>
             </div>
 
-            {/* 🔥 REATOR ELEMENTAL 🔥 */}
-            {showElemental && (
-                <div className="def-box fade-in" style={{ marginTop: 15, background: 'rgba(0, 255, 204, 0.05)', border: '1px solid #00ffcc', boxShadow: '0 0 15px rgba(0, 255, 204, 0.2)' }}>
-                    <h3 style={{ color: '#00ffcc', margin: '0 0 10px 0', textShadow: '0 0 5px #00ffcc' }}>🌪️ Reator de Ressonância (Elemental)</h3>
-                    <p style={{ color: '#aaa', fontSize: '0.85em', margin: '0 0 10px 0' }}>A força bruta da natureza funde as suas energias. Utilize este reator para verificar a sua <strong>Energia Elemental Atual</strong>.</p>
-                    
-                    <div style={{ background: 'rgba(0,0,0,0.5)', padding: '15px', borderRadius: '5px', borderLeft: '3px solid #00ffcc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                            <div style={{ color: '#fff', fontSize: '1.2em', fontWeight: 'bold' }}>Soma das Energias (Mana + Aura + Chakra)</div>
-                            <div style={{ color: '#0cf', fontSize: '0.9em', marginTop: '4px' }}>Bônus Bruto Dano Elemental: <strong style={{ color: '#0f0', fontSize: '1.3em' }}>+{(getAtualVital('mana') + getAtualVital('aura') + getAtualVital('chakra'))}</strong></div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* 🔥 DISTORÇÃO CONCEITUAL 🔥 */}
-            {showConceitual && (
-                <div className="def-box fade-in" style={{ marginTop: 15, background: 'rgba(255, 0, 255, 0.05)', border: '1px solid #ff00ff', boxShadow: '0 0 15px rgba(255, 0, 255, 0.2)' }}>
-                    <h3 style={{ color: '#ff00ff', margin: '0 0 10px 0', textShadow: '0 0 5px #ff00ff' }}>🧩 Distorção Conceitual (Quebra de Regras)</h3>
-                    <p style={{ color: '#aaa', fontSize: '0.85em', margin: '0 0 15px 0' }}>Anomalias conceituais reescrevem as leis da realidade. Decrete as "Leis da Cena" em vigor.</p>
-                    
-                    <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '15px' }}>
-                        <input 
-                            className="input-neon" 
-                            type="text" 
-                            placeholder="Decrete uma nova Lei (Ex: Oponentes não podem esquivar)" 
-                            value={novaLeiNome} 
-                            onChange={e => setNovaLeiNome(e.target.value)} 
-                            style={{ flex: '1 1 200px', minHeight: '48px', fontSize: '1.1em', padding: '10px', borderColor: '#ff00ff', color: '#fff', margin: 0 }} 
-                        />
-                        <button 
-                            className="btn-neon" 
-                            style={{ flex: '0 1 150px', minHeight: '48px', borderColor: '#ff00ff', color: '#ff00ff', margin: 0, padding: '10px 20px', fontSize: '1.1em', fontWeight: 'bold', background: 'rgba(255, 0, 255, 0.1)' }} 
-                            onClick={addLeiCena}
-                        >
-                            + DECRETAR
-                        </button>
-                    </div>
-
-                    {leisCena.length > 0 ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            {leisCena.map(lei => (
-                                <div key={lei.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.5)', padding: '10px 15px', borderRadius: '5px', borderLeft: '3px solid #ff00ff' }}>
-                                    <div style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.1em', fontStyle: 'italic' }}>"{lei.texto}"</div>
-                                    <button className="btn-neon btn-small btn-red" style={{ padding: '5px 15px' }} onClick={() => removeLeiCena(lei.id)}>REVOGAR</button>
-                                </div>
-                            ))}
-                        </div>
-                    ) : ( <div style={{ color: '#555', fontStyle: 'italic', textAlign: 'center' }}>Nenhuma lei conceitual em vigor.</div> )}
-                </div>
-            )}
-
-            {/* 🔥 MATRIZ UTILITÁRIA 🔥 */}
-            {showUtilitario && (
-                <div className="def-box fade-in" style={{ marginTop: 15, background: 'rgba(255, 204, 0, 0.05)', border: '1px solid #ffcc00', boxShadow: '0 0 15px rgba(255, 204, 0, 0.2)' }}>
-                    <h3 style={{ color: '#ffcc00', margin: '0 0 10px 0', textShadow: '0 0 5px #ffcc00' }}>🛠️ Matriz Utilitária (Mimetismo e Suporte)</h3>
-                    <p style={{ color: '#aaa', fontSize: '0.85em', margin: '0 0 15px 0' }}>Para Infinities de Cópia (ex: Ketsuda). Registe as habilidades ou buffs copiados temporariamente durante a luta.</p>
-                    
-                    <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '15px' }}>
-                        <input 
-                            className="input-neon" 
-                            type="text" 
-                            placeholder="Nome do Poder Copiado" 
-                            value={novaCopiaNome} 
-                            onChange={e => setNovaCopiaNome(e.target.value)} 
-                            style={{ flex: '1 1 200px', minHeight: '48px', fontSize: '1.1em', padding: '10px', borderColor: '#ffcc00', color: '#fff', margin: 0 }} 
-                        />
-                        <input 
-                            className="input-neon" 
-                            type="text" 
-                            placeholder="Efeito / Buff (Ex: +2000 Dano)" 
-                            value={novaCopiaEfeito} 
-                            onChange={e => setNovaCopiaEfeito(e.target.value)} 
-                            style={{ flex: '1 1 200px', minHeight: '48px', fontSize: '1.1em', padding: '10px', borderColor: '#ffcc00', color: '#fff', margin: 0 }} 
-                        />
-                        <button 
-                            className="btn-neon" 
-                            style={{ flex: '0 1 200px', minHeight: '48px', borderColor: '#ffcc00', color: '#ffcc00', margin: 0, padding: '10px 20px', fontSize: '1.1em', fontWeight: 'bold', background: 'rgba(255, 204, 0, 0.1)' }} 
-                            onClick={addCopiaAtiva}
-                        >
-                            + ARMAZENAR
-                        </button>
-                    </div>
-
-                    {copiasAtivas.length > 0 ? (
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                            {copiasAtivas.map(copia => (
-                                <div key={copia.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.5)', padding: '10px', borderRadius: '5px', borderLeft: '3px solid #ffcc00' }}>
-                                    <div>
-                                        <div style={{ color: '#fff', fontWeight: 'bold' }}>{copia.nome}</div>
-                                        <div style={{ color: '#0f0', fontSize: '0.85em', marginTop: '2px' }}>{copia.efeito}</div>
-                                    </div>
-                                    <button className="btn-neon btn-small btn-red" style={{ padding: '5px 10px', margin: 0 }} onClick={() => removeCopiaAtiva(copia.id)}>X</button>
-                                </div>
-                            ))}
-                        </div>
-                    ) : ( <div style={{ color: '#555', fontStyle: 'italic', textAlign: 'center' }}>Matriz vazia. Nenhuma cópia ativa.</div> )}
-                </div>
-            )}
-
             {multiplicadorFuriaClasse > 0 && (
                 <div className="def-box fade-in" style={{ marginTop: 15, background: 'rgba(255, 0, 0, 0.1)', border: '1px solid rgba(255,0,0,0.5)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1066,6 +971,106 @@ export default function FichaPanel() {
                             {showAbsorverMsg}
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* 🔥 REATOR ELEMENTAL 🔥 */}
+            {showElemental && (
+                <div className="def-box fade-in" style={{ marginTop: 15, background: 'rgba(0, 255, 204, 0.05)', border: '1px solid #00ffcc', boxShadow: '0 0 15px rgba(0, 255, 204, 0.2)' }}>
+                    <h3 style={{ color: '#00ffcc', margin: '0 0 10px 0', textShadow: '0 0 5px #00ffcc' }}>🌪️ Reator de Ressonância (Elemental)</h3>
+                    <p style={{ color: '#aaa', fontSize: '0.85em', margin: '0 0 10px 0' }}>A força bruta da natureza funde as suas energias. Utilize este reator para verificar a sua <strong>Energia Elemental Atual</strong>.</p>
+                    
+                    <div style={{ background: 'rgba(0,0,0,0.5)', padding: '15px', borderRadius: '5px', borderLeft: '3px solid #00ffcc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                            <div style={{ color: '#fff', fontSize: '1.2em', fontWeight: 'bold' }}>Soma das Energias (Mana + Aura + Chakra)</div>
+                            <div style={{ color: '#0cf', fontSize: '0.9em', marginTop: '4px' }}>Bônus Bruto Dano Elemental: <strong style={{ color: '#0f0', fontSize: '1.3em' }}>+{(getAtualVital('mana') + getAtualVital('aura') + getAtualVital('chakra'))}</strong></div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 🔥 DISTORÇÃO CONCEITUAL 🔥 */}
+            {showConceitual && (
+                <div className="def-box fade-in" style={{ marginTop: 15, background: 'rgba(255, 0, 255, 0.05)', border: '1px solid #ff00ff', boxShadow: '0 0 15px rgba(255, 0, 255, 0.2)' }}>
+                    <h3 style={{ color: '#ff00ff', margin: '0 0 10px 0', textShadow: '0 0 5px #ff00ff' }}>🧩 Distorção Conceitual (Quebra de Regras)</h3>
+                    <p style={{ color: '#aaa', fontSize: '0.85em', margin: '0 0 15px 0' }}>Anomalias conceituais reescrevem as leis da realidade. Decrete as "Leis da Cena" em vigor.</p>
+                    
+                    <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '15px' }}>
+                        <input 
+                            className="input-neon" 
+                            type="text" 
+                            placeholder="Decrete uma nova Lei (Ex: Oponentes não podem esquivar)" 
+                            value={novaLeiNome} 
+                            onChange={e => setNovaLeiNome(e.target.value)} 
+                            style={{ flex: '1 1 200px', minHeight: '48px', fontSize: '1.1em', padding: '10px', borderColor: '#ff00ff', color: '#fff', margin: 0 }} 
+                        />
+                        <button 
+                            className="btn-neon" 
+                            style={{ flex: '0 1 150px', minHeight: '48px', borderColor: '#ff00ff', color: '#ff00ff', margin: 0, padding: '10px 20px', fontSize: '1.1em', fontWeight: 'bold', background: 'rgba(255, 0, 255, 0.1)' }} 
+                            onClick={addLeiCena}
+                        >
+                            + DECRETAR
+                        </button>
+                    </div>
+
+                    {leisCena.length > 0 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            {leisCena.map(lei => (
+                                <div key={lei.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.5)', padding: '10px 15px', borderRadius: '5px', borderLeft: '3px solid #ff00ff' }}>
+                                    <div style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.1em', fontStyle: 'italic' }}>"{lei.texto}"</div>
+                                    <button className="btn-neon btn-small btn-red" style={{ padding: '5px 15px' }} onClick={() => removeLeiCena(lei.id)}>REVOGAR</button>
+                                </div>
+                            ))}
+                        </div>
+                    ) : ( <div style={{ color: '#555', fontStyle: 'italic', textAlign: 'center' }}>Nenhuma lei conceitual em vigor.</div> )}
+                </div>
+            )}
+
+            {/* 🔥 MATRIZ UTILITÁRIA 🔥 */}
+            {showUtilitario && (
+                <div className="def-box fade-in" style={{ marginTop: 15, background: 'rgba(255, 204, 0, 0.05)', border: '1px solid #ffcc00', boxShadow: '0 0 15px rgba(255, 204, 0, 0.2)' }}>
+                    <h3 style={{ color: '#ffcc00', margin: '0 0 10px 0', textShadow: '0 0 5px #ffcc00' }}>🛠️ Matriz Utilitária (Mimetismo e Suporte)</h3>
+                    <p style={{ color: '#aaa', fontSize: '0.85em', margin: '0 0 15px 0' }}>Para Infinities de Cópia (ex: Ketsuda). Registe as habilidades ou buffs copiados temporariamente durante a luta.</p>
+                    
+                    <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '15px' }}>
+                        <input 
+                            className="input-neon" 
+                            type="text" 
+                            placeholder="Nome do Poder Copiado" 
+                            value={novaCopiaNome} 
+                            onChange={e => setNovaCopiaNome(e.target.value)} 
+                            style={{ flex: '1 1 200px', minHeight: '48px', fontSize: '1.1em', padding: '10px', borderColor: '#ffcc00', color: '#fff', margin: 0 }} 
+                        />
+                        <input 
+                            className="input-neon" 
+                            type="text" 
+                            placeholder="Efeito / Buff (Ex: +2000 Dano)" 
+                            value={novaCopiaEfeito} 
+                            onChange={e => setNovaCopiaEfeito(e.target.value)} 
+                            style={{ flex: '1 1 200px', minHeight: '48px', fontSize: '1.1em', padding: '10px', borderColor: '#ffcc00', color: '#fff', margin: 0 }} 
+                        />
+                        <button 
+                            className="btn-neon" 
+                            style={{ flex: '0 1 200px', minHeight: '48px', borderColor: '#ffcc00', color: '#ffcc00', margin: 0, padding: '10px 20px', fontSize: '1.1em', fontWeight: 'bold', background: 'rgba(255, 204, 0, 0.1)' }} 
+                            onClick={addCopiaAtiva}
+                        >
+                            + ARMAZENAR
+                        </button>
+                    </div>
+
+                    {copiasAtivas.length > 0 ? (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                            {copiasAtivas.map(copia => (
+                                <div key={copia.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.5)', padding: '10px', borderRadius: '5px', borderLeft: '3px solid #ffcc00' }}>
+                                    <div>
+                                        <div style={{ color: '#fff', fontWeight: 'bold' }}>{copia.nome}</div>
+                                        <div style={{ color: '#0f0', fontSize: '0.85em', marginTop: '2px' }}>{copia.efeito}</div>
+                                    </div>
+                                    <button className="btn-neon btn-small btn-red" style={{ padding: '5px 10px', margin: 0 }} onClick={() => removeCopiaAtiva(copia.id)}>X</button>
+                                </div>
+                            ))}
+                        </div>
+                    ) : ( <div style={{ color: '#555', fontStyle: 'italic', textAlign: 'center' }}>Matriz vazia. Nenhuma cópia ativa.</div> )}
                 </div>
             )}
 
