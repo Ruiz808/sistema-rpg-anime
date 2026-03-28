@@ -15,6 +15,7 @@ const SINGULAR = {
 export default function PoderesPanel() {
     const minhaFicha = useStore(s => s.minhaFicha);
     const meuNome = useStore(s => s.meuNome);
+    const isMestre = useStore(s => s.isMestre); // 🔥 A CHAVE DO ARQUITETO 🔥
     const updateFicha = useStore(s => s.updateFicha);
     const efeitosTemp = useStore(s => s.efeitosTemp);
     const setEfeitosTemp = useStore(s => s.setEfeitosTemp);
@@ -308,6 +309,7 @@ export default function PoderesPanel() {
     ]);
 
     const salvarHierarquia = (p, i, s) => {
+        if (!isMestre) return; // Proteção extra no código
         updateFicha(f => {
             if (!f.hierarquia) f.hierarquia = {};
             f.hierarquia.poder = p;
@@ -318,6 +320,7 @@ export default function PoderesPanel() {
     };
 
     const salvarTextosHierarquia = () => {
+        if (!isMestre) return; // Proteção extra no código
         updateFicha(f => {
             if (!f.hierarquia) f.hierarquia = {};
             f.hierarquia.poderNome = hTextos.poderNome;
@@ -455,6 +458,12 @@ export default function PoderesPanel() {
                 {abaAtual === 'classificacao' ? (
                     <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                         
+                        {!isMestre && (
+                            <div style={{ background: 'rgba(255,0,0,0.1)', border: '1px solid #f00', padding: '15px', borderRadius: '5px', color: '#f00', textAlign: 'center', fontWeight: 'bold', textShadow: '0 0 5px #f00' }}>
+                                🔒 MODO LEITURA: Apenas o Mestre pode forjar e alterar Domínios Místicos.
+                            </div>
+                        )}
+
                         <div className="def-box" style={{ textAlign: 'center', padding: '30px', border: `2px solid ${corSuprema}`, boxShadow: glowSupremo, background: 'rgba(0,0,0,0.8)', position: 'relative', overflow: 'hidden' }}>
                             <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: `radial-gradient(circle, ${corSuprema}30 0%, rgba(0,0,0,0) 70%)`, pointerEvents: 'none' }} />
                             <h2 style={{ color: '#fff', fontSize: '1.2em', margin: '0 0 10px 0', letterSpacing: '2px', textTransform: 'uppercase', position: 'relative', zIndex: 1 }}>Grau de Calamidade Atual</h2>
@@ -474,13 +483,13 @@ export default function PoderesPanel() {
                             </p>
                         </div>
 
-                        <div className="def-box" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                        <div className="def-box" style={{ display: 'flex', flexDirection: 'column', gap: '15px', opacity: isMestre ? 1 : 0.8 }}>
                             <h3 style={{ color: '#0ff', margin: 0, borderBottom: '1px solid rgba(0,255,255,0.3)', paddingBottom: '10px' }}>Domínios Místicos</h3>
 
                             {/* 🔥 BLOCO DA CATEGORIA 1: PODER 🔥 */}
                             <div style={{ padding: '15px', background: hPoder ? 'rgba(0, 255, 204, 0.1)' : 'rgba(255,255,255,0.02)', border: `1px solid ${hPoder ? '#00ffcc' : '#333'}`, borderRadius: '8px', transition: 'all 0.3s' }}>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: 'pointer' }}>
-                                    <input type="checkbox" checked={hPoder} onChange={e => salvarHierarquia(e.target.checked, hInfinity, hSingularidade)} style={{ transform: 'scale(1.5)', marginLeft: '5px' }} />
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: isMestre ? 'pointer' : 'not-allowed' }}>
+                                    <input type="checkbox" checked={hPoder} onChange={e => salvarHierarquia(e.target.checked, hInfinity, hSingularidade)} disabled={!isMestre} style={{ transform: 'scale(1.5)', marginLeft: '5px', cursor: isMestre ? 'pointer' : 'not-allowed' }} />
                                     <div>
                                         <div style={{ color: hPoder ? '#00ffcc' : '#fff', fontWeight: 'bold', fontSize: '1.1em', textShadow: hPoder ? '0 0 10px #00ffcc' : 'none' }}>✨ Categoria 1: Poder</div>
                                         <div style={{ color: '#aaa', fontSize: '0.85em', marginTop: '4px' }}>Ressonância Natural. Habilidade inata que usa as 3 energias (Mana, Aura e Chakra) para escalar o seu impacto, mas <strong>não gasta nenhuma (Custo Zero)</strong>.</div>
@@ -489,16 +498,16 @@ export default function PoderesPanel() {
                                 
                                 {hPoder && (
                                     <div className="fade-in" style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px dashed rgba(0, 255, 204, 0.3)' }}>
-                                        <input className="input-neon" type="text" placeholder="Nome do seu Poder (Ex: Chamas do Purgatório)" value={hTextos.poderNome} onChange={e => setHTextos({...hTextos, poderNome: e.target.value})} style={{ width: '100%', marginBottom: '10px', borderColor: '#00ffcc', color: '#fff', fontWeight: 'bold' }} />
-                                        <textarea className="input-neon" placeholder="Descreva como a ressonância da sua habilidade se manifesta na realidade..." value={hTextos.poderDesc} onChange={e => setHTextos({...hTextos, poderDesc: e.target.value})} style={{ width: '100%', minHeight: '60px', borderColor: '#00ffcc', color: '#ccc', fontStyle: 'italic' }} />
+                                        <input className="input-neon" type="text" placeholder="Nome do seu Poder (Ex: Chamas do Purgatório)" value={hTextos.poderNome} onChange={e => setHTextos({...hTextos, poderNome: e.target.value})} disabled={!isMestre} style={{ width: '100%', marginBottom: '10px', borderColor: '#00ffcc', color: '#fff', fontWeight: 'bold', opacity: isMestre ? 1 : 0.7 }} />
+                                        <textarea className="input-neon" placeholder="Descreva como a ressonância da sua habilidade se manifesta na realidade..." value={hTextos.poderDesc} onChange={e => setHTextos({...hTextos, poderDesc: e.target.value})} disabled={!isMestre} style={{ width: '100%', minHeight: '60px', borderColor: '#00ffcc', color: '#ccc', fontStyle: 'italic', opacity: isMestre ? 1 : 0.7 }} />
                                     </div>
                                 )}
                             </div>
 
                             {/* 🔥 BLOCO DA CATEGORIA 2: INFINITY 🔥 */}
                             <div style={{ padding: '15px', background: hInfinity ? 'rgba(0, 204, 255, 0.1)' : 'rgba(255,255,255,0.02)', border: `1px solid ${hInfinity ? '#00ccff' : '#333'}`, borderRadius: '8px', transition: 'all 0.3s' }}>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: 'pointer' }}>
-                                    <input type="checkbox" checked={hInfinity} onChange={e => salvarHierarquia(hPoder, e.target.checked, hSingularidade)} style={{ transform: 'scale(1.5)', marginLeft: '5px' }} />
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: isMestre ? 'pointer' : 'not-allowed' }}>
+                                    <input type="checkbox" checked={hInfinity} onChange={e => salvarHierarquia(hPoder, e.target.checked, hSingularidade)} disabled={!isMestre} style={{ transform: 'scale(1.5)', marginLeft: '5px', cursor: isMestre ? 'pointer' : 'not-allowed' }} />
                                     <div>
                                         <div style={{ color: hInfinity ? '#00ccff' : '#fff', fontWeight: 'bold', fontSize: '1.1em', textShadow: hInfinity ? '0 0 10px #00ccff' : 'none' }}>🌌 Categoria 2: Infinity</div>
                                         <div style={{ color: '#aaa', fontSize: '0.85em', marginTop: '4px' }}>Manipulação Absoluta. Controle infinito e conceitual de uma habilidade, seja ela uma força física (Gelo Absoluto) ou abstrata (Adaptação).</div>
@@ -507,16 +516,16 @@ export default function PoderesPanel() {
 
                                 {hInfinity && (
                                     <div className="fade-in" style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px dashed rgba(0, 204, 255, 0.3)' }}>
-                                        <input className="input-neon" type="text" placeholder="Nome do seu Infinity (Ex: Frio Zero Absoluto)" value={hTextos.infinityNome} onChange={e => setHTextos({...hTextos, infinityNome: e.target.value})} style={{ width: '100%', marginBottom: '10px', borderColor: '#00ccff', color: '#fff', fontWeight: 'bold' }} />
-                                        <textarea className="input-neon" placeholder="Descreva as leis conceituais e limites dessa manipulação infinita..." value={hTextos.infinityDesc} onChange={e => setHTextos({...hTextos, infinityDesc: e.target.value})} style={{ width: '100%', minHeight: '60px', borderColor: '#00ccff', color: '#ccc', fontStyle: 'italic' }} />
+                                        <input className="input-neon" type="text" placeholder="Nome do seu Infinity (Ex: Frio Zero Absoluto)" value={hTextos.infinityNome} onChange={e => setHTextos({...hTextos, infinityNome: e.target.value})} disabled={!isMestre} style={{ width: '100%', marginBottom: '10px', borderColor: '#00ccff', color: '#fff', fontWeight: 'bold', opacity: isMestre ? 1 : 0.7 }} />
+                                        <textarea className="input-neon" placeholder="Descreva as leis conceituais e limites dessa manipulação infinita..." value={hTextos.infinityDesc} onChange={e => setHTextos({...hTextos, infinityDesc: e.target.value})} disabled={!isMestre} style={{ width: '100%', minHeight: '60px', borderColor: '#00ccff', color: '#ccc', fontStyle: 'italic', opacity: isMestre ? 1 : 0.7 }} />
                                     </div>
                                 )}
                             </div>
 
                             {/* 🔥 BLOCO DA CATEGORIA 3: SINGULARIDADE 🔥 */}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '15px', background: hSingularidade ? 'rgba(255, 0, 255, 0.1)' : 'rgba(255,255,255,0.02)', border: `1px solid ${hSingularidade ? '#ff00ff' : '#333'}`, borderRadius: '8px', transition: 'all 0.3s' }}>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: 'pointer' }}>
-                                    <input type="checkbox" checked={!!hSingularidade} onChange={e => { const val = e.target.checked ? '3' : ''; salvarHierarquia(hPoder, hInfinity, val); }} style={{ transform: 'scale(1.5)', marginLeft: '5px' }} />
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: isMestre ? 'pointer' : 'not-allowed' }}>
+                                    <input type="checkbox" checked={!!hSingularidade} onChange={e => { const val = e.target.checked ? '3' : ''; salvarHierarquia(hPoder, hInfinity, val); }} disabled={!isMestre} style={{ transform: 'scale(1.5)', marginLeft: '5px', cursor: isMestre ? 'pointer' : 'not-allowed' }} />
                                     <div>
                                         <div style={{ color: hSingularidade ? '#ff00ff' : '#fff', fontWeight: 'bold', fontSize: '1.1em', textShadow: hSingularidade ? '0 0 10px #ff00ff' : 'none' }}>👑 Categoria 3: Singularidade</div>
                                         <div style={{ color: '#aaa', fontSize: '0.85em', marginTop: '4px' }}>A Anomalia Máxima. Uma falha na própria realidade. Existem menos de 200 no multiverso inteiro (Trilhões de anos).</div>
@@ -530,7 +539,8 @@ export default function PoderesPanel() {
                                             className="input-neon" 
                                             value={hSingularidade} 
                                             onChange={e => salvarHierarquia(hPoder, hInfinity, e.target.value)} 
-                                            style={{ width: '100%', marginTop: '8px', marginBottom: '15px', borderColor: corSuprema, color: corSuprema, background: '#111', fontSize: '1em', padding: '10px', textShadow: `0 0 5px ${corSuprema}` }}
+                                            disabled={!isMestre}
+                                            style={{ width: '100%', marginTop: '8px', marginBottom: '15px', borderColor: corSuprema, color: corSuprema, background: '#111', fontSize: '1em', padding: '10px', textShadow: `0 0 5px ${corSuprema}`, opacity: isMestre ? 1 : 0.7, cursor: isMestre ? 'pointer' : 'not-allowed' }}
                                         >
                                             <option value="3">Grau 3: Herdada (Poder transferido ou roubado)</option>
                                             <option value="2">Grau 2: Desenvolvida (Evoluída além do limite de um Poder/Infinity)</option>
@@ -539,25 +549,27 @@ export default function PoderesPanel() {
                                         </select>
 
                                         <div style={{ paddingTop: '15px', borderTop: '1px dashed rgba(255, 0, 255, 0.3)' }}>
-                                            <input className="input-neon" type="text" placeholder="Nome da Singularidade (Ex: All For One)" value={hTextos.singularidadeNome} onChange={e => setHTextos({...hTextos, singularidadeNome: e.target.value})} style={{ width: '100%', marginBottom: '10px', borderColor: '#ff00ff', color: '#fff', fontWeight: 'bold' }} />
-                                            <textarea className="input-neon" placeholder="Descreva como essa anomalia cósmica quebra as regras do universo..." value={hTextos.singularidadeDesc} onChange={e => setHTextos({...hTextos, singularidadeDesc: e.target.value})} style={{ width: '100%', minHeight: '60px', borderColor: '#ff00ff', color: '#ccc', fontStyle: 'italic' }} />
+                                            <input className="input-neon" type="text" placeholder="Nome da Singularidade (Ex: All For One)" value={hTextos.singularidadeNome} onChange={e => setHTextos({...hTextos, singularidadeNome: e.target.value})} disabled={!isMestre} style={{ width: '100%', marginBottom: '10px', borderColor: '#ff00ff', color: '#fff', fontWeight: 'bold', opacity: isMestre ? 1 : 0.7 }} />
+                                            <textarea className="input-neon" placeholder="Descreva como essa anomalia cósmica quebra as regras do universo..." value={hTextos.singularidadeDesc} onChange={e => setHTextos({...hTextos, singularidadeDesc: e.target.value})} disabled={!isMestre} style={{ width: '100%', minHeight: '60px', borderColor: '#ff00ff', color: '#ccc', fontStyle: 'italic', opacity: isMestre ? 1 : 0.7 }} />
                                         </div>
                                     </div>
                                 )}
                             </div>
 
-                            <button 
-                                className="btn-neon btn-gold" 
-                                onClick={salvarTextosHierarquia} 
-                                style={{ 
-                                    marginTop: '10px', width: '100%', padding: '12px', fontSize: '1.1em', letterSpacing: '1px',
-                                    backgroundColor: salvandoClassificacao ? 'rgba(0, 255, 100, 0.2)' : undefined,
-                                    borderColor: salvandoClassificacao ? '#00ffcc' : undefined,
-                                    color: salvandoClassificacao ? '#fff' : undefined
-                                }}
-                            >
-                                {salvandoClassificacao ? '💾 REGISTROS MÍSTICOS SALVOS!' : '💾 SALVAR NOMES E DESCRIÇÕES'}
-                            </button>
+                            {isMestre && (
+                                <button 
+                                    className="btn-neon btn-gold" 
+                                    onClick={salvarTextosHierarquia} 
+                                    style={{ 
+                                        marginTop: '10px', width: '100%', padding: '12px', fontSize: '1.1em', letterSpacing: '1px',
+                                        backgroundColor: salvandoClassificacao ? 'rgba(0, 255, 100, 0.2)' : undefined,
+                                        borderColor: salvandoClassificacao ? '#00ffcc' : undefined,
+                                        color: salvandoClassificacao ? '#fff' : undefined
+                                    }}
+                                >
+                                    {salvandoClassificacao ? '💾 REGISTROS MÍSTICOS SALVOS!' : '💾 SALVAR NOMES E DESCRIÇÕES'}
+                                </button>
+                            )}
                         </div>
                     </div>
                 ) : (
@@ -603,7 +615,6 @@ export default function PoderesPanel() {
                                 </div>
                             </div>
 
-                            {/* 🔥 CAMPO DE DESCRIÇÃO NARRATIVA AQUI 🔥 */}
                             <textarea 
                                 className="input-neon" 
                                 placeholder="Descrição / Efeito Narrativo (O que essa habilidade faz visualmente e narrativamente?)" 
@@ -695,7 +706,6 @@ export default function PoderesPanel() {
                                                 <div style={{ flex: 1 }}>
                                                     <h3 style={{ margin: 0, color: c, textShadow: `0 0 10px ${c}` }}>{p.nome || 'Poder'} <span style={{fontSize: '0.6em', color: '#fff'}}>(Alcance: {p.alcance || 1}Q)</span></h3>
                                                     
-                                                    {/* 🔥 EXIBIÇÃO DA DESCRIÇÃO NARRATIVA 🔥 */}
                                                     {p.descricao && (
                                                         <div style={{ color: '#ccc', fontSize: '0.85em', fontStyle: 'italic', margin: '8px 0', padding: '8px', background: 'rgba(0,0,0,0.3)', borderRadius: '4px', borderLeft: `2px solid ${c}` }}>
                                                             "{p.descricao}"
