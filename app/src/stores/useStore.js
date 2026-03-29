@@ -4,6 +4,7 @@ import { immer } from 'zustand/middleware/immer';
 export const fichaPadrao = {
     ascensaoBase: 1, poderes: [], inventario: [], ataquesElementais: [],
     passivas: [],
+    hierarquia: { poder: false, infinity: false, singularidade: '', poderNome: '', poderDesc: '', infinityNome: '', infinityDesc: '', singularidadeNome: '', singularidadeDesc: '' },
 
     // 🔥 NOVO: SISTEMA DE PROFICIÊNCIA
     proficienciaBase: 2,
@@ -122,6 +123,7 @@ const useStore = create(
             state.minhaFicha.poderes = dados.poderes || [];
             state.minhaFicha.ataquesElementais = dados.ataquesElementais || [];
             state.minhaFicha.passivas = dados.passivas || [];
+            if (dados.hierarquia != null) state.minhaFicha.hierarquia = Object.assign({}, fichaPadrao.hierarquia, dados.hierarquia);
             if (dados.cores !== undefined) state.minhaFicha.cores = Object.assign({}, fichaPadrao.cores, dados.cores || {});
 
             if (dados.acoes) {
@@ -143,7 +145,7 @@ const useStore = create(
                     ch !== 'avatar' && ch !== 'bio' && ch !== 'notas' && ch !== 'passivas' &&
                     ch !== 'posicao' && ch !== 'iniciativa' && ch !== 'acoes' &&
                     ch !== 'proficienciaBase' && ch !== 'proficiencias' &&
-                    ch !== 'cores'
+                    ch !== 'cores' && ch !== 'hierarquia'
                 ) {
                     if (typeof fichaPadrao[ch] === 'object' && !Array.isArray(fichaPadrao[ch])) {
                         state.minhaFicha[ch] = Object.assign({}, fichaPadrao[ch], dados[ch]);

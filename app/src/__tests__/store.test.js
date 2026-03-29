@@ -106,6 +106,45 @@ describe('fichaPadrao', () => {
         expect(typeof fichaPadrao.compendioOverrides).toBe('object');
         expect(Array.isArray(fichaPadrao.compendioOverrides)).toBe(false);
     });
+
+    // ------------------------------------------------------------------
+    // hierarquia default values
+    // ------------------------------------------------------------------
+
+    it('has hierarquia field defined', () => {
+        expect(fichaPadrao.hierarquia).toBeDefined();
+        expect(typeof fichaPadrao.hierarquia).toBe('object');
+    });
+
+    it('has hierarquia.poder defaulting to false', () => {
+        expect(fichaPadrao.hierarquia.poder).toBe(false);
+    });
+
+    it('has hierarquia.infinity defaulting to false', () => {
+        expect(fichaPadrao.hierarquia.infinity).toBe(false);
+    });
+
+    it('has hierarquia string fields defaulting to empty string', () => {
+        expect(fichaPadrao.hierarquia.singularidade).toBe('');
+        expect(fichaPadrao.hierarquia.poderNome).toBe('');
+        expect(fichaPadrao.hierarquia.poderDesc).toBe('');
+        expect(fichaPadrao.hierarquia.infinityNome).toBe('');
+        expect(fichaPadrao.hierarquia.infinityDesc).toBe('');
+        expect(fichaPadrao.hierarquia.singularidadeNome).toBe('');
+        expect(fichaPadrao.hierarquia.singularidadeDesc).toBe('');
+    });
+
+    it('has hierarquia with all expected keys', () => {
+        const expectedKeys = [
+            'poder', 'infinity', 'singularidade',
+            'poderNome', 'poderDesc',
+            'infinityNome', 'infinityDesc',
+            'singularidadeNome', 'singularidadeDesc'
+        ];
+        expectedKeys.forEach(key => {
+            expect(fichaPadrao.hierarquia).toHaveProperty(key);
+        });
+    });
 });
 
 // ==========================================
@@ -187,6 +226,42 @@ describe('useStore actions', () => {
             });
             expect(useStore.getState().minhaFicha.poderes).toHaveLength(1);
             expect(useStore.getState().minhaFicha.poderes[0].nome).toBe('Super Saiyan');
+        });
+
+        it('can set hierarquia.poder to true', () => {
+            useStore.getState().updateFicha(f => { f.hierarquia.poder = true; });
+            expect(useStore.getState().minhaFicha.hierarquia.poder).toBe(true);
+        });
+
+        it('can set hierarquia.infinity to true', () => {
+            useStore.getState().updateFicha(f => { f.hierarquia.infinity = true; });
+            expect(useStore.getState().minhaFicha.hierarquia.infinity).toBe(true);
+        });
+
+        it('can set all hierarquia string fields', () => {
+            useStore.getState().updateFicha(f => {
+                f.hierarquia.singularidade = 'omega';
+                f.hierarquia.poderNome = 'Kaio-ken';
+                f.hierarquia.poderDesc = 'Multiplica poder';
+                f.hierarquia.infinityNome = 'Mugen';
+                f.hierarquia.infinityDesc = 'Sem fim';
+                f.hierarquia.singularidadeNome = 'Ponto Zero';
+                f.hierarquia.singularidadeDesc = 'Origem absoluta';
+            });
+            const h = useStore.getState().minhaFicha.hierarquia;
+            expect(h.singularidade).toBe('omega');
+            expect(h.poderNome).toBe('Kaio-ken');
+            expect(h.poderDesc).toBe('Multiplica poder');
+            expect(h.infinityNome).toBe('Mugen');
+            expect(h.infinityDesc).toBe('Sem fim');
+            expect(h.singularidadeNome).toBe('Ponto Zero');
+            expect(h.singularidadeDesc).toBe('Origem absoluta');
+        });
+
+        it('hierarquia changes are independent per call (no state leak between tests)', () => {
+            useStore.getState().updateFicha(f => { f.hierarquia.poderNome = 'Getsuga'; });
+            expect(useStore.getState().minhaFicha.hierarquia.poderNome).toBe('Getsuga');
+            // resetFicha in beforeEach ensures next test starts clean
         });
     });
 
@@ -294,6 +369,71 @@ describe('useStore actions', () => {
             expect(result.saber.iconeUrl).toBe('data:image/png;base64,abc');
             expect(result.forca.passiva).toBe('forca bruta');
             expect(result.forca.iconeUrl).toBe('data:image/png;base64,xyz');
+        });
+
+        // ------------------------------------------------------------------
+        // hierarquia tests
+        // ------------------------------------------------------------------
+
+        it('loads hierarquia fully when present in Firebase data', () => {
+            const hierarquia = {
+                poder: true,
+                infinity: true,
+                singularidade: 'omega',
+                poderNome: 'Ultra Instinto',
+                poderDesc: 'Reflexo divino',
+                infinityNome: 'Infinity Break',
+                infinityDesc: 'Transcende limites',
+                singularidadeNome: 'Omega Singularity',
+                singularidadeDesc: 'Ponto de colapso'
+            };
+            useStore.getState().carregarDadosFicha({ hierarquia });
+            const h = useStore.getState().minhaFicha.hierarquia;
+            expect(h.poder).toBe(true);
+            expect(h.infinity).toBe(true);
+            expect(h.singularidade).toBe('omega');
+            expect(h.poderNome).toBe('Ultra Instinto');
+            expect(h.poderDesc).toBe('Reflexo divino');
+            expect(h.infinityNome).toBe('Infinity Break');
+            expect(h.infinityDesc).toBe('Transcende limites');
+            expect(h.singularidadeNome).toBe('Omega Singularity');
+            expect(h.singularidadeDesc).toBe('Ponto de colapso');
+        });
+
+        it('keeps hierarquia defaults when hierarquia is absent from Firebase data', () => {
+            useStore.getState().carregarDadosFicha({ ascensaoBase: 3 });
+            const h = useStore.getState().minhaFicha.hierarquia;
+            expect(h.poder).toBe(false);
+            expect(h.infinity).toBe(false);
+            expect(h.singularidade).toBe('');
+            expect(h.poderNome).toBe('');
+            expect(h.poderDesc).toBe('');
+            expect(h.infinityNome).toBe('');
+            expect(h.infinityDesc).toBe('');
+            expect(h.singularidadeNome).toBe('');
+            expect(h.singularidadeDesc).toBe('');
+        });
+
+        it('merges partial hierarquia with defaults for missing fields', () => {
+            useStore.getState().carregarDadosFicha({ hierarquia: { poder: true, poderNome: 'Bankai' } });
+            const h = useStore.getState().minhaFicha.hierarquia;
+            expect(h.poder).toBe(true);
+            expect(h.poderNome).toBe('Bankai');
+            // fields not provided should fall back to fichaPadrao defaults
+            expect(h.infinity).toBe(false);
+            expect(h.singularidade).toBe('');
+            expect(h.infinityNome).toBe('');
+            expect(h.infinityDesc).toBe('');
+            expect(h.singularidadeNome).toBe('');
+            expect(h.singularidadeDesc).toBe('');
+        });
+
+        it('does not share hierarquia reference with fichaPadrao after carregarDadosFicha', () => {
+            useStore.getState().carregarDadosFicha({ hierarquia: { poderNome: 'Test' } });
+            useStore.getState().updateFicha(f => { f.hierarquia.poderNome = 'Mutated'; });
+            expect(useStore.getState().minhaFicha.hierarquia.poderNome).toBe('Mutated');
+            // fichaPadrao is the static import at the top — must remain pristine
+            expect(fichaPadrao.hierarquia.poderNome).toBe('');
         });
     });
 
