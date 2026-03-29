@@ -19,6 +19,9 @@ import MapaPanel from './components/mapa/MapaPanel'
 import Jukebox from './components/jukebox/Jukebox'
 import CompendioPanel from './components/compendio/CompendioPanel'
 
+// 🔥 IMPORT DA NOVA INTELIGÊNCIA ARTIFICIAL 🔥
+import AIPanel from './components/ia/AIPanel' 
+
 import { carregarFichaDoFirebase, iniciarListenerDummies, enviarParaFeed, salvarDummie, iniciarListenerCenario } from './services/firebase-sync'
 import { getMaximo } from './core/attributes'
 
@@ -568,6 +571,9 @@ export default function App() {
                 <TabPanel id="aba-musica"><Jukebox /></TabPanel>
                 
                 <TabPanel id="aba-compendio"><CompendioPanel /></TabPanel>
+                
+                {/* 🔥 A NOVA ABA DA INTELIGÊNCIA ARTIFICIAL AQUI 🔥 */}
+                <TabPanel id="aba-ia"><AIPanel /></TabPanel>
             </div>
             <ModalConfirm />
         </div>
