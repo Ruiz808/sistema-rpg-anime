@@ -573,7 +573,7 @@ export default function App() {
                 <TabPanel id="aba-compendio"><CompendioPanel /></TabPanel>
                 
                 {/* 🔥 A NOVA ABA DA INTELIGÊNCIA ARTIFICIAL AQUI 🔥 */}
-                <TabPanel id="aba-ia"><AIPanel /></TabPanel>
+                <TabPanel id="aba-oraculo"><AIPanel /></TabPanel>
             </div>
             <ModalConfirm />
         </div>
