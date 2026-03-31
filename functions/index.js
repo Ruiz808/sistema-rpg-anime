@@ -1,8 +1,5 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
-const { defineSecret } = require("firebase-functions/params");
-const { GoogleGenerativeAI } = require("@google/generative-ai");
-
-const geminiApiKey = defineSecret("GEMINI_API_KEY");
+const { VertexAI } = require("@google-cloud/vertexai");
 
 const SYSTEM_PROMPT = `Você é a Sexta-Feira, uma inteligência artificial assistente dentro de um sistema de RPG anime.
 Você ajuda jogadores com estratégias de combate, dúvidas sobre o sistema, interpretação de personagem e lore.
@@ -43,9 +40,13 @@ function formatarContexto(ctx) {
     return partes.join("\n");
 }
 
+const vertexAI = new VertexAI({
+    project: "databaserpg-5595b",
+    location: "us-central1",
+});
+
 exports.falarComSextaFeira = onCall(
     {
-        secrets: [geminiApiKey],
         region: "us-central1",
         maxInstances: 10,
         timeoutSeconds: 60,
@@ -61,26 +62,22 @@ exports.falarComSextaFeira = onCall(
             throw new HttpsError("invalid-argument", "Mensagem muito longa (max 2000 caracteres).");
         }
 
-        const apiKey = geminiApiKey.value();
-        if (!apiKey) {
-            throw new HttpsError("failed-precondition", "API key do Gemini nao configurada.");
-        }
-
         try {
-            const genAI = new GoogleGenerativeAI(apiKey);
-
             const contexto = formatarContexto(contextoFicha);
             const systemInstruction = contexto
                 ? `${SYSTEM_PROMPT}\n\n--- CONTEXTO DA FICHA ---\n${contexto}\n--- FIM DO CONTEXTO ---`
                 : SYSTEM_PROMPT;
 
-            const modelComSystem = genAI.getGenerativeModel({
-                model: "gemini-2.0-flash",
-                systemInstruction,
+            const model = vertexAI.getGenerativeModel({
+                model: "gemini-2.0-flash-001",
+                systemInstruction: { parts: [{ text: systemInstruction }] },
             });
 
-            const result = await modelComSystem.generateContent(mensagem.trim());
-            const resposta = result.response.text();
+            const result = await model.generateContent({
+                contents: [{ role: "user", parts: [{ text: mensagem.trim() }] }],
+            });
+
+            const resposta = result.response?.candidates?.[0]?.content?.parts?.[0]?.text;
 
             if (!resposta) {
                 throw new HttpsError("internal", "Gemini retornou resposta vazia.");

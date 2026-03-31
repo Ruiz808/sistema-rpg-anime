@@ -176,7 +176,7 @@ export default function AIPanel() {
                 </div>
             )}
 
-            <div style={{ display: 'flex', gap: '10px' }}>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
                 <textarea
                     className="input-neon"
                     placeholder="Fale com a Sexta-Feira..."
@@ -184,8 +184,10 @@ export default function AIPanel() {
                     onChange={e => setMensagem(e.target.value)}
                     onKeyDown={handleKeyDown}
                     disabled={carregando}
+                    maxLength={2000}
                     style={{
-                        flex: 1,
+                        flex: '1 1 auto',
+                        width: 'auto',
                         minHeight: '50px',
                         maxHeight: '120px',
                         resize: 'vertical',
@@ -199,9 +201,11 @@ export default function AIPanel() {
                     disabled={carregando || !mensagem.trim()}
                     style={{
                         padding: '10px 20px',
+                        width: 'auto',
+                        flex: '0 0 auto',
                         borderColor: '#00ffcc',
                         color: '#00ffcc',
-                        alignSelf: 'flex-end',
+                        marginTop: 0,
                         opacity: (carregando || !mensagem.trim()) ? 0.4 : 1
                     }}
                 >
