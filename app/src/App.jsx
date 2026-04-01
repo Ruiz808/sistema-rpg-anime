@@ -21,6 +21,8 @@ import CompendioPanel from './components/compendio/CompendioPanel'
 
 // 🔥 IMPORT DA NOVA INTELIGÊNCIA ARTIFICIAL 🔥
 import AIPanel from './components/ia/AIPanel' 
+// 🔥 IMPORT DO NOVO GRAVADOR 🔥
+import GravadorPanel from './components/ia/GravadorPanel'
 
 import { carregarFichaDoFirebase, iniciarListenerDummies, enviarParaFeed, salvarDummie, iniciarListenerCenario } from './services/firebase-sync'
 import { getMaximo } from './core/attributes'
@@ -574,6 +576,9 @@ export default function App() {
                 
                 {/* 🔥 A NOVA ABA DA INTELIGÊNCIA ARTIFICIAL AQUI 🔥 */}
                 <TabPanel id="aba-oraculo"><AIPanel /></TabPanel>
+
+                {/* 🔥 A NOVA ABA DO GRAVADOR AQUI 🔥 */}
+                <TabPanel id="aba-gravador"><GravadorPanel /></TabPanel>
             </div>
             <ModalConfirm />
         </div>
