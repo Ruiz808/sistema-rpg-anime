@@ -1,5 +1,5 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
-const { VertexAI } = require("@google-cloud/vertexai");
+const { GoogleGenAI } = require("@google/genai");
 
 const SYSTEM_PROMPT = `Você é a Sexta-Feira, uma inteligência artificial assistente dentro de um sistema de RPG anime.
 Você ajuda jogadores com estratégias de combate, dúvidas sobre o sistema, interpretação de personagem e lore.
@@ -40,8 +40,9 @@ function formatarContexto(ctx) {
     return partes.join("\n");
 }
 
-const vertexAI = new VertexAI({
-    project: "databaserpg-5595b",
+const ai = new GoogleGenAI({
+    vertexai: true,
+    project: process.env.GCLOUD_PROJECT || "databaserpg-5595b",
     location: "us-central1",
 });
 
@@ -49,9 +50,13 @@ exports.falarComSextaFeira = onCall(
     {
         region: "us-central1",
         maxInstances: 10,
-        timeoutSeconds: 60,
+        timeoutSeconds: 90,
     },
     async (request) => {
+        if (!request.auth) {
+            throw new HttpsError("unauthenticated", "Autenticacao necessaria.");
+        }
+
         const { mensagem, contextoFicha } = request.data;
 
         if (!mensagem || typeof mensagem !== "string" || !mensagem.trim()) {
@@ -68,16 +73,15 @@ exports.falarComSextaFeira = onCall(
                 ? `${SYSTEM_PROMPT}\n\n--- CONTEXTO DA FICHA ---\n${contexto}\n--- FIM DO CONTEXTO ---`
                 : SYSTEM_PROMPT;
 
-            const model = vertexAI.getGenerativeModel({
-                model: "gemini-2.0-flash-001",
-                systemInstruction: { parts: [{ text: systemInstruction }] },
+            const response = await ai.models.generateContent({
+                model: "gemini-2.0-flash",
+                contents: mensagem.trim(),
+                config: {
+                    systemInstruction: systemInstruction,
+                },
             });
 
-            const result = await model.generateContent({
-                contents: [{ role: "user", parts: [{ text: mensagem.trim() }] }],
-            });
-
-            const resposta = result.response?.candidates?.[0]?.content?.parts?.[0]?.text;
+            const resposta = response.text;
 
             if (!resposta) {
                 throw new HttpsError("internal", "Gemini retornou resposta vazia.");
@@ -87,7 +91,7 @@ exports.falarComSextaFeira = onCall(
         } catch (err) {
             if (err instanceof HttpsError) throw err;
 
-            console.error("[falarComSextaFeira] Erro Gemini:", err.message);
+            console.error("[falarComSextaFeira] Erro Gemini:", err);
             throw new HttpsError("internal", "Erro ao processar resposta da IA.");
         }
     }

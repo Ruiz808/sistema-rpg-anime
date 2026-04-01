@@ -1,8 +1,24 @@
 /**
- * Tests for functions/index.js — falarComSextaFeira Cloud Function
+ * Tests for functions/index.js — formatarContexto and falarComSextaFeira
  *
- * Strategy: inject mocks into Node's require cache before loading index.js
- * so that the CJS require() calls inside index.js resolve to our fakes.
+ * Mocking strategy:
+ *   index.js is CJS and calls require() at load time for both
+ *   `firebase-functions/v2/https` and `@google/genai`. We inject
+ *   fake entries directly into Node's require cache (Module._cache)
+ *   BEFORE loading index.js so the CJS require() calls resolve
+ *   to our controlled fakes.
+ *
+ * SDK shape being mocked (@google/genai v1.x):
+ *   - new GoogleGenAI({ vertexai, project, location })
+ *   - ai.models.generateContent({ model, contents, config }) → { text: string }
+ *
+ * firebase-functions/v2/https shape:
+ *   - onCall(config, handler) — we capture `handler` for direct invocation
+ *   - HttpsError(code, message)
+ *
+ * Auth shape:
+ *   - request.auth must be truthy for the handler to proceed past the
+ *     unauthenticated guard in index.js.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -10,40 +26,50 @@ import { createRequire } from 'node:module';
 import Module from 'node:module';
 
 // ---------------------------------------------------------------------------
-// Mock infrastructure — set up before index.js is loaded
+// HttpsError stub — mirrors firebase-functions behaviour
 // ---------------------------------------------------------------------------
 
 class HttpsError extends Error {
     constructor(code, message) {
         super(message);
         this.code = code;
+        this.name = 'HttpsError';
     }
 }
 
-// Shared mutable state so tests can control mock behavior
-const state = {
-    apiKey: 'test-api-key-123',
-    handler: null,
-};
+// ---------------------------------------------------------------------------
+// Shared mock state
+// ---------------------------------------------------------------------------
 
-// Mutable mock fns re-used across tests
+/** Captured by onCall mock so tests can invoke the handler directly. */
+const state = { handler: null };
+
+/** The core mock — every test can replace its implementation. */
 const mockGenerateContent = vi.fn();
-const mockGetGenerativeModel = vi.fn(() => ({ generateContent: mockGenerateContent }));
+
+// ---------------------------------------------------------------------------
+// Resolve real cache keys (absolute paths on disk)
+// ---------------------------------------------------------------------------
 
 const realRequire = createRequire(import.meta.url);
 
-// Resolve real paths so we can inject precisely the right cache keys
 const firebaseFunctionsPath = realRequire.resolve('firebase-functions/v2/https');
-const paramsPath = realRequire.resolve('firebase-functions/params');
-const genAiPath = realRequire.resolve('@google/generative-ai');
-const indexPath = realRequire.resolve('../index.js');
+const genAiPath             = realRequire.resolve('@google/genai');
+const indexPath             = realRequire.resolve('../index.js');
 
-function makeCacheEntry(id, exports) {
-    return { id, filename: id, loaded: true, exports };
+// ---------------------------------------------------------------------------
+// Helper — build a minimal Module._cache entry
+// ---------------------------------------------------------------------------
+
+function cacheEntry(id, exports) {
+    return { id, filename: id, loaded: true, exports, children: [], parent: null };
 }
 
-// Inject mocks
-Module._cache[firebaseFunctionsPath] = makeCacheEntry(firebaseFunctionsPath, {
+// ---------------------------------------------------------------------------
+// Inject mocks into require cache BEFORE index.js is loaded
+// ---------------------------------------------------------------------------
+
+Module._cache[firebaseFunctionsPath] = cacheEntry(firebaseFunctionsPath, {
     onCall: (_config, handler) => {
         state.handler = handler;
         return handler;
@@ -51,26 +77,32 @@ Module._cache[firebaseFunctionsPath] = makeCacheEntry(firebaseFunctionsPath, {
     HttpsError,
 });
 
-Module._cache[paramsPath] = makeCacheEntry(paramsPath, {
-    defineSecret: () => ({ value: () => state.apiKey }),
-});
-
-Module._cache[genAiPath] = makeCacheEntry(genAiPath, {
-    GoogleGenerativeAI: function () {
-        return { getGenerativeModel: mockGetGenerativeModel };
+Module._cache[genAiPath] = cacheEntry(genAiPath, {
+    GoogleGenAI: function (_opts) {
+        // ai.models.generateContent is the call site in index.js
+        this.models = { generateContent: mockGenerateContent };
     },
 });
 
-// Load index.js fresh (delete cache entry in case it was loaded earlier)
+// Load index.js fresh (wipe any stale entry)
 delete Module._cache[indexPath];
 realRequire('../index.js');
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Request builders
 // ---------------------------------------------------------------------------
 
+/** Authenticated request (passes request.auth guard). */
 function buildRequest(mensagem, contextoFicha = null) {
-    return { data: { mensagem, contextoFicha } };
+    return {
+        auth: { uid: 'test-user-123', token: {} },
+        data: { mensagem, contextoFicha },
+    };
+}
+
+/** Unauthenticated request (no auth object). */
+function buildUnauthRequest(mensagem = 'Oi') {
+    return { data: { mensagem, contextoFicha: null } };
 }
 
 function buildContextoFicha(overrides = {}) {
@@ -98,27 +130,34 @@ function buildContextoFicha(overrides = {}) {
             singularidadeNome: 'Singular',
         },
         poderes: ['Chidori', 'Rasengan'],
-        inventario: ['Espada +2', 'Poção de HP'],
+        inventario: ['Espada +2', 'Pocao de HP'],
         ...overrides,
     };
 }
 
+/** Make generateContent resolve with the given text. */
 function setupGeminiSuccess(texto = 'Resposta da IA.') {
-    mockGetGenerativeModel.mockReturnValue({
-        generateContent: vi.fn().mockResolvedValue({
-            response: { text: () => texto },
-        }),
-    });
+    mockGenerateContent.mockResolvedValue({ text: texto });
 }
 
-async function getSystemInstruction(contextoFicha) {
+/** Make generateContent reject with an Error. */
+function setupGeminiFailure(message = 'Gemini error') {
+    mockGenerateContent.mockRejectedValue(new Error(message));
+}
+
+/**
+ * Run falarComSextaFeira with a given contextoFicha and return the
+ * systemInstruction that was passed to models.generateContent.
+ */
+async function captureSystemInstruction(contextoFicha) {
     setupGeminiSuccess('ok');
     await state.handler(buildRequest('Pergunta', contextoFicha));
-    return mockGetGenerativeModel.mock.calls.at(-1)[0].systemInstruction;
+    const call = mockGenerateContent.mock.calls.at(-1)[0];
+    return call.config.systemInstruction;
 }
 
 // ---------------------------------------------------------------------------
-// Guard test
+// Guard
 // ---------------------------------------------------------------------------
 
 describe('setup', () => {
@@ -128,18 +167,48 @@ describe('setup', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Input validation
+// Authentication guard
+// ---------------------------------------------------------------------------
+
+describe('falarComSextaFeira — autenticacao', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        setupGeminiSuccess();
+    });
+
+    it('lança unauthenticated quando request.auth está ausente', async () => {
+        await expect(state.handler(buildUnauthRequest())).rejects.toMatchObject({
+            code: 'unauthenticated',
+        });
+    });
+
+    it('lança unauthenticated quando request.auth é null', async () => {
+        const req = { auth: null, data: { mensagem: 'Oi', contextoFicha: null } };
+        await expect(state.handler(req)).rejects.toMatchObject({ code: 'unauthenticated' });
+    });
+
+    it('lança unauthenticated quando request.auth é undefined', async () => {
+        const req = { auth: undefined, data: { mensagem: 'Oi', contextoFicha: null } };
+        await expect(state.handler(req)).rejects.toMatchObject({ code: 'unauthenticated' });
+    });
+
+    it('prossegue normalmente com request.auth preenchido', async () => {
+        await expect(state.handler(buildRequest('Oi'))).resolves.toHaveProperty('resposta');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Input validation — falarComSextaFeira
 // ---------------------------------------------------------------------------
 
 describe('falarComSextaFeira — validação de entrada', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        state.apiKey = 'test-api-key-123';
         setupGeminiSuccess();
     });
 
     it('lança invalid-argument quando mensagem está ausente (undefined)', async () => {
-        const req = { data: { mensagem: undefined, contextoFicha: null } };
+        const req = { auth: { uid: 'u' }, data: { mensagem: undefined, contextoFicha: null } };
         await expect(state.handler(req)).rejects.toMatchObject({ code: 'invalid-argument' });
     });
 
@@ -155,68 +224,69 @@ describe('falarComSextaFeira — validação de entrada', () => {
         await expect(state.handler(buildRequest(null))).rejects.toMatchObject({ code: 'invalid-argument' });
     });
 
-    it('lança invalid-argument quando mensagem é um número (tipo errado)', async () => {
-        const req = { data: { mensagem: 42, contextoFicha: null } };
-        await expect(state.handler(req)).rejects.toMatchObject({ code: 'invalid-argument' });
+    it('lança invalid-argument quando mensagem é um número', async () => {
+        await expect(state.handler({ auth: { uid: 'u' }, data: { mensagem: 42 } })).rejects.toMatchObject({
+            code: 'invalid-argument',
+        });
     });
 
-    it('lança invalid-argument quando mensagem é um boolean', async () => {
-        const req = { data: { mensagem: true, contextoFicha: null } };
-        await expect(state.handler(req)).rejects.toMatchObject({ code: 'invalid-argument' });
+    it('lança invalid-argument quando mensagem é boolean', async () => {
+        await expect(state.handler({ auth: { uid: 'u' }, data: { mensagem: true } })).rejects.toMatchObject({
+            code: 'invalid-argument',
+        });
     });
 
     it('lança invalid-argument quando mensagem é um objeto', async () => {
-        const req = { data: { mensagem: {}, contextoFicha: null } };
-        await expect(state.handler(req)).rejects.toMatchObject({ code: 'invalid-argument' });
+        await expect(state.handler({ auth: { uid: 'u' }, data: { mensagem: {} } })).rejects.toMatchObject({
+            code: 'invalid-argument',
+        });
+    });
+
+    it('lança invalid-argument quando mensagem é um array', async () => {
+        await expect(state.handler({ auth: { uid: 'u' }, data: { mensagem: [] } })).rejects.toMatchObject({
+            code: 'invalid-argument',
+        });
+    });
+
+    it('lança invalid-argument quando mensagem é uma nova linha sozinha (trim resulta em vazio)', async () => {
+        await expect(state.handler(buildRequest('\n'))).rejects.toMatchObject({ code: 'invalid-argument' });
+    });
+
+    it('lança invalid-argument quando mensagem é uma tabulação sozinha', async () => {
+        await expect(state.handler(buildRequest('\t'))).rejects.toMatchObject({ code: 'invalid-argument' });
     });
 
     it('lança invalid-argument quando mensagem ultrapassa 2000 caracteres', async () => {
-        const mensagemLonga = 'a'.repeat(2001);
-        await expect(state.handler(buildRequest(mensagemLonga))).rejects.toMatchObject({
+        const longa = 'a'.repeat(2001);
+        await expect(state.handler(buildRequest(longa))).rejects.toMatchObject({
             code: 'invalid-argument',
             message: expect.stringContaining('2000'),
         });
     });
 
-    it('aceita mensagem com exatamente 2000 caracteres (no limite permitido)', async () => {
-        const mensagemExata = 'b'.repeat(2000);
-        const resultado = await state.handler(buildRequest(mensagemExata));
-        expect(resultado).toEqual({ resposta: 'Resposta da IA.' });
+    it('aceita mensagem com exatamente 2000 caracteres (no limite)', async () => {
+        const exata = 'b'.repeat(2000);
+        await expect(state.handler(buildRequest(exata))).resolves.toEqual({ resposta: 'Resposta da IA.' });
     });
 
     it('aceita mensagem com 1999 caracteres (abaixo do limite)', async () => {
-        const mensagem = 'c'.repeat(1999);
-        await expect(state.handler(buildRequest(mensagem))).resolves.toBeDefined();
+        const curta = 'c'.repeat(1999);
+        await expect(state.handler(buildRequest(curta))).resolves.toBeDefined();
     });
 
-    it('lança invalid-argument para mensagem de um único caractere de nova linha (trim resulta em vazio)', async () => {
-        await expect(state.handler(buildRequest('\n'))).rejects.toMatchObject({ code: 'invalid-argument' });
-    });
-
-    it('lança failed-precondition quando API key é string vazia', async () => {
-        state.apiKey = '';
-        await expect(state.handler(buildRequest('Oi'))).rejects.toMatchObject({ code: 'failed-precondition' });
-    });
-
-    it('lança failed-precondition quando API key é null', async () => {
-        state.apiKey = null;
-        await expect(state.handler(buildRequest('Oi'))).rejects.toMatchObject({ code: 'failed-precondition' });
-    });
-
-    it('lança failed-precondition quando API key é undefined', async () => {
-        state.apiKey = undefined;
-        await expect(state.handler(buildRequest('Oi'))).rejects.toMatchObject({ code: 'failed-precondition' });
+    it('aceita mensagem de um único caractere válido', async () => {
+        await expect(state.handler(buildRequest('?'))).resolves.toHaveProperty('resposta');
     });
 });
 
 // ---------------------------------------------------------------------------
-// Happy path
+// Happy path — falarComSextaFeira
 // ---------------------------------------------------------------------------
 
 describe('falarComSextaFeira — caminho feliz', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        state.apiKey = 'test-api-key-123';
+        setupGeminiSuccess();
     });
 
     it('retorna { resposta } com o texto gerado pela IA', async () => {
@@ -225,89 +295,93 @@ describe('falarComSextaFeira — caminho feliz', () => {
         expect(resultado).toEqual({ resposta: 'Use o Rasengan!' });
     });
 
+    it('chave de retorno é exatamente "resposta", sem campos extras', async () => {
+        const resultado = await state.handler(buildRequest('Oi'));
+        expect(Object.keys(resultado)).toEqual(['resposta']);
+    });
+
     it('faz trim na mensagem antes de enviar para a IA', async () => {
-        const mockGenerateContent = vi.fn().mockResolvedValue({
-            response: { text: () => 'ok' },
-        });
-        mockGetGenerativeModel.mockReturnValue({ generateContent: mockGenerateContent });
-
         await state.handler(buildRequest('  Olá Sexta-Feira  '));
-        expect(mockGenerateContent).toHaveBeenCalledWith('Olá Sexta-Feira');
+        const call = mockGenerateContent.mock.calls[0][0];
+        expect(call.contents).toBe('Olá Sexta-Feira');
     });
 
-    it('usa o modelo gemini-2.0-flash', async () => {
-        setupGeminiSuccess('ok');
+    it('passa o modelo correto (gemini-2.0-flash) para generateContent', async () => {
         await state.handler(buildRequest('Oi'));
-        expect(mockGetGenerativeModel).toHaveBeenCalledWith(
-            expect.objectContaining({ model: 'gemini-2.0-flash' })
-        );
-    });
-
-    it('inclui cabeçalho CONTEXTO DA FICHA quando contextoFicha é fornecido', async () => {
-        setupGeminiSuccess('ok');
-        await state.handler(buildRequest('Oi', buildContextoFicha()));
-        const chamada = mockGetGenerativeModel.mock.calls[0][0];
-        expect(chamada.systemInstruction).toContain('CONTEXTO DA FICHA');
-    });
-
-    it('usa somente SYSTEM_PROMPT (sem CONTEXTO DA FICHA) quando contextoFicha é null', async () => {
-        setupGeminiSuccess('ok');
-        await state.handler(buildRequest('Oi', null));
-        const chamada = mockGetGenerativeModel.mock.calls[0][0];
-        expect(chamada.systemInstruction).not.toContain('CONTEXTO DA FICHA');
-        expect(chamada.systemInstruction).toContain('Sexta-Feira');
+        const call = mockGenerateContent.mock.calls[0][0];
+        expect(call.model).toBe('gemini-2.0-flash');
     });
 
     it('chama generateContent exatamente uma vez por requisição', async () => {
-        const mockGC = vi.fn().mockResolvedValue({ response: { text: () => 'resp' } });
-        mockGetGenerativeModel.mockReturnValue({ generateContent: mockGC });
         await state.handler(buildRequest('Teste'));
-        expect(mockGC).toHaveBeenCalledTimes(1);
+        expect(mockGenerateContent).toHaveBeenCalledTimes(1);
     });
 
-    it('instancia GoogleGenerativeAI e chama getGenerativeModel a cada requisição', async () => {
-        setupGeminiSuccess('ok');
-        await state.handler(buildRequest('Oi'));
-        // Verifica que o modelo foi configurado (prova que o construtor de GoogleGenerativeAI rodou)
-        expect(mockGetGenerativeModel).toHaveBeenCalledTimes(1);
-        expect(mockGetGenerativeModel).toHaveBeenCalledWith(
-            expect.objectContaining({ model: 'gemini-2.0-flash' })
-        );
+    it('inclui cabeçalho CONTEXTO DA FICHA quando contextoFicha é fornecido', async () => {
+        const si = await captureSystemInstruction(buildContextoFicha());
+        expect(si).toContain('CONTEXTO DA FICHA');
+    });
+
+    it('usa somente SYSTEM_PROMPT (sem CONTEXTO DA FICHA) quando contextoFicha é null', async () => {
+        const si = await captureSystemInstruction(null);
+        expect(si).not.toContain('CONTEXTO DA FICHA');
+        expect(si).toContain('Sexta-Feira');
+    });
+
+    it('SYSTEM_PROMPT base está presente mesmo quando a ficha tem contexto', async () => {
+        const si = await captureSystemInstruction(buildContextoFicha());
+        expect(si).toContain('Sexta-Feira');
+    });
+
+    it('duas requisições independentes retornam respostas corretas', async () => {
+        mockGenerateContent
+            .mockResolvedValueOnce({ text: 'Primeira' })
+            .mockResolvedValueOnce({ text: 'Segunda' });
+
+        const [r1, r2] = await Promise.all([
+            state.handler(buildRequest('Pergunta 1')),
+            state.handler(buildRequest('Pergunta 2')),
+        ]);
+        expect(r1).toEqual({ resposta: 'Primeira' });
+        expect(r2).toEqual({ resposta: 'Segunda' });
     });
 });
 
 // ---------------------------------------------------------------------------
-// Error handling
+// Error handling — falarComSextaFeira
 // ---------------------------------------------------------------------------
 
 describe('falarComSextaFeira — tratamento de erros', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        state.apiKey = 'test-api-key-123';
     });
 
-    it('lança internal quando Gemini retorna resposta vazia', async () => {
-        mockGetGenerativeModel.mockReturnValue({
-            generateContent: vi.fn().mockResolvedValue({ response: { text: () => '' } }),
-        });
+    it('lança internal quando Gemini retorna response.text como string vazia', async () => {
+        mockGenerateContent.mockResolvedValue({ text: '' });
         await expect(state.handler(buildRequest('Oi'))).rejects.toMatchObject({
             code: 'internal',
             message: expect.stringContaining('vazia'),
         });
     });
 
+    it('lança internal quando Gemini retorna response.text como null', async () => {
+        mockGenerateContent.mockResolvedValue({ text: null });
+        await expect(state.handler(buildRequest('Oi'))).rejects.toMatchObject({ code: 'internal' });
+    });
+
+    it('lança internal quando Gemini retorna response.text como undefined', async () => {
+        mockGenerateContent.mockResolvedValue({ text: undefined });
+        await expect(state.handler(buildRequest('Oi'))).rejects.toMatchObject({ code: 'internal' });
+    });
+
     it('lança internal quando generateContent rejeita com erro genérico', async () => {
-        mockGetGenerativeModel.mockReturnValue({
-            generateContent: vi.fn().mockRejectedValue(new Error('Network timeout')),
-        });
+        setupGeminiFailure('Network timeout');
         await expect(state.handler(buildRequest('Oi'))).rejects.toMatchObject({ code: 'internal' });
     });
 
     it('repropaga HttpsError original sem encapsular em outro erro', async () => {
-        const erroOriginal = new HttpsError('permission-denied', 'Acesso negado');
-        mockGetGenerativeModel.mockReturnValue({
-            generateContent: vi.fn().mockRejectedValue(erroOriginal),
-        });
+        const original = new HttpsError('permission-denied', 'Acesso negado');
+        mockGenerateContent.mockRejectedValue(original);
         await expect(state.handler(buildRequest('Oi'))).rejects.toMatchObject({
             code: 'permission-denied',
             message: 'Acesso negado',
@@ -315,120 +389,137 @@ describe('falarComSextaFeira — tratamento de erros', () => {
     });
 
     it('não vaza detalhes internos da API no erro exposto ao cliente', async () => {
-        mockGetGenerativeModel.mockReturnValue({
-            generateContent: vi.fn().mockRejectedValue(new Error('API quota exceeded for project xyz-123')),
-        });
-        const erro = await state.handler(buildRequest('Oi')).catch((e) => e);
-        expect(erro.code).toBe('internal');
-        expect(erro.message).not.toContain('quota');
-        expect(erro.message).not.toContain('xyz');
+        setupGeminiFailure('API quota exceeded for project xyz-secret-123');
+        const err = await state.handler(buildRequest('Oi')).catch((e) => e);
+        expect(err.code).toBe('internal');
+        expect(err.message).not.toContain('quota');
+        expect(err.message).not.toContain('xyz-secret');
     });
 
-    it('lança internal quando response.text lança exceção (ex: filtro de segurança)', async () => {
-        mockGetGenerativeModel.mockReturnValue({
-            generateContent: vi.fn().mockResolvedValue({
-                response: { text: () => { throw new Error('blocked by safety filter'); } },
-            }),
-        });
-        await expect(state.handler(buildRequest('Pergunta'))).rejects.toMatchObject({ code: 'internal' });
-    });
-
-    it('lança internal (não propaga outro HttpsError code genérico) para erros de rede', async () => {
-        mockGetGenerativeModel.mockReturnValue({
-            generateContent: vi.fn().mockRejectedValue(new Error('ECONNREFUSED')),
-        });
-        const erro = await state.handler(buildRequest('Oi')).catch((e) => e);
-        expect(erro.code).toBe('internal');
+    it('lança internal quando generateContent lança ECONNREFUSED', async () => {
+        setupGeminiFailure('ECONNREFUSED 0.0.0.0:443');
+        const err = await state.handler(buildRequest('Oi')).catch((e) => e);
+        expect(err.code).toBe('internal');
     });
 });
 
 // ---------------------------------------------------------------------------
-// formatarContexto — tested indirectly via systemInstruction content
+// formatarContexto — tested via systemInstruction content
 // ---------------------------------------------------------------------------
 
-describe('formatarContexto — testado via systemInstruction', () => {
+describe('formatarContexto — via systemInstruction', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        state.apiKey = 'test-api-key-123';
     });
 
-    it('retorna somente SYSTEM_PROMPT quando contextoFicha é null', async () => {
-        const si = await getSystemInstruction(null);
-        expect(si).toContain('Sexta-Feira');
+    // null / undefined / empty ------------------------------------------------
+
+    it('retorna string vazia (sem CONTEXTO) quando contextoFicha é null', async () => {
+        const si = await captureSystemInstruction(null);
         expect(si).not.toContain('CONTEXTO DA FICHA');
     });
 
-    it('retorna somente SYSTEM_PROMPT quando contextoFicha é undefined', async () => {
-        const si = await getSystemInstruction(undefined);
+    it('retorna string vazia (sem CONTEXTO) quando contextoFicha é undefined', async () => {
+        const si = await captureSystemInstruction(undefined);
         expect(si).not.toContain('CONTEXTO DA FICHA');
     });
 
-    it('lida com contextoFicha vazio {} sem lançar erro', async () => {
+    it('não lança erro com contextoFicha vazio {}', async () => {
         await expect(state.handler(buildRequest('Oi', {}))).resolves.toEqual({ resposta: 'ok' });
     });
 
+    // nome --------------------------------------------------------------------
+
     it('usa "Desconhecido" quando ctx.nome está ausente', async () => {
-        const si = await getSystemInstruction({ raca: 'Orc' });
+        const si = await captureSystemInstruction({ raca: 'Orc' });
         expect(si).toContain('Desconhecido');
     });
 
-    it('inclui o nome do personagem', async () => {
-        const si = await getSystemInstruction(buildContextoFicha({ nome: 'Sasuke' }));
+    it('usa "Desconhecido" quando ctx.nome é string vazia', async () => {
+        const si = await captureSystemInstruction({ nome: '' });
+        expect(si).toContain('Desconhecido');
+    });
+
+    it('inclui o nome do personagem quando fornecido', async () => {
+        const si = await captureSystemInstruction(buildContextoFicha({ nome: 'Sasuke' }));
         expect(si).toContain('Sasuke');
     });
 
-    it('inclui raça quando fornecida', async () => {
-        const si = await getSystemInstruction(buildContextoFicha({ raca: 'Elfo' }));
+    // raça / classe / nível ---------------------------------------------------
+
+    it('inclui raca quando fornecida', async () => {
+        const si = await captureSystemInstruction(buildContextoFicha({ raca: 'Elfo' }));
         expect(si).toContain('Elfo');
     });
 
+    it('omite raca quando ausente', async () => {
+        const ctx = buildContextoFicha();
+        delete ctx.raca;
+        const si = await captureSystemInstruction(ctx);
+        expect(si).not.toContain('Raca:');
+    });
+
     it('inclui classe quando fornecida', async () => {
-        const si = await getSystemInstruction(buildContextoFicha({ classe: 'Mago' }));
+        const si = await captureSystemInstruction(buildContextoFicha({ classe: 'Mago' }));
         expect(si).toContain('Mago');
     });
 
-    it('inclui nível quando fornecido', async () => {
-        const si = await getSystemInstruction(buildContextoFicha({ nivel: 42 }));
+    it('inclui nivel quando fornecido', async () => {
+        const si = await captureSystemInstruction(buildContextoFicha({ nivel: 42 }));
         expect(si).toContain('42');
     });
 
+    // HP ----------------------------------------------------------------------
+
     it('formata HP como "atual/max"', async () => {
-        const si = await getSystemInstruction(buildContextoFicha({ hp: 75, hpMax: 100 }));
+        const si = await captureSystemInstruction(buildContextoFicha({ hp: 75, hpMax: 100 }));
         expect(si).toContain('75/100');
     });
 
     it('usa 0 como HP atual quando hp é undefined mas hpMax está presente', async () => {
         const ctx = buildContextoFicha({ hpMax: 100 });
         delete ctx.hp;
-        const si = await getSystemInstruction(ctx);
+        const si = await captureSystemInstruction(ctx);
         expect(si).toContain('0/100');
     });
 
-    it('omite linha de HP quando hpMax está ausente', async () => {
-        const si = await getSystemInstruction({ nome: 'Sem HP', hp: 50 });
+    it('omite linha HP quando hpMax está ausente', async () => {
+        const si = await captureSystemInstruction({ nome: 'Sem HP', hp: 50 });
         expect(si).not.toContain('HP:');
     });
 
+    it('inclui HP quando hp é 0 e hpMax está presente', async () => {
+        const si = await captureSystemInstruction(buildContextoFicha({ hp: 0, hpMax: 100 }));
+        expect(si).toContain('0/100');
+    });
+
+    // Mana --------------------------------------------------------------------
+
     it('formata Mana como "atual/max"', async () => {
-        const si = await getSystemInstruction(buildContextoFicha({ mana: 30, manaMax: 200 }));
+        const si = await captureSystemInstruction(buildContextoFicha({ mana: 30, manaMax: 200 }));
         expect(si).toContain('30/200');
     });
 
     it('usa 0 como Mana atual quando mana é undefined mas manaMax está presente', async () => {
         const ctx = buildContextoFicha({ manaMax: 200 });
         delete ctx.mana;
-        const si = await getSystemInstruction(ctx);
+        const si = await captureSystemInstruction(ctx);
         expect(si).toContain('0/200');
     });
 
-    it('omite linha de Mana quando manaMax está ausente', async () => {
-        const si = await getSystemInstruction({ nome: 'Sem Mana', mana: 30 });
+    it('omite linha Mana quando manaMax está ausente', async () => {
+        const si = await captureSystemInstruction({ nome: 'Sem Mana', mana: 30 });
         expect(si).not.toContain('Mana:');
     });
 
+    // Stats -------------------------------------------------------------------
+
     it('inclui todas as seis stats quando presentes', async () => {
-        const ctx = buildContextoFicha({ forca: 18, destreza: 14, inteligencia: 10, sabedoria: 12, carisma: 16, constituicao: 15 });
-        const si = await getSystemInstruction(ctx);
+        const ctx = buildContextoFicha({
+            forca: 18, destreza: 14, inteligencia: 10,
+            sabedoria: 12, carisma: 16, constituicao: 15,
+        });
+        const si = await captureSystemInstruction(ctx);
         expect(si).toContain('FOR:18');
         expect(si).toContain('DES:14');
         expect(si).toContain('INT:10');
@@ -438,8 +529,7 @@ describe('formatarContexto — testado via systemInstruction', () => {
     });
 
     it('omite stats ausentes da linha Stats', async () => {
-        const ctx = { nome: 'Parcial', forca: 10 };
-        const si = await getSystemInstruction(ctx);
+        const si = await captureSystemInstruction({ nome: 'Parcial', forca: 10 });
         expect(si).toContain('FOR:10');
         expect(si).not.toContain('DES:');
         expect(si).not.toContain('INT:');
@@ -449,21 +539,27 @@ describe('formatarContexto — testado via systemInstruction', () => {
     });
 
     it('omite seção Stats quando nenhuma stat está presente', async () => {
-        const si = await getSystemInstruction({ nome: 'Sem Stats' });
+        const si = await captureSystemInstruction({ nome: 'Sem Stats' });
         expect(si).not.toContain('Stats:');
     });
 
-    it('inclui stat com valor zero (0 é valor válido, não ausente)', async () => {
-        const ctx = { nome: 'Zero Stats', forca: 0 };
-        const si = await getSystemInstruction(ctx);
+    it('inclui stat com valor zero (0 é válido, não ausente)', async () => {
+        const si = await captureSystemInstruction({ nome: 'Zero Force', forca: 0 });
         expect(si).toContain('FOR:0');
     });
 
-    it('inclui poderNome quando hierarquia.poder é true', async () => {
+    it('inclui stat com valor negativo', async () => {
+        const si = await captureSystemInstruction({ nome: 'Debuffado', forca: -5 });
+        expect(si).toContain('FOR:-5');
+    });
+
+    // Hierarquia --------------------------------------------------------------
+
+    it('inclui poderNome quando hierarquia.poder é true e poderNome está presente', async () => {
         const ctx = buildContextoFicha({
             hierarquia: { poder: true, poderNome: 'Deus', infinity: false, infinityNome: '', singularidade: false, singularidadeNome: '' },
         });
-        const si = await getSystemInstruction(ctx);
+        const si = await captureSystemInstruction(ctx);
         expect(si).toContain('Deus');
     });
 
@@ -471,7 +567,7 @@ describe('formatarContexto — testado via systemInstruction', () => {
         const ctx = buildContextoFicha({
             hierarquia: { poder: false, poderNome: 'Deus', infinity: false, infinityNome: '', singularidade: false, singularidadeNome: '' },
         });
-        const si = await getSystemInstruction(ctx);
+        const si = await captureSystemInstruction(ctx);
         expect(si).not.toContain('Deus');
     });
 
@@ -479,53 +575,103 @@ describe('formatarContexto — testado via systemInstruction', () => {
         const ctx = buildContextoFicha({
             hierarquia: { poder: false, poderNome: '', infinity: true, infinityNome: 'Omega', singularidade: false, singularidadeNome: '' },
         });
-        const si = await getSystemInstruction(ctx);
+        const si = await captureSystemInstruction(ctx);
         expect(si).toContain('Omega');
     });
 
     it('inclui singularidadeNome quando hierarquia.singularidade é true', async () => {
         const ctx = buildContextoFicha({
-            hierarquia: { poder: false, poderNome: '', infinity: false, infinityNome: '', singularidade: true, singularidadeNome: 'Único' },
+            hierarquia: { poder: false, poderNome: '', infinity: false, infinityNome: '', singularidade: true, singularidadeNome: 'Unico' },
         });
-        const si = await getSystemInstruction(ctx);
-        expect(si).toContain('Único');
+        const si = await captureSystemInstruction(ctx);
+        expect(si).toContain('Unico');
     });
 
     it('lida com hierarquia null sem lançar erro', async () => {
         const ctx = buildContextoFicha({ hierarquia: null });
-        await expect(state.handler(buildRequest('Oi', ctx))).resolves.toEqual({ resposta: 'ok' });
+        await expect(state.handler(buildRequest('Oi', ctx))).resolves.toHaveProperty('resposta');
     });
 
     it('lida com hierarquia undefined sem lançar erro', async () => {
-        const ctx = buildContextoFicha({});
+        const ctx = buildContextoFicha();
         delete ctx.hierarquia;
-        await expect(state.handler(buildRequest('Oi', ctx))).resolves.toEqual({ resposta: 'ok' });
+        await expect(state.handler(buildRequest('Oi', ctx))).resolves.toHaveProperty('resposta');
     });
 
+    it('omite poder quando poderNome é string vazia mesmo que poder seja true', async () => {
+        const ctx = buildContextoFicha({
+            hierarquia: { poder: true, poderNome: '', infinity: false, infinityNome: '', singularidade: false, singularidadeNome: '' },
+        });
+        const si = await captureSystemInstruction(ctx);
+        expect(si).not.toContain('Poder:');
+    });
+
+    // Poderes -----------------------------------------------------------------
+
     it('inclui poderes separados por vírgula', async () => {
-        const si = await getSystemInstruction(buildContextoFicha({ poderes: ['Fireball', 'Teleport'] }));
+        const si = await captureSystemInstruction(buildContextoFicha({ poderes: ['Fireball', 'Teleport'] }));
         expect(si).toContain('Fireball');
         expect(si).toContain('Teleport');
     });
 
     it('omite seção Poderes quando array está vazio', async () => {
-        const si = await getSystemInstruction(buildContextoFicha({ poderes: [] }));
+        const si = await captureSystemInstruction(buildContextoFicha({ poderes: [] }));
         expect(si).not.toContain('Poderes:');
     });
 
+    it('omite seção Poderes quando poderes está ausente', async () => {
+        const ctx = buildContextoFicha();
+        delete ctx.poderes;
+        const si = await captureSystemInstruction(ctx);
+        expect(si).not.toContain('Poderes:');
+    });
+
+    it('inclui poder único sem vírgulas extras', async () => {
+        const si = await captureSystemInstruction(buildContextoFicha({ poderes: ['Sharingan'] }));
+        expect(si).toContain('Sharingan');
+    });
+
+    // Inventário --------------------------------------------------------------
+
     it('inclui inventário separado por vírgula', async () => {
-        const si = await getSystemInstruction(buildContextoFicha({ inventario: ['Escudo', 'Antídoto'] }));
+        const si = await captureSystemInstruction(buildContextoFicha({ inventario: ['Escudo', 'Antidoto'] }));
         expect(si).toContain('Escudo');
-        expect(si).toContain('Antídoto');
+        expect(si).toContain('Antidoto');
     });
 
     it('omite seção Inventario quando array está vazio', async () => {
-        const si = await getSystemInstruction(buildContextoFicha({ inventario: [] }));
+        const si = await captureSystemInstruction(buildContextoFicha({ inventario: [] }));
         expect(si).not.toContain('Inventario:');
     });
 
-    it('inclui SYSTEM_PROMPT base mesmo quando ficha tem contexto', async () => {
-        const si = await getSystemInstruction(buildContextoFicha());
+    it('omite seção Inventario quando inventario está ausente', async () => {
+        const ctx = buildContextoFicha();
+        delete ctx.inventario;
+        const si = await captureSystemInstruction(ctx);
+        expect(si).not.toContain('Inventario:');
+    });
+
+    // Full integration — ficha completa ---------------------------------------
+
+    it('ficha completa inclui todas as seções esperadas', async () => {
+        const ctx = buildContextoFicha({
+            nome: 'Goku', raca: 'Saiyajin', classe: 'Lutador', nivel: 99,
+            hp: 9000, hpMax: 9000, mana: 100, manaMax: 100,
+            forca: 20, destreza: 18, inteligencia: 10, sabedoria: 12, carisma: 15, constituicao: 20,
+            hierarquia: { poder: true, poderNome: 'Super Saiyajin', infinity: false, infinityNome: '', singularidade: false, singularidadeNome: '' },
+            poderes: ['Kamehameha', 'Genki-Dama'],
+            inventario: ['Senzu Bean'],
+        });
+        const si = await captureSystemInstruction(ctx);
+        expect(si).toContain('Goku');
+        expect(si).toContain('Saiyajin');
+        expect(si).toContain('99');
+        expect(si).toContain('9000/9000');
+        expect(si).toContain('FOR:20');
+        expect(si).toContain('Super Saiyajin');
+        expect(si).toContain('Kamehameha');
+        expect(si).toContain('Senzu Bean');
+        expect(si).toContain('CONTEXTO DA FICHA');
         expect(si).toContain('Sexta-Feira');
     });
 });

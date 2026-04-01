@@ -14,7 +14,7 @@
   },
   "main": "index.js",
   "dependencies": {
-    "@google-cloud/vertexai": "^1.9.0",
+    "@google/genai": "^1.47.0",
     "firebase-functions": "^5.0.0"
   },
   "private": true,
