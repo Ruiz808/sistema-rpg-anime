@@ -1,6 +1,14 @@
 import React from 'react';
-import { CompendioFormProvider } from './CompendioFormContext';
-import { CompendioSidebar, CompendioAreaCentral } from './CompendioSubComponents';
+import { CompendioFormProvider, useCompendioForm } from './CompendioFormContext';
+import { CompendioSidebar, CompendioClassesGrid, CompendioGrandsSecao } from './CompendioSubComponents';
+
+function CompendioAreaCentral() {
+    const ctx = useCompendioForm();
+    if (!ctx) return null;
+    if (ctx.secaoAtiva === 'grands') return <CompendioGrandsSecao />;
+    if (ctx.secaoAtiva === 'classes') return <CompendioClassesGrid />;
+    return null;
+}
 
 export default function CompendioPanel() {
     return (

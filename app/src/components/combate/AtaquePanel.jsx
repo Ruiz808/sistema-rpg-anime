@@ -1,24 +1,24 @@
 import React from 'react';
 import { AtaqueFormProvider } from './AtaqueFormContext';
 import {
-    AtaqueFuriaBerserker,
-    AtaqueConfiguracaoCritico,
+    AtaqueFuriaDisplay,
+    AtaqueCriticoConfig,
     AtaqueArmaEquipada,
+    AtaqueArmaVazia,
     AtaqueHabilidadesAtivas,
-    AtaqueMagiasPreparadas,
-    AtaqueControlesFinais
+    AtaqueBotoesAcao
 } from './AtaqueSubComponents';
 
 export default function AtaquePanel() {
     return (
         <AtaqueFormProvider>
             <div className="ataque-panel">
-                <AtaqueFuriaBerserker />
-                <AtaqueConfiguracaoCritico />
+                <AtaqueFuriaDisplay />
+                <AtaqueCriticoConfig />
                 <AtaqueArmaEquipada />
+                <AtaqueArmaVazia />
                 <AtaqueHabilidadesAtivas />
-                <AtaqueMagiasPreparadas />
-                <AtaqueControlesFinais />
+                <AtaqueBotoesAcao />
             </div>
         </AtaqueFormProvider>
     );

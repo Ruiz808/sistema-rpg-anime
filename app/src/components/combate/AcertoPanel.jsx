@@ -1,13 +1,13 @@
 import React from 'react';
 import { AcertoFormProvider } from './AcertoFormContext';
 import {
-    AcertoHeader,
-    AcertoAtributosSelecionados,
-    AcertoConfiguracaoDados,
-    AcertoVantagensDesvantagens,
-    AcertoScannerArsenal,
-    AcertoHUDDistancia,
-    AcertoBotoesAcao
+    AcertoClasseBuffs,
+    AcertoStatsSelector,
+    AcertoDadosConfig,
+    AcertoVantagensGrid,
+    AcertoArsenalScanner,
+    AcertoDistanciaHUD,
+    AcertoRolarButton
 } from './AcertoSubComponents';
 
 export default function AcertoPanel() {
@@ -15,13 +15,13 @@ export default function AcertoPanel() {
         <AcertoFormProvider>
             <div className="acerto-panel">
                 <div className="def-box">
-                    <AcertoHeader />
-                    <AcertoAtributosSelecionados />
-                    <AcertoConfiguracaoDados />
-                    <AcertoVantagensDesvantagens />
-                    <AcertoScannerArsenal />
-                    <AcertoHUDDistancia />
-                    <AcertoBotoesAcao />
+                    <AcertoClasseBuffs />
+                    <AcertoStatsSelector />
+                    <AcertoDadosConfig />
+                    <AcertoVantagensGrid />
+                    <AcertoArsenalScanner />
+                    <AcertoDistanciaHUD />
+                    <AcertoRolarButton />
                 </div>
             </div>
         </AcertoFormProvider>
