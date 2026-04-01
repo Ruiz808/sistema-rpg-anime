@@ -23,7 +23,6 @@ export function NarrativaFormProvider({ children }) {
     const minhaFicha = useStore(s => s.minhaFicha);
     const updateFicha = useStore(s => s.updateFicha);
 
-    // Bio fields
     const [raca, setRaca] = useState('');
     const [classe, setClasse] = useState('');
     const [idade, setIdade] = useState('');
@@ -33,7 +32,6 @@ export function NarrativaFormProvider({ children }) {
     const [afiliacao, setAfiliacao] = useState('');
     const [dinheiro, setDinheiro] = useState('');
 
-    // Passive creation/editing
     const [passivaNome, setPassivaNome] = useState('');
     const [passivaTipo, setPassivaTipo] = useState('Vantagem');
     const [efeitosTempPassiva, setEfeitosTempPassiva] = useState([]);
@@ -43,12 +41,10 @@ export function NarrativaFormProvider({ children }) {
     const [novoVal, setNovoVal] = useState('');
     const [editIndex, setEditIndex] = useState(-1);
 
-    // Save feedback
     const [salvando, setSalvando] = useState(false);
 
-    // Load bio from ficha
     const carregarBio = useCallback(() => {
-        const bio = minhaFicha.bio || {};
+        const bio = minhaFicha?.bio || {};
         setRaca(bio.raca || '');
         setClasse(bio.classe || '');
         setIdade(bio.idade || '');
@@ -57,181 +53,62 @@ export function NarrativaFormProvider({ children }) {
         setAlinhamento(bio.alinhamento || '');
         setAfiliacao(bio.afiliacao || '');
         setDinheiro(bio.dinheiro || '');
-    }, [minhaFicha.bio]);
+    }, [minhaFicha?.bio]);
 
-    useEffect(() => {
-        carregarBio();
-    }, [carregarBio]);
-
-    const passivas = minhaFicha.passivas || [];
+    useEffect(() => { carregarBio(); }, [carregarBio]);
 
     const salvarBio = useCallback(() => {
         updateFicha((ficha) => {
             if (!ficha.bio) ficha.bio = {};
-            ficha.bio.raca = raca;
-            ficha.bio.classe = classe;
-            ficha.bio.idade = idade;
-            ficha.bio.fisico = fisico;
-            ficha.bio.sangue = sangue;
-            ficha.bio.alinhamento = alinhamento;
-            ficha.bio.afiliacao = afiliacao;
-            ficha.bio.dinheiro = dinheiro;
+            ficha.bio.raca = raca; ficha.bio.classe = classe; ficha.bio.idade = idade;
+            ficha.bio.fisico = fisico; ficha.bio.sangue = sangue; ficha.bio.alinhamento = alinhamento;
+            ficha.bio.afiliacao = afiliacao; ficha.bio.dinheiro = dinheiro;
         });
         salvarFichaSilencioso();
-        setSalvando(true);
-        setTimeout(() => setSalvando(false), 2000);
-    }, [updateFicha, raca, classe, idade, fisico, sangue, alinhamento, afiliacao, dinheiro]);
+        setSalvando(true); setTimeout(() => setSalvando(false), 2000);
+    }, [raca, classe, idade, fisico, sangue, alinhamento, afiliacao, dinheiro, updateFicha]);
 
     const addEfeitoPassiva = useCallback(() => {
         if (!novoVal || !nomeEfeito.trim()) { alert('Preencha o nome e o valor do efeito!'); return; }
-        setEfeitosTempPassiva(prev => [...prev, {
-            nome: nomeEfeito.trim(),
-            atributo: novoAtr,
-            propriedade: novoProp,
-            valor: novoVal
-        }]);
-        setNovoVal('');
-        setNomeEfeito('');
+        setEfeitosTempPassiva(prev => [...prev, { nome: nomeEfeito.trim(), atributo: novoAtr, propriedade: novoProp, valor: novoVal }]);
+        setNovoVal(''); setNomeEfeito('');
     }, [novoVal, nomeEfeito, novoAtr, novoProp]);
 
     const removerEfeitoPassiva = useCallback((i) => {
-        setEfeitosTempPassiva(prev => {
-            const newList = [...prev];
-            newList.splice(i, 1);
-            return newList;
-        });
+        setEfeitosTempPassiva(prev => { const newList = [...prev]; newList.splice(i, 1); return newList; });
     }, []);
 
-    const cancelarEdicao = useCallback(() => {
-        setPassivaNome('');
-        setPassivaTipo('Vantagem');
-        setEfeitosTempPassiva([]);
-        setEditIndex(-1);
-    }, []);
+    const passivas = useMemo(() => minhaFicha?.passivas || [], [minhaFicha?.passivas]);
 
     const editarPassiva = useCallback((index) => {
         const p = passivas[index];
-        setPassivaNome(p.nome);
-        setPassivaTipo(p.tipo || 'Vantagem');
-        setEfeitosTempPassiva(JSON.parse(JSON.stringify(p.efeitos || [])));
-        setEditIndex(index);
+        if (!p) return;
+        setPassivaNome(p.nome); setPassivaTipo(p.tipo || 'Vantagem'); setEfeitosTempPassiva(JSON.parse(JSON.stringify(p.efeitos || []))); setEditIndex(index);
         document.getElementById('painel-edicao-passiva')?.scrollIntoView({ behavior: 'smooth' });
     }, [passivas]);
 
-    const salvarPassiva = useCallback(() => {
-        if (passivaNome.trim() === '') {
-            alert('Digite o nome da habilidade!');
-            return;
-        }
+    const cancelarEdicao = useCallback(() => {
+        setPassivaNome(''); setPassivaTipo('Vantagem'); setEfeitosTempPassiva([]); setEditIndex(-1);
+    }, []);
 
+    const salvarPassiva = useCallback(() => {
+        if (passivaNome.trim() === '') { alert('Digite o nome da habilidade!'); return; }
         updateFicha((ficha) => {
             if (!ficha.passivas) ficha.passivas = [];
-            const novaPassiva = {
-                nome: passivaNome.trim(),
-                tipo: passivaTipo,
-                efeitos: JSON.parse(JSON.stringify(efeitosTempPassiva))
-            };
-            if (editIndex >= 0) {
-                ficha.passivas[editIndex] = novaPassiva;
-            } else {
-                ficha.passivas.push(novaPassiva);
-            }
+            const novaPassiva = { nome: passivaNome.trim(), tipo: passivaTipo, efeitos: JSON.parse(JSON.stringify(efeitosTempPassiva)) };
+            if (editIndex >= 0) ficha.passivas[editIndex] = novaPassiva;
+            else ficha.passivas.push(novaPassiva);
         });
-
-        cancelarEdicao();
-        salvarFichaSilencioso();
-    }, [updateFicha, passivaNome, passivaTipo, efeitosTempPassiva, editIndex, cancelarEdicao]);
+        cancelarEdicao(); salvarFichaSilencioso();
+    }, [passivaNome, passivaTipo, efeitosTempPassiva, editIndex, updateFicha, cancelarEdicao]);
 
     const removerPassiva = useCallback((index) => {
-        updateFicha((ficha) => {
-            if (!ficha.passivas) return;
-            ficha.passivas.splice(index, 1);
-        });
+        updateFicha((ficha) => { if (!ficha.passivas) return; ficha.passivas.splice(index, 1); });
         if (editIndex === index) cancelarEdicao();
         salvarFichaSilencioso();
-    }, [updateFicha, editIndex, cancelarEdicao]);
+    }, [editIndex, updateFicha, cancelarEdicao]);
 
-    // Auto-audit report
-    const relatorioAuditoria = useMemo(() => {
-        if (!passivas || passivas.length === 0) return null;
+    const value = useMemo(() => ({ raca, setRaca, classe, setClasse, idade, setIdade, fisico, setFisico, sangue, setSangue, alinhamento, setAlinhamento, afiliacao, setAfiliacao, dinheiro, setDinheiro, passivaNome, setPassivaNome, passivaTipo, setPassivaTipo, efeitosTempPassiva, nomeEfeito, setNomeEfeito, novoAtr, setNovoAtr, novoProp, setNovoProp, novoVal, setNovoVal, editIndex, salvando, salvarBio, addEfeitoPassiva, removerEfeitoPassiva, editarPassiva, cancelarEdicao, salvarPassiva, removerPassiva, passivas }), [ raca, classe, idade, fisico, sangue, alinhamento, afiliacao, dinheiro, passivaNome, passivaTipo, efeitosTempPassiva, nomeEfeito, novoAtr, novoProp, novoVal, editIndex, salvando, salvarBio, addEfeitoPassiva, removerEfeitoPassiva, editarPassiva, cancelarEdicao, salvarPassiva, removerPassiva, passivas ]);
 
-        const mapaEfeitos = { mbase: [], mgeral: [], mformas: [], mabs: [], munico: [], base: [], especial: [] };
-        const nomesProps = {
-            mbase: 'MULT BASE (x)', mgeral: 'MULT GERAL (x)', mformas: 'MULT FORMA (x)',
-            mabs: 'MULT ABSOLUTO (x)', munico: 'MULT UNICO (x)', base: 'VALOR BRUTO (+)'
-        };
-
-        passivas.forEach(p => {
-            if (p.efeitos) {
-                p.efeitos.forEach(ef => {
-                    const txt = { nome: p.nome, atributo: ef.atributo, valor: ef.valor };
-                    if (mapaEfeitos[ef.propriedade]) {
-                        mapaEfeitos[ef.propriedade].push(txt);
-                    } else {
-                        mapaEfeitos.especial.push(txt);
-                    }
-                });
-            }
-        });
-
-        const sections = [];
-        let hasContent = false;
-
-        for (const prop in nomesProps) {
-            if (mapaEfeitos[prop].length > 0) {
-                hasContent = true;
-                sections.push({ key: prop, label: nomesProps[prop], items: mapaEfeitos[prop], color: '#f0f' });
-            }
-        }
-        if (mapaEfeitos.especial.length > 0) {
-            hasContent = true;
-            sections.push({ key: 'especial', label: 'OUTROS EFEITOS', items: mapaEfeitos.especial, color: '#0ff' });
-        }
-
-        return { hasContent, sections };
-    }, [passivas]);
-
-    const value = useMemo(() => ({
-        raca, setRaca,
-        classe, setClasse,
-        idade, setIdade,
-        fisico, setFisico,
-        sangue, setSangue,
-        alinhamento, setAlinhamento,
-        afiliacao, setAfiliacao,
-        dinheiro, setDinheiro,
-        salvando,
-        salvarBio,
-        passivaNome, setPassivaNome,
-        passivaTipo, setPassivaTipo,
-        efeitosTempPassiva,
-        nomeEfeito, setNomeEfeito,
-        novoAtr, setNovoAtr,
-        novoProp, setNovoProp,
-        novoVal, setNovoVal,
-        editIndex,
-        passivas,
-        addEfeitoPassiva,
-        removerEfeitoPassiva,
-        editarPassiva,
-        cancelarEdicao,
-        salvarPassiva,
-        removerPassiva,
-        relatorioAuditoria,
-    }), [
-        raca, classe, idade, fisico, sangue, alinhamento, afiliacao, dinheiro,
-        salvando, salvarBio,
-        passivaNome, passivaTipo, efeitosTempPassiva,
-        nomeEfeito, novoAtr, novoProp, novoVal, editIndex,
-        passivas,
-        addEfeitoPassiva, removerEfeitoPassiva, editarPassiva,
-        cancelarEdicao, salvarPassiva, removerPassiva,
-        relatorioAuditoria,
-    ]);
-
-    return (
-        <NarrativaFormContext.Provider value={value}>
-            {children}
-        </NarrativaFormContext.Provider>
-    );
+    return <NarrativaFormContext.Provider value={value}>{children}</NarrativaFormContext.Provider>;
 }
