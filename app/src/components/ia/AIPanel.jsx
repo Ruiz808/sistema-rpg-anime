@@ -45,24 +45,15 @@ export default function AIPanel() {
 
     const [loreFoco, setLoreFoco] = useState('presente'); 
 
-    // --- ESTADOS DE ADIÇÃO NA TIER LIST ---
+    // --- ESTADOS PARA CRIAR PERSONAGEM CUSTOMIZADO ---
     const [novoPersonagem, setNovoPersonagem] = useState('');
     const [novoAvatar, setNovoAvatar] = useState('');
-    const [novoRank, setNovoRank] = useState('S');
     
     // --- CAPÍTULOS DO PRESENTE ---
     const [capitulosPresente, setCapitulosPresente] = useState(() => {
         const salvo = localStorage.getItem('rpgSextaFeira_capitulos');
         if (salvo) return JSON.parse(salvo).map(c => ({ ...c, tierList: c.tierList || [] }));
-        return [{ 
-            id: 1, 
-            titulo: 'Capítulo 1 - Reino de Faku', 
-            texto: 'A marca da fênix entrelaçada com o símbolo do infinito e o número quatro arde nas páginas deste diário...',
-            tierList: [
-                { nome: 'Natsu Ackermann', rank: 'EX', avatar: '' }, 
-                { nome: 'Elizabeth Frisk (Memória)', rank: 'EX', avatar: '' }
-            ] 
-        }];
+        return [{ id: 1, titulo: 'Capítulo 1 - Reino de Faku', texto: 'A marca da fênix...', tierList: [] }];
     });
     const [capituloAtivoId, setCapituloAtivoId] = useState(() => Number(localStorage.getItem('rpgSextaFeira_capituloAtivo')) || 1);
 
@@ -70,14 +61,17 @@ export default function AIPanel() {
     const [capitulosFuturo, setCapitulosFuturo] = useState(() => {
         const salvo = localStorage.getItem('rpgSextaFeira_capitulosFuturo');
         if (salvo) return JSON.parse(salvo).map(c => ({ ...c, tierList: c.tierList || [] }));
-        return [{ 
-            id: 100, 
-            titulo: 'Ecos do Futuro - Parte 1', 
-            texto: 'Crônicas do Amanhã...\n\n(O mundo mudou. Registre aqui os ecos da linha do tempo futura.)',
-            tierList: [] 
-        }];
+        return [{ id: 100, titulo: 'Ecos do Futuro - Parte 1', texto: 'Crônicas do Amanhã...', tierList: [] }];
     });
     const [capFuturoAtivoId, setCapFuturoAtivoId] = useState(() => Number(localStorage.getItem('rpgSextaFeira_capFuturoAtivo')) || 100);
+
+    // --- IDENTIFICANDO CAPÍTULO ATIVO ---
+    const capituloAtivoObj = loreFoco === 'presente' 
+        ? capitulosPresente.find(cap => cap.id === capituloAtivoId)
+        : capitulosFuturo.find(cap => cap.id === capFuturoAtivoId);
+    
+    const textoAtivo = capituloAtivoObj?.texto || '';
+    const tierListAtiva = capituloAtivoObj?.tierList || [];
 
     // --- SALVAMENTO AUTOMÁTICO ---
     useEffect(() => {
@@ -88,28 +82,77 @@ export default function AIPanel() {
     }, [capitulosPresente, capituloAtivoId, capitulosFuturo, capFuturoAtivoId]);
 
 
-    // 🔥 LÓGICA DE PUXAR AVATARES DO FIREBASE (CORRIGIDA PARA OBJETOS) 🔥
-    const avataresDoServidor = Object.entries(personagens).map(([nome, ficha]) => {
+    // 🔥 O BANCO DE AVATARES (Puxa do Firebase e exclui quem já está na Tier List) 🔥
+    const poolPersonagens = Object.entries(personagens).map(([nome, ficha]) => {
         let urlImagem = ficha?.avatar || ficha?.bio?.avatar || ficha?.token || ficha?.imagem || '';
-        
-        // Se a imagem for um objeto complexo salvo no Firebase, extrai apenas a URL
         if (typeof urlImagem === 'object' && urlImagem !== null) {
             urlImagem = urlImagem.url || urlImagem.link || urlImagem.src || Object.values(urlImagem).find(v => typeof v === 'string' && v.startsWith('http')) || '';
         }
-        
-        // Garante que se vier um lixo que não é texto, ele limpa
         if (typeof urlImagem !== 'string') urlImagem = '';
+        return { nome, avatar: urlImagem };
+    })
+    .filter(p => p.avatar && p.avatar.trim() !== '') // Só quem tem imagem
+    .filter(srvPers => !tierListAtiva.some(tPers => tPers.nome === srvPers.nome)); // Só quem ainda NÃO está na tier list ativa
 
-        return { nome, url: urlImagem };
-    }).filter(p => p.url && p.url.trim() !== ''); // Esconde quem não tem imagem
+
+    // --- SISTEMA DE DRAG AND DROP (ARRASTAR E LARGAR) ---
+    const handleDragStart = (e, personagem) => {
+        // Guarda os dados do personagem que estamos a arrastar
+        e.dataTransfer.setData('personagem', JSON.stringify(personagem));
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragOver = (e) => {
+        e.preventDefault(); // Necessário para permitir o drop
+        e.dataTransfer.dropEffect = 'move';
+    };
+
+    const handleDrop = (e, novoRank) => {
+        e.preventDefault();
+        const data = e.dataTransfer.getData('personagem');
+        if (data) {
+            const personagemArrastado = JSON.parse(data);
+            moverPersonagem(personagemArrastado, novoRank);
+        }
+    };
+
+    // Função central que move o personagem para o novo rank (ou para 'pool' para remover)
+    const moverPersonagem = (personagem, novoRank) => {
+        const isPresente = loreFoco === 'presente';
+        const setCapitulos = isPresente ? setCapitulosPresente : setCapitulosFuturo;
+        const ativoId = isPresente ? capituloAtivoId : capFuturoAtivoId;
+
+        setCapitulos(prev => prev.map(cap => {
+            if (cap.id !== ativoId) return cap;
+
+            // Remove o personagem de onde ele estiver atualmente
+            let novaTierList = cap.tierList.filter(p => p.nome !== personagem.nome);
+
+            // Se o destino NÃO for a pool, adicionamos ele no novo rank
+            if (novoRank !== 'pool') {
+                novaTierList.push({ ...personagem, rank: novoRank });
+            }
+
+            return { ...cap, tierList: novaTierList };
+        }));
+    };
+
+    // --- FUNÇÃO PARA ADICIONAR PERSONAGEM CUSTOMIZADO MANUALMENTE ---
+    const adicionarCustomizado = () => {
+        if (!novoPersonagem.trim()) return;
+        const personagem = { nome: novoPersonagem.trim(), avatar: novoAvatar.trim() };
+        // Adiciona direto no Rank C por padrão, depois o utilizador arrasta
+        moverPersonagem(personagem, 'C');
+        setNovoPersonagem('');
+        setNovoAvatar('');
+    };
 
 
-    // --- FUNÇÕES DE CAPÍTULOS ---
+    // --- FUNÇÕES DE CAPÍTULOS (Inalteradas) ---
     const adicionarCapitulo = () => {
         const titulo = window.prompt(`Nome do novo capítulo para o ${loreFoco}:`);
         if (!titulo || titulo.trim() === '') return;
         const novoId = Date.now();
-
         if (loreFoco === 'presente') {
             setCapitulosPresente(prev => [...prev, { id: novoId, titulo, texto: '', tierList: [] }]);
             setCapituloAtivoId(novoId);
@@ -123,81 +166,32 @@ export default function AIPanel() {
         const lista = loreFoco === 'presente' ? capitulosPresente : capitulosFuturo;
         const idAtivo = loreFoco === 'presente' ? capituloAtivoId : capFuturoAtivoId;
         const capAtual = lista.find(cap => cap.id === idAtivo);
-        
         const novoTitulo = window.prompt("Editar nome do capítulo:", capAtual.titulo);
         if (!novoTitulo || novoTitulo.trim() === '') return;
-        
-        if (loreFoco === 'presente') {
-            setCapitulosPresente(prev => prev.map(cap => cap.id === idAtivo ? { ...cap, titulo: novoTitulo } : cap));
-        } else {
-            setCapitulosFuturo(prev => prev.map(cap => cap.id === idAtivo ? { ...cap, titulo: novoTitulo } : cap));
-        }
+        if (loreFoco === 'presente') setCapitulosPresente(prev => prev.map(cap => cap.id === idAtivo ? { ...cap, titulo: novoTitulo } : cap));
+        else setCapitulosFuturo(prev => prev.map(cap => cap.id === idAtivo ? { ...cap, titulo: novoTitulo } : cap));
     };
 
     const apagarCapitulo = () => {
         const lista = loreFoco === 'presente' ? capitulosPresente : capitulosFuturo;
         if (lista.length <= 1) return alert("Não pode apagar o único capítulo!");
-        
         const idAtivo = loreFoco === 'presente' ? capituloAtivoId : capFuturoAtivoId;
         if (!window.confirm("Tem certeza que deseja apagar?")) return;
-
         if (loreFoco === 'presente') {
             const nova = capitulosPresente.filter(cap => cap.id !== idAtivo);
-            setCapitulosPresente(nova);
-            setCapituloAtivoId(nova[0].id);
+            setCapitulosPresente(nova); setCapituloAtivoId(nova[0].id);
         } else {
             const nova = capitulosFuturo.filter(cap => cap.id !== idAtivo);
-            setCapitulosFuturo(nova);
-            setCapFuturoAtivoId(nova[0].id);
+            setCapitulosFuturo(nova); setCapFuturoAtivoId(nova[0].id);
         }
     };
-
-    // --- FUNÇÕES DA TIER LIST ---
-    const adicionarPersonagemTier = () => {
-        if (!novoPersonagem.trim()) return;
-        
-        const personagem = { 
-            nome: novoPersonagem.trim(), 
-            rank: novoRank,
-            avatar: novoAvatar.trim() 
-        };
-
-        if (loreFoco === 'presente') {
-            setCapitulosPresente(prev => prev.map(cap => cap.id === capituloAtivoId ? { ...cap, tierList: [...cap.tierList, personagem] } : cap));
-        } else {
-            setCapitulosFuturo(prev => prev.map(cap => cap.id === capFuturoAtivoId ? { ...cap, tierList: [...cap.tierList, personagem] } : cap));
-        }
-        
-        setNovoPersonagem('');
-        setNovoAvatar('');
-        document.getElementById('select-banco-avatar').value = '';
-    };
-
-    const removerPersonagemTier = (nomeRemover) => {
-        if (loreFoco === 'presente') {
-            setCapitulosPresente(prev => prev.map(cap => cap.id === capituloAtivoId ? { ...cap, tierList: cap.tierList.filter(p => p.nome !== nomeRemover) } : cap));
-        } else {
-            setCapitulosFuturo(prev => prev.map(cap => cap.id === capFuturoAtivoId ? { ...cap, tierList: cap.tierList.filter(p => p.nome !== nomeRemover) } : cap));
-        }
-    };
-
-    // --- IDENTIFICANDO CAPÍTULO ATIVO ---
-    const capituloAtivoObj = loreFoco === 'presente' 
-        ? capitulosPresente.find(cap => cap.id === capituloAtivoId)
-        : capitulosFuturo.find(cap => cap.id === capFuturoAtivoId);
-    
-    const textoAtivo = capituloAtivoObj?.texto || '';
-    const tierListAtiva = capituloAtivoObj?.tierList || [];
 
     const atualizarTexto = (novoTexto) => {
-        if (loreFoco === 'presente') {
-            setCapitulosPresente(prev => prev.map(cap => cap.id === capituloAtivoId ? { ...cap, texto: novoTexto } : cap));
-        } else {
-            setCapitulosFuturo(prev => prev.map(cap => cap.id === capFuturoAtivoId ? { ...cap, texto: novoTexto } : cap));
-        }
+        if (loreFoco === 'presente') setCapitulosPresente(prev => prev.map(cap => cap.id === capituloAtivoId ? { ...cap, texto: novoTexto } : cap));
+        else setCapitulosFuturo(prev => prev.map(cap => cap.id === capFuturoAtivoId ? { ...cap, texto: novoTexto } : cap));
     };
 
-    // --- LÓGICA DO CHAT ---
+    // --- LÓGICA DO CHAT (Inalterada) ---
     useEffect(() => { if (subAba === 'chat' && chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight; }, [historico, subAba]);
 
     const montarContextoFicha = useCallback(() => {
@@ -232,7 +226,7 @@ export default function AIPanel() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
                 <div>
                     <h3 style={{ color: loreFoco === 'presente' ? '#00ffcc' : '#ffcc00', marginTop: 0, margin: 0, transition: 'color 0.3s' }}>
-                        {subAba === 'lore' ? '📜 Registros Akáshicos' : '📊 Níveis de Ameaça (Tier List)'}
+                        {subAba === 'lore' ? '📜 Registros Akáshicos' : '📊 Níveis de Ameaça (Tier List Interativa)'}
                     </h3>
                     <p style={{ color: '#aaa', fontSize: '0.9em', margin: 0 }}>
                         {loreFoco === 'presente' ? 'Visualizando: Linha do Tempo Atual' : 'Visualizando: Ecos do Futuro'}
@@ -245,15 +239,8 @@ export default function AIPanel() {
             </div>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center', paddingBottom: '10px', borderBottom: '1px solid #333', flexWrap: 'wrap' }}>
                 <span style={{ color: loreFoco === 'presente' ? '#00ffcc' : '#ffcc00', fontWeight: 'bold' }}>📖 Capítulo:</span>
-                <select 
-                    className="input-neon" 
-                    value={loreFoco === 'presente' ? capituloAtivoId : capFuturoAtivoId} 
-                    onChange={(e) => loreFoco === 'presente' ? setCapituloAtivoId(Number(e.target.value)) : setCapFuturoAtivoId(Number(e.target.value))}
-                    style={{ flex: 1, minWidth: '150px', borderColor: loreFoco === 'presente' ? '#00ffcc' : '#ffcc00', color: '#fff', padding: '8px', backgroundColor: 'rgba(0,0,0,0.5)' }}
-                >
-                    {(loreFoco === 'presente' ? capitulosPresente : capitulosFuturo).map(cap => (
-                        <option key={cap.id} value={cap.id} style={{ color: '#000' }}>{cap.titulo}</option>
-                    ))}
+                <select className="input-neon" value={loreFoco === 'presente' ? capituloAtivoId : capFuturoAtivoId} onChange={(e) => loreFoco === 'presente' ? setCapituloAtivoId(Number(e.target.value)) : setCapFuturoAtivoId(Number(e.target.value))} style={{ flex: 1, minWidth: '150px', borderColor: loreFoco === 'presente' ? '#00ffcc' : '#ffcc00', color: '#fff', padding: '8px', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                    {(loreFoco === 'presente' ? capitulosPresente : capitulosFuturo).map(cap => <option key={cap.id} value={cap.id} style={{ color: '#000' }}>{cap.titulo}</option>)}
                 </select>
                 <div style={{ display: 'flex', gap: '5px' }}>
                     <button className="btn-neon btn-gold" onClick={editarTituloCapitulo} style={{ padding: '8px 15px', margin: 0 }} title="Editar Nome do Capítulo">✏️</button>
@@ -281,11 +268,7 @@ export default function AIPanel() {
             {subAba === 'chat' && (
                 <>
                     <div ref={chatRef} className="def-box" style={{ flex: 1, minHeight: '300px', maxHeight: '60vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', padding: '15px' }}>
-                        {historico.length === 0 && (
-                            <div style={{ color: '#555', textAlign: 'center', fontStyle: 'italic', marginTop: '40px' }}>
-                                A Sexta-Feira está online e pronta para ajudar.
-                            </div>
-                        )}
+                        {historico.length === 0 && <div style={{ color: '#555', textAlign: 'center', fontStyle: 'italic', marginTop: '40px' }}>A Sexta-Feira está online e pronta para ajudar.</div>}
                         {historico.map((msg, i) => (
                             <div key={i} style={{ alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '80%', padding: '10px 14px', borderRadius: '8px', background: msg.role === 'user' ? 'rgba(0, 255, 204, 0.15)' : msg.role === 'erro' ? 'rgba(255, 0, 60, 0.15)' : 'rgba(0, 136, 255, 0.15)', border: `1px solid ${msg.role === 'user' ? '#00ffcc' : msg.role === 'erro' ? '#ff003c' : '#0088ff'}`, color: '#ddd', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: '0.95em' }}>
                                 <div style={{ fontSize: '0.7em', fontWeight: 'bold', marginBottom: '4px', color: msg.role === 'user' ? '#00ffcc' : msg.role === 'erro' ? '#ff003c' : '#0088ff' }}>{msg.role === 'user' ? meuNome?.toUpperCase() || 'VOCE' : msg.role === 'erro' ? 'ERRO' : 'SEXTA-FEIRA'}</div>
@@ -303,75 +286,39 @@ export default function AIPanel() {
             {/* GRAVADOR */}
             {subAba === 'gravador' && <div style={{ flex: 1, overflowY: 'auto' }}><GravadorPanel /></div>}
 
-            {/* TIER LIST AVANÇADA COM ÍCONES E BANCO DE DADOS */}
+            {/* TIER LIST AVANÇADA COM DRAG AND DROP */}
             {subAba === 'tierlist' && (
                 <div className="def-box" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '20px' }}>
                     {renderizadorDeCabecalhoDeCapitulo()}
                     
-                    {/* BARRA DE ADICIONAR PERSONAGEM */}
-                    <div style={{ display: 'flex', gap: '10px', marginBottom: '15px', alignItems: 'center', background: 'rgba(0,0,0,0.5)', padding: '10px', borderRadius: '5px', border: '1px solid #333', flexWrap: 'wrap' }}>
-                        
-                        {/* SELECT MÁGICO DO FIREBASE */}
-                        <select 
-                            id="select-banco-avatar"
-                            className="input-neon" 
-                            onChange={(e) => {
-                                const sel = avataresDoServidor.find(a => a.nome === e.target.value);
-                                if (sel) {
-                                    setNovoPersonagem(sel.nome);
-                                    setNovoAvatar(sel.url);
-                                }
-                            }}
-                            style={{ flex: '1 1 150px', padding: '8px', color: '#fff', borderColor: '#0088ff' }}
-                        >
-                            <option value="" style={{color: '#000'}}>🔍 Puxar do Banco...</option>
-                            {avataresDoServidor.map(a => (
-                                <option key={a.nome} value={a.nome} style={{color: '#000'}}>{a.nome}</option>
-                            ))}
-                        </select>
-
-                        <input className="input-neon" placeholder="Nome (Ex: Natsu Forma Base)" value={novoPersonagem} onChange={(e) => setNovoPersonagem(e.target.value)} style={{ flex: '1 1 200px', padding: '8px', color: '#fff' }} />
-                        
-                        <input className="input-neon" placeholder="URL do Ícone/Foto" value={novoAvatar} onChange={(e) => setNovoAvatar(e.target.value)} style={{ flex: '1 1 200px', padding: '8px', color: '#fff' }} />
-                        
-                        <select className="input-neon" value={novoRank} onChange={(e) => setNovoRank(e.target.value)} style={{ flex: '0 0 100px', padding: '8px', color: '#fff' }}>
-                            {TODOS_RANKS.map(r => <option key={r.id} value={r.id} style={{color: '#000'}}>{r.id}</option>)}
-                        </select>
-                        
-                        <button className="btn-neon btn-green" onClick={adicionarPersonagemTier} style={{ flex: 'none', width: 'auto', padding: '0 20px', height: '40px', margin: 0 }}>
-                            + ADICIONAR
-                        </button>
-                    </div>
-
-                    {/* LISTA GIGANTE DE RANKS */}
-                    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '5px', paddingRight: '5px' }}>
+                    {/* ZONA 1: AS FILEIRAS DOS RANKS (ZONAS DE DROP) */}
+                    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '5px', paddingRight: '5px', marginBottom: '20px' }}>
                         {TODOS_RANKS.map(rank => {
                             const personagensNesteRank = tierListAtiva.filter(p => p.rank === rank.id);
                             const isEmpty = personagensNesteRank.length === 0;
 
                             return (
-                                <div key={rank.id} style={{ display: 'flex', background: 'rgba(0,0,0,0.4)', border: `1px solid ${rank.cor}`, borderRadius: '5px', minHeight: isEmpty ? '30px' : '60px', opacity: isEmpty ? 0.5 : 1, transition: 'all 0.3s' }}>
-                                    
-                                    <div style={{ width: isEmpty ? '50px' : '80px', background: rank.cor, color: rank.text, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: isEmpty ? '1em' : '1.6em', fontWeight: 'bold', textShadow: '0 0 3px rgba(255,255,255,0.4)', transition: 'all 0.3s' }}>
+                                <div 
+                                    key={rank.id} 
+                                    onDragOver={handleDragOver}
+                                    onDrop={(e) => handleDrop(e, rank.id)}
+                                    style={{ display: 'flex', background: 'rgba(0,0,0,0.4)', border: `1px dashed ${rank.cor}80`, borderRadius: '5px', minHeight: isEmpty ? '40px' : '65px', opacity: isEmpty ? 0.5 : 1, transition: 'all 0.2s' }}
+                                >
+                                    <div style={{ width: isEmpty ? '50px' : '80px', background: rank.cor, color: rank.text, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: isEmpty ? '1em' : '1.6em', fontWeight: 'bold', textShadow: '0 0 3px rgba(255,255,255,0.4)', transition: 'all 0.2s' }}>
                                         {rank.id}
                                     </div>
                                     
                                     <div style={{ flex: 1, padding: '5px 10px', display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
                                         {personagensNesteRank.map((pers, i) => (
-                                            <div key={i} style={{ background: 'rgba(0,0,0,0.8)', padding: '5px 12px', borderRadius: '30px', border: `1px solid ${rank.cor}`, color: '#fff', fontSize: '0.9em', display: 'flex', gap: '10px', alignItems: 'center', boxShadow: `0 0 8px ${rank.cor}40` }}>
-                                                
-                                                {/* RENDERIZA O ÍCONE SE A URL EXISTIR */}
-                                                {pers.avatar && (
-                                                    <img 
-                                                        src={pers.avatar} 
-                                                        alt={pers.nome} 
-                                                        style={{ width: '35px', height: '35px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${rank.cor}`, backgroundColor: '#222' }} 
-                                                        onError={(e) => { e.target.style.display = 'none'; }} 
-                                                    />
-                                                )}
-                                                
+                                            <div 
+                                                key={i} 
+                                                draggable
+                                                onDragStart={(e) => handleDragStart(e, pers)}
+                                                style={{ cursor: 'grab', background: 'rgba(0,0,0,0.8)', padding: '5px 12px', borderRadius: '30px', border: `1px solid ${rank.cor}`, color: '#fff', fontSize: '0.9em', display: 'flex', gap: '10px', alignItems: 'center', boxShadow: `0 0 8px ${rank.cor}40` }}
+                                            >
+                                                {pers.avatar && <img src={pers.avatar} alt={pers.nome} style={{ width: '35px', height: '35px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${rank.cor}`, backgroundColor: '#222' }} onError={(e) => { e.target.style.display = 'none'; }} />}
                                                 {pers.nome}
-                                                <span style={{ cursor: 'pointer', color: '#ff003c', fontSize: '1.4em', lineHeight: '0.5', paddingLeft: '5px' }} onClick={() => removerPersonagemTier(pers.nome)} title="Remover Personagem">×</span>
+                                                <span style={{ cursor: 'pointer', color: '#ff003c', fontSize: '1.4em', lineHeight: '0.5', paddingLeft: '5px' }} onClick={() => moverPersonagem(pers, 'pool')} title="Devolver ao Banco">×</span>
                                             </div>
                                         ))}
                                     </div>
@@ -379,6 +326,46 @@ export default function AIPanel() {
                             )
                         })}
                     </div>
+
+                    {/* ZONA 2: O BANCO DE PERSONAGENS (POOL) E CRIADOR MANUAL */}
+                    <div style={{ borderTop: '2px solid #333', paddingTop: '15px' }}>
+                        
+                        {/* O BANCO (ÁREA DE DROP PARA REMOVER) */}
+                        <div 
+                            onDragOver={handleDragOver}
+                            onDrop={(e) => handleDrop(e, 'pool')}
+                            style={{ minHeight: '80px', background: 'rgba(0,0,0,0.3)', border: '2px dashed #555', borderRadius: '8px', padding: '15px', marginBottom: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}
+                        >
+                            <h4 style={{ margin: 0, color: '#aaa' }}>📦 Banco de Entidades (Arraste e Largue nos Tiers)</h4>
+                            
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                                {poolPersonagens.length === 0 && <span style={{ color: '#555', fontStyle: 'italic', fontSize: '0.9em' }}>Nenhum avatar sobrando no servidor.</span>}
+                                
+                                {poolPersonagens.map((pers, i) => (
+                                    <div 
+                                        key={i} 
+                                        draggable
+                                        onDragStart={(e) => handleDragStart(e, pers)}
+                                        style={{ cursor: 'grab', background: '#222', padding: '5px 15px', borderRadius: '20px', border: '1px solid #555', color: '#ccc', fontSize: '0.85em', display: 'flex', gap: '8px', alignItems: 'center' }}
+                                    >
+                                        <img src={pers.avatar} alt={pers.nome} style={{ width: '25px', height: '25px', borderRadius: '50%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                                        {pers.nome}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* BARRA MANUAL PARA CRIAR INIMIGOS/NPCS CUSTOMIZADOS */}
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <span style={{ color: '#666', fontSize: '0.8em', flex: '1 1 100%' }}>Criar entidade manual (NPCs sem ficha):</span>
+                            <input className="input-neon" placeholder="Nome do Inimigo" value={novoPersonagem} onChange={(e) => setNovoPersonagem(e.target.value)} style={{ flex: '1 1 200px', padding: '8px', color: '#fff', borderColor: '#444' }} />
+                            <input className="input-neon" placeholder="URL da Foto (opcional)" value={novoAvatar} onChange={(e) => setNovoAvatar(e.target.value)} style={{ flex: '1 1 200px', padding: '8px', color: '#fff', borderColor: '#444' }} />
+                            <button className="btn-neon btn-blue" onClick={adicionarCustomizado} style={{ flex: 'none', width: 'auto', padding: '0 20px', height: '40px', margin: 0 }}>
+                                + CRIAR NOVO
+                            </button>
+                        </div>
+                    </div>
+
                 </div>
             )}
 
@@ -386,13 +373,7 @@ export default function AIPanel() {
             {subAba === 'lore' && (
                 <div className="def-box" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '20px' }}>
                     {renderizadorDeCabecalhoDeCapitulo()}
-                    <textarea 
-                        className="input-neon"
-                        value={textoAtivo}
-                        onChange={e => atualizarTexto(e.target.value)}
-                        placeholder={`Escreva os registros da linha do tempo aqui...`}
-                        style={{ flex: 1, width: '100%', resize: 'none', borderColor: loreFoco === 'presente' ? '#00ffcc' : '#ffcc00', color: '#ddd', lineHeight: '1.6', padding: '15px', boxSizing: 'border-box', transition: 'border-color 0.3s' }}
-                    />
+                    <textarea className="input-neon" value={textoAtivo} onChange={e => atualizarTexto(e.target.value)} placeholder={`Escreva os registros da linha do tempo aqui...`} style={{ flex: 1, width: '100%', resize: 'none', borderColor: loreFoco === 'presente' ? '#00ffcc' : '#ffcc00', color: '#ddd', lineHeight: '1.6', padding: '15px', boxSizing: 'border-box', transition: 'border-color 0.3s' }} />
                 </div>
             )}
         </div>
