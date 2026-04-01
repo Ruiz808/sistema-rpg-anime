@@ -1,5 +1,8 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { defineSecret } = require("firebase-functions/params");
 const { GoogleGenAI } = require("@google/genai");
+
+const geminiApiKey = defineSecret("GEMINI_API_KEY");
 
 const SYSTEM_PROMPT = `Você é a Sexta-Feira, uma inteligência artificial assistente dentro de um sistema de RPG anime.
 Você ajuda jogadores com estratégias de combate, dúvidas sobre o sistema, interpretação de personagem e lore.
@@ -16,7 +19,7 @@ function formatarContexto(ctx) {
     if (ctx.classe) partes.push(`Classe: ${ctx.classe}`);
     if (ctx.nivel) partes.push(`Nivel: ${ctx.nivel}`);
     if (ctx.hpMax != null) partes.push(`HP: ${ctx.hp ?? 0}/${ctx.hpMax}`);
-    if (ctx.manaMax != null) partes.push(`Mana: ${ctx.mana ?? 0}/${ctx.manaMax}`);
+    if (ctx.manaMax != null) partes.push(`Mana: ${ctx.manaMax}`);
 
     const stats = [];
     if (ctx.forca != null) stats.push(`FOR:${ctx.forca}`);
@@ -40,17 +43,12 @@ function formatarContexto(ctx) {
     return partes.join("\n");
 }
 
-// 🔥 AQUI ESTÁ A CORREÇÃO 🔥
-// A API agora vai se conectar usando a chave simples em vez do Vertex AI corporativo.
-const ai = new GoogleGenAI({
-    apiKey: "SUA_CHAVE_DE_API_AQUI" // Cole a chave gerada no Google AI Studio dentro destas aspas!
-});
-
 exports.falarComSextaFeira = onCall(
     {
         region: "us-central1",
         maxInstances: 10,
         timeoutSeconds: 90,
+        secrets: [geminiApiKey],
     },
     async (request) => {
         const { mensagem, contextoFicha } = request.data;
@@ -64,13 +62,15 @@ exports.falarComSextaFeira = onCall(
         }
 
         try {
+            const ai = new GoogleGenAI({ apiKey: geminiApiKey.value() });
+
             const contexto = formatarContexto(contextoFicha);
             const systemInstruction = contexto
                 ? `${SYSTEM_PROMPT}\n\n--- CONTEXTO DA FICHA ---\n${contexto}\n--- FIM DO CONTEXTO ---`
                 : SYSTEM_PROMPT;
 
             const response = await ai.models.generateContent({
-                model: "gemini-2.0-flash",
+                model: "gemini-2.5-flash",
                 contents: mensagem.trim(),
                 config: {
                     systemInstruction: systemInstruction,
