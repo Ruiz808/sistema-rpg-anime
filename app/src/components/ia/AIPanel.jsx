@@ -82,28 +82,68 @@ export default function AIPanel() {
     }, [capitulosPresente, capituloAtivoId, capitulosFuturo, capFuturoAtivoId]);
 
 
-    // 🔥 O BANCO DE AVATARES (Puxa do Firebase e exclui quem já está na Tier List) 🔥
-    const poolPersonagens = Object.entries(personagens).map(([nome, ficha]) => {
-        let urlImagem = ficha?.avatar || ficha?.bio?.avatar || ficha?.token || ficha?.imagem || '';
-        if (typeof urlImagem === 'object' && urlImagem !== null) {
-            urlImagem = urlImagem.url || urlImagem.link || urlImagem.src || Object.values(urlImagem).find(v => typeof v === 'string' && v.startsWith('http')) || '';
+    // 🔥 O BANCO DE AVATARES EXPANDIDO (SCANNER PROFUNDO) 🔥
+    const avataresDoServidor = [];
+
+    Object.entries(personagens).forEach(([nomeFicha, ficha]) => {
+        if (!ficha) return;
+
+        // Função para traduzir imagens em formato de Object para String
+        const extrairUrl = (img) => {
+            let url = img || '';
+            if (typeof url === 'object' && url !== null) {
+                url = url.url || url.link || url.src || Object.values(url).find(v => typeof v === 'string' && v.startsWith('http')) || '';
+            }
+            return typeof url === 'string' ? url.trim() : '';
+        };
+
+        // 1. Personagem Base
+        const urlBase = extrairUrl(ficha.avatar || ficha.bio?.avatar || ficha.token || ficha.imagem);
+        if (urlBase) avataresDoServidor.push({ nome: nomeFicha, avatar: urlBase });
+
+        // 2. Poderes
+        if (Array.isArray(ficha.poderes)) {
+            ficha.poderes.forEach(poder => {
+                const url = extrairUrl(poder.imagem || poder.icone || poder.avatar);
+                if (url && poder.nome) avataresDoServidor.push({ nome: `${nomeFicha} (${poder.nome})`, avatar: url });
+            });
         }
-        if (typeof urlImagem !== 'string') urlImagem = '';
-        return { nome, avatar: urlImagem };
-    })
-    .filter(p => p.avatar && p.avatar.trim() !== '') // Só quem tem imagem
-    .filter(srvPers => !tierListAtiva.some(tPers => tPers.nome === srvPers.nome)); // Só quem ainda NÃO está na tier list ativa
+
+        // 3. Formas Diretas (Transformações)
+        if (Array.isArray(ficha.formas)) {
+            ficha.formas.forEach(forma => {
+                const url = extrairUrl(forma.imagem || forma.icone || forma.avatar);
+                if (url && forma.nome) avataresDoServidor.push({ nome: `${nomeFicha} (${forma.nome})`, avatar: url });
+            });
+        }
+
+        // 4. Formas dentro do Inventário (Armas e Infinitys)
+        if (Array.isArray(ficha.inventario)) {
+            ficha.inventario.forEach(item => {
+                if (Array.isArray(item.formas)) {
+                    item.formas.forEach(forma => {
+                        const url = extrairUrl(forma.imagem || forma.icone || forma.avatar);
+                        if (url && forma.nome) avataresDoServidor.push({ nome: `${nomeFicha} (${forma.nome})`, avatar: url });
+                    });
+                }
+            });
+        }
+    });
+
+    // Remove do Banco quem já está na Tier List Atual
+    const poolPersonagens = avataresDoServidor
+        .filter(srvPers => srvPers.avatar !== '') 
+        .filter(srvPers => !tierListAtiva.some(tPers => tPers.nome === srvPers.nome));
 
 
     // --- SISTEMA DE DRAG AND DROP (ARRASTAR E LARGAR) ---
     const handleDragStart = (e, personagem) => {
-        // Guarda os dados do personagem que estamos a arrastar
         e.dataTransfer.setData('personagem', JSON.stringify(personagem));
         e.dataTransfer.effectAllowed = 'move';
     };
 
     const handleDragOver = (e) => {
-        e.preventDefault(); // Necessário para permitir o drop
+        e.preventDefault(); 
         e.dataTransfer.dropEffect = 'move';
     };
 
@@ -116,7 +156,6 @@ export default function AIPanel() {
         }
     };
 
-    // Função central que move o personagem para o novo rank (ou para 'pool' para remover)
     const moverPersonagem = (personagem, novoRank) => {
         const isPresente = loreFoco === 'presente';
         const setCapitulos = isPresente ? setCapitulosPresente : setCapitulosFuturo;
@@ -128,7 +167,7 @@ export default function AIPanel() {
             // Remove o personagem de onde ele estiver atualmente
             let novaTierList = cap.tierList.filter(p => p.nome !== personagem.nome);
 
-            // Se o destino NÃO for a pool, adicionamos ele no novo rank
+            // Adiciona no novo rank (se não for para o banco)
             if (novoRank !== 'pool') {
                 novaTierList.push({ ...personagem, rank: novoRank });
             }
@@ -141,14 +180,14 @@ export default function AIPanel() {
     const adicionarCustomizado = () => {
         if (!novoPersonagem.trim()) return;
         const personagem = { nome: novoPersonagem.trim(), avatar: novoAvatar.trim() };
-        // Adiciona direto no Rank C por padrão, depois o utilizador arrasta
+        // Adiciona direto no Rank C por padrão, depois arrasta
         moverPersonagem(personagem, 'C');
         setNovoPersonagem('');
         setNovoAvatar('');
     };
 
 
-    // --- FUNÇÕES DE CAPÍTULOS (Inalteradas) ---
+    // --- FUNÇÕES DE CAPÍTULOS ---
     const adicionarCapitulo = () => {
         const titulo = window.prompt(`Nome do novo capítulo para o ${loreFoco}:`);
         if (!titulo || titulo.trim() === '') return;
@@ -191,7 +230,7 @@ export default function AIPanel() {
         else setCapitulosFuturo(prev => prev.map(cap => cap.id === capFuturoAtivoId ? { ...cap, texto: novoTexto } : cap));
     };
 
-    // --- LÓGICA DO CHAT (Inalterada) ---
+    // --- LÓGICA DO CHAT ---
     useEffect(() => { if (subAba === 'chat' && chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight; }, [historico, subAba]);
 
     const montarContextoFicha = useCallback(() => {
@@ -336,10 +375,10 @@ export default function AIPanel() {
                             onDrop={(e) => handleDrop(e, 'pool')}
                             style={{ minHeight: '80px', background: 'rgba(0,0,0,0.3)', border: '2px dashed #555', borderRadius: '8px', padding: '15px', marginBottom: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}
                         >
-                            <h4 style={{ margin: 0, color: '#aaa' }}>📦 Banco de Entidades (Arraste e Largue nos Tiers)</h4>
+                            <h4 style={{ margin: 0, color: '#aaa' }}>📦 Banco de Entidades Expandido (Arraste para classificar)</h4>
                             
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                                {poolPersonagens.length === 0 && <span style={{ color: '#555', fontStyle: 'italic', fontSize: '0.9em' }}>Nenhum avatar sobrando no servidor.</span>}
+                                {poolPersonagens.length === 0 && <span style={{ color: '#555', fontStyle: 'italic', fontSize: '0.9em' }}>Nenhum avatar ou transformação sobrando no servidor.</span>}
                                 
                                 {poolPersonagens.map((pers, i) => (
                                     <div 
