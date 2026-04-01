@@ -20,14 +20,23 @@ export default function AIPanel() {
     const [erro, setErro] = useState('');
     const chatRef = useRef(null);
 
-    // --- ESTADOS DA LORE DIVIDIDA ---
-    const [loreFoco, setLoreFoco] = useState('presente'); // Controla qual tempo estamos vendo
+    // --- ESTADOS DA LORE DIVIDIDA E CAPÍTULOS ---
+    const [loreFoco, setLoreFoco] = useState('presente'); 
     
-    const [lorePresente, setLorePresente] = useState('Capítulo 1: O Despertar...\n\n(A marca da fênix entrelaçada com o símbolo do infinito e o número quatro arde nas páginas deste diário. Registre aqui os acontecimentos do tempo atual...)');
+    // O Presente agora é um Livro com vários Capítulos!
+    const [capitulosPresente, setCapitulosPresente] = useState([
+        { 
+            id: 1, 
+            titulo: 'Capítulo 1 - Reino de Faku', 
+            texto: 'A marca da fênix entrelaçada com o símbolo do infinito e o número quatro arde nas páginas deste diário...\n\n(Escreva os registros da primeira parte aqui)' 
+        }
+    ]);
+    const [capituloAtivoId, setCapituloAtivoId] = useState(1);
     
+    // O Futuro continua como uma visão única (por enquanto)
     const [loreFuturo, setLoreFuturo] = useState('Crônicas do Amanhã...\n\n(O mundo mudou. Registre aqui os ecos da linha do tempo futura e o que sobrou dos Marcados...)');
 
-    // Exemplo de dados para a Tier List (Você pode editar os nomes aqui!)
+    // Exemplo de dados para a Tier List 
     const [tierList, setTierList] = useState([
         { rank: 'S', cor: '#ff003c', personagens: ['Natsu Ackermann', 'Elizabeth Frisk (Memória)', 'Chefe Final Desconhecido'] },
         { rank: 'A', cor: '#ffcc00', personagens: ['Jogador 2', 'Jogador 3'] },
@@ -35,6 +44,26 @@ export default function AIPanel() {
         { rank: 'C', cor: '#0088ff', personagens: ['Goblin Espião', 'Capanga'] },
         { rank: 'D', cor: '#888888', personagens: ['Figurante que morreu na primeira sessão'] },
     ]);
+
+    // --- FUNÇÕES DE LORE E CAPÍTULOS ---
+    const adicionarCapitulo = () => {
+        const titulo = window.prompt("Nome do novo capítulo (Ex: Capítulo 2 - Guerra Santa):");
+        if (!titulo || titulo.trim() === '') return;
+        
+        const novoId = Date.now(); // Gera um ID único baseado no tempo
+        setCapitulosPresente(prev => [...prev, { id: novoId, titulo, texto: '' }]);
+        setCapituloAtivoId(novoId); // Já muda automaticamente para o capítulo novo
+    };
+
+    const atualizarTextoPresente = (novoTexto) => {
+        setCapitulosPresente(prev => prev.map(cap => 
+            cap.id === capituloAtivoId ? { ...cap, texto: novoTexto } : cap
+        ));
+    };
+    
+    // Pega o texto do capítulo que está selecionado agora
+    const textoAtivoPresente = capitulosPresente.find(cap => cap.id === capituloAtivoId)?.texto || '';
+
 
     // Rola o chat para baixo automaticamente
     useEffect(() => {
@@ -246,7 +275,7 @@ export default function AIPanel() {
                 </div>
             )}
 
-            {/* CONTEÚDO: LORE E HISTÓRIA (AGORA COM LINHAS DO TEMPO) */}
+            {/* CONTEÚDO: LORE E HISTÓRIA (AGORA COM CAPÍTULOS!) */}
             {subAba === 'lore' && (
                 <div className="def-box" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '15px', padding: '20px' }}>
                     
@@ -277,10 +306,33 @@ export default function AIPanel() {
                         </div>
                     </div>
 
+                    {/* SELETOR DE CAPÍTULOS (SÓ APARECE NO PRESENTE) */}
+                    {loreFoco === 'presente' && (
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', paddingBottom: '10px', borderBottom: '1px solid #333' }}>
+                            <span style={{ color: '#00ffcc', fontWeight: 'bold' }}>📖 Capítulo:</span>
+                            <select 
+                                className="input-neon" 
+                                value={capituloAtivoId} 
+                                onChange={(e) => setCapituloAtivoId(Number(e.target.value))}
+                                style={{ flex: 1, borderColor: '#00ffcc', color: '#fff', padding: '8px', backgroundColor: 'rgba(0,0,0,0.5)' }}
+                            >
+                                {capitulosPresente.map(cap => (
+                                    <option key={cap.id} value={cap.id} style={{ color: '#000' }}>
+                                        {cap.titulo}
+                                    </option>
+                                ))}
+                            </select>
+                            <button className="btn-neon btn-green" onClick={adicionarCapitulo} style={{ padding: '8px 15px', margin: 0 }}>
+                                ➕ Novo
+                            </button>
+                        </div>
+                    )}
+
+                    {/* CAIXA DE TEXTO PRINCIPAL */}
                     <textarea 
                         className="input-neon"
-                        value={loreFoco === 'presente' ? lorePresente : loreFuturo}
-                        onChange={e => loreFoco === 'presente' ? setLorePresente(e.target.value) : setLoreFuturo(e.target.value)}
+                        value={loreFoco === 'presente' ? textoAtivoPresente : loreFuturo}
+                        onChange={e => loreFoco === 'presente' ? atualizarTextoPresente(e.target.value) : setLoreFuturo(e.target.value)}
                         placeholder={`Escreva os registros do ${loreFoco} aqui...`}
                         style={{ 
                             flex: 1, 
@@ -290,6 +342,7 @@ export default function AIPanel() {
                             color: '#ddd', 
                             lineHeight: '1.6', 
                             padding: '15px',
+                            boxSizing: 'border-box',
                             transition: 'border-color 0.3s'
                         }}
                     />
