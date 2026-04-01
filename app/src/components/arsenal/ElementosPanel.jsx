@@ -14,7 +14,6 @@ const emogis = {
     'Elemento Madeira': '\uD83E\uDEB5', 'Elemento Mineral': '\uD83D\uDC8E', 'Elemento Cinzas': '\uD83C\uDF2B\uFE0F', 'Elemento Igneo': '\u2604\uFE0F', 'Elemento Lava': '\uD83C\uDF0B', 'Elemento Vapor': '\u2668\uFE0F', 'Elemento Nevoa': '\uD83C\uDF2B\uFE0F', 'Elemento Tempestade': '\uD83C\uDF29\uFE0F', 'Elemento Areia': '\uD83C\uDFDC\uFE0F', 'Elemento Tufao': '\uD83C\uDF2A\uFE0F',
     'Elemento Velocidade': '\uD83D\uDCA8', 'Elemento Poeira': '\uD83D\uDD32', 'Elemento Calor': '\uD83C\uDF21\uFE0F', 'Elemento Cal': '\u2B1C', 'Elemento Carbono': '\u2B1B', 'Elemento Veneno': '\u2623\uFE0F', 'Elemento Magnetismo': '\uD83E\uDDF2', 'Elemento Som': '\uD83D\uDD0A',
     'Truques de Ciclo': '✨', 'Truques Arcanos/Negros': '🔮', 'Truques Ancestrais': '📜',
-    // 🔥 NOVOS EMOJIS DAS ABAS EXTRAS 🔥
     'Aura Pura': '✨', 'Projeção de Aura': '🛡️',
     'Artes Marciais': '🥋', 'Reforço Físico': '💪',
     'Fusões Básicas': '🌀', 'Fusões Avançadas': '⚛️'
@@ -32,7 +31,6 @@ const cores = {
     'Elemento Madeira': '#8b5a2b', 'Elemento Mineral': '#e6e6fa', 'Elemento Cinzas': '#808080', 'Elemento Igneo': '#ff4500', 'Elemento Lava': '#ff0000', 'Elemento Vapor': '#ffb6c1', 'Elemento Nevoa': '#b0e0e6', 'Elemento Tempestade': '#ccccff', 'Elemento Areia': '#f4a460', 'Elemento Tufao': '#98fb98',
     'Elemento Velocidade': '#e6ffff', 'Elemento Poeira': '#d9d9d9', 'Elemento Calor': '#ff6600', 'Elemento Cal': '#e6ccb3', 'Elemento Carbono': '#595959', 'Elemento Veneno': '#9933ff', 'Elemento Magnetismo': '#4169e1', 'Elemento Som': '#a6a6a6',
     'Truques de Ciclo': '#b3ffe6', 'Truques Arcanos/Negros': '#d9b3ff', 'Truques Ancestrais': '#e6e6e6',
-    // 🔥 NOVAS CORES DAS ABAS EXTRAS 🔥
     'Aura Pura': '#b366ff', 'Projeção de Aura': '#b366ff',
     'Artes Marciais': '#ff3333', 'Reforço Físico': '#ff3333',
     'Fusões Básicas': '#ff00ff', 'Fusões Avançadas': '#ff00ff'
@@ -145,19 +143,17 @@ export default function ElementosPanel() {
         return parseInt(strVal.substring(0, 2), 10);
     };
 
-    // 🔥 FILTRO INTELIGENTE DE ENERGIAS 🔥
     const allowedEnergies = useMemo(() => {
         let opts = [];
         const isArcana = elemSelecionado.includes('Arcanas/Negra');
         const isTruque = elemSelecionado.includes('Truque');
 
         if (isArcana) {
-            // Arcanas subvertem as regras do mundo e acedem a todas as energias!
             opts = [
                 { value: 'mana', label: 'Mana (Base: Int)' },
                 { value: 'aura', label: 'Aura (Base: Eng. Esp)' },
                 { value: 'chakra', label: 'Chakra (Base: Stamina)' },
-                { value: 'corpo', label: 'Corpo (Base: Força)' },
+                { value: 'corpo', label: 'Corpo (Base: For/Des)' },
                 { value: 'pontosVitais', label: 'Pts. Vitais (Base: Const)' },
                 { value: 'pontosMortais', label: 'Pts. Mortais (Base: Int)' },
                 { value: 'livre', label: 'Truque / Livre' }
@@ -174,11 +170,10 @@ export default function ElementosPanel() {
         } else if (abaAtual === 'aura') {
             opts = [{ value: 'aura', label: 'Aura (Base: Eng. Esp)' }];
         } else if (abaAtual === 'corpo') {
-            opts = [{ value: 'corpo', label: 'Corpo (Base: Força)' }];
+            opts = [{ value: 'corpo', label: 'Corpo (Base: For/Des)' }];
         } else if (abaAtual === 'mana') {
             opts = [{ value: 'mana', label: 'Mana (Base: Int)' }];
         } else {
-            // Elementos Genéricos e Compostos
             opts = [
                 { value: 'mana', label: 'Mana (Base: Int)' },
                 { value: 'aura', label: 'Aura (Base: Eng. Esp)' },
@@ -186,11 +181,10 @@ export default function ElementosPanel() {
             ];
         }
 
-        // Garante que a energia atual nunca "desaparece" do ecrã caso seja carregada de uma técnica antiga
         if (elemEditandoId && !opts.some(o => o.value === energiaCombustao)) {
             const allLabels = {
                 'mana': 'Mana (Base: Int)', 'aura': 'Aura (Base: Eng. Esp)', 'chakra': 'Chakra (Base: Stamina)',
-                'corpo': 'Corpo (Base: Força)', 'pontosVitais': 'Pts. Vitais (Base: Const)', 'pontosMortais': 'Pts. Mortais (Base: Int)', 'livre': 'Truque / Livre'
+                'corpo': 'Corpo (Base: For/Des)', 'pontosVitais': 'Pts. Vitais (Base: Const)', 'pontosMortais': 'Pts. Mortais (Base: Int)', 'livre': 'Truque / Livre'
             };
             opts.push({ value: energiaCombustao, label: `${allLabels[energiaCombustao] || energiaCombustao} (Forçado)` });
         }
@@ -201,9 +195,8 @@ export default function ElementosPanel() {
     function selecionarElemento(nome) {
         setElemSelecionado(nome);
         
-        // Define um valor por defeito coerente sempre que clica num novo elemento
         if (nome.includes('Truque')) setEnergiaCombustao('livre');
-        else if (nome.includes('Arcanas/Negra')) setEnergiaCombustao('mana'); // Magia Arcana começa com Mana mas o jogador pode mudar depois!
+        else if (nome.includes('Arcanas/Negra')) setEnergiaCombustao('mana'); 
         else if (abaAtual === 'chakra') setEnergiaCombustao('chakra');
         else if (abaAtual === 'mana') setEnergiaCombustao('mana');
         else if (abaAtual === 'aura') setEnergiaCombustao('aura');
@@ -271,7 +264,6 @@ export default function ElementosPanel() {
         const el = p.elemento || 'Neutro';
         setElemSelecionado(el);
         
-        // 🔥 AUTO-SWITCH DE ABA PARA A TÉCNICA CORRETA 🔥
         let foundAba = 'elementos';
         for (const [abaKey, abaData] of Object.entries(ABAS_GRIMORIO)) {
             if (abaData.categorias.some(cat => cat.itens.includes(el))) {
@@ -329,17 +321,32 @@ export default function ElementosPanel() {
         const { alvoSelecionado, dummies, cenario } = storeState;
         const fichaVirtual = storeState.minhaFicha;
         
-        const energiaToAttr = { 
-            'mana': 'inteligencia', 
-            'aura': 'energiaEsp', 
-            'chakra': 'stamina', 
-            'corpo': 'forca',
-            'pontosVitais': 'constituicao',
-            'pontosMortais': 'inteligencia',
-            'livre': 'inteligencia' 
-        };
-        const attrRegente = energiaToAttr[magia.energiaCombustao] || 'inteligencia';
-        const modRegente = getModificadorDoisDigitos(fichaVirtual[attrRegente]?.base);
+        let attrRegente = 'inteligencia';
+        let modRegente = 0;
+
+        // 🔥 INTELIGÊNCIA DE CORPO: Escolhe Força ou Destreza (a maior) 🔥
+        if (magia.energiaCombustao === 'corpo') {
+            const modForca = getModificadorDoisDigitos(fichaVirtual['forca']?.base);
+            const modDestreza = getModificadorDoisDigitos(fichaVirtual['destreza']?.base);
+            if (modDestreza > modForca) {
+                attrRegente = 'destreza';
+                modRegente = modDestreza;
+            } else {
+                attrRegente = 'forca';
+                modRegente = modForca;
+            }
+        } else {
+            const energiaToAttr = { 
+                'mana': 'inteligencia', 
+                'aura': 'energiaEsp', 
+                'chakra': 'stamina', 
+                'pontosVitais': 'constituicao',
+                'pontosMortais': 'inteligencia',
+                'livre': 'inteligencia' 
+            };
+            attrRegente = energiaToAttr[magia.energiaCombustao] || 'inteligencia';
+            modRegente = getModificadorDoisDigitos(fichaVirtual[attrRegente]?.base);
+        }
 
         let alvosAtingidos = [];
         const alvoDummie = alvoSelecionado && dummies[alvoSelecionado] ? dummies[alvoSelecionado] : null;
@@ -386,7 +393,7 @@ export default function ElementosPanel() {
                 tipo: 'acerto',
                 nome: meuNome,
                 acertoTotal: result.acertoTotal,
-                profBonusTexto: `Mod. Magia (${attrRegente}): +${modRegente} | Proficiência: +${profGlobal}`,
+                profBonusTexto: `Mod. Magia (${attrRegente.toUpperCase()}): +${modRegente} | Proficiência: +${profGlobal}`,
                 rolagem: result.rolagem,
                 armaStr: ` com ${magia.nome} (${magia.elemento})`,
                 alvosArea: alvosPayload,
@@ -401,7 +408,7 @@ export default function ElementosPanel() {
             enviarParaFeed({
                 tipo: 'sistema',
                 nome: meuNome,
-                texto: `🌀 CONJUROU: ${magia.nome}!${textoAlvos} Precisam de passar num Saving Throw de ${magia.savingAttr.toUpperCase()} (CD: ${cd}).`
+                texto: `🌀 CONJUROU: ${magia.nome}!${textoAlvos} Precisam de passar num Saving Throw de ${magia.savingAttr.toUpperCase()} (CD: ${cd}). Baseado em: ${attrRegente.toUpperCase()}.`
             });
             setAbaAtiva('aba-log');
         }
@@ -437,9 +444,27 @@ export default function ElementosPanel() {
         const custoStr = p.custoValor > 0 ? ` | Custo: ${p.custoValor}% (${p.energiaCombustao?.toUpperCase()})` : ` | Custo: Livre`;
 
         const mec = p.tipoMecanica || 'ataque';
-        const energiaToAttr = { 'mana': 'inteligencia', 'aura': 'energiaEsp', 'chakra': 'stamina', 'corpo': 'forca', 'pontosVitais': 'constituicao', 'pontosMortais': 'inteligencia', 'livre': 'inteligencia' };
-        const regente = energiaToAttr[p.energiaCombustao || 'mana'];
-        const modBase = getModificadorDoisDigitos(minhaFicha[regente]?.base);
+        
+        // 🔥 LÓGICA DO CARD PARA EXIBIR O MODIFICADOR CORRETO (Força vs Destreza) 🔥
+        let regente = 'inteligencia';
+        let modBase = 0;
+
+        if (p.energiaCombustao === 'corpo') {
+            const modForca = getModificadorDoisDigitos(minhaFicha['forca']?.base);
+            const modDestreza = getModificadorDoisDigitos(minhaFicha['destreza']?.base);
+            if (modDestreza > modForca) {
+                regente = 'destreza';
+                modBase = modDestreza;
+            } else {
+                regente = 'forca';
+                modBase = modForca;
+            }
+        } else {
+            const energiaToAttr = { 'mana': 'inteligencia', 'aura': 'energiaEsp', 'chakra': 'stamina', 'pontosVitais': 'constituicao', 'pontosMortais': 'inteligencia', 'livre': 'inteligencia' };
+            regente = energiaToAttr[p.energiaCombustao || 'mana'] || 'inteligencia';
+            modBase = getModificadorDoisDigitos(minhaFicha[regente]?.base);
+        }
+
         const cd = 8 + modBase + profGlobal;
         const bonusAcerto = modBase + profGlobal;
 
@@ -561,10 +586,9 @@ export default function ElementosPanel() {
                             </div>
                         )}
 
-                        {/* 🔥 O SELETOR DE ENERGIA INTELIGENTE 🔥 */}
                         <div>
                             <label style={{ color: '#0088ff', fontSize: '0.85em', fontWeight: 'bold' }}>Energia Usada</label>
-                            <select className="input-neon" value={energiaCombustao} onChange={e => setEnergiaCombustao(e.target.value)}>
+                            <select className="input-neon" value={energiaCombustao} onChange={e => setEnergiaCombustao(e.target.value)} title="Você pode alterar a Energia para subverter regras da Magia Arcana!">
                                 {allowedEnergies.map(opt => (
                                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                                 ))}
