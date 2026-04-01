@@ -55,6 +55,18 @@ export default function AIPanel() {
         setCapituloAtivoId(novoId); // Já muda automaticamente para o capítulo novo
     };
 
+    const editarTituloCapitulo = () => {
+        const capAtual = capitulosPresente.find(cap => cap.id === capituloAtivoId);
+        if (!capAtual) return;
+        
+        const novoTitulo = window.prompt("Editar nome do capítulo:", capAtual.titulo);
+        if (!novoTitulo || novoTitulo.trim() === '') return;
+        
+        setCapitulosPresente(prev => prev.map(cap => 
+            cap.id === capituloAtivoId ? { ...cap, titulo: novoTitulo } : cap
+        ));
+    };
+
     const atualizarTextoPresente = (novoTexto) => {
         setCapitulosPresente(prev => prev.map(cap => 
             cap.id === capituloAtivoId ? { ...cap, texto: novoTexto } : cap
@@ -275,7 +287,7 @@ export default function AIPanel() {
                 </div>
             )}
 
-            {/* CONTEÚDO: LORE E HISTÓRIA (AGORA COM CAPÍTULOS!) */}
+            {/* CONTEÚDO: LORE E HISTÓRIA (AGORA COM EDIÇÃO DE CAPÍTULOS!) */}
             {subAba === 'lore' && (
                 <div className="def-box" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '15px', padding: '20px' }}>
                     
@@ -306,15 +318,15 @@ export default function AIPanel() {
                         </div>
                     </div>
 
-                    {/* SELETOR DE CAPÍTULOS (SÓ APARECE NO PRESENTE) */}
+                    {/* SELETOR E EDIÇÃO DE CAPÍTULOS (SÓ APARECE NO PRESENTE) */}
                     {loreFoco === 'presente' && (
-                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', paddingBottom: '10px', borderBottom: '1px solid #333' }}>
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', paddingBottom: '10px', borderBottom: '1px solid #333', flexWrap: 'wrap' }}>
                             <span style={{ color: '#00ffcc', fontWeight: 'bold' }}>📖 Capítulo:</span>
                             <select 
                                 className="input-neon" 
                                 value={capituloAtivoId} 
                                 onChange={(e) => setCapituloAtivoId(Number(e.target.value))}
-                                style={{ flex: 1, borderColor: '#00ffcc', color: '#fff', padding: '8px', backgroundColor: 'rgba(0,0,0,0.5)' }}
+                                style={{ flex: 1, minWidth: '150px', borderColor: '#00ffcc', color: '#fff', padding: '8px', backgroundColor: 'rgba(0,0,0,0.5)' }}
                             >
                                 {capitulosPresente.map(cap => (
                                     <option key={cap.id} value={cap.id} style={{ color: '#000' }}>
@@ -322,9 +334,15 @@ export default function AIPanel() {
                                     </option>
                                 ))}
                             </select>
-                            <button className="btn-neon btn-green" onClick={adicionarCapitulo} style={{ padding: '8px 15px', margin: 0 }}>
-                                ➕ Novo
-                            </button>
+                            
+                            <div style={{ display: 'flex', gap: '5px' }}>
+                                <button className="btn-neon btn-gold" onClick={editarTituloCapitulo} style={{ padding: '8px 15px', margin: 0 }}>
+                                    ✏️ Editar Nome
+                                </button>
+                                <button className="btn-neon btn-green" onClick={adicionarCapitulo} style={{ padding: '8px 15px', margin: 0 }}>
+                                    ➕ Novo
+                                </button>
+                            </div>
                         </div>
                     )}
 
