@@ -166,7 +166,7 @@ export default function AIPanel() {
 
                     {erro && <div style={{ color: '#ff003c', fontSize: '0.85em', padding: '5px 10px', background: 'rgba(255,0,60,0.1)', borderRadius: '4px' }}>{erro}</div>}
 
-                    <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-start', marginTop: '10px' }}>
+                    <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-start', marginTop: '10px', width: '100%' }}>
                         <textarea 
                             className="input-neon" 
                             placeholder="Fale com a Sexta-Feira..." 
@@ -176,14 +176,15 @@ export default function AIPanel() {
                             disabled={carregando} 
                             maxLength={2000} 
                             style={{ 
-                                flex: 1, 
+                                flex: '1 1 auto', 
                                 width: '100%', 
-                                minHeight: '50px', 
+                                minHeight: '60px', 
                                 maxHeight: '150px', 
                                 resize: 'vertical', 
                                 borderColor: '#00ffcc', 
                                 color: '#fff',
-                                padding: '12px'
+                                padding: '12px',
+                                boxSizing: 'border-box'
                             }} 
                         />
                         <button 
@@ -191,9 +192,11 @@ export default function AIPanel() {
                             onClick={enviarMensagem} 
                             disabled={carregando || !mensagem.trim()} 
                             style={{ 
-                                padding: '0 25px', 
-                                height: '50px', 
-                                flexShrink: 0, 
+                                flex: 'none', 
+                                width: 'auto',
+                                minWidth: '120px',
+                                height: '60px', 
+                                padding: '0 20px',
                                 borderColor: '#00ffcc', 
                                 color: '#00ffcc', 
                                 margin: 0, 
