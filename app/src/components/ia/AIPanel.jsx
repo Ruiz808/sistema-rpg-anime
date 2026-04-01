@@ -3,7 +3,7 @@ import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../services/firebase-config';
 import useStore from '../../stores/useStore';
 
-// IMPORT DO SEU GRAVADOR (Ajuste o caminho se necessário)
+// IMPORT DO SEU GRAVADOR
 import GravadorPanel from './GravadorPanel';
 
 export default function AIPanel() {
@@ -20,31 +20,34 @@ export default function AIPanel() {
     const [erro, setErro] = useState('');
     const chatRef = useRef(null);
 
-    // --- ESTADOS DA LORE DIVIDIDA E CAPÍTULOS (AGORA COM SALVAMENTO!) ---
+    // --- ESTADOS DA LORE DIVIDIDA E CAPÍTULOS ---
     const [loreFoco, setLoreFoco] = useState('presente'); 
     
-    // Inicia buscando do navegador. Se não tiver nada, cria o primeiro capítulo.
+    // Capítulos do Presente
     const [capitulosPresente, setCapitulosPresente] = useState(() => {
         const salvo = localStorage.getItem('rpgSextaFeira_capitulos');
         return salvo ? JSON.parse(salvo) : [
-            { 
-                id: 1, 
-                titulo: 'Capítulo 1 - Reino de Faku', 
-                texto: 'A marca da fênix entrelaçada com o símbolo do infinito e o número quatro arde nas páginas deste diário...\n\n(Escreva os registros da primeira parte aqui)' 
-            }
+            { id: 1, titulo: 'Capítulo 1 - Reino de Faku', texto: 'A marca da fênix entrelaçada com o símbolo do infinito e o número quatro arde nas páginas deste diário...\n\n(Escreva os registros da primeira parte aqui)' }
         ];
     });
     const [capituloAtivoId, setCapituloAtivoId] = useState(() => {
         const salvoId = localStorage.getItem('rpgSextaFeira_capituloAtivo');
         return salvoId ? Number(salvoId) : 1;
     });
-    
-    // Inicia buscando o Futuro do navegador
-    const [loreFuturo, setLoreFuturo] = useState(() => {
-        return localStorage.getItem('rpgSextaFeira_futuro') || 'Crônicas do Amanhã...\n\n(O mundo mudou. Registre aqui os ecos da linha do tempo futura e o que sobrou dos Marcados...)';
+
+    // Capítulos do Futuro
+    const [capitulosFuturo, setCapitulosFuturo] = useState(() => {
+        const salvo = localStorage.getItem('rpgSextaFeira_capitulosFuturo');
+        return salvo ? JSON.parse(salvo) : [
+            { id: 100, titulo: 'Ecos do Futuro - Parte 1', texto: 'Crônicas do Amanhã...\n\n(O mundo mudou. Registre aqui os ecos da linha do tempo futura.)' }
+        ];
+    });
+    const [capFuturoAtivoId, setCapFuturoAtivoId] = useState(() => {
+        const salvoId = localStorage.getItem('rpgSextaFeira_capFuturoAtivo');
+        return salvoId ? Number(salvoId) : 100;
     });
 
-    // Exemplo de dados para a Tier List (Também salva no navegador!)
+    // Tier List
     const [tierList, setTierList] = useState(() => {
         const salvo = localStorage.getItem('rpgSextaFeira_tierlist');
         return salvo ? JSON.parse(salvo) : [
@@ -52,83 +55,86 @@ export default function AIPanel() {
             { rank: 'A', cor: '#ffcc00', personagens: ['Jogador 2', 'Jogador 3'] },
             { rank: 'B', cor: '#00ffcc', personagens: ['NPC Aliado', 'Vilão Menor'] },
             { rank: 'C', cor: '#0088ff', personagens: ['Goblin Espião', 'Capanga'] },
-            { rank: 'D', cor: '#888888', personagens: ['Figurante que morreu na primeira sessão'] },
+            { rank: 'D', cor: '#888888', personagens: ['Figurante que morreu na primeira sessão'] }
         ];
     });
 
-    // --- EFEITOS DE SALVAMENTO AUTOMÁTICO ---
-    // Sempre que um capítulo mudar, salva tudo!
+    // --- SALVAMENTO AUTOMÁTICO ---
     useEffect(() => {
         localStorage.setItem('rpgSextaFeira_capitulos', JSON.stringify(capitulosPresente));
-    }, [capitulosPresente]);
-
-    useEffect(() => {
         localStorage.setItem('rpgSextaFeira_capituloAtivo', capituloAtivoId);
-    }, [capituloAtivoId]);
-
-    useEffect(() => {
-        localStorage.setItem('rpgSextaFeira_futuro', loreFuturo);
-    }, [loreFuturo]);
-
-    useEffect(() => {
+        localStorage.setItem('rpgSextaFeira_capitulosFuturo', JSON.stringify(capitulosFuturo));
+        localStorage.setItem('rpgSextaFeira_capFuturoAtivo', capFuturoAtivoId);
         localStorage.setItem('rpgSextaFeira_tierlist', JSON.stringify(tierList));
-    }, [tierList]);
+    }, [capitulosPresente, capituloAtivoId, capitulosFuturo, capFuturoAtivoId, tierList]);
 
-
-    // --- FUNÇÕES DE LORE E CAPÍTULOS ---
+    // --- FUNÇÕES DE CAPÍTULOS (GERAL) ---
     const adicionarCapitulo = () => {
-        const titulo = window.prompt("Nome do novo capítulo (Ex: Capítulo 2 - Guerra Santa):");
+        const titulo = window.prompt(`Nome do novo capítulo para o ${loreFoco}:`);
         if (!titulo || titulo.trim() === '') return;
-        
-        const novoId = Date.now(); 
-        setCapitulosPresente(prev => [...prev, { id: novoId, titulo, texto: '' }]);
-        setCapituloAtivoId(novoId); 
+        const novoId = Date.now();
+
+        if (loreFoco === 'presente') {
+            setCapitulosPresente(prev => [...prev, { id: novoId, titulo, texto: '' }]);
+            setCapituloAtivoId(novoId);
+        } else {
+            setCapitulosFuturo(prev => [...prev, { id: novoId, titulo, texto: '' }]);
+            setCapFuturoAtivoId(novoId);
+        }
     };
 
     const editarTituloCapitulo = () => {
-        const capAtual = capitulosPresente.find(cap => cap.id === capituloAtivoId);
-        if (!capAtual) return;
+        const lista = loreFoco === 'presente' ? capitulosPresente : capitulosFuturo;
+        const idAtivo = loreFoco === 'presente' ? capituloAtivoId : capFuturoAtivoId;
+        const capAtual = lista.find(cap => cap.id === idAtivo);
         
         const novoTitulo = window.prompt("Editar nome do capítulo:", capAtual.titulo);
         if (!novoTitulo || novoTitulo.trim() === '') return;
         
-        setCapitulosPresente(prev => prev.map(cap => 
-            cap.id === capituloAtivoId ? { ...cap, titulo: novoTitulo } : cap
-        ));
+        if (loreFoco === 'presente') {
+            setCapitulosPresente(prev => prev.map(cap => cap.id === idAtivo ? { ...cap, titulo: novoTitulo } : cap));
+        } else {
+            setCapitulosFuturo(prev => prev.map(cap => cap.id === idAtivo ? { ...cap, titulo: novoTitulo } : cap));
+        }
     };
 
     const apagarCapitulo = () => {
-        if (capitulosPresente.length <= 1) {
-            alert("Você não pode apagar o único capítulo existente!");
-            return;
-        }
+        const lista = loreFoco === 'presente' ? capitulosPresente : capitulosFuturo;
+        if (lista.length <= 1) return alert("Não pode apagar o único capítulo!");
         
-        const capAtual = capitulosPresente.find(cap => cap.id === capituloAtivoId);
-        if (window.confirm(`Tem certeza que deseja apagar o "${capAtual.titulo}"? Isso não pode ser desfeito.`)) {
-            const novaLista = capitulosPresente.filter(cap => cap.id !== capituloAtivoId);
-            setCapitulosPresente(novaLista);
-            setCapituloAtivoId(novaLista[0].id); // Volta pro primeiro da lista
+        const idAtivo = loreFoco === 'presente' ? capituloAtivoId : capFuturoAtivoId;
+        if (!window.confirm("Tem certeza que deseja apagar?")) return;
+
+        if (loreFoco === 'presente') {
+            const nova = capitulosPresente.filter(cap => cap.id !== idAtivo);
+            setCapitulosPresente(nova);
+            setCapituloAtivoId(nova[0].id);
+        } else {
+            const nova = capitulosFuturo.filter(cap => cap.id !== idAtivo);
+            setCapitulosFuturo(nova);
+            setCapFuturoAtivoId(nova[0].id);
         }
     };
 
-    const atualizarTextoPresente = (novoTexto) => {
-        setCapitulosPresente(prev => prev.map(cap => 
-            cap.id === capituloAtivoId ? { ...cap, texto: novoTexto } : cap
-        ));
+    const atualizarTexto = (novoTexto) => {
+        if (loreFoco === 'presente') {
+            setCapitulosPresente(prev => prev.map(cap => cap.id === capituloAtivoId ? { ...cap, texto: novoTexto } : cap));
+        } else {
+            setCapitulosFuturo(prev => prev.map(cap => cap.id === capFuturoAtivoId ? { ...cap, texto: novoTexto } : cap));
+        }
     };
     
-    // Pega o texto do capítulo que está selecionado agora
-    const textoAtivoPresente = capitulosPresente.find(cap => cap.id === capituloAtivoId)?.texto || '';
+    const textoAtivo = loreFoco === 'presente' 
+        ? capitulosPresente.find(cap => cap.id === capituloAtivoId)?.texto || ''
+        : capitulosFuturo.find(cap => cap.id === capFuturoAtivoId)?.texto || '';
 
-
-    // Rola o chat para baixo automaticamente
-    useEffect(() => {
+    // --- LÓGICA DO CHAT ---
+    useEffect(() => { 
         if (subAba === 'chat' && chatRef.current) {
             chatRef.current.scrollTop = chatRef.current.scrollHeight;
         }
     }, [historico, subAba]);
 
-    // Monta a ficha para enviar para a IA
     const montarContextoFicha = useCallback(() => {
         const bio = minhaFicha?.bio || {};
         const hierarquia = minhaFicha?.hierarquia || {};
@@ -161,7 +167,6 @@ export default function AIPanel() {
         };
     }, [minhaFicha, meuNome]);
 
-    // Envia mensagem para o Firebase
     const enviarMensagem = useCallback(async () => {
         if (!mensagem.trim() || carregando) return;
         if (!functions) {
@@ -206,13 +211,9 @@ export default function AIPanel() {
 
     return (
         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '15px', height: '100%' }}>
-            
-            {/* CABEÇALHO E SUB-ABAS */}
+            {/* CABEÇALHO */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '2px solid #00ffcc', paddingBottom: 10 }}>
-                <h2 style={{ color: '#00ffcc', textShadow: '0 0 10px #00ffcc', margin: 0 }}>
-                    Sexta-Feira (IA Central)
-                </h2>
-                
+                <h2 style={{ color: '#00ffcc', textShadow: '0 0 10px #00ffcc', margin: 0 }}>Sexta-Feira (IA Central)</h2>
                 <div style={{ display: 'flex', gap: '5px' }}>
                     <button className={`btn-neon ${subAba === 'chat' ? 'btn-green' : ''}`} onClick={() => setSubAba('chat')} style={{ padding: '5px 10px', margin: 0 }}>💬 Chat</button>
                     <button className={`btn-neon ${subAba === 'gravador' ? 'btn-red' : ''}`} onClick={() => setSubAba('gravador')} style={{ padding: '5px 10px', margin: 0 }}>🎙️ Gravador</button>
@@ -221,7 +222,7 @@ export default function AIPanel() {
                 </div>
             </div>
 
-            {/* CONTEÚDO: CHAT */}
+            {/* CHAT */}
             {subAba === 'chat' && (
                 <>
                     <div ref={chatRef} className="def-box" style={{ flex: 1, minHeight: '300px', maxHeight: '60vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', padding: '15px' }}>
@@ -230,7 +231,6 @@ export default function AIPanel() {
                                 A Sexta-Feira está online e pronta para ajudar.
                             </div>
                         )}
-
                         {historico.map((msg, i) => (
                             <div key={i} style={{
                                 alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
@@ -245,16 +245,13 @@ export default function AIPanel() {
                                 {msg.texto}
                             </div>
                         ))}
-
                         {carregando && (
                             <div style={{ alignSelf: 'flex-start', padding: '10px 14px', borderRadius: '8px', background: 'rgba(0, 136, 255, 0.1)', border: '1px solid #0088ff', color: '#0088ff', fontStyle: 'italic', fontSize: '0.9em' }}>
                                 Sexta-Feira esta analisando...
                             </div>
                         )}
                     </div>
-
                     {erro && <div style={{ color: '#ff003c', fontSize: '0.85em', padding: '5px 10px', background: 'rgba(255,0,60,0.1)', borderRadius: '4px' }}>{erro}</div>}
-
                     <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-start', marginTop: '10px', width: '100%' }}>
                         <textarea 
                             className="input-neon" 
@@ -264,33 +261,13 @@ export default function AIPanel() {
                             onKeyDown={handleKeyDown} 
                             disabled={carregando} 
                             maxLength={2000} 
-                            style={{ 
-                                flex: '1 1 auto', 
-                                width: '100%', 
-                                minHeight: '60px', 
-                                maxHeight: '150px', 
-                                resize: 'vertical', 
-                                borderColor: '#00ffcc', 
-                                color: '#fff',
-                                padding: '12px',
-                                boxSizing: 'border-box'
-                            }} 
+                            style={{ flex: '1 1 auto', width: '100%', minHeight: '60px', maxHeight: '150px', resize: 'vertical', borderColor: '#00ffcc', color: '#fff', padding: '12px', boxSizing: 'border-box' }} 
                         />
                         <button 
                             className="btn-neon" 
                             onClick={enviarMensagem} 
                             disabled={carregando || !mensagem.trim()} 
-                            style={{ 
-                                flex: 'none', 
-                                width: 'auto',
-                                minWidth: '120px',
-                                height: '60px', 
-                                padding: '0 20px',
-                                borderColor: '#00ffcc', 
-                                color: '#00ffcc', 
-                                margin: 0, 
-                                opacity: (carregando || !mensagem.trim()) ? 0.4 : 1 
-                            }}
+                            style={{ flex: 'none', width: 'auto', minWidth: '120px', height: '60px', padding: '0 20px', borderColor: '#00ffcc', color: '#00ffcc', margin: 0, opacity: (carregando || !mensagem.trim()) ? 0.4 : 1 }}
                         >
                             {carregando ? '...' : 'ENVIAR'}
                         </button>
@@ -298,18 +275,17 @@ export default function AIPanel() {
                 </>
             )}
 
-            {/* CONTEÚDO: GRAVADOR */}
+            {/* GRAVADOR */}
             {subAba === 'gravador' && (
                 <div style={{ flex: 1, overflowY: 'auto' }}>
                     <GravadorPanel />
                 </div>
             )}
 
-            {/* CONTEÚDO: TIER LIST */}
+            {/* TIER LIST */}
             {subAba === 'tierlist' && (
                 <div className="def-box" style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <h3 style={{ color: '#fff', marginTop: 0, borderBottom: '1px solid #333', paddingBottom: '10px' }}>📊 Níveis de Ameaça / Força</h3>
-                    
                     {tierList.map((tier, index) => (
                         <div key={index} style={{ display: 'flex', background: 'rgba(0,0,0,0.5)', border: `1px solid ${tier.cor}`, borderRadius: '5px', minHeight: '60px' }}>
                             <div style={{ width: '80px', background: tier.cor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2em', fontWeight: 'bold', color: '#000', textShadow: '0 0 5px rgba(255,255,255,0.5)' }}>
@@ -324,18 +300,15 @@ export default function AIPanel() {
                             </div>
                         </div>
                     ))}
-                    
                     <p style={{ color: '#888', fontSize: '0.8em', textAlign: 'center', marginTop: '10px' }}>
                         No futuro, poderemos automatizar isso para ler os "Pontos de Prestígio" da ficha de cada jogador!
                     </p>
                 </div>
             )}
 
-            {/* CONTEÚDO: LORE E HISTÓRIA */}
+            {/* REGISTROS (LORE) */}
             {subAba === 'lore' && (
                 <div className="def-box" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '15px', padding: '20px' }}>
-                    
-                    {/* CABEÇALHO DA LORE COM OS BOTÕES DE TEMPO */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
                         <div>
                             <h3 style={{ color: loreFoco === 'presente' ? '#00ffcc' : '#ffcc00', marginTop: 0, margin: 0, transition: 'color 0.3s' }}>
@@ -347,73 +320,42 @@ export default function AIPanel() {
                         </div>
                         
                         <div style={{ display: 'flex', gap: '10px' }}>
-                            <button 
-                                className={`btn-neon ${loreFoco === 'presente' ? 'btn-green' : ''}`} 
-                                onClick={() => setLoreFoco('presente')} 
-                                style={{ padding: '8px 15px', fontSize: '0.9em', margin: 0, opacity: loreFoco === 'presente' ? 1 : 0.5 }}>
-                                ⏳ Presente
-                            </button>
-                            <button 
-                                className={`btn-neon ${loreFoco === 'futuro' ? 'btn-gold' : ''}`} 
-                                onClick={() => setLoreFoco('futuro')} 
-                                style={{ padding: '8px 15px', fontSize: '0.9em', margin: 0, opacity: loreFoco === 'futuro' ? 1 : 0.5 }}>
-                                🚀 Futuro
-                            </button>
+                            <button className={`btn-neon ${loreFoco === 'presente' ? 'btn-green' : ''}`} onClick={() => setLoreFoco('presente')} style={{ padding: '8px 15px', fontSize: '0.9em', margin: 0, opacity: loreFoco === 'presente' ? 1 : 0.5 }}>⏳ Presente</button>
+                            <button className={`btn-neon ${loreFoco === 'futuro' ? 'btn-gold' : ''}`} onClick={() => setLoreFoco('futuro')} style={{ padding: '8px 15px', fontSize: '0.9em', margin: 0, opacity: loreFoco === 'futuro' ? 1 : 0.5 }}>🚀 Futuro</button>
                         </div>
                     </div>
 
-                    {/* SELETOR E EDIÇÃO DE CAPÍTULOS */}
-                    {loreFoco === 'presente' && (
-                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', paddingBottom: '10px', borderBottom: '1px solid #333', flexWrap: 'wrap' }}>
-                            <span style={{ color: '#00ffcc', fontWeight: 'bold' }}>📖 Capítulo:</span>
-                            <select 
-                                className="input-neon" 
-                                value={capituloAtivoId} 
-                                onChange={(e) => setCapituloAtivoId(Number(e.target.value))}
-                                style={{ flex: 1, minWidth: '150px', borderColor: '#00ffcc', color: '#fff', padding: '8px', backgroundColor: 'rgba(0,0,0,0.5)' }}
-                            >
-                                {capitulosPresente.map(cap => (
-                                    <option key={cap.id} value={cap.id} style={{ color: '#000' }}>
-                                        {cap.titulo}
-                                    </option>
-                                ))}
-                            </select>
-                            
-                            <div style={{ display: 'flex', gap: '5px' }}>
-                                <button className="btn-neon btn-gold" onClick={editarTituloCapitulo} style={{ padding: '8px 15px', margin: 0 }} title="Editar Nome do Capítulo">
-                                    ✏️
-                                </button>
-                                <button className="btn-neon btn-red" onClick={apagarCapitulo} style={{ padding: '8px 15px', margin: 0 }} title="Apagar Capítulo">
-                                    🗑️
-                                </button>
-                                <button className="btn-neon btn-green" onClick={adicionarCapitulo} style={{ padding: '8px 15px', margin: 0 }}>
-                                    ➕ Novo
-                                </button>
-                            </div>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', paddingBottom: '10px', borderBottom: '1px solid #333', flexWrap: 'wrap' }}>
+                        <span style={{ color: loreFoco === 'presente' ? '#00ffcc' : '#ffcc00', fontWeight: 'bold' }}>📖 Capítulo:</span>
+                        <select 
+                            className="input-neon" 
+                            value={loreFoco === 'presente' ? capituloAtivoId : capFuturoAtivoId} 
+                            onChange={(e) => loreFoco === 'presente' ? setCapituloAtivoId(Number(e.target.value)) : setCapFuturoAtivoId(Number(e.target.value))}
+                            style={{ flex: 1, minWidth: '150px', borderColor: loreFoco === 'presente' ? '#00ffcc' : '#ffcc00', color: '#fff', padding: '8px', backgroundColor: 'rgba(0,0,0,0.5)' }}
+                        >
+                            {(loreFoco === 'presente' ? capitulosPresente : capitulosFuturo).map(cap => (
+                                <option key={cap.id} value={cap.id} style={{ color: '#000' }}>
+                                    {cap.titulo}
+                                </option>
+                            ))}
+                        </select>
+                        
+                        <div style={{ display: 'flex', gap: '5px' }}>
+                            <button className="btn-neon btn-gold" onClick={editarTituloCapitulo} style={{ padding: '8px 15px', margin: 0 }} title="Editar Nome do Capítulo">✏️</button>
+                            <button className="btn-neon btn-red" onClick={apagarCapitulo} style={{ padding: '8px 15px', margin: 0 }} title="Apagar Capítulo">🗑️</button>
+                            <button className="btn-neon btn-green" onClick={adicionarCapitulo} style={{ padding: '8px 15px', margin: 0 }}>➕ Novo</button>
                         </div>
-                    )}
+                    </div>
 
-                    {/* CAIXA DE TEXTO PRINCIPAL */}
                     <textarea 
                         className="input-neon"
-                        value={loreFoco === 'presente' ? textoAtivoPresente : loreFuturo}
-                        onChange={e => loreFoco === 'presente' ? atualizarTextoPresente(e.target.value) : setLoreFuturo(e.target.value)}
+                        value={textoAtivo}
+                        onChange={e => atualizarTexto(e.target.value)}
                         placeholder={`Escreva os registros do ${loreFoco} aqui...`}
-                        style={{ 
-                            flex: 1, 
-                            width: '100%', 
-                            resize: 'none', 
-                            borderColor: loreFoco === 'presente' ? '#00ffcc' : '#ffcc00', 
-                            color: '#ddd', 
-                            lineHeight: '1.6', 
-                            padding: '15px',
-                            boxSizing: 'border-box',
-                            transition: 'border-color 0.3s'
-                        }}
+                        style={{ flex: 1, width: '100%', resize: 'none', borderColor: loreFoco === 'presente' ? '#00ffcc' : '#ffcc00', color: '#ddd', lineHeight: '1.6', padding: '15px', boxSizing: 'border-box', transition: 'border-color 0.3s' }}
                     />
                 </div>
             )}
-
         </div>
     );
 }
