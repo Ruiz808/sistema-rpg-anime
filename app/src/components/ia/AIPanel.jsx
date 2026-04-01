@@ -29,14 +29,16 @@ extendedLetters.forEach((letra, i) => {
 const TODOS_RANKS = [...baseRanks, ...extendedRanks];
 
 export default function AIPanel() {
+    // 🔥 IMPORTAÇÕES DAS GAVETAS GLOBAIS DO SERVIDOR 🔥
     const minhaFicha = useStore(s => s.minhaFicha);
     const meuNome = useStore(s => s.meuNome) || 'Desconhecido';
     const personagens = useStore(s => s.personagens) || {};
-
-    // 🔥 GAVETAS EXTRAS: Puxando poderes e habilidades que ficam fora da ficha principal 🔥
+    
+    // Puxando as gavetas extras onde as formas e poderes realmente se escondem
     const poderesGlobais = useStore(s => s.poderes) || {};
     const habilidadesGlobais = useStore(s => s.habilidades) || {};
     const formasGlobais = useStore(s => s.formas) || {};
+    const inventarioGlobal = useStore(s => s.inventario) || {};
 
     // --- ESTADOS BÁSICOS ---
     const [subAba, setSubAba] = useState('chat');
@@ -82,50 +84,39 @@ export default function AIPanel() {
     }, [capitulosPresente, capituloAtivoId, capitulosFuturo, capFuturoAtivoId]);
 
 
-    // 🔥 O BANCO DE AVATARES ABSOLUTO 🔥
+    // 🔥 SCANNER ABSOLUTO V3 (Busca em todas as gavetas) 🔥
     const avataresDoServidor = [];
-    
-    // Junta TODAS as gavetas do seu personagem em um lugar só
-    const todasFichas = { ...personagens };
-    if (meuNome) {
-        todasFichas[meuNome] = {
-            ...minhaFicha,
-            _gavetaPoderes: poderesGlobais,
-            _gavetaHabilidades: habilidadesGlobais,
-            _gavetaFormas: formasGlobais
-        };
-    }
+    const nomesJaAdicionados = new Set();
 
-    Object.entries(todasFichas).forEach(([nomeFicha, ficha]) => {
-        if (!ficha || typeof ficha !== 'object') return;
+    // Super tradutor de URLs do Firebase
+    const extrairUrl = (img) => {
+        if (!img) return '';
+        if (typeof img === 'string') return img.trim();
+        if (typeof img === 'object') {
+            const url = img.downloadURL || img.downloadUrl || img.url || img.link || img.src || img.imagem || img.img || img.foto || img.icon || img.uri || img.capa || Object.values(img).find(v => typeof v === 'string' && (v.startsWith('http') || v.startsWith('data:'))) || '';
+            return typeof url === 'string' ? url.trim() : '';
+        }
+        return '';
+    };
 
-        const extrairUrl = (img) => {
-            if (!img) return '';
-            if (typeof img === 'string') return img.trim();
-            if (typeof img === 'object') {
-                const url = img.url || img.link || img.src || img.imagem || img.img || Object.values(img).find(v => typeof v === 'string' && (v.startsWith('http') || v.startsWith('data:'))) || '';
-                return typeof url === 'string' ? url.trim() : '';
-            }
-            return '';
-        };
+    // Função que varre qualquer lista ou objeto profundamente
+    const varrerGaveta = (gaveta, nomeDono) => {
+        if (!gaveta) return;
+        const itens = Array.isArray(gaveta) ? gaveta : Object.values(gaveta);
+        
+        itens.forEach(item => {
+            if (!item || typeof item !== 'object') return;
 
-        const urlBase = extrairUrl(ficha.avatar || ficha.bio?.avatar || ficha.token || ficha.imagem || ficha.img);
-        if (urlBase) avataresDoServidor.push({ nome: nomeFicha, avatar: urlBase });
-
-        const nomesJaAdicionados = new Set();
-        if (urlBase) nomesJaAdicionados.add(nomeFicha);
-
-        const varrerObjeto = (obj) => {
-            if (!obj || typeof obj !== 'object') return;
-
-            // Agora busca também por "habilidade", "poder" e "forma"
-            const nomeObj = obj.nome || obj.titulo || obj.name || obj.habilidade || obj.poder || obj.forma;
-            const imgObj = obj.imagem || obj.icone || obj.avatar || obj.url || obj.img || obj.foto || obj.icon;
+            const nomeObj = item.nome || item.titulo || item.name;
+            const imgObj = item.imagem || item.icone || item.avatar || item.url || item.img || item.foto || item.icon || item.token || item.capa;
 
             if (nomeObj && typeof nomeObj === 'string' && imgObj) {
                 const url = extrairUrl(imgObj);
-                if (url && url !== urlBase) {
-                    const nomeCombo = `${nomeFicha} (${nomeObj})`;
+                if (url) {
+                    // Previne de ficar "Natsu (Natsu)"
+                    const jaTemNome = nomeDono && nomeObj.toLowerCase().includes(nomeDono.toLowerCase().split(' ')[0]);
+                    const nomeCombo = (nomeDono && !jaTemNome) ? `${nomeDono} (${nomeObj})` : nomeObj;
+                    
                     if (!nomesJaAdicionados.has(nomeCombo)) {
                         avataresDoServidor.push({ nome: nomeCombo, avatar: url });
                         nomesJaAdicionados.add(nomeCombo);
@@ -133,16 +124,43 @@ export default function AIPanel() {
                 }
             }
 
-            Object.values(obj).forEach(valor => {
-                if (valor && typeof valor === 'object') {
-                    varrerObjeto(valor);
+            // Aprofunda a busca (se o poder tiver um sub-array de formas, etc)
+            Object.values(item).forEach(sub => {
+                if (sub && typeof sub === 'object') {
+                    if (sub.$$typeof) return; // Ignora elementos do React para não travar
+                    varrerGaveta([sub], nomeDono);
                 }
             });
-        };
+        });
+    };
 
-        varrerObjeto(ficha);
+    // 1. Escaneia a sua Ficha
+    if (minhaFicha) {
+        const urlBase = extrairUrl(minhaFicha.avatar || minhaFicha.bio?.avatar || minhaFicha.token || minhaFicha.imagem || minhaFicha.img);
+        if (urlBase && !nomesJaAdicionados.has(meuNome)) {
+            avataresDoServidor.push({ nome: meuNome, avatar: urlBase });
+            nomesJaAdicionados.add(meuNome);
+        }
+        varrerGaveta(minhaFicha, meuNome);
+    }
+
+    // 2. Escaneia os outros Personagens do banco
+    Object.entries(personagens).forEach(([nomeFicha, ficha]) => {
+        const urlBase = extrairUrl(ficha.avatar || ficha.bio?.avatar || ficha.token || ficha.imagem || ficha.img);
+        if (urlBase && !nomesJaAdicionados.has(nomeFicha)) {
+            avataresDoServidor.push({ nome: nomeFicha, avatar: urlBase });
+            nomesJaAdicionados.add(nomeFicha);
+        }
+        varrerGaveta(ficha, nomeFicha);
     });
 
+    // 3. O SEGREDO: Escaneia as gavetas globais onde as habilidades realmente ficam!
+    varrerGaveta(poderesGlobais, meuNome);
+    varrerGaveta(habilidadesGlobais, meuNome);
+    varrerGaveta(formasGlobais, meuNome);
+    varrerGaveta(inventarioGlobal, meuNome);
+
+    // Filtra quem já está na Tier List para não aparecer no Banco
     const poolPersonagens = avataresDoServidor
         .filter(srvPers => srvPers.avatar !== '') 
         .filter(srvPers => !tierListAtiva.some(tPers => tPers.nome === srvPers.nome));
@@ -267,7 +285,7 @@ export default function AIPanel() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
                 <div>
                     <h3 style={{ color: loreFoco === 'presente' ? '#00ffcc' : '#ffcc00', marginTop: 0, margin: 0, transition: 'color 0.3s' }}>
-                        {subAba === 'lore' ? '📜 Registros Akáshicos' : '📊 Níveis de Ameaça (Tier List)'}
+                        {subAba === 'lore' ? '📜 Registros Akáshicos' : '📊 Níveis de Ameaça (Tier List Interativa)'}
                     </h3>
                     <p style={{ color: '#aaa', fontSize: '0.9em', margin: 0 }}>
                         {loreFoco === 'presente' ? 'Visualizando: Linha do Tempo Atual' : 'Visualizando: Ecos do Futuro'}
@@ -305,7 +323,7 @@ export default function AIPanel() {
                 </div>
             </div>
 
-            {/* CHAT */}
+            {/* CHAT - COM ARMADURA PARA NÃO QUEBRAR O LAYOUT */}
             {subAba === 'chat' && (
                 <>
                     <div ref={chatRef} className="def-box" style={{ flex: 1, minHeight: '300px', maxHeight: '60vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', padding: '15px' }}>
@@ -333,6 +351,7 @@ export default function AIPanel() {
                 <div className="def-box" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '20px' }}>
                     {renderizadorDeCabecalhoDeCapitulo()}
                     
+                    {/* ZONA 1: AS FILEIRAS DOS RANKS (ZONAS DE DROP) */}
                     <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '5px', paddingRight: '5px', marginBottom: '20px' }}>
                         {TODOS_RANKS.map(rank => {
                             const personagensNesteRank = tierListAtiva.filter(p => p.rank === rank.id);
