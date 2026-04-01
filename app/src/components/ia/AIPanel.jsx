@@ -32,7 +32,7 @@ export default function AIPanel() {
     const minhaFicha = useStore(s => s.minhaFicha);
     const meuNome = useStore(s => s.meuNome);
     
-    // 🔥 NOVO: Puxa todas as fichas do servidor para a IA ler as imagens 🔥
+    // Puxa todas as fichas do servidor
     const personagens = useStore(s => s.personagens) || {};
 
     // --- ESTADOS BÁSICOS ---
@@ -88,12 +88,20 @@ export default function AIPanel() {
     }, [capitulosPresente, capituloAtivoId, capitulosFuturo, capFuturoAtivoId]);
 
 
-    // 🔥 LÓGICA DE PUXAR AVATARES DO FIREBASE 🔥
-    // Mapeia todas as fichas buscando algum link de imagem salvo (avatar, bio.avatar, token, etc)
+    // 🔥 LÓGICA DE PUXAR AVATARES DO FIREBASE (CORRIGIDA PARA OBJETOS) 🔥
     const avataresDoServidor = Object.entries(personagens).map(([nome, ficha]) => {
-        const urlImagem = ficha?.avatar || ficha?.bio?.avatar || ficha?.token || ficha?.imagem || '';
+        let urlImagem = ficha?.avatar || ficha?.bio?.avatar || ficha?.token || ficha?.imagem || '';
+        
+        // Se a imagem for um objeto complexo salvo no Firebase, extrai apenas a URL
+        if (typeof urlImagem === 'object' && urlImagem !== null) {
+            urlImagem = urlImagem.url || urlImagem.link || urlImagem.src || Object.values(urlImagem).find(v => typeof v === 'string' && v.startsWith('http')) || '';
+        }
+        
+        // Garante que se vier um lixo que não é texto, ele limpa
+        if (typeof urlImagem !== 'string') urlImagem = '';
+
         return { nome, url: urlImagem };
-    }).filter(p => p.url !== ''); // Só mostra quem tem imagem
+    }).filter(p => p.url && p.url.trim() !== ''); // Esconde quem não tem imagem
 
 
     // --- FUNÇÕES DE CAPÍTULOS ---
@@ -160,10 +168,8 @@ export default function AIPanel() {
             setCapitulosFuturo(prev => prev.map(cap => cap.id === capFuturoAtivoId ? { ...cap, tierList: [...cap.tierList, personagem] } : cap));
         }
         
-        // Limpa os campos após adicionar
         setNovoPersonagem('');
         setNovoAvatar('');
-        // Reseta o select do banco visualmente
         document.getElementById('select-banco-avatar').value = '';
     };
 
