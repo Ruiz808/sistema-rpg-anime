@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useMemo } from
 import useStore from '../../stores/useStore';
 import { enviarParaFeed, salvarDummie, apagarFicha } from '../../services/firebase-sync';
 import { getMaximo } from '../../core/attributes';
-import { calcularCA } from '../combate/DefesaPanel';
+import { calcularCA } from '../combate/DefesaFormContext';
 
 const MestreFormContext = createContext(null);
 
