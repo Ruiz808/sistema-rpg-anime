@@ -40,10 +40,10 @@ function formatarContexto(ctx) {
     return partes.join("\n");
 }
 
+// 🔥 AQUI ESTÁ A CORREÇÃO 🔥
+// A API agora vai se conectar usando a chave simples em vez do Vertex AI corporativo.
 const ai = new GoogleGenAI({
-    vertexai: true,
-    project: process.env.GCLOUD_PROJECT || "databaserpg-5595b",
-    location: "us-central1",
+    apiKey: "SUA_CHAVE_DE_API_AQUI" // Cole a chave gerada no Google AI Studio dentro destas aspas!
 });
 
 exports.falarComSextaFeira = onCall(
