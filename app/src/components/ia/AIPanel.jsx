@@ -32,7 +32,6 @@ export default function AIPanel() {
         { rank: 'D', cor: '#888888', personagens: ['Figurante que morreu na primeira sessão'] },
     ]);
 
-
     // Rola o chat para baixo automaticamente
     useEffect(() => {
         if (subAba === 'chat' && chatRef.current) {
@@ -167,9 +166,40 @@ export default function AIPanel() {
 
                     {erro && <div style={{ color: '#ff003c', fontSize: '0.85em', padding: '5px 10px', background: 'rgba(255,0,60,0.1)', borderRadius: '4px' }}>{erro}</div>}
 
-                    <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
-                        <textarea className="input-neon" placeholder="Fale com a Sexta-Feira..." value={mensagem} onChange={e => setMensagem(e.target.value)} onKeyDown={handleKeyDown} disabled={carregando} maxLength={2000} style={{ flex: '1 1 auto', minHeight: '50px', maxHeight: '120px', resize: 'vertical', borderColor: '#00ffcc', color: '#fff' }} />
-                        <button className="btn-neon" onClick={enviarMensagem} disabled={carregando || !mensagem.trim()} style={{ padding: '10px 20px', flex: '0 0 auto', borderColor: '#00ffcc', color: '#00ffcc', marginTop: 0, opacity: (carregando || !mensagem.trim()) ? 0.4 : 1 }}>
+                    <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-start', marginTop: '10px' }}>
+                        <textarea 
+                            className="input-neon" 
+                            placeholder="Fale com a Sexta-Feira..." 
+                            value={mensagem} 
+                            onChange={e => setMensagem(e.target.value)} 
+                            onKeyDown={handleKeyDown} 
+                            disabled={carregando} 
+                            maxLength={2000} 
+                            style={{ 
+                                flex: 1, 
+                                width: '100%', 
+                                minHeight: '50px', 
+                                maxHeight: '150px', 
+                                resize: 'vertical', 
+                                borderColor: '#00ffcc', 
+                                color: '#fff',
+                                padding: '12px'
+                            }} 
+                        />
+                        <button 
+                            className="btn-neon" 
+                            onClick={enviarMensagem} 
+                            disabled={carregando || !mensagem.trim()} 
+                            style={{ 
+                                padding: '0 25px', 
+                                height: '50px', 
+                                flexShrink: 0, 
+                                borderColor: '#00ffcc', 
+                                color: '#00ffcc', 
+                                margin: 0, 
+                                opacity: (carregando || !mensagem.trim()) ? 0.4 : 1 
+                            }}
+                        >
                             {carregando ? '...' : 'ENVIAR'}
                         </button>
                     </div>
