@@ -36,6 +36,7 @@ export default function PoderesPanel() {
     const [dadosFaces, setDadosFaces] = useState(20);
     const [custoPercentual, setCustoPercentual] = useState(0);
     const [poderAlcance, setPoderAlcance] = useState(1); 
+    const [poderArea, setPoderArea] = useState(0);
     const [armaVinculada, setArmaVinculada] = useState('');
     
     // EFEITOS
@@ -132,6 +133,7 @@ export default function PoderesPanel() {
                     ficha.poderes[ix].dadosFaces = parseInt(dadosFaces) || 20;
                     ficha.poderes[ix].custoPercentual = parseFloat(custoPercentual) || 0;
                     ficha.poderes[ix].alcance = parseFloat(poderAlcance) || 1;
+                    ficha.poderes[ix].area = parseFloat(poderArea) || 1;
                     ficha.poderes[ix].armaVinculada = armaVinculada;
                 }
             } else {
@@ -182,6 +184,7 @@ export default function PoderesPanel() {
         setDadosFaces(p.dadosFaces || 20);
         setCustoPercentual(p.custoPercentual || 0);
         setPoderAlcance(p.alcance || 1);
+        setPoderArea(p.area || 1);
         setArmaVinculada(p.armaVinculada || '');
         setEfeitosTemp(JSON.parse(JSON.stringify(p.efeitos || [])));
         setEfeitosTempPassivos(JSON.parse(JSON.stringify(p.efeitosPassivos || [])));
@@ -723,19 +726,24 @@ export default function PoderesPanel() {
                                     <label style={{ color: '#aaa', fontSize: '0.85em' }}>Custo (% Energia)</label>
                                     <input className="input-neon" type="number" min="0" value={custoPercentual} onChange={e => setCustoPercentual(e.target.value)} placeholder="0" />
                                 </div>
-                                <div>
-                                    <label style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold' }}>Alcance (Q)</label>
-                                    <input className="input-neon" type="number" min="0" step="0.5" value={poderAlcance} onChange={e => setPoderAlcance(e.target.value)} style={{ borderColor: '#00ffcc', color: '#00ffcc' }} />
-                                </div>
-                                <div>
-                                    <label style={{ color: '#aaa', fontSize: '0.85em' }}>Vincular Arma</label>
-                                    <select className="input-neon" value={armaVinculada} onChange={e => setArmaVinculada(e.target.value)}>
-                                        <option value="">Nenhuma (Livre)</option>
-                                        {(minhaFicha?.inventario || []).filter(i => i.tipo === 'arma').map(arma => (
-                                            <option key={arma.id} value={String(arma.id)}>{arma.nome}</option>
-                                        ))}
-                                    </select>
-                                </div>
+                            <div>
+                            <label style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold' }}>Alcance (Q)</label>
+                            <input className="input-neon" type="number" min="0" step="0.5" value={poderAlcance} onChange={e => setPoderAlcance(e.target.value)} style={{ borderColor: '#00ffcc', color: '#00ffcc' }} />
+                        </div>
+                        {/* 🔥 NOVO: ÁREA DE EFEITO DO PODER 🔥 */}
+                        <div>
+                            <label style={{ color: '#ff00ff', fontSize: '0.85em', fontWeight: 'bold' }}>Área de Efeito (Q)</label>
+                            <input className="input-neon" type="number" min="0" step="0.5" value={poderArea} onChange={e => setPoderArea(e.target.value)} style={{ borderColor: '#ff00ff', color: '#ff00ff' }} />
+                        </div>
+                        <div>
+                            <label style={{ color: '#aaa', fontSize: '0.85em' }}>Vincular Arma</label>
+                            <select className="input-neon" value={armaVinculada} onChange={e => setArmaVinculada(e.target.value)}>
+                                <option value="">Nenhuma (Livre)</option>
+                                {(minhaFicha?.inventario || []).filter(i => i.tipo === 'arma').map(arma => (
+                                    <option key={arma.id} value={String(arma.id)}>{arma.nome}</option>
+                                ))}
+                                </select>
+                            </div>
                             </div>
 
                             <textarea 

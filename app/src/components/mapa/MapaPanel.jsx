@@ -683,9 +683,21 @@ export default function MapaPanel() {
                                     {fmt(valorImpacto)}
                                 </h1>
                                 
+                                {/* SUBTITUIR O BLOCO DE RENDERIZAÇÃO DO RESULTADO DO ATAQUE POR ESTE: */}
                                 {acaoExibir.tipo === 'dano' && acaoExibir.letalidade !== undefined && (
                                     <div style={{ color: '#ffcc00', fontSize: '1.2em', fontWeight: 'bold', marginTop: '10px', textShadow: '0 0 5px #ffcc00' }}>
-                                        LETALIDADE: +{acaoExibir.letalidade}
+                                    LETALIDADE: +{acaoExibir.letalidade}
+                                    </div>
+                                )}
+
+                                {acaoExibir.alvosArea && acaoExibir.alvosArea.length > 0 && (
+                                    <div style={{ marginTop: 15, padding: 8, background: 'rgba(0,0,0,0.6)', borderRadius: 4, borderLeft: `3px solid ${acaoExibir.alvosArea.some(a=>a.acertou) ? '#0f0' : '#f00'}`, textAlign: 'left' }}>
+                                    {acaoExibir.areaEf > 0 && <div style={{ color: '#00ccff', fontSize: '0.85em', marginBottom: 6, fontWeight: 'bold', textTransform: 'uppercase' }}>💥 Explosão em Área ({acaoExibir.areaEf} Quadrados) atingiu {acaoExibir.alvosArea.length} alvo(s):</div>}
+                                    {acaoExibir.alvosArea.map((a, i) => (
+                                    <div key={i} style={{ color: a.acertou ? '#0f0' : '#f00', fontWeight: 'bold', fontSize: '0.9em', marginBottom: 2 }}>
+                                    {a.acertou ? `🎯 Superou ${a.nome} (Def: ${a.defesa})!` : `❌ Falhou vs ${a.nome} (Def: ${a.defesa})!`}
+                                    </div>
+                                    ))}
                                     </div>
                                 )}
                             </div>

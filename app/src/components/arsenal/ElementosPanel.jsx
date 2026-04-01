@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo } from 'react';
 import useStore from '../../stores/useStore';
-import { salvarFichaSilencioso, enviarParaFeed } from '../../services/firebase-sync'; // 🔥 enviarParaFeed importado!
+import { salvarFichaSilencioso, enviarParaFeed } from '../../services/firebase-sync'; 
 
 const emogis = {
     'Fogo': '\uD83D\uDD25', 'Agua': '\uD83D\uDCA7', 'Raio': '\u26A1', 'Terra': '\uD83E\uDEA8', 'Vento': '\uD83C\uDF2A\uFE0F',
@@ -12,7 +12,8 @@ const emogis = {
     'Magias Arcanas/Negra de 1º Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 2º Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 3º Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 4º Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 5º Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 6º Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 7º Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 8º Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 9º Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 10º Ciclo': '\uD83D\uDD2E',
     'Magias de 1º Ciclo': '\uD83D\uDD04', 'Magias de 2º Ciclo': '\uD83D\uDD04', 'Magias de 3º Ciclo': '\uD83D\uDD04', 'Magias de 4º Ciclo': '\uD83D\uDD04', 'Magias de 5º Ciclo': '\uD83D\uDD04', 'Magias de 6º Ciclo': '\uD83D\uDD04', 'Magias de 7º Ciclo': '\uD83D\uDD04', 'Magias de 8º Ciclo': '\uD83D\uDD04', 'Magias de 9º Ciclo': '\uD83D\uDD04', 'Magias de 10º Ciclo': '\uD83D\uDD04',
     'Elemento Madeira': '\uD83E\uDEB5', 'Elemento Mineral': '\uD83D\uDC8E', 'Elemento Cinzas': '\uD83C\uDF2B\uFE0F', 'Elemento Igneo': '\u2604\uFE0F', 'Elemento Lava': '\uD83C\uDF0B', 'Elemento Vapor': '\u2668\uFE0F', 'Elemento Nevoa': '\uD83C\uDF2B\uFE0F', 'Elemento Tempestade': '\uD83C\uDF29\uFE0F', 'Elemento Areia': '\uD83C\uDFDC\uFE0F', 'Elemento Tufao': '\uD83C\uDF2A\uFE0F',
-    'Elemento Velocidade': '\uD83D\uDCA8', 'Elemento Poeira': '\uD83D\uDD32', 'Elemento Calor': '\uD83C\uDF21\uFE0F', 'Elemento Cal': '\u2B1C', 'Elemento Carbono': '\u2B1B', 'Elemento Veneno': '\u2623\uFE0F', 'Elemento Magnetismo': '\uD83E\uDDF2', 'Elemento Som': '\uD83D\uDD0A'
+    'Elemento Velocidade': '\uD83D\uDCA8', 'Elemento Poeira': '\uD83D\uDD32', 'Elemento Calor': '\uD83C\uDF21\uFE0F', 'Elemento Cal': '\u2B1C', 'Elemento Carbono': '\u2B1B', 'Elemento Veneno': '\u2623\uFE0F', 'Elemento Magnetismo': '\uD83E\uDDF2', 'Elemento Som': '\uD83D\uDD0A',
+    'Truques de Ciclo': '✨', 'Truques Arcanos/Negros': '🔮', 'Truques Ancestrais': '📜'
 };
 
 const cores = {
@@ -25,12 +26,12 @@ const cores = {
     'Magias Arcanas/Negra de 1º Ciclo': '#d9b3ff', 'Magias Arcanas/Negra de 2º Ciclo': '#cc99ff', 'Magias Arcanas/Negra de 3º Ciclo': '#bf80ff', 'Magias Arcanas/Negra de 4º Ciclo': '#b366ff', 'Magias Arcanas/Negra de 5º Ciclo': '#a64dff', 'Magias Arcanas/Negra de 6º Ciclo': '#9933ff', 'Magias Arcanas/Negra de 7º Ciclo': '#8c1aff', 'Magias Arcanas/Negra de 8º Ciclo': '#8000ff', 'Magias Arcanas/Negra de 9º Ciclo': '#6600cc', 'Magias Arcanas/Negra de 10º Ciclo': '#4d0099',
     'Magias de 1º Ciclo': '#b3ffe6', 'Magias de 2º Ciclo': '#80ffcc', 'Magias de 3º Ciclo': '#4dffb3', 'Magias de 4º Ciclo': '#1aff99', 'Magias de 5º Ciclo': '#00e68a', 'Magias de 6º Ciclo': '#00cc7a', 'Magias de 7º Ciclo': '#00b36b', 'Magias de 8º Ciclo': '#00995c', 'Magias de 9º Ciclo': '#00804d', 'Magias de 10º Ciclo': '#00663d',
     'Elemento Madeira': '#8b5a2b', 'Elemento Mineral': '#e6e6fa', 'Elemento Cinzas': '#808080', 'Elemento Igneo': '#ff4500', 'Elemento Lava': '#ff0000', 'Elemento Vapor': '#ffb6c1', 'Elemento Nevoa': '#b0e0e6', 'Elemento Tempestade': '#ccccff', 'Elemento Areia': '#f4a460', 'Elemento Tufao': '#98fb98',
-    'Elemento Velocidade': '#e6ffff', 'Elemento Poeira': '#d9d9d9', 'Elemento Calor': '#ff6600', 'Elemento Cal': '#e6ccb3', 'Elemento Carbono': '#595959', 'Elemento Veneno': '#9933ff', 'Elemento Magnetismo': '#4169e1', 'Elemento Som': '#a6a6a6'
+    'Elemento Velocidade': '#e6ffff', 'Elemento Poeira': '#d9d9d9', 'Elemento Calor': '#ff6600', 'Elemento Cal': '#e6ccb3', 'Elemento Carbono': '#595959', 'Elemento Veneno': '#9933ff', 'Elemento Magnetismo': '#4169e1', 'Elemento Som': '#a6a6a6',
+    'Truques de Ciclo': '#b3ffe6', 'Truques Arcanos/Negros': '#d9b3ff', 'Truques Ancestrais': '#e6e6e6'
 };
 
-// 🔥 TRUQUES ADICIONADOS À HIERARQUIA
+// 🔥 HIERARQUIA REORGANIZADA 🔥
 const CATEGORIAS_ELEMENTOS = [
-    { titulo: 'Truques (Sem Custo)', itens: ['Truques Arcanos/Negros', 'Truques de Ciclo', 'Truques Ancestrais'] },
     { titulo: 'Elementos Básicos', itens: ['Fogo', 'Raio', 'Agua', 'Vento', 'Terra'] },
     { titulo: 'Elementos Básicos Verdadeiros', itens: ['Fogo Verdadeiro', 'Raio Verdadeiro', 'Agua Verdadeira', 'Vento Verdadeiro', 'Terra Verdadeira'] },
     { titulo: 'Elementos Avançados', itens: ['Solar', 'Energia', 'Gelo', 'Vacuo', 'Natureza'] },
@@ -41,9 +42,9 @@ const CATEGORIAS_ELEMENTOS = [
     { titulo: 'Elementos Astrais', itens: ['Vida', 'Morte', 'Vazio'] },
     { titulo: 'Kekkei Genkai', itens: ['Elemento Madeira', 'Elemento Mineral', 'Elemento Cinzas', 'Elemento Igneo', 'Elemento Lava', 'Elemento Vapor', 'Elemento Nevoa', 'Elemento Tempestade', 'Elemento Areia', 'Elemento Tufao'] },
     { titulo: 'Kekkei Touta', itens: ['Elemento Velocidade', 'Elemento Poeira', 'Elemento Veneno', 'Elemento Cal', 'Elemento Carbono', 'Elemento Calor', 'Elemento Som', 'Elemento Magnetismo'] },
-    { titulo: 'Magias de Ciclo', itens: ['Magias de 1º Ciclo', 'Magias de 2º Ciclo', 'Magias de 3º Ciclo', 'Magias de 4º Ciclo', 'Magias de 5º Ciclo', 'Magias de 6º Ciclo', 'Magias de 7º Ciclo', 'Magias de 8º Ciclo', 'Magias de 9º Ciclo', 'Magias de 10º Ciclo'] },
-    { titulo: 'Magias Arcanas/Negra', itens: ['Magias Arcanas/Negra de 1º Ciclo', 'Magias Arcanas/Negra de 2º Ciclo', 'Magias Arcanas/Negra de 3º Ciclo', 'Magias Arcanas/Negra de 4º Ciclo', 'Magias Arcanas/Negra de 5º Ciclo', 'Magias Arcanas/Negra de 6º Ciclo', 'Magias Arcanas/Negra de 7º Ciclo', 'Magias Arcanas/Negra de 8º Ciclo', 'Magias Arcanas/Negra de 9º Ciclo', 'Magias Arcanas/Negra de 10º Ciclo'] },
-    { titulo: 'Magias Ancestrais', itens: ['Magia de Sangue', 'Magia de Osso', 'Magia Draconica', 'Magia de Borracha', 'Magia de Espelho', 'Magia de Sal', 'Magia de Alma', 'Magia de Tremor', 'Magia de Gravidade', 'Magia de Tempo', 'Magia de Equipamento', 'Magia de Explosao', 'Magia Espacial', 'Magia de Metamorfose'] },
+    { titulo: 'Magias de Ciclo', itens: ['Truques de Ciclo', 'Magias de 1º Ciclo', 'Magias de 2º Ciclo', 'Magias de 3º Ciclo', 'Magias de 4º Ciclo', 'Magias de 5º Ciclo', 'Magias de 6º Ciclo', 'Magias de 7º Ciclo', 'Magias de 8º Ciclo', 'Magias de 9º Ciclo', 'Magias de 10º Ciclo'] },
+    { titulo: 'Magias Arcanas/Negra', itens: ['Truques Arcanos/Negros', 'Magias Arcanas/Negra de 1º Ciclo', 'Magias Arcanas/Negra de 2º Ciclo', 'Magias Arcanas/Negra de 3º Ciclo', 'Magias Arcanas/Negra de 4º Ciclo', 'Magias Arcanas/Negra de 5º Ciclo', 'Magias Arcanas/Negra de 6º Ciclo', 'Magias Arcanas/Negra de 7º Ciclo', 'Magias Arcanas/Negra de 8º Ciclo', 'Magias Arcanas/Negra de 9º Ciclo', 'Magias Arcanas/Negra de 10º Ciclo'] },
+    { titulo: 'Magias Ancestrais', itens: ['Truques Ancestrais', 'Magia de Sangue', 'Magia de Osso', 'Magia Draconica', 'Magia de Borracha', 'Magia de Espelho', 'Magia de Sal', 'Magia de Alma', 'Magia de Tremor', 'Magia de Gravidade', 'Magia de Tempo', 'Magia de Equipamento', 'Magia de Explosao', 'Magia Espacial', 'Magia de Metamorfose'] },
     { titulo: 'Neutro (Sem Elemento)', itens: ['Neutro'] }
 ];
 
@@ -74,11 +75,11 @@ export default function ElementosPanel() {
     const [dadosQtd, setDadosQtd] = useState(0);
     const [dadosFaces, setDadosFaces] = useState(20);
     
-    // 🔥 NOVAS PROPRIEDADES DA MAGIA
     const [energiaCombustao, setEnergiaCombustao] = useState('mana');
-    const [tipoMecanica, setTipoMecanica] = useState('ataque'); // ataque, saving, infusao, suporte
+    const [tipoMecanica, setTipoMecanica] = useState('ataque'); 
     const [savingAttr, setSavingAttr] = useState('destreza'); 
     const [alcanceQuad, setAlcanceQuad] = useState(1);
+    const [areaQuad, setAreaQuad] = useState(0); // 🔥 NOVO: ÁREA DE EFEITO (AoE)
 
     const formRef = useRef(null);
     const profGlobal = parseInt(minhaFicha.proficienciaBase) || 2;
@@ -92,7 +93,6 @@ export default function ElementosPanel() {
 
     function selecionarElemento(nome) {
         setElemSelecionado(nome);
-        // Pre-selecionar Energia baseada na Lore
         if (nome.includes('Kekkei') || nome.includes('Elemento')) setEnergiaCombustao('chakra');
         else if (nome.includes('Truque')) setEnergiaCombustao('livre');
         else setEnergiaCombustao('mana');
@@ -121,6 +121,7 @@ export default function ElementosPanel() {
                     tipoMecanica: tipoMecanica,
                     savingAttr: savingAttr,
                     alcanceQuad: parseFloat(alcanceQuad) || 1,
+                    areaQuad: parseFloat(areaQuad) || 0, // 🔥 SALVA A ÁREA
                     equipado: false
                 };
 
@@ -165,6 +166,7 @@ export default function ElementosPanel() {
         setTipoMecanica(p.tipoMecanica || 'ataque');
         setSavingAttr(p.savingAttr || 'destreza');
         setAlcanceQuad(p.alcanceQuad || 1);
+        setAreaQuad(p.areaQuad || 0); // 🔥 LÊ A ÁREA
 
         if (formRef.current) formRef.current.scrollIntoView({ behavior: 'smooth' });
     }
@@ -176,6 +178,7 @@ export default function ElementosPanel() {
         setEnergiaCombustao('mana');
         setTipoMecanica('ataque');
         setAlcanceQuad(1);
+        setAreaQuad(0);
     }
 
     function toggleEquiparElem(id) {
@@ -196,11 +199,40 @@ export default function ElementosPanel() {
         salvarFichaSilencioso();
     }
 
-    // 🔥 MOTOR DE CONJURAÇÃO DIRETA 🔥
+    // 🔥 MOTOR DE CONJURAÇÃO DIRETA COM EXPLOSÃO EM ÁREA 🔥
     function conjurarMagia(magia) {
+        // Puxamos dinamicamente para ler a posição dos dummies no momento exato do clique!
+        const { alvoSelecionado, dummies, cenario } = useStore.getState();
+        
         const energiaToAttr = { 'mana': 'inteligencia', 'aura': 'energiaEsp', 'chakra': 'stamina', 'livre': 'inteligencia' };
         const attrRegente = energiaToAttr[magia.energiaCombustao] || 'inteligencia';
         const modRegente = getModificadorDoisDigitos(minhaFicha[attrRegente]?.base);
+
+        let alvosAtingidos = [];
+        const alvoDummie = alvoSelecionado && dummies[alvoSelecionado] ? dummies[alvoSelecionado] : null;
+
+        if (alvoDummie && (magia.tipoMecanica === 'ataque' || magia.tipoMecanica === 'saving')) {
+            if (magia.areaQuad > 0) {
+                // Varrimento de Mapa (Explosão no alvo)
+                const cenaAtivaId = cenario?.ativa || 'default';
+                const escala = cenario?.lista?.[cenaAtivaId]?.escala || 1.5;
+
+                Object.entries(dummies).forEach(([id, d]) => {
+                    const isSameScene = (d.cenaId || 'default') === (alvoDummie.cenaId || 'default');
+                    if (isSameScene && d.posicao && alvoDummie.posicao) {
+                        const dx = Math.abs((d.posicao.x || 0) - (alvoDummie.posicao.x || 0));
+                        const dy = Math.abs((d.posicao.y || 0) - (alvoDummie.posicao.y || 0));
+                        const dz = Math.floor(Math.abs((d.posicao.z || 0) - (alvoDummie.posicao.z || 0)) / escala);
+                        
+                        if (Math.max(dx, dy, dz) <= magia.areaQuad) {
+                            alvosAtingidos.push(d);
+                        }
+                    }
+                });
+            } else {
+                alvosAtingidos.push(alvoDummie);
+            }
+        }
 
         if (magia.tipoMecanica === 'ataque') {
             const roll = Math.floor(Math.random() * 20) + 1;
@@ -210,54 +242,48 @@ export default function ElementosPanel() {
             if (roll === 20) rollStr = `[<strong>20</strong>] (CRÍTICO!)`;
             if (roll === 1) rollStr = `[<strong style="color:#ff003c;">1</strong>] (FALHA CRÍTICA!)`;
 
+            let alvosPayload = alvosAtingidos.map(d => ({
+                nome: d.nome,
+                defesa: d.valorDefesa,
+                acertou: total >= d.valorDefesa
+            }));
+
             enviarParaFeed({
                 tipo: 'acerto',
                 nome: meuNome,
                 acertoTotal: total,
                 profBonusTexto: `Mod. Magia (${attrRegente}): +${modRegente} | Proficiência: +${profGlobal}`,
                 rolagem: rollStr,
-                armaStr: ` com ${magia.nome} (${magia.elemento})`
+                armaStr: ` com ${magia.nome} (${magia.elemento})`,
+                alvosArea: alvosPayload,
+                areaEf: magia.areaQuad || 0
             });
             setAbaAtiva('aba-log');
         } 
         else if (magia.tipoMecanica === 'saving') {
             const cd = 8 + modRegente + profGlobal;
+            let textoAlvos = alvosAtingidos.length > 0 ? ` Alvos na zona de explosão: ${alvosAtingidos.map(d=>d.nome).join(', ')}.` : '';
+            
             enviarParaFeed({
                 tipo: 'sistema',
                 nome: meuNome,
-                texto: `🌀 CONJUROU: ${magia.nome}! O alvo precisa de passar num Saving Throw de ${magia.savingAttr.toUpperCase()} (CD: ${cd}).`
+                texto: `🌀 CONJUROU: ${magia.nome}!${textoAlvos} Precisam de passar num Saving Throw de ${magia.savingAttr.toUpperCase()} (CD: ${cd}).`
             });
             setAbaAtiva('aba-log');
         }
         else if (magia.tipoMecanica === 'infusao') {
-            enviarParaFeed({
-                tipo: 'sistema',
-                nome: meuNome,
-                texto: `✨ INFUSÃO ELEMENTAL: As armas e poderes de ${meuNome} estão envoltos em ${magia.elemento} através da técnica ${magia.nome}!`
-            });
+            enviarParaFeed({ tipo: 'sistema', nome: meuNome, texto: `✨ INFUSÃO ELEMENTAL: As armas e poderes de ${meuNome} estão envoltos em ${magia.elemento} através da técnica ${magia.nome}!` });
             setAbaAtiva('aba-log');
         }
         else {
-            enviarParaFeed({
-                tipo: 'sistema',
-                nome: meuNome,
-                texto: `✨ SUPORTE MÁGICO: ${meuNome} conjurou ${magia.nome} (${magia.elemento})!`
-            });
+            enviarParaFeed({ tipo: 'sistema', nome: meuNome, texto: `✨ SUPORTE MÁGICO: ${meuNome} conjurou ${magia.nome} (${magia.elemento})!` });
             setAbaAtiva('aba-log');
         }
     }
 
     const ataquesElementais = minhaFicha.ataquesElementais || [];
-
-    const magiasDoGrupo = useMemo(() =>
-        ataquesElementais.filter(e => (e.elemento || 'Neutro') === elemSelecionado),
-        [ataquesElementais, elemSelecionado]
-    );
-
-    const magiasConjuradasOutros = useMemo(() =>
-        ataquesElementais.filter(e => e.equipado && (e.elemento || 'Neutro') !== elemSelecionado),
-        [ataquesElementais, elemSelecionado]
-    );
+    const magiasDoGrupo = useMemo(() => ataquesElementais.filter(e => (e.elemento || 'Neutro') === elemSelecionado), [ataquesElementais, elemSelecionado]);
+    const magiasConjuradasOutros = useMemo(() => ataquesElementais.filter(e => e.equipado && (e.elemento || 'Neutro') !== elemSelecionado), [ataquesElementais, elemSelecionado]);
 
     function renderMagiaCard(p) {
         const isEquipped = p.equipado;
@@ -265,11 +291,7 @@ export default function ElementosPanel() {
         const c = isEquipped ? corPura : '#888';
         const hex = corPura.replace('#', '');
         let r = 0, g = 0, b = 0;
-        if (hex.length === 6) {
-            r = parseInt(hex.substring(0, 2), 16);
-            g = parseInt(hex.substring(2, 4), 16);
-            b = parseInt(hex.substring(4, 6), 16);
-        }
+        if (hex.length === 6) { r = parseInt(hex.substring(0, 2), 16); g = parseInt(hex.substring(2, 4), 16); b = parseInt(hex.substring(4, 6), 16); }
         const bg = isEquipped ? `rgba(${r},${g},${b},0.15)` : 'rgba(0,0,0,0.4)';
 
         const elemText = p.elemento || 'Neutro';
@@ -292,7 +314,7 @@ export default function ElementosPanel() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 15 }}>
                     <div>
                         <h3 style={{ margin: 0, color: c, textShadow: `0 0 10px ${c}` }}>
-                            {emogis[elemText] || '\u2728'} {p.nome || 'Magia'} <span style={{fontSize: '0.6em', color: '#fff'}}>(Alc: {p.alcanceQuad || 1}Q)</span>
+                            {emogis[elemText] || '\u2728'} {p.nome || 'Magia'} <span style={{fontSize: '0.6em', color: '#fff'}}>(Alc: {p.alcanceQuad || 1}Q | Área: {p.areaQuad || 0}Q)</span>
                         </h3>
                         <p style={{ color: '#0ff', fontSize: '0.9em', margin: '5px 0 0' }}>
                             Mecânica: <strong>{mec.toUpperCase()}</strong> {mec === 'saving' ? `(CD ${cd} - ${p.savingAttr?.toUpperCase()})` : mec === 'ataque' ? `(+${bonusAcerto} Acerto)` : ''}
@@ -302,17 +324,12 @@ export default function ElementosPanel() {
                         </p>
                     </div>
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                        
-                        {/* 🔥 BOTÃO DE CONJURAÇÃO DIRETA 🔥 */}
                         {isEquipped && (
                             <button className="btn-neon btn-gold" onClick={() => conjurarMagia(p)} style={{ padding: '5px 15px', fontSize: '1.1em', margin: 0, boxShadow: `0 0 10px ${c}` }}>
                                 🪄 CONJURAR
                             </button>
                         )}
-
-                        <button className="btn-neon" style={{ borderColor: c, color: c, padding: '5px 15px', fontSize: '1em', margin: 0 }} onClick={() => toggleEquiparElem(p.id)}>
-                            {isEquipped ? 'PREPARADA' : 'MEMORIZAR'}
-                        </button>
+                        <button className="btn-neon" style={{ borderColor: c, color: c, padding: '5px 15px', fontSize: '1em', margin: 0 }} onClick={() => toggleEquiparElem(p.id)}>{isEquipped ? 'PREPARADA' : 'MEMORIZAR'}</button>
                         <button className="btn-neon btn-blue" style={{ padding: '5px 15px', fontSize: '0.9em', margin: 0 }} onClick={() => editarElem(p.id)}>EDITAR</button>
                         <button className="btn-neon btn-red" style={{ padding: '5px 15px', fontSize: '0.9em', margin: 0 }} onClick={() => deletarElem(p.id)}>APAGAR</button>
                     </div>
@@ -328,10 +345,7 @@ export default function ElementosPanel() {
                 
                 {CATEGORIAS_ELEMENTOS.map(categoria => (
                     <div key={categoria.titulo} style={{ marginBottom: 18 }}>
-                        <h4 style={{ 
-                            color: '#aaa', fontSize: '0.85em', textTransform: 'uppercase', letterSpacing: '1px',
-                            borderBottom: '1px solid #333', paddingBottom: 4, marginBottom: 8, marginTop: 0
-                        }}>
+                        <h4 style={{ color: '#aaa', fontSize: '0.85em', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1px solid #333', paddingBottom: 4, marginBottom: 8, marginTop: 0 }}>
                             {categoria.titulo}
                         </h4>
                         
@@ -343,11 +357,7 @@ export default function ElementosPanel() {
                                     <button
                                         key={elem} className="badge-elem"
                                         onClick={() => selecionarElemento(elem)}
-                                        style={{
-                                            padding: '4px 8px', fontSize: '0.75em', border: `1px solid ${isActive ? cor : '#444'}`,
-                                            borderRadius: 4, background: 'transparent', color: isActive ? cor : '#aaa',
-                                            cursor: 'pointer', boxShadow: isActive ? `inset 0 0 10px ${cor}` : 'none'
-                                        }}
+                                        style={{ padding: '4px 8px', fontSize: '0.75em', border: `1px solid ${isActive ? cor : '#444'}`, borderRadius: 4, background: 'transparent', color: isActive ? cor : '#aaa', cursor: 'pointer', boxShadow: isActive ? `inset 0 0 10px ${cor}` : 'none' }}
                                     >
                                         {emogis[elem] || '\u2728'} {elem}
                                     </button>
@@ -358,14 +368,12 @@ export default function ElementosPanel() {
                 ))}
             </div>
 
-            {/* FORMULÁRIO COMPLETO */}
             <div className="def-box" ref={formRef} id="form-elem-box" style={{ marginTop: 15 }}>
                 <h3 style={{ color: '#0ff', marginBottom: 10 }}>{elemEditandoId ? `Editando: ${nomeElem}` : 'Criar Nova Magia'}</h3>
 
                 <input className="input-neon" type="text" placeholder="Nome da Magia/Técnica" value={nomeElem} onChange={e => setNomeElem(e.target.value)} />
 
-                {/* 🔥 NOVAS REGRAS DE CONJURAÇÃO */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, marginTop: 10, padding: 10, background: 'rgba(0,136,255,0.1)', border: '1px solid #0088ff', borderRadius: 5 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginTop: 10, padding: 10, background: 'rgba(0,136,255,0.1)', border: '1px solid #0088ff', borderRadius: 5 }}>
                     <div>
                         <label style={{ color: '#0088ff', fontSize: '0.85em', fontWeight: 'bold' }}>Mecânica de Uso</label>
                         <select className="input-neon" value={tipoMecanica} onChange={e => setTipoMecanica(e.target.value)}>
@@ -378,7 +386,7 @@ export default function ElementosPanel() {
                     
                     {tipoMecanica === 'saving' && (
                         <div>
-                            <label style={{ color: '#ffcc00', fontSize: '0.85em', fontWeight: 'bold' }}>Qual Resistência o Alvo rola?</label>
+                            <label style={{ color: '#ffcc00', fontSize: '0.85em', fontWeight: 'bold' }}>Qual Resistência?</label>
                             <select className="input-neon" value={savingAttr} onChange={e => setSavingAttr(e.target.value)}>
                                 <option value="forca">Força</option>
                                 <option value="destreza">Destreza</option>
@@ -395,16 +403,21 @@ export default function ElementosPanel() {
                     <div>
                         <label style={{ color: '#0088ff', fontSize: '0.85em', fontWeight: 'bold' }}>Energia Usada</label>
                         <select className="input-neon" value={energiaCombustao} onChange={e => setEnergiaCombustao(e.target.value)}>
-                            <option value="mana">Mana (Base: Inteligência)</option>
-                            <option value="aura">Aura (Base: Energia Esp.)</option>
-                            <option value="chakra">Chakra (Base: Stamina)</option>
+                            <option value="mana">Mana (Base: Int)</option>
+                            <option value="aura">Aura (Base: Eng. Esp)</option>
+                            <option value="chakra">Chakra (Base: Stam)</option>
                             <option value="livre">Truque / Livre</option>
                         </select>
                     </div>
 
                     <div>
-                        <label style={{ color: '#0088ff', fontSize: '0.85em', fontWeight: 'bold' }}>Alcance (Q)</label>
+                        <label style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold' }}>Alcance (Q)</label>
                         <input className="input-neon" type="number" min="0" step="0.5" value={alcanceQuad} onChange={e => setAlcanceQuad(e.target.value)} />
+                    </div>
+                    
+                    <div>
+                        <label style={{ color: '#ff00ff', fontSize: '0.85em', fontWeight: 'bold' }}>Área de Efeito (Q)</label>
+                        <input className="input-neon" type="number" min="0" step="0.5" value={areaQuad} onChange={e => setAreaQuad(e.target.value)} style={{ borderColor: '#ff00ff', color: '#ff00ff' }} />
                     </div>
                 </div>
 

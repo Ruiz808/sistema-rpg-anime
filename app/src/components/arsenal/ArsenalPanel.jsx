@@ -35,6 +35,7 @@ export default function ArsenalPanel() {
     const [armaDadosQtd, setArmaDadosQtd] = useState(1);
     const [armaDadosFaces, setArmaDadosFaces] = useState(20);
     const [armaAlcance, setArmaAlcance] = useState(1); // 🔥 NOVO: Alcance da Arma
+    const [armaArea, setArmaArea] = useState(0);
     const [armaTipo, setArmaTipo] = useState('espada');
     const [raridade, setRaridade] = useState('comum');
 
@@ -298,7 +299,7 @@ export default function ArsenalPanel() {
                 </div>
 
                 {tipoItem === 'arma' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginTop: 10 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginTop: 10 }}>
                         <div>
                             <label style={{ color: '#aaa', fontSize: '0.85em' }}>Dados de Dano (qtd)</label>
                             <input className="input-neon" type="number" min="1" value={armaDadosQtd} onChange={e => setArmaDadosQtd(e.target.value)} />
@@ -307,10 +308,14 @@ export default function ArsenalPanel() {
                             <label style={{ color: '#aaa', fontSize: '0.85em' }}>Faces (d)</label>
                             <input className="input-neon" type="number" min="1" value={armaDadosFaces} onChange={e => setArmDadosFaces(e.target.value)} />
                         </div>
-                        {/* 🔥 NOVO: ALCANCE DA ARMA */}
                         <div>
                             <label style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold' }}>Alcance (Quadrados)</label>
                             <input className="input-neon" type="number" min="1" step="0.5" value={armaAlcance} onChange={e => setArmaAlcance(e.target.value)} style={{ borderColor: '#00ffcc', color: '#00ffcc' }} />
+                        </div>
+                        {/* 🔥 NOVO: ÁREA DA ARMA */}
+                        <div>
+                            <label style={{ color: '#ff00ff', fontSize: '0.85em', fontWeight: 'bold' }}>Área de Explosão (Q)</label>
+                            <input className="input-neon" type="number" min="0" step="0.5" value={armaArea} onChange={e => setArmaArea(e.target.value)} style={{ borderColor: '#ff00ff', color: '#ff00ff' }} />
                         </div>
                     </div>
                 )}

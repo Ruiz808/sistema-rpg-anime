@@ -54,11 +54,12 @@ export default function AcertoPanel() {
         }
     });
 
-    // 🔥 O RADAR TÁTICO: Cálculo de Distância (Chebyshev para Grid)
+    // 🔥 O RADAR TÁTICO: Cálculo de Distância e Área (Chebyshev para Grid)
     const alvoDummie = alvoSelecionado && dummies[alvoSelecionado] ? dummies[alvoSelecionado] : null;
     let distQuadrados = 0;
     let distReal = 0;
     let maxAlcance = 1;
+    let maxArea = 0; // 🔥 VARIÁVEL DE ÁREA ADICIONADA
     let isForaDeAlcance = false;
     let unidadeEscala = 'm';
 
@@ -75,12 +76,17 @@ export default function AcertoPanel() {
         distQuadrados = Math.max(dx, dy, Math.floor(dz));
         distReal = distQuadrados * escala;
 
-        // O seu alcance efetivo é o maior entre as armas equipadas ou poderes ativos
+        // O seu alcance efetivo e a sua área máxima são baseados nas armas/poderes ativos!
         const maxAlcanceArmas = armasEquipadas.length > 0 ? Math.max(...armasEquipadas.map(a => a.alcance || 1)) : 1;
+        const maxAreaArmas = armasEquipadas.length > 0 ? Math.max(...armasEquipadas.map(a => a.areaQuad || a.area || 0)) : 0;
+        
         const poderesAtivos = (minhaFicha.poderes || []).filter(p => p.ativa);
         const maxAlcancePoderes = poderesAtivos.length > 0 ? Math.max(...poderesAtivos.map(p => p.alcance || 1)) : 1;
+        const maxAreaPoderes = poderesAtivos.length > 0 ? Math.max(...poderesAtivos.map(p => p.areaQuad || p.area || 0)) : 0;
         
         maxAlcance = Math.max(maxAlcanceArmas, maxAlcancePoderes);
+        maxArea = Math.max(maxAreaArmas, maxAreaPoderes);
+        
         isForaDeAlcance = distQuadrados > maxAlcance;
     }
 
@@ -128,13 +134,43 @@ export default function AcertoPanel() {
             vantagens: v, desvantagens: d 
         });
 
-        let extraData = {};
+        let alvosAtingidos = [];
+
+        // 🔥 MOTOR DE EXPLOSÃO: Varrimento de mapa caso Area > 0 🔥
         if (alvoDummie) {
-            const acertou = result.acertoTotal >= alvoDummie.valorDefesa; 
-            extraData = { alvoNome: alvoDummie.nome, alvoDefesa: alvoDummie.valorDefesa, acertouAlvo: acertou };
+            if (maxArea > 0) {
+                const cenaAtivaId = cenario?.ativa || 'default';
+                const cenaAtual = cenario?.lista?.[cenaAtivaId] || { escala: 1.5 };
+                const escala = cenaAtual.escala || 1.5;
+
+                Object.entries(dummies).forEach(([id, dummieObj]) => {
+                    const isSameScene = (dummieObj.cenaId || 'default') === (alvoDummie.cenaId || 'default');
+                    if (isSameScene && dummieObj.posicao && alvoDummie.posicao) {
+                        const dX = Math.abs(dummieObj.posicao.x - alvoDummie.posicao.x);
+                        const dY = Math.abs(dummieObj.posicao.y - alvoDummie.posicao.y);
+                        const dZ = Math.floor(Math.abs((dummieObj.posicao.z || 0) - (alvoDummie.posicao.z || 0)) / escala);
+                        
+                        // Se estiver dentro da zona de explosão a partir do alvo central
+                        if (Math.max(dX, dY, dZ) <= maxArea) {
+                            alvosAtingidos.push({
+                                nome: dummieObj.nome,
+                                defesa: dummieObj.valorDefesa,
+                                acertou: result.acertoTotal >= dummieObj.valorDefesa
+                            });
+                        }
+                    }
+                });
+            } else {
+                // Ataque de alvo único
+                alvosAtingidos.push({
+                    nome: alvoDummie.nome,
+                    defesa: alvoDummie.valorDefesa,
+                    acertou: result.acertoTotal >= alvoDummie.valorDefesa
+                });
+            }
         }
 
-        const feedData = { tipo: 'acerto', nome: meuNome, ...result, ...extraData };
+        const feedData = { tipo: 'acerto', nome: meuNome, ...result, alvosArea: alvosAtingidos, areaEf: maxArea };
         enviarParaFeed(feedData);
         setAbaAtiva('aba-log');
     }
@@ -231,14 +267,14 @@ export default function AcertoPanel() {
                     </div>
                 )}
 
-                {/* 🔥 HUD DE DISTÂNCIA E ALCANCE */}
+                {/* 🔥 HUD DE DISTÂNCIA E ALCANCE COM SUPORTE A EXPLOSÕES 🔥 */}
                 {alvoDummie && (
                     <div style={{ marginTop: 15, padding: '10px', background: isForaDeAlcance ? 'rgba(255,0,0,0.1)' : 'rgba(0,255,0,0.1)', border: `1px solid ${isForaDeAlcance ? '#ff003c' : '#0f0'}`, borderRadius: '5px', textAlign: 'center' }}>
                         <span style={{ color: isForaDeAlcance ? '#ff003c' : '#0f0', fontWeight: 'bold', fontSize: '1.1em' }}>
-                            🎯 Alvo: {alvoDummie.nome} | Distância: {distQuadrados}Q ({distReal.toFixed(1)} {unidadeEscala})
+                            🎯 Alvo Central: {alvoDummie.nome} | Distância: {distQuadrados}Q ({distReal.toFixed(1)} {unidadeEscala})
                         </span>
                         <br/>
-                        <span style={{ color: '#aaa', fontSize: '0.85em' }}>Seu Alcance Efetivo: {maxAlcance}Q</span>
+                        <span style={{ color: '#aaa', fontSize: '0.85em' }}>Seu Alcance Efetivo: {maxAlcance}Q {maxArea > 0 && <span style={{color: '#ff00ff', fontWeight: 'bold'}}>| Explosão: {maxArea}Q</span>}</span>
                         {isForaDeAlcance && <div style={{ color: '#ff003c', marginTop: 5, fontWeight: 'bold', textShadow: '0 0 5px #ff003c' }}>⚠️ FORA DE ALCANCE! APROXIME-SE!</div>}
                     </div>
                 )}
@@ -250,7 +286,7 @@ export default function AcertoPanel() {
                     style={{ marginTop: 15, width: '100%', borderColor: isForaDeAlcance ? '#555' : '#f90', color: isForaDeAlcance ? '#555' : '#f90', opacity: isForaDeAlcance ? 0.5 : 1 }}
                 >
                     {alvoSelecionado && alvoDummie 
-                        ? (isForaDeAlcance ? 'MUITO LONGE PARA ATACAR' : `TENTAR ACERTAR ${alvoDummie.nome.toUpperCase()}`) 
+                        ? (isForaDeAlcance ? 'MUITO LONGE PARA ATACAR' : (maxArea > 0 ? `💥 DISPARAR EXPLOSÃO NO ALVO` : `TENTAR ACERTAR ${alvoDummie.nome.toUpperCase()}`)) 
                         : 'ROLAR ACERTO (SEM ALVO)'}
                 </button>
             </div>
