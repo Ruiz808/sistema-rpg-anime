@@ -30,9 +30,7 @@ const TODOS_RANKS = [...baseRanks, ...extendedRanks];
 
 export default function AIPanel() {
     const minhaFicha = useStore(s => s.minhaFicha);
-    const meuNome = useStore(s => s.meuNome);
-    
-    // Puxa todas as fichas do servidor
+    const meuNome = useStore(s => s.meuNome) || 'Desconhecido';
     const personagens = useStore(s => s.personagens) || {};
 
     // --- ESTADOS BÁSICOS ---
@@ -82,38 +80,50 @@ export default function AIPanel() {
     }, [capitulosPresente, capituloAtivoId, capitulosFuturo, capFuturoAtivoId]);
 
 
-    // 🔥 O BANCO DE AVATARES EXPANDIDO (SCANNER RECURSIVO ABSOLUTO) 🔥
+    // 🔥 O BANCO DE AVATARES EXPANDIDO E FUNDIDO 🔥
     const avataresDoServidor = [];
+    
+    // Junta a sua ficha com a dos outros jogadores para o scanner não pular você!
+    const todasFichas = { ...personagens };
+    if (minhaFicha && meuNome) {
+        todasFichas[meuNome] = minhaFicha;
+    }
 
-    Object.entries(personagens).forEach(([nomeFicha, ficha]) => {
-        if (!ficha) return;
+    Object.entries(todasFichas).forEach(([nomeFicha, ficha]) => {
+        if (!ficha || typeof ficha !== 'object') return;
 
-        // Tradutor de Objetos de Imagem do Firebase
+        // Tradutor de Imagens (Ainda mais agressivo para caçar URLs)
         const extrairUrl = (img) => {
-            let url = img || '';
-            if (typeof url === 'object' && url !== null) {
-                url = url.url || url.link || url.src || Object.values(url).find(v => typeof v === 'string' && v.startsWith('http')) || '';
+            if (!img) return '';
+            if (typeof img === 'string') return img.trim();
+            if (typeof img === 'object') {
+                const url = img.url || img.link || img.src || img.imagem || img.img || Object.values(img).find(v => typeof v === 'string' && (v.startsWith('http') || v.startsWith('data:'))) || '';
+                return typeof url === 'string' ? url.trim() : '';
             }
-            return typeof url === 'string' ? url.trim() : '';
+            return '';
         };
 
         // 1. Pega a foto principal da Ficha
-        const urlBase = extrairUrl(ficha.avatar || ficha.bio?.avatar || ficha.token || ficha.imagem);
+        const urlBase = extrairUrl(ficha.avatar || ficha.bio?.avatar || ficha.token || ficha.imagem || ficha.img);
         if (urlBase) avataresDoServidor.push({ nome: nomeFicha, avatar: urlBase });
 
-        // 2. Vasculha TODOS os cantos da ficha recursivamente (Acha o Modo Assalto onde ele estiver!)
-        const nomesJaAdicionados = new Set(); 
-        
+        const nomesJaAdicionados = new Set();
+        if (urlBase) nomesJaAdicionados.add(nomeFicha);
+
+        // 2. Vasculha TODOS os cantos da ficha recursivamente
         const varrerObjeto = (obj) => {
             if (!obj || typeof obj !== 'object') return;
 
-            // Se esse pedaço de código tiver um "nome" e uma "imagem", ele é uma forma/poder!
-            if (obj.nome && typeof obj.nome === 'string') {
-                const img = extrairUrl(obj.imagem || obj.icone || obj.avatar || obj.url);
-                if (img && img !== urlBase) {
-                    const nomeCombo = `${nomeFicha} (${obj.nome})`;
+            // Tenta achar qualquer combinação de "Nome" + "Imagem" no mesmo bloco
+            const nomeObj = obj.nome || obj.titulo || obj.name;
+            const imgObj = obj.imagem || obj.icone || obj.avatar || obj.url || obj.img || obj.foto || obj.icon;
+
+            if (nomeObj && typeof nomeObj === 'string' && imgObj) {
+                const url = extrairUrl(imgObj);
+                if (url && url !== urlBase) {
+                    const nomeCombo = `${nomeFicha} (${nomeObj})`; // Ex: Natsu Ackermann (Modo Assalto)
                     if (!nomesJaAdicionados.has(nomeCombo)) {
-                        avataresDoServidor.push({ nome: nomeCombo, avatar: img });
+                        avataresDoServidor.push({ nome: nomeCombo, avatar: url });
                         nomesJaAdicionados.add(nomeCombo);
                     }
                 }
@@ -121,7 +131,9 @@ export default function AIPanel() {
 
             // Entra nos sub-arrays e sub-objetos (busca profunda)
             Object.values(obj).forEach(valor => {
-                if (typeof valor === 'object') varrerObjeto(valor);
+                if (valor && typeof valor === 'object') {
+                    varrerObjeto(valor);
+                }
             });
         };
 
@@ -134,7 +146,7 @@ export default function AIPanel() {
         .filter(srvPers => !tierListAtiva.some(tPers => tPers.nome === srvPers.nome));
 
 
-    // --- SISTEMA DE DRAG AND DROP (ARRASTAR E LARGAR) ---
+    // --- SISTEMA DE DRAG AND DROP ---
     const handleDragStart = (e, personagem) => {
         e.dataTransfer.setData('personagem', JSON.stringify(personagem));
         e.dataTransfer.effectAllowed = 'move';
@@ -174,11 +186,10 @@ export default function AIPanel() {
         }));
     };
 
-    // --- FUNÇÃO PARA ADICIONAR PERSONAGEM CUSTOMIZADO MANUALMENTE ---
+    // --- FUNÇÃO PARA ADICIONAR PERSONAGEM CUSTOMIZADO ---
     const adicionarCustomizado = () => {
         if (!novoPersonagem.trim()) return;
         const personagem = { nome: novoPersonagem.trim(), avatar: novoAvatar.trim() };
-        // Adiciona direto no Rank C por padrão, depois arrasta
         moverPersonagem(personagem, 'C');
         setNovoPersonagem('');
         setNovoAvatar('');
@@ -301,20 +312,19 @@ export default function AIPanel() {
                 </div>
             </div>
 
-            {/* CHAT - AGORA COM ARMADURA NO CSS PARA NÃO QUEBRAR O LAYOUT */}
+            {/* CHAT - COM ARMADURA PARA NÃO QUEBRAR O LAYOUT */}
             {subAba === 'chat' && (
                 <>
                     <div ref={chatRef} className="def-box" style={{ flex: 1, minHeight: '300px', maxHeight: '60vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', padding: '15px' }}>
                         {historico.length === 0 && <div style={{ color: '#555', textAlign: 'center', fontStyle: 'italic', marginTop: '40px' }}>A Sexta-Feira está online e pronta para ajudar.</div>}
                         {historico.map((msg, i) => (
                             <div key={i} style={{ alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '80%', padding: '10px 14px', borderRadius: '8px', background: msg.role === 'user' ? 'rgba(0, 255, 204, 0.15)' : msg.role === 'erro' ? 'rgba(255, 0, 60, 0.15)' : 'rgba(0, 136, 255, 0.15)', border: `1px solid ${msg.role === 'user' ? '#00ffcc' : msg.role === 'erro' ? '#ff003c' : '#0088ff'}`, color: '#ddd', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: '0.95em' }}>
-                                <div style={{ fontSize: '0.7em', fontWeight: 'bold', marginBottom: '4px', color: msg.role === 'user' ? '#00ffcc' : msg.role === 'erro' ? '#ff003c' : '#0088ff' }}>{msg.role === 'user' ? meuNome?.toUpperCase() || 'VOCE' : msg.role === 'erro' ? 'ERRO' : 'SEXTA-FEIRA'}</div>
+                                <div style={{ fontSize: '0.7em', fontWeight: 'bold', marginBottom: '4px', color: msg.role === 'user' ? '#00ffcc' : msg.role === 'erro' ? '#ff003c' : '#0088ff' }}>{msg.role === 'user' ? meuNome?.toUpperCase() : msg.role === 'erro' ? 'ERRO' : 'SEXTA-FEIRA'}</div>
                                 {msg.texto}
                             </div>
                         ))}
                     </div>
                     
-                    {/* ARMADURA DO CHAT - TRAVA ABSOLUTA DE TAMANHO */}
                     <div style={{ display: 'flex', flexDirection: 'row', gap: '15px', alignItems: 'flex-start', marginTop: '10px', width: '100%' }}>
                         <textarea 
                             className="input-neon" 
@@ -340,7 +350,7 @@ export default function AIPanel() {
             {/* GRAVADOR */}
             {subAba === 'gravador' && <div style={{ flex: 1, overflowY: 'auto' }}><GravadorPanel /></div>}
 
-            {/* TIER LIST AVANÇADA COM DRAG AND DROP */}
+            {/* TIER LIST */}
             {subAba === 'tierlist' && (
                 <div className="def-box" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '20px' }}>
                     {renderizadorDeCabecalhoDeCapitulo()}
@@ -381,7 +391,7 @@ export default function AIPanel() {
                         })}
                     </div>
 
-                    {/* ZONA 2: O BANCO DE PERSONAGENS (POOL) E CRIADOR MANUAL */}
+                    {/* ZONA 2: O BANCO DE PERSONAGENS E CRIADOR MANUAL */}
                     <div style={{ borderTop: '2px solid #333', paddingTop: '15px' }}>
                         
                         {/* O BANCO (ÁREA DE DROP PARA REMOVER) */}
@@ -393,7 +403,7 @@ export default function AIPanel() {
                             <h4 style={{ margin: 0, color: '#aaa' }}>📦 Banco de Entidades Expandido (Arraste para classificar)</h4>
                             
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                                {poolPersonagens.length === 0 && <span style={{ color: '#555', fontStyle: 'italic', fontSize: '0.9em' }}>Nenhum avatar ou transformação sobrando no servidor.</span>}
+                                {poolPersonagens.length === 0 && <span style={{ color: '#555', fontStyle: 'italic', fontSize: '0.9em' }}>Nenhum avatar ou transformação sobrando.</span>}
                                 
                                 {poolPersonagens.map((pers, i) => (
                                     <div 
