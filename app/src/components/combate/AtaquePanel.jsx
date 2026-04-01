@@ -45,6 +45,9 @@ export default function AtaquePanel() {
     const [autoCritFatal, setAutoCritFatal] = useState(false);
     const [forcarCritNormal, setForcarCritNormal] = useState(false);
     const [forcarCritFatal, setForcarCritFatal] = useState(false);
+    
+    // 🔥 OVERRIDE PARA MAGIAS DE ÁREA / SAVING THROWS
+    const [ignorarTravaAcerto, setIgnorarTravaAcerto] = useState(false);
 
     const [skillConfigs, setSkillConfigs] = useState({});
 
@@ -110,7 +113,6 @@ export default function AtaquePanel() {
         setTimeout(() => setFuriaAcalmadaMsg(false), 2000);
     }
 
-    // 🔥 CORREÇÃO: LEITURA DE MÚLTIPLOS ALVOS NO FEED PARA LIBERAR O DANO
     useEffect(() => {
         if (!dummieAlvo) {
             setPodeRolarDano(true);
@@ -119,9 +121,7 @@ export default function AtaquePanel() {
         
         const meuUltimoAcerto = [...feedCombate].reverse().find(f => {
             if (f.nome !== meuNome || f.tipo !== 'acerto') return false;
-            // Suporte para versão antiga de alvo único
             if (f.alvoNome === dummieAlvo.nome) return true;
-            // Suporte para versão nova de área de efeito
             if (f.alvosArea && f.alvosArea.some(a => a.nome === dummieAlvo.nome)) return true;
             return false;
         });
@@ -178,9 +178,12 @@ export default function AtaquePanel() {
         }
     }, [feedCombate, meuNome, critNormalMin, critNormalMax, critFatalMin, critFatalMax]);
 
+    // 🔥 MODIFICADO PARA INCLUIR MAGIAS NAS CONFIGURAÇÕES 🔥
     useEffect(() => {
         const poderes = minhaFicha.poderes || [];
+        const magias = minhaFicha.ataquesElementais || [];
         const configs = {};
+        
         poderes.forEach(p => {
             if (p && p.ativa) {
                 configs[p.id] = {
@@ -189,8 +192,18 @@ export default function AtaquePanel() {
                 };
             }
         });
+        
+        magias.forEach(m => {
+            if (m && m.equipado && m.tipoMecanica !== 'suporte') {
+                configs[m.id] = {
+                    statusUsados: m.statusUsados || ['inteligencia'],
+                    energiaCombustao: m.energiaCombustao || 'mana'
+                };
+            }
+        });
+        
         setSkillConfigs(configs);
-    }, [minhaFicha.poderes]);
+    }, [minhaFicha.poderes, minhaFicha.ataquesElementais]);
 
     const updateSkillConfig = useCallback((id, field, value) => {
         setSkillConfigs(prev => ({
@@ -235,6 +248,14 @@ export default function AtaquePanel() {
                     }
                 });
             }
+            if (ficha.ataquesElementais) {
+                ficha.ataquesElementais.forEach(m => {
+                    if (m && skillConfigs[m.id]) {
+                        m.statusUsados = skillConfigs[m.id].statusUsados;
+                        m.energiaCombustao = skillConfigs[m.id].energiaCombustao;
+                    }
+                });
+            }
         });
         salvarFichaSilencioso();
     }
@@ -244,6 +265,7 @@ export default function AtaquePanel() {
 
         const itensEquipados = minhaFicha.inventario ? minhaFicha.inventario.filter(i => i.equipado) : [];
         const poderesAtivos = (minhaFicha.poderes || []).filter(p => p && p.ativa);
+        const magiasOfensivas = (minhaFicha.ataquesElementais || []).filter(m => m && m.equipado && m.tipoMecanica !== 'suporte');
 
         const configHabilidades = poderesAtivos.map(p => ({
             id: p.id,
@@ -257,6 +279,27 @@ export default function AtaquePanel() {
             efeitos: p.efeitos || []
         }));
 
+        // 🔥 O MOTOR DE DANO AGORA LÊ AS MAGIAS 🔥
+        const configMagias = magiasOfensivas.map(m => {
+            const efs = [];
+            if (m.bonusTipo && m.bonusTipo !== 'nenhum') {
+                efs.push({ atributo: 'todos_status', propriedade: m.bonusTipo, valor: m.bonusValor });
+            }
+            return {
+                id: m.id,
+                nome: m.nome,
+                dadosQtd: m.dadosExtraQtd || 0,
+                dadosFaces: m.dadosExtraFaces || 20,
+                custoPercentual: m.custoValor || 0,
+                armaVinculada: '',
+                statusUsados: skillConfigs[m.id]?.statusUsados || m.statusUsados || ['inteligencia'],
+                energiaCombustao: skillConfigs[m.id]?.energiaCombustao || m.energiaCombustao || 'mana',
+                efeitos: efs
+            };
+        });
+
+        const todasHabilidades = configHabilidades.concat(configMagias);
+
         const configArma = {
             statusUsados: armaStatusUsados,
             energiaCombustao: armaEnergiaCombustao,
@@ -266,7 +309,7 @@ export default function AtaquePanel() {
         const isCriticoNormal = forcarCritNormal || autoCritNormal;
         const isCriticoFatal = forcarCritFatal || autoCritFatal;
 
-        const result = calcularDano({ minhaFicha, configArma, configHabilidades, itensEquipados, isCriticoNormal, isCriticoFatal });
+        const result = calcularDano({ minhaFicha, configArma, configHabilidades: todasHabilidades, itensEquipados, isCriticoNormal, isCriticoFatal });
 
         if (result.erro) {
             alert(result.erro);
@@ -286,6 +329,7 @@ export default function AtaquePanel() {
 
         setForcarCritNormal(false);
         setForcarCritFatal(false);
+        setIgnorarTravaAcerto(false); // Reseta a trava
 
         let extraFeed = {};
         if (dummieAlvo) {
@@ -316,6 +360,7 @@ export default function AtaquePanel() {
 
     const armaEquipada = (minhaFicha.inventario || []).find(i => i.equipado && i.tipo === 'arma');
     const poderesAtivos = (minhaFicha.poderes || []).filter(p => p && p.ativa);
+    const magiasOfensivas = (minhaFicha.ataquesElementais || []).filter(m => m && m.equipado && m.tipoMecanica !== 'suporte');
 
     return (
         <div className="ataque-panel">
@@ -413,7 +458,7 @@ export default function AtaquePanel() {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                         <div>
                             <label style={{ color: '#aaa', fontSize: '0.85em' }}>Energia de Combustao</label>
-                            <select className="input-neon" value={armaEnergiaCombustao} onChange={e => setArmaEnergiaCombustao(e.target.value)}>
+                            <select className="input-neon" value={armaEnergiaCombustao} onChange={e => setArmEnergiaCombustao(e.target.value)}>
                                 {ENERGIA_LIST.map(en => (
                                     <option key={en.value} value={en.value}>{en.label}</option>
                                 ))}
@@ -433,7 +478,7 @@ export default function AtaquePanel() {
                 </div>
             )}
 
-            <div className="def-box">
+            <div className="def-box" style={{ marginBottom: 15 }}>
                 <h3 style={{ color: '#f0f', marginBottom: 10 }}>Habilidades Ativas</h3>
                 {poderesAtivos.length === 0 ? (
                     <p style={{ color: '#888', margin: 0 }}>Nenhuma habilidade ativa. Ative habilidades na aba Poderes.</p>
@@ -483,15 +528,73 @@ export default function AtaquePanel() {
                 )}
             </div>
 
-            <div style={{ display: 'flex', gap: 10, marginTop: 15 }}>
+            {/* 🔥 NOVA ÁREA: MAGIAS OFENSIVAS PREPARADAS 🔥 */}
+            <div className="def-box">
+                <h3 style={{ color: '#00ccff', marginBottom: 10 }}>Magias Preparadas (Ofensivas)</h3>
+                {magiasOfensivas.length === 0 ? (
+                    <p style={{ color: '#888', margin: 0 }}>Nenhuma magia de ataque preparada na aba Grimório.</p>
+                ) : (
+                    magiasOfensivas.map(m => {
+                        const cfg = skillConfigs[m.id] || { statusUsados: ['inteligencia'], energiaCombustao: 'mana' };
+                        const dadosTxt = (m.dadosExtraQtd > 0) ? `${m.dadosExtraQtd}d${m.dadosExtraFaces || 20}` : 'Sem dados';
+                        const custoTxt = (m.custoValor > 0) ? `${m.custoValor}%` : 'Livre';
+
+                        return (
+                            <div key={m.id} style={{ marginBottom: 12, padding: '10px', background: 'rgba(0,204,255,0.08)', borderLeft: '3px solid #00ccff', borderRadius: 4 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                    <div>
+                                        <strong style={{ color: '#00ccff' }}>{m.nome}</strong>
+                                        <span style={{ color: '#aaa', fontSize: '0.85em', marginLeft: 10 }}>
+                                            {dadosTxt} | Custo: {custoTxt}
+                                        </span>
+                                    </div>
+                                    <span style={{ color: '#00ccff', fontSize: '0.8em', fontWeight: 'bold' }}>PREPARADA</span>
+                                </div>
+
+                                <div style={{ marginBottom: 6 }}>
+                                    <label style={{ color: '#aaa', fontSize: '0.8em' }}>Status usados para o Dano:</label>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 3 }}>
+                                        {STATS_LIST.map(st => (
+                                            <label key={st.value} style={{ color: (cfg.statusUsados || []).includes(st.value) ? '#00ccff' : '#555', fontSize: '0.85em', display: 'flex', alignItems: 'center', gap: 3 }}>
+                                                <input type="checkbox" value={st.value} checked={(cfg.statusUsados || []).includes(st.value)} onChange={() => toggleSkillStat(m.id, st.value)} />
+                                                {st.label}
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label style={{ color: '#aaa', fontSize: '0.8em' }}>Energia de Combustao:</label>
+                                    <select className="input-neon" value={cfg.energiaCombustao || 'mana'} onChange={e => updateSkillConfig(m.id, 'energiaCombustao', e.target.value)} style={{ marginTop: 3 }}>
+                                        <option value="mana">Mana</option>
+                                        <option value="aura">Aura</option>
+                                        <option value="chakra">Chakra</option>
+                                        <option value="livre">Livre</option>
+                                    </select>
+                                </div>
+                            </div>
+                        );
+                    })
+                )}
+            </div>
+
+            {/* 🔥 BOTÃO DE OVERRIDE E ROLAR DANO 🔥 */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10, marginBottom: 5 }}>
+                <label style={{ color: '#aaa', fontSize: '0.85em', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <input type="checkbox" checked={ignorarTravaAcerto} onChange={e => setIgnorarTravaAcerto(e.target.checked)} style={{ transform: 'scale(1.2)' }}/>
+                    Ignorar Trava de Acerto (P/ Saving Throws ou Área)
+                </label>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
                 <button className="btn-neon btn-gold" onClick={salvarConfigAtaque} style={{ flex: 1 }}>Salvar Config</button>
                 <button 
-                    className={`btn-neon ${podeRolarDano ? 'btn-red' : ''}`} 
+                    className={`btn-neon ${(podeRolarDano || ignorarTravaAcerto) ? 'btn-red' : ''}`} 
                     onClick={rolarDano} 
-                    style={{ flex: 1, opacity: podeRolarDano ? 1 : 0.5 }}
-                    disabled={!podeRolarDano}
+                    style={{ flex: 1, opacity: (podeRolarDano || ignorarTravaAcerto) ? 1 : 0.5 }}
+                    disabled={!podeRolarDano && !ignorarTravaAcerto}
                 >
-                    {dummieAlvo ? (podeRolarDano ? `ATACAR ${dummieAlvo.nome.toUpperCase()}` : `ACERTO NECESSÁRIO`) : 'ROLAR DANO'}
+                    {dummieAlvo ? ((podeRolarDano || ignorarTravaAcerto) ? `ATACAR ${dummieAlvo.nome.toUpperCase()}` : `ACERTO NECESSÁRIO`) : 'ROLAR DANO'}
                 </button>
             </div>
         </div>
