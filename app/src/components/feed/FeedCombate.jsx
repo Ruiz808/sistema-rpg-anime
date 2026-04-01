@@ -21,10 +21,9 @@ export default function FeedCombate() {
             {reversed.map((d, idx) => {
                 
                 // 🔥 NOVO: TRATAMENTO DE ÁREA DE EFEITO (AoE) 🔥
-                // Se vier um array de alvosArea, usa-o. Caso contrário, se for um ataque antigo/único, converte-o num array de 1.
                 const alvosArray = d.alvosArea || (d.alvoNome ? [{ nome: d.alvoNome, defesa: d.alvoDefesa, acertou: d.acertouAlvo }] : []);
 
-                // 🔥 TESTE DE HABILIDADE (PERÍCIA)
+                // 🔥 NOVO: TESTE DE HABILIDADE (PERÍCIA)
                 if (d.tipo === 'skill') {
                     return (
                         <div key={idx} className="damage-log" style={{ borderLeftColor: '#0088ff', background: 'rgba(0,136,255,0.1)' }}>
@@ -39,7 +38,7 @@ export default function FeedCombate() {
                     );
                 }
 
-                // 🔥 SAVING THROW (RESISTÊNCIA PURA)
+                // 🔥 NOVO: SAVING THROW (RESISTÊNCIA PURA)
                 if (d.tipo === 'saving') {
                     return (
                         <div key={idx} className="damage-log" style={{ borderLeftColor: '#ffcc00', background: 'rgba(255,204,0,0.1)' }}>
@@ -66,7 +65,7 @@ export default function FeedCombate() {
                             <p className="lethality" style={{ color: '#fff' }}>{d.profBonusTexto}</p>
                             <div className="log-details" dangerouslySetInnerHTML={{ __html: `&#x1F3B2; Rolagem Base: ${d.rolagem}` }} />
                             
-                            {/* 🔥 FEEDBACK VISUAL PARA MÚLTIPLOS ALVOS (AoE) 🔥 */}
+                            {/* 🔥 FEEDBACK VISUAL PARA MÚLTIPLOS ALVOS E ÁREA 🔥 */}
                             {alvosArray.length > 0 && (
                                 <div style={{ marginTop: 8, padding: 8, background: 'rgba(0,0,0,0.6)', borderRadius: 4, borderLeft: `3px solid ${alvosArray.some(a=>a.acertou) ? '#0f0' : '#f00'}`, textAlign: 'left' }}>
                                     {d.areaEf > 0 && <div style={{ color: '#00ccff', fontSize: '0.85em', marginBottom: 6, fontWeight: 'bold', textTransform: 'uppercase' }}>💥 Explosão em Área ({d.areaEf} Quadrados) atingiu {alvosArray.length} alvo(s):</div>}
@@ -146,7 +145,7 @@ export default function FeedCombate() {
                             __html: `&#x1F3B2; Rolagem de Dados: ${d.rolagem || ''}${d.rolagemMagica || ''}${d.detalheEnergia || ''}${d.detalheConta || ''}`
                         }} />
 
-                        {/* 🔥 FEEDBACK VISUAL DO DANO E DO OVERKILL NO ALVO (INTACTO!) */}
+                        {/* 🔥 FEEDBACK VISUAL DO DANO E DO OVERKILL NO ALVO */}
                         {d.alvoNome && (
                             <div style={{ marginTop: 8, padding: 5, background: 'rgba(0,0,0,0.5)', borderRadius: 4, borderLeft: `3px solid #ff003c` }}>
                                 <span style={{ color: '#ff003c', fontWeight: 'bold' }}>

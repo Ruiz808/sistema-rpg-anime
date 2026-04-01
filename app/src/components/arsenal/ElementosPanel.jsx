@@ -1,6 +1,7 @@
 import React, { useState, useRef, useMemo } from 'react';
 import useStore from '../../stores/useStore';
-import { salvarFichaSilencioso, enviarParaFeed } from '../../services/firebase-sync'; 
+import { salvarFichaSilencioso, enviarParaFeed } from '../../services/firebase-sync';
+import { calcularAcerto } from '../../core/engine'; // 🔥 AGORA IMPORTA O MOTOR DE ACERTO!
 
 const emogis = {
     'Fogo': '\uD83D\uDD25', 'Agua': '\uD83D\uDCA7', 'Raio': '\u26A1', 'Terra': '\uD83E\uDEA8', 'Vento': '\uD83C\uDF2A\uFE0F',
@@ -30,7 +31,6 @@ const cores = {
     'Truques de Ciclo': '#b3ffe6', 'Truques Arcanos/Negros': '#d9b3ff', 'Truques Ancestrais': '#e6e6e6'
 };
 
-// 🔥 HIERARQUIA REORGANIZADA 🔥
 const CATEGORIAS_ELEMENTOS = [
     { titulo: 'Elementos Básicos', itens: ['Fogo', 'Raio', 'Agua', 'Vento', 'Terra'] },
     { titulo: 'Elementos Básicos Verdadeiros', itens: ['Fogo Verdadeiro', 'Raio Verdadeiro', 'Agua Verdadeira', 'Vento Verdadeiro', 'Terra Verdadeira'] },
@@ -79,7 +79,7 @@ export default function ElementosPanel() {
     const [tipoMecanica, setTipoMecanica] = useState('ataque'); 
     const [savingAttr, setSavingAttr] = useState('destreza'); 
     const [alcanceQuad, setAlcanceQuad] = useState(1);
-    const [areaQuad, setAreaQuad] = useState(0); // 🔥 NOVO: ÁREA DE EFEITO (AoE)
+    const [areaQuad, setAreaQuad] = useState(0); 
 
     const formRef = useRef(null);
     const profGlobal = parseInt(minhaFicha.proficienciaBase) || 2;
@@ -121,7 +121,7 @@ export default function ElementosPanel() {
                     tipoMecanica: tipoMecanica,
                     savingAttr: savingAttr,
                     alcanceQuad: parseFloat(alcanceQuad) || 1,
-                    areaQuad: parseFloat(areaQuad) || 0, // 🔥 SALVA A ÁREA
+                    areaQuad: parseFloat(areaQuad) || 0,
                     equipado: false
                 };
 
@@ -166,7 +166,7 @@ export default function ElementosPanel() {
         setTipoMecanica(p.tipoMecanica || 'ataque');
         setSavingAttr(p.savingAttr || 'destreza');
         setAlcanceQuad(p.alcanceQuad || 1);
-        setAreaQuad(p.areaQuad || 0); // 🔥 LÊ A ÁREA
+        setAreaQuad(p.areaQuad || 0); 
 
         if (formRef.current) formRef.current.scrollIntoView({ behavior: 'smooth' });
     }
@@ -199,21 +199,21 @@ export default function ElementosPanel() {
         salvarFichaSilencioso();
     }
 
-    // 🔥 MOTOR DE CONJURAÇÃO DIRETA COM EXPLOSÃO EM ÁREA 🔥
+    // 🔥 MOTOR DE CONJURAÇÃO CORRIGIDO COM VANTAGENS E DESVANTAGENS 🔥
     function conjurarMagia(magia) {
-        // Puxamos dinamicamente para ler a posição dos dummies no momento exato do clique!
-        const { alvoSelecionado, dummies, cenario } = useStore.getState();
+        const storeState = useStore.getState();
+        const { alvoSelecionado, dummies, cenario } = storeState;
+        const fichaVirtual = storeState.minhaFicha;
         
         const energiaToAttr = { 'mana': 'inteligencia', 'aura': 'energiaEsp', 'chakra': 'stamina', 'livre': 'inteligencia' };
         const attrRegente = energiaToAttr[magia.energiaCombustao] || 'inteligencia';
-        const modRegente = getModificadorDoisDigitos(minhaFicha[attrRegente]?.base);
+        const modRegente = getModificadorDoisDigitos(fichaVirtual[attrRegente]?.base);
 
         let alvosAtingidos = [];
         const alvoDummie = alvoSelecionado && dummies[alvoSelecionado] ? dummies[alvoSelecionado] : null;
 
         if (alvoDummie && (magia.tipoMecanica === 'ataque' || magia.tipoMecanica === 'saving')) {
             if (magia.areaQuad > 0) {
-                // Varrimento de Mapa (Explosão no alvo)
                 const cenaAtivaId = cenario?.ativa || 'default';
                 const escala = cenario?.lista?.[cenaAtivaId]?.escala || 1.5;
 
@@ -235,25 +235,28 @@ export default function ElementosPanel() {
         }
 
         if (magia.tipoMecanica === 'ataque') {
-            const roll = Math.floor(Math.random() * 20) + 1;
-            const total = roll + modRegente + profGlobal;
-            
-            let rollStr = `[${roll}]`;
-            if (roll === 20) rollStr = `[<strong>20</strong>] (CRÍTICO!)`;
-            if (roll === 1) rollStr = `[<strong style="color:#ff003c;">1</strong>] (FALHA CRÍTICA!)`;
+            // 🔥 AGORA USA O CALCULAR ACERTO OFICIAL
+            const vantagens = fichaVirtual.ataqueConfig?.vantagens || 0;
+            const desvantagens = fichaVirtual.ataqueConfig?.desvantagens || 0;
+
+            const result = calcularAcerto({ 
+                qD: 1, fD: 20, prof: profGlobal, bonus: 0, sels: [attrRegente], 
+                minhaFicha: fichaVirtual, itensEquipados: [], 
+                vantagens: vantagens, desvantagens: desvantagens 
+            });
 
             let alvosPayload = alvosAtingidos.map(d => ({
                 nome: d.nome,
                 defesa: d.valorDefesa,
-                acertou: total >= d.valorDefesa
+                acertou: result.acertoTotal >= d.valorDefesa
             }));
 
             enviarParaFeed({
                 tipo: 'acerto',
                 nome: meuNome,
-                acertoTotal: total,
+                acertoTotal: result.acertoTotal,
                 profBonusTexto: `Mod. Magia (${attrRegente}): +${modRegente} | Proficiência: +${profGlobal}`,
-                rolagem: rollStr,
+                rolagem: result.rolagem,
                 armaStr: ` com ${magia.nome} (${magia.elemento})`,
                 alvosArea: alvosPayload,
                 areaEf: magia.areaQuad || 0

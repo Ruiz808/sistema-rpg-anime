@@ -51,7 +51,6 @@ export default function AtaquePanel() {
     const dummieAlvo = alvoSelecionado && dummies[alvoSelecionado] ? dummies[alvoSelecionado] : null;
     const [podeRolarDano, setPodeRolarDano] = useState(true);
 
-    // 🔥 BERSERKER TRACKER ABSOLUTO
     let multiplicadorFuriaClasse = 0;
     const scanFuria = (efs) => {
         if (!efs) return;
@@ -99,7 +98,6 @@ export default function AtaquePanel() {
         }
     }, [percAtualLostFloor, furiaMax, multiplicadorFuriaClasse, updateFicha]);
 
-    // 🔥 O BOTÃO BLINDADO (Sem pop-up bloqueador)
     const [furiaAcalmadaMsg, setFuriaAcalmadaMsg] = useState(false);
     function acalmarFuria(e) {
         e.preventDefault();
@@ -112,14 +110,31 @@ export default function AtaquePanel() {
         setTimeout(() => setFuriaAcalmadaMsg(false), 2000);
     }
 
+    // 🔥 CORREÇÃO: LEITURA DE MÚLTIPLOS ALVOS NO FEED PARA LIBERAR O DANO
     useEffect(() => {
         if (!dummieAlvo) {
             setPodeRolarDano(true);
             return;
         }
-        const meuUltimoAcerto = [...feedCombate].reverse().find(f => f.nome === meuNome && f.tipo === 'acerto' && f.alvoNome === dummieAlvo.nome);
+        
+        const meuUltimoAcerto = [...feedCombate].reverse().find(f => {
+            if (f.nome !== meuNome || f.tipo !== 'acerto') return false;
+            // Suporte para versão antiga de alvo único
+            if (f.alvoNome === dummieAlvo.nome) return true;
+            // Suporte para versão nova de área de efeito
+            if (f.alvosArea && f.alvosArea.some(a => a.nome === dummieAlvo.nome)) return true;
+            return false;
+        });
+
         if (meuUltimoAcerto) {
-            setPodeRolarDano(meuUltimoAcerto.acertouAlvo); 
+            let acertou = false;
+            if (meuUltimoAcerto.alvosArea) {
+                const alvoEspecifico = meuUltimoAcerto.alvosArea.find(a => a.nome === dummieAlvo.nome);
+                if (alvoEspecifico) acertou = alvoEspecifico.acertou;
+            } else {
+                acertou = meuUltimoAcerto.acertouAlvo;
+            }
+            setPodeRolarDano(acertou);
         } else {
             setPodeRolarDano(false); 
         }

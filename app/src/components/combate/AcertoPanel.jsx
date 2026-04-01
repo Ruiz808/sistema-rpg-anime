@@ -59,7 +59,7 @@ export default function AcertoPanel() {
     let distQuadrados = 0;
     let distReal = 0;
     let maxAlcance = 1;
-    let maxArea = 0; // 🔥 VARIÁVEL DE ÁREA ADICIONADA
+    let maxArea = 0; 
     let isForaDeAlcance = false;
     let unidadeEscala = 'm';
 
@@ -76,7 +76,6 @@ export default function AcertoPanel() {
         distQuadrados = Math.max(dx, dy, Math.floor(dz));
         distReal = distQuadrados * escala;
 
-        // O seu alcance efetivo e a sua área máxima são baseados nas armas/poderes ativos!
         const maxAlcanceArmas = armasEquipadas.length > 0 ? Math.max(...armasEquipadas.map(a => a.alcance || 1)) : 1;
         const maxAreaArmas = armasEquipadas.length > 0 ? Math.max(...armasEquipadas.map(a => a.areaQuad || a.area || 0)) : 0;
         
@@ -84,8 +83,13 @@ export default function AcertoPanel() {
         const maxAlcancePoderes = poderesAtivos.length > 0 ? Math.max(...poderesAtivos.map(p => p.alcance || 1)) : 1;
         const maxAreaPoderes = poderesAtivos.length > 0 ? Math.max(...poderesAtivos.map(p => p.areaQuad || p.area || 0)) : 0;
         
-        maxAlcance = Math.max(maxAlcanceArmas, maxAlcancePoderes);
-        maxArea = Math.max(maxAreaArmas, maxAreaPoderes);
+        // 🔥 INCLUSÃO DO GRIMÓRIO (Corrigindo o Bug da Bola de Fogo!)
+        const magiasEquipadas = (minhaFicha.ataquesElementais || []).filter(m => m.equipado);
+        const maxAlcanceMagias = magiasEquipadas.length > 0 ? Math.max(...magiasEquipadas.map(m => m.alcanceQuad || 1)) : 1;
+        const maxAreaMagias = magiasEquipadas.length > 0 ? Math.max(...magiasEquipadas.map(m => m.areaQuad || 0)) : 0;
+        
+        maxAlcance = Math.max(maxAlcanceArmas, maxAlcancePoderes, maxAlcanceMagias);
+        maxArea = Math.max(maxAreaArmas, maxAreaPoderes, maxAreaMagias);
         
         isForaDeAlcance = distQuadrados > maxAlcance;
     }
@@ -136,7 +140,7 @@ export default function AcertoPanel() {
 
         let alvosAtingidos = [];
 
-        // 🔥 MOTOR DE EXPLOSÃO: Varrimento de mapa caso Area > 0 🔥
+        // 🔥 VARREDURA DE MAPA (MÚLTIPLOS ALVOS NA ÁREA DA EXPLOSÃO) 🔥
         if (alvoDummie) {
             if (maxArea > 0) {
                 const cenaAtivaId = cenario?.ativa || 'default';
@@ -150,7 +154,6 @@ export default function AcertoPanel() {
                         const dY = Math.abs(dummieObj.posicao.y - alvoDummie.posicao.y);
                         const dZ = Math.floor(Math.abs((dummieObj.posicao.z || 0) - (alvoDummie.posicao.z || 0)) / escala);
                         
-                        // Se estiver dentro da zona de explosão a partir do alvo central
                         if (Math.max(dX, dY, dZ) <= maxArea) {
                             alvosAtingidos.push({
                                 nome: dummieObj.nome,
@@ -161,7 +164,6 @@ export default function AcertoPanel() {
                     }
                 });
             } else {
-                // Ataque de alvo único
                 alvosAtingidos.push({
                     nome: alvoDummie.nome,
                     defesa: alvoDummie.valorDefesa,
@@ -267,11 +269,11 @@ export default function AcertoPanel() {
                     </div>
                 )}
 
-                {/* 🔥 HUD DE DISTÂNCIA E ALCANCE COM SUPORTE A EXPLOSÕES 🔥 */}
+                {/* 🔥 HUD DE DISTÂNCIA E ALCANCE ATUALIZADO */}
                 {alvoDummie && (
                     <div style={{ marginTop: 15, padding: '10px', background: isForaDeAlcance ? 'rgba(255,0,0,0.1)' : 'rgba(0,255,0,0.1)', border: `1px solid ${isForaDeAlcance ? '#ff003c' : '#0f0'}`, borderRadius: '5px', textAlign: 'center' }}>
                         <span style={{ color: isForaDeAlcance ? '#ff003c' : '#0f0', fontWeight: 'bold', fontSize: '1.1em' }}>
-                            🎯 Alvo Central: {alvoDummie.nome} | Distância: {distQuadrados}Q ({distReal.toFixed(1)} {unidadeEscala})
+                            🎯 Alvo: {alvoDummie.nome} | Distância: {distQuadrados}Q ({distReal.toFixed(1)} {unidadeEscala})
                         </span>
                         <br/>
                         <span style={{ color: '#aaa', fontSize: '0.85em' }}>Seu Alcance Efetivo: {maxAlcance}Q {maxArea > 0 && <span style={{color: '#ff00ff', fontWeight: 'bold'}}>| Explosão: {maxArea}Q</span>}</span>
