@@ -82,13 +82,13 @@ export default function AIPanel() {
     }, [capitulosPresente, capituloAtivoId, capitulosFuturo, capFuturoAtivoId]);
 
 
-    // 🔥 O BANCO DE AVATARES EXPANDIDO (SCANNER PROFUNDO) 🔥
+    // 🔥 O BANCO DE AVATARES EXPANDIDO (SCANNER RECURSIVO ABSOLUTO) 🔥
     const avataresDoServidor = [];
 
     Object.entries(personagens).forEach(([nomeFicha, ficha]) => {
         if (!ficha) return;
 
-        // Função para traduzir imagens em formato de Object para String
+        // Tradutor de Objetos de Imagem do Firebase
         const extrairUrl = (img) => {
             let url = img || '';
             if (typeof url === 'object' && url !== null) {
@@ -97,37 +97,35 @@ export default function AIPanel() {
             return typeof url === 'string' ? url.trim() : '';
         };
 
-        // 1. Personagem Base
+        // 1. Pega a foto principal da Ficha
         const urlBase = extrairUrl(ficha.avatar || ficha.bio?.avatar || ficha.token || ficha.imagem);
         if (urlBase) avataresDoServidor.push({ nome: nomeFicha, avatar: urlBase });
 
-        // 2. Poderes
-        if (Array.isArray(ficha.poderes)) {
-            ficha.poderes.forEach(poder => {
-                const url = extrairUrl(poder.imagem || poder.icone || poder.avatar);
-                if (url && poder.nome) avataresDoServidor.push({ nome: `${nomeFicha} (${poder.nome})`, avatar: url });
-            });
-        }
+        // 2. Vasculha TODOS os cantos da ficha recursivamente (Acha o Modo Assalto onde ele estiver!)
+        const nomesJaAdicionados = new Set(); 
+        
+        const varrerObjeto = (obj) => {
+            if (!obj || typeof obj !== 'object') return;
 
-        // 3. Formas Diretas (Transformações)
-        if (Array.isArray(ficha.formas)) {
-            ficha.formas.forEach(forma => {
-                const url = extrairUrl(forma.imagem || forma.icone || forma.avatar);
-                if (url && forma.nome) avataresDoServidor.push({ nome: `${nomeFicha} (${forma.nome})`, avatar: url });
-            });
-        }
-
-        // 4. Formas dentro do Inventário (Armas e Infinitys)
-        if (Array.isArray(ficha.inventario)) {
-            ficha.inventario.forEach(item => {
-                if (Array.isArray(item.formas)) {
-                    item.formas.forEach(forma => {
-                        const url = extrairUrl(forma.imagem || forma.icone || forma.avatar);
-                        if (url && forma.nome) avataresDoServidor.push({ nome: `${nomeFicha} (${forma.nome})`, avatar: url });
-                    });
+            // Se esse pedaço de código tiver um "nome" e uma "imagem", ele é uma forma/poder!
+            if (obj.nome && typeof obj.nome === 'string') {
+                const img = extrairUrl(obj.imagem || obj.icone || obj.avatar || obj.url);
+                if (img && img !== urlBase) {
+                    const nomeCombo = `${nomeFicha} (${obj.nome})`;
+                    if (!nomesJaAdicionados.has(nomeCombo)) {
+                        avataresDoServidor.push({ nome: nomeCombo, avatar: img });
+                        nomesJaAdicionados.add(nomeCombo);
+                    }
                 }
+            }
+
+            // Entra nos sub-arrays e sub-objetos (busca profunda)
+            Object.values(obj).forEach(valor => {
+                if (typeof valor === 'object') varrerObjeto(valor);
             });
-        }
+        };
+
+        varrerObjeto(ficha);
     });
 
     // Remove do Banco quem já está na Tier List Atual
@@ -303,7 +301,7 @@ export default function AIPanel() {
                 </div>
             </div>
 
-            {/* CHAT */}
+            {/* CHAT - AGORA COM ARMADURA NO CSS PARA NÃO QUEBRAR O LAYOUT */}
             {subAba === 'chat' && (
                 <>
                     <div ref={chatRef} className="def-box" style={{ flex: 1, minHeight: '300px', maxHeight: '60vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', padding: '15px' }}>
@@ -315,9 +313,26 @@ export default function AIPanel() {
                             </div>
                         ))}
                     </div>
-                    <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-start', marginTop: '10px', width: '100%' }}>
-                        <textarea className="input-neon" placeholder="Fale com a Sexta-Feira..." value={mensagem} onChange={e => setMensagem(e.target.value)} onKeyDown={handleKeyDown} disabled={carregando} style={{ flex: '1 1 auto', width: '100%', minHeight: '60px', resize: 'vertical', borderColor: '#00ffcc', color: '#fff', padding: '12px', boxSizing: 'border-box' }} />
-                        <button className="btn-neon" onClick={enviarMensagem} disabled={carregando || !mensagem.trim()} style={{ flex: 'none', width: 'auto', minWidth: '120px', height: '60px', padding: '0 20px', borderColor: '#00ffcc', color: '#00ffcc', margin: 0, opacity: (carregando || !mensagem.trim()) ? 0.4 : 1 }}>{carregando ? '...' : 'ENVIAR'}</button>
+                    
+                    {/* ARMADURA DO CHAT - TRAVA ABSOLUTA DE TAMANHO */}
+                    <div style={{ display: 'flex', flexDirection: 'row', gap: '15px', alignItems: 'flex-start', marginTop: '10px', width: '100%' }}>
+                        <textarea 
+                            className="input-neon" 
+                            placeholder="Fale com a Sexta-Feira..." 
+                            value={mensagem} 
+                            onChange={e => setMensagem(e.target.value)} 
+                            onKeyDown={handleKeyDown} 
+                            disabled={carregando} 
+                            style={{ flex: 1, minHeight: '60px', resize: 'vertical', borderColor: '#00ffcc', color: '#fff', padding: '12px', boxSizing: 'border-box' }} 
+                        />
+                        <button 
+                            className="btn-neon" 
+                            onClick={enviarMensagem} 
+                            disabled={carregando || !mensagem.trim()} 
+                            style={{ flex: '0 0 auto', width: '120px', minWidth: '120px', height: '60px', padding: '0 20px', borderColor: '#00ffcc', color: '#00ffcc', margin: 0, opacity: (carregando || !mensagem.trim()) ? 0.4 : 1 }}
+                        >
+                            {carregando ? '...' : 'ENVIAR'}
+                        </button>
                     </div>
                 </>
             )}
