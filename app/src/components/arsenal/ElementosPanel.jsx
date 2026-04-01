@@ -1,7 +1,6 @@
 import React, { useState, useRef, useMemo } from 'react';
 import useStore from '../../stores/useStore';
-import { salvarFichaSilencioso, enviarParaFeed } from '../../services/firebase-sync';
-import { calcularAcerto } from '../../core/engine'; // 🔥 AGORA IMPORTA O MOTOR DE ACERTO!
+import { salvarFichaSilencioso, enviarParaFeed } from '../../services/firebase-sync'; 
 
 const emogis = {
     'Fogo': '\uD83D\uDD25', 'Agua': '\uD83D\uDCA7', 'Raio': '\u26A1', 'Terra': '\uD83E\uDEA8', 'Vento': '\uD83C\uDF2A\uFE0F',
@@ -31,28 +30,68 @@ const cores = {
     'Truques de Ciclo': '#b3ffe6', 'Truques Arcanos/Negros': '#d9b3ff', 'Truques Ancestrais': '#e6e6e6'
 };
 
-const CATEGORIAS_ELEMENTOS = [
-    { titulo: 'Elementos Básicos', itens: ['Fogo', 'Raio', 'Agua', 'Vento', 'Terra'] },
-    { titulo: 'Elementos Básicos Verdadeiros', itens: ['Fogo Verdadeiro', 'Raio Verdadeiro', 'Agua Verdadeira', 'Vento Verdadeiro', 'Terra Verdadeira'] },
-    { titulo: 'Elementos Avançados', itens: ['Solar', 'Energia', 'Gelo', 'Vacuo', 'Natureza'] },
-    { titulo: 'Elementos Avançados Verdadeiros', itens: ['Solar Verdadeiro', 'Energia Verdadeira', 'Gelo Verdadeiro', 'Vacuo Verdadeiro', 'Natureza Verdadeira'] },
-    { titulo: 'Elementos Primordiais', itens: ['Luz', 'Trevas', 'Ether'] },
-    { titulo: 'Elementos Primordiais Verdadeiros', itens: ['Celestial', 'Infernal', 'Caos'] },
-    { titulo: 'Elementos Primordiais Absolutos', itens: ['Criacao', 'Destruicao', 'Cosmos'] },
-    { titulo: 'Elementos Astrais', itens: ['Vida', 'Morte', 'Vazio'] },
-    { titulo: 'Kekkei Genkai', itens: ['Elemento Madeira', 'Elemento Mineral', 'Elemento Cinzas', 'Elemento Igneo', 'Elemento Lava', 'Elemento Vapor', 'Elemento Nevoa', 'Elemento Tempestade', 'Elemento Areia', 'Elemento Tufao'] },
-    { titulo: 'Kekkei Touta', itens: ['Elemento Velocidade', 'Elemento Poeira', 'Elemento Veneno', 'Elemento Cal', 'Elemento Carbono', 'Elemento Calor', 'Elemento Som', 'Elemento Magnetismo'] },
-    { titulo: 'Magias de Ciclo', itens: ['Truques de Ciclo', 'Magias de 1º Ciclo', 'Magias de 2º Ciclo', 'Magias de 3º Ciclo', 'Magias de 4º Ciclo', 'Magias de 5º Ciclo', 'Magias de 6º Ciclo', 'Magias de 7º Ciclo', 'Magias de 8º Ciclo', 'Magias de 9º Ciclo', 'Magias de 10º Ciclo'] },
-    { titulo: 'Magias Arcanas/Negra', itens: ['Truques Arcanos/Negros', 'Magias Arcanas/Negra de 1º Ciclo', 'Magias Arcanas/Negra de 2º Ciclo', 'Magias Arcanas/Negra de 3º Ciclo', 'Magias Arcanas/Negra de 4º Ciclo', 'Magias Arcanas/Negra de 5º Ciclo', 'Magias Arcanas/Negra de 6º Ciclo', 'Magias Arcanas/Negra de 7º Ciclo', 'Magias Arcanas/Negra de 8º Ciclo', 'Magias Arcanas/Negra de 9º Ciclo', 'Magias Arcanas/Negra de 10º Ciclo'] },
-    { titulo: 'Magias Ancestrais', itens: ['Truques Ancestrais', 'Magia de Sangue', 'Magia de Osso', 'Magia Draconica', 'Magia de Borracha', 'Magia de Espelho', 'Magia de Sal', 'Magia de Alma', 'Magia de Tremor', 'Magia de Gravidade', 'Magia de Tempo', 'Magia de Equipamento', 'Magia de Explosao', 'Magia Espacial', 'Magia de Metamorfose'] },
-    { titulo: 'Neutro (Sem Elemento)', itens: ['Neutro'] }
-];
+// 🔥 HIERARQUIA REORGANIZADA EM SUB-ABAS 🔥
+const ABAS_GRIMORIO = {
+    'elementos': {
+        label: 'Elementos',
+        icon: '🔥',
+        categorias: [
+            { titulo: 'Elementos Básicos', itens: ['Fogo', 'Raio', 'Agua', 'Vento', 'Terra'] },
+            { titulo: 'Elementos Básicos Verdadeiros', itens: ['Fogo Verdadeiro', 'Raio Verdadeiro', 'Agua Verdadeira', 'Vento Verdadeiro', 'Terra Verdadeira'] },
+            { titulo: 'Elementos Avançados', itens: ['Solar', 'Energia', 'Gelo', 'Vacuo', 'Natureza'] },
+            { titulo: 'Elementos Avançados Verdadeiros', itens: ['Solar Verdadeiro', 'Energia Verdadeira', 'Gelo Verdadeiro', 'Vacuo Verdadeiro', 'Natureza Verdadeira'] },
+            { titulo: 'Elementos Primordiais', itens: ['Luz', 'Trevas', 'Ether'] },
+            { titulo: 'Elementos Primordiais Verdadeiros', itens: ['Celestial', 'Infernal', 'Caos'] },
+            { titulo: 'Elementos Primordiais Absolutos', itens: ['Criacao', 'Destruicao', 'Cosmos'] },
+            { titulo: 'Neutro (Sem Elemento)', itens: ['Neutro'] }
+        ]
+    },
+    'astrais': {
+        label: 'Elementos Astrais',
+        icon: '🌌',
+        categorias: [
+            { titulo: 'Elementos Astrais', itens: ['Vida', 'Morte', 'Vazio'] }
+        ]
+    },
+    'chakra': {
+        label: 'Chakra',
+        icon: '🌀',
+        categorias: [
+            { titulo: 'Kekkei Genkai', itens: ['Elemento Madeira', 'Elemento Mineral', 'Elemento Cinzas', 'Elemento Igneo', 'Elemento Lava', 'Elemento Vapor', 'Elemento Nevoa', 'Elemento Tempestade', 'Elemento Areia', 'Elemento Tufao'] },
+            { titulo: 'Kekkei Touta', itens: ['Elemento Velocidade', 'Elemento Poeira', 'Elemento Veneno', 'Elemento Cal', 'Elemento Carbono', 'Elemento Calor', 'Elemento Som', 'Elemento Magnetismo'] }
+        ]
+    },
+    'mana': {
+        label: 'Mana',
+        icon: '🔮',
+        categorias: [
+            { titulo: 'Magias de Ciclo', itens: ['Truques de Ciclo', 'Magias de 1º Ciclo', 'Magias de 2º Ciclo', 'Magias de 3º Ciclo', 'Magias de 4º Ciclo', 'Magias de 5º Ciclo', 'Magias de 6º Ciclo', 'Magias de 7º Ciclo', 'Magias de 8º Ciclo', 'Magias de 9º Ciclo', 'Magias de 10º Ciclo'] },
+            { titulo: 'Magias Arcanas/Negra', itens: ['Truques Arcanos/Negros', 'Magias Arcanas/Negra de 1º Ciclo', 'Magias Arcanas/Negra de 2º Ciclo', 'Magias Arcanas/Negra de 3º Ciclo', 'Magias Arcanas/Negra de 4º Ciclo', 'Magias Arcanas/Negra de 5º Ciclo', 'Magias Arcanas/Negra de 6º Ciclo', 'Magias Arcanas/Negra de 7º Ciclo', 'Magias Arcanas/Negra de 8º Ciclo', 'Magias Arcanas/Negra de 9º Ciclo', 'Magias Arcanas/Negra de 10º Ciclo'] },
+            { titulo: 'Magias Ancestrais', itens: ['Truques Ancestrais', 'Magia de Sangue', 'Magia de Osso', 'Magia Draconica', 'Magia de Borracha', 'Magia de Espelho', 'Magia de Sal', 'Magia de Alma', 'Magia de Tremor', 'Magia de Gravidade', 'Magia de Tempo', 'Magia de Equipamento', 'Magia de Explosao', 'Magia Espacial', 'Magia de Metamorfose'] }
+        ]
+    },
+    'aura': {
+        label: 'Aura',
+        icon: '✨',
+        categorias: []
+    },
+    'corpo': {
+        label: 'Corpo',
+        icon: '💪',
+        categorias: []
+    },
+    'compostos': {
+        label: 'Elementos Compostos',
+        icon: '⚛️',
+        categorias: []
+    }
+};
 
-const itensJáCategorizados = CATEGORIAS_ELEMENTOS.flatMap(c => c.itens);
+const itensJáCategorizados = Object.values(ABAS_GRIMORIO).flatMap(aba => aba.categorias.flatMap(c => c.itens));
 const magiasSobressalentes = Object.keys(cores).filter(k => !itensJáCategorizados.includes(k));
 
 if (magiasSobressalentes.length > 0) {
-    CATEGORIAS_ELEMENTOS.push({ titulo: 'Magias e Elementos Extras', itens: magiasSobressalentes });
+    ABAS_GRIMORIO['elementos'].categorias.push({ titulo: 'Magias e Elementos Extras', itens: magiasSobressalentes });
 }
 
 const BONUS_OPTIONS = [
@@ -66,6 +105,8 @@ export default function ElementosPanel() {
     const { minhaFicha, meuNome, updateFicha, setAbaAtiva } = useStore();
     const elemEditandoId = useStore(s => s.elemEditandoId);
     const setElemEditandoId = useStore(s => s.setElemEditandoId);
+
+    const [abaAtual, setAbaAtual] = useState('elementos'); // 🔥 ESTADO DA SUB-ABA
 
     const [elemSelecionado, setElemSelecionado] = useState('Neutro');
     const [nomeElem, setNomeElem] = useState('');
@@ -93,8 +134,15 @@ export default function ElementosPanel() {
 
     function selecionarElemento(nome) {
         setElemSelecionado(nome);
-        if (nome.includes('Kekkei') || nome.includes('Elemento')) setEnergiaCombustao('chakra');
-        else if (nome.includes('Truque')) setEnergiaCombustao('livre');
+        
+        // 🧠 Inteligência do Game Design: Pré-seleciona a energia correta baseada na aba,
+        // mas deixa o jogador mudar manualmente (para "quebrar as regras" com Magia Arcana!)
+        if (nome.includes('Truque')) setEnergiaCombustao('livre');
+        else if (abaAtual === 'chakra') setEnergiaCombustao('chakra');
+        else if (abaAtual === 'mana') setEnergiaCombustao('mana');
+        else if (abaAtual === 'aura') setEnergiaCombustao('aura');
+        else if (abaAtual === 'corpo') setEnergiaCombustao('corpo');
+        else if (abaAtual === 'astrais') setEnergiaCombustao('pontosVitais');
         else setEnergiaCombustao('mana');
     }
 
@@ -174,7 +222,7 @@ export default function ElementosPanel() {
     function cancelarEdicaoElem() {
         setElemEditandoId(null);
         setNomeElem('');
-        setElemSelecionado('Neutro');
+        // Mantém o elemento selecionado para facilitar adições em massa
         setEnergiaCombustao('mana');
         setTipoMecanica('ataque');
         setAlcanceQuad(1);
@@ -199,13 +247,21 @@ export default function ElementosPanel() {
         salvarFichaSilencioso();
     }
 
-    // 🔥 MOTOR DE CONJURAÇÃO CORRIGIDO COM VANTAGENS E DESVANTAGENS 🔥
     function conjurarMagia(magia) {
         const storeState = useStore.getState();
         const { alvoSelecionado, dummies, cenario } = storeState;
         const fichaVirtual = storeState.minhaFicha;
         
-        const energiaToAttr = { 'mana': 'inteligencia', 'aura': 'energiaEsp', 'chakra': 'stamina', 'livre': 'inteligencia' };
+        // 🔥 MAPEAMENTO DE ENERGIAS PARA ATRIBUTO REGENTE (Inclui as novas)
+        const energiaToAttr = { 
+            'mana': 'inteligencia', 
+            'aura': 'energiaEsp', 
+            'chakra': 'stamina', 
+            'corpo': 'forca',
+            'pontosVitais': 'constituicao',
+            'pontosMortais': 'inteligencia',
+            'livre': 'inteligencia' 
+        };
         const attrRegente = energiaToAttr[magia.energiaCombustao] || 'inteligencia';
         const modRegente = getModificadorDoisDigitos(fichaVirtual[attrRegente]?.base);
 
@@ -235,7 +291,6 @@ export default function ElementosPanel() {
         }
 
         if (magia.tipoMecanica === 'ataque') {
-            // 🔥 AGORA USA O CALCULAR ACERTO OFICIAL
             const vantagens = fichaVirtual.ataqueConfig?.vantagens || 0;
             const desvantagens = fichaVirtual.ataqueConfig?.desvantagens || 0;
 
@@ -306,7 +361,7 @@ export default function ElementosPanel() {
         const custoStr = p.custoValor > 0 ? ` | Custo: ${p.custoValor}% (${p.energiaCombustao?.toUpperCase()})` : ` | Custo: Livre`;
 
         const mec = p.tipoMecanica || 'ataque';
-        const energiaToAttr = { 'mana': 'inteligencia', 'aura': 'energiaEsp', 'chakra': 'stamina', 'livre': 'inteligencia' };
+        const energiaToAttr = { 'mana': 'inteligencia', 'aura': 'energiaEsp', 'chakra': 'stamina', 'corpo': 'forca', 'pontosVitais': 'constituicao', 'pontosMortais': 'inteligencia', 'livre': 'inteligencia' };
         const regente = energiaToAttr[p.energiaCombustao || 'mana'];
         const modBase = getModificadorDoisDigitos(minhaFicha[regente]?.base);
         const cd = 8 + modBase + profGlobal;
@@ -341,140 +396,171 @@ export default function ElementosPanel() {
         );
     }
 
+    const categoriasVisiveis = ABAS_GRIMORIO[abaAtual]?.categorias || [];
+
     return (
-        <div className="elementos-panel">
-            <div className="def-box">
-                <h3 style={{ color: '#f90', marginBottom: 15 }}>Grimório Elemental</h3>
-                
-                {CATEGORIAS_ELEMENTOS.map(categoria => (
-                    <div key={categoria.titulo} style={{ marginBottom: 18 }}>
-                        <h4 style={{ color: '#aaa', fontSize: '0.85em', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1px solid #333', paddingBottom: 4, marginBottom: 8, marginTop: 0 }}>
-                            {categoria.titulo}
-                        </h4>
-                        
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                            {categoria.itens.map(elem => {
-                                const cor = cores[elem] || '#ccc';
-                                const isActive = elem === elemSelecionado;
-                                return (
-                                    <button
-                                        key={elem} className="badge-elem"
-                                        onClick={() => selecionarElemento(elem)}
-                                        style={{ padding: '4px 8px', fontSize: '0.75em', border: `1px solid ${isActive ? cor : '#444'}`, borderRadius: 4, background: 'transparent', color: isActive ? cor : '#aaa', cursor: 'pointer', boxShadow: isActive ? `inset 0 0 10px ${cor}` : 'none' }}
-                                    >
-                                        {emogis[elem] || '\u2728'} {elem}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-                ))}
+        <div className="elementos-panel" style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+            
+            {/* 🔥 NOVO: BARRA LATERAL (MENU DE ABAS) 🔥 */}
+            <div className="def-box" style={{ flex: '0 0 250px', padding: '15px', position: 'sticky', top: '20px' }}>
+                <h3 style={{ color: '#fff', marginTop: 0, textAlign: 'center', marginBottom: '20px', fontSize: '1.1em', letterSpacing: '1px' }}>
+                    📖 GRIMÓRIO
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    {Object.entries(ABAS_GRIMORIO).map(([key, data]) => (
+                        <button
+                            key={key}
+                            className={`btn-neon ${abaAtual === key ? 'btn-gold' : ''}`}
+                            onClick={() => { setAbaAtual(key); cancelarEdicaoElem(); }}
+                            style={{ padding: '12px 10px', justifyContent: 'flex-start', margin: 0, fontSize: '0.9em' }}
+                        >
+                            {data.icon} {data.label.toUpperCase()}
+                        </button>
+                    ))}
+                </div>
             </div>
 
-            <div className="def-box" ref={formRef} id="form-elem-box" style={{ marginTop: 15 }}>
-                <h3 style={{ color: '#0ff', marginBottom: 10 }}>{elemEditandoId ? `Editando: ${nomeElem}` : 'Criar Nova Magia'}</h3>
-
-                <input className="input-neon" type="text" placeholder="Nome da Magia/Técnica" value={nomeElem} onChange={e => setNomeElem(e.target.value)} />
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginTop: 10, padding: 10, background: 'rgba(0,136,255,0.1)', border: '1px solid #0088ff', borderRadius: 5 }}>
-                    <div>
-                        <label style={{ color: '#0088ff', fontSize: '0.85em', fontWeight: 'bold' }}>Mecânica de Uso</label>
-                        <select className="input-neon" value={tipoMecanica} onChange={e => setTipoMecanica(e.target.value)}>
-                            <option value="ataque">Rolagem de Acerto</option>
-                            <option value="saving">Alvo Rola Saving Throw (CD)</option>
-                            <option value="infusao">Infusão em Arma</option>
-                            <option value="suporte">Suporte / Cura</option>
-                        </select>
-                    </div>
+            <div style={{ flex: '1 1 500px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                <div className="def-box">
+                    <h3 style={{ color: '#f90', marginBottom: 15 }}>Arquivos: {ABAS_GRIMORIO[abaAtual].label}</h3>
                     
-                    {tipoMecanica === 'saving' && (
+                    {categoriasVisiveis.length === 0 ? (
+                        <p style={{ color: '#888', fontStyle: 'italic' }}>Esta aba ainda não possui ramificações listadas.</p>
+                    ) : (
+                        categoriasVisiveis.map(categoria => (
+                            <div key={categoria.titulo} style={{ marginBottom: 18 }}>
+                                <h4 style={{ color: '#aaa', fontSize: '0.85em', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1px solid #333', paddingBottom: 4, marginBottom: 8, marginTop: 0 }}>
+                                    {categoria.titulo}
+                                </h4>
+                                
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                    {categoria.itens.map(elem => {
+                                        const cor = cores[elem] || '#ccc';
+                                        const isActive = elem === elemSelecionado;
+                                        return (
+                                            <button
+                                                key={elem} className="badge-elem"
+                                                onClick={() => selecionarElemento(elem)}
+                                                style={{ padding: '4px 8px', fontSize: '0.75em', border: `1px solid ${isActive ? cor : '#444'}`, borderRadius: 4, background: 'transparent', color: isActive ? cor : '#aaa', cursor: 'pointer', boxShadow: isActive ? `inset 0 0 10px ${cor}` : 'none' }}
+                                            >
+                                                {emogis[elem] || '\u2728'} {elem}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+
+                <div className="def-box" ref={formRef} id="form-elem-box" style={{ marginTop: 0 }}>
+                    <h3 style={{ color: '#0ff', marginBottom: 10 }}>{elemEditandoId ? `Editando: ${nomeElem}` : 'Criar Nova Magia / Técnica'}</h3>
+
+                    <input className="input-neon" type="text" placeholder="Nome da Magia/Técnica" value={nomeElem} onChange={e => setNomeElem(e.target.value)} />
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginTop: 10, padding: 10, background: 'rgba(0,136,255,0.1)', border: '1px solid #0088ff', borderRadius: 5 }}>
                         <div>
-                            <label style={{ color: '#ffcc00', fontSize: '0.85em', fontWeight: 'bold' }}>Qual Resistência?</label>
-                            <select className="input-neon" value={savingAttr} onChange={e => setSavingAttr(e.target.value)}>
-                                <option value="forca">Força</option>
-                                <option value="destreza">Destreza</option>
-                                <option value="constituicao">Constituição</option>
-                                <option value="sabedoria">Sabedoria</option>
-                                <option value="inteligencia">Inteligência</option>
-                                <option value="stamina">Stamina</option>
-                                <option value="carisma">Carisma</option>
-                                <option value="energiaEsp">Energia Espiritual</option>
+                            <label style={{ color: '#0088ff', fontSize: '0.85em', fontWeight: 'bold' }}>Mecânica de Uso</label>
+                            <select className="input-neon" value={tipoMecanica} onChange={e => setTipoMecanica(e.target.value)}>
+                                <option value="ataque">Rolagem de Acerto</option>
+                                <option value="saving">Alvo Rola Saving Throw (CD)</option>
+                                <option value="infusao">Infusão em Arma</option>
+                                <option value="suporte">Suporte / Cura</option>
                             </select>
                         </div>
+                        
+                        {tipoMecanica === 'saving' && (
+                            <div>
+                                <label style={{ color: '#ffcc00', fontSize: '0.85em', fontWeight: 'bold' }}>Qual Resistência?</label>
+                                <select className="input-neon" value={savingAttr} onChange={e => setSavingAttr(e.target.value)}>
+                                    <option value="forca">Força</option>
+                                    <option value="destreza">Destreza</option>
+                                    <option value="constituicao">Constituição</option>
+                                    <option value="sabedoria">Sabedoria</option>
+                                    <option value="inteligencia">Inteligência</option>
+                                    <option value="stamina">Stamina</option>
+                                    <option value="carisma">Carisma</option>
+                                    <option value="energiaEsp">Energia Espiritual</option>
+                                </select>
+                            </div>
+                        )}
+
+                        <div>
+                            <label style={{ color: '#0088ff', fontSize: '0.85em', fontWeight: 'bold' }}>Energia Usada</label>
+                            <select className="input-neon" value={energiaCombustao} onChange={e => setEnergiaCombustao(e.target.value)} title="Você pode alterar a Energia para subverter regras da Magia Arcana!">
+                                <option value="mana">Mana (Base: Int)</option>
+                                <option value="aura">Aura (Base: Eng. Esp)</option>
+                                <option value="chakra">Chakra (Base: Stamina)</option>
+                                <option value="corpo">Corpo (Base: Força)</option>
+                                <option value="pontosVitais">Pts. Vitais (Base: Const)</option>
+                                <option value="pontosMortais">Pts. Mortais (Base: Int)</option>
+                                <option value="livre">Truque / Livre</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold' }}>Alcance (Q)</label>
+                            <input className="input-neon" type="number" min="0" step="0.5" value={alcanceQuad} onChange={e => setAlcanceQuad(e.target.value)} />
+                        </div>
+                        
+                        <div>
+                            <label style={{ color: '#ff00ff', fontSize: '0.85em', fontWeight: 'bold' }}>Área de Efeito (Q)</label>
+                            <input className="input-neon" type="number" min="0" step="0.5" value={areaQuad} onChange={e => setAreaQuad(e.target.value)} style={{ borderColor: '#ff00ff', color: '#ff00ff' }} />
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginTop: 10 }}>
+                        <div>
+                            <label style={{ color: '#aaa', fontSize: '0.85em' }}>Efeito de Bônus</label>
+                            <select className="input-neon" value={bonusTipo} onChange={e => setBonusTipo(e.target.value)}>
+                                {BONUS_OPTIONS.map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label style={{ color: '#aaa', fontSize: '0.85em' }}>Valor Bônus</label>
+                            <input className="input-neon" type="text" value={bonusValor} onChange={e => setBonusValor(e.target.value)} disabled={bonusTipo === 'nenhum'} />
+                        </div>
+                        <div>
+                            <label style={{ color: '#aaa', fontSize: '0.85em' }}>Custo % Energia</label>
+                            <input className="input-neon" type="number" value={custoValor} onChange={e => setCustoValor(e.target.value)} disabled={energiaCombustao === 'livre'} />
+                        </div>
+                        <div>
+                            <label style={{ color: '#aaa', fontSize: '0.85em' }}>Extra (Qtd Dano)</label>
+                            <input className="input-neon" type="number" value={dadosQtd} onChange={e => setDadosQtd(e.target.value)} />
+                        </div>
+                        <div>
+                            <label style={{ color: '#aaa', fontSize: '0.85em' }}>Extra (Faces)</label>
+                            <input className="input-neon" type="number" value={dadosFaces} onChange={e => setDadosFaces(e.target.value)} />
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+                        <button className="btn-neon btn-gold" onClick={salvarNovoElem} style={{ flex: 1 }}>{elemEditandoId ? 'Salvar Edição' : 'Inscrever no Grimório'}</button>
+                        {elemEditandoId && <button className="btn-neon btn-red" onClick={cancelarEdicaoElem} style={{ flex: 1 }}>Cancelar</button>}
+                    </div>
+                </div>
+
+                <div id="lista-elementos-salvos" style={{ marginTop: 0 }}>
+                    {magiasDoGrupo.length > 0 ? (
+                        <>
+                            <h3 style={{ color: cores[elemSelecionado] || '#ccc', marginTop: 10, borderBottom: `1px solid ${cores[elemSelecionado] || '#ccc'}`, paddingBottom: 5, textTransform: 'uppercase' }}>
+                                {emogis[elemSelecionado] || '\u2728'} Escritos de {elemSelecionado}
+                            </h3>
+                            {magiasDoGrupo.map(p => renderMagiaCard(p))}
+                        </>
+                    ) : (
+                        <p style={{ color: '#888', fontStyle: 'italic', marginTop: 20 }}>Nenhum escrito ou técnica de <strong>{elemSelecionado}</strong> encontrado nesta aba.</p>
                     )}
 
-                    <div>
-                        <label style={{ color: '#0088ff', fontSize: '0.85em', fontWeight: 'bold' }}>Energia Usada</label>
-                        <select className="input-neon" value={energiaCombustao} onChange={e => setEnergiaCombustao(e.target.value)}>
-                            <option value="mana">Mana (Base: Int)</option>
-                            <option value="aura">Aura (Base: Eng. Esp)</option>
-                            <option value="chakra">Chakra (Base: Stam)</option>
-                            <option value="livre">Truque / Livre</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold' }}>Alcance (Q)</label>
-                        <input className="input-neon" type="number" min="0" step="0.5" value={alcanceQuad} onChange={e => setAlcanceQuad(e.target.value)} />
-                    </div>
-                    
-                    <div>
-                        <label style={{ color: '#ff00ff', fontSize: '0.85em', fontWeight: 'bold' }}>Área de Efeito (Q)</label>
-                        <input className="input-neon" type="number" min="0" step="0.5" value={areaQuad} onChange={e => setAreaQuad(e.target.value)} style={{ borderColor: '#ff00ff', color: '#ff00ff' }} />
-                    </div>
+                    {magiasConjuradasOutros.length > 0 && (
+                        <>
+                            <h3 style={{ color: '#ffcc00', marginTop: 40, borderBottom: '1px solid #ffcc00', paddingBottom: 5, textTransform: 'uppercase', textShadow: '0 0 10px #ffcc00' }}>
+                                Outras Magias Memorizadas
+                            </h3>
+                            {magiasConjuradasOutros.map(p => renderMagiaCard(p))}
+                        </>
+                    )}
                 </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginTop: 10 }}>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Efeito de Bônus</label>
-                        <select className="input-neon" value={bonusTipo} onChange={e => setBonusTipo(e.target.value)}>
-                            {BONUS_OPTIONS.map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
-                        </select>
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Valor Bônus</label>
-                        <input className="input-neon" type="text" value={bonusValor} onChange={e => setBonusValor(e.target.value)} disabled={bonusTipo === 'nenhum'} />
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Custo % Energia</label>
-                        <input className="input-neon" type="number" value={custoValor} onChange={e => setCustoValor(e.target.value)} disabled={energiaCombustao === 'livre'} />
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Extra (Qtd Dano)</label>
-                        <input className="input-neon" type="number" value={dadosQtd} onChange={e => setDadosQtd(e.target.value)} />
-                    </div>
-                    <div>
-                        <label style={{ color: '#aaa', fontSize: '0.85em' }}>Extra (Faces)</label>
-                        <input className="input-neon" type="number" value={dadosFaces} onChange={e => setDadosFaces(e.target.value)} />
-                    </div>
-                </div>
-
-                <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
-                    <button className="btn-neon btn-gold" onClick={salvarNovoElem} style={{ flex: 1 }}>{elemEditandoId ? 'Salvar Edição' : 'Inscrever no Grimório'}</button>
-                    {elemEditandoId && <button className="btn-neon btn-red" onClick={cancelarEdicaoElem} style={{ flex: 1 }}>Cancelar</button>}
-                </div>
-            </div>
-
-            <div id="lista-elementos-salvos" style={{ marginTop: 15 }}>
-                {magiasDoGrupo.length > 0 ? (
-                    <>
-                        <h3 style={{ color: cores[elemSelecionado] || '#ccc', marginTop: 10, borderBottom: `1px solid ${cores[elemSelecionado] || '#ccc'}`, paddingBottom: 5, textTransform: 'uppercase' }}>
-                            {emogis[elemSelecionado] || '\u2728'} Magias de {elemSelecionado}
-                        </h3>
-                        {magiasDoGrupo.map(p => renderMagiaCard(p))}
-                    </>
-                ) : (
-                    <p style={{ color: '#888', fontStyle: 'italic', marginTop: 20 }}>Nenhuma magia de <strong>{elemSelecionado}</strong> inscrita.</p>
-                )}
-
-                {magiasConjuradasOutros.length > 0 && (
-                    <>
-                        <h3 style={{ color: '#ffcc00', marginTop: 40, borderBottom: '1px solid #ffcc00', paddingBottom: 5, textTransform: 'uppercase', textShadow: '0 0 10px #ffcc00' }}>
-                            Outras Magias Memorizadas
-                        </h3>
-                        {magiasConjuradasOutros.map(p => renderMagiaCard(p))}
-                    </>
-                )}
             </div>
         </div>
     );
