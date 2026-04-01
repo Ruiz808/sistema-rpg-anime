@@ -20,8 +20,12 @@ export default function AIPanel() {
     const [erro, setErro] = useState('');
     const chatRef = useRef(null);
 
-    // --- ESTADOS DA LORE E TIER LIST ---
-    const [loreTexto, setLoreTexto] = useState('Capítulo 1: O Despertar...\n\n(Escreva a história da campanha aqui. No futuro, a Sexta-Feira poderá preencher isso sozinha com os resumos dos áudios!)');
+    // --- ESTADOS DA LORE DIVIDIDA ---
+    const [loreFoco, setLoreFoco] = useState('presente'); // Controla qual tempo estamos vendo
+    
+    const [lorePresente, setLorePresente] = useState('Capítulo 1: O Despertar...\n\n(A marca da fênix entrelaçada com o símbolo do infinito e o número quatro arde nas páginas deste diário. Registre aqui os acontecimentos do tempo atual...)');
+    
+    const [loreFuturo, setLoreFuturo] = useState('Crônicas do Amanhã...\n\n(O mundo mudou. Registre aqui os ecos da linha do tempo futura e o que sobrou dos Marcados...)');
 
     // Exemplo de dados para a Tier List (Você pode editar os nomes aqui!)
     const [tierList, setTierList] = useState([
@@ -223,12 +227,9 @@ export default function AIPanel() {
                     
                     {tierList.map((tier, index) => (
                         <div key={index} style={{ display: 'flex', background: 'rgba(0,0,0,0.5)', border: `1px solid ${tier.cor}`, borderRadius: '5px', minHeight: '60px' }}>
-                            {/* CAIXA DA LETRA DO TIER */}
                             <div style={{ width: '80px', background: tier.cor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2em', fontWeight: 'bold', color: '#000', textShadow: '0 0 5px rgba(255,255,255,0.5)' }}>
                                 {tier.rank}
                             </div>
-                            
-                            {/* CAIXA DOS PERSONAGENS */}
                             <div style={{ flex: 1, padding: '10px', display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
                                 {tier.personagens.map((pers, i) => (
                                     <div key={i} style={{ background: 'rgba(255,255,255,0.1)', padding: '5px 15px', borderRadius: '20px', border: `1px solid ${tier.cor}`, color: '#fff', fontSize: '0.9em' }}>
@@ -245,18 +246,52 @@ export default function AIPanel() {
                 </div>
             )}
 
-            {/* CONTEÚDO: LORE E HISTÓRIA */}
+            {/* CONTEÚDO: LORE E HISTÓRIA (AGORA COM LINHAS DO TEMPO) */}
             {subAba === 'lore' && (
                 <div className="def-box" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '15px', padding: '20px' }}>
-                    <h3 style={{ color: '#0088ff', marginTop: 0, margin: 0 }}>📜 Registros Akáshicos da Mesa</h3>
-                    <p style={{ color: '#aaa', fontSize: '0.9em', margin: 0 }}>
-                        Quando o gravador estiver conectado ao servidor, a Sexta-Feira vai transcrever as sessões e salvar os resumos neste espaço automaticamente. Por enquanto, vocês podem editar as anotações manualmente.
-                    </p>
+                    
+                    {/* CABEÇALHO DA LORE COM OS BOTÕES DE TEMPO */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                        <div>
+                            <h3 style={{ color: loreFoco === 'presente' ? '#00ffcc' : '#ffcc00', marginTop: 0, margin: 0, transition: 'color 0.3s' }}>
+                                📜 Registros Akáshicos
+                            </h3>
+                            <p style={{ color: '#aaa', fontSize: '0.9em', margin: 0 }}>
+                                {loreFoco === 'presente' ? 'Lendo: Linha do Tempo Atual' : 'Lendo: Ecos do Futuro'}
+                            </p>
+                        </div>
+                        
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            <button 
+                                className={`btn-neon ${loreFoco === 'presente' ? 'btn-green' : ''}`} 
+                                onClick={() => setLoreFoco('presente')} 
+                                style={{ padding: '8px 15px', fontSize: '0.9em', margin: 0, opacity: loreFoco === 'presente' ? 1 : 0.5 }}>
+                                ⏳ Presente
+                            </button>
+                            <button 
+                                className={`btn-neon ${loreFoco === 'futuro' ? 'btn-gold' : ''}`} 
+                                onClick={() => setLoreFoco('futuro')} 
+                                style={{ padding: '8px 15px', fontSize: '0.9em', margin: 0, opacity: loreFoco === 'futuro' ? 1 : 0.5 }}>
+                                🚀 Futuro
+                            </button>
+                        </div>
+                    </div>
+
                     <textarea 
                         className="input-neon"
-                        value={loreTexto}
-                        onChange={e => setLoreTexto(e.target.value)}
-                        style={{ flex: 1, width: '100%', resize: 'none', borderColor: '#0088ff', color: '#ddd', lineHeight: '1.6', padding: '15px' }}
+                        value={loreFoco === 'presente' ? lorePresente : loreFuturo}
+                        onChange={e => loreFoco === 'presente' ? setLorePresente(e.target.value) : setLoreFuturo(e.target.value)}
+                        placeholder={`Escreva os registros do ${loreFoco} aqui...`}
+                        style={{ 
+                            flex: 1, 
+                            width: '100%', 
+                            resize: 'none', 
+                            borderColor: loreFoco === 'presente' ? '#00ffcc' : '#ffcc00', 
+                            color: '#ddd', 
+                            lineHeight: '1.6', 
+                            padding: '15px',
+                            transition: 'border-color 0.3s'
+                        }}
                     />
                 </div>
             )}
