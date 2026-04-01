@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo } from 'react';
 import useStore from '../../stores/useStore';
-import { salvarFichaSilencioso, enviarParaFeed } from '../../services/firebase-sync'; 
+import { salvarFichaSilencioso, enviarParaFeed } from '../../services/firebase-sync';
 
 const emogis = {
     'Fogo': '\uD83D\uDD25', 'Agua': '\uD83D\uDCA7', 'Raio': '\u26A1', 'Terra': '\uD83E\uDEA8', 'Vento': '\uD83C\uDF2A\uFE0F',
@@ -13,7 +13,11 @@ const emogis = {
     'Magias de 1º Ciclo': '\uD83D\uDD04', 'Magias de 2º Ciclo': '\uD83D\uDD04', 'Magias de 3º Ciclo': '\uD83D\uDD04', 'Magias de 4º Ciclo': '\uD83D\uDD04', 'Magias de 5º Ciclo': '\uD83D\uDD04', 'Magias de 6º Ciclo': '\uD83D\uDD04', 'Magias de 7º Ciclo': '\uD83D\uDD04', 'Magias de 8º Ciclo': '\uD83D\uDD04', 'Magias de 9º Ciclo': '\uD83D\uDD04', 'Magias de 10º Ciclo': '\uD83D\uDD04',
     'Elemento Madeira': '\uD83E\uDEB5', 'Elemento Mineral': '\uD83D\uDC8E', 'Elemento Cinzas': '\uD83C\uDF2B\uFE0F', 'Elemento Igneo': '\u2604\uFE0F', 'Elemento Lava': '\uD83C\uDF0B', 'Elemento Vapor': '\u2668\uFE0F', 'Elemento Nevoa': '\uD83C\uDF2B\uFE0F', 'Elemento Tempestade': '\uD83C\uDF29\uFE0F', 'Elemento Areia': '\uD83C\uDFDC\uFE0F', 'Elemento Tufao': '\uD83C\uDF2A\uFE0F',
     'Elemento Velocidade': '\uD83D\uDCA8', 'Elemento Poeira': '\uD83D\uDD32', 'Elemento Calor': '\uD83C\uDF21\uFE0F', 'Elemento Cal': '\u2B1C', 'Elemento Carbono': '\u2B1B', 'Elemento Veneno': '\u2623\uFE0F', 'Elemento Magnetismo': '\uD83E\uDDF2', 'Elemento Som': '\uD83D\uDD0A',
-    'Truques de Ciclo': '✨', 'Truques Arcanos/Negros': '🔮', 'Truques Ancestrais': '📜'
+    'Truques de Ciclo': '✨', 'Truques Arcanos/Negros': '🔮', 'Truques Ancestrais': '📜',
+    // 🔥 NOVOS EMOJIS DAS ABAS EXTRAS 🔥
+    'Aura Pura': '✨', 'Projeção de Aura': '🛡️',
+    'Artes Marciais': '🥋', 'Reforço Físico': '💪',
+    'Fusões Básicas': '🌀', 'Fusões Avançadas': '⚛️'
 };
 
 const cores = {
@@ -27,10 +31,13 @@ const cores = {
     'Magias de 1º Ciclo': '#b3ffe6', 'Magias de 2º Ciclo': '#80ffcc', 'Magias de 3º Ciclo': '#4dffb3', 'Magias de 4º Ciclo': '#1aff99', 'Magias de 5º Ciclo': '#00e68a', 'Magias de 6º Ciclo': '#00cc7a', 'Magias de 7º Ciclo': '#00b36b', 'Magias de 8º Ciclo': '#00995c', 'Magias de 9º Ciclo': '#00804d', 'Magias de 10º Ciclo': '#00663d',
     'Elemento Madeira': '#8b5a2b', 'Elemento Mineral': '#e6e6fa', 'Elemento Cinzas': '#808080', 'Elemento Igneo': '#ff4500', 'Elemento Lava': '#ff0000', 'Elemento Vapor': '#ffb6c1', 'Elemento Nevoa': '#b0e0e6', 'Elemento Tempestade': '#ccccff', 'Elemento Areia': '#f4a460', 'Elemento Tufao': '#98fb98',
     'Elemento Velocidade': '#e6ffff', 'Elemento Poeira': '#d9d9d9', 'Elemento Calor': '#ff6600', 'Elemento Cal': '#e6ccb3', 'Elemento Carbono': '#595959', 'Elemento Veneno': '#9933ff', 'Elemento Magnetismo': '#4169e1', 'Elemento Som': '#a6a6a6',
-    'Truques de Ciclo': '#b3ffe6', 'Truques Arcanos/Negros': '#d9b3ff', 'Truques Ancestrais': '#e6e6e6'
+    'Truques de Ciclo': '#b3ffe6', 'Truques Arcanos/Negros': '#d9b3ff', 'Truques Ancestrais': '#e6e6e6',
+    // 🔥 NOVAS CORES DAS ABAS EXTRAS 🔥
+    'Aura Pura': '#b366ff', 'Projeção de Aura': '#b366ff',
+    'Artes Marciais': '#ff3333', 'Reforço Físico': '#ff3333',
+    'Fusões Básicas': '#ff00ff', 'Fusões Avançadas': '#ff00ff'
 };
 
-// 🔥 HIERARQUIA REORGANIZADA EM SUB-ABAS 🔥
 const ABAS_GRIMORIO = {
     'elementos': {
         label: 'Elementos',
@@ -73,17 +80,23 @@ const ABAS_GRIMORIO = {
     'aura': {
         label: 'Aura',
         icon: '✨',
-        categorias: []
+        categorias: [
+            { titulo: 'Manifestações de Aura', itens: ['Aura Pura', 'Projeção de Aura'] }
+        ]
     },
     'corpo': {
         label: 'Corpo',
         icon: '💪',
-        categorias: []
+        categorias: [
+            { titulo: 'Técnicas Corporais', itens: ['Artes Marciais', 'Reforço Físico'] }
+        ]
     },
     'compostos': {
         label: 'Elementos Compostos',
         icon: '⚛️',
-        categorias: []
+        categorias: [
+            { titulo: 'Misturas Elementais', itens: ['Fusões Básicas', 'Fusões Avançadas'] }
+        ]
     }
 };
 
@@ -106,7 +119,7 @@ export default function ElementosPanel() {
     const elemEditandoId = useStore(s => s.elemEditandoId);
     const setElemEditandoId = useStore(s => s.setElemEditandoId);
 
-    const [abaAtual, setAbaAtual] = useState('elementos'); // 🔥 ESTADO DA SUB-ABA
+    const [abaAtual, setAbaAtual] = useState('elementos'); 
 
     const [elemSelecionado, setElemSelecionado] = useState('Neutro');
     const [nomeElem, setNomeElem] = useState('');
@@ -132,12 +145,65 @@ export default function ElementosPanel() {
         return parseInt(strVal.substring(0, 2), 10);
     };
 
+    // 🔥 FILTRO INTELIGENTE DE ENERGIAS 🔥
+    const allowedEnergies = useMemo(() => {
+        let opts = [];
+        const isArcana = elemSelecionado.includes('Arcanas/Negra');
+        const isTruque = elemSelecionado.includes('Truque');
+
+        if (isArcana) {
+            // Arcanas subvertem as regras do mundo e acedem a todas as energias!
+            opts = [
+                { value: 'mana', label: 'Mana (Base: Int)' },
+                { value: 'aura', label: 'Aura (Base: Eng. Esp)' },
+                { value: 'chakra', label: 'Chakra (Base: Stamina)' },
+                { value: 'corpo', label: 'Corpo (Base: Força)' },
+                { value: 'pontosVitais', label: 'Pts. Vitais (Base: Const)' },
+                { value: 'pontosMortais', label: 'Pts. Mortais (Base: Int)' },
+                { value: 'livre', label: 'Truque / Livre' }
+            ];
+        } else if (isTruque) {
+            opts = [{ value: 'livre', label: 'Truque / Livre' }];
+        } else if (abaAtual === 'astrais') {
+            opts = [
+                { value: 'pontosVitais', label: 'Pts. Vitais (Base: Const)' },
+                { value: 'pontosMortais', label: 'Pts. Mortais (Base: Int)' }
+            ];
+        } else if (abaAtual === 'chakra') {
+            opts = [{ value: 'chakra', label: 'Chakra (Base: Stamina)' }];
+        } else if (abaAtual === 'aura') {
+            opts = [{ value: 'aura', label: 'Aura (Base: Eng. Esp)' }];
+        } else if (abaAtual === 'corpo') {
+            opts = [{ value: 'corpo', label: 'Corpo (Base: Força)' }];
+        } else if (abaAtual === 'mana') {
+            opts = [{ value: 'mana', label: 'Mana (Base: Int)' }];
+        } else {
+            // Elementos Genéricos e Compostos
+            opts = [
+                { value: 'mana', label: 'Mana (Base: Int)' },
+                { value: 'aura', label: 'Aura (Base: Eng. Esp)' },
+                { value: 'chakra', label: 'Chakra (Base: Stamina)' }
+            ];
+        }
+
+        // Garante que a energia atual nunca "desaparece" do ecrã caso seja carregada de uma técnica antiga
+        if (elemEditandoId && !opts.some(o => o.value === energiaCombustao)) {
+            const allLabels = {
+                'mana': 'Mana (Base: Int)', 'aura': 'Aura (Base: Eng. Esp)', 'chakra': 'Chakra (Base: Stamina)',
+                'corpo': 'Corpo (Base: Força)', 'pontosVitais': 'Pts. Vitais (Base: Const)', 'pontosMortais': 'Pts. Mortais (Base: Int)', 'livre': 'Truque / Livre'
+            };
+            opts.push({ value: energiaCombustao, label: `${allLabels[energiaCombustao] || energiaCombustao} (Forçado)` });
+        }
+        
+        return opts;
+    }, [abaAtual, elemSelecionado, elemEditandoId, energiaCombustao]);
+
     function selecionarElemento(nome) {
         setElemSelecionado(nome);
         
-        // 🧠 Inteligência do Game Design: Pré-seleciona a energia correta baseada na aba,
-        // mas deixa o jogador mudar manualmente (para "quebrar as regras" com Magia Arcana!)
+        // Define um valor por defeito coerente sempre que clica num novo elemento
         if (nome.includes('Truque')) setEnergiaCombustao('livre');
+        else if (nome.includes('Arcanas/Negra')) setEnergiaCombustao('mana'); // Magia Arcana começa com Mana mas o jogador pode mudar depois!
         else if (abaAtual === 'chakra') setEnergiaCombustao('chakra');
         else if (abaAtual === 'mana') setEnergiaCombustao('mana');
         else if (abaAtual === 'aura') setEnergiaCombustao('aura');
@@ -202,9 +268,21 @@ export default function ElementosPanel() {
             alert(`O ataque [${p.nome}] foi DESATIVADO para edicao.`);
         }
 
+        const el = p.elemento || 'Neutro';
+        setElemSelecionado(el);
+        
+        // 🔥 AUTO-SWITCH DE ABA PARA A TÉCNICA CORRETA 🔥
+        let foundAba = 'elementos';
+        for (const [abaKey, abaData] of Object.entries(ABAS_GRIMORIO)) {
+            if (abaData.categorias.some(cat => cat.itens.includes(el))) {
+                foundAba = abaKey;
+                break;
+            }
+        }
+        setAbaAtual(foundAba);
+
         setElemEditandoId(p.id);
         setNomeElem(p.nome);
-        setElemSelecionado(p.elemento || 'Neutro');
         setBonusTipo(p.bonusTipo || 'nenhum');
         setBonusValor(p.bonusValor || '');
         setCustoValor(p.custoValor || 0);
@@ -222,7 +300,6 @@ export default function ElementosPanel() {
     function cancelarEdicaoElem() {
         setElemEditandoId(null);
         setNomeElem('');
-        // Mantém o elemento selecionado para facilitar adições em massa
         setEnergiaCombustao('mana');
         setTipoMecanica('ataque');
         setAlcanceQuad(1);
@@ -252,7 +329,6 @@ export default function ElementosPanel() {
         const { alvoSelecionado, dummies, cenario } = storeState;
         const fichaVirtual = storeState.minhaFicha;
         
-        // 🔥 MAPEAMENTO DE ENERGIAS PARA ATRIBUTO REGENTE (Inclui as novas)
         const energiaToAttr = { 
             'mana': 'inteligencia', 
             'aura': 'energiaEsp', 
@@ -401,7 +477,7 @@ export default function ElementosPanel() {
     return (
         <div className="elementos-panel" style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
             
-            {/* 🔥 NOVO: BARRA LATERAL (MENU DE ABAS) 🔥 */}
+            {/* 🔥 BARRA LATERAL (MENU DE ABAS) 🔥 */}
             <div className="def-box" style={{ flex: '0 0 250px', padding: '15px', position: 'sticky', top: '20px' }}>
                 <h3 style={{ color: '#fff', marginTop: 0, textAlign: 'center', marginBottom: '20px', fontSize: '1.1em', letterSpacing: '1px' }}>
                     📖 GRIMÓRIO
@@ -485,17 +561,16 @@ export default function ElementosPanel() {
                             </div>
                         )}
 
+                        {/* 🔥 O SELETOR DE ENERGIA INTELIGENTE 🔥 */}
                         <div>
                             <label style={{ color: '#0088ff', fontSize: '0.85em', fontWeight: 'bold' }}>Energia Usada</label>
-                            <select className="input-neon" value={energiaCombustao} onChange={e => setEnergiaCombustao(e.target.value)} title="Você pode alterar a Energia para subverter regras da Magia Arcana!">
-                                <option value="mana">Mana (Base: Int)</option>
-                                <option value="aura">Aura (Base: Eng. Esp)</option>
-                                <option value="chakra">Chakra (Base: Stamina)</option>
-                                <option value="corpo">Corpo (Base: Força)</option>
-                                <option value="pontosVitais">Pts. Vitais (Base: Const)</option>
-                                <option value="pontosMortais">Pts. Mortais (Base: Int)</option>
-                                <option value="livre">Truque / Livre</option>
+                            <select className="input-neon" value={energiaCombustao} onChange={e => setEnergiaCombustao(e.target.value)}>
+                                {allowedEnergies.map(opt => (
+                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                ))}
                             </select>
+                            {allowedEnergies.length === 1 && <span style={{fontSize: '0.7em', color: '#888', display: 'block', marginTop: 2}}>Fixado pela Categoria</span>}
+                            {allowedEnergies.length > 3 && <span style={{fontSize: '0.7em', color: '#ff00ff', display: 'block', marginTop: 2}}>Regras Subvertidas (Arcana)</span>}
                         </div>
 
                         <div>
