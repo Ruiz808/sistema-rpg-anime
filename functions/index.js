@@ -53,10 +53,6 @@ exports.falarComSextaFeira = onCall(
         timeoutSeconds: 90,
     },
     async (request) => {
-        if (!request.auth) {
-            throw new HttpsError("unauthenticated", "Autenticacao necessaria.");
-        }
-
         const { mensagem, contextoFicha } = request.data;
 
         if (!mensagem || typeof mensagem !== "string" || !mensagem.trim()) {
