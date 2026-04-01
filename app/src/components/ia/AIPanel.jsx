@@ -20,39 +20,69 @@ export default function AIPanel() {
     const [erro, setErro] = useState('');
     const chatRef = useRef(null);
 
-    // --- ESTADOS DA LORE DIVIDIDA E CAPÍTULOS ---
+    // --- ESTADOS DA LORE DIVIDIDA E CAPÍTULOS (AGORA COM SALVAMENTO!) ---
     const [loreFoco, setLoreFoco] = useState('presente'); 
     
-    // O Presente agora é um Livro com vários Capítulos!
-    const [capitulosPresente, setCapitulosPresente] = useState([
-        { 
-            id: 1, 
-            titulo: 'Capítulo 1 - Reino de Faku', 
-            texto: 'A marca da fênix entrelaçada com o símbolo do infinito e o número quatro arde nas páginas deste diário...\n\n(Escreva os registros da primeira parte aqui)' 
-        }
-    ]);
-    const [capituloAtivoId, setCapituloAtivoId] = useState(1);
+    // Inicia buscando do navegador. Se não tiver nada, cria o primeiro capítulo.
+    const [capitulosPresente, setCapitulosPresente] = useState(() => {
+        const salvo = localStorage.getItem('rpgSextaFeira_capitulos');
+        return salvo ? JSON.parse(salvo) : [
+            { 
+                id: 1, 
+                titulo: 'Capítulo 1 - Reino de Faku', 
+                texto: 'A marca da fênix entrelaçada com o símbolo do infinito e o número quatro arde nas páginas deste diário...\n\n(Escreva os registros da primeira parte aqui)' 
+            }
+        ];
+    });
+    const [capituloAtivoId, setCapituloAtivoId] = useState(() => {
+        const salvoId = localStorage.getItem('rpgSextaFeira_capituloAtivo');
+        return salvoId ? Number(salvoId) : 1;
+    });
     
-    // O Futuro continua como uma visão única (por enquanto)
-    const [loreFuturo, setLoreFuturo] = useState('Crônicas do Amanhã...\n\n(O mundo mudou. Registre aqui os ecos da linha do tempo futura e o que sobrou dos Marcados...)');
+    // Inicia buscando o Futuro do navegador
+    const [loreFuturo, setLoreFuturo] = useState(() => {
+        return localStorage.getItem('rpgSextaFeira_futuro') || 'Crônicas do Amanhã...\n\n(O mundo mudou. Registre aqui os ecos da linha do tempo futura e o que sobrou dos Marcados...)';
+    });
 
-    // Exemplo de dados para a Tier List 
-    const [tierList, setTierList] = useState([
-        { rank: 'S', cor: '#ff003c', personagens: ['Natsu Ackermann', 'Elizabeth Frisk (Memória)', 'Chefe Final Desconhecido'] },
-        { rank: 'A', cor: '#ffcc00', personagens: ['Jogador 2', 'Jogador 3'] },
-        { rank: 'B', cor: '#00ffcc', personagens: ['NPC Aliado', 'Vilão Menor'] },
-        { rank: 'C', cor: '#0088ff', personagens: ['Goblin Espião', 'Capanga'] },
-        { rank: 'D', cor: '#888888', personagens: ['Figurante que morreu na primeira sessão'] },
-    ]);
+    // Exemplo de dados para a Tier List (Também salva no navegador!)
+    const [tierList, setTierList] = useState(() => {
+        const salvo = localStorage.getItem('rpgSextaFeira_tierlist');
+        return salvo ? JSON.parse(salvo) : [
+            { rank: 'S', cor: '#ff003c', personagens: ['Natsu Ackermann', 'Elizabeth Frisk (Memória)', 'Chefe Final Desconhecido'] },
+            { rank: 'A', cor: '#ffcc00', personagens: ['Jogador 2', 'Jogador 3'] },
+            { rank: 'B', cor: '#00ffcc', personagens: ['NPC Aliado', 'Vilão Menor'] },
+            { rank: 'C', cor: '#0088ff', personagens: ['Goblin Espião', 'Capanga'] },
+            { rank: 'D', cor: '#888888', personagens: ['Figurante que morreu na primeira sessão'] },
+        ];
+    });
+
+    // --- EFEITOS DE SALVAMENTO AUTOMÁTICO ---
+    // Sempre que um capítulo mudar, salva tudo!
+    useEffect(() => {
+        localStorage.setItem('rpgSextaFeira_capitulos', JSON.stringify(capitulosPresente));
+    }, [capitulosPresente]);
+
+    useEffect(() => {
+        localStorage.setItem('rpgSextaFeira_capituloAtivo', capituloAtivoId);
+    }, [capituloAtivoId]);
+
+    useEffect(() => {
+        localStorage.setItem('rpgSextaFeira_futuro', loreFuturo);
+    }, [loreFuturo]);
+
+    useEffect(() => {
+        localStorage.setItem('rpgSextaFeira_tierlist', JSON.stringify(tierList));
+    }, [tierList]);
+
 
     // --- FUNÇÕES DE LORE E CAPÍTULOS ---
     const adicionarCapitulo = () => {
         const titulo = window.prompt("Nome do novo capítulo (Ex: Capítulo 2 - Guerra Santa):");
         if (!titulo || titulo.trim() === '') return;
         
-        const novoId = Date.now(); // Gera um ID único baseado no tempo
+        const novoId = Date.now(); 
         setCapitulosPresente(prev => [...prev, { id: novoId, titulo, texto: '' }]);
-        setCapituloAtivoId(novoId); // Já muda automaticamente para o capítulo novo
+        setCapituloAtivoId(novoId); 
     };
 
     const editarTituloCapitulo = () => {
@@ -65,6 +95,20 @@ export default function AIPanel() {
         setCapitulosPresente(prev => prev.map(cap => 
             cap.id === capituloAtivoId ? { ...cap, titulo: novoTitulo } : cap
         ));
+    };
+
+    const apagarCapitulo = () => {
+        if (capitulosPresente.length <= 1) {
+            alert("Você não pode apagar o único capítulo existente!");
+            return;
+        }
+        
+        const capAtual = capitulosPresente.find(cap => cap.id === capituloAtivoId);
+        if (window.confirm(`Tem certeza que deseja apagar o "${capAtual.titulo}"? Isso não pode ser desfeito.`)) {
+            const novaLista = capitulosPresente.filter(cap => cap.id !== capituloAtivoId);
+            setCapitulosPresente(novaLista);
+            setCapituloAtivoId(novaLista[0].id); // Volta pro primeiro da lista
+        }
     };
 
     const atualizarTextoPresente = (novoTexto) => {
@@ -287,7 +331,7 @@ export default function AIPanel() {
                 </div>
             )}
 
-            {/* CONTEÚDO: LORE E HISTÓRIA (AGORA COM EDIÇÃO DE CAPÍTULOS!) */}
+            {/* CONTEÚDO: LORE E HISTÓRIA */}
             {subAba === 'lore' && (
                 <div className="def-box" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '15px', padding: '20px' }}>
                     
@@ -318,7 +362,7 @@ export default function AIPanel() {
                         </div>
                     </div>
 
-                    {/* SELETOR E EDIÇÃO DE CAPÍTULOS (SÓ APARECE NO PRESENTE) */}
+                    {/* SELETOR E EDIÇÃO DE CAPÍTULOS */}
                     {loreFoco === 'presente' && (
                         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', paddingBottom: '10px', borderBottom: '1px solid #333', flexWrap: 'wrap' }}>
                             <span style={{ color: '#00ffcc', fontWeight: 'bold' }}>📖 Capítulo:</span>
@@ -336,8 +380,11 @@ export default function AIPanel() {
                             </select>
                             
                             <div style={{ display: 'flex', gap: '5px' }}>
-                                <button className="btn-neon btn-gold" onClick={editarTituloCapitulo} style={{ padding: '8px 15px', margin: 0 }}>
-                                    ✏️ Editar Nome
+                                <button className="btn-neon btn-gold" onClick={editarTituloCapitulo} style={{ padding: '8px 15px', margin: 0 }} title="Editar Nome do Capítulo">
+                                    ✏️
+                                </button>
+                                <button className="btn-neon btn-red" onClick={apagarCapitulo} style={{ padding: '8px 15px', margin: 0 }} title="Apagar Capítulo">
+                                    🗑️
                                 </button>
                                 <button className="btn-neon btn-green" onClick={adicionarCapitulo} style={{ padding: '8px 15px', margin: 0 }}>
                                     ➕ Novo
