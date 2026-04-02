@@ -19,6 +19,9 @@ import MapaPanel from './components/mapa/MapaPanel'
 import Jukebox from './components/jukebox/Jukebox'
 import CompendioPanel from './components/compendio/CompendioPanel'
 
+// 🔥 IMPORT DA NOSSA FORJA DE VILÕES 🔥
+import { MestreForjaNPC } from './components/mestre/MestreSubComponents'
+
 // 🔥 IMPORT DA NOVA INTELIGÊNCIA ARTIFICIAL 🔥
 import AIPanel from './components/ia/AIPanel' 
 // 🔥 IMPORT DO NOVO GRAVADOR 🔥
@@ -472,6 +475,10 @@ function MestrePanel() {
                     </div>
                 </div>
             </div>
+
+            {/* 🔥 A NOSSA FORJA DE VILÕES ENTRA AQUI! 🔥 */}
+            <MestreForjaNPC />
+
         </div>
     );
 }
