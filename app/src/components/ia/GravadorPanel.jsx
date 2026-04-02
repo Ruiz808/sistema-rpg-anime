@@ -1,164 +1,139 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { ref, uploadBytes } from 'firebase/storage';
+import { storage } from '../../services/firebase-config'; // Verifique se o caminho está correto no seu projeto!
 
 export default function GravadorPanel() {
     const [gravando, setGravando] = useState(false);
-    const [tempo, setTempo] = useState(0);
-    const [logs, setLogs] = useState([]);
+    const [logs, setLogs] = useState(['Módulo de Gravação e Escuta inicializado. Aguardando comando...']);
+    const mediaRecorderRef = useRef(null);
+    const audioChunksRef = useRef([]);
+    const logsEndRef = useRef(null);
 
-    // Referências para guardar os gravadores sem perder os dados quando a tela atualizar
-    const recVideoRef = useRef(null);
-    const recAudioRef = useRef(null);
-    const timerRef = useRef(null);
-    const fatiadorRef = useRef(null);
-
-    const addLog = (msg) => setLogs(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev]);
-
-    // O TEMPO DA FATIA (Coloquei 1 minuto para vocês testarem rápido, depois mudem para 30)
-    const MINUTOS_POR_FATIA = 1; 
-    const TEMPO_MS = MINUTOS_POR_FATIA * 60 * 1000;
-
-    useEffect(() => {
-        if (gravando) {
-            timerRef.current = setInterval(() => setTempo(t => t + 1), 1000);
-        } else {
-            clearInterval(timerRef.current);
-            setTempo(0);
-        }
-        return () => clearInterval(timerRef.current);
-    }, [gravando]);
-
-    const formatarTempo = (segundos) => {
-        const m = Math.floor(segundos / 60).toString().padStart(2, '0');
-        const s = (segundos % 60).toString().padStart(2, '0');
-        return `${m}:${s}`;
+    // Função para adicionar mensagens na telinha de log
+    const addLog = (msg) => {
+        const hora = new Date().toLocaleTimeString();
+        setLogs(prev => [...prev, `[${hora}] ${msg}`]);
     };
+
+    // Rola os logs automaticamente para o final
+    useEffect(() => {
+        if (logsEndRef.current) {
+            logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [logs]);
 
     const iniciarGravacao = async () => {
         try {
-            addLog("Solicitando permissão para capturar tela e microfone...");
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' });
             
-            // 1. Pega a tela (com o áudio do sistema/Discord)
-            const telaStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-            // 2. Pega o microfone do Mestre
-            const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorderRef.current.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    audioChunksRef.current.push(event.data);
+                }
+            };
 
-            addLog("Permissões concedidas. Iniciando matriz de gravação dupla...");
+            // A MÁGICA ACONTECE AQUI: Quando a gravação para, faz o upload!
+            mediaRecorderRef.current.onstop = async () => {
+                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                audioChunksRef.current = []; // Limpa a memória para a próxima gravação
+                
+                addLog("Áudio processado. Iniciando upload secreto para os servidores...");
+                
+                try {
+                    // Cria um nome único com a data atual
+                    const nomeArquivo = `sessao_${Date.now()}.webm`;
+                    // Aponta para a pasta "audios_mesa" no Firebase Storage
+                    const audioRef = ref(storage, `audios_mesa/${nomeArquivo}`);
+                    
+                    // Faz o upload de fato
+                    await uploadBytes(audioRef, audioBlob);
+                    addLog(`✅ Upload concluído com sucesso: ${nomeArquivo}`);
+                    addLog("Aguardando a Sexta-Feira processar a transcrição...");
+                    
+                } catch (erro) {
+                    addLog(`❌ ERRO no upload: ${erro.message}`);
+                    console.error("Erro no Firebase Storage:", erro);
+                }
+            };
 
-            // Mistura os áudios (Discord + Microfone)
-            const audioContext = new AudioContext();
-            const dest = audioContext.createMediaStreamDestination();
-            
-            if (telaStream.getAudioTracks().length > 0) {
-                audioContext.createMediaStreamSource(new MediaStream([telaStream.getAudioTracks()[0]])).connect(dest);
-            }
-            audioContext.createMediaStreamSource(new MediaStream([micStream.getAudioTracks()[0]])).connect(dest);
-
-            const mixedAudioStream = dest.stream;
-
-            // Stream 1: Vídeo Completo (Para o PC)
-            const finalVideoStream = new MediaStream([telaStream.getVideoTracks()[0], ...mixedAudioStream.getAudioTracks()]);
-            // Stream 2: Apenas Áudio (Para a IA / Firebase)
-            const finalAudioStream = new MediaStream([...mixedAudioStream.getAudioTracks()]);
-
-            iniciarFatia(finalVideoStream, finalAudioStream);
+            mediaRecorderRef.current.start();
             setGravando(true);
-
-            // Inicia o "Fatiador" que vai cortar a gravação a cada X minutos
-            fatiadorRef.current = setInterval(() => {
-                addLog(`Fatia de ${MINUTOS_POR_FATIA} min concluída. Reiniciando ciclo...`);
-                pararGravadores(); 
-                setTimeout(() => iniciarFatia(finalVideoStream, finalAudioStream), 500);
-            }, TEMPO_MS);
-
-            // Se o usuário cancelar o compartilhamento de tela, para tudo
-            telaStream.getVideoTracks()[0].onended = () => pararTudo();
-
+            addLog("🎙️ Gravação de áudio iniciada. Captando vozes dos jogadores...");
         } catch (err) {
-            addLog(`ERRO: ${err.message}`);
+            addLog(`❌ Erro ao acessar microfone: ${err.message}`);
             console.error(err);
         }
     };
 
-    const iniciarFatia = (videoStream, audioStream) => {
-        // --- GRAVADOR DE VÍDEO (HD LOCAL) ---
-        recVideoRef.current = new MediaRecorder(videoStream, { mimeType: 'video/webm' });
-        let videoChunks = [];
-        recVideoRef.current.ondataavailable = e => { if (e.data.size > 0) videoChunks.push(e.data); };
-        recVideoRef.current.onstop = () => {
-            const blob = new Blob(videoChunks, { type: 'video/webm' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `Mesa_RPG_Video_${new Date().getTime()}.webm`;
-            a.click();
-            addLog("Vídeo baixado para o computador com sucesso.");
-        };
-        recVideoRef.current.start();
-
-        // --- GRAVADOR DE ÁUDIO (FIREBASE/IA) ---
-        recAudioRef.current = new MediaRecorder(audioStream, { mimeType: 'audio/webm' });
-        let audioChunks = [];
-        recAudioRef.current.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
-        recAudioRef.current.onstop = () => {
-            const blob = new Blob(audioChunks, { type: 'audio/webm' });
-            addLog("Áudio isolado extraído. (Em breve: enviando para a Sexta-Feira...)");
+    const pararGravacao = () => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+            mediaRecorderRef.current.stop();
+            setGravando(false);
+            addLog("⏹️ Gravação interrompida. Finalizando arquivo de áudio...");
             
-            // TODO: Aqui entrará o código do Passo 3 para enviar o 'blob' para o Firebase!
-        };
-        recAudioRef.current.start();
-    };
-
-    const pararGravadores = () => {
-        if (recVideoRef.current && recVideoRef.current.state !== 'inactive') recVideoRef.current.stop();
-        if (recAudioRef.current && recAudioRef.current.state !== 'inactive') recAudioRef.current.stop();
-    };
-
-    const pararTudo = () => {
-        pararGravadores();
-        clearInterval(fatiadorRef.current);
-        setGravando(false);
-        addLog("Gravação total encerrada.");
+            // Desliga a luzinha vermelha do microfone no navegador
+            mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+        }
     };
 
     return (
-        <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-            <h2 style={{ color: '#00ffcc', textShadow: '0 0 10px #00ffcc', borderBottom: '2px solid #00ffcc', paddingBottom: 10, margin: 0 }}>
-                🎙️ Escuta da Sexta-Feira
-            </h2>
+        <div className="def-box" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px', height: '100%' }}>
+            
+            <div style={{ borderBottom: '1px solid #333', paddingBottom: '10px' }}>
+                <h3 style={{ color: '#ff003c', margin: 0, textShadow: '0 0 5px rgba(255,0,60,0.5)' }}>
+                    🎙️ Terminal de Escuta da Sexta-Feira
+                </h3>
+                <p style={{ color: '#aaa', fontSize: '0.85em', margin: '5px 0 0 0' }}>
+                    O áudio captado aqui será enviado diretamente para a nuvem para ser transcrito e resumido pela IA.
+                </p>
+            </div>
 
-            <div className="def-box" style={{ borderLeft: `4px solid ${gravando ? '#ff003c' : '#00ffcc'}`, padding: '20px', display: 'flex', alignItems: 'center', gap: '20px' }}>
-                <div style={{ flex: 1 }}>
-                    <h3 style={{ margin: '0 0 5px 0', color: gravando ? '#ff003c' : '#fff' }}>
-                        {gravando ? '🔴 Gravando Sessão (Tela + Áudio)' : 'Status: Aguardando'}
-                    </h3>
-                    <p style={{ margin: 0, color: '#aaa', fontSize: '0.9em' }}>
-                        A IA irá fatiar a gravação a cada {MINUTOS_POR_FATIA} minuto(s), salvar o vídeo no seu PC e enviar o áudio para resumo.
-                    </p>
-                </div>
-                
-                <div style={{ fontSize: '2em', fontFamily: 'monospace', color: gravando ? '#ff003c' : '#555', fontWeight: 'bold' }}>
-                    {formatarTempo(tempo)}
-                </div>
-
+            {/* BOTÕES DE CONTROLE */}
+            <div style={{ display: 'flex', gap: '15px', justifyContent: 'center', padding: '20px 0' }}>
                 {!gravando ? (
-                    <button className="btn-neon btn-green" onClick={iniciarGravacao} style={{ padding: '15px 30px', fontSize: '1.2em' }}>
-                        ▶ INICIAR GRAVAÇÃO
+                    <button 
+                        className="btn-neon btn-green" 
+                        onClick={iniciarGravacao}
+                        style={{ padding: '15px 30px', fontSize: '1.1em', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px' }}
+                    >
+                        <span style={{ fontSize: '1.5em' }}>▶</span> INICIAR ESCUTA
                     </button>
                 ) : (
-                    <button className="btn-neon btn-red" onClick={pararTudo} style={{ padding: '15px 30px', fontSize: '1.2em' }}>
-                        ⏹ PARAR TUDO
+                    <button 
+                        className="btn-neon btn-red" 
+                        onClick={pararGravacao}
+                        style={{ padding: '15px 30px', fontSize: '1.1em', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px', animation: 'pulse 1.5s infinite' }}
+                    >
+                        <span style={{ fontSize: '1.5em' }}>⏹</span> PARAR E ENVIAR
                     </button>
                 )}
             </div>
 
-            <div className="def-box" style={{ background: 'rgba(0,0,0,0.8)', minHeight: '150px', maxHeight: '300px', overflowY: 'auto', padding: '10px' }}>
-                <h4 style={{ color: '#555', marginTop: 0 }}>Logs do Sistema</h4>
-                {logs.map((log, i) => (
-                    <div key={i} style={{ color: '#00ffcc', fontSize: '0.85em', marginBottom: '4px', fontFamily: 'monospace' }}>
-                        {log}
-                    </div>
-                ))}
+            {/* TERMINAL DE LOGS */}
+            <div style={{ flex: 1, background: '#0a0a0a', border: '1px solid #333', borderRadius: '5px', padding: '10px', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ color: '#00ffcc', fontSize: '0.8em', borderBottom: '1px solid #222', paddingBottom: '5px', marginBottom: '10px', fontFamily: 'monospace' }}>
+                    &gt; SEXTA_FEIRA_SYSTEM_LOGS
+                </div>
+                
+                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '5px', fontFamily: 'monospace', fontSize: '0.85em', color: '#00ff00' }}>
+                    {logs.map((log, i) => (
+                        <div key={i} style={{ opacity: i === logs.length - 1 ? 1 : 0.7 }}>
+                            {log}
+                        </div>
+                    ))}
+                    <div ref={logsEndRef} />
+                </div>
             </div>
+
+            {/* CSS inline para a animação de pulsar o botão de gravação */}
+            <style dangerouslySetInnerHTML={{__html: `
+                @keyframes pulse {
+                    0% { box-shadow: 0 0 0 0 rgba(255, 0, 60, 0.7); }
+                    70% { box-shadow: 0 0 0 15px rgba(255, 0, 60, 0); }
+                    100% { box-shadow: 0 0 0 0 rgba(255, 0, 60, 0); }
+                }
+            `}} />
         </div>
     );
 }
