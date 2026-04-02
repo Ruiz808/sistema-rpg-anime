@@ -391,26 +391,60 @@ export function MapaFormProvider({ children }) {
         setTurnoAtualIndex(0);
     }, [cenaAtual.nome, ordemIniciativa, updateFicha]);
 
+    // 🔥 MOTOR DE ACERTO RÁPIDO DO MAPA ATUALIZADO (Área de Efeito e Múltiplos Alvos)
     const rolarAcertoRapido = useCallback(() => {
         const qD = parseInt(mapQD) || 1;
         const fD = parseInt(mapFD) || 20;
         const bonus = parseInt(mapBonus) || 0;
         const prof = mapUsarProf ? profGlobal : 0;
         const sels = [mapStat]; 
-        const itensEquipados = minhaFicha?.inventario ? minhaFicha.inventario.filter(i => i.equipado) : [];
+        const itensEq = fichaSegura?.inventario ? fichaSegura.inventario.filter(i => i.equipado) : [];
+
         const result = calcularAcerto({ 
-            qD, fD, prof, bonus, sels, minhaFicha, itensEquipados, 
+            qD, fD, prof, bonus, sels, minhaFicha: fichaSegura, itensEquipados: itensEq, 
             vantagens: mapVantagens, desvantagens: mapDesvantagens 
         });
-        let extraFeed = {};
-        if (alvoSelecionado && dummies[alvoSelecionado]) {
-            const alvo = dummies[alvoSelecionado];
-            const acertou = result.acertoTotal >= alvo.valorDefesa;
-            extraFeed = { alvoNome: alvo.nome, alvoDefesa: alvo.valorDefesa, acertouAlvo: acertou };
+
+        let alvosAtingidos = [];
+        let maxArea = 0;
+        const alvoDummie = alvoSelecionado && dummies[alvoSelecionado] ? dummies[alvoSelecionado] : null;
+
+        if (alvoDummie) {
+            const armasEqMap = itensEq.filter(i => i.tipo === 'arma');
+            const maxAreaArmas = armasEqMap.length > 0 ? Math.max(...armasEqMap.map(a => a.areaQuad || a.area || 0)) : 0;
+            
+            const podAtMap = (fichaSegura?.poderes || []).filter(p => p.ativa);
+            const maxAreaPoderes = podAtMap.length > 0 ? Math.max(...podAtMap.map(p => p.areaQuad || p.area || 0)) : 0;
+            
+            const magiasEqMap = (fichaSegura?.ataquesElementais || []).filter(m => m.equipado);
+            const maxAreaMagias = magiasEqMap.length > 0 ? Math.max(...magiasEqMap.map(m => m.areaQuad || 0)) : 0;
+
+            maxArea = Math.max(maxAreaArmas, maxAreaPoderes, maxAreaMagias);
+
+            if (maxArea > 0) {
+                const cenaAtivaId = cenario?.ativa || 'default';
+                const escala = cenario?.lista?.[cenaAtivaId]?.escala || 1.5;
+
+                Object.entries(dummies).forEach(([id, dObj]) => {
+                    const isSameScene = (dObj.cenaId || 'default') === (alvoDummie.cenaId || 'default');
+                    if (isSameScene && dObj.posicao && alvoDummie.posicao) {
+                        const dX = Math.abs(dObj.posicao.x - alvoDummie.posicao.x);
+                        const dY = Math.abs(dObj.posicao.y - alvoDummie.posicao.y);
+                        const dZ = Math.floor(Math.abs((dObj.posicao.z || 0) - (alvoDummie.posicao.z || 0)) / escala);
+                        
+                        if (Math.max(dX, dY, dZ) <= maxArea) {
+                            alvosAtingidos.push({ nome: dObj.nome, defesa: dObj.valorDefesa, acertou: result.acertoTotal >= dObj.valorDefesa });
+                        }
+                    }
+                });
+            } else {
+                alvosAtingidos.push({ nome: alvoDummie.nome, defesa: alvoDummie.valorDefesa, acertou: result.acertoTotal >= alvoDummie.valorDefesa });
+            }
         }
-        const feedData = { tipo: 'acerto', nome: meuNome, ...result, ...extraFeed };
+
+        const feedData = { tipo: 'acerto', nome: meuNome, ...result, alvosArea: alvosAtingidos, areaEf: maxArea };
         enviarParaFeed(feedData); 
-    }, [mapQD, mapFD, mapBonus, mapUsarProf, profGlobal, mapStat, minhaFicha, mapVantagens, mapDesvantagens, alvoSelecionado, dummies, meuNome]);
+    }, [mapQD, mapFD, mapBonus, mapUsarProf, profGlobal, mapStat, fichaSegura, mapVantagens, mapDesvantagens, alvoSelecionado, dummies, meuNome, cenario]);
 
     const tokenMap = useMemo(() => {
         const map = {};

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useMemo } from 'react';
 import useStore from '../../stores/useStore';
 import { salvarFichaSilencioso, enviarParaFeed } from '../../services/firebase-sync';
+import { calcularAcerto } from '../../core/engine';
 
 export const emogis = {
     'Fogo': '\uD83D\uDD25', 'Agua': '\uD83D\uDCA7', 'Raio': '\u26A1', 'Terra': '\uD83E\uDEA8', 'Vento': '\uD83C\uDF2A\uFE0F',
@@ -9,10 +10,12 @@ export const emogis = {
     'Luz': '\u2728', 'Trevas': '\uD83C\uDF11', 'Ether': '\uD83C\uDF0C', 'Celestial': '\uD83C\uDF1F', 'Infernal': '\uD83C\uDF0B', 'Caos': '\uD83C\uDF00', 'Criacao': '\uD83C\uDF87', 'Destruicao': '\uD83D\uDCA5', 'Cosmos': '\u267E\uFE0F',
     'Vida': '\uD83C\uDF3A', 'Morte': '\uD83D\uDC80', 'Vazio': '\u2B1B', 'Neutro': '\u26AA',
     'Magia de Osso': '\uD83E\uDDB4', 'Magia de Sangue': '\uD83E\uDE78', 'Magia de Borracha': '\uD83C\uDF88', 'Magia de Sal': '\uD83E\uDDC2', 'Magia de Alma': '\uD83D\uDC7B', 'Magia de Tremor': '\uD83E\uDEE8', 'Magia de Gravidade': '\uD83C\uDF0C', 'Magia de Equipamento': '\u2699\uFE0F', 'Magia de Tempo': '\u23F3', 'Magia Draconica': '\uD83D\uDC09', 'Magia de Espelho': '\uD83E\uDE9E', 'Magia de Explosao': '\uD83D\uDCA5', 'Magia Espacial': '\uD83C\uDF00', 'Magia de Metamorfose': '\uD83C\uDFAD',
-    'Magias Arcanas/Negra de 1\u00BA Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 2\u00BA Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 3\u00BA Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 4\u00BA Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 5\u00BA Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 6\u00BA Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 7\u00BA Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 8\u00BA Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 9\u00BA Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 10\u00BA Ciclo': '\uD83D\uDD2E',
-    'Magias de 1\u00BA Ciclo': '\uD83D\uDD04', 'Magias de 2\u00BA Ciclo': '\uD83D\uDD04', 'Magias de 3\u00BA Ciclo': '\uD83D\uDD04', 'Magias de 4\u00BA Ciclo': '\uD83D\uDD04', 'Magias de 5\u00BA Ciclo': '\uD83D\uDD04', 'Magias de 6\u00BA Ciclo': '\uD83D\uDD04', 'Magias de 7\u00BA Ciclo': '\uD83D\uDD04', 'Magias de 8\u00BA Ciclo': '\uD83D\uDD04', 'Magias de 9\u00BA Ciclo': '\uD83D\uDD04', 'Magias de 10\u00BA Ciclo': '\uD83D\uDD04',
+    'Magias Arcanas/Negra de 1º Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 2º Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 3º Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 4º Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 5º Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 6º Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 7º Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 8º Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 9º Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 10º Ciclo': '\uD83D\uDD2E',
+    'Magias de 1º Ciclo': '\uD83D\uDD04', 'Magias de 2º Ciclo': '\uD83D\uDD04', 'Magias de 3º Ciclo': '\uD83D\uDD04', 'Magias de 4º Ciclo': '\uD83D\uDD04', 'Magias de 5º Ciclo': '\uD83D\uDD04', 'Magias de 6º Ciclo': '\uD83D\uDD04', 'Magias de 7º Ciclo': '\uD83D\uDD04', 'Magias de 8º Ciclo': '\uD83D\uDD04', 'Magias de 9º Ciclo': '\uD83D\uDD04', 'Magias de 10º Ciclo': '\uD83D\uDD04',
     'Elemento Madeira': '\uD83E\uDEB5', 'Elemento Mineral': '\uD83D\uDC8E', 'Elemento Cinzas': '\uD83C\uDF2B\uFE0F', 'Elemento Igneo': '\u2604\uFE0F', 'Elemento Lava': '\uD83C\uDF0B', 'Elemento Vapor': '\u2668\uFE0F', 'Elemento Nevoa': '\uD83C\uDF2B\uFE0F', 'Elemento Tempestade': '\uD83C\uDF29\uFE0F', 'Elemento Areia': '\uD83C\uDFDC\uFE0F', 'Elemento Tufao': '\uD83C\uDF2A\uFE0F',
-    'Elemento Velocidade': '\uD83D\uDCA8', 'Elemento Poeira': '\uD83D\uDD32', 'Elemento Calor': '\uD83C\uDF21\uFE0F', 'Elemento Cal': '\u2B1C', 'Elemento Carbono': '\u2B1B', 'Elemento Veneno': '\u2623\uFE0F', 'Elemento Magnetismo': '\uD83E\uDDF2', 'Elemento Som': '\uD83D\uDD0A'
+    'Elemento Velocidade': '\uD83D\uDCA8', 'Elemento Poeira': '\uD83D\uDD32', 'Elemento Calor': '\uD83C\uDF21\uFE0F', 'Elemento Cal': '\u2B1C', 'Elemento Carbono': '\u2B1B', 'Elemento Veneno': '\u2623\uFE0F', 'Elemento Magnetismo': '\uD83E\uDDF2', 'Elemento Som': '\uD83D\uDD0A',
+    'Truques de Ciclo': '✨', 'Truques Arcanos/Negros': '🔮', 'Truques Ancestrais': '📜',
+    'Aura Pura': '✨', 'Projeção de Aura': '🛡️', 'Artes Marciais': '🥋', 'Reforço Físico': '💪', 'Fusões Básicas': '🌀', 'Fusões Avançadas': '⚛️'
 };
 
 export const cores = {
@@ -22,36 +25,46 @@ export const cores = {
     'Luz': '#ffffff', 'Trevas': '#800080', 'Ether': '#b366ff', 'Celestial': '#ffffcc', 'Infernal': '#cc0000', 'Caos': '#ff3399', 'Criacao': '#00ffcc', 'Destruicao': '#8b0000', 'Cosmos': '#4d0099',
     'Vida': '#33ff77', 'Morte': '#4d4d4d', 'Vazio': '#1a1a1a', 'Neutro': '#cccccc',
     'Magia de Osso': '#e6e6e6', 'Magia de Sangue': '#ff0000', 'Magia de Borracha': '#ff99cc', 'Magia de Sal': '#fdfdfd', 'Magia de Alma': '#33cccc', 'Magia de Tremor': '#cc9966', 'Magia de Gravidade': '#6600cc', 'Magia de Equipamento': '#b3b3b3', 'Magia de Tempo': '#ffd700', 'Magia Draconica': '#ff5500', 'Magia de Espelho': '#ccffff', 'Magia de Explosao': '#ff3300', 'Magia Espacial': '#000066', 'Magia de Metamorfose': '#ff66b3',
-    'Magias Arcanas/Negra de 1\u00BA Ciclo': '#d9b3ff', 'Magias Arcanas/Negra de 2\u00BA Ciclo': '#cc99ff', 'Magias Arcanas/Negra de 3\u00BA Ciclo': '#bf80ff', 'Magias Arcanas/Negra de 4\u00BA Ciclo': '#b366ff', 'Magias Arcanas/Negra de 5\u00BA Ciclo': '#a64dff', 'Magias Arcanas/Negra de 6\u00BA Ciclo': '#9933ff', 'Magias Arcanas/Negra de 7\u00BA Ciclo': '#8c1aff', 'Magias Arcanas/Negra de 8\u00BA Ciclo': '#8000ff', 'Magias Arcanas/Negra de 9\u00BA Ciclo': '#6600cc', 'Magias Arcanas/Negra de 10\u00BA Ciclo': '#4d0099',
-    'Magias de 1\u00BA Ciclo': '#b3ffe6', 'Magias de 2\u00BA Ciclo': '#80ffcc', 'Magias de 3\u00BA Ciclo': '#4dffb3', 'Magias de 4\u00BA Ciclo': '#1aff99', 'Magias de 5\u00BA Ciclo': '#00e68a', 'Magias de 6\u00BA Ciclo': '#00cc7a', 'Magias de 7\u00BA Ciclo': '#00b36b', 'Magias de 8\u00BA Ciclo': '#00995c', 'Magias de 9\u00BA Ciclo': '#00804d', 'Magias de 10\u00BA Ciclo': '#00663d',
+    'Magias Arcanas/Negra de 1º Ciclo': '#d9b3ff', 'Magias Arcanas/Negra de 2º Ciclo': '#cc99ff', 'Magias Arcanas/Negra de 3º Ciclo': '#bf80ff', 'Magias Arcanas/Negra de 4º Ciclo': '#b366ff', 'Magias Arcanas/Negra de 5º Ciclo': '#a64dff', 'Magias Arcanas/Negra de 6º Ciclo': '#9933ff', 'Magias Arcanas/Negra de 7º Ciclo': '#8c1aff', 'Magias Arcanas/Negra de 8º Ciclo': '#8000ff', 'Magias Arcanas/Negra de 9º Ciclo': '#6600cc', 'Magias Arcanas/Negra de 10º Ciclo': '#4d0099',
+    'Magias de 1º Ciclo': '#b3ffe6', 'Magias de 2º Ciclo': '#80ffcc', 'Magias de 3º Ciclo': '#4dffb3', 'Magias de 4º Ciclo': '#1aff99', 'Magias de 5º Ciclo': '#00e68a', 'Magias de 6º Ciclo': '#00cc7a', 'Magias de 7º Ciclo': '#00b36b', 'Magias de 8º Ciclo': '#00995c', 'Magias de 9º Ciclo': '#00804d', 'Magias de 10º Ciclo': '#00663d',
     'Elemento Madeira': '#8b5a2b', 'Elemento Mineral': '#e6e6fa', 'Elemento Cinzas': '#808080', 'Elemento Igneo': '#ff4500', 'Elemento Lava': '#ff0000', 'Elemento Vapor': '#ffb6c1', 'Elemento Nevoa': '#b0e0e6', 'Elemento Tempestade': '#ccccff', 'Elemento Areia': '#f4a460', 'Elemento Tufao': '#98fb98',
-    'Elemento Velocidade': '#e6ffff', 'Elemento Poeira': '#d9d9d9', 'Elemento Calor': '#ff6600', 'Elemento Cal': '#e6ccb3', 'Elemento Carbono': '#595959', 'Elemento Veneno': '#9933ff', 'Elemento Magnetismo': '#4169e1', 'Elemento Som': '#a6a6a6'
+    'Elemento Velocidade': '#e6ffff', 'Elemento Poeira': '#d9d9d9', 'Elemento Calor': '#ff6600', 'Elemento Cal': '#e6ccb3', 'Elemento Carbono': '#595959', 'Elemento Veneno': '#9933ff', 'Elemento Magnetismo': '#4169e1', 'Elemento Som': '#a6a6a6',
+    'Truques de Ciclo': '#b3ffe6', 'Truques Arcanos/Negros': '#d9b3ff', 'Truques Ancestrais': '#e6e6e6',
+    'Aura Pura': '#b366ff', 'Projeção de Aura': '#b366ff', 'Artes Marciais': '#ff3333', 'Reforço Físico': '#ff3333', 'Fusões Básicas': '#ff00ff', 'Fusões Avançadas': '#ff00ff'
 };
 
-export const CATEGORIAS_ELEMENTOS = [
-    { titulo: 'Truques (Sem Custo)', itens: ['Truques Arcanos/Negros', 'Truques de Ciclo', 'Truques Ancestrais'] },
-    { titulo: 'Elementos B\u00E1sicos', itens: ['Fogo', 'Raio', 'Agua', 'Vento', 'Terra'] },
-    { titulo: 'Elementos B\u00E1sicos Verdadeiros', itens: ['Fogo Verdadeiro', 'Raio Verdadeiro', 'Agua Verdadeira', 'Vento Verdadeiro', 'Terra Verdadeira'] },
-    { titulo: 'Elementos Avan\u00E7ados', itens: ['Solar', 'Energia', 'Gelo', 'Vacuo', 'Natureza'] },
-    { titulo: 'Elementos Avan\u00E7ados Verdadeiros', itens: ['Solar Verdadeiro', 'Energia Verdadeira', 'Gelo Verdadeiro', 'Vacuo Verdadeiro', 'Natureza Verdadeira'] },
-    { titulo: 'Elementos Primordiais', itens: ['Luz', 'Trevas', 'Ether'] },
-    { titulo: 'Elementos Primordiais Verdadeiros', itens: ['Celestial', 'Infernal', 'Caos'] },
-    { titulo: 'Elementos Primordiais Absolutos', itens: ['Criacao', 'Destruicao', 'Cosmos'] },
-    { titulo: 'Elementos Astrais', itens: ['Vida', 'Morte', 'Vazio'] },
-    { titulo: 'Kekkei Genkai', itens: ['Elemento Madeira', 'Elemento Mineral', 'Elemento Cinzas', 'Elemento Igneo', 'Elemento Lava', 'Elemento Vapor', 'Elemento Nevoa', 'Elemento Tempestade', 'Elemento Areia', 'Elemento Tufao'] },
-    { titulo: 'Kekkei Touta', itens: ['Elemento Velocidade', 'Elemento Poeira', 'Elemento Veneno', 'Elemento Cal', 'Elemento Carbono', 'Elemento Calor', 'Elemento Som', 'Elemento Magnetismo'] },
-    { titulo: 'Magias de Ciclo', itens: ['Magias de 1\u00BA Ciclo', 'Magias de 2\u00BA Ciclo', 'Magias de 3\u00BA Ciclo', 'Magias de 4\u00BA Ciclo', 'Magias de 5\u00BA Ciclo', 'Magias de 6\u00BA Ciclo', 'Magias de 7\u00BA Ciclo', 'Magias de 8\u00BA Ciclo', 'Magias de 9\u00BA Ciclo', 'Magias de 10\u00BA Ciclo'] },
-    { titulo: 'Magias Arcanas/Negra', itens: ['Magias Arcanas/Negra de 1\u00BA Ciclo', 'Magias Arcanas/Negra de 2\u00BA Ciclo', 'Magias Arcanas/Negra de 3\u00BA Ciclo', 'Magias Arcanas/Negra de 4\u00BA Ciclo', 'Magias Arcanas/Negra de 5\u00BA Ciclo', 'Magias Arcanas/Negra de 6\u00BA Ciclo', 'Magias Arcanas/Negra de 7\u00BA Ciclo', 'Magias Arcanas/Negra de 8\u00BA Ciclo', 'Magias Arcanas/Negra de 9\u00BA Ciclo', 'Magias Arcanas/Negra de 10\u00BA Ciclo'] },
-    { titulo: 'Magias Ancestrais', itens: ['Magia de Sangue', 'Magia de Osso', 'Magia Draconica', 'Magia de Borracha', 'Magia de Espelho', 'Magia de Sal', 'Magia de Alma', 'Magia de Tremor', 'Magia de Gravidade', 'Magia de Tempo', 'Magia de Equipamento', 'Magia de Explosao', 'Magia Espacial', 'Magia de Metamorfose'] },
-    { titulo: 'Neutro (Sem Elemento)', itens: ['Neutro'] }
-];
+export const ABAS_GRIMORIO = {
+    'elementos': {
+        label: 'Elementos', icon: '🔥',
+        categorias: [
+            { titulo: 'Elementos Básicos', itens: ['Fogo', 'Raio', 'Agua', 'Vento', 'Terra'] },
+            { titulo: 'Elementos Básicos Verdadeiros', itens: ['Fogo Verdadeiro', 'Raio Verdadeiro', 'Agua Verdadeira', 'Vento Verdadeiro', 'Terra Verdadeira'] },
+            { titulo: 'Elementos Avançados', itens: ['Solar', 'Energia', 'Gelo', 'Vacuo', 'Natureza'] },
+            { titulo: 'Elementos Avançados Verdadeiros', itens: ['Solar Verdadeiro', 'Energia Verdadeira', 'Gelo Verdadeiro', 'Vacuo Verdadeiro', 'Natureza Verdadeira'] },
+            { titulo: 'Elementos Primordiais', itens: ['Luz', 'Trevas', 'Ether'] },
+            { titulo: 'Elementos Primordiais Verdadeiros', itens: ['Celestial', 'Infernal', 'Caos'] },
+            { titulo: 'Elementos Primordiais Absolutos', itens: ['Criacao', 'Destruicao', 'Cosmos'] },
+            { titulo: 'Neutro (Sem Elemento)', itens: ['Neutro'] }
+        ]
+    },
+    'astrais': { label: 'Elementos Astrais', icon: '🌌', categorias: [{ titulo: 'Elementos Astrais', itens: ['Vida', 'Morte', 'Vazio'] }] },
+    'chakra': { label: 'Chakra', icon: '🌀', categorias: [
+        { titulo: 'Kekkei Genkai', itens: ['Elemento Madeira', 'Elemento Mineral', 'Elemento Cinzas', 'Elemento Igneo', 'Elemento Lava', 'Elemento Vapor', 'Elemento Nevoa', 'Elemento Tempestade', 'Elemento Areia', 'Elemento Tufao'] },
+        { titulo: 'Kekkei Touta', itens: ['Elemento Velocidade', 'Elemento Poeira', 'Elemento Veneno', 'Elemento Cal', 'Elemento Carbono', 'Elemento Calor', 'Elemento Som', 'Elemento Magnetismo'] }
+    ] },
+    'mana': { label: 'Mana', icon: '🔮', categorias: [
+        { titulo: 'Magias de Ciclo', itens: ['Truques de Ciclo', 'Magias de 1º Ciclo', 'Magias de 2º Ciclo', 'Magias de 3º Ciclo', 'Magias de 4º Ciclo', 'Magias de 5º Ciclo', 'Magias de 6º Ciclo', 'Magias de 7º Ciclo', 'Magias de 8º Ciclo', 'Magias de 9º Ciclo', 'Magias de 10º Ciclo'] },
+        { titulo: 'Magias Arcanas/Negra', itens: ['Truques Arcanos/Negros', 'Magias Arcanas/Negra de 1º Ciclo', 'Magias Arcanas/Negra de 2º Ciclo', 'Magias Arcanas/Negra de 3º Ciclo', 'Magias Arcanas/Negra de 4º Ciclo', 'Magias Arcanas/Negra de 5º Ciclo', 'Magias Arcanas/Negra de 6º Ciclo', 'Magias Arcanas/Negra de 7º Ciclo', 'Magias Arcanas/Negra de 8º Ciclo', 'Magias Arcanas/Negra de 9º Ciclo', 'Magias Arcanas/Negra de 10º Ciclo'] },
+        { titulo: 'Magias Ancestrais', itens: ['Truques Ancestrais', 'Magia de Sangue', 'Magia de Osso', 'Magia Draconica', 'Magia de Borracha', 'Magia de Espelho', 'Magia de Sal', 'Magia de Alma', 'Magia de Tremor', 'Magia de Gravidade', 'Magia de Tempo', 'Magia de Equipamento', 'Magia de Explosao', 'Magia Espacial', 'Magia de Metamorfose'] }
+    ] },
+    'aura': { label: 'Aura', icon: '✨', categorias: [{ titulo: 'Manifestações de Aura', itens: ['Aura Pura', 'Projeção de Aura'] }] },
+    'corpo': { label: 'Corpo', icon: '💪', categorias: [{ titulo: 'Técnicas Corporais', itens: ['Artes Marciais', 'Reforço Físico'] }] },
+    'compostos': { label: 'Elementos Compostos', icon: '⚛️', categorias: [{ titulo: 'Misturas Elementais', itens: ['Fusões Básicas', 'Fusões Avançadas'] }] }
+};
 
-const itensJaCategorizados = CATEGORIAS_ELEMENTOS.flatMap(c => c.itens);
-const magiasSobressalentes = Object.keys(cores).filter(k => !itensJaCategorizados.includes(k));
-
-if (magiasSobressalentes.length > 0) {
-    CATEGORIAS_ELEMENTOS.push({ titulo: 'Magias e Elementos Extras', itens: magiasSobressalentes });
-}
+const itensJáCategorizados = Object.values(ABAS_GRIMORIO).flatMap(aba => aba.categorias.flatMap(c => c.itens));
+const magiasSobressalentes = Object.keys(cores).filter(k => !itensJáCategorizados.includes(k));
+if (magiasSobressalentes.length > 0) { ABAS_GRIMORIO['elementos'].categorias.push({ titulo: 'Magias e Elementos Extras', itens: magiasSobressalentes }); }
 
 export const BONUS_OPTIONS = [
     { value: 'nenhum', label: 'Nenhum (Apenas Elemento)' },
@@ -64,7 +77,7 @@ const ElementosFormContext = createContext(null);
 
 export function useElementosForm() {
     const ctx = useContext(ElementosFormContext);
-    if (!ctx) return null;
+    if (!ctx) return null; 
     return ctx;
 }
 
@@ -73,9 +86,11 @@ export function ElementosFormProvider({ children }) {
     const meuNome = useStore(s => s.meuNome);
     const updateFicha = useStore(s => s.updateFicha);
     const setAbaAtiva = useStore(s => s.setAbaAtiva);
+    
     const elemEditandoId = useStore(s => s.elemEditandoId);
     const setElemEditandoId = useStore(s => s.setElemEditandoId);
 
+    const [abaAtual, setAbaAtual] = useState('elementos');
     const [elemSelecionado, setElemSelecionado] = useState('Neutro');
     const [nomeElem, setNomeElem] = useState('');
     const [bonusTipo, setBonusTipo] = useState('nenhum');
@@ -83,10 +98,12 @@ export function ElementosFormProvider({ children }) {
     const [custoValor, setCustoValor] = useState(0);
     const [dadosQtd, setDadosQtd] = useState(0);
     const [dadosFaces, setDadosFaces] = useState(20);
+    
     const [energiaCombustao, setEnergiaCombustao] = useState('mana');
-    const [tipoMecanica, setTipoMecanica] = useState('ataque');
-    const [savingAttr, setSavingAttr] = useState('destreza');
+    const [tipoMecanica, setTipoMecanica] = useState('ataque'); 
+    const [savingAttr, setSavingAttr] = useState('destreza'); 
     const [alcanceQuad, setAlcanceQuad] = useState(1);
+    const [areaQuad, setAreaQuad] = useState(0);
 
     const formRef = useRef(null);
     const profGlobal = parseInt(minhaFicha.proficienciaBase) || 2;
@@ -98,216 +115,214 @@ export function ElementosFormProvider({ children }) {
         return parseInt(strVal.substring(0, 2), 10);
     }, []);
 
+    const allowedEnergies = useMemo(() => {
+        let opts = [];
+        const isArcana = elemSelecionado.includes('Arcanas/Negra');
+        const isTruque = elemSelecionado.includes('Truque');
+
+        if (isArcana) {
+            opts = [
+                { value: 'mana', label: 'Mana (Base: Int)' }, { value: 'aura', label: 'Aura (Base: Eng. Esp)' }, { value: 'chakra', label: 'Chakra (Base: Stamina)' },
+                { value: 'corpo', label: 'Corpo (Base: For/Des)' }, { value: 'pontosVitais', label: 'Pts. Vitais (Base: Const)' }, { value: 'pontosMortais', label: 'Pts. Mortais (Base: Int)' },
+                { value: 'livre', label: 'Truque / Livre' }
+            ];
+        } else if (isTruque) {
+            opts = [{ value: 'livre', label: 'Truque / Livre' }];
+        } else if (abaAtual === 'astrais') {
+            opts = [{ value: 'pontosVitais', label: 'Pts. Vitais (Base: Const)' }, { value: 'pontosMortais', label: 'Pts. Mortais (Base: Int)' }];
+        } else if (abaAtual === 'chakra') { opts = [{ value: 'chakra', label: 'Chakra (Base: Stamina)' }];
+        } else if (abaAtual === 'aura') { opts = [{ value: 'aura', label: 'Aura (Base: Eng. Esp)' }];
+        } else if (abaAtual === 'corpo') { opts = [{ value: 'corpo', label: 'Corpo (Base: For/Des)' }];
+        } else if (abaAtual === 'mana') { opts = [{ value: 'mana', label: 'Mana (Base: Int)' }];
+        } else {
+            opts = [{ value: 'mana', label: 'Mana (Base: Int)' }, { value: 'aura', label: 'Aura (Base: Eng. Esp)' }, { value: 'chakra', label: 'Chakra (Base: Stamina)' }];
+        }
+
+        if (elemEditandoId && !opts.some(o => o.value === energiaCombustao)) {
+            const allLabels = { 'mana': 'Mana', 'aura': 'Aura', 'chakra': 'Chakra', 'corpo': 'Corpo', 'pontosVitais': 'Pts. Vitais', 'pontosMortais': 'Pts. Mortais', 'livre': 'Livre' };
+            opts.push({ value: energiaCombustao, label: `${allLabels[energiaCombustao] || energiaCombustao} (Forçado)` });
+        }
+        return opts;
+    }, [abaAtual, elemSelecionado, elemEditandoId, energiaCombustao]);
+
     const selecionarElemento = useCallback((nome) => {
         setElemSelecionado(nome);
-        if (nome.includes('Kekkei') || nome.includes('Elemento')) setEnergiaCombustao('chakra');
-        else if (nome.includes('Truque')) setEnergiaCombustao('livre');
+        if (nome.includes('Truque')) setEnergiaCombustao('livre');
+        else if (nome.includes('Arcanas/Negra')) setEnergiaCombustao('mana'); 
+        else if (abaAtual === 'chakra') setEnergiaCombustao('chakra');
+        else if (abaAtual === 'mana') setEnergiaCombustao('mana');
+        else if (abaAtual === 'aura') setEnergiaCombustao('aura');
+        else if (abaAtual === 'corpo') setEnergiaCombustao('corpo');
+        else if (abaAtual === 'astrais') setEnergiaCombustao('pontosVitais');
         else setEnergiaCombustao('mana');
-    }, []);
+    }, [abaAtual]);
 
     const cancelarEdicaoElem = useCallback(() => {
-        setElemEditandoId(null);
-        setNomeElem('');
-        setElemSelecionado('Neutro');
-        setEnergiaCombustao('mana');
-        setTipoMecanica('ataque');
-        setAlcanceQuad(1);
+        setElemEditandoId(null); setNomeElem(''); setEnergiaCombustao('mana');
+        setTipoMecanica('ataque'); setAlcanceQuad(1); setAreaQuad(0);
     }, [setElemEditandoId]);
 
     const salvarNovoElem = useCallback(() => {
-        try {
-            const n = nomeElem.trim();
-            if (!n) {
-                alert('Falta o nome da Magia/Ataque!');
-                return;
-            }
-
-            updateFicha((ficha) => {
-                if (!ficha.ataquesElementais) ficha.ataquesElementais = [];
-
-                const novaMagia = {
-                    nome: n,
-                    elemento: elemSelecionado,
-                    bonusTipo: bonusTipo,
-                    bonusValor: bonusValor,
-                    custoValor: parseFloat(custoValor) || 0,
-                    dadosExtraQtd: parseInt(dadosQtd) || 0,
-                    dadosExtraFaces: parseInt(dadosFaces) || 20,
-                    energiaCombustao: energiaCombustao,
-                    tipoMecanica: tipoMecanica,
-                    savingAttr: savingAttr,
-                    alcanceQuad: parseFloat(alcanceQuad) || 1,
-                    equipado: false
-                };
-
-                if (elemEditandoId) {
-                    const ix = ficha.ataquesElementais.findIndex(i => i.id === elemEditandoId);
-                    if (ix !== -1) {
-                        novaMagia.id = ficha.ataquesElementais[ix].id;
-                        novaMagia.equipado = ficha.ataquesElementais[ix].equipado;
-                        ficha.ataquesElementais[ix] = novaMagia;
-                    }
-                } else {
-                    novaMagia.id = Date.now();
-                    ficha.ataquesElementais.push(novaMagia);
-                }
-            });
-
-            cancelarEdicaoElem();
-            setNomeElem('');
-            salvarFichaSilencioso();
-        } catch (e) {
-            console.error(e);
-        }
-    }, [nomeElem, elemSelecionado, bonusTipo, bonusValor, custoValor, dadosQtd, dadosFaces, energiaCombustao, tipoMecanica, savingAttr, alcanceQuad, elemEditandoId, updateFicha, cancelarEdicaoElem]);
-
-    const toggleEquiparElem = useCallback((id) => {
+        const n = nomeElem.trim();
+        if (!n) { alert('Falta o nome da Magia/Ataque!'); return; }
         updateFicha((ficha) => {
-            if (!ficha.ataquesElementais) return;
-            const itemIndex = ficha.ataquesElementais.findIndex(i => i.id === id);
-            if (itemIndex === -1) return;
-            ficha.ataquesElementais[itemIndex].equipado = !ficha.ataquesElementais[itemIndex].equipado;
+            if (!ficha.ataquesElementais) ficha.ataquesElementais = [];
+            const novaMagia = {
+                nome: n, elemento: elemSelecionado, bonusTipo, bonusValor,
+                custoValor: parseFloat(custoValor) || 0, dadosExtraQtd: parseInt(dadosQtd) || 0, dadosExtraFaces: parseInt(dadosFaces) || 20,
+                energiaCombustao, tipoMecanica, savingAttr, alcanceQuad: parseFloat(alcanceQuad) || 1, areaQuad: parseFloat(areaQuad) || 0,
+                equipado: false
+            };
+            if (elemEditandoId) {
+                const ix = ficha.ataquesElementais.findIndex(i => i.id === elemEditandoId);
+                if (ix !== -1) {
+                    novaMagia.id = ficha.ataquesElementais[ix].id;
+                    novaMagia.equipado = ficha.ataquesElementais[ix].equipado;
+                    ficha.ataquesElementais[ix] = novaMagia;
+                }
+            } else {
+                novaMagia.id = Date.now();
+                ficha.ataquesElementais.push(novaMagia);
+            }
         });
+        cancelarEdicaoElem();
         salvarFichaSilencioso();
-    }, [updateFicha]);
+    }, [nomeElem, elemSelecionado, bonusTipo, bonusValor, custoValor, dadosQtd, dadosFaces, energiaCombustao, tipoMecanica, savingAttr, alcanceQuad, areaQuad, elemEditandoId, updateFicha, cancelarEdicaoElem]);
 
     const editarElem = useCallback((id) => {
         const p = (minhaFicha.ataquesElementais || []).find(i => i.id === id);
         if (!p) return;
         if (p.equipado) {
-            toggleEquiparElem(id);
+            updateFicha(f => {
+                const idx = f.ataquesElementais.findIndex(i => i.id === id);
+                if (idx !== -1) f.ataquesElementais[idx].equipado = false;
+            });
+            salvarFichaSilencioso();
             alert(`O ataque [${p.nome}] foi DESATIVADO para edicao.`);
         }
-
-        setElemEditandoId(p.id);
-        setNomeElem(p.nome);
-        setElemSelecionado(p.elemento || 'Neutro');
-        setBonusTipo(p.bonusTipo || 'nenhum');
-        setBonusValor(p.bonusValor || '');
-        setCustoValor(p.custoValor || 0);
-        setDadosQtd(p.dadosExtraQtd || 0);
-        setDadosFaces(p.dadosExtraFaces || 20);
-        setEnergiaCombustao(p.energiaCombustao || 'mana');
-        setTipoMecanica(p.tipoMecanica || 'ataque');
-        setSavingAttr(p.savingAttr || 'destreza');
-        setAlcanceQuad(p.alcanceQuad || 1);
-
+        const el = p.elemento || 'Neutro';
+        setElemSelecionado(el);
+        let foundAba = 'elementos';
+        for (const [abaKey, abaData] of Object.entries(ABAS_GRIMORIO)) {
+            if (abaData.categorias.some(cat => cat.itens.includes(el))) {
+                foundAba = abaKey;
+                break;
+            }
+        }
+        setAbaAtual(foundAba);
+        setElemEditandoId(p.id); setNomeElem(p.nome); setBonusTipo(p.bonusTipo || 'nenhum');
+        setBonusValor(p.bonusValor || ''); setCustoValor(p.custoValor || 0); setDadosQtd(p.dadosExtraQtd || 0);
+        setDadosFaces(p.dadosExtraFaces || 20); setEnergiaCombustao(p.energiaCombustao || 'mana');
+        setTipoMecanica(p.tipoMecanica || 'ataque'); setSavingAttr(p.savingAttr || 'destreza');
+        setAlcanceQuad(p.alcanceQuad || 1); setAreaQuad(p.areaQuad || 0);
         if (formRef.current) formRef.current.scrollIntoView({ behavior: 'smooth' });
-    }, [minhaFicha.ataquesElementais, setElemEditandoId, toggleEquiparElem]);
+    }, [minhaFicha.ataquesElementais, setElemEditandoId, updateFicha]);
 
-    const deletarElem = useCallback((id) => {
-        if (!window.confirm('Deseja apagar este ataque elemental do grimorio?')) return;
+    const toggleEquiparElem = useCallback((id) => {
         updateFicha((ficha) => {
-            ficha.ataquesElementais = (ficha.ataquesElementais || []).filter(i => i.id !== id);
+            if (!ficha.ataquesElementais) return;
+            const itemIndex = ficha.ataquesElementais.findIndex(i => i.id === id);
+            if (itemIndex !== -1) ficha.ataquesElementais[itemIndex].equipado = !ficha.ataquesElementais[itemIndex].equipado;
         });
         salvarFichaSilencioso();
     }, [updateFicha]);
 
+    const deletarElem = useCallback((id) => {
+        if (!window.confirm('Deseja apagar este ataque elemental do grimorio?')) return;
+        updateFicha((ficha) => { ficha.ataquesElementais = (ficha.ataquesElementais || []).filter(i => i.id !== id); });
+        salvarFichaSilencioso();
+    }, [updateFicha]);
+
     const conjurarMagia = useCallback((magia) => {
-        const energiaToAttr = { 'mana': 'inteligencia', 'aura': 'energiaEsp', 'chakra': 'stamina', 'livre': 'inteligencia' };
-        const attrRegente = energiaToAttr[magia.energiaCombustao] || 'inteligencia';
-        const modRegente = getModificadorDoisDigitos(minhaFicha[attrRegente]?.base);
+        const storeState = useStore.getState();
+        const { alvoSelecionado, dummies, cenario } = storeState;
+        const fichaVirtual = storeState.minhaFicha;
+        
+        let attrRegente = 'inteligencia';
+        let modRegente = 0;
+
+        if (magia.energiaCombustao === 'corpo') {
+            const modForca = getModificadorDoisDigitos(fichaVirtual['forca']?.base);
+            const modDestreza = getModificadorDoisDigitos(fichaVirtual['destreza']?.base);
+            if (modDestreza > modForca) { attrRegente = 'destreza'; modRegente = modDestreza; } 
+            else { attrRegente = 'forca'; modRegente = modForca; }
+        } else {
+            const energiaToAttr = { 'mana': 'inteligencia', 'aura': 'energiaEsp', 'chakra': 'stamina', 'pontosVitais': 'constituicao', 'pontosMortais': 'inteligencia', 'livre': 'inteligencia' };
+            attrRegente = energiaToAttr[magia.energiaCombustao] || 'inteligencia';
+            modRegente = getModificadorDoisDigitos(fichaVirtual[attrRegente]?.base);
+        }
+
+        let alvosAtingidos = [];
+        const alvoDummie = alvoSelecionado && dummies[alvoSelecionado] ? dummies[alvoSelecionado] : null;
+
+        if (alvoDummie && (magia.tipoMecanica === 'ataque' || magia.tipoMecanica === 'saving')) {
+            if (magia.areaQuad > 0) {
+                const cenaAtivaId = cenario?.ativa || 'default';
+                const escala = cenario?.lista?.[cenaAtivaId]?.escala || 1.5;
+                Object.entries(dummies).forEach(([id, d]) => {
+                    const isSameScene = (d.cenaId || 'default') === (alvoDummie.cenaId || 'default');
+                    if (isSameScene && d.posicao && alvoDummie.posicao) {
+                        const dx = Math.abs((d.posicao.x || 0) - (alvoDummie.posicao.x || 0));
+                        const dy = Math.abs((d.posicao.y || 0) - (alvoDummie.posicao.y || 0));
+                        const dz = Math.floor(Math.abs((d.posicao.z || 0) - (alvoDummie.posicao.z || 0)) / escala);
+                        if (Math.max(dx, dy, dz) <= magia.areaQuad) alvosAtingidos.push(d);
+                    }
+                });
+            } else {
+                alvosAtingidos.push(alvoDummie);
+            }
+        }
 
         if (magia.tipoMecanica === 'ataque') {
-            const roll = Math.floor(Math.random() * 20) + 1;
-            const total = roll + modRegente + profGlobal;
-
-            let rollStr = `[${roll}]`;
-            if (roll === 20) rollStr = `[<strong>20</strong>] (CR\u00CDTICO!)`;
-            if (roll === 1) rollStr = `[<strong style="color:#ff003c;">1</strong>] (FALHA CR\u00CDTICA!)`;
-
+            const vantagens = fichaVirtual.ataqueConfig?.vantagens || 0;
+            const desvantagens = fichaVirtual.ataqueConfig?.desvantagens || 0;
+            const result = calcularAcerto({ 
+                qD: 1, fD: 20, prof: profGlobal, bonus: 0, sels: [attrRegente], 
+                minhaFicha: fichaVirtual, itensEquipados: [], vantagens, desvantagens 
+            });
+            let alvosPayload = alvosAtingidos.map(d => ({ nome: d.nome, defesa: d.valorDefesa, acertou: result.acertoTotal >= d.valorDefesa }));
             enviarParaFeed({
-                tipo: 'acerto',
-                nome: meuNome,
-                acertoTotal: total,
-                profBonusTexto: `Mod. Magia (${attrRegente}): +${modRegente} | Profici\u00EAncia: +${profGlobal}`,
-                rolagem: rollStr,
-                armaStr: ` com ${magia.nome} (${magia.elemento})`
+                tipo: 'acerto', nome: meuNome, acertoTotal: result.acertoTotal,
+                profBonusTexto: `Mod. Magia (${attrRegente.toUpperCase()}): +${modRegente} | Proficiência: +${profGlobal}`,
+                rolagem: result.rolagem, armaStr: ` com ${magia.nome} (${magia.elemento})`,
+                alvosArea: alvosPayload, areaEf: magia.areaQuad || 0
             });
             setAbaAtiva('aba-log');
-        }
+        } 
         else if (magia.tipoMecanica === 'saving') {
             const cd = 8 + modRegente + profGlobal;
-            enviarParaFeed({
-                tipo: 'sistema',
-                nome: meuNome,
-                texto: `\uD83C\uDF00 CONJUROU: ${magia.nome}! O alvo precisa de passar num Saving Throw de ${magia.savingAttr.toUpperCase()} (CD: ${cd}).`
-            });
+            let textoAlvos = alvosAtingidos.length > 0 ? ` Alvos na zona de explosão: ${alvosAtingidos.map(d=>d.nome).join(', ')}.` : '';
+            enviarParaFeed({ tipo: 'sistema', nome: meuNome, texto: `🌀 CONJUROU: ${magia.nome}!${textoAlvos} Precisam de passar num Saving Throw de ${magia.savingAttr.toUpperCase()} (CD: ${cd}). Baseado em: ${attrRegente.toUpperCase()}.` });
             setAbaAtiva('aba-log');
         }
         else if (magia.tipoMecanica === 'infusao') {
-            enviarParaFeed({
-                tipo: 'sistema',
-                nome: meuNome,
-                texto: `\u2728 INFUS\u00C3O ELEMENTAL: As armas e poderes de ${meuNome} est\u00E3o envoltos em ${magia.elemento} atrav\u00E9s da t\u00E9cnica ${magia.nome}!`
-            });
+            enviarParaFeed({ tipo: 'sistema', nome: meuNome, texto: `✨ INFUSÃO ELEMENTAL: As armas e poderes de ${meuNome} estão envoltos em ${magia.elemento} através da técnica ${magia.nome}!` });
             setAbaAtiva('aba-log');
         }
         else {
-            enviarParaFeed({
-                tipo: 'sistema',
-                nome: meuNome,
-                texto: `\u2728 SUPORTE M\u00C1GICO: ${meuNome} conjurou ${magia.nome} (${magia.elemento})!`
-            });
+            enviarParaFeed({ tipo: 'sistema', nome: meuNome, texto: `✨ SUPORTE MÁGICO: ${meuNome} conjurou ${magia.nome} (${magia.elemento})!` });
             setAbaAtiva('aba-log');
         }
-    }, [minhaFicha, meuNome, profGlobal, getModificadorDoisDigitos, setAbaAtiva]);
+    }, [getModificadorDoisDigitos, profGlobal, meuNome, setAbaAtiva]);
 
     const ataquesElementais = minhaFicha.ataquesElementais || [];
-
-    const magiasDoGrupo = useMemo(() =>
-        ataquesElementais.filter(e => (e.elemento || 'Neutro') === elemSelecionado),
-        [ataquesElementais, elemSelecionado]
-    );
-
-    const magiasConjuradasOutros = useMemo(() =>
-        ataquesElementais.filter(e => e.equipado && (e.elemento || 'Neutro') !== elemSelecionado),
-        [ataquesElementais, elemSelecionado]
-    );
+    const magiasDoGrupo = useMemo(() => ataquesElementais.filter(e => (e.elemento || 'Neutro') === elemSelecionado), [ataquesElementais, elemSelecionado]);
+    const magiasConjuradasOutros = useMemo(() => ataquesElementais.filter(e => e.equipado && (e.elemento || 'Neutro') !== elemSelecionado), [ataquesElementais, elemSelecionado]);
 
     const value = useMemo(() => ({
-        minhaFicha,
-        meuNome,
-        elemEditandoId,
-        elemSelecionado, setElemSelecionado,
-        nomeElem, setNomeElem,
-        bonusTipo, setBonusTipo,
-        bonusValor, setBonusValor,
-        custoValor, setCustoValor,
-        dadosQtd, setDadosQtd,
-        dadosFaces, setDadosFaces,
-        energiaCombustao, setEnergiaCombustao,
-        tipoMecanica, setTipoMecanica,
-        savingAttr, setSavingAttr,
-        alcanceQuad, setAlcanceQuad,
-        formRef,
-        profGlobal,
-        getModificadorDoisDigitos,
-        selecionarElemento,
-        salvarNovoElem,
-        editarElem,
-        cancelarEdicaoElem,
-        toggleEquiparElem,
-        deletarElem,
-        conjurarMagia,
-        ataquesElementais,
-        magiasDoGrupo,
-        magiasConjuradasOutros,
+        abaAtual, setAbaAtual, elemSelecionado, setElemSelecionado,
+        nomeElem, setNomeElem, bonusTipo, setBonusTipo, bonusValor, setBonusValor,
+        custoValor, setCustoValor, dadosQtd, setDadosQtd, dadosFaces, setDadosFaces,
+        energiaCombustao, setEnergiaCombustao, tipoMecanica, setTipoMecanica,
+        savingAttr, setSavingAttr, alcanceQuad, setAlcanceQuad, areaQuad, setAreaQuad,
+        formRef, profGlobal, getModificadorDoisDigitos, allowedEnergies,
+        selecionarElemento, salvarNovoElem, editarElem, cancelarEdicaoElem, toggleEquiparElem,
+        deletarElem, conjurarMagia, magiasDoGrupo, magiasConjuradasOutros, elemEditandoId, minhaFicha
     }), [
-        minhaFicha, meuNome, elemEditandoId,
-        elemSelecionado, nomeElem, bonusTipo, bonusValor,
-        custoValor, dadosQtd, dadosFaces, energiaCombustao,
-        tipoMecanica, savingAttr, alcanceQuad,
-        profGlobal, getModificadorDoisDigitos,
-        selecionarElemento, salvarNovoElem, editarElem,
-        cancelarEdicaoElem, toggleEquiparElem, deletarElem,
-        conjurarMagia, ataquesElementais, magiasDoGrupo,
-        magiasConjuradasOutros,
+        abaAtual, elemSelecionado, nomeElem, bonusTipo, bonusValor, custoValor, dadosQtd, dadosFaces,
+        energiaCombustao, tipoMecanica, savingAttr, alcanceQuad, areaQuad, profGlobal, getModificadorDoisDigitos, allowedEnergies,
+        selecionarElemento, salvarNovoElem, editarElem, cancelarEdicaoElem, toggleEquiparElem, deletarElem, conjurarMagia, magiasDoGrupo, magiasConjuradasOutros, elemEditandoId, minhaFicha
     ]);
 
-    return (
-        <ElementosFormContext.Provider value={value}>
-            {children}
-        </ElementosFormContext.Provider>
-    );
+    return <ElementosFormContext.Provider value={value}>{children}</ElementosFormContext.Provider>;
 }

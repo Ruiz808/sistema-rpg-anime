@@ -6,6 +6,7 @@ import {
     AtaqueArmaEquipada,
     AtaqueArmaVazia,
     AtaqueHabilidadesAtivas,
+    AtaqueMagiasPreparadas, // 🔥 NOVO IMPORT!
     AtaqueBotoesAcao
 } from './AtaqueSubComponents';
 
@@ -18,6 +19,7 @@ export default function AtaquePanel() {
                 <AtaqueArmaEquipada />
                 <AtaqueArmaVazia />
                 <AtaqueHabilidadesAtivas />
+                <AtaqueMagiasPreparadas /> {/* 🔥 RENDER DO GRIMÓRIO AQUI */}
                 <AtaqueBotoesAcao />
             </div>
         </AtaqueFormProvider>

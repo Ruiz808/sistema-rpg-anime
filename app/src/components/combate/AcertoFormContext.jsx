@@ -80,10 +80,12 @@ export function AcertoFormProvider({ children }) {
 
     const alvoDummie = alvoSelecionado && dummies?.[alvoSelecionado] ? dummies[alvoSelecionado] : null;
 
-    const { distQuadrados, distReal, maxAlcance, isForaDeAlcance, unidadeEscala } = useMemo(() => {
+    // 🔥 RADAR TÁTICO ATUALIZADO (Lê Magias e Área de Efeito) 🔥
+    const { distQuadrados, distReal, maxAlcance, maxArea, isForaDeAlcance, unidadeEscala } = useMemo(() => {
         let dQ = 0;
         let dR = 0;
         let mA = 1;
+        let mArea = 0;
         let fora = false;
         let unidade = 'm';
 
@@ -95,21 +97,29 @@ export function AcertoFormProvider({ children }) {
 
             const dx = Math.abs((minhaFicha.posicao.x || 0) - (alvoDummie.posicao.x || 0));
             const dy = Math.abs((minhaFicha.posicao.y || 0) - (alvoDummie.posicao.y || 0));
-            const dz = Math.abs((minhaFicha.posicao.z || 0) - (alvoDummie.posicao.z || 0)) / escala;
+            const dz = Math.floor(Math.abs((minhaFicha.posicao.z || 0) - (alvoDummie.posicao.z || 0)) / escala);
 
-            dQ = Math.max(dx, dy, Math.floor(dz));
+            dQ = Math.max(dx, dy, dz);
             dR = dQ * escala;
 
             const maxAlcanceArmas = armasEquipadas.length > 0 ? Math.max(...armasEquipadas.map(a => a.alcance || 1)) : 1;
+            const maxAreaArmas = armasEquipadas.length > 0 ? Math.max(...armasEquipadas.map(a => a.areaQuad || a.area || 0)) : 0;
+
             const poderesAtivos = (minhaFicha.poderes || []).filter(p => p.ativa);
             const maxAlcancePoderes = poderesAtivos.length > 0 ? Math.max(...poderesAtivos.map(p => p.alcance || 1)) : 1;
+            const maxAreaPoderes = poderesAtivos.length > 0 ? Math.max(...poderesAtivos.map(p => p.areaQuad || p.area || 0)) : 0;
 
-            mA = Math.max(maxAlcanceArmas, maxAlcancePoderes);
+            const magiasEquipadas = (minhaFicha.ataquesElementais || []).filter(m => m.equipado);
+            const maxAlcanceMagias = magiasEquipadas.length > 0 ? Math.max(...magiasEquipadas.map(m => m.alcanceQuad || 1)) : 1;
+            const maxAreaMagias = magiasEquipadas.length > 0 ? Math.max(...magiasEquipadas.map(m => m.areaQuad || 0)) : 0;
+
+            mA = Math.max(maxAlcanceArmas, maxAlcancePoderes, maxAlcanceMagias);
+            mArea = Math.max(maxAreaArmas, maxAreaPoderes, maxAreaMagias);
             fora = dQ > mA;
         }
 
-        return { distQuadrados: dQ, distReal: dR, maxAlcance: mA, isForaDeAlcance: fora, unidadeEscala: unidade };
-    }, [alvoDummie, minhaFicha?.posicao, minhaFicha?.poderes, cenario, armasEquipadas]);
+        return { distQuadrados: dQ, distReal: dR, maxAlcance: mA, maxArea: mArea, isForaDeAlcance: fora, unidadeEscala: unidade };
+    }, [alvoDummie, minhaFicha?.posicao, minhaFicha?.poderes, minhaFicha?.ataquesElementais, cenario, armasEquipadas]);
 
     const changeVantagem = useCallback((e) => {
         updateFicha(f => {
@@ -134,6 +144,7 @@ export function AcertoFormProvider({ children }) {
         });
     }, []);
 
+    // 🔥 MOTOR DE ROLAGEM COM ÁREA DE EFEITO (AoE) 🔥
     const rolarAcerto = useCallback(() => {
         if (isForaDeAlcance) {
             alert('Aviso: O alvo está fora do seu alcance efetivo!');
@@ -155,16 +166,43 @@ export function AcertoFormProvider({ children }) {
             vantagens: v, desvantagens: d
         });
 
-        let extraData = {};
+        let alvosAtingidos = [];
+
         if (alvoDummie) {
-            const acertou = result.acertoTotal >= alvoDummie.valorDefesa;
-            extraData = { alvoNome: alvoDummie.nome, alvoDefesa: alvoDummie.valorDefesa, acertouAlvo: acertou };
+            if (maxArea > 0) {
+                const cenaAtivaId = cenario?.ativa || 'default';
+                const cenaAtual = cenario?.lista?.[cenaAtivaId] || { escala: 1.5 };
+                const escala = cenaAtual.escala || 1.5;
+
+                Object.entries(dummies).forEach(([id, dummieObj]) => {
+                    const isSameScene = (dummieObj.cenaId || 'default') === (alvoDummie.cenaId || 'default');
+                    if (isSameScene && dummieObj.posicao && alvoDummie.posicao) {
+                        const dX = Math.abs(dummieObj.posicao.x - alvoDummie.posicao.x);
+                        const dY = Math.abs(dummieObj.posicao.y - alvoDummie.posicao.y);
+                        const dZ = Math.floor(Math.abs((dummieObj.posicao.z || 0) - (alvoDummie.posicao.z || 0)) / escala);
+                        
+                        if (Math.max(dX, dY, dZ) <= maxArea) {
+                            alvosAtingidos.push({
+                                nome: dummieObj.nome,
+                                defesa: dummieObj.valorDefesa,
+                                acertou: result.acertoTotal >= dummieObj.valorDefesa
+                            });
+                        }
+                    }
+                });
+            } else {
+                alvosAtingidos.push({
+                    nome: alvoDummie.nome,
+                    defesa: alvoDummie.valorDefesa,
+                    acertou: result.acertoTotal >= alvoDummie.valorDefesa
+                });
+            }
         }
 
-        const feedData = { tipo: 'acerto', nome: meuNome, ...result, ...extraData };
+        const feedData = { tipo: 'acerto', nome: meuNome, ...result, alvosArea: alvosAtingidos, areaEf: maxArea };
         enviarParaFeed(feedData);
         setAbaAtiva('aba-log');
-    }, [isForaDeAlcance, dados, faces, bonus, usarProficiencia, profGlobal, vantagens, desvantagens, statsSelecionados, minhaFicha, itensEquipados, alvoDummie, meuNome, setAbaAtiva]);
+    }, [isForaDeAlcance, dados, faces, bonus, usarProficiencia, profGlobal, vantagens, desvantagens, statsSelecionados, minhaFicha, itensEquipados, alvoDummie, dummies, cenario, maxArea, meuNome, setAbaAtiva]);
 
     const value = useMemo(() => ({
         dados, setDados,
@@ -186,6 +224,7 @@ export function AcertoFormProvider({ children }) {
         distQuadrados,
         distReal,
         maxAlcance,
+        maxArea, // Adicionado ao Context
         isForaDeAlcance,
         unidadeEscala,
         changeVantagem,
@@ -198,7 +237,7 @@ export function AcertoFormProvider({ children }) {
         itensEquipados, armasEquipadas, tiposArmasEquipadas,
         efeitosClasse, bonusMaestriaArma, nomesMaestriaArma,
         alvoDummie, alvoSelecionado, distQuadrados, distReal,
-        maxAlcance, isForaDeAlcance, unidadeEscala,
+        maxAlcance, maxArea, isForaDeAlcance, unidadeEscala,
         changeVantagem, changeDesvantagem, toggleStat, rolarAcerto,
     ]);
 

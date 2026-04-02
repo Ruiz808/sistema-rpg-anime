@@ -261,15 +261,27 @@ export function MapaSessaoRP() {
                     const dy = Math.abs((fichaSegura?.posicao?.y || 0) - (alvoD.posicao?.y || 0));
                     const dz = Math.abs((fichaSegura?.posicao?.z || 0) - (alvoD.posicao?.z || 0)) / (cenaAtual.escala || 1.5);
                     const dQuad = Math.max(dx, dy, Math.floor(dz));
+                    
                     const armasEq = (fichaSegura?.inventario || []).filter(i => i.tipo === 'arma' && i.equipado);
                     const maxAlcArmas = armasEq.length > 0 ? Math.max(...armasEq.map(a => a.alcance || 1)) : 1;
+                    const maxAreaArmas = armasEq.length > 0 ? Math.max(...armasEq.map(a => a.areaQuad || a.area || 0)) : 0;
+                    
                     const podAt = (fichaSegura?.poderes || []).filter(p => p.ativa);
                     const maxAlcPoderes = podAt.length > 0 ? Math.max(...podAt.map(p => p.alcance || 1)) : 1;
-                    const alcanceEf = Math.max(maxAlcArmas, maxAlcPoderes);
+                    const maxAreaPoderes = podAt.length > 0 ? Math.max(...podAt.map(p => p.areaQuad || p.area || 0)) : 0;
+                    
+                    const magiasEq = (fichaSegura?.ataquesElementais || []).filter(m => m.equipado);
+                    const maxAlcMagias = magiasEq.length > 0 ? Math.max(...magiasEq.map(m => m.alcanceQuad || 1)) : 1;
+                    const maxAreaMagias = magiasEq.length > 0 ? Math.max(...magiasEq.map(m => m.areaQuad || 0)) : 0;
+
+                    const alcanceEf = Math.max(maxAlcArmas, maxAlcPoderes, maxAlcMagias);
+                    const maxArea = Math.max(maxAreaArmas, maxAreaPoderes, maxAreaMagias);
                     const foraAlc = dQuad > alcanceEf;
                     return (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 5 }}>
-                            <div style={{ textAlign: 'center', color: foraAlc ? '#ff003c' : '#0f0', fontWeight: 'bold', fontSize: '0.9em' }}>🎯 Alvo a {dQuad}Q | Alcance: {alcanceEf}Q {foraAlc ? '(MUITO LONGE!)' : '(EM ALCANCE)'}</div>
+                            <div style={{ textAlign: 'center', color: foraAlc ? '#ff003c' : '#0f0', fontWeight: 'bold', fontSize: '0.9em' }}>
+                                🎯 Alvo a {dQuad}Q | Alcance: {alcanceEf}Q {maxArea > 0 && <span style={{color: '#ff00ff'}}>| Exp: {maxArea}Q</span>} {foraAlc ? '(MUITO LONGE!)' : '(EM ALCANCE)'}
+                            </div>
                             <button className="btn-neon btn-gold" onClick={() => !foraAlc && rolarAcertoRapido()} disabled={foraAlc} style={{ padding: '12px', fontSize: '1.2em', width: '100%', letterSpacing: 1, opacity: foraAlc ? 0.5 : 1, borderColor: foraAlc ? '#555' : '#ffcc00' }}>🎲 ROLAR ACERTO</button>
                         </div>
                     );
@@ -459,15 +471,28 @@ export function MapaIniciativaTracker() {
                                     const dy = Math.abs((fichaSegura?.posicao?.y || 0) - (alvoD.posicao?.y || 0));
                                     const dz = Math.abs((fichaSegura?.posicao?.z || 0) - (alvoD.posicao?.z || 0)) / (cenaAtual.escala || 1.5);
                                     const dQuad = Math.max(dx, dy, Math.floor(dz));
+                                    
                                     const armasEq = (fichaSegura?.inventario || []).filter(i => i.tipo === 'arma' && i.equipado);
                                     const maxAlcArmas = armasEq.length > 0 ? Math.max(...armasEq.map(a => a.alcance || 1)) : 1;
+                                    const maxAreaArmas = armasEq.length > 0 ? Math.max(...armasEq.map(a => a.areaQuad || a.area || 0)) : 0;
+                                    
                                     const podAt = (fichaSegura?.poderes || []).filter(p => p.ativa);
                                     const maxAlcPoderes = podAt.length > 0 ? Math.max(...podAt.map(p => p.alcance || 1)) : 1;
-                                    const alcanceEf = Math.max(maxAlcArmas, maxAlcPoderes);
+                                    const maxAreaPoderes = podAt.length > 0 ? Math.max(...podAt.map(p => p.areaQuad || p.area || 0)) : 0;
+                                    
+                                    const magiasEq = (fichaSegura?.ataquesElementais || []).filter(m => m.equipado);
+                                    const maxAlcMagias = magiasEq.length > 0 ? Math.max(...magiasEq.map(m => m.alcanceQuad || 1)) : 1;
+                                    const maxAreaMagias = magiasEq.length > 0 ? Math.max(...magiasEq.map(m => m.areaQuad || 0)) : 0;
+
+                                    const alcanceEf = Math.max(maxAlcArmas, maxAlcPoderes, maxAlcMagias);
+                                    const maxArea = Math.max(maxAreaArmas, maxAreaPoderes, maxAreaMagias);
                                     const foraAlc = dQuad > alcanceEf;
+
                                     return (
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 5, padding: '5px 10px', background: 'rgba(0,0,0,0.5)', borderRadius: 5 }}>
-                                            <div style={{ color: foraAlc ? '#ff003c' : '#0f0', fontWeight: 'bold', fontSize: '0.85em' }}>🎯 Alvo a {dQuad}Q | Alcance: {alcanceEf}Q {foraAlc ? '(LONGE)' : '(OK)'}</div>
+                                            <div style={{ color: foraAlc ? '#ff003c' : '#0f0', fontWeight: 'bold', fontSize: '0.85em' }}>
+                                                🎯 Alvo a {dQuad}Q | Alcance: {alcanceEf}Q {maxArea > 0 && <span style={{color: '#ff00ff'}}>| Exp: {maxArea}Q</span>} {foraAlc ? '(LONGE)' : '(OK)'}
+                                            </div>
                                             <button className="btn-neon btn-gold" onClick={() => !foraAlc && rolarAcertoRapido()} disabled={foraAlc} style={{ padding: '4px 10px', fontSize: '0.85em', opacity: foraAlc ? 0.5 : 1, borderColor: foraAlc ? '#555' : '#ffcc00' }}>🎲 Rolar Acerto</button>
                                         </div>
                                     );
@@ -607,10 +632,15 @@ export function MapaHologramaAcao() {
                             <div style={{ fontSize: '0.9em', color: '#aaa', marginBottom: '-10px', textTransform: 'uppercase' }}>{tituloImpacto} {(!isForaDeCombate && !isForaDeTurno) ? '' : `(${acaoExibir.nome})`}</div>
                             <h1 style={{ margin: 0, fontSize: '4em', color: corImpacto, textShadow: `0 0 20px ${corImpacto}` }}>{fmt(valorImpacto)}</h1>
                             {acaoExibir.tipo === 'dano' && acaoExibir.letalidade !== undefined && <div style={{ color: '#ffcc00', fontSize: '1.2em', fontWeight: 'bold', marginTop: '10px', textShadow: '0 0 5px #ffcc00' }}>LETALIDADE: +{acaoExibir.letalidade}</div>}
+                            {/* 🔥 MOSTRAR RESULTADO MÚLTIPLOS ALVOS 🔥 */}
                             {acaoExibir.alvosArea && acaoExibir.alvosArea.length > 0 && (
                                 <div style={{ marginTop: 15, padding: 8, background: 'rgba(0,0,0,0.6)', borderRadius: 4, borderLeft: `3px solid ${acaoExibir.alvosArea.some(a=>a.acertou) ? '#0f0' : '#f00'}`, textAlign: 'left' }}>
-                                {acaoExibir.areaEf > 0 && <div style={{ color: '#00ccff', fontSize: '0.85em', marginBottom: 6, fontWeight: 'bold', textTransform: 'uppercase' }}>💥 Explosão em Área ({acaoExibir.areaEf} Quadrados) atingiu {acaoExibir.alvosArea.length} alvo(s):</div>}
-                                {acaoExibir.alvosArea.map((a, i) => <div key={i} style={{ color: a.acertou ? '#0f0' : '#f00', fontWeight: 'bold', fontSize: '0.9em', marginBottom: 2 }}>{a.acertou ? `🎯 Superou ${a.nome} (Def: ${a.defesa})!` : `❌ Falhou vs ${a.nome} (Def: ${a.defesa})!`}</div>)}
+                                    {acaoExibir.areaEf > 0 && <div style={{ color: '#00ccff', fontSize: '0.85em', marginBottom: 6, fontWeight: 'bold', textTransform: 'uppercase' }}>💥 Explosão em Área ({acaoExibir.areaEf} Quadrados) atingiu {acaoExibir.alvosArea.length} alvo(s):</div>}
+                                    {acaoExibir.alvosArea.map((a, i) => (
+                                        <div key={i} style={{ color: a.acertou ? '#0f0' : '#f00', fontWeight: 'bold', fontSize: '0.9em', marginBottom: 2 }}>
+                                            {a.acertou ? `🎯 Superou ${a.nome} (Def: ${a.defesa})!` : `❌ Falhou vs ${a.nome} (Def: ${a.defesa})!`}
+                                        </div>
+                                    ))}
                                 </div>
                             )}
                         </div>

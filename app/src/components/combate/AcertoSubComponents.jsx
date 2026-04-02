@@ -17,13 +17,11 @@ export function AcertoClasseBuffs() {
         <>
             {bonusAcertoClasse > 0 && (
                 <p style={{ color: '#0f0', fontSize: '0.85em', margin: '0 0 10px 0', textShadow: '0 0 5px rgba(0,255,0,0.5)' }}>
-                    {/* Instinto de Batalha */}
                     ✨ Instinto de Batalha: A sua classe concede +{bonusAcertoClasse} de Acerto passivo!
                 </p>
             )}
             {bonusMaestriaArma > 0 && (
                 <p style={{ color: '#00ffcc', fontSize: '0.85em', margin: '0 0 10px 0', textShadow: '0 0 5px rgba(0,255,204,0.5)' }}>
-                    {/* Mestre de Armas */}
                     ⚔️ Mestre de Armas: A sua classe concede +{bonusMaestriaArma} de Acerto ao usar [{nomesMaestriaArma.join(', ')}]!
                 </p>
             )}
@@ -154,7 +152,7 @@ export function AcertoDistanciaHUD() {
     const ctx = useAcertoForm();
     if (!ctx) return PROVIDER_FALLBACK;
 
-    const { alvoDummie, distQuadrados, distReal, maxAlcance, isForaDeAlcance, unidadeEscala } = ctx;
+    const { alvoDummie, distQuadrados, distReal, maxAlcance, maxArea, isForaDeAlcance, unidadeEscala } = ctx;
 
     if (!alvoDummie) return null;
 
@@ -164,7 +162,7 @@ export function AcertoDistanciaHUD() {
                 🎯 Alvo: {alvoDummie.nome} | Distância: {distQuadrados}Q ({distReal.toFixed(1)} {unidadeEscala})
             </span>
             <br />
-            <span style={{ color: '#aaa', fontSize: '0.85em' }}>Seu Alcance Efetivo: {maxAlcance}Q</span>
+            <span style={{ color: '#aaa', fontSize: '0.85em' }}>Seu Alcance Efetivo: {maxAlcance}Q {maxArea > 0 && <span style={{color: '#ff00ff', fontWeight: 'bold'}}>| Explosão: {maxArea}Q</span>}</span>
             {isForaDeAlcance && <div style={{ color: '#ff003c', marginTop: 5, fontWeight: 'bold', textShadow: '0 0 5px #ff003c' }}>⚠️ FORA DE ALCANCE! APROXIME-SE!</div>}
         </div>
     );
@@ -174,7 +172,7 @@ export function AcertoRolarButton() {
     const ctx = useAcertoForm();
     if (!ctx) return PROVIDER_FALLBACK;
 
-    const { alvoSelecionado, alvoDummie, isForaDeAlcance, rolarAcerto } = ctx;
+    const { alvoSelecionado, alvoDummie, isForaDeAlcance, maxArea, rolarAcerto } = ctx;
 
     return (
         <button
@@ -184,7 +182,7 @@ export function AcertoRolarButton() {
             style={{ marginTop: 15, width: '100%', borderColor: isForaDeAlcance ? '#555' : '#f90', color: isForaDeAlcance ? '#555' : '#f90', opacity: isForaDeAlcance ? 0.5 : 1 }}
         >
             {alvoSelecionado && alvoDummie
-                ? (isForaDeAlcance ? 'MUITO LONGE PARA ATACAR' : `TENTAR ACERTAR ${alvoDummie.nome.toUpperCase()}`)
+                ? (isForaDeAlcance ? 'MUITO LONGE PARA ATACAR' : (maxArea > 0 ? `💥 DISPARAR EXPLOSÃO NO ALVO` : `TENTAR ACERTAR ${alvoDummie.nome.toUpperCase()}`))
                 : 'ROLAR ACERTO (SEM ALVO)'}
         </button>
     );

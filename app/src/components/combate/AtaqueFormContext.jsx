@@ -54,12 +54,14 @@ export function AtaqueFormProvider({ children }) {
     const [autoCritFatal, setAutoCritFatal] = useState(false);
     const [forcarCritNormal, setForcarCritNormal] = useState(false);
     const [forcarCritFatal, setForcarCritFatal] = useState(false);
+    
+    // 🔥 NOVO: OVERRIDE PARA MAGIAS DE ÁREA / SAVING THROWS
+    const [ignorarTravaAcerto, setIgnorarTravaAcerto] = useState(false);
 
     const [skillConfigs, setSkillConfigs] = useState({});
     const [podeRolarDano, setPodeRolarDano] = useState(true);
     const [furiaAcalmadaMsg, setFuriaAcalmadaMsg] = useState(false);
 
-    /* Berserker fury tracker */
     const multiplicadorFuriaClasse = useMemo(() => {
         let maxFuria = 0;
         const scanFuria = (efs) => {
@@ -113,7 +115,11 @@ export function AtaqueFormProvider({ children }) {
         return (minhaFicha.poderes || []).filter(p => p && p.ativa);
     }, [minhaFicha.poderes]);
 
-    /* Effect: update furiaMax when percAtualLostFloor exceeds it */
+    // 🔥 NOVO: PUXAR MAGIAS OFENSIVAS DO GRIMÓRIO
+    const magiasOfensivas = useMemo(() => {
+        return (minhaFicha.ataquesElementais || []).filter(m => m && m.equipado && m.tipoMecanica !== 'suporte');
+    }, [minhaFicha.ataquesElementais]);
+
     useEffect(() => {
         if (multiplicadorFuriaClasse > 0 && percAtualLostFloor > furiaMax) {
             updateFicha(f => {
@@ -124,21 +130,33 @@ export function AtaqueFormProvider({ children }) {
         }
     }, [percAtualLostFloor, furiaMax, multiplicadorFuriaClasse, updateFicha]);
 
-    /* Effect: check if damage roll is allowed based on last hit feed */
+    // 🔥 CORREÇÃO: LEITURA DE ALVOS MÚLTIPLOS (AoE) NO FEED
     useEffect(() => {
         if (!dummieAlvo) {
             setPodeRolarDano(true);
             return;
         }
-        const meuUltimoAcerto = [...feedCombate].reverse().find(f => f.nome === meuNome && f.tipo === 'acerto' && f.alvoNome === dummieAlvo.nome);
+        const meuUltimoAcerto = [...feedCombate].reverse().find(f => {
+            if (f.nome !== meuNome || f.tipo !== 'acerto') return false;
+            if (f.alvoNome === dummieAlvo.nome) return true;
+            if (f.alvosArea && f.alvosArea.some(a => a.nome === dummieAlvo.nome)) return true;
+            return false;
+        });
+
         if (meuUltimoAcerto) {
-            setPodeRolarDano(meuUltimoAcerto.acertouAlvo);
+            let acertou = false;
+            if (meuUltimoAcerto.alvosArea) {
+                const alvoEspecifico = meuUltimoAcerto.alvosArea.find(a => a.nome === dummieAlvo.nome);
+                if (alvoEspecifico) acertou = alvoEspecifico.acertou;
+            } else {
+                acertou = meuUltimoAcerto.acertouAlvo;
+            }
+            setPodeRolarDano(acertou);
         } else {
             setPodeRolarDano(false);
         }
     }, [feedCombate, meuNome, dummieAlvo]);
 
-    /* Effect: sync local state when ataqueConfig changes */
     useEffect(() => {
         const ac2 = minhaFicha.ataqueConfig || {};
         setArmaStatusUsados(ac2.armaStatusUsados || ['forca']);
@@ -150,7 +168,6 @@ export function AtaqueFormProvider({ children }) {
         setCritFatalMax(ac2.criticoFatalMax || 20);
     }, [minhaFicha.ataqueConfig]);
 
-    /* Effect: auto-detect critical from last acerto feed */
     useEffect(() => {
         const lastAcerto = [...feedCombate].reverse().find(f => f.nome === meuNome && f.tipo === 'acerto');
         if (lastAcerto && lastAcerto.rolagem) {
@@ -178,20 +195,24 @@ export function AtaqueFormProvider({ children }) {
         }
     }, [feedCombate, meuNome, critNormalMin, critNormalMax, critFatalMin, critFatalMax]);
 
-    /* Effect: initialize skillConfigs from active powers */
+    // 🔥 CORREÇÃO: CARREGAR CONFIGS DO GRIMÓRIO
     useEffect(() => {
         const poderes = minhaFicha.poderes || [];
+        const magias = minhaFicha.ataquesElementais || [];
         const configs = {};
+        
         poderes.forEach(p => {
             if (p && p.ativa) {
-                configs[p.id] = {
-                    statusUsados: p.statusUsados || ['forca'],
-                    energiaCombustao: p.energiaCombustao || 'mana'
-                };
+                configs[p.id] = { statusUsados: p.statusUsados || ['forca'], energiaCombustao: p.energiaCombustao || 'mana' };
+            }
+        });
+        magias.forEach(m => {
+            if (m && m.equipado && m.tipoMecanica !== 'suporte') {
+                configs[m.id] = { statusUsados: m.statusUsados || ['inteligencia'], energiaCombustao: m.energiaCombustao || 'mana' };
             }
         });
         setSkillConfigs(configs);
-    }, [minhaFicha.poderes]);
+    }, [minhaFicha.poderes, minhaFicha.ataquesElementais]);
 
     const acalmarFuria = useCallback((e) => {
         e.preventDefault();
@@ -247,12 +268,19 @@ export function AtaqueFormProvider({ children }) {
                     }
                 });
             }
+            if (ficha.ataquesElementais) {
+                ficha.ataquesElementais.forEach(m => {
+                    if (m && skillConfigs[m.id]) {
+                        m.statusUsados = skillConfigs[m.id].statusUsados;
+                        m.energiaCombustao = skillConfigs[m.id].energiaCombustao;
+                    }
+                });
+            }
         });
         salvarFichaSilencioso();
     }, [updateFicha, armaStatusUsados, armaEnergiaCombustao, armaPercEnergia, critNormalMin, critNormalMax, critFatalMin, critFatalMax, skillConfigs]);
 
     const rolarDano = useCallback(() => {
-        /* salvarConfigAtaque inline to avoid stale closure */
         updateFicha((ficha) => {
             if (!ficha.ataqueConfig) ficha.ataqueConfig = {};
             ficha.ataqueConfig.armaStatusUsados = armaStatusUsados;
@@ -271,39 +299,52 @@ export function AtaqueFormProvider({ children }) {
                     }
                 });
             }
+            if (ficha.ataquesElementais) {
+                ficha.ataquesElementais.forEach(m => {
+                    if (m && skillConfigs[m.id]) {
+                        m.statusUsados = skillConfigs[m.id].statusUsados;
+                        m.energiaCombustao = skillConfigs[m.id].energiaCombustao;
+                    }
+                });
+            }
         });
         salvarFichaSilencioso();
 
         const itensEquipados = minhaFicha.inventario ? minhaFicha.inventario.filter(i => i.equipado) : [];
         const poderesAtivosLocal = (minhaFicha.poderes || []).filter(p => p && p.ativa);
+        const magiasOfensivasLocal = (minhaFicha.ataquesElementais || []).filter(m => m && m.equipado && m.tipoMecanica !== 'suporte');
 
         const configHabilidades = poderesAtivosLocal.map(p => ({
-            id: p.id,
-            nome: p.nome,
-            dadosQtd: p.dadosQtd || 0,
-            dadosFaces: p.dadosFaces || 20,
-            custoPercentual: p.custoPercentual || 0,
-            armaVinculada: p.armaVinculada || '',
-            statusUsados: skillConfigs[p.id]?.statusUsados || p.statusUsados || ['forca'],
-            energiaCombustao: skillConfigs[p.id]?.energiaCombustao || p.energiaCombustao || 'mana',
-            efeitos: p.efeitos || []
+            id: p.id, nome: p.nome,
+            dadosQtd: p.dadosQtd || 0, dadosFaces: p.dadosFaces || 20, custoPercentual: p.custoPercentual || 0,
+            armaVinculada: p.armaVinculada || '', statusUsados: skillConfigs[p.id]?.statusUsados || p.statusUsados || ['forca'],
+            energiaCombustao: skillConfigs[p.id]?.energiaCombustao || p.energiaCombustao || 'mana', efeitos: p.efeitos || []
         }));
 
+        // 🔥 O MOTOR DE DANO AGORA LÊ AS MAGIAS DE FATO 🔥
+        const configMagias = magiasOfensivasLocal.map(m => {
+            const efs = [];
+            if (m.bonusTipo && m.bonusTipo !== 'nenhum') efs.push({ atributo: 'todos_status', propriedade: m.bonusTipo, valor: m.bonusValor });
+            return {
+                id: m.id, nome: m.nome,
+                dadosQtd: m.dadosExtraQtd || 0, dadosFaces: m.dadosExtraFaces || 20, custoPercentual: m.custoValor || 0,
+                armaVinculada: '', statusUsados: skillConfigs[m.id]?.statusUsados || m.statusUsados || ['inteligencia'],
+                energiaCombustao: skillConfigs[m.id]?.energiaCombustao || m.energiaCombustao || 'mana', efeitos: efs
+            };
+        });
+
+        const todasHabilidades = configHabilidades.concat(configMagias);
+
         const configArma = {
-            statusUsados: armaStatusUsados,
-            energiaCombustao: armaEnergiaCombustao,
-            percEnergia: parseFloat(armaPercEnergia) || 0
+            statusUsados: armaStatusUsados, energiaCombustao: armaEnergiaCombustao, percEnergia: parseFloat(armaPercEnergia) || 0
         };
 
         const isCriticoNormal = forcarCritNormal || autoCritNormal;
         const isCriticoFatal = forcarCritFatal || autoCritFatal;
 
-        const result = calcularDano({ minhaFicha, configArma, configHabilidades, itensEquipados, isCriticoNormal, isCriticoFatal });
+        const result = calcularDano({ minhaFicha, configArma, configHabilidades: todasHabilidades, itensEquipados, isCriticoNormal, isCriticoFatal });
 
-        if (result.erro) {
-            alert(result.erro);
-            return;
-        }
+        if (result.erro) { alert(result.erro); return; }
 
         if (result.drenos) {
             updateFicha((ficha) => {
@@ -318,6 +359,7 @@ export function AtaqueFormProvider({ children }) {
 
         setForcarCritNormal(false);
         setForcarCritFatal(false);
+        setIgnorarTravaAcerto(false); // Reseta a trava após o ataque
 
         let extraFeed = {};
         if (dummieAlvo) {
@@ -327,19 +369,14 @@ export function AtaqueFormProvider({ children }) {
             const overkill = danoCausado > hpAnterior ? danoCausado - hpAnterior : 0;
 
             salvarDummie(alvoSelecionado, { ...dummieAlvo, hpAtual: novoHp });
-            extraFeed = {
-                alvoNome: dummieAlvo.nome,
-                alvoSobreviveu: novoHp > 0,
-                overkill: overkill
-            };
+            extraFeed = { alvoNome: dummieAlvo.nome, alvoSobreviveu: novoHp > 0, overkill: overkill };
         }
 
         const feedData = {
             tipo: 'dano', nome: meuNome, dano: result.dano, letalidade: result.letalidade,
             rolagem: result.rolagem, rolagemMagica: result.rolagemMagica,
             atributosUsados: result.atributosUsados, detalheEnergia: result.detalheEnergia,
-            armaStr: result.armaStr, detalheConta: result.detalheConta,
-            ...extraFeed
+            armaStr: result.armaStr, detalheConta: result.detalheConta, ...extraFeed
         };
 
         enviarParaFeed(feedData);
@@ -352,7 +389,7 @@ export function AtaqueFormProvider({ children }) {
     ]);
 
     const value = useMemo(() => ({
-        armaStatusUsados, setArmaStatusUsados,
+        armaStatusUsados, setArmStatusUsados: setArmaStatusUsados,
         armaEnergiaCombustao, setArmaEnergiaCombustao,
         armaPercEnergia, setArmaPercEnergia,
         critNormalMin, setCritNormalMin,
@@ -362,31 +399,21 @@ export function AtaqueFormProvider({ children }) {
         autoCritNormal, autoCritFatal,
         forcarCritNormal, setForcarCritNormal,
         forcarCritFatal, setForcarCritFatal,
-        skillConfigs,
-        podeRolarDano,
-        furiaAcalmadaMsg,
-        multiplicadorFuriaClasse,
-        multiplicadorFuriaVisor,
-        percAtualLostFloor,
-        percEfetivoParaDisplay,
-        dummieAlvo,
-        armaEquipada,
-        poderesAtivos,
-        minhaFicha,
-        acalmarFuria,
-        updateSkillConfig,
-        toggleSkillStat,
-        toggleArmaStat,
-        salvarConfigAtaque,
-        rolarDano,
+        ignorarTravaAcerto, setIgnorarTravaAcerto,
+        skillConfigs, podeRolarDano, furiaAcalmadaMsg,
+        multiplicadorFuriaClasse, multiplicadorFuriaVisor,
+        percAtualLostFloor, percEfetivoParaDisplay,
+        dummieAlvo, armaEquipada, poderesAtivos, magiasOfensivas, minhaFicha,
+        acalmarFuria, updateSkillConfig, toggleSkillStat, toggleArmaStat,
+        salvarConfigAtaque, rolarDano,
     }), [
         armaStatusUsados, armaEnergiaCombustao, armaPercEnergia,
         critNormalMin, critNormalMax, critFatalMin, critFatalMax,
         autoCritNormal, autoCritFatal, forcarCritNormal, forcarCritFatal,
-        skillConfigs, podeRolarDano, furiaAcalmadaMsg,
+        ignorarTravaAcerto, skillConfigs, podeRolarDano, furiaAcalmadaMsg,
         multiplicadorFuriaClasse, multiplicadorFuriaVisor,
         percAtualLostFloor, percEfetivoParaDisplay,
-        dummieAlvo, armaEquipada, poderesAtivos, minhaFicha,
+        dummieAlvo, armaEquipada, poderesAtivos, magiasOfensivas, minhaFicha,
         acalmarFuria, updateSkillConfig, toggleSkillStat, toggleArmaStat,
         salvarConfigAtaque, rolarDano,
     ]);
