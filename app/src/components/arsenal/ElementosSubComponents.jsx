@@ -65,7 +65,8 @@ export function ElementosFormMagia() {
     if (!ctx) return FALLBACK;
     const {
         elemEditandoId, nomeElem, setNomeElem, tipoMecanica, setTipoMecanica, savingAttr, setSavingAttr,
-        energiaCombustao, setEnergiaCombustao, allowedEnergies, alcanceQuad, setAlcanceQuad, areaQuad, setAreaQuad,
+        energiaCombustao, setEnergiaCombustao, allowedEnergies, alcanceQuad, setAlcanceQuad, 
+        areaQuad, setAreaQuad, alvosAfetados, setAlvosAfetados, duracaoZona, setDuracaoZona,
         bonusTipo, setBonusTipo, bonusValor, setBonusValor, custoValor, setCustoValor, dadosQtd, setDadosQtd,
         dadosFaces, setDadosFaces, salvarNovoElem, cancelarEdicaoElem, formRef
     } = ctx;
@@ -103,12 +104,30 @@ export function ElementosFormMagia() {
                     {allowedEnergies.length > 3 && <span style={{fontSize: '0.7em', color: '#ff00ff', display: 'block', marginTop: 2}}>Regras Subvertidas (Arcana)</span>}
                 </div>
                 <div>
-                    <label style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold' }}>Alcance (Q)</label>
+                    <label style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold' }}>Alcance Máx (Q)</label>
                     <input className="input-neon" type="number" min="0" step="0.5" value={alcanceQuad} onChange={e => setAlcanceQuad(e.target.value)} />
                 </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginTop: 10, padding: 10, background: 'rgba(255,0,255,0.1)', border: '1px dashed #ff00ff', borderRadius: 5 }}>
                 <div>
-                    <label style={{ color: '#ff00ff', fontSize: '0.85em', fontWeight: 'bold' }}>Área de Efeito (Q)</label>
+                    <label style={{ color: '#ff00ff', fontSize: '0.85em', fontWeight: 'bold' }}>Raio de Efeito (Q)</label>
                     <input className="input-neon" type="number" min="0" step="0.5" value={areaQuad} onChange={e => setAreaQuad(e.target.value)} style={{ borderColor: '#ff00ff', color: '#ff00ff' }} />
+                </div>
+                <div>
+                    <label style={{ color: '#ff00ff', fontSize: '0.85em', fontWeight: 'bold' }}>Filtro de Fogo Amigo</label>
+                    <select className="input-neon" value={alvosAfetados} onChange={e => setAlvosAfetados(e.target.value)} style={{ borderColor: '#ff00ff' }}>
+                        <option value="todos">Afeta Todos (Aliados e Inimigos)</option>
+                        <option value="inimigos">Apenas Inimigos (Ignora Aliados)</option>
+                        <option value="aliados">Apenas Aliados (Ignora Inimigos)</option>
+                    </select>
+                </div>
+                <div>
+                    <label style={{ color: '#ff00ff', fontSize: '0.85em', fontWeight: 'bold' }}>Duração da Zona Mágica</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <input className="input-neon" type="number" min="0" value={duracaoZona} onChange={e => setDuracaoZona(e.target.value)} style={{ borderColor: '#ff00ff', width: '60px' }} />
+                        <span style={{ fontSize: '0.8em', color: '#ccc' }}>Turnos (0 = Desaparece)</span>
+                    </div>
                 </div>
             </div>
 
@@ -129,18 +148,17 @@ export function ElementosFormMagia() {
 
 export function ElementosMagiaCard({ magia }) {
     const ctx = useElementosForm();
-    const [energiaFlex, setEnergiaFlex] = useState('mana'); // 🔥 ESTADO LOCAL DO CARD
 
     if (!ctx) return null;
-    const { toggleEquiparElem, editarElem, deletarElem, conjurarMagia, profGlobal, getModificadorDoisDigitos, minhaFicha } = ctx;
+    const { toggleEquiparElem, editarElem, deletarElem, profGlobal, getModificadorDoisDigitos, minhaFicha } = ctx;
 
     const isFlexivel = magia.energiaCombustao === 'flexivel';
-    const energiaAtiva = isFlexivel ? energiaFlex : magia.energiaCombustao;
+    const energiaAtiva = magia.energiaCombustao;
 
     const isEquipped = magia.equipado;
     const corPura = cores[magia.elemento] || '#cccccc';
     const c = isEquipped ? corPura : '#888';
-    const bg = isEquipped ? `rgba(0,0,0,0.7)` : 'rgba(0,0,0,0.4)'; // Mais escuro para destacar o botão inline
+    const bg = isEquipped ? `rgba(0,0,0,0.7)` : 'rgba(0,0,0,0.4)'; 
 
     const elemText = magia.elemento || 'Neutro';
     const bTipo = magia.bonusTipo || 'nenhum';
@@ -150,6 +168,8 @@ export function ElementosMagiaCard({ magia }) {
     const custoStr = magia.custoValor > 0 ? ` | Custo: ${magia.custoValor}% (${energiaAtiva?.toUpperCase()})` : ` | Custo: Livre`;
 
     const mec = magia.tipoMecanica || 'ataque';
+    const alvoStr = magia.alvosAfetados === 'inimigos' ? 'Inimigos' : magia.alvosAfetados === 'aliados' ? 'Aliados' : 'Todos';
+    const durStr = magia.duracaoZona > 0 ? `${magia.duracaoZona} Turnos` : 'Instantâneo';
     
     let regente = 'inteligencia';
     let modBase = 0;
@@ -172,42 +192,21 @@ export function ElementosMagiaCard({ magia }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 15 }}>
                 <div>
                     <h3 style={{ margin: 0, color: c, textShadow: `0 0 10px ${c}` }}>
-                        {emogis[elemText] || '\u2728'} {magia.nome || 'Magia'} <span style={{fontSize: '0.6em', color: '#fff'}}>(Alc: {magia.alcanceQuad || 1}Q | Área: {magia.areaQuad || 0}Q)</span>
+                        {emogis[elemText] || '\u2728'} {magia.nome || 'Magia'} <span style={{fontSize: '0.6em', color: '#fff'}}>(Alc: {magia.alcanceQuad || 1}Q)</span>
                     </h3>
                     <p style={{ color: '#0ff', fontSize: '0.9em', margin: '5px 0 0' }}>
                         Mecânica: <strong>{mec.toUpperCase()}</strong> {mec === 'saving' ? `(CD ${cd} - ${magia.savingAttr?.toUpperCase()})` : mec === 'ataque' ? `(+${bonusAcerto} Acerto)` : ''}
                     </p>
+                    {magia.areaQuad > 0 && (
+                        <p style={{ color: '#ff00ff', fontSize: '0.85em', margin: '2px 0 0' }}>
+                            💥 Área: <strong>{magia.areaQuad}Q</strong> | Alvos: <strong>{alvoStr}</strong> | Zona: <strong>{durStr}</strong>
+                        </p>
+                    )}
                     <p style={{ color: '#aaa', fontSize: '0.85em', margin: '2px 0 0' }}>
                         Bônus: {propText}{bValorStr}{dadosStr}{custoStr}
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                    
-                    {/* 🔥 BOTÃO DE CONJURAÇÃO INTELIGENTE COM INLINE SELECT 🔥 */}
-                    {isEquipped && (
-                        <div style={{ display: 'flex', alignItems: 'stretch', boxShadow: `0 0 10px ${c}`, borderRadius: '4px', overflow: 'hidden', margin: 0 }}>
-                            {isFlexivel && (
-                                <select 
-                                    value={energiaFlex} 
-                                    onChange={e => setEnergiaFlex(e.target.value)} 
-                                    style={{ 
-                                        margin: 0, border: 'none', background: 'rgba(0,0,0,0.8)', color: '#fff', 
-                                        outline: 'none', padding: '0 5px', borderRight: `1px solid ${c}`,
-                                        fontSize: '0.85em', fontWeight: 'bold'
-                                    }}
-                                    title="Escolha a Energia a gastar neste momento!"
-                                >
-                                    <option value="mana">Mana</option>
-                                    <option value="aura">Aura</option>
-                                    <option value="chakra">Chakra</option>
-                                </select>
-                            )}
-                            <button className="btn-neon btn-gold" onClick={() => conjurarMagia(magia, isFlexivel ? energiaFlex : null)} style={{ padding: '5px 15px', fontSize: '1.1em', margin: 0, border: 'none', borderRadius: 0 }}>
-                                🪄 CONJURAR
-                            </button>
-                        </div>
-                    )}
-
                     <button className="btn-neon" style={{ borderColor: c, color: c, padding: '5px 15px', fontSize: '1em', margin: 0 }} onClick={() => toggleEquiparElem(magia.id)}>{isEquipped ? 'PREPARADA' : 'MEMORIZAR'}</button>
                     <button className="btn-neon btn-blue" style={{ padding: '5px 15px', fontSize: '0.9em', margin: 0 }} onClick={() => editarElem(magia.id)}>EDITAR</button>
                     <button className="btn-neon btn-red" style={{ padding: '5px 15px', fontSize: '0.9em', margin: 0 }} onClick={() => deletarElem(magia.id)}>APAGAR</button>
