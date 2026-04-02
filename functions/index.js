@@ -2,6 +2,17 @@ const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
 const { GoogleGenAI } = require("@google/genai");
 
+// Novas importações necessárias para processar ficheiros e conectar ao Storage
+const admin = require("firebase-admin");
+const os = require("os");
+const path = require("path");
+const fs = require("fs");
+
+// Inicializa o Admin para termos acesso livre ao Storage
+if (!admin.apps.length) {
+    admin.initializeApp();
+}
+
 const geminiApiKey = defineSecret("GEMINI_API_KEY");
 
 // 🔥 A NOVA ALMA DA SEXTA-FEIRA INJETADA AQUI 🔥
@@ -58,6 +69,7 @@ function formatarContexto(ctx) {
     return partes.join("\n");
 }
 
+// 1. FUNÇÃO ORIGINAL DO CHAT (Mantida intacta)
 exports.falarComSextaFeira = onCall(
     {
         region: "us-central1",
@@ -113,6 +125,65 @@ exports.falarComSextaFeira = onCall(
 
             console.error("[falarComSextaFeira] Erro Gemini:", err);
             throw new HttpsError("internal", "Erro ao processar resposta da IA.");
+        }
+    }
+);
+
+// 2. 🔥 NOVA FUNÇÃO: O OUVINTE DE ÁUDIO DA SEXTA-FEIRA 🔥
+exports.transcreverAudioSextaFeira = onCall(
+    { 
+        region: "us-central1", 
+        maxInstances: 5, 
+        timeoutSeconds: 300, 
+        secrets: [geminiApiKey] 
+    },
+    async (request) => {
+        const { fileName } = request.data;
+        if (!fileName) throw new HttpsError("invalid-argument", "Nome do arquivo de áudio ausente.");
+
+        const tempFilePath = path.join(os.tmpdir(), fileName);
+
+        try {
+            // Passo A: Baixar o áudio do nosso Storage
+            const bucket = admin.storage().bucket();
+            const file = bucket.file(`audios_mesa/${fileName}`);
+            
+            const [exists] = await file.exists();
+            if (!exists) throw new HttpsError("not-found", "Áudio não encontrado na nuvem.");
+
+            await file.download({ destination: tempFilePath });
+
+            // Passo B: Fazer Upload para a API temporária de Ficheiros do Gemini
+            const ai = new GoogleGenAI({ apiKey: geminiApiKey.value() });
+            const uploadResult = await ai.files.upload({
+                file: tempFilePath,
+                mimeType: "audio/webm",
+            });
+
+            // Passo C: Pedir a transcrição épica
+            const prompt = `Você é a Sexta-Feira, IA assistente do nosso RPG. 
+O áudio em anexo é a gravação de uma sessão da nossa mesa. 
+Por favor, escute e crie um "Registro Akáshico" (um resumo narrativo e detalhado) do que aconteceu de importante nessa parte da história.
+Escreva de forma épica, em português. Se só houver ruído, avise.`;
+
+            const response = await ai.models.generateContent({
+                model: "gemini-2.5-flash",
+                contents: [
+                    prompt,
+                    { fileData: { fileUri: uploadResult.uri, mimeType: uploadResult.mimeType } }
+                ]
+            });
+
+            // Passo D: Limpeza para não gastar dinheiro de servidores
+            fs.unlinkSync(tempFilePath); // Apaga do servidor temporário
+            await file.delete();         // Apaga do Firebase Storage para não lotar
+
+            return { texto: response.text };
+
+        } catch (err) {
+            console.error("[transcreverAudio] Erro:", err);
+            if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
+            throw new HttpsError("internal", "Falha na transcrição: " + err.message);
         }
     }
 );
