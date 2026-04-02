@@ -144,46 +144,51 @@ exports.transcreverAudioSextaFeira = onCall(
         const tempFilePath = path.join(os.tmpdir(), fileName);
 
         try {
+            console.log(`[Sexta-Feira] 1. Recebi a missão. Procurando áudio: ${fileName}`);
+
             // Passo A: Baixar o áudio do nosso Storage
+            // IMPORTANTE: Se o Firebase reclamar de 'bucket', seu amigo precisa trocar a linha abaixo para:
+            // const bucket = admin.storage().bucket("NOME-DO-PROJETO.appspot.com");
             const bucket = admin.storage().bucket();
             const file = bucket.file(`audios_mesa/${fileName}`);
             
             const [exists] = await file.exists();
             if (!exists) throw new HttpsError("not-found", "Áudio não encontrado na nuvem.");
 
+            console.log(`[Sexta-Feira] 2. Áudio encontrado! Baixando para a memória do robô...`);
             await file.download({ destination: tempFilePath });
-
-            // Passo B: Fazer Upload para a API temporária de Ficheiros do Gemini
+            
+            console.log(`[Sexta-Feira] 3. Áudio baixado. Enviando para os ouvidos do Gemini...`);
             const ai = new GoogleGenAI({ apiKey: geminiApiKey.value() });
             const uploadResult = await ai.files.upload({
                 file: tempFilePath,
                 mimeType: "audio/webm",
             });
 
-            // Passo C: Pedir a transcrição épica
-            const prompt = `Você é a Sexta-Feira, IA assistente do nosso RPG. 
-O áudio em anexo é a gravação de uma sessão da nossa mesa. 
-Por favor, escute e crie um "Registro Akáshico" (um resumo narrativo e detalhado) do que aconteceu de importante nessa parte da história.
-Escreva de forma épica, em português. Se só houver ruído, avise.`;
+            console.log(`[Sexta-Feira] 4. Upload pro Gemini feito! URI: ${uploadResult.uri}. Pedindo o resumo...`);
+            const prompt = `Você é a Sexta-Feira, IA assistente do nosso RPG. O áudio em anexo é a gravação de uma sessão da nossa mesa. Por favor, escute e crie um "Registro Akáshico" (um resumo narrativo e detalhado) do que aconteceu de importante nessa parte da história. Escreva de forma épica, em português. Se só houver ruído, avise.`;
 
+            // Nova sintaxe do SDK 2.5 Flash
             const response = await ai.models.generateContent({
                 model: "gemini-2.5-flash",
                 contents: [
-                    prompt,
-                    { fileData: { fileUri: uploadResult.uri, mimeType: uploadResult.mimeType } }
+                    uploadResult, // Agora passamos o arquivo inteiro direto
+                    prompt
                 ]
             });
 
-            // Passo D: Limpeza para não gastar dinheiro de servidores
-            fs.unlinkSync(tempFilePath); // Apaga do servidor temporário
-            await file.delete();         // Apaga do Firebase Storage para não lotar
+            console.log(`[Sexta-Feira] 5. Resumo pronto! Devolvendo para o site e apagando rastros.`);
+            
+            // Limpeza
+            if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
+            await file.delete(); 
 
             return { texto: response.text };
 
         } catch (err) {
-            console.error("[transcreverAudio] Erro:", err);
+            console.error("[ERRO FATAL NA SEXTA-FEIRA]:", err);
             if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
-            throw new HttpsError("internal", "Falha na transcrição: " + err.message);
+            throw new HttpsError("internal", "A IA travou: " + err.message);
         }
     }
 );
