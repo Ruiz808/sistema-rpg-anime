@@ -2,6 +2,9 @@ import React, { createContext, useContext, useState, useRef, useEffect, useCallb
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../services/firebase-config';
 import useStore from '../../stores/useStore';
+import * as pdfjsLib from 'pdfjs-dist';
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
 // --- GERADOR DE RANKS (EX, Z+, Z, Z-, S+, S... até R-) ---
 export const baseRanks = [
@@ -47,7 +50,10 @@ export function AIFormProvider({ children }) {
     const [mensagem, setMensagem] = useState('');
     const [historico, setHistorico] = useState([]);
     const [carregando, setCarregando] = useState(false);
+    const [arquivoTexto, setArquivoTexto] = useState('');
+    const [nomeArquivo, setNomeArquivo] = useState('');
     const chatRef = useRef(null);
+    const fileInputRef = useRef(null);
 
     const [loreFoco, setLoreFoco] = useState('presente'); 
     const [novoPersonagem, setNovoPersonagem] = useState('');
@@ -91,7 +97,7 @@ export function AIFormProvider({ children }) {
             if (!img) return '';
             if (typeof img === 'string') return img.trim();
             if (typeof img === 'object') {
-                const url = img.downloadURL || img.downloadUrl || img.url || img.link || img.src || img.imagem || img.img || img.foto || img.icon || img.uri || img.capa || Object.values(img).find(v => typeof v === 'string' && (v.startsWith('http') || v.startsWith('data:'))) || '';
+                const url = img.base || img.downloadURL || img.downloadUrl || img.url || img.link || img.src || img.imagem || img.img || img.foto || img.icon || img.uri || img.capa || Object.values(img).find(v => typeof v === 'string' && (v.startsWith('http') || v.startsWith('data:'))) || '';
                 return typeof url === 'string' ? url.trim() : '';
             }
             return '';
@@ -104,7 +110,7 @@ export function AIFormProvider({ children }) {
             itens.forEach(item => {
                 if (!item || typeof item !== 'object') return;
                 const nomeObj = item.nome || item.titulo || item.name;
-                const imgObj = item.imagem || item.icone || item.avatar || item.url || item.img || item.foto || item.icon || item.token || item.capa;
+                const imgObj = item.imagemUrl || item.imagem || item.icone || item.avatar || item.url || item.img || item.foto || item.icon || item.token || item.capa;
 
                 if (nomeObj && typeof nomeObj === 'string' && imgObj) {
                     const url = extrairUrl(imgObj);
@@ -121,7 +127,7 @@ export function AIFormProvider({ children }) {
                 Object.values(item).forEach(sub => {
                     if (sub && typeof sub === 'object') {
                         if (sub.$$typeof) return;
-                        varrerGaveta([sub], nomeDono);
+                        varrerGaveta(Array.isArray(sub) ? sub : [sub], nomeDono);
                     }
                 });
             });
@@ -248,17 +254,62 @@ export function AIFormProvider({ children }) {
         };
     }, [minhaFicha, meuNome]);
 
+    const extrairTextoPDF = useCallback(async (file) => {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let textoCompleto = '';
+        for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const content = await page.getTextContent();
+            textoCompleto += content.items.map(item => item.str).join(' ') + '\n';
+        }
+        return textoCompleto;
+    }, []);
+
+    const handleArquivoSelecionado = useCallback(async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+            let texto = '';
+            if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+                texto = await extrairTextoPDF(file);
+            } else if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
+                texto = await file.text();
+            } else {
+                alert('Formato não suportado. Use PDF ou TXT.');
+                return;
+            }
+            const MAX_CHARS = 15000;
+            if (texto.length > MAX_CHARS) {
+                texto = texto.substring(0, MAX_CHARS) + '\n...[TEXTO TRUNCADO]';
+            }
+            setArquivoTexto(texto);
+            setNomeArquivo(file.name);
+        } catch (err) {
+            console.error('[AIPanel] Erro ao extrair texto:', err);
+            alert('Erro ao ler o arquivo.');
+        } finally {
+            e.target.value = '';
+        }
+    }, [extrairTextoPDF]);
+
     const enviarMensagem = useCallback(async () => {
-        if (!mensagem.trim() || carregando) return;
+        if ((!mensagem.trim() && !arquivoTexto) || carregando) return;
         const msgUsuario = mensagem.trim();
-        setMensagem(''); setHistorico(prev => [...prev, { role: 'user', texto: msgUsuario }]); setCarregando(true);
+        const textoAnexo = arquivoTexto;
+        const nomeAnexo = nomeArquivo;
+        setMensagem(''); setArquivoTexto(''); setNomeArquivo('');
+        const displayMsg = nomeAnexo ? `${msgUsuario || 'Analise o documento anexado.'}\n📄 [Arquivo: ${nomeAnexo}]` : msgUsuario;
+        setHistorico(prev => [...prev, { role: 'user', texto: displayMsg }]); setCarregando(true);
         try {
             const chamarIA = httpsCallable(functions, 'falarComSextaFeira');
-            const resultado = await chamarIA({ mensagem: msgUsuario, contextoFicha: montarContextoFicha() });
+            const payload = { mensagem: msgUsuario || 'Analise o documento anexado.', contextoFicha: montarContextoFicha() };
+            if (textoAnexo) payload.conteudoArquivo = textoAnexo;
+            const resultado = await chamarIA(payload);
             setHistorico(prev => [...prev, { role: 'ai', texto: resultado.data?.resposta || 'Sem resposta.' }]);
         } catch (err) { setHistorico(prev => [...prev, { role: 'erro', texto: 'Erro ao contactar a IA.' }]); }
         finally { setCarregando(false); }
-    }, [mensagem, carregando, montarContextoFicha]);
+    }, [mensagem, arquivoTexto, nomeArquivo, carregando, montarContextoFicha]);
 
     const handleKeyDown = useCallback((e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviarMensagem(); } }, [enviarMensagem]);
 
@@ -271,14 +322,17 @@ export function AIFormProvider({ children }) {
         capituloAtivoObj, textoAtivo, tierListAtiva, poolPersonagens,
         moverPersonagem, handleDragStart, handleDragOver, handleDrop, adicionarCustomizado,
         adicionarCapitulo, editarTituloCapitulo, apagarCapitulo, atualizarTexto,
-        montarContextoFicha, enviarMensagem, handleKeyDown
+        montarContextoFicha, enviarMensagem, handleKeyDown,
+        arquivoTexto, nomeArquivo, setArquivoTexto, setNomeArquivo,
+        fileInputRef, handleArquivoSelecionado
     }), [
         minhaFicha, meuNome, personagens, subAba, mensagem, historico, carregando,
         loreFoco, novoPersonagem, novoAvatar, capitulosPresente, capituloAtivoId,
         capitulosFuturo, capFuturoAtivoId, capituloAtivoObj, textoAtivo, tierListAtiva, poolPersonagens,
         moverPersonagem, handleDragStart, handleDragOver, handleDrop, adicionarCustomizado,
         adicionarCapitulo, editarTituloCapitulo, apagarCapitulo, atualizarTexto,
-        montarContextoFicha, enviarMensagem, handleKeyDown
+        montarContextoFicha, enviarMensagem, handleKeyDown,
+        arquivoTexto, nomeArquivo, handleArquivoSelecionado
     ]);
 
     return (

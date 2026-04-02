@@ -61,7 +61,7 @@ export function AICapituladorHeader() {
 export function AIChat() {
     const ctx = useAIForm();
     if (!ctx) return FALLBACK;
-    const { chatRef, historico, meuNome, mensagem, setMensagem, handleKeyDown, carregando, enviarMensagem } = ctx;
+    const { chatRef, historico, meuNome, mensagem, setMensagem, handleKeyDown, carregando, enviarMensagem, arquivoTexto, nomeArquivo, setArquivoTexto, setNomeArquivo, fileInputRef, handleArquivoSelecionado } = ctx;
 
     return (
         <>
@@ -74,10 +74,20 @@ export function AIChat() {
                     </div>
                 ))}
             </div>
-            
-            <div style={{ display: 'flex', flexDirection: 'row', gap: '15px', alignItems: 'flex-start', marginTop: '10px', width: '100%' }}>
-                <textarea className="input-neon" placeholder="Fale com a Sexta-Feira..." value={mensagem} onChange={e => setMensagem(e.target.value)} onKeyDown={handleKeyDown} disabled={carregando} style={{ flex: 1, minHeight: '60px', resize: 'vertical', borderColor: '#00ffcc', color: '#fff', padding: '12px', boxSizing: 'border-box' }} />
-                <button className="btn-neon" onClick={enviarMensagem} disabled={carregando || !mensagem.trim()} style={{ flex: '0 0 auto', width: '120px', minWidth: '120px', height: '60px', padding: '0 20px', borderColor: '#00ffcc', color: '#00ffcc', margin: 0, opacity: (carregando || !mensagem.trim()) ? 0.4 : 1 }}>{carregando ? '...' : 'ENVIAR'}</button>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px', width: '100%' }}>
+                {nomeArquivo && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: 'rgba(255, 204, 0, 0.1)', border: '1px solid #ffcc00', borderRadius: '6px' }}>
+                        <span style={{ color: '#ffcc00', fontSize: '0.85em' }}>📄 {nomeArquivo}</span>
+                        <button onClick={() => { setArquivoTexto(''); setNomeArquivo(''); }} style={{ cursor: 'pointer', color: '#ff003c', fontWeight: 'bold', marginLeft: 'auto', background: 'none', border: 'none', padding: '2px 6px', fontSize: '1em' }} title="Remover arquivo">✕</button>
+                    </div>
+                )}
+                <div style={{ display: 'flex', flexDirection: 'row', gap: '10px', alignItems: 'flex-start' }}>
+                    <input type="file" ref={fileInputRef} accept=".pdf,.txt" onChange={handleArquivoSelecionado} style={{ display: 'none' }} />
+                    <button className="btn-neon" onClick={() => fileInputRef.current?.click()} title="Anexar PDF ou TXT" style={{ flex: 'none', width: '45px', height: '60px', padding: 0, margin: 0, borderColor: nomeArquivo ? '#ffcc00' : '#555', color: nomeArquivo ? '#ffcc00' : '#888', fontSize: '1.2em' }}>📎</button>
+                    <textarea className="input-neon" placeholder="Fale com a Sexta-Feira..." value={mensagem} onChange={e => setMensagem(e.target.value)} onKeyDown={handleKeyDown} disabled={carregando} style={{ flex: 1, minHeight: '60px', resize: 'vertical', borderColor: '#00ffcc', color: '#fff', padding: '12px', boxSizing: 'border-box' }} />
+                    <button className="btn-neon" onClick={enviarMensagem} disabled={carregando || (!mensagem.trim() && !arquivoTexto)} style={{ flex: '0 0 auto', width: '120px', minWidth: '120px', height: '60px', padding: '0 20px', borderColor: '#00ffcc', color: '#00ffcc', margin: 0, opacity: (carregando || (!mensagem.trim() && !arquivoTexto)) ? 0.4 : 1 }}>{carregando ? '...' : 'ENVIAR'}</button>
+                </div>
             </div>
         </>
     );

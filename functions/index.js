@@ -66,7 +66,7 @@ exports.falarComSextaFeira = onCall(
         secrets: [geminiApiKey],
     },
     async (request) => {
-        const { mensagem, contextoFicha } = request.data;
+        const { mensagem, contextoFicha, conteudoArquivo } = request.data;
 
         if (!mensagem || typeof mensagem !== "string" || !mensagem.trim()) {
             throw new HttpsError("invalid-argument", "Mensagem e obrigatoria.");
@@ -74,6 +74,10 @@ exports.falarComSextaFeira = onCall(
 
         if (mensagem.length > 2000) {
             throw new HttpsError("invalid-argument", "Mensagem muito longa (max 2000 caracteres).");
+        }
+
+        if (conteudoArquivo && typeof conteudoArquivo === "string" && conteudoArquivo.length > 20000) {
+            throw new HttpsError("invalid-argument", "Conteudo do arquivo muito longo (max 20000 caracteres).");
         }
 
         try {
@@ -84,9 +88,14 @@ exports.falarComSextaFeira = onCall(
                 ? `${SYSTEM_PROMPT}\n\n--- CONTEXTO DA FICHA ---\n${contexto}\n--- FIM DO CONTEXTO ---`
                 : SYSTEM_PROMPT;
 
+            let conteudoFinal = mensagem.trim();
+            if (conteudoArquivo && conteudoArquivo.trim()) {
+                conteudoFinal += `\n\n--- CONTEUDO DO ARQUIVO ANEXADO ---\n${conteudoArquivo.trim()}\n--- FIM DO ARQUIVO ---`;
+            }
+
             const response = await ai.models.generateContent({
                 model: "gemini-2.5-flash",
-                contents: mensagem.trim(),
+                contents: conteudoFinal,
                 config: {
                     systemInstruction: systemInstruction,
                 },
