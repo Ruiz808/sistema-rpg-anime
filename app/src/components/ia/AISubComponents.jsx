@@ -165,25 +165,10 @@ export function AILore() {
 export function AIAreaCentral() {
     const ctx = useAIForm();
     if (!ctx) return FALLBACK;
-    
-    // 🔥 Puxamos também o textoAtivo e o atualizarTexto para podermos escrever no diário!
-    const { subAba, textoAtivo, atualizarTexto } = ctx;
+    const { subAba } = ctx;
 
     if (subAba === 'chat') return <AIChat />;
-    
-    // Atualizámos a chamada do gravador para receber o resumo
-    if (subAba === 'gravador') return (
-        <div style={{ flex: 1, overflowY: 'auto' }}>
-            <GravadorPanel 
-                onNovaTranscricao={(textoTranscrito) => {
-                    const textoAtual = textoAtivo || '';
-                    atualizarTexto(textoAtual + '\n\n[Transcrição da Sexta-Feira]:\n' + textoTranscrito);
-                    alert("A Sexta-Feira acabou de atualizar os Registros Akáshicos!");
-                }} 
-            />
-        </div>
-    );
-    
+    if (subAba === 'gravador') return <div style={{ flex: 1, overflowY: 'auto' }}><GravadorPanel /></div>;
     if (subAba === 'tierlist') return <AITierList />;
     if (subAba === 'lore') return <AILore />;
     return null;
