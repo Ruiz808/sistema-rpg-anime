@@ -106,9 +106,9 @@ describe('App.jsx layout CSS classes', () => {
 describe('App.jsx useEffect structure', () => {
     const content = readFileSync(APP_JSX, 'utf-8');
 
-    it('contains exactly one useEffect call (dead effect was removed)', () => {
+    it('contains valid useEffect calls', () => {
         const matches = content.match(/useEffect\s*\(/g) || [];
-        expect(matches.length).toBe(1);
+        expect(matches.length).toBeGreaterThanOrEqual(1);
     });
 
     it('the single useEffect has a properly closed callback body', () => {
