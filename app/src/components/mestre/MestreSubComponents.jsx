@@ -1,4 +1,7 @@
 import React, { useState } from 'react'; // Adicionado o useState aqui!
+import { ref, set } from 'firebase/database';
+// ATENÇÃO: Ajuste o caminho abaixo se o seu firebase-config estiver noutra pasta
+import { database } from '../../services/firebase-config';
 import { useMestreForm } from './MestreFormContext';
 
 const FALLBACK = <div style={{color:'#888',padding:10}}>Mestre provider não encontrado</div>;
@@ -105,31 +108,39 @@ export function MestreVozSistema() {
 
 // 🔥 NOVO COMPONENTE: FORJA DE NPCS 🔥
 export function MestreForjaNPC() {
-    const [npc, setNpc] = useState({
-        nome: '', avatar: '', hpMax: 100, manaMax: 50, forca: 1, destreza: 1, inteligencia: 1,
-    });
-    const [poderes, setPoderes] = useState([]);
-    const [formas, setFormas] = useState([]);
-
-    const handleChange = (e) => setNpc(prev => ({ ...prev, [e.target.name]: e.target.value }));
-
-    const adicionarPoder = () => setPoderes([...poderes, { nome: '', descricao: '', dano: '' }]);
-    const atualizarPoder = (index, campo, valor) => { const n = [...poderes]; n[index][campo] = valor; setPoderes(n); };
-    const removerPoder = (index) => setPoderes(poderes.filter((_, i) => i !== index));
-
-    const adicionarForma = () => setFormas([...formas, { nome: '', avatar: '', hpBonus: 0 }]);
-    const atualizarForma = (index, campo, valor) => { const n = [...formas]; n[index][campo] = valor; setFormas(n); };
-    const removerForma = (index) => setFormas(formas.filter((_, i) => i !== index));
-
-    const salvarNPC = () => {
+    const salvarNPC = async () => {
         if (!npc.nome) return alert("A entidade precisa ter um nome!");
         
-        const fichaCompleta = { ...npc, poderes, formas, isNPC: true, dataCriacao: Date.now() };
+        // Estruturamos a ficha exatamente como o seu sistema gosta para não bugar o Visor
+        const fichaCompleta = { 
+            bio: { classe: 'NPC - Ameaça', raca: 'Criatura' }, 
+            vida: { atual: Number(npc.hpMax), base: Number(npc.hpMax) },
+            mana: { atual: Number(npc.manaMax), base: Number(npc.manaMax) },
+            forca: { base: Number(npc.forca) },
+            destreza: { base: Number(npc.destreza) },
+            inteligencia: { base: Number(npc.inteligencia) },
+            avatar: npc.avatar,
+            poderes: poderes, // Os poderes e ataques que você adicionou
+            formas: formas,   // As fases do Boss
+            isNPC: true, 
+            dataCriacao: Date.now() 
+        };
         
-        console.log("Ficha Pronta para o Firebase:", fichaCompleta);
-        alert(`Entidade [${npc.nome}] forjada com sucesso! (Verifique o console [F12] para ver os dados gerados).`);
-        
-        // TODO: Enviar para o Banco de Dados do Firebase depois
+        try {
+            // O comando mágico que cria a pasta do monstro no banco de dados!
+            await set(ref(database, `personagens/${npc.nome}`), fichaCompleta);
+            
+            alert(`🔥 Ameaça [${npc.nome}] forjada e enviada para o Firebase com sucesso!`);
+            
+            // Limpa a forja para você poder criar o próximo lacaio
+            setNpc({ nome: '', avatar: '', hpMax: 100, manaMax: 50, forca: 1, destreza: 1, inteligencia: 1 });
+            setPoderes([]);
+            setFormas([]);
+
+        } catch (erro) {
+            console.error("Erro ao invocar entidade no Firebase:", erro);
+            alert("Erro ao salvar! Verifique o console ou a conexão.");
+        }
     };
 
     return (
