@@ -165,10 +165,10 @@ export function AILore() {
 export function AIAreaCentral() {
     const ctx = useAIForm();
     if (!ctx) return FALLBACK;
-    const { subAba } = ctx;
+    const { subAba, adicionarCapituloComTexto } = ctx;
 
     if (subAba === 'chat') return <AIChat />;
-    if (subAba === 'gravador') return <div style={{ flex: 1, overflowY: 'auto' }}><GravadorPanel /></div>;
+    if (subAba === 'gravador') return <div style={{ flex: 1, overflowY: 'auto' }}><GravadorPanel onTranscricaoCompleta={adicionarCapituloComTexto} /></div>;
     if (subAba === 'tierlist') return <AITierList />;
     if (subAba === 'lore') return <AILore />;
     return null;

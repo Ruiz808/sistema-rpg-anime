@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ref, uploadBytes } from 'firebase/storage';
-import { storage } from '../../services/firebase-config'; // Verifique se o caminho está correto no seu projeto!
+import { httpsCallable } from 'firebase/functions';
+import { storage, functions } from '../../services/firebase-config';
 
-export default function GravadorPanel() {
+export default function GravadorPanel({ onTranscricaoCompleta }) {
     const [gravando, setGravando] = useState(false);
     const [logs, setLogs] = useState(['Módulo de Gravação e Escuta inicializado. Aguardando comando...']);
     const mediaRecorderRef = useRef(null);
@@ -46,14 +47,32 @@ export default function GravadorPanel() {
                     // Aponta para a pasta "audios_mesa" no Firebase Storage
                     const audioRef = ref(storage, `audios_mesa/${nomeArquivo}`);
                     
-                    // Faz o upload de fato
                     await uploadBytes(audioRef, audioBlob);
                     addLog(`✅ Upload concluído com sucesso: ${nomeArquivo}`);
-                    addLog("Aguardando a Sexta-Feira processar a transcrição...");
-                    
+
+                    if (!functions) {
+                        addLog("❌ Firebase Functions indisponível. Transcrição cancelada.");
+                        return;
+                    }
+
+                    addLog("🧠 Enviando para a Sexta-Feira transcrever...");
+                    const transcrever = httpsCallable(functions, 'transcreverAudioSextaFeira');
+                    const resultado = await transcrever({ fileName: nomeArquivo });
+                    const textoGerado = resultado.data?.texto;
+
+                    if (textoGerado) {
+                        addLog("✅ Registro Akáshico gerado com sucesso!");
+                        if (onTranscricaoCompleta) {
+                            const dataHoje = new Date().toLocaleDateString('pt-BR');
+                            onTranscricaoCompleta(`Sessão ${dataHoje}`, textoGerado);
+                        }
+                    } else {
+                        addLog("⚠️ A Sexta-Feira não conseguiu gerar um resumo.");
+                    }
+
                 } catch (erro) {
-                    addLog(`❌ ERRO no upload: ${erro.message}`);
-                    console.error("Erro no Firebase Storage:", erro);
+                    addLog(`❌ ERRO: ${erro.message}`);
+                    console.error("Erro no Gravador:", erro);
                 }
             };
 

@@ -60,15 +60,19 @@ export function AIFormProvider({ children }) {
     const [novoAvatar, setNovoAvatar] = useState('');
     
     const [capitulosPresente, setCapitulosPresente] = useState(() => {
-        const salvo = localStorage.getItem('rpgSextaFeira_capitulos');
-        if (salvo) return JSON.parse(salvo).map(c => ({ ...c, tierList: c.tierList || [] }));
+        try {
+            const salvo = localStorage.getItem('rpgSextaFeira_capitulos');
+            if (salvo) return JSON.parse(salvo).map(c => ({ ...c, tierList: c.tierList || [] }));
+        } catch (e) { /* localStorage corrompido, usa padrão */ }
         return [{ id: 1, titulo: 'Capítulo 1 - Reino de Faku', texto: 'A marca da fênix...', tierList: [] }];
     });
     const [capituloAtivoId, setCapituloAtivoId] = useState(() => Number(localStorage.getItem('rpgSextaFeira_capituloAtivo')) || 1);
 
     const [capitulosFuturo, setCapitulosFuturo] = useState(() => {
-        const salvo = localStorage.getItem('rpgSextaFeira_capitulosFuturo');
-        if (salvo) return JSON.parse(salvo).map(c => ({ ...c, tierList: c.tierList || [] }));
+        try {
+            const salvo = localStorage.getItem('rpgSextaFeira_capitulosFuturo');
+            if (salvo) return JSON.parse(salvo).map(c => ({ ...c, tierList: c.tierList || [] }));
+        } catch (e) { /* localStorage corrompido, usa padrão */ }
         return [{ id: 100, titulo: 'Ecos do Futuro - Parte 1', texto: 'Crônicas do Amanhã...', tierList: [] }];
     });
     const [capFuturoAtivoId, setCapFuturoAtivoId] = useState(() => Number(localStorage.getItem('rpgSextaFeira_capFuturoAtivo')) || 100);
@@ -240,6 +244,13 @@ export function AIFormProvider({ children }) {
         else setCapitulosFuturo(prev => prev.map(cap => cap.id === capFuturoAtivoId ? { ...cap, texto: novoTexto } : cap));
     }, [loreFoco, capituloAtivoId, capFuturoAtivoId]);
 
+    const adicionarCapituloComTexto = useCallback((titulo, texto) => {
+        const novoId = Date.now();
+        setCapitulosPresente(prev => [...prev, { id: novoId, titulo, texto, tierList: [] }]);
+        setCapituloAtivoId(novoId);
+        setLoreFoco('presente');
+    }, []);
+
     useEffect(() => { if (subAba === 'chat' && chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight; }, [historico, subAba]);
 
     const montarContextoFicha = useCallback(() => {
@@ -321,7 +332,7 @@ export function AIFormProvider({ children }) {
         capitulosFuturo, setCapitulosFuturo, capFuturoAtivoId, setCapFuturoAtivoId,
         capituloAtivoObj, textoAtivo, tierListAtiva, poolPersonagens,
         moverPersonagem, handleDragStart, handleDragOver, handleDrop, adicionarCustomizado,
-        adicionarCapitulo, editarTituloCapitulo, apagarCapitulo, atualizarTexto,
+        adicionarCapitulo, editarTituloCapitulo, apagarCapitulo, atualizarTexto, adicionarCapituloComTexto,
         montarContextoFicha, enviarMensagem, handleKeyDown,
         arquivoTexto, nomeArquivo, setArquivoTexto, setNomeArquivo,
         fileInputRef, handleArquivoSelecionado
@@ -330,7 +341,7 @@ export function AIFormProvider({ children }) {
         loreFoco, novoPersonagem, novoAvatar, capitulosPresente, capituloAtivoId,
         capitulosFuturo, capFuturoAtivoId, capituloAtivoObj, textoAtivo, tierListAtiva, poolPersonagens,
         moverPersonagem, handleDragStart, handleDragOver, handleDrop, adicionarCustomizado,
-        adicionarCapitulo, editarTituloCapitulo, apagarCapitulo, atualizarTexto,
+        adicionarCapitulo, editarTituloCapitulo, apagarCapitulo, atualizarTexto, adicionarCapituloComTexto,
         montarContextoFicha, enviarMensagem, handleKeyDown,
         arquivoTexto, nomeArquivo, handleArquivoSelecionado
     ]);
