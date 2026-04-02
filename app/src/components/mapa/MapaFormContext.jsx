@@ -260,6 +260,14 @@ export function MapaFormProvider({ children }) {
         return coresJogadoresRef.current[nome];
     }, []);
 
+    // CÓDIGO DA LINHA 257 (Cole este novo bloco para Gerir Zonas)
+    const deletarZona = useCallback((idZona) => {
+        if(!window.confirm("O fluxo do tempo dissipa esta magia. Apagar a Zona de Efeito do mapa?")) return;
+        const novoCenario = JSON.parse(JSON.stringify(cenario));
+        novoCenario.zonas = (novoCenario.zonas || []).filter(z => z.id !== idZona);
+        salvarCenarioCompleto(novoCenario);
+    }, [cenario]);
+
     const getAvatarInfo = useCallback((ficha) => {
         if (!ficha) return { img: '', forma: null };
         const result = { img: ficha.avatar ? ficha.avatar.base : '', forma: null };
@@ -490,7 +498,7 @@ export function MapaFormProvider({ children }) {
         handleUploadNovaCena, ativarCena, deletarCena, corDoJogador, getAvatarInfo,
         cells, jogadores, playersNaTaverna, ordemIniciativa, handleCellClick,
         alterarZoom, setMinhaIniciativa, avancarTurno, sairDoCombate, encerrarCombate,
-        rolarAcertoRapido, tokenMap, tokens3D, jogadorDaVez, infoDaVez, fmt
+        rolarAcertoRapido, tokenMap, tokens3D, jogadorDaVez, infoDaVez, fmt, deletarZona
     }), [
         minhaFicha, meuNome, personagens, feedCombate, isMestre, dummies, alvoSelecionado, cenario,
         fichaSegura, modo3D, tamanhoCelula, iniciativaInput, altitudeInput,
@@ -503,7 +511,7 @@ export function MapaFormProvider({ children }) {
         jogadorDaVez, infoDaVez, fmt, toggleModoRP, togglePresencaTaverna, changeVantagem,
         changeDesvantagem, handleUploadNovaCena, ativarCena, deletarCena, corDoJogador,
         getAvatarInfo, handleCellClick, alterarZoom, setMinhaIniciativa, avancarTurno,
-        sairDoCombate, encerrarCombate, rolarAcertoRapido
+        sairDoCombate, encerrarCombate, rolarAcertoRapido, deletarZona
     ]);
 
     return (

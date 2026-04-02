@@ -147,6 +147,33 @@ export function MapaMestreGerenciadorCenas() {
     );
 }
 
+
+// ADICIONE ESTE SUB-COMPONENTE AO FICHEIRO (Pode ser abaixo de MapaMestreGerenciadorCenas)
+
+export function MapaMestreGerenciadorZonas() {
+    const ctx = useMapaForm();
+    if (!ctx) return FALLBACK;
+    const { isMestre, isModoRP, mestreVendoRP, cenario, deletarZona } = ctx;
+    if (!isMestre || (isModoRP && !mestreVendoRP)) return null;
+
+    const zonas = cenario?.zonas || [];
+    if (zonas.length === 0) return null;
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 15, background: 'rgba(255, 0, 100, 0.1)', padding: 15, borderRadius: 5, border: '1px solid #ff00ff' }}>
+            <h3 style={{ color: '#ff00ff', margin: 0 }}>🌪️ Zonas e Anomalias no Campo</h3>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                {zonas.map(z => (
+                    <div key={z.id} style={{ background: 'rgba(0,0,0,0.6)', border: `1px solid rgba(${z.rgb}, 0.8)`, padding: '5px 10px', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ color: `rgb(${z.rgb})`, fontWeight: 'bold', fontSize: '0.85em' }}>{z.nome} (Raio {z.raio}Q | {z.duracao}T)</span>
+                        <button className="btn-neon btn-red btn-small" onClick={() => deletarZona(z.id)} style={{ padding: '2px 8px', fontSize: '0.8em', margin: 0 }}>Dissipar</button>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 export function MapaMestreGeradorDummies() {
     const ctx = useMapaForm();
     if (!ctx) return FALLBACK;
@@ -327,7 +354,14 @@ export function MapaControlesSuperiores() {
 export function MapaVisao() {
     const ctx = useMapaForm();
     if (!ctx) return FALLBACK;
-    const { modo3D, tamanhoCelula, cenaAtual, cells, tokenMap, dummies, cenaRenderId, tokens3D, handleCellClick, getAvatarInfo, meuNome, corDoJogador, overridesCompendio } = ctx;
+    const { 
+        modo3D, tamanhoCelula, cenaAtual, cells, tokenMap, dummies, 
+        cenaRenderId, tokens3D, handleCellClick, getAvatarInfo, 
+        meuNome, corDoJogador, overridesCompendio, cenario 
+    } = ctx;
+
+    // Filtra as zonas mágicas que pertencem a esta cena
+    const zonasCena = (cenario?.zonas || []).filter(z => (z.cenaId || 'default') === cenaRenderId);
 
     if (modo3D) {
         return (
@@ -341,8 +375,30 @@ export function MapaVisao() {
         <div id="combat-grid" style={{
             display: 'grid', gridTemplateColumns: `repeat(${MAP_SIZE}, ${tamanhoCelula}px)`, gap: 1,
             overflow: 'auto', maxHeight: '60vh', background: 'rgba(0,0,0,0.3)', padding: 5, borderRadius: 5,
-            backgroundImage: urlSeguraParaCss(cenaAtual.img), backgroundSize: 'cover', backgroundPosition: 'center'
+            backgroundImage: urlSeguraParaCss(cenaAtual.img), backgroundSize: 'cover', backgroundPosition: 'center',
+            position: 'relative' // IMPORTANTE PARA AS ZONAS AFIXAREM CORRETAMENTE
         }}>
+            {/* 🔥 AS ZONAS MÁGICAS PERSISTENTES NO GRID 🔥 */}
+            {zonasCena.map(z => (
+                <div key={z.id} style={{
+                    position: 'absolute', pointerEvents: 'none', zIndex: 3,
+                    left: (z.x - z.raio) * tamanhoCelula,
+                    top: (z.y - z.raio) * tamanhoCelula,
+                    width: (z.raio * 2 + 1) * tamanhoCelula + (z.raio * 2), // + gaps se houver
+                    height: (z.raio * 2 + 1) * tamanhoCelula + (z.raio * 2),
+                    background: `rgba(${z.rgb || '255,0,0'}, 0.2)`,
+                    border: `3px dashed rgba(${z.rgb || '255,0,0'}, 0.9)`,
+                    boxShadow: `inset 0 0 20px rgba(${z.rgb}, 0.5)`,
+                    borderRadius: '8px',
+                    display: 'flex', alignItems: 'flex-start', justifyContent: 'center'
+                }}>
+                    <span style={{ background: 'rgba(0,0,0,0.7)', color: '#fff', fontSize: '0.7em', padding: '2px 8px', borderRadius: '0 0 8px 8px', borderBottom: `1px solid rgba(${z.rgb}, 0.8)`, borderLeft: `1px solid rgba(${z.rgb}, 0.8)`, borderRight: `1px solid rgba(${z.rgb}, 0.8)`, fontWeight: 'bold' }}>
+                        {z.nome}
+                    </span>
+                </div>
+            ))}
+
+            {/* 🔥 AS CÉLULAS DO MAPA E OS TOKENS (INALTERADO) 🔥 */}
             {cells.map((cell) => {
                 const key = `${cell.x},${cell.y}`;
                 const tokens = tokenMap[key] || [];
@@ -353,6 +409,7 @@ export function MapaVisao() {
                 return (
                     <div key={key} className="map-cell" data-x={cell.x} data-y={cell.y} onClick={() => handleCellClick(cell.x, cell.y)} style={{ width: tamanhoCelula, height: tamanhoCelula, border: '1px solid rgba(255,255,255,0.1)', position: 'relative', cursor: 'pointer' }}>
                         {cellDummies.map(([id, d]) => <DummieToken key={id} id={id} dummie={d} />)}
+                        
                         {tokens.map((tk) => {
                             const info = getAvatarInfo(tk.ficha);
                             const isMe = tk.nome === meuNome;
@@ -396,6 +453,7 @@ export function MapaAreaCentral() {
     return (
         <>
             <MapaControlesSuperiores />
+            <MapaMestreGerenciadorZonas /> {/* 🔥 NOVO RENDER AQUI */}
             <MapaVisao />
         </>
     );

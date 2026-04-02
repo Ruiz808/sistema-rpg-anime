@@ -99,12 +99,15 @@ export function ElementosFormProvider({ children }) {
     const [dadosQtd, setDadosQtd] = useState(0);
     const [dadosFaces, setDadosFaces] = useState(20);
     
-    // Começa com flexível se for da aba elementos genéricos
     const [energiaCombustao, setEnergiaCombustao] = useState('flexivel');
     const [tipoMecanica, setTipoMecanica] = useState('ataque'); 
     const [savingAttr, setSavingAttr] = useState('destreza'); 
     const [alcanceQuad, setAlcanceQuad] = useState(1);
+    
+    // 🔥 NOVAS PROPRIEDADES DE ZONA DE EFEITO 🔥
     const [areaQuad, setAreaQuad] = useState(0);
+    const [alvosAfetados, setAlvosAfetados] = useState('todos'); // 'todos', 'inimigos', 'aliados'
+    const [duracaoZona, setDuracaoZona] = useState(0); // 0 = instantâneo
 
     const formRef = useRef(null);
     const profGlobal = parseInt(minhaFicha.proficienciaBase) || 2;
@@ -116,7 +119,6 @@ export function ElementosFormProvider({ children }) {
         return parseInt(strVal.substring(0, 2), 10);
     }, []);
 
-    // 🔥 FILTRO INTELIGENTE E OPÇÃO FLEXÍVEL 🔥
     const allowedEnergies = useMemo(() => {
         let opts = [];
         const isArcana = elemSelecionado.includes('Arcanas/Negra');
@@ -138,7 +140,6 @@ export function ElementosFormProvider({ children }) {
         } else if (abaAtual === 'corpo') { opts = [{ value: 'corpo', label: 'Corpo (Base: For/Des)' }];
         } else if (abaAtual === 'mana') { opts = [{ value: 'mana', label: 'Mana (Base: Int)' }];
         } else {
-            // Elementos e Compostos podem usar qualquer das 3 principais, por isso default é flexível!
             opts = [
                 { value: 'flexivel', label: 'Flexível (Escolher na Conjuração)' },
                 { value: 'mana', label: 'Mana (Base: Int)' }, { value: 'aura', label: 'Aura (Base: Eng. Esp)' }, { value: 'chakra', label: 'Chakra (Base: Stamina)' }
@@ -161,13 +162,14 @@ export function ElementosFormProvider({ children }) {
         else if (abaAtual === 'aura') setEnergiaCombustao('aura');
         else if (abaAtual === 'corpo') setEnergiaCombustao('corpo');
         else if (abaAtual === 'astrais') setEnergiaCombustao('pontosVitais');
-        else setEnergiaCombustao('flexivel'); // Padrão flexível para elementos normais
+        else setEnergiaCombustao('flexivel'); 
     }, [abaAtual]);
 
     const cancelarEdicaoElem = useCallback(() => {
         setElemEditandoId(null); setNomeElem(''); 
         setEnergiaCombustao(abaAtual === 'elementos' || abaAtual === 'compostos' ? 'flexivel' : 'mana');
         setTipoMecanica('ataque'); setAlcanceQuad(1); setAreaQuad(0);
+        setAlvosAfetados('todos'); setDuracaoZona(0);
     }, [setElemEditandoId, abaAtual]);
 
     const salvarNovoElem = useCallback(() => {
@@ -178,7 +180,8 @@ export function ElementosFormProvider({ children }) {
             const novaMagia = {
                 nome: n, elemento: elemSelecionado, bonusTipo, bonusValor,
                 custoValor: parseFloat(custoValor) || 0, dadosExtraQtd: parseInt(dadosQtd) || 0, dadosExtraFaces: parseInt(dadosFaces) || 20,
-                energiaCombustao, tipoMecanica, savingAttr, alcanceQuad: parseFloat(alcanceQuad) || 1, areaQuad: parseFloat(areaQuad) || 0,
+                energiaCombustao, tipoMecanica, savingAttr, alcanceQuad: parseFloat(alcanceQuad) || 1, 
+                areaQuad: parseFloat(areaQuad) || 0, alvosAfetados, duracaoZona: parseInt(duracaoZona) || 0,
                 equipado: false
             };
             if (elemEditandoId) {
@@ -195,7 +198,7 @@ export function ElementosFormProvider({ children }) {
         });
         cancelarEdicaoElem();
         salvarFichaSilencioso();
-    }, [nomeElem, elemSelecionado, bonusTipo, bonusValor, custoValor, dadosQtd, dadosFaces, energiaCombustao, tipoMecanica, savingAttr, alcanceQuad, areaQuad, elemEditandoId, updateFicha, cancelarEdicaoElem]);
+    }, [nomeElem, elemSelecionado, bonusTipo, bonusValor, custoValor, dadosQtd, dadosFaces, energiaCombustao, tipoMecanica, savingAttr, alcanceQuad, areaQuad, alvosAfetados, duracaoZona, elemEditandoId, updateFicha, cancelarEdicaoElem]);
 
     const editarElem = useCallback((id) => {
         const p = (minhaFicha.ataquesElementais || []).find(i => i.id === id);
@@ -222,7 +225,9 @@ export function ElementosFormProvider({ children }) {
         setBonusValor(p.bonusValor || ''); setCustoValor(p.custoValor || 0); setDadosQtd(p.dadosExtraQtd || 0);
         setDadosFaces(p.dadosExtraFaces || 20); setEnergiaCombustao(p.energiaCombustao || 'mana');
         setTipoMecanica(p.tipoMecanica || 'ataque'); setSavingAttr(p.savingAttr || 'destreza');
-        setAlcanceQuad(p.alcanceQuad || 1); setAreaQuad(p.areaQuad || 0);
+        setAlcanceQuad(p.alcanceQuad || 1); setAreaQuad(p.areaQuad || 0); 
+        setAlvosAfetados(p.alvosAfetados || 'todos'); setDuracaoZona(p.duracaoZona || 0);
+
         if (formRef.current) formRef.current.scrollIntoView({ behavior: 'smooth' });
     }, [minhaFicha.ataquesElementais, setElemEditandoId, updateFicha]);
 
@@ -241,82 +246,10 @@ export function ElementosFormProvider({ children }) {
         salvarFichaSilencioso();
     }, [updateFicha]);
 
-    // 🔥 MOTOR DE CONJURAÇÃO AGORA ACEITA ENERGIA OVERRIDE 🔥
     const conjurarMagia = useCallback((magia, energiaOverride = null) => {
-        const storeState = useStore.getState();
-        const { alvoSelecionado, dummies, cenario } = storeState;
-        const fichaVirtual = storeState.minhaFicha;
-        
-        // Se for flexível e mandarem um override (via card), usa-o.
-        const energiaFinal = energiaOverride || magia.energiaCombustao;
-        
-        let attrRegente = 'inteligencia';
-        let modRegente = 0;
-
-        if (energiaFinal === 'corpo') {
-            const modForca = getModificadorDoisDigitos(fichaVirtual['forca']?.base);
-            const modDestreza = getModificadorDoisDigitos(fichaVirtual['destreza']?.base);
-            if (modDestreza > modForca) { attrRegente = 'destreza'; modRegente = modDestreza; } 
-            else { attrRegente = 'forca'; modRegente = modForca; }
-        } else {
-            const energiaToAttr = { 'mana': 'inteligencia', 'aura': 'energiaEsp', 'chakra': 'stamina', 'pontosVitais': 'constituicao', 'pontosMortais': 'inteligencia', 'livre': 'inteligencia', 'flexivel': 'inteligencia' };
-            attrRegente = energiaToAttr[energiaFinal] || 'inteligencia';
-            modRegente = getModificadorDoisDigitos(fichaVirtual[attrRegente]?.base);
-        }
-
-        let alvosAtingidos = [];
-        const alvoDummie = alvoSelecionado && dummies[alvoSelecionado] ? dummies[alvoSelecionado] : null;
-
-        if (alvoDummie && (magia.tipoMecanica === 'ataque' || magia.tipoMecanica === 'saving')) {
-            if (magia.areaQuad > 0) {
-                const cenaAtivaId = cenario?.ativa || 'default';
-                const escala = cenario?.lista?.[cenaAtivaId]?.escala || 1.5;
-                Object.entries(dummies).forEach(([id, d]) => {
-                    const isSameScene = (d.cenaId || 'default') === (alvoDummie.cenaId || 'default');
-                    if (isSameScene && d.posicao && alvoDummie.posicao) {
-                        const dx = Math.abs((d.posicao.x || 0) - (alvoDummie.posicao.x || 0));
-                        const dy = Math.abs((d.posicao.y || 0) - (alvoDummie.posicao.y || 0));
-                        const dz = Math.floor(Math.abs((d.posicao.z || 0) - (alvoDummie.posicao.z || 0)) / escala);
-                        if (Math.max(dx, dy, dz) <= magia.areaQuad) alvosAtingidos.push(d);
-                    }
-                });
-            } else {
-                alvosAtingidos.push(alvoDummie);
-            }
-        }
-
-        if (magia.tipoMecanica === 'ataque') {
-            const vantagens = fichaVirtual.ataqueConfig?.vantagens || 0;
-            const desvantagens = fichaVirtual.ataqueConfig?.desvantagens || 0;
-            const result = calcularAcerto({ 
-                qD: 1, fD: 20, prof: profGlobal, bonus: 0, sels: [attrRegente], 
-                minhaFicha: fichaVirtual, itensEquipados: [], vantagens, desvantagens 
-            });
-            let alvosPayload = alvosAtingidos.map(d => ({ nome: d.nome, defesa: d.valorDefesa, acertou: result.acertoTotal >= d.valorDefesa }));
-            
-            enviarParaFeed({
-                tipo: 'acerto', nome: meuNome, acertoTotal: result.acertoTotal,
-                profBonusTexto: `Mod. Magia (${attrRegente.toUpperCase()}): +${modRegente} | Proficiência: +${profGlobal}`,
-                rolagem: result.rolagem, armaStr: ` com ${magia.nome} (${magia.elemento})`,
-                alvosArea: alvosPayload, areaEf: magia.areaQuad || 0
-            });
-            setAbaAtiva('aba-log');
-        } 
-        else if (magia.tipoMecanica === 'saving') {
-            const cd = 8 + modRegente + profGlobal;
-            let textoAlvos = alvosAtingidos.length > 0 ? ` Alvos na zona de explosão: ${alvosAtingidos.map(d=>d.nome).join(', ')}.` : '';
-            enviarParaFeed({ tipo: 'sistema', nome: meuNome, texto: `🌀 CONJUROU: ${magia.nome}!${textoAlvos} Precisam de passar num Saving Throw de ${magia.savingAttr.toUpperCase()} (CD: ${cd}). Baseado em: ${attrRegente.toUpperCase()}.` });
-            setAbaAtiva('aba-log');
-        }
-        else if (magia.tipoMecanica === 'infusao') {
-            enviarParaFeed({ tipo: 'sistema', nome: meuNome, texto: `✨ INFUSÃO ELEMENTAL: As armas e poderes de ${meuNome} estão envoltos em ${magia.elemento} através da técnica ${magia.nome}!` });
-            setAbaAtiva('aba-log');
-        }
-        else {
-            enviarParaFeed({ tipo: 'sistema', nome: meuNome, texto: `✨ SUPORTE MÁGICO: ${meuNome} conjurou ${magia.nome} (${magia.elemento})!` });
-            setAbaAtiva('aba-log');
-        }
-    }, [getModificadorDoisDigitos, profGlobal, meuNome, setAbaAtiva]);
+        enviarParaFeed({ tipo: 'sistema', nome: meuNome, texto: `Atenção: A conjuração direta pelo Grimório foi desativada temporariamente. Equipe a magia e use o painel de Dano/Acerto para usufruir do novo sistema de Áreas Persistentes!` });
+        setAbaAtiva('aba-ataque');
+    }, [meuNome, setAbaAtiva]);
 
     const ataquesElementais = minhaFicha.ataquesElementais || [];
     const magiasDoGrupo = useMemo(() => ataquesElementais.filter(e => (e.elemento || 'Neutro') === elemSelecionado), [ataquesElementais, elemSelecionado]);
@@ -328,12 +261,13 @@ export function ElementosFormProvider({ children }) {
         custoValor, setCustoValor, dadosQtd, setDadosQtd, dadosFaces, setDadosFaces,
         energiaCombustao, setEnergiaCombustao, tipoMecanica, setTipoMecanica,
         savingAttr, setSavingAttr, alcanceQuad, setAlcanceQuad, areaQuad, setAreaQuad,
+        alvosAfetados, setAlvosAfetados, duracaoZona, setDuracaoZona,
         formRef, profGlobal, getModificadorDoisDigitos, allowedEnergies,
         selecionarElemento, salvarNovoElem, editarElem, cancelarEdicaoElem, toggleEquiparElem,
         deletarElem, conjurarMagia, magiasDoGrupo, magiasConjuradasOutros, elemEditandoId, minhaFicha
     }), [
         abaAtual, elemSelecionado, nomeElem, bonusTipo, bonusValor, custoValor, dadosQtd, dadosFaces,
-        energiaCombustao, tipoMecanica, savingAttr, alcanceQuad, areaQuad, profGlobal, getModificadorDoisDigitos, allowedEnergies,
+        energiaCombustao, tipoMecanica, savingAttr, alcanceQuad, areaQuad, alvosAfetados, duracaoZona, profGlobal, getModificadorDoisDigitos, allowedEnergies,
         selecionarElemento, salvarNovoElem, editarElem, cancelarEdicaoElem, toggleEquiparElem, deletarElem, conjurarMagia, magiasDoGrupo, magiasConjuradasOutros, elemEditandoId, minhaFicha
     ]);
 
