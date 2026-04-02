@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useElementosForm, emogis, cores, ABAS_GRIMORIO, BONUS_OPTIONS } from './ElementosFormContext';
 
-const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Elementos provider não encontrado</div>;
+const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Elementos provider nao encontrado</div>;
 
 export function ElementosSidebar() {
     const ctx = useElementosForm();
@@ -129,33 +129,38 @@ export function ElementosFormMagia() {
 
 export function ElementosMagiaCard({ magia }) {
     const ctx = useElementosForm();
+    const [energiaFlex, setEnergiaFlex] = useState('mana'); // 🔥 ESTADO LOCAL DO CARD
+
     if (!ctx) return null;
     const { toggleEquiparElem, editarElem, deletarElem, conjurarMagia, profGlobal, getModificadorDoisDigitos, minhaFicha } = ctx;
+
+    const isFlexivel = magia.energiaCombustao === 'flexivel';
+    const energiaAtiva = isFlexivel ? energiaFlex : magia.energiaCombustao;
 
     const isEquipped = magia.equipado;
     const corPura = cores[magia.elemento] || '#cccccc';
     const c = isEquipped ? corPura : '#888';
-    const bg = isEquipped ? `rgba(0,0,0,0.8)` : 'rgba(0,0,0,0.4)'; // Fundo mais escuro para contraste, borda fará o trabalho
+    const bg = isEquipped ? `rgba(0,0,0,0.7)` : 'rgba(0,0,0,0.4)'; // Mais escuro para destacar o botão inline
 
     const elemText = magia.elemento || 'Neutro';
     const bTipo = magia.bonusTipo || 'nenhum';
     const propText = bTipo === 'nenhum' ? 'Sem bônus atrelado' : bTipo.replace('_', ' ').toUpperCase();
     const bValorStr = bTipo === 'nenhum' ? '' : `: ${bTipo.includes('mult_') ? 'x' : '+'}${magia.bonusValor || 0}`;
     const dadosStr = magia.dadosExtraQtd > 0 ? ` | Dados: +${magia.dadosExtraQtd}d${magia.dadosExtraFaces || 20}` : '';
-    const custoStr = magia.custoValor > 0 ? ` | Custo: ${magia.custoValor}% (${magia.energiaCombustao?.toUpperCase()})` : ` | Custo: Livre`;
+    const custoStr = magia.custoValor > 0 ? ` | Custo: ${magia.custoValor}% (${energiaAtiva?.toUpperCase()})` : ` | Custo: Livre`;
 
     const mec = magia.tipoMecanica || 'ataque';
     
     let regente = 'inteligencia';
     let modBase = 0;
-    if (magia.energiaCombustao === 'corpo') {
+    if (energiaAtiva === 'corpo') {
         const modForca = getModificadorDoisDigitos(minhaFicha['forca']?.base);
         const modDestreza = getModificadorDoisDigitos(minhaFicha['destreza']?.base);
         if (modDestreza > modForca) { regente = 'destreza'; modBase = modDestreza; } 
         else { regente = 'forca'; modBase = modForca; }
     } else {
-        const energiaToAttr = { 'mana': 'inteligencia', 'aura': 'energiaEsp', 'chakra': 'stamina', 'pontosVitais': 'constituicao', 'pontosMortais': 'inteligencia', 'livre': 'inteligencia' };
-        regente = energiaToAttr[magia.energiaCombustao || 'mana'] || 'inteligencia';
+        const energiaToAttr = { 'mana': 'inteligencia', 'aura': 'energiaEsp', 'chakra': 'stamina', 'pontosVitais': 'constituicao', 'pontosMortais': 'inteligencia', 'livre': 'inteligencia', 'flexivel': 'inteligencia' };
+        regente = energiaToAttr[energiaAtiva || 'mana'] || 'inteligencia';
         modBase = getModificadorDoisDigitos(minhaFicha[regente]?.base);
     }
 
@@ -177,11 +182,32 @@ export function ElementosMagiaCard({ magia }) {
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                    
+                    {/* 🔥 BOTÃO DE CONJURAÇÃO INTELIGENTE COM INLINE SELECT 🔥 */}
                     {isEquipped && (
-                        <button className="btn-neon btn-gold" onClick={() => conjurarMagia(magia)} style={{ padding: '5px 15px', fontSize: '1.1em', margin: 0, boxShadow: `0 0 10px ${c}` }}>
-                            🪄 CONJURAR
-                        </button>
+                        <div style={{ display: 'flex', alignItems: 'stretch', boxShadow: `0 0 10px ${c}`, borderRadius: '4px', overflow: 'hidden', margin: 0 }}>
+                            {isFlexivel && (
+                                <select 
+                                    value={energiaFlex} 
+                                    onChange={e => setEnergiaFlex(e.target.value)} 
+                                    style={{ 
+                                        margin: 0, border: 'none', background: 'rgba(0,0,0,0.8)', color: '#fff', 
+                                        outline: 'none', padding: '0 5px', borderRight: `1px solid ${c}`,
+                                        fontSize: '0.85em', fontWeight: 'bold'
+                                    }}
+                                    title="Escolha a Energia a gastar neste momento!"
+                                >
+                                    <option value="mana">Mana</option>
+                                    <option value="aura">Aura</option>
+                                    <option value="chakra">Chakra</option>
+                                </select>
+                            )}
+                            <button className="btn-neon btn-gold" onClick={() => conjurarMagia(magia, isFlexivel ? energiaFlex : null)} style={{ padding: '5px 15px', fontSize: '1.1em', margin: 0, border: 'none', borderRadius: 0 }}>
+                                🪄 CONJURAR
+                            </button>
+                        </div>
                     )}
+
                     <button className="btn-neon" style={{ borderColor: c, color: c, padding: '5px 15px', fontSize: '1em', margin: 0 }} onClick={() => toggleEquiparElem(magia.id)}>{isEquipped ? 'PREPARADA' : 'MEMORIZAR'}</button>
                     <button className="btn-neon btn-blue" style={{ padding: '5px 15px', fontSize: '0.9em', margin: 0 }} onClick={() => editarElem(magia.id)}>EDITAR</button>
                     <button className="btn-neon btn-red" style={{ padding: '5px 15px', fontSize: '0.9em', margin: 0 }} onClick={() => deletarElem(magia.id)}>APAGAR</button>

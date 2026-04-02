@@ -99,7 +99,8 @@ export function ElementosFormProvider({ children }) {
     const [dadosQtd, setDadosQtd] = useState(0);
     const [dadosFaces, setDadosFaces] = useState(20);
     
-    const [energiaCombustao, setEnergiaCombustao] = useState('mana');
+    // Começa com flexível se for da aba elementos genéricos
+    const [energiaCombustao, setEnergiaCombustao] = useState('flexivel');
     const [tipoMecanica, setTipoMecanica] = useState('ataque'); 
     const [savingAttr, setSavingAttr] = useState('destreza'); 
     const [alcanceQuad, setAlcanceQuad] = useState(1);
@@ -115,6 +116,7 @@ export function ElementosFormProvider({ children }) {
         return parseInt(strVal.substring(0, 2), 10);
     }, []);
 
+    // 🔥 FILTRO INTELIGENTE E OPÇÃO FLEXÍVEL 🔥
     const allowedEnergies = useMemo(() => {
         let opts = [];
         const isArcana = elemSelecionado.includes('Arcanas/Negra');
@@ -122,6 +124,7 @@ export function ElementosFormProvider({ children }) {
 
         if (isArcana) {
             opts = [
+                { value: 'flexivel', label: 'Flexível (Escolher na Conjuração)' },
                 { value: 'mana', label: 'Mana (Base: Int)' }, { value: 'aura', label: 'Aura (Base: Eng. Esp)' }, { value: 'chakra', label: 'Chakra (Base: Stamina)' },
                 { value: 'corpo', label: 'Corpo (Base: For/Des)' }, { value: 'pontosVitais', label: 'Pts. Vitais (Base: Const)' }, { value: 'pontosMortais', label: 'Pts. Mortais (Base: Int)' },
                 { value: 'livre', label: 'Truque / Livre' }
@@ -135,11 +138,15 @@ export function ElementosFormProvider({ children }) {
         } else if (abaAtual === 'corpo') { opts = [{ value: 'corpo', label: 'Corpo (Base: For/Des)' }];
         } else if (abaAtual === 'mana') { opts = [{ value: 'mana', label: 'Mana (Base: Int)' }];
         } else {
-            opts = [{ value: 'mana', label: 'Mana (Base: Int)' }, { value: 'aura', label: 'Aura (Base: Eng. Esp)' }, { value: 'chakra', label: 'Chakra (Base: Stamina)' }];
+            // Elementos e Compostos podem usar qualquer das 3 principais, por isso default é flexível!
+            opts = [
+                { value: 'flexivel', label: 'Flexível (Escolher na Conjuração)' },
+                { value: 'mana', label: 'Mana (Base: Int)' }, { value: 'aura', label: 'Aura (Base: Eng. Esp)' }, { value: 'chakra', label: 'Chakra (Base: Stamina)' }
+            ];
         }
 
         if (elemEditandoId && !opts.some(o => o.value === energiaCombustao)) {
-            const allLabels = { 'mana': 'Mana', 'aura': 'Aura', 'chakra': 'Chakra', 'corpo': 'Corpo', 'pontosVitais': 'Pts. Vitais', 'pontosMortais': 'Pts. Mortais', 'livre': 'Livre' };
+            const allLabels = { 'flexivel': 'Flexível', 'mana': 'Mana', 'aura': 'Aura', 'chakra': 'Chakra', 'corpo': 'Corpo', 'pontosVitais': 'Pts. Vitais', 'pontosMortais': 'Pts. Mortais', 'livre': 'Livre' };
             opts.push({ value: energiaCombustao, label: `${allLabels[energiaCombustao] || energiaCombustao} (Forçado)` });
         }
         return opts;
@@ -148,19 +155,20 @@ export function ElementosFormProvider({ children }) {
     const selecionarElemento = useCallback((nome) => {
         setElemSelecionado(nome);
         if (nome.includes('Truque')) setEnergiaCombustao('livre');
-        else if (nome.includes('Arcanas/Negra')) setEnergiaCombustao('mana'); 
+        else if (nome.includes('Arcanas/Negra')) setEnergiaCombustao('flexivel'); 
         else if (abaAtual === 'chakra') setEnergiaCombustao('chakra');
         else if (abaAtual === 'mana') setEnergiaCombustao('mana');
         else if (abaAtual === 'aura') setEnergiaCombustao('aura');
         else if (abaAtual === 'corpo') setEnergiaCombustao('corpo');
         else if (abaAtual === 'astrais') setEnergiaCombustao('pontosVitais');
-        else setEnergiaCombustao('mana');
+        else setEnergiaCombustao('flexivel'); // Padrão flexível para elementos normais
     }, [abaAtual]);
 
     const cancelarEdicaoElem = useCallback(() => {
-        setElemEditandoId(null); setNomeElem(''); setEnergiaCombustao('mana');
+        setElemEditandoId(null); setNomeElem(''); 
+        setEnergiaCombustao(abaAtual === 'elementos' || abaAtual === 'compostos' ? 'flexivel' : 'mana');
         setTipoMecanica('ataque'); setAlcanceQuad(1); setAreaQuad(0);
-    }, [setElemEditandoId]);
+    }, [setElemEditandoId, abaAtual]);
 
     const salvarNovoElem = useCallback(() => {
         const n = nomeElem.trim();
@@ -233,22 +241,26 @@ export function ElementosFormProvider({ children }) {
         salvarFichaSilencioso();
     }, [updateFicha]);
 
-    const conjurarMagia = useCallback((magia) => {
+    // 🔥 MOTOR DE CONJURAÇÃO AGORA ACEITA ENERGIA OVERRIDE 🔥
+    const conjurarMagia = useCallback((magia, energiaOverride = null) => {
         const storeState = useStore.getState();
         const { alvoSelecionado, dummies, cenario } = storeState;
         const fichaVirtual = storeState.minhaFicha;
         
+        // Se for flexível e mandarem um override (via card), usa-o.
+        const energiaFinal = energiaOverride || magia.energiaCombustao;
+        
         let attrRegente = 'inteligencia';
         let modRegente = 0;
 
-        if (magia.energiaCombustao === 'corpo') {
+        if (energiaFinal === 'corpo') {
             const modForca = getModificadorDoisDigitos(fichaVirtual['forca']?.base);
             const modDestreza = getModificadorDoisDigitos(fichaVirtual['destreza']?.base);
             if (modDestreza > modForca) { attrRegente = 'destreza'; modRegente = modDestreza; } 
             else { attrRegente = 'forca'; modRegente = modForca; }
         } else {
-            const energiaToAttr = { 'mana': 'inteligencia', 'aura': 'energiaEsp', 'chakra': 'stamina', 'pontosVitais': 'constituicao', 'pontosMortais': 'inteligencia', 'livre': 'inteligencia' };
-            attrRegente = energiaToAttr[magia.energiaCombustao] || 'inteligencia';
+            const energiaToAttr = { 'mana': 'inteligencia', 'aura': 'energiaEsp', 'chakra': 'stamina', 'pontosVitais': 'constituicao', 'pontosMortais': 'inteligencia', 'livre': 'inteligencia', 'flexivel': 'inteligencia' };
+            attrRegente = energiaToAttr[energiaFinal] || 'inteligencia';
             modRegente = getModificadorDoisDigitos(fichaVirtual[attrRegente]?.base);
         }
 
@@ -281,6 +293,7 @@ export function ElementosFormProvider({ children }) {
                 minhaFicha: fichaVirtual, itensEquipados: [], vantagens, desvantagens 
             });
             let alvosPayload = alvosAtingidos.map(d => ({ nome: d.nome, defesa: d.valorDefesa, acertou: result.acertoTotal >= d.valorDefesa }));
+            
             enviarParaFeed({
                 tipo: 'acerto', nome: meuNome, acertoTotal: result.acertoTotal,
                 profBonusTexto: `Mod. Magia (${attrRegente.toUpperCase()}): +${modRegente} | Proficiência: +${profGlobal}`,
