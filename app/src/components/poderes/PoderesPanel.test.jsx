@@ -1,5 +1,5 @@
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import PoderesPanel from './PoderesPanel';
 import useStore from '../../stores/useStore';
 import { getMaximo } from '../../core/attributes';
@@ -23,13 +23,24 @@ describe('PoderesPanel', () => {
             // Simula o comportamento do Immer no updateFicha
             const draft = { 
                 poderes: [{ id: 1, nome: 'Modo Sábio', ativa: false, efeitos: [], efeitosPassivos: [], formas: [], categoria: 'habilidade' }],
-                vida: { atual: 100 }
+                vida: { atual: 100 },
+                mana: { atual: 100 },
+                aura: { atual: 100 },
+                chakra: { atual: 100 },
+                corpo: { atual: 100 }
             };
             callback(draft);
         });
 
         const mockState = {
-            minhaFicha: { poderes: [{ id: 1, nome: 'Modo Sábio', ativa: false, efeitos: [], efeitosPassivos: [], formas: [], categoria: 'habilidade' }] },
+            minhaFicha: { 
+                poderes: [{ id: 1, nome: 'Modo Sábio', ativa: false, efeitos: [], efeitosPassivos: [], formas: [], categoria: 'habilidade' }],
+                vida: { atual: 100 },
+                mana: { atual: 100 },
+                aura: { atual: 100 },
+                chakra: { atual: 100 },
+                corpo: { atual: 100 }
+            },
             updateFicha: mockUpdateFicha,
             meuNome: 'Herói',
             isMestre: true,
@@ -43,6 +54,10 @@ describe('PoderesPanel', () => {
         useStore.mockImplementation(selector => selector ? selector(mockState) : mockState);
 
         getMaximo.mockReturnValue(100);
+    });
+
+    afterEach(() => {
+        cleanup();
     });
 
     it('deve renderizar o painel e o poder existente', () => {
