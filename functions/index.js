@@ -165,7 +165,18 @@ exports.transcreverAudioSextaFeira = onCall(
                 mimeType: "audio/webm",
             });
 
-            console.log(`[Sexta-Feira] 4. Upload pro Gemini feito! URI: ${uploadResult.uri}. Pedindo o resumo...`);
+            console.log(`[Sexta-Feira] 4. Upload pro Gemini feito! URI: ${uploadResult.uri}. Aguardando processamento...`);
+            let fileState = uploadResult;
+            while (fileState.state === "PROCESSING") {
+                await new Promise(r => setTimeout(r, 3000));
+                fileState = await ai.files.get({ name: fileState.name });
+                console.log(`[Sexta-Feira] 4.1 Estado do arquivo: ${fileState.state}`);
+            }
+            if (fileState.state !== "ACTIVE") {
+                throw new HttpsError("failed-precondition", `Arquivo não ficou ativo. Estado: ${fileState.state}`);
+            }
+
+            console.log(`[Sexta-Feira] 4.2 Arquivo ACTIVE! Pedindo o resumo...`);
             const prompt = `Você é a Sexta-Feira, IA assistente do nosso RPG. O áudio em anexo é a gravação de uma sessão da nossa mesa. Por favor, escute e crie um "Registro Akáshico" (um resumo narrativo e detalhado) do que aconteceu de importante nessa parte da história. Escreva de forma épica, em português. Se só houver ruído, avise.`;
 
             const response = await ai.models.generateContent({
