@@ -168,13 +168,15 @@ exports.transcreverAudioSextaFeira = onCall(
             console.log(`[Sexta-Feira] 4. Upload pro Gemini feito! URI: ${uploadResult.uri}. Pedindo o resumo...`);
             const prompt = `Você é a Sexta-Feira, IA assistente do nosso RPG. O áudio em anexo é a gravação de uma sessão da nossa mesa. Por favor, escute e crie um "Registro Akáshico" (um resumo narrativo e detalhado) do que aconteceu de importante nessa parte da história. Escreva de forma épica, em português. Se só houver ruído, avise.`;
 
-            // Nova sintaxe do SDK 2.5 Flash
             const response = await ai.models.generateContent({
                 model: "gemini-2.5-flash",
-                contents: [
-                    uploadResult, // Agora passamos o arquivo inteiro direto
-                    prompt
-                ]
+                contents: [{
+                    role: "user",
+                    parts: [
+                        { fileData: { fileUri: uploadResult.uri, mimeType: uploadResult.mimeType || "audio/webm" } },
+                        { text: prompt }
+                    ]
+                }]
             });
 
             console.log(`[Sexta-Feira] 5. Resumo pronto! Devolvendo para o site e apagando rastros.`);
