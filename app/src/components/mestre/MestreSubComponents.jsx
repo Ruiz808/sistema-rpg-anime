@@ -1,8 +1,7 @@
-import React, { useState } from 'react'; // Adicionado o useState aqui!
-import { ref, set } from 'firebase/database';
-// ATENÇÃO: Ajuste o caminho abaixo se o seu firebase-config estiver noutra pasta
-import { database } from '../../services/firebase-config';
+import React, { useState } from 'react';
 import { useMestreForm } from './MestreFormContext';
+import { ref, set } from 'firebase/database';
+import { database } from '../../services/firebase-config';
 
 const FALLBACK = <div style={{color:'#888',padding:10}}>Mestre provider não encontrado</div>;
 
@@ -108,6 +107,22 @@ export function MestreVozSistema() {
 
 // 🔥 NOVO COMPONENTE: FORJA DE NPCS 🔥
 export function MestreForjaNPC() {
+    const [npc, setNpc] = useState({
+        nome: '', avatar: '', hpMax: 100, manaMax: 50, forca: 1, destreza: 1, inteligencia: 1,
+    });
+    const [poderes, setPoderes] = useState([]);
+    const [formas, setFormas] = useState([]);
+
+    const handleChange = (e) => setNpc(prev => ({ ...prev, [e.target.name]: e.target.value }));
+
+    const adicionarPoder = () => setPoderes([...poderes, { nome: '', descricao: '', dano: '' }]);
+    const atualizarPoder = (index, campo, valor) => { const n = [...poderes]; n[index][campo] = valor; setPoderes(n); };
+    const removerPoder = (index) => setPoderes(poderes.filter((_, i) => i !== index));
+
+    const adicionarForma = () => setFormas([...formas, { nome: '', avatar: '', hpBonus: 0 }]);
+    const atualizarForma = (index, campo, valor) => { const n = [...formas]; n[index][campo] = valor; setFormas(n); };
+    const removerForma = (index) => setFormas(formas.filter((_, i) => i !== index));
+
     const salvarNPC = async () => {
         if (!npc.nome) return alert("A entidade precisa ter um nome!");
         
