@@ -5,6 +5,7 @@ import {
     MapaMestreRPToggle,
     MapaMestreCenaVisualizada,
     MapaMestreGerenciadorCenas,
+    MapaMestreGavetaTokens, // 🔥 ADICIONAMOS A GAVETA AQUI 🔥
     MapaMestreGeradorDummies,
     MapaAreaCentral,
     MapaIniciativaTracker,
@@ -22,6 +23,10 @@ export default function MapaPanel() {
                     <MapaMestreRPToggle />
                     <MapaMestreCenaVisualizada />
                     <MapaMestreGerenciadorCenas />
+                    
+                    {/* 🔥 A GAVETA APARECE AQUI, LOGO ACIMA DO INJETOR MANUAL 🔥 */}
+                    <MapaMestreGavetaTokens />
+                    
                     <MapaMestreGeradorDummies />
                     <MapaAreaCentral />
                     <MapaIniciativaTracker />

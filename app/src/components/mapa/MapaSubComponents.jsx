@@ -147,9 +147,6 @@ export function MapaMestreGerenciadorCenas() {
     );
 }
 
-
-// ADICIONE ESTE SUB-COMPONENTE AO FICHEIRO (Pode ser abaixo de MapaMestreGerenciadorCenas)
-
 export function MapaMestreGerenciadorZonas() {
     const ctx = useMapaForm();
     if (!ctx) return FALLBACK;
@@ -174,6 +171,69 @@ export function MapaMestreGerenciadorZonas() {
     );
 }
 
+// 🔥 NOVA GAVETA DE TOKENS (DRAG AND DROP) 🔥
+export function MapaMestreGavetaTokens() {
+    const ctx = useMapaForm();
+    if (!ctx) return FALLBACK;
+    const { isMestre, isModoRP, mestreVendoRP, personagens, getAvatarInfo } = ctx;
+    
+    // Mostra apenas para o Mestre
+    if (!isMestre || (isModoRP && !mestreVendoRP)) return null;
+
+    const [filtro, setFiltro] = React.useState('todos');
+
+    // Mapeia todas as fichas guardadas na base de dados
+    const lista = Object.entries(personagens || {}).map(([nome, f]) => {
+        const isNPC = f.bio?.mesa === 'npc' || f.isNPC;
+        const info = getAvatarInfo(f);
+        return { nome, ficha: f, isNPC, img: info.img };
+    });
+
+    const filtrados = lista.filter(t => filtro === 'todos' || (filtro === 'npc' && t.isNPC) || (filtro === 'jogadores' && !t.isNPC));
+
+    // A Magia de Arrastar: Quando o Mestre pega num token
+    const handleDragStart = (e, t) => {
+        let hp = t.ficha?.vida?.base || 100;
+        let ca = calcularCA(t.ficha, 'evasiva');
+        // Empacota os dados do monstro para a viagem
+        const data = { nome: t.nome, hpMax: hp, hpAtual: hp, tipoDefesa: 'evasiva', valorDefesa: ca, visibilidadeHp: 'todos' };
+        e.dataTransfer.setData('tokenData', JSON.stringify(data));
+    };
+
+    return (
+        <div style={{ marginBottom: 15, padding: 15, border: '1px solid #aa00ff', borderRadius: 5, background: 'rgba(170, 0, 255, 0.1)' }}>
+            <h4 style={{ color: '#aa00ff', marginTop: 0, marginBottom: 10, textShadow: '0 0 10px #aa00ff' }}>🌌 Compêndio Rápido (Arraste para o Mapa)</h4>
+            <select className="input-neon" value={filtro} onChange={e=>setFiltro(e.target.value)} style={{marginBottom: 15, width: '100%', borderColor: '#aa00ff', color: '#fff'}}>
+                <option value="todos">Mostrar Todas as Entidades</option>
+                <option value="npc">👹 Apenas NPCs / Inimigos</option>
+                <option value="jogadores">👤 Apenas Jogadores</option>
+            </select>
+            
+            <div style={{ display: 'flex', gap: 15, overflowX: 'auto', paddingBottom: 10 }}>
+                {filtrados.length === 0 && <span style={{ color: '#aaa', fontStyle: 'italic' }}>Nenhuma entidade encontrada.</span>}
+                {filtrados.map(t => (
+                    <div 
+                        key={t.nome} 
+                        draggable="true" 
+                        onDragStart={(e) => handleDragStart(e, t)} 
+                        style={{ 
+                            minWidth: 60, height: 60, borderRadius: '50%', 
+                            border: t.isNPC ? '3px solid #ff003c' : '3px solid #00ffcc', 
+                            backgroundImage: urlSeguraParaCss(t.img) || 'none', backgroundSize: 'cover', backgroundPosition: 'center', 
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                            cursor: 'grab', flexShrink: 0, fontSize: '0.8em', fontWeight: 'bold', color: 'white', textShadow: '1px 1px 2px black',
+                            boxShadow: t.isNPC ? '0 0 10px rgba(255,0,60,0.5)' : '0 0 10px rgba(0,255,204,0.5)'
+                        }}
+                        title={`Arraste ${t.nome} para o mapa`}
+                    >
+                        {!t.img && t.nome.substring(0,2).toUpperCase()}
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 export function MapaMestreGeradorDummies() {
     const ctx = useMapaForm();
     if (!ctx) return FALLBACK;
@@ -181,7 +241,7 @@ export function MapaMestreGeradorDummies() {
     if (!isMestre || (isModoRP && !mestreVendoRP)) return null;
     return (
         <div style={{ marginBottom: 15, padding: 10, border: '1px solid #0088ff', borderRadius: 5, background: 'rgba(0, 136, 255, 0.1)' }}>
-            <h4 style={{ color: '#0088ff', marginTop: 0, marginBottom: 10 }}>🤖 Gerador de Entidades (Nesta Cena)</h4>
+            <h4 style={{ color: '#0088ff', marginTop: 0, marginBottom: 10 }}>🤖 Gerador de Entidades Manual (Nesta Cena)</h4>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
                 <input className="input-neon" type="text" placeholder="Nome" id="dummieNome" defaultValue="Boneco" style={{ width: 100, padding: 5 }}/>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#111', padding: '3px 8px', borderRadius: 5, border: '1px solid #444' }}>
@@ -398,7 +458,7 @@ export function MapaVisao() {
                 </div>
             ))}
 
-            {/* 🔥 AS CÉLULAS DO MAPA E OS TOKENS (INALTERADO) 🔥 */}
+            {/* 🔥 AS CÉLULAS DO MAPA E OS TOKENS COM DRAG AND DROP 🔥 */}
             {cells.map((cell) => {
                 const key = `${cell.x},${cell.y}`;
                 const tokens = tokenMap[key] || [];
@@ -407,7 +467,30 @@ export function MapaVisao() {
                     return d.posicao?.x === cell.x && d.posicao?.y === cell.y && dCena === cenaRenderId;
                 });
                 return (
-                    <div key={key} className="map-cell" data-x={cell.x} data-y={cell.y} onClick={() => handleCellClick(cell.x, cell.y)} style={{ width: tamanhoCelula, height: tamanhoCelula, border: '1px solid rgba(255,255,255,0.1)', position: 'relative', cursor: 'pointer' }}>
+                    <div 
+                        key={key} 
+                        className="map-cell" 
+                        data-x={cell.x} data-y={cell.y} 
+                        onClick={() => handleCellClick(cell.x, cell.y)} 
+                        
+                        /* 🔥 AS TRÊS LINHAS MÁGICAS DO DRAG AND DROP 🔥 */
+                        onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                        onDrop={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            try {
+                                const tokenStr = e.dataTransfer.getData('tokenData');
+                                if (tokenStr) {
+                                    const token = JSON.parse(tokenStr);
+                                    const id = 'dummie_' + Date.now() + Math.floor(Math.random()*1000);
+                                    // Invoca o monstro instantaneamente na célula onde você soltou o rato!
+                                    salvarDummie(id, { ...token, cenaId: cenaRenderId, posicao: { x: cell.x, y: cell.y } });
+                                }
+                            } catch(err) { console.error("Erro ao invocar token:", err); }
+                        }}
+                        
+                        style={{ width: tamanhoCelula, height: tamanhoCelula, border: '1px solid rgba(255,255,255,0.1)', position: 'relative', cursor: 'pointer' }}
+                    >
                         {cellDummies.map(([id, d]) => <DummieToken key={id} id={id} dummie={d} />)}
                         
                         {tokens.map((tk) => {
@@ -453,7 +536,7 @@ export function MapaAreaCentral() {
     return (
         <>
             <MapaControlesSuperiores />
-            <MapaMestreGerenciadorZonas /> {/* 🔥 NOVO RENDER AQUI */}
+            <MapaMestreGerenciadorZonas />
             <MapaVisao />
         </>
     );

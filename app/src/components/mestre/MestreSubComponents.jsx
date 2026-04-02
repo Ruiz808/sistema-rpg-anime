@@ -63,12 +63,54 @@ export function MestreVisorJogadores() {
 export function MestreInjetorEntidades() {
     const ctx = useMestreForm();
     if (!ctx) return FALLBACK;
-    const { dNome, setDNome, dHp, setDHp, dVit, setDVit, dDefTipo, setDDefTipo, dDef, setDDef, dVisivelHp, setDVisivelHp, dOculto, setDOculto, injetarDummie } = ctx;
+    
+    // Puxamos também o jogadoresComStats para ler a base de dados
+    const { 
+        dNome, setDNome, dHp, setDHp, dVit, setDVit, 
+        dDefTipo, setDDefTipo, dDef, setDDef, 
+        dVisivelHp, setDVisivelHp, dOculto, setDOculto, 
+        injetarDummie, jogadoresComStats 
+    } = ctx;
+
+    // 🔥 O RADAR: Puxa a ficha e preenche tudo! 🔥
+    const handleSelecionarEntidade = (e) => {
+        const nomeSelecionado = e.target.value;
+        if (!nomeSelecionado) return;
+
+        const entidade = jogadoresComStats.find(j => j.nome === nomeSelecionado);
+        if (entidade) {
+            setDNome(entidade.nome);
+            setDHp(entidade.hpMax || 100);
+            setDVit(0); // Reseta a vitalidade bónus
+            setDDefTipo('evasiva');
+            setDDef(entidade.evasiva || 10); // Puxa a CA calculada do monstro!
+        }
+    };
 
     return (
         <div className="def-box" style={{ borderLeft: '4px solid #ff003c' }}>
-            <h3 style={{ color: '#ff003c', margin: '0 0 15px 0' }}>Injetor de Entidades (Mapa)</h3>
+            <h3 style={{ color: '#ff003c', margin: '0 0 15px 0' }}>👹 Injetor de Entidades (Mapa)</h3>
+            
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                
+                {/* 🔥 A NOVA CAIXA DE PESQUISA 🔥 */}
+                <div style={{ background: 'rgba(255, 0, 60, 0.1)', padding: '10px', borderRadius: '5px', border: '1px solid #ff003c' }}>
+                    <label style={{ color: '#ff003c', fontSize: '0.85em', fontWeight: 'bold' }}>🔍 Carregar Ficha Salva (Auto-Preencher):</label>
+                    <select 
+                        className="input-neon" 
+                        onChange={handleSelecionarEntidade}
+                        defaultValue=""
+                        style={{ width: '100%', marginTop: '5px', borderColor: '#ff003c', color: '#ff003c', fontWeight: 'bold' }}
+                    >
+                        <option value="" disabled>-- Selecione um Jogador ou NPC --</option>
+                        {jogadoresComStats.map(j => (
+                            <option key={j.nome} value={j.nome}>
+                                {j.nome} {(j.classId === 'NPC - Ameaça' || j.ficha?.isNPC) ? '(💀 NPC)' : '(👤 Jogador)'}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
                 <input className="input-neon" type="text" placeholder="Nome (Ex: Dragão Ancião)" value={dNome} onChange={e => setDNome(e.target.value)} />
                 <div style={{ display: 'flex', gap: '10px' }}>
                     <div style={{ flex: 1 }}><label style={{ color: '#aaa', fontSize: '0.8em' }}>HP Base</label><input className="input-neon" type="number" value={dHp} onChange={e => setDHp(e.target.value)} style={{ width: '100%' }} /></div>
@@ -83,9 +125,9 @@ export function MestreInjetorEntidades() {
                 </div>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '10px', background: dOculto ? 'rgba(255,0,60,0.1)' : 'rgba(0,0,0,0.5)', padding: '10px', borderRadius: '5px', border: `1px solid ${dOculto ? '#ff003c' : '#444'}`, cursor: 'pointer', transition: 'all 0.3s' }}>
                     <input type="checkbox" checked={dOculto} onChange={e => setDOculto(e.target.checked)} style={{ transform: 'scale(1.2)' }} />
-                    <span style={{ color: dOculto ? '#ff003c' : '#aaa', fontWeight: dOculto ? 'bold' : 'normal' }}>{dOculto ? 'TOKEN INVISÍVEL NO MAPA' : 'Token Visível no Mapa'}</span>
+                    <span style={{ color: dOculto ? '#ff003c' : '#aaa', fontWeight: dOculto ? 'bold' : 'normal' }}>{dOculto ? '👻 TOKEN INVISÍVEL NO MAPA' : '👁️ Token Visível no Mapa'}</span>
                 </label>
-                <button className="btn-neon btn-red" onClick={injetarDummie} style={{ marginTop: '10px', padding: '10px', fontSize: '1.1em', fontWeight: 'bold' }}>INVOCAR NO MAPA [0,0]</button>
+                <button className="btn-neon btn-red" onClick={injetarDummie} style={{ marginTop: '10px', padding: '10px', fontSize: '1.1em', fontWeight: 'bold' }}>☄️ INVOCAR NO MAPA [0,0]</button>
             </div>
         </div>
     );
@@ -98,9 +140,9 @@ export function MestreVozSistema() {
 
     return (
         <div className="def-box" style={{ borderLeft: '4px solid #ffcc00' }}>
-            <h3 style={{ color: '#ffcc00', margin: '0 0 15px 0' }}>A Voz do Sistema</h3>
+            <h3 style={{ color: '#ffcc00', margin: '0 0 15px 0' }}>⚡ A Voz do Sistema</h3>
             <textarea className="input-neon" placeholder="Escreva uma mensagem global para o ecrã de todos..." value={msgSistema} onChange={e => setMsgSistema(e.target.value)} style={{ width: '100%', minHeight: '80px', borderColor: '#ffcc00', color: '#ffcc00' }} />
-            <button className="btn-neon btn-gold" onClick={enviarAviso} style={{ width: '100%', marginTop: '10px' }}>ENVIAR AVISO GLOBAL</button>
+            <button className="btn-neon btn-gold" onClick={enviarAviso} style={{ width: '100%', marginTop: '10px' }}>📢 ENVIAR AVISO GLOBAL</button>
         </div>
     );
 }
@@ -128,7 +170,6 @@ export function MestreForjaNPC() {
         
         // Estruturamos a ficha exatamente como o seu sistema gosta para não bugar o Visor
         const fichaCompleta = { 
-            // 🔥 A CORREÇÃO FOI FEITA AQUI: Adicionámos mesa: 'npc' 🔥
             bio: { classe: 'NPC - Ameaça', raca: 'Criatura', mesa: 'npc' }, 
             vida: { atual: Number(npc.hpMax), base: Number(npc.hpMax) },
             mana: { atual: Number(npc.manaMax), base: Number(npc.manaMax) },
