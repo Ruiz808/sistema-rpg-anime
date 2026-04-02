@@ -48,7 +48,10 @@ export function AIFormProvider({ children }) {
 
     const [subAba, setSubAba] = useState('chat');
     const [mensagem, setMensagem] = useState('');
+    
+    // 🔥 IA SEM AMNÉSIA: O Histórico agora fica vazio até o useEffect carregar o localStorage 🔥
     const [historico, setHistorico] = useState([]);
+    
     const [carregando, setCarregando] = useState(false);
     const [arquivoTexto, setArquivoTexto] = useState('');
     const [nomeArquivo, setNomeArquivo] = useState('');
@@ -63,7 +66,7 @@ export function AIFormProvider({ children }) {
         try {
             const salvo = localStorage.getItem('rpgSextaFeira_capitulos');
             if (salvo) return JSON.parse(salvo).map(c => ({ ...c, tierList: c.tierList || [] }));
-        } catch (e) { /* localStorage corrompido, usa padrão */ }
+        } catch (e) { }
         return [{ id: 1, titulo: 'Capítulo 1 - Reino de Faku', texto: 'A marca da fênix...', tierList: [] }];
     });
     const [capituloAtivoId, setCapituloAtivoId] = useState(() => Number(localStorage.getItem('rpgSextaFeira_capituloAtivo')) || 1);
@@ -72,7 +75,7 @@ export function AIFormProvider({ children }) {
         try {
             const salvo = localStorage.getItem('rpgSextaFeira_capitulosFuturo');
             if (salvo) return JSON.parse(salvo).map(c => ({ ...c, tierList: c.tierList || [] }));
-        } catch (e) { /* localStorage corrompido, usa padrão */ }
+        } catch (e) { }
         return [{ id: 100, titulo: 'Ecos do Futuro - Parte 1', texto: 'Crônicas do Amanhã...', tierList: [] }];
     });
     const [capFuturoAtivoId, setCapFuturoAtivoId] = useState(() => Number(localStorage.getItem('rpgSextaFeira_capFuturoAtivo')) || 100);
@@ -86,12 +89,38 @@ export function AIFormProvider({ children }) {
     const textoAtivo = capituloAtivoObj?.texto || '';
     const tierListAtiva = capituloAtivoObj?.tierList || [];
 
+    // 🔥 MEMÓRIA DO CHAT: Carrega a conversa do personagem ativo 🔥
+    useEffect(() => {
+        if (meuNome) {
+            try {
+                const salvo = localStorage.getItem(`rpgSextaFeira_chat_${meuNome}`);
+                if (salvo) setHistorico(JSON.parse(salvo));
+                else setHistorico([]); 
+            } catch(e) { setHistorico([]); }
+        }
+    }, [meuNome]);
+
+    // 🔥 MEMÓRIA DO CHAT: Salva a conversa sempre que ela for atualizada 🔥
+    useEffect(() => {
+        if (meuNome) {
+            localStorage.setItem(`rpgSextaFeira_chat_${meuNome}`, JSON.stringify(historico));
+        }
+    }, [historico, meuNome]);
+
     useEffect(() => {
         localStorage.setItem('rpgSextaFeira_capitulos', JSON.stringify(capitulosPresente));
         localStorage.setItem('rpgSextaFeira_capituloAtivo', capituloAtivoId);
         localStorage.setItem('rpgSextaFeira_capitulosFuturo', JSON.stringify(capitulosFuturo));
         localStorage.setItem('rpgSextaFeira_capFuturoAtivo', capFuturoAtivoId);
     }, [capitulosPresente, capituloAtivoId, capitulosFuturo, capFuturoAtivoId]);
+
+    // Botão para o utilizador limpar a memória se quiser começar de novo
+    const limparChat = useCallback(() => {
+        if (window.confirm("Deseja formatar a memória desta conversa? A Sexta-Feira esquecerá tudo o que falaram aqui.")) {
+            setHistorico([]);
+            localStorage.removeItem(`rpgSextaFeira_chat_${meuNome}`);
+        }
+    }, [meuNome]);
 
     const poolPersonagens = useMemo(() => {
         const avataresDoServidor = [];
@@ -277,6 +306,7 @@ export function AIFormProvider({ children }) {
         return textoCompleto;
     }, []);
 
+    // 🔥 ATUALIZADO: Agora aceita ficheiros .md também 🔥
     const handleArquivoSelecionado = useCallback(async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -284,10 +314,10 @@ export function AIFormProvider({ children }) {
             let texto = '';
             if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
                 texto = await extrairTextoPDF(file);
-            } else if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
+            } else if (file.type === 'text/plain' || file.name.endsWith('.txt') || file.name.endsWith('.md')) {
                 texto = await file.text();
             } else {
-                alert('Formato não suportado. Use PDF ou TXT.');
+                alert('Formato não suportado. Use PDF, TXT ou MD.');
                 return;
             }
             const MAX_CHARS = 15000;
@@ -310,12 +340,22 @@ export function AIFormProvider({ children }) {
         const textoAnexo = arquivoTexto;
         const nomeAnexo = nomeArquivo;
         setMensagem(''); setArquivoTexto(''); setNomeArquivo('');
+        
         const displayMsg = nomeAnexo ? `${msgUsuario || 'Analise o documento anexado.'}\n📄 [Arquivo: ${nomeAnexo}]` : msgUsuario;
         setHistorico(prev => [...prev, { role: 'user', texto: displayMsg }]); setCarregando(true);
+        
         try {
             const chamarIA = httpsCallable(functions, 'falarComSextaFeira');
-            const payload = { mensagem: msgUsuario || 'Analise o documento anexado.', contextoFicha: montarContextoFicha() };
+            
+            // 🔥 DIRETRIZ ANTI-ALUCINAÇÃO: Colocamos uma ordem invisível no prompt para a IA não inventar lore 🔥
+            const instrucaoRestrita = "\n\n[DIRETRIZ DE SISTEMA: Aja de forma cirúrgica e objetiva. Baseie-se EXCLUSIVAMENTE nas informações fornecidas nesta mensagem ou no arquivo anexado. É ESTRITAMENTE PROIBIDO inventar histórias, adicionar 'lore', ou preencher lacunas de forma criativa. Atenha-se aos factos enviados.]";
+            
+            const payload = { 
+                mensagem: (msgUsuario || 'Resuma o documento anexado.') + instrucaoRestrita, 
+                contextoFicha: montarContextoFicha() 
+            };
             if (textoAnexo) payload.conteudoArquivo = textoAnexo;
+            
             const resultado = await chamarIA(payload);
             setHistorico(prev => [...prev, { role: 'ai', texto: resultado.data?.resposta || 'Sem resposta.' }]);
         } catch (err) { setHistorico(prev => [...prev, { role: 'erro', texto: 'Erro ao contactar a IA.' }]); }
@@ -335,7 +375,7 @@ export function AIFormProvider({ children }) {
         adicionarCapitulo, editarTituloCapitulo, apagarCapitulo, atualizarTexto, adicionarCapituloComTexto,
         montarContextoFicha, enviarMensagem, handleKeyDown,
         arquivoTexto, nomeArquivo, setArquivoTexto, setNomeArquivo,
-        fileInputRef, handleArquivoSelecionado
+        fileInputRef, handleArquivoSelecionado, limparChat // <- Adicionámos o limparChat aqui
     }), [
         minhaFicha, meuNome, personagens, subAba, mensagem, historico, carregando,
         loreFoco, novoPersonagem, novoAvatar, capitulosPresente, capituloAtivoId,
@@ -343,7 +383,7 @@ export function AIFormProvider({ children }) {
         moverPersonagem, handleDragStart, handleDragOver, handleDrop, adicionarCustomizado,
         adicionarCapitulo, editarTituloCapitulo, apagarCapitulo, atualizarTexto, adicionarCapituloComTexto,
         montarContextoFicha, enviarMensagem, handleKeyDown,
-        arquivoTexto, nomeArquivo, handleArquivoSelecionado
+        arquivoTexto, nomeArquivo, handleArquivoSelecionado, limparChat
     ]);
 
     return (
