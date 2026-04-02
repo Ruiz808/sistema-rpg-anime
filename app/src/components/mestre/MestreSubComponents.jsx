@@ -128,7 +128,8 @@ export function MestreForjaNPC() {
         
         // Estruturamos a ficha exatamente como o seu sistema gosta para não bugar o Visor
         const fichaCompleta = { 
-            bio: { classe: 'NPC - Ameaça', raca: 'Criatura' }, 
+            // 🔥 A CORREÇÃO FOI FEITA AQUI: Adicionámos mesa: 'npc' 🔥
+            bio: { classe: 'NPC - Ameaça', raca: 'Criatura', mesa: 'npc' }, 
             vida: { atual: Number(npc.hpMax), base: Number(npc.hpMax) },
             mana: { atual: Number(npc.manaMax), base: Number(npc.manaMax) },
             forca: { base: Number(npc.forca) },
