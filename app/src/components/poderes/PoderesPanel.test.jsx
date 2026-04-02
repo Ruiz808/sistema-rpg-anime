@@ -22,28 +22,33 @@ describe('PoderesPanel', () => {
         mockUpdateFicha = vi.fn((callback) => {
             // Simula o comportamento do Immer no updateFicha
             const draft = { 
-                poderes: [{ id: 1, nome: 'Modo Sábio', ativa: false, efeitos: [] }],
+                poderes: [{ id: 1, nome: 'Modo Sábio', ativa: false, efeitos: [], efeitosPassivos: [], formas: [], categoria: 'habilidade' }],
                 vida: { atual: 100 }
             };
             callback(draft);
         });
 
-        useStore.mockReturnValue({
-            minhaFicha: { poderes: [{ id: 1, nome: 'Modo Sábio', ativa: false, efeitos: [] }] },
+        const mockState = {
+            minhaFicha: { poderes: [{ id: 1, nome: 'Modo Sábio', ativa: false, efeitos: [], efeitosPassivos: [], formas: [], categoria: 'habilidade' }] },
             updateFicha: mockUpdateFicha,
+            meuNome: 'Herói',
+            isMestre: true,
             efeitosTemp: [],
             setEfeitosTemp: vi.fn(),
+            efeitosTempPassivos: [],
+            setEfeitosTempPassivos: vi.fn(),
             poderEditandoId: null,
             setPoderEditandoId: vi.fn()
-        });
+        };
+        useStore.mockImplementation(selector => selector ? selector(mockState) : mockState);
 
         getMaximo.mockReturnValue(100);
     });
 
     it('deve renderizar o painel e o poder existente', () => {
         render(<PoderesPanel />);
-        expect(screen.getByText('Criar Novo Poder')).toBeDefined();
-        expect(screen.getByText('Modo Sábio')).toBeDefined();
+        expect(screen.getByText(/Criar Habilidade/i)).toBeDefined();
+        expect(screen.getByText(/Modo Sábio/i)).toBeDefined();
     });
 
     it('deve alternar a ativação do poder e chamar o salvamento silencioso', () => {
