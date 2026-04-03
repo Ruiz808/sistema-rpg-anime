@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function VitalBar({ label, atual, max, color, extraInfo }) {
+export default function VitalBar({ className, label, atual, max, color, extraInfo }) {
     const safeMax = max > 0 ? max : 1;
     const safeAtual = Math.max(0, Math.min(atual, safeMax));
     const pct = Math.min(100, Math.max(0, (safeAtual / safeMax) * 100));
@@ -15,7 +15,7 @@ export default function VitalBar({ label, atual, max, color, extraInfo }) {
     const text = `${formatNum(safeAtual)} / ${formatNum(safeMax)}${extraInfo ? ' ' + extraInfo : ''}`;
 
     return (
-        <div className="vital-container">
+        <div className={['vital-container', className].filter(Boolean).join(' ')}>
             <div className="vital-label"><span>{label}</span></div>
             <div className="bar-bg">
                 <div

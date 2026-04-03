@@ -11,7 +11,7 @@ const formatNum = (n) => {
     return String(Math.floor(n));
 };
 
-export default function DummieToken({ id, dummie }) {
+export default function DummieToken({ className, id, dummie }) {
     const { isMestre, alvoSelecionado, setAlvoSelecionado } = useStore();
 
     const isTarget = alvoSelecionado === id;

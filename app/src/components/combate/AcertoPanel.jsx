@@ -10,19 +10,22 @@ import {
     AcertoRolarButton
 } from './AcertoSubComponents';
 
-export default function AcertoPanel() {
+export default function AcertoPanel({ className, children }) {
+    const hasChildren = React.Children.count(children) > 0
     return (
         <AcertoFormProvider>
-            <div className="acerto-panel">
-                <div className="def-box">
-                    <AcertoClasseBuffs />
-                    <AcertoStatsSelector />
-                    <AcertoDadosConfig />
-                    <AcertoVantagensGrid />
-                    <AcertoArsenalScanner />
-                    <AcertoDistanciaHUD />
-                    <AcertoRolarButton />
-                </div>
+            <div className={['acerto-panel', className].filter(Boolean).join(' ')}>
+                {hasChildren ? children : (
+                    <div className="def-box">
+                        <AcertoClasseBuffs />
+                        <AcertoStatsSelector />
+                        <AcertoDadosConfig />
+                        <AcertoVantagensGrid />
+                        <AcertoArsenalScanner />
+                        <AcertoDistanciaHUD />
+                        <AcertoRolarButton />
+                    </div>
+                )}
             </div>
         </AcertoFormProvider>
     );

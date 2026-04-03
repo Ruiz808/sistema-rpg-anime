@@ -1,7 +1,7 @@
 import React from 'react'
 import useStore from '../../stores/useStore'
 
-export default function TabPanel({ id, children }) {
+export default function TabPanel({ className, id, children }) {
     const abaAtiva = useStore(s => s.abaAtiva)
     
     // O segredo: se não for a aba ativa, escondemos com display: none, 
@@ -13,7 +13,7 @@ export default function TabPanel({ id, children }) {
     }
 
     return (
-        <div id={id} className="glass-panel" style={estilo}>
+        <div id={id} className={['glass-panel', className].filter(Boolean).join(' ')} style={estilo}>
             {children}
         </div>
     )

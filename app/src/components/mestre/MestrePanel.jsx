@@ -35,10 +35,13 @@ function MestreConteudoSeguro() {
     );
 }
 
-export default function MestrePanel() {
+export default function MestrePanel({ className, children }) {
+    const hasChildren = React.Children.count(children) > 0
     return (
         <MestreFormProvider>
-            <MestreConteudoSeguro />
+            <div className={className}>
+                {hasChildren ? children : <MestreConteudoSeguro />}
+            </div>
         </MestreFormProvider>
     );
 }

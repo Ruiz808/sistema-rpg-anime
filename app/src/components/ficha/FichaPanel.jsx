@@ -13,20 +13,25 @@ import {
 } from './FichaSubComponents';
 import TabelaPrestigio from './TabelaPrestigio';
 
-export default function FichaPanel() {
+export default function FichaPanel({ className, children }) {
+    const hasChildren = React.Children.count(children) > 0
     return (
         <FichaFormProvider>
-            <div className="ficha-panel">
-                <FichaBioGroup />
-                <FichaEditorAtributos />
-                <FichaReatorElemental />
-                <FichaDistorcaoConceitual />
-                <FichaMatrizUtilitaria />
-                <FichaFuriaBerserker />
-                <FichaMarcadoresCena />
-                <FichaForjaCalamidade />
-                <FichaMultiplicadoresDano />
-                <TabelaPrestigio />
+            <div className={['ficha-panel', className].filter(Boolean).join(' ')}>
+                {hasChildren ? children : (
+                    <>
+                        <FichaBioGroup />
+                        <FichaEditorAtributos />
+                        <FichaReatorElemental />
+                        <FichaDistorcaoConceitual />
+                        <FichaMatrizUtilitaria />
+                        <FichaFuriaBerserker />
+                        <FichaMarcadoresCena />
+                        <FichaForjaCalamidade />
+                        <FichaMultiplicadoresDano />
+                        <TabelaPrestigio />
+                    </>
+                )}
             </div>
         </FichaFormProvider>
     );

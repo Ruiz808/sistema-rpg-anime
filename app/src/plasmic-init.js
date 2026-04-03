@@ -29,7 +29,36 @@ import {
   PlasmicTabelaPrestigio,
   PlasmicRadarChart,
   PlasmicAtributosLista,
-  PlasmicStatusPanelCore
+  PlasmicStatusPanelCore,
+  // Ficha sub-componentes
+  PlasmicFichaBioGroup,
+  PlasmicFichaEditorAtributos,
+  PlasmicFichaReatorElemental,
+  PlasmicFichaDistorcaoConceitual,
+  PlasmicFichaMatrizUtilitaria,
+  PlasmicFichaFuriaBerserker,
+  PlasmicFichaMarcadoresCena,
+  PlasmicFichaForjaCalamidade,
+  PlasmicFichaMultiplicadoresDano,
+  // Ataque sub-componentes
+  PlasmicAtaqueFuriaDisplay,
+  PlasmicAtaqueCriticoConfig,
+  PlasmicAtaqueArmaEquipada,
+  PlasmicAtaqueHabilidadesAtivas,
+  PlasmicAtaqueMagiasPreparadas,
+  PlasmicAtaqueBotoesAcao,
+  // Defesa sub-componentes
+  PlasmicDefesaEvasaoBox,
+  PlasmicDefesaResistenciaBox,
+  PlasmicDefesaEscudoBox,
+  // Status sub-componentes
+  PlasmicStatusVitalsGrid,
+  PlasmicStatusEnergiasPrimordiais,
+  PlasmicStatusMultiplicadores,
+  PlasmicStatusEconomiaAcoes,
+  PlasmicStatusControleRapido,
+  PlasmicStatusAnalisePoder,
+  PlasmicStatusPaletaCores
 } from './plasmic-wrappers.jsx'
 
 if (!import.meta.env.VITE_PLASMIC_PROJECT_ID) {
@@ -53,6 +82,7 @@ export const PLASMIC = initPlasmicLoader({
 PLASMIC.registerComponent(VitalBar, {
   name: 'VitalBar',
   props: {
+    className: 'string',
     label: 'string',
     atual: 'number',
     max: 'number',
@@ -64,6 +94,7 @@ PLASMIC.registerComponent(VitalBar, {
 PLASMIC.registerComponent(TabPanel, {
   name: 'TabPanel',
   props: {
+    className: 'string',
     id: 'string',
     children: 'slot'
   }
@@ -72,6 +103,7 @@ PLASMIC.registerComponent(TabPanel, {
 PLASMIC.registerComponent(DummieToken, {
   name: 'DummieToken',
   props: {
+    className: 'string',
     id: 'string',
     dummie: 'object'
   }
@@ -80,6 +112,7 @@ PLASMIC.registerComponent(DummieToken, {
 PLASMIC.registerComponent(FormasEditor, {
   name: 'FormasEditor',
   props: {
+    className: 'string',
     itemRaridade: 'string',
     formas: 'object',
     formaAtivaId: 'string',
@@ -97,6 +130,7 @@ PLASMIC.registerComponent(FormasEditor, {
 PLASMIC.registerComponent(PlasmicRadarChart, {
   name: 'RadarChart',
   props: {
+    className: 'string',
     ficha: 'object',
     isAtual: 'boolean'
   }
@@ -105,6 +139,7 @@ PLASMIC.registerComponent(PlasmicRadarChart, {
 PLASMIC.registerComponent(PlasmicAtributosLista, {
   name: 'AtributosLista',
   props: {
+    className: 'string',
     ficha: 'object',
     isAtual: 'boolean'
   }
@@ -112,7 +147,7 @@ PLASMIC.registerComponent(PlasmicAtributosLista, {
 
 PLASMIC.registerComponent(PlasmicStatusPanelCore, {
   name: 'StatusPanelCore',
-  props: {}
+  props: { className: 'string' }
 })
 
 // ========================================
@@ -121,95 +156,232 @@ PLASMIC.registerComponent(PlasmicStatusPanelCore, {
 
 PLASMIC.registerComponent(PlasmicStatusPanel, {
   name: 'StatusPanel',
-  props: {}
+  props: { className: 'string', children: 'slot' }
 })
 
 PLASMIC.registerComponent(PlasmicFichaPanel, {
   name: 'FichaPanel',
-  props: {}
+  props: { className: 'string', children: 'slot' }
 })
 
 PLASMIC.registerComponent(PlasmicTabelaPrestigio, {
   name: 'TabelaPrestigio',
-  props: {}
+  props: { className: 'string' }
 })
 
 PLASMIC.registerComponent(PlasmicAtaquePanel, {
   name: 'AtaquePanel',
-  props: {}
+  props: { className: 'string', children: 'slot' }
 })
 
 PLASMIC.registerComponent(PlasmicAcertoPanel, {
   name: 'AcertoPanel',
-  props: {}
+  props: { className: 'string', children: 'slot' }
 })
 
 PLASMIC.registerComponent(PlasmicDefesaPanel, {
   name: 'DefesaPanel',
-  props: {}
+  props: { className: 'string', children: 'slot' }
 })
 
 PLASMIC.registerComponent(PlasmicTestesPanel, {
   name: 'TestesPanel',
-  props: {}
+  props: { className: 'string', children: 'slot' }
 })
 
 PLASMIC.registerComponent(PlasmicPoderesPanel, {
   name: 'PoderesPanel',
-  props: {}
+  props: { className: 'string', children: 'slot' }
 })
 
 PLASMIC.registerComponent(PlasmicArsenalPanel, {
   name: 'ArsenalPanel',
-  props: {}
+  props: { className: 'string', children: 'slot' }
 })
 
 PLASMIC.registerComponent(PlasmicElementosPanel, {
   name: 'ElementosPanel',
-  props: {}
+  props: { className: 'string', children: 'slot' }
 })
 
 PLASMIC.registerComponent(PlasmicFeedCombate, {
   name: 'FeedCombate',
-  props: {}
+  props: { className: 'string' }
 })
 
 PLASMIC.registerComponent(PlasmicMapaPanel, {
   name: 'MapaPanel',
-  props: {}
+  props: { className: 'string', children: 'slot' }
 })
 
 PLASMIC.registerComponent(PlasmicPerfilPanel, {
   name: 'PerfilPanel',
-  props: {}
+  props: { className: 'string', children: 'slot' }
 })
 
 PLASMIC.registerComponent(PlasmicModalConfirm, {
   name: 'ModalConfirm',
-  props: {}
+  props: { className: 'string' }
 })
 
 PLASMIC.registerComponent(PlasmicCompendioPanel, {
   name: 'CompendioPanel',
-  props: {}
+  props: { className: 'string', children: 'slot' }
 })
 
 PLASMIC.registerComponent(PlasmicNarrativaPanel, {
   name: 'NarrativaPanel',
-  props: {}
+  props: { className: 'string', children: 'slot' }
 })
 
 PLASMIC.registerComponent(PlasmicJukebox, {
   name: 'Jukebox',
-  props: {}
+  props: { className: 'string' }
 })
 
 PLASMIC.registerComponent(PlasmicSidebar, {
   name: 'Sidebar',
-  props: {}
+  props: { className: 'string' }
 })
 
 PLASMIC.registerComponent(PlasmicMestrePanel, {
   name: 'MestrePanel',
-  props: {}
+  props: { className: 'string', children: 'slot' }
+})
+
+// ========================================
+// SUB-COMPONENTES INDIVIDUAIS
+// ========================================
+
+// --- Ficha ---
+PLASMIC.registerComponent(PlasmicFichaBioGroup, {
+  name: 'FichaBioGroup',
+  props: { className: 'string' },
+  parentComponentName: 'FichaPanel'
+})
+PLASMIC.registerComponent(PlasmicFichaEditorAtributos, {
+  name: 'FichaEditorAtributos',
+  props: { className: 'string' },
+  parentComponentName: 'FichaPanel'
+})
+PLASMIC.registerComponent(PlasmicFichaReatorElemental, {
+  name: 'FichaReatorElemental',
+  props: { className: 'string' },
+  parentComponentName: 'FichaPanel'
+})
+PLASMIC.registerComponent(PlasmicFichaDistorcaoConceitual, {
+  name: 'FichaDistorcaoConceitual',
+  props: { className: 'string' },
+  parentComponentName: 'FichaPanel'
+})
+PLASMIC.registerComponent(PlasmicFichaMatrizUtilitaria, {
+  name: 'FichaMatrizUtilitaria',
+  props: { className: 'string' },
+  parentComponentName: 'FichaPanel'
+})
+PLASMIC.registerComponent(PlasmicFichaFuriaBerserker, {
+  name: 'FichaFuriaBerserker',
+  props: { className: 'string' },
+  parentComponentName: 'FichaPanel'
+})
+PLASMIC.registerComponent(PlasmicFichaMarcadoresCena, {
+  name: 'FichaMarcadoresCena',
+  props: { className: 'string' },
+  parentComponentName: 'FichaPanel'
+})
+PLASMIC.registerComponent(PlasmicFichaForjaCalamidade, {
+  name: 'FichaForjaCalamidade',
+  props: { className: 'string' },
+  parentComponentName: 'FichaPanel'
+})
+PLASMIC.registerComponent(PlasmicFichaMultiplicadoresDano, {
+  name: 'FichaMultiplicadoresDano',
+  props: { className: 'string' },
+  parentComponentName: 'FichaPanel'
+})
+
+// --- Ataque ---
+PLASMIC.registerComponent(PlasmicAtaqueFuriaDisplay, {
+  name: 'AtaqueFuriaDisplay',
+  props: { className: 'string' },
+  parentComponentName: 'AtaquePanel'
+})
+PLASMIC.registerComponent(PlasmicAtaqueCriticoConfig, {
+  name: 'AtaqueCriticoConfig',
+  props: { className: 'string' },
+  parentComponentName: 'AtaquePanel'
+})
+PLASMIC.registerComponent(PlasmicAtaqueArmaEquipada, {
+  name: 'AtaqueArmaEquipada',
+  props: { className: 'string' },
+  parentComponentName: 'AtaquePanel'
+})
+PLASMIC.registerComponent(PlasmicAtaqueHabilidadesAtivas, {
+  name: 'AtaqueHabilidadesAtivas',
+  props: { className: 'string' },
+  parentComponentName: 'AtaquePanel'
+})
+PLASMIC.registerComponent(PlasmicAtaqueMagiasPreparadas, {
+  name: 'AtaqueMagiasPreparadas',
+  props: { className: 'string' },
+  parentComponentName: 'AtaquePanel'
+})
+PLASMIC.registerComponent(PlasmicAtaqueBotoesAcao, {
+  name: 'AtaqueBotoesAcao',
+  props: { className: 'string' },
+  parentComponentName: 'AtaquePanel'
+})
+
+// --- Defesa ---
+PLASMIC.registerComponent(PlasmicDefesaEvasaoBox, {
+  name: 'DefesaEvasaoBox',
+  props: { className: 'string' },
+  parentComponentName: 'DefesaPanel'
+})
+PLASMIC.registerComponent(PlasmicDefesaResistenciaBox, {
+  name: 'DefesaResistenciaBox',
+  props: { className: 'string' },
+  parentComponentName: 'DefesaPanel'
+})
+PLASMIC.registerComponent(PlasmicDefesaEscudoBox, {
+  name: 'DefesaEscudoBox',
+  props: { className: 'string' },
+  parentComponentName: 'DefesaPanel'
+})
+
+// --- Status ---
+PLASMIC.registerComponent(PlasmicStatusPaletaCores, {
+  name: 'StatusPaletaCores',
+  props: { className: 'string' },
+  parentComponentName: 'StatusPanel'
+})
+PLASMIC.registerComponent(PlasmicStatusVitalsGrid, {
+  name: 'StatusVitalsGrid',
+  props: { className: 'string' },
+  parentComponentName: 'StatusPanel'
+})
+PLASMIC.registerComponent(PlasmicStatusEnergiasPrimordiais, {
+  name: 'StatusEnergiasPrimordiais',
+  props: { className: 'string' },
+  parentComponentName: 'StatusPanel'
+})
+PLASMIC.registerComponent(PlasmicStatusMultiplicadores, {
+  name: 'StatusMultiplicadores',
+  props: { className: 'string' },
+  parentComponentName: 'StatusPanel'
+})
+PLASMIC.registerComponent(PlasmicStatusEconomiaAcoes, {
+  name: 'StatusEconomiaAcoes',
+  props: { className: 'string' },
+  parentComponentName: 'StatusPanel'
+})
+PLASMIC.registerComponent(PlasmicStatusControleRapido, {
+  name: 'StatusControleRapido',
+  props: { className: 'string' },
+  parentComponentName: 'StatusPanel'
+})
+PLASMIC.registerComponent(PlasmicStatusAnalisePoder, {
+  name: 'StatusAnalisePoder',
+  props: { className: 'string' },
+  parentComponentName: 'StatusPanel'
 })

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ATRIBUTOS_AGRUPADOS, PROPRIEDADE_OPTIONS } from '../../core/efeitos-constants';
 
-export default function FormasEditor({ itemRaridade, formas, formaAtivaId, configAtivaId, onSalvarForma, onDeletarForma, onAtivarForma }) {
+export default function FormasEditor({ className, itemRaridade, formas, formaAtivaId, configAtivaId, onSalvarForma, onDeletarForma, onAtivarForma }) {
     const [mostrarFormas, setMostrarFormas] = useState(false);
     const [editando, setEditando] = useState(null);
 
