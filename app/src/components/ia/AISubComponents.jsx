@@ -25,7 +25,14 @@ export function AIHeader() {
 export function AICapituladorHeader() {
     const ctx = useAIForm();
     if (!ctx) return FALLBACK;
-    const { subAba, loreFoco, setLoreFoco, capituloAtivoId, setCapituloAtivoId, capFuturoAtivoId, setCapFuturoAtivoId, capitulosPresente, capitulosFuturo, editarTituloCapitulo, apagarCapitulo, adicionarCapitulo } = ctx;
+    const { 
+        subAba, loreFoco, setLoreFoco, 
+        capituloAtivoId, setCapituloAtivoId, capFuturoAtivoId, setCapFuturoAtivoId, 
+        arcoAtivoIdPresente, setArcoAtivoIdPresente, arcoAtivoIdFuturo, setArcoAtivoIdFuturo,
+        capitulosPresente, capitulosFuturo, capituloAtivoObj,
+        editarTituloCapitulo, apagarCapitulo, adicionarCapitulo,
+        adicionarArco, editarTituloArco, apagarArco
+    } = ctx;
 
     return (
         <div style={{ marginBottom: '15px' }}>
@@ -43,17 +50,34 @@ export function AICapituladorHeader() {
                     <button className={`btn-neon ${loreFoco === 'futuro' ? 'btn-gold' : ''}`} onClick={() => setLoreFoco('futuro')} style={{ padding: '8px 15px', fontSize: '0.9em', margin: 0, opacity: loreFoco === 'futuro' ? 1 : 0.5 }}>🚀 Futuro</button>
                 </div>
             </div>
+
+            {/* LINHA 1: GESTÃO DE CAPÍTULOS */}
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center', paddingBottom: '10px', borderBottom: '1px solid #333', flexWrap: 'wrap' }}>
-                <span style={{ color: loreFoco === 'presente' ? '#00ffcc' : '#ffcc00', fontWeight: 'bold' }}>📖 Arco Atual:</span>
+                <span style={{ color: loreFoco === 'presente' ? '#00ffcc' : '#ffcc00', fontWeight: 'bold' }}>📖 Capítulo:</span>
                 <select className="input-neon" value={loreFoco === 'presente' ? capituloAtivoId : capFuturoAtivoId} onChange={(e) => loreFoco === 'presente' ? setCapituloAtivoId(Number(e.target.value)) : setCapFuturoAtivoId(Number(e.target.value))} style={{ flex: 1, minWidth: '150px', borderColor: loreFoco === 'presente' ? '#00ffcc' : '#ffcc00', color: '#fff', padding: '8px', backgroundColor: 'rgba(0,0,0,0.5)' }}>
                     {(loreFoco === 'presente' ? capitulosPresente : capitulosFuturo).map(cap => <option key={cap.id} value={cap.id} style={{ color: '#000' }}>{cap.titulo}</option>)}
                 </select>
                 <div style={{ display: 'flex', gap: '5px' }}>
-                    <button className="btn-neon btn-gold" onClick={editarTituloCapitulo} style={{ padding: '8px 15px', margin: 0 }} title="Editar Nome do Arco">✏️</button>
-                    <button className="btn-neon btn-red" onClick={apagarCapitulo} style={{ padding: '8px 15px', margin: 0 }} title="Apagar Arco Inteiro">🗑️</button>
-                    <button className="btn-neon btn-green" onClick={adicionarCapitulo} style={{ padding: '8px 15px', margin: 0 }}>➕ Novo Arco</button>
+                    <button className="btn-neon btn-gold" onClick={editarTituloCapitulo} style={{ padding: '8px 15px', margin: 0 }} title="Editar Nome do Capítulo">✏️</button>
+                    <button className="btn-neon btn-red" onClick={apagarCapitulo} style={{ padding: '8px 15px', margin: 0 }} title="Apagar Capítulo Inteiro">🗑️</button>
+                    <button className="btn-neon btn-green" onClick={adicionarCapitulo} style={{ padding: '8px 15px', margin: 0 }}>➕ Novo Capítulo</button>
                 </div>
             </div>
+
+            {/* LINHA 2: GESTÃO DE ARCOS DENTRO DO CAPÍTULO ATUAL */}
+            {subAba === 'lore' && (
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', paddingTop: '10px', paddingBottom: '10px', borderBottom: '1px solid #333', flexWrap: 'wrap' }}>
+                    <span style={{ color: '#0088ff', fontWeight: 'bold' }}>📂 Arco:</span>
+                    <select className="input-neon" value={loreFoco === 'presente' ? arcoAtivoIdPresente : arcoAtivoIdFuturo} onChange={(e) => loreFoco === 'presente' ? setArcoAtivoIdPresente(Number(e.target.value)) : setArcoAtivoIdFuturo(Number(e.target.value))} style={{ flex: 1, minWidth: '150px', borderColor: '#0088ff', color: '#fff', padding: '8px', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                        {capituloAtivoObj?.arcos?.map(a => <option key={a.id} value={a.id} style={{ color: '#000' }}>{a.titulo}</option>)}
+                    </select>
+                    <div style={{ display: 'flex', gap: '5px' }}>
+                        <button className="btn-neon btn-gold" onClick={editarTituloArco} style={{ padding: '8px 15px', margin: 0 }} title="Editar Nome do Arco">✏️</button>
+                        <button className="btn-neon btn-red" onClick={apagarArco} style={{ padding: '8px 15px', margin: 0 }} title="Apagar este Arco">🗑️</button>
+                        <button className="btn-neon btn-blue" onClick={adicionarArco} style={{ padding: '8px 15px', margin: 0 }}>➕ Novo Arco Aqui</button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -63,9 +87,7 @@ export function AIChat() {
     if (!ctx) return FALLBACK;
     const { chatRef, historico, meuNome, mensagem, setMensagem, handleKeyDown, carregando, enviarMensagem, arquivoTexto, nomeArquivo, setArquivoTexto, setNomeArquivo, fileInputRef, handleArquivoSelecionado, limparChat, salvarNoRegistro, loreFoco, capitulosPresente, capitulosFuturo } = ctx;
 
-    // 🔥 Estado para saber em que arco guardar a mensagem 🔥
-    const [destinoLore, setDestinoLore] = useState('novo');
-
+    const [destinoLore, setDestinoLore] = useState('novo_capitulo');
     const arcosDisponiveis = loreFoco === 'presente' ? capitulosPresente : capitulosFuturo;
 
     return (
@@ -88,24 +110,26 @@ export function AIChat() {
                             {msg.texto}
                         </div>
                         
-                        {/* 🔥 SELETOR DE ARCOS DIRETO NO CHAT 🔥 */}
+                        {/* 🔥 SELETOR HIERÁRQUICO NO CHAT 🔥 */}
                         {msg.role === 'ai' && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px', background: 'rgba(0,0,0,0.5)', padding: '5px', borderRadius: '5px', border: '1px solid #333', alignSelf: 'flex-start', flexWrap: 'wrap' }}>
                                 <span style={{ fontSize: '0.75em', color: '#aaa' }}>Destino:</span>
-                                <select className="input-neon" value={destinoLore} onChange={e => setDestinoLore(e.target.value)} style={{ padding: '2px 5px', fontSize: '0.75em', maxWidth: '150px', borderColor: '#444', color: '#fff' }}>
-                                    <option value="novo">➕ Criar Novo Arco</option>
-                                    <optgroup label="Adicionar a Arco Existente:">
-                                        {arcosDisponiveis.map(c => <option key={c.id} value={c.id}>{c.titulo}</option>)}
-                                    </optgroup>
+                                <select className="input-neon" value={destinoLore} onChange={e => setDestinoLore(e.target.value)} style={{ padding: '2px 5px', fontSize: '0.75em', maxWidth: '200px', borderColor: '#444', color: '#fff' }}>
+                                    <option value="novo_capitulo">➕ Criar Novo Capítulo Inteiro</option>
+                                    {arcosDisponiveis.map(cap => (
+                                        <optgroup key={cap.id} label={`📖 ${cap.titulo}`}>
+                                            <option value={`novo_arco_${cap.id}`}>➕ Novo Arco aqui dentro</option>
+                                            {cap.arcos.map(a => <option key={a.id} value={`${cap.id}_${a.id}`}>📂 {a.titulo}</option>)}
+                                        </optgroup>
+                                    ))}
                                 </select>
                                 <button 
                                     onClick={() => {
                                         salvarNoRegistro(msg.texto, 'Análise da Sexta-Feira', destinoLore, loreFoco);
-                                        alert('✅ Texto transferido com sucesso para a aba de Registros!');
+                                        alert('✅ Texto transferido com sucesso para o Arco selecionado!');
                                     }}
                                     className="btn-neon btn-blue"
                                     style={{ padding: '4px 10px', fontSize: '0.75em', margin: 0, opacity: 0.9 }}
-                                    title="Copiar esta resposta para a aba de Registros"
                                 >
                                     📜 Enviar
                                 </button>
@@ -197,7 +221,7 @@ export function AILore() {
     return (
         <div className="def-box" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '20px' }}>
             <AICapituladorHeader />
-            <textarea className="input-neon" value={textoAtivo} onChange={e => atualizarTexto(e.target.value)} placeholder={`Escreva os registros da linha do tempo aqui...`} style={{ flex: 1, width: '100%', resize: 'none', borderColor: loreFoco === 'presente' ? '#00ffcc' : '#ffcc00', color: '#ddd', lineHeight: '1.6', padding: '15px', boxSizing: 'border-box', transition: 'border-color 0.3s' }} />
+            <textarea className="input-neon" value={textoAtivo} onChange={e => atualizarTexto(e.target.value)} placeholder={`A história deste Arco será escrita aqui...`} style={{ flex: 1, width: '100%', resize: 'none', borderColor: loreFoco === 'presente' ? '#00ffcc' : '#ffcc00', color: '#ddd', lineHeight: '1.6', padding: '15px', boxSizing: 'border-box', transition: 'border-color 0.3s' }} />
         </div>
     );
 }

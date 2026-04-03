@@ -3,13 +3,12 @@ import { ref, uploadBytes } from 'firebase/storage';
 import { httpsCallable } from 'firebase/functions';
 import { storage, functions } from '../../services/firebase-config';
 import useStore from '../../stores/useStore'; 
-import { useAIForm } from './AIFormContext'; // 🔥 Puxamos o cérebro da Lore
+import { useAIForm } from './AIFormContext';
 
 export default function GravadorPanel() {
     const [gravando, setGravando] = useState(false);
     const [logs, setLogs] = useState(['Módulo de Escuta Contínua (Auto-Fatiador) inicializado...']);
     
-    // Referências para o motor contínuo
     const streamRef = useRef(null);
     const mediaRecorderRef = useRef(null);
     const timerRef = useRef(null);
@@ -19,10 +18,9 @@ export default function GravadorPanel() {
     const cenario = useStore(s => s.cenario);
     const nomesAtivos = Array.isArray(cenario?.tavernaAtivos) ? cenario.tavernaAtivos : [];
 
-    // 🔥 AS MAGIAS DA LORE 🔥
     const ctx = useAIForm();
     const { capitulosPresente, capitulosFuturo, salvarNoRegistro, loreFoco } = ctx || {};
-    const [destinoLore, setDestinoLore] = useState('novo');
+    const [destinoLore, setDestinoLore] = useState('novo_capitulo');
 
     const addLog = (msg) => {
         const hora = new Date().toLocaleTimeString();
@@ -90,43 +88,28 @@ export default function GravadorPanel() {
 
     const iniciarGravacao = async () => {
         try {
-            if (!streamRef.current) {
-                streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
-            }
+            if (!streamRef.current) streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
             
             pedacoContadorRef.current = 1;
             iniciarMediaRecorder();
             setGravando(true);
             addLog("🎙️ Gravação contínua iniciada! O sistema fará cortes automáticos a cada 20 minutos.");
 
-            // 20 minutos de corte
-            const TEMPO_CORTE = 20 * 60 * 1000;
+            const TEMPO_CORTE = 20 * 60 * 1000; // 20 min
             
             timerRef.current = setInterval(() => {
                 addLog("✂️ 20 minutos atingidos. Fechando o bloco atual e abrindo o próximo sem perder áudio...");
-                if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-                    mediaRecorderRef.current.stop(); 
-                }
+                if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") mediaRecorderRef.current.stop(); 
                 iniciarMediaRecorder(); 
             }, TEMPO_CORTE);
 
-        } catch (err) {
-            addLog(`❌ Erro de microfone: ${err.message}`);
-        }
+        } catch (err) { addLog(`❌ Erro de microfone: ${err.message}`); }
     };
 
     const pararGravacao = () => {
-        if (timerRef.current) {
-            clearInterval(timerRef.current);
-            timerRef.current = null;
-        }
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-            mediaRecorderRef.current.stop(); 
-        }
-        if (streamRef.current) {
-            streamRef.current.getTracks().forEach(track => track.stop());
-            streamRef.current = null;
-        }
+        if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") mediaRecorderRef.current.stop(); 
+        if (streamRef.current) { streamRef.current.getTracks().forEach(track => track.stop()); streamRef.current = null; }
         setGravando(false);
         addLog("⏹️ Gravação total encerrada pelo Mestre.");
     };
@@ -142,14 +125,17 @@ export default function GravadorPanel() {
                 </p>
             </div>
 
-            {/* 🔥 NOVO: SELETOR DE ARCOS DO GRAVADOR 🔥 */}
+            {/* 🔥 NOVO: SELETOR HIERÁRQUICO DO GRAVADOR 🔥 */}
             <div style={{ background: 'rgba(0,0,0,0.5)', padding: '15px', borderRadius: '8px', border: '1px solid #444', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                 <strong style={{ color: '#00ffcc' }}>Destino das Gravações:</strong>
                 <select className="input-neon" value={destinoLore} onChange={e => setDestinoLore(e.target.value)} style={{ flex: 1, minWidth: '200px', borderColor: '#00ffcc', color: '#fff' }}>
-                    <option value="novo">➕ Criar Novo Arco a cada gravação</option>
-                    <optgroup label="Injetar Gravações no Arco Existente:">
-                        {arcosDisponiveis.map(c => <option key={c.id} value={c.id}>{c.titulo}</option>)}
-                    </optgroup>
+                    <option value="novo_capitulo">➕ Criar Novo Capítulo Inteiro a cada gravação</option>
+                    {arcosDisponiveis.map(cap => (
+                        <optgroup key={cap.id} label={`📖 ${cap.titulo}`}>
+                            <option value={`novo_arco_${cap.id}`}>➕ Criar Novo Arco aqui dentro</option>
+                            {cap.arcos.map(a => <option key={a.id} value={`${cap.id}_${a.id}`}>📂 Injetar no: {a.titulo}</option>)}
+                        </optgroup>
+                    ))}
                 </select>
             </div>
 
