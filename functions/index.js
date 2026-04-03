@@ -69,7 +69,7 @@ function formatarContexto(ctx) {
     return partes.join("\n");
 }
 
-// 1. FUNÇÃO ORIGINAL DO CHAT (Mantida intacta)
+// 1. FUNÇÃO ORIGINAL DO CHAT (Usando o Flash por ser mais rápido para chat de texto)
 exports.falarComSextaFeira = onCall(
     {
         region: "us-central1",
@@ -129,7 +129,7 @@ exports.falarComSextaFeira = onCall(
     }
 );
 
-// 2. 🔥 NOVA FUNÇÃO: O OUVINTE DE ÁUDIO DA SEXTA-FEIRA (COM DIARIZAÇÃO INTELIGENTE) 🔥
+// 2. 🔥 NOVA FUNÇÃO: O OUVINTE DE ÁUDIO DA SEXTA-FEIRA (COM DIARIZAÇÃO INTELIGENTE DO MODELO PRO) 🔥
 exports.transcreverAudioSextaFeira = onCall(
     { 
         region: "us-central1", 
@@ -164,11 +164,9 @@ exports.transcreverAudioSextaFeira = onCall(
             4. CONTEXTO NERD: Lembre-se que eles estão jogando RPG. Compreenda e escreva corretamente termos como "HP", "Mana", "dado", "D20", "turno", "dano", "mestre", "rolar", "iniciativa", etc.
             5. ZERO ALUCINAÇÃO: Não descreva ações do ambiente (ex: *suspirou*, *barulho de porta*). Transcreva APENAS o diálogo falado. Sem histórias épicas.`;
 
-            // Nota: Se a IA continuar a ter dificuldade em distinguir as vozes, 
-            // você pode tentar mudar "gemini-2.5-flash" para "gemini-1.5-pro" aqui embaixo, 
-            // pois o modelo Pro tem "ouvidos" melhores para áudios longos e difíceis.
+            // 🔥 UPGRADE: Agora usamos o gemini-1.5-pro para audição cirúrgica! 🔥
             const response = await ai.models.generateContent({
-                model: "gemini-2.5-flash",
+                model: "gemini-1.5-pro",
                 contents: [{
                     role: "user",
                     parts: [
