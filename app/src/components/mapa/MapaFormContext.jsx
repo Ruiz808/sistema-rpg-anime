@@ -14,6 +14,40 @@ export function urlSeguraParaCss(url) {
     return `url("${trimmed.replace(/["\\)]/g, '')}")`;
 }
 
+export function calcularCA(ficha, tipo) {
+    if (!ficha) return 10;
+    const getDoisDigitos = (valor) => {
+        if (!valor) return 0;
+        const strVal = String(valor).replace(/[^0-9]/g, '');
+        if (!strVal) return 0;
+        return parseInt(strVal.substring(0, 2), 10);
+    };
+    let base = 5;
+    if (tipo === 'evasiva') base += getDoisDigitos(ficha.destreza?.base);
+    if (tipo === 'resistencia') base += getDoisDigitos(ficha.forca?.base);
+
+    let bonus = 0;
+    const somarBonus = (efeitos) => {
+        (efeitos || []).forEach(e => {
+            if (e && e.atributo === tipo && e.propriedade === 'base') bonus += parseFloat(e.valor) || 0;
+        });
+    };
+
+    (ficha.poderes || []).forEach(p => {
+        let resolved = resolverEfeitosEntidade(p);
+        if (p.ativa) somarBonus(resolved.efeitos);
+        somarBonus(resolved.efeitosPassivos);
+    });
+    (ficha.passivas || []).forEach(p => { somarBonus(p.efeitos); });
+    (ficha.inventario || []).filter(i => i.equipado).forEach(i => {
+        let resolved = resolverEfeitosEntidade(i);
+        somarBonus(resolved.efeitos);
+        somarBonus(resolved.efeitosPassivos);
+    });
+
+    return Math.floor(base + bonus);
+}
+
 const MapaFormContext = createContext(null);
 
 export function useMapaForm() {
@@ -226,7 +260,6 @@ export function MapaFormProvider({ children }) {
         return coresJogadoresRef.current[nome];
     }, []);
 
-    // CÓDIGO DA LINHA 257 (Cole este novo bloco para Gerir Zonas)
     const deletarZona = useCallback((idZona) => {
         if(!window.confirm("O fluxo do tempo dissipa esta magia. Apagar a Zona de Efeito do mapa?")) return;
         const novoCenario = JSON.parse(JSON.stringify(cenario));
@@ -298,12 +331,43 @@ export function MapaFormProvider({ children }) {
         return lista;
     }, [personagens, cenaRenderId]);
 
+    const processarEntradaNaZona = useCallback((x, y, z, entidadeNome, isDummie, idDummie, dData) => {
+        const cenaAtivaId = cenario?.ativa || 'default';
+        const escala = cenario?.lista?.[cenaAtivaId]?.escala || 1.5;
+        const zonasCena = (cenario?.zonas || []).filter(zo => (zo.cenaId || 'default') === cenaRenderId && zo.danoAplicado);
+        
+        zonasCena.forEach(zona => {
+            const dX = Math.abs(x - zona.x);
+            const dY = Math.abs(y - zona.y);
+            const dZ = Math.floor(Math.abs(z - (zona.z || 0)) / escala);
+            
+            if (Math.max(dX, dY, dZ) <= zona.raio) {
+                const valor = zona.danoAplicado;
+                enviarParaFeed({
+                    tipo: 'sistema', nome: 'SISTEMA',
+                    texto: `⚠️ ${entidadeNome} entrou no campo de [${zona.nome}] e sofreu ${valor} pontos de efeito!`
+                });
+                
+                if (isDummie && idDummie && dData) {
+                    const novoHp = Math.max(0, dData.hpAtual - valor);
+                    salvarDummie(idDummie, { ...dData, hpAtual: novoHp });
+                } else if (entidadeNome === meuNome) {
+                    updateFicha(f => {
+                        if (f.vida) f.vida.atual = Math.max(0, f.vida.atual - valor);
+                    });
+                    salvarFichaSilencioso();
+                }
+            }
+        });
+    }, [cenario, cenaRenderId, meuNome, updateFicha]);
+
     const handleCellClick = useCallback((x, y) => {
+        const z = parseInt(altitudeInput) || 0;
         if (isMestre && alvoSelecionado && dummies[alvoSelecionado]) {
             const d = dummies[alvoSelecionado];
-            salvarDummie(alvoSelecionado, { ...d, posicao: { x, y }, cenaId: cenaRenderId });
+            salvarDummie(alvoSelecionado, { ...d, posicao: { x, y, z }, cenaId: cenaRenderId });
+            processarEntradaNaZona(x, y, z, d.nome, true, alvoSelecionado, d);
         } else {
-            const z = parseInt(altitudeInput) || 0;
             updateFicha((ficha) => {
                 if (!ficha.posicao) ficha.posicao = {};
                 ficha.posicao.x = x;
@@ -312,8 +376,9 @@ export function MapaFormProvider({ children }) {
                 ficha.posicao.cenaId = cenaRenderId; 
             });
             salvarFichaSilencioso();
+            processarEntradaNaZona(x, y, z, meuNome, false, null, null);
         }
-    }, [isMestre, alvoSelecionado, dummies, cenaRenderId, altitudeInput, updateFicha]);
+    }, [isMestre, alvoSelecionado, dummies, cenaRenderId, altitudeInput, updateFicha, processarEntradaNaZona, meuNome]);
 
     const alterarZoom = useCallback((direcao) => {
         setTamanhoCelula(prev => {
@@ -339,7 +404,24 @@ export function MapaFormProvider({ children }) {
         if (ordemIniciativa.length === 0) return;
         setTurnoAtualIndex(prev => {
             let next = prev + 1;
-            if (next >= ordemIniciativa.length) next = 0;
+            // 🔥 Quando a rodada dá a volta, as Zonas Persistentes enfraquecem 🔥
+            if (next >= ordemIniciativa.length) {
+                next = 0;
+                const cenarioAtual = useStore.getState().cenario;
+                if (cenarioAtual?.zonas && cenarioAtual.zonas.length > 0) {
+                    const novoCenario = JSON.parse(JSON.stringify(cenarioAtual));
+                    let mudou = false;
+                    novoCenario.zonas = novoCenario.zonas.filter(z => {
+                        z.duracao -= 1;
+                        mudou = true;
+                        return z.duracao > 0;
+                    });
+                    if (mudou) {
+                        salvarCenarioCompleto(novoCenario);
+                        enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: '⏳ Uma rodada de combate passou. As zonas mágicas enfraqueceram...' });
+                    }
+                }
+            }
             return next;
         });
         setFeedIndexTurnoAtual(feedCombate.length);

@@ -4,9 +4,8 @@ import { calcularAcerto } from '../../core/engine';
 import { getPoderesDefesa, getEfeitosDeClasse } from '../../core/attributes';
 import { enviarParaFeed, salvarFichaSilencioso, salvarCenarioCompleto } from '../../services/firebase-sync';
 
-// Importa para as Zonas de Efeito poderem ter a cor correspondente
 import { cores } from '../arsenal/ElementosFormContext';
-import { calcularCA } from '../../core/engine';
+import { calcularCA } from '../mapa/MapaFormContext';
 
 const AcertoFormContext = createContext(null);
 
@@ -38,16 +37,14 @@ export function AcertoFormProvider({ children }) {
     const [bonus, setBonus] = useState(0);
     const [statsSelecionados, setStatsSelecionados] = useState(['destreza']);
 
-    // 🔥 NOVOS ESTADOS TÁTICOS (ÁREAS E ALVOS) 🔥
-    const [origemArea, setOrigemArea] = useState('alvo'); // 'alvo', 'self', 'livre'
+    const [origemArea, setOrigemArea] = useState('alvo'); 
     const [coordLivreX, setCoordLivreX] = useState(0);
     const [coordLivreY, setCoordLivreY] = useState(0);
-    const [alvoFiltro, setAlvoFiltro] = useState('todos'); // 'todos', 'inimigos', 'aliados'
+    const [alvoFiltro, setAlvoFiltro] = useState('todos'); 
 
     const vantagens = minhaFicha?.ataqueConfig?.vantagens || 0;
     const desvantagens = minhaFicha?.ataqueConfig?.desvantagens || 0;
     const profGlobal = parseInt(minhaFicha?.proficienciaBase) || 0;
-
     const bonusAcertoClasse = minhaFicha ? getPoderesDefesa(minhaFicha, 'bonus_acerto') : 0;
 
     const itensEquipados = useMemo(() => minhaFicha?.inventario ? minhaFicha.inventario.filter(i => i.equipado) : [], [minhaFicha?.inventario]);
@@ -69,7 +66,6 @@ export function AcertoFormProvider({ children }) {
 
     const alvoDummie = alvoSelecionado && dummies?.[alvoSelecionado] ? dummies[alvoSelecionado] : null;
 
-    // 🔥 Sincroniza o Filtro de Alvos com a Magia Equipada (Se existir)
     useEffect(() => {
         const magiasEquipadas = (minhaFicha?.ataquesElementais || []).filter(m => m.equipado);
         if (magiasEquipadas.length > 0 && magiasEquipadas[0].alvosAfetados) {
@@ -79,7 +75,6 @@ export function AcertoFormProvider({ children }) {
         }
     }, [minhaFicha?.ataquesElementais]);
 
-    // 🔥 RADAR TÁTICO AVANÇADO (Centro da Explosão e Coordenada Livre) 🔥
     const { distQuadrados, distReal, maxAlcance, maxArea, isForaDeAlcance, unidadeEscala, centroExplosao, duracaoZonaEfeito, elementoZona } = useMemo(() => {
         let dQ = 0; let dR = 0; let mA = 1; let mArea = 0; let fora = false; let unidade = 'm';
         let centro = null; let duracao = 0; let elemZ = 'Neutro';
@@ -89,14 +84,11 @@ export function AcertoFormProvider({ children }) {
         const escala = cenaAtual.escala || 1.5;
         unidade = cenaAtual.unidade || 'm';
 
-        // 1. Determina as Estatísticas Máximas das Técnicas
         const maxAlcanceArmas = armasEquipadas.length > 0 ? Math.max(...armasEquipadas.map(a => a.alcance || 1)) : 1;
         const maxAreaArmas = armasEquipadas.length > 0 ? Math.max(...armasEquipadas.map(a => a.areaQuad || a.area || 0)) : 0;
-
         const poderesAtivos = (minhaFicha?.poderes || []).filter(p => p.ativa);
         const maxAlcancePoderes = poderesAtivos.length > 0 ? Math.max(...poderesAtivos.map(p => p.alcance || 1)) : 1;
         const maxAreaPoderes = poderesAtivos.length > 0 ? Math.max(...poderesAtivos.map(p => p.areaQuad || p.area || 0)) : 0;
-
         const magiasEquipadas = (minhaFicha?.ataquesElementais || []).filter(m => m.equipado);
         const maxAlcanceMagias = magiasEquipadas.length > 0 ? Math.max(...magiasEquipadas.map(m => m.alcanceQuad || 1)) : 1;
         const maxAreaMagias = magiasEquipadas.length > 0 ? Math.max(...magiasEquipadas.map(m => m.areaQuad || 0)) : 0;
@@ -109,51 +101,30 @@ export function AcertoFormProvider({ children }) {
             elemZ = magiasEquipadas[0].elemento || 'Neutro';
         }
 
-        // 2. Define o Centro Geométrico da Explosão
         if (origemArea === 'self') centro = minhaFicha?.posicao;
         else if (origemArea === 'alvo') centro = alvoDummie?.posicao;
         else if (origemArea === 'livre') centro = { x: parseInt(coordLivreX) || 0, y: parseInt(coordLivreY) || 0, z: 0, cenaId: cenaAtivaId };
 
-        // 3. Calcula se o Atacante Alcança o CENTRO DA EXPLOSÃO
         if (centro && minhaFicha?.posicao) {
             const dx = Math.abs((minhaFicha.posicao.x || 0) - (centro.x || 0));
             const dy = Math.abs((minhaFicha.posicao.y || 0) - (centro.y || 0));
             const dz = Math.floor(Math.abs((minhaFicha.posicao.z || 0) - (centro.z || 0)) / escala);
-
             dQ = Math.max(dx, dy, dz);
             dR = dQ * escala;
             fora = dQ > mA;
         } else {
-            // Sem alvo válido, considera fora para prevenir bugs
             fora = true;
         }
 
         return { distQuadrados: dQ, distReal: dR, maxAlcance: mA, maxArea: mArea, isForaDeAlcance: fora, unidadeEscala: unidade, centroExplosao: centro, duracaoZonaEfeito: duracao, elementoZona: elemZ };
     }, [alvoDummie, minhaFicha?.posicao, minhaFicha?.poderes, minhaFicha?.ataquesElementais, cenario, armasEquipadas, origemArea, coordLivreX, coordLivreY]);
 
-    const changeVantagem = useCallback((e) => {
-        updateFicha(f => { if (!f.ataqueConfig) f.ataqueConfig = {}; f.ataqueConfig.vantagens = parseInt(e.target.value) || 0; });
-        salvarFichaSilencioso();
-    }, [updateFicha]);
+    const changeVantagem = useCallback((e) => { updateFicha(f => { if (!f.ataqueConfig) f.ataqueConfig = {}; f.ataqueConfig.vantagens = parseInt(e.target.value) || 0; }); salvarFichaSilencioso(); }, [updateFicha]);
+    const changeDesvantagem = useCallback((e) => { updateFicha(f => { if (!f.ataqueConfig) f.ataqueConfig = {}; f.ataqueConfig.desvantagens = parseInt(e.target.value) || 0; }); salvarFichaSilencioso(); }, [updateFicha]);
+    const toggleStat = useCallback((value) => { setStatsSelecionados(prev => { if (prev.includes(value)) return prev.filter(v => v !== value); return [...prev, value]; }); }, []);
 
-    const changeDesvantagem = useCallback((e) => {
-        updateFicha(f => { if (!f.ataqueConfig) f.ataqueConfig = {}; f.ataqueConfig.desvantagens = parseInt(e.target.value) || 0; });
-        salvarFichaSilencioso();
-    }, [updateFicha]);
-
-    const toggleStat = useCallback((value) => {
-        setStatsSelecionados(prev => {
-            if (prev.includes(value)) return prev.filter(v => v !== value);
-            return [...prev, value];
-        });
-    }, []);
-
-    // 🔥 MOTOR GEOMÉTRICO (Fogo Amigo e Geração de Zonas) 🔥
     const rolarAcerto = useCallback(() => {
-        if (isForaDeAlcance && origemArea !== 'self') {
-            alert('Aviso: O alvo ou o Ponto de Explosão está fora do seu alcance!');
-            return;
-        }
+        if (isForaDeAlcance && origemArea !== 'self') { alert('Aviso: O alvo ou o Ponto de Explosão está fora do seu alcance!'); return; }
 
         const qD = parseInt(dados) || 1; const fD = parseInt(faces) || 20; const bon = parseInt(bonus) || 0; const prof = usarProficiencia ? profGlobal : 0;
         const v = parseInt(vantagens) || 0; const d = parseInt(desvantagens) || 0;
@@ -165,9 +136,7 @@ export function AcertoFormProvider({ children }) {
         const cenaAtivaId = cenario?.ativa || 'default';
         const escala = cenario?.lista?.[cenaAtivaId]?.escala || 1.5;
 
-        // 1. O SCANN DE ÁREA
         if (maxArea > 0 && centroExplosao) {
-            
             const verificarHit = (posicao, valorDefesa, nomeAlvo) => {
                 const isSameScene = (posicao.cenaId || 'default') === (centroExplosao.cenaId || 'default');
                 if (isSameScene) {
@@ -180,53 +149,47 @@ export function AcertoFormProvider({ children }) {
                 }
             };
 
-            // Inimigos
             if (alvoFiltro === 'todos' || alvoFiltro === 'inimigos') {
-                Object.entries(dummies).forEach(([id, dummieObj]) => {
-                    if (dummieObj.posicao) verificarHit(dummieObj.posicao, dummieObj.valorDefesa, dummieObj.nome);
-                });
+                Object.entries(dummies).forEach(([id, dummieObj]) => { if (dummieObj.posicao) verificarHit(dummieObj.posicao, dummieObj.valorDefesa, dummieObj.nome); });
             }
-            // Aliados
             if (alvoFiltro === 'todos' || alvoFiltro === 'aliados') {
                 if (minhaFicha.posicao && origemArea !== 'self') verificarHit(minhaFicha.posicao, calcularCA(minhaFicha, 'evasiva'), meuNome);
-                Object.entries(personagens || {}).forEach(([n, f]) => {
-                    if (f.posicao) verificarHit(f.posicao, calcularCA(f, 'evasiva'), n);
-                });
+                Object.entries(personagens || {}).forEach(([n, f]) => { if (f.posicao) verificarHit(f.posicao, calcularCA(f, 'evasiva'), n); });
             }
-
         } else if (alvoDummie) {
-            // Sem Área: Alvo Único Direto
             alvosAtingidos.push({ nome: alvoDummie.nome, defesa: alvoDummie.valorDefesa, acertou: result.acertoTotal >= alvoDummie.valorDefesa });
         }
 
-        // 2. CRIAÇÃO DA ZONA NO MAPA PARA TODOS VEREM
+        let idDaZonaCriada = null;
+
+        // 🔥 REGISTO DA ZONA PERSISTENTE (Agora enviamos o ID da Zona para o Feed!) 🔥
         if (maxArea > 0 && duracaoZonaEfeito > 0 && centroExplosao) {
+            idDaZonaCriada = Date.now();
             const hex = cores[elementoZona] || '#ff003c';
-            // Converte HEX para RGB para fazer a bolha transparente no grid
             let rgb = '255,0,60';
             if (hex.length === 7) {
-                const r = parseInt(hex.slice(1, 3), 16);
-                const g = parseInt(hex.slice(3, 5), 16);
-                const b = parseInt(hex.slice(5, 7), 16);
-                rgb = `${r},${g},${b}`;
+                rgb = `${parseInt(hex.slice(1, 3), 16)},${parseInt(hex.slice(3, 5), 16)},${parseInt(hex.slice(5, 7), 16)}`;
             }
 
             const novoCenario = JSON.parse(JSON.stringify(cenario || {}));
             if (!novoCenario.zonas) novoCenario.zonas = [];
             novoCenario.zonas.push({
-                id: Date.now(),
+                id: idDaZonaCriada,
                 nome: `Zona de ${meuNome} (${elementoZona})`,
                 x: centroExplosao.x,
                 y: centroExplosao.y,
+                z: centroExplosao.z || 0,
                 cenaId: centroExplosao.cenaId || 'default',
                 raio: maxArea,
                 rgb: rgb,
-                duracao: duracaoZonaEfeito
+                duracao: duracaoZonaEfeito,
+                danoAplicado: null // Ficará a aguardar o AtaquePanel
             });
             salvarCenarioCompleto(novoCenario);
         }
 
-        const feedData = { tipo: 'acerto', nome: meuNome, ...result, alvosArea: alvosAtingidos, areaEf: maxArea };
+        // Adicionado: zonaIdGerada
+        const feedData = { tipo: 'acerto', nome: meuNome, ...result, alvosArea: alvosAtingidos, areaEf: maxArea, zonaIdGerada: idDaZonaCriada };
         enviarParaFeed(feedData);
         setAbaAtiva('aba-log');
 
