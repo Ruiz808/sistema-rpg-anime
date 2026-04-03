@@ -332,34 +332,55 @@ export function MapaFormProvider({ children }) {
         return lista;
     }, [personagens, cenaRenderId]);
 
-    // 🔥 O MOTOR LÊ AGORA OS MULTIPLICADORES DE FORMAS E ABSOLUTOS DA FICHA DE QUEM LANÇOU A MAGIA 🔥
+    // 🔥 O MOTOR LÊ AGORA OS MULTIPLICADORES E STATUS DA FICHA EM TEMPO REAL (SEM CLOSURES STALE) 🔥
     const getDanoDinamicoZona = useCallback((zona) => {
         if (!zona.danoOriginal) return zona.danoAplicado || 0;
-        const fichaCaster = (zona.conjurador === meuNome) ? minhaFicha : personagens?.[zona.conjurador];
+        
+        const storeState = useStore.getState();
+        const fichaCaster = (zona.conjurador === storeState.meuNome) ? storeState.minhaFicha : storeState.personagens?.[zona.conjurador];
         if (!fichaCaster) return zona.danoOriginal;
         
         const buffs = getBuffs(fichaCaster);
         let maxFuria = 0;
-        const scanFuria = (efs) => {
+        let danoBrutoAtual = 0;
+        
+        const scan = (efs) => {
             (efs || []).forEach(e => {
-                if (e && (e.propriedade || '').toLowerCase().trim() === 'furia_berserker') {
+                if (!e) return;
+                const prop = (e.propriedade || '').toLowerCase().trim();
+                if (prop === 'furia_berserker') {
                     const v = parseFloat(e.valor) || 0;
                     if (v > maxFuria) maxFuria = v;
                 }
+                if (prop === 'dano_bruto' || prop === 'dano_verdadeiro') {
+                    danoBrutoAtual += parseFloat(e.valor) || 0;
+                }
             });
         };
-        (fichaCaster.poderes || []).forEach(p => { if (p.ativa) scanFuria(p.efeitos); scanFuria(p.efeitosPassivos); });
-        (fichaCaster.inventario || []).forEach(i => { if (i.equipado) { scanFuria(i.efeitos); scanFuria(i.efeitosPassivos); } });
-        (fichaCaster.passivas || []).forEach(p => scanFuria(p.efeitos));
+        
+        (fichaCaster.poderes || []).forEach(p => { if (p.ativa) scan(p.efeitos); scan(p.efeitosPassivos); });
+        (fichaCaster.inventario || []).forEach(i => { if (i.equipado) { scan(i.efeitos); scan(i.efeitosPassivos); } });
+        (fichaCaster.passivas || []).forEach(p => scan(p.efeitos));
         
         const furiaAtiva = maxFuria > 0 ? maxFuria : 1;
-        // ✅ CORREÇÃO: ADICIONADO buffs?.mformas e buffs?.mabs NA CONTA!
         const multAtual = (buffs?.mbase || 1) * (buffs?.mgeral || 1) * (buffs?.mformas || 1) * (buffs?.mabs || 1) * furiaAtiva;
         const baseMulti = zona.multiplicadorOriginal || 1;
         
-        const novoDano = Math.floor((zona.danoOriginal / baseMulti) * multAtual);
+        let somaStatusAtual = 0;
+        (zona.statusKeys || []).forEach(k => {
+            const str = String(fichaCaster[k]?.base || '').replace(/[^0-9]/g, '');
+            somaStatusAtual += parseInt(str.substring(0, 2), 10) || 0;
+        });
+        
+        const diffStatus = somaStatusAtual - (zona.somaStatusOriginal || somaStatusAtual);
+        const diffBruto = danoBrutoAtual - (zona.danoBrutoOriginal || danoBrutoAtual);
+        
+        // Desfaz o multiplicador antigo para revelar a base de Dano pura, soma as diferenças ativas (Formas/Passivas) e aplica o multiplicador atual
+        const novoDanoBase = (zona.danoOriginal / baseMulti) + diffStatus + diffBruto;
+        const novoDano = Math.floor(novoDanoBase * multAtual);
+        
         return novoDano > 0 ? novoDano : zona.danoOriginal;
-    }, [minhaFicha, meuNome, personagens]);
+    }, []);
 
     const dispararEfeitoDaZona = useCallback((zona) => {
         const cenaAtivaId = cenario?.ativa || 'default';
@@ -491,7 +512,9 @@ export function MapaFormProvider({ children }) {
         setFeedIndexTurnoAtual(feedCombate.length);
         setJogadorHistory(null);
 
-        const cenarioAtual = useStore.getState().cenario;
+        const storeState = useStore.getState();
+        const cenarioAtual = storeState.cenario;
+
         if (cenarioAtual?.zonas && cenarioAtual.zonas.length > 0) {
             const novoCenario = JSON.parse(JSON.stringify(cenarioAtual));
             let mudouCenario = false;
