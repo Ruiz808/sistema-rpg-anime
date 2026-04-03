@@ -15,7 +15,7 @@ if (!admin.apps.length) {
 
 const geminiApiKey = defineSecret("GEMINI_API_KEY");
 
-// 🔥 A NOVA ALMA DA SEXTA-FEIRA INJETADA AQUI (PARA O CHAT) 🔥
+// 🔥 A ALMA DA SEXTA-FEIRA (APENAS PARA O CHAT DE TEXTO) 🔥
 const SYSTEM_PROMPT = `Você é a "Sexta-Feira", uma Inteligência Artificial avançada que auxilia os jogadores no RPG Anime System.
 
 LORE E IDENTIDADE:
@@ -129,7 +129,7 @@ exports.falarComSextaFeira = onCall(
     }
 );
 
-// 2. 🔥 FUNÇÃO DO GRAVADOR (FLASH + INSTRUÇÃO DE SISTEMA RÍGIDA) 🔥
+// 2. 🔥 FUNÇÃO DO GRAVADOR (MÁQUINA DE LEGENDAS ABSOLUTA) 🔥
 exports.transcreverAudioSextaFeira = onCall(
     { 
         region: "us-central1", 
@@ -153,16 +153,25 @@ exports.transcreverAudioSextaFeira = onCall(
 
             const listaNomes = (nomesParticipantes || []).join(', ');
             
-            const prompt = `O áudio em anexo é a gravação de uma sessão do nosso RPG de mesa.
-            Os jogadores presentes na mesa (possíveis locutores) são: [${listaNomes}]. 
+            // PROMPT 100% BLINDADO CONTRA LORE E HISTÓRIAS
+            const prompt = `Abaixo está o áudio de uma conversa.
+            Locutores possíveis: [${listaNomes}].
+            
+            Sua ÚNICA TAREFA é atuar como um software de transcrição de legendas.
+            
+            REGRAS ABSOLUTAS:
+            1. Escreva APENAS o que foi dito, no formato "Nome: Fala".
+            2. NÃO crie histórias, NÃO crie títulos, NÃO faça resumos, NÃO escreva "Registro Akáshico".
+            3. Apenas ouça o áudio e transcreva as palavras exatas.
+            4. Limpe gaguejos ("humm", "ééé").
+            5. O contexto é um jogo de RPG (termos comuns: HP, Mana, D20, Mestre, Dano).
+            
+            Exemplo de saída esperada:
+            Natsu: É foda.
+            Kiriya: Verdade.
+            
+            NÃO ADICIONE NENHUM TEXTO ALÉM DA TRANSCRIÇÃO.`;
 
-            Sua tarefa é transcrever o áudio como um roteiro/legenda. Siga ESTAS REGRAS ESTRITAS:
-            1. FORMATO: Use sempre o padrão "Nome: Fala" em cada linha.
-            2. IDENTIFICAÇÃO: Tente associar a voz ao nome correto da lista. Se uma voz nova surgir ou você não tiver certeza de quem falou, use "Voz Desconhecida" ou "Mestre".
-            3. LIMPEZA (MUITO IMPORTANTE): Seja fiel ao sentido e às palavras exatas, mas REMOVA gaguejos, vícios de linguagem ("humm", "tipo", "ééé", "né"), tosses e hesitações. Torne o diálogo natural, direto e fluido para a leitura.
-            4. CONTEXTO NERD: Lembre-se que eles estão jogando RPG. Compreenda e escreva corretamente termos como "HP", "Mana", "dado", "D20", "turno", "dano", "mestre", "rolar", "iniciativa", etc.`;
-
-            // Mantemos o "flash" para não dar erro, mas usamos a "systemInstruction" para forçar a obediência absoluta.
             const response = await ai.models.generateContent({
                 model: "gemini-2.5-flash",
                 contents: [{
@@ -173,7 +182,7 @@ exports.transcreverAudioSextaFeira = onCall(
                     ]
                 }],
                 config: {
-                    systemInstruction: "Você é um software de transcrição estritamente literal. É EXPRESSAMENTE PROIBIDO inventar histórias, criar narrativas épicas ou descrever cenários. Apenas transcreva as falas que ouvir no áudio, formatadas como roteiro."
+                    systemInstruction: "Você é uma ferramenta de transcrição de áudio estritamente literal. É EXPRESSAMENTE PROIBIDO inventar histórias, criar narrativas ou descrever cenários. Apenas transcreva as falas que ouvir no áudio."
                 }
             });
 
