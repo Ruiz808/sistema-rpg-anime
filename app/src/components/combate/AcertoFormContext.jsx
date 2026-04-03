@@ -162,7 +162,7 @@ export function AcertoFormProvider({ children }) {
 
         let idDaZonaCriada = null;
 
-        // 🔥 REGISTO DA ZONA PERSISTENTE (Agora enviamos o ID da Zona para o Feed!) 🔥
+        // 🔥 REGISTO DA ZONA PERSISTENTE 🔥
         if (maxArea > 0 && duracaoZonaEfeito > 0 && centroExplosao) {
             idDaZonaCriada = Date.now();
             const hex = cores[elementoZona] || '#ff003c';
@@ -183,12 +183,15 @@ export function AcertoFormProvider({ children }) {
                 raio: maxArea,
                 rgb: rgb,
                 duracao: duracaoZonaEfeito,
-                danoAplicado: null // Ficará a aguardar o AtaquePanel
+                danoAplicado: null, 
+                danoOriginal: null, 
+                multiplicadorOriginal: 1, 
+                conjurador: meuNome, 
+                alvosFiltro: alvoFiltro 
             });
             salvarCenarioCompleto(novoCenario);
         }
 
-        // Adicionado: zonaIdGerada
         const feedData = { tipo: 'acerto', nome: meuNome, ...result, alvosArea: alvosAtingidos, areaEf: maxArea, zonaIdGerada: idDaZonaCriada };
         enviarParaFeed(feedData);
         setAbaAtiva('aba-log');

@@ -105,24 +105,25 @@ export function AtaqueFormProvider({ children }) {
         }
     }, [percAtualLostFloor, furiaMax, multiplicadorFuriaClasse, updateFicha]);
 
-    // 🔥 DESTRANCAR DANO PARA MÚLTIPLOS ALVOS (Basta acertar em um para rolar dano) 🔥
     useEffect(() => {
+        if (!dummieAlvo) {
+            setPodeRolarDano(true);
+            return;
+        }
         const meuUltimoAcerto = [...feedCombate].reverse().find(f => f.nome === meuNome && f.tipo === 'acerto');
 
         if (meuUltimoAcerto) {
             let acertou = false;
             if (meuUltimoAcerto.alvosArea && meuUltimoAcerto.alvosArea.length > 0) {
-                // Se for em área, deixa rolar se ACERTOU PELO MENOS UM
                 acertou = meuUltimoAcerto.alvosArea.some(a => a.acertou);
             } else if (dummieAlvo && meuUltimoAcerto.alvoNome === dummieAlvo.nome) {
                 acertou = meuUltimoAcerto.acertouAlvo;
             } else if (!dummieAlvo && !meuUltimoAcerto.alvoNome) {
-                // Rolar no ar
                 acertou = true;
             }
             setPodeRolarDano(acertou);
         } else {
-            setPodeRolarDano(!dummieAlvo); // Livre se não tiver alvo
+            setPodeRolarDano(false);
         }
     }, [feedCombate, meuNome, dummieAlvo]);
 
@@ -202,7 +203,7 @@ export function AtaqueFormProvider({ children }) {
         salvarFichaSilencioso();
     }, [updateFicha, armaStatusUsados, armaEnergiaCombustao, armaPercEnergia, critNormalMin, critNormalMax, critFatalMin, critFatalMax, skillConfigs]);
 
-    // 🔥 MOTOR DE DANO ADAPTADO PARA MÚLTIPLOS ALVOS E CARREGAMENTO DE ZONAS 🔥
+    // 🔥 MOTOR DE DANO: INJETA O DANO BASE E BUFFS ATUAIS NA ZONA 🔥
     const rolarDano = useCallback(() => {
         salvarConfigAtaque();
 
@@ -222,10 +223,11 @@ export function AtaqueFormProvider({ children }) {
             };
         });
 
+        const todasHabilidades = configHabilidades.concat(configMagias);
         const configArma = { statusUsados: armaStatusUsados, energiaCombustao: armaEnergiaCombustao, percEnergia: parseFloat(armaPercEnergia) || 0 };
         const isCriticoNormal = forcarCritNormal || autoCritNormal; const isCriticoFatal = forcarCritFatal || autoCritFatal;
 
-        const result = calcularDano({ minhaFicha, configArma, configHabilidades: configHabilidades.concat(configMagias), itensEquipados: (minhaFicha.inventario || []).filter(i => i.equipado), isCriticoNormal, isCriticoFatal });
+        const result = calcularDano({ minhaFicha, configArma, configHabilidades: todasHabilidades, itensEquipados: (minhaFicha.inventario || []).filter(i => i.equipado), isCriticoNormal, isCriticoFatal });
 
         if (result.erro) { alert(result.erro); return; }
 
@@ -236,12 +238,10 @@ export function AtaqueFormProvider({ children }) {
 
         setForcarCritNormal(false); setForcarCritFatal(false); setIgnorarTravaAcerto(false);
 
-        // 🔥 APLICAÇÃO DO DANO EM MÚLTIPLOS ALVOS (E CARREGAMENTO DA ZONA!) 🔥
         const meuUltimoAcerto = [...feedCombate].reverse().find(f => f.nome === meuNome && f.tipo === 'acerto');
         let extraFeed = {};
         let textoAlvos = "";
 
-        // 1. DISTRIBUIR O DANO PELOS ALVOS ATINGIDOS NA ÁREA
         if (meuUltimoAcerto && meuUltimoAcerto.alvosArea && meuUltimoAcerto.alvosArea.length > 0) {
             let atingidos = 0;
             meuUltimoAcerto.alvosArea.forEach(alvoHit => {
@@ -255,25 +255,29 @@ export function AtaqueFormProvider({ children }) {
                 }
             });
             textoAlvos = `<br/><span style="color:#0f0; font-weight:bold;">💥 Dano em Área aplicado a ${atingidos} alvo(s) que falharam na defesa!</span>`;
-        } 
-        // 2. OU DANO NO ALVO ÚNICO
-        else if (dummieAlvo) {
+        } else if (dummieAlvo) {
             const hpAnterior = dummieAlvo.hpAtual;
             const novoHp = Math.max(0, hpAnterior - result.dano);
             salvarDummie(alvoSelecionado, { ...dummieAlvo, hpAtual: novoHp });
             extraFeed = { alvoNome: dummieAlvo.nome, alvoSobreviveu: novoHp > 0, overkill: result.dano > hpAnterior ? result.dano - hpAnterior : 0 };
         }
 
-        // 3. INJETAR O DANO NA ZONA PERSISTENTE
+        // 🔥 GRAVA AS METRICAS DE DANO NA ZONA PERSISTENTE 🔥
         if (meuUltimoAcerto && meuUltimoAcerto.zonaIdGerada) {
             const cenarioAtual = useStore.getState().cenario;
             if (cenarioAtual?.zonas) {
                 const novoCenario = JSON.parse(JSON.stringify(cenarioAtual));
                 const zRef = novoCenario.zonas.find(z => z.id === meuUltimoAcerto.zonaIdGerada);
                 if (zRef) {
-                    zRef.danoAplicado = result.dano;
+                    const buffsAtuais = getBuffs(minhaFicha);
+                    const multOrig = (buffsAtuais?.mbase || 1) * (buffsAtuais?.mgeral || 1) * (multiplicadorFuriaVisor > 0 ? multiplicadorFuriaVisor : 1);
+                    
+                    zRef.danoOriginal = result.dano;
+                    zRef.multiplicadorOriginal = multOrig === 0 ? 1 : multOrig;
+                    zRef.danoAplicado = result.dano; // Compatibilidade com zonas antigas
+                    
                     salvarCenarioCompleto(novoCenario);
-                    textoAlvos += `<br/><span style="color:#ff00ff; font-weight:bold;">🌪️ A Zona de Efeito absorveu ${result.dano} de poder e castigará quem entrar lá!</span>`;
+                    textoAlvos += `<br/><span style="color:#ff00ff; font-weight:bold;">🌪️ A Zona de Efeito absorveu o poder e castigará quem permanecer lá!</span>`;
                 }
             }
         }
@@ -292,7 +296,7 @@ export function AtaqueFormProvider({ children }) {
         updateFicha, armaStatusUsados, armaEnergiaCombustao, armaPercEnergia,
         critNormalMin, critNormalMax, critFatalMin, critFatalMax, skillConfigs,
         minhaFicha, forcarCritNormal, autoCritNormal, forcarCritFatal, autoCritFatal,
-        dummieAlvo, alvoSelecionado, meuNome, setAbaAtiva, poderesAtivos, magiasOfensivas, feedCombate, dummies
+        dummieAlvo, alvoSelecionado, meuNome, setAbaAtiva, poderesAtivos, magiasOfensivas, feedCombate, dummies, multiplicadorFuriaVisor
     ]);
 
     const value = useMemo(() => ({

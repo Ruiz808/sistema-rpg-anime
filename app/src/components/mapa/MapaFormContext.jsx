@@ -3,6 +3,7 @@ import useStore from '../../stores/useStore';
 import { salvarFichaSilencioso, enviarParaFeed, salvarDummie, uploadImagem, salvarCenarioCompleto, zerarIniciativaGlobal } from '../../services/firebase-sync';
 import { calcularAcerto } from '../../core/engine';
 import { resolverEfeitosEntidade } from '../../core/efeitos-resolver';
+import { getBuffs } from '../../core/attributes';
 
 export const MAP_SIZE = 30;
 export const PALETA = ['#ff003c', '#0088ff', '#00ff88', '#ffcc00', '#ff00ff', '#00ffff', '#ff8800', '#88ff00'];
@@ -331,42 +332,120 @@ export function MapaFormProvider({ children }) {
         return lista;
     }, [personagens, cenaRenderId]);
 
-    const processarEntradaNaZona = useCallback((x, y, z, entidadeNome, isDummie, idDummie, dData) => {
+    // 🔥 HELPER DE DANO DINÂMICO PARA AS ZONAS 🔥
+    const getDanoDinamicoZona = useCallback((zona) => {
+        if (!zona.danoOriginal) return zona.danoAplicado || 0;
+        const fichaCaster = (zona.conjurador === meuNome) ? minhaFicha : personagens?.[zona.conjurador];
+        if (!fichaCaster) return zona.danoOriginal;
+        
+        const buffs = getBuffs(fichaCaster);
+        let maxFuria = 0;
+        const scanFuria = (efs) => {
+            (efs || []).forEach(e => {
+                if (e && (e.propriedade || '').toLowerCase().trim() === 'furia_berserker') {
+                    const v = parseFloat(e.valor) || 0;
+                    if (v > maxFuria) maxFuria = v;
+                }
+            });
+        };
+        (fichaCaster.poderes || []).forEach(p => { if (p.ativa) scanFuria(p.efeitos); scanFuria(p.efeitosPassivos); });
+        (fichaCaster.inventario || []).forEach(i => { if (i.equipado) { scanFuria(i.efeitos); scanFuria(i.efeitosPassivos); } });
+        (fichaCaster.passivas || []).forEach(p => scanFuria(p.efeitos));
+        
+        const furiaAtiva = maxFuria > 0 ? maxFuria : 1;
+        const multAtual = (buffs?.mbase || 1) * (buffs?.mgeral || 1) * furiaAtiva;
+        const baseMulti = zona.multiplicadorOriginal || 1;
+        
+        const novoDano = Math.floor((zona.danoOriginal / baseMulti) * multAtual);
+        return novoDano > 0 ? novoDano : zona.danoOriginal;
+    }, [minhaFicha, meuNome, personagens]);
+
+    const dispararEfeitoDaZona = useCallback((zona) => {
         const cenaAtivaId = cenario?.ativa || 'default';
         const escala = cenario?.lista?.[cenaAtivaId]?.escala || 1.5;
-        const zonasCena = (cenario?.zonas || []).filter(zo => (zo.cenaId || 'default') === cenaRenderId && zo.danoAplicado);
-        
-        zonasCena.forEach(zona => {
-            const dX = Math.abs(x - zona.x);
-            const dY = Math.abs(y - zona.y);
-            const dZ = Math.floor(Math.abs(z - (zona.z || 0)) / escala);
+        const danoAtual = getDanoDinamicoZona(zona);
+        let hitLog = [];
+
+        const checkHit = (pos, nome, isDummie, idDummie, dData) => {
+            if ((pos?.cenaId || 'default') !== (zona.cenaId || 'default')) return;
+            if (zona.alvosFiltro === 'inimigos' && !isDummie) return;
+            if (zona.alvosFiltro === 'aliados' && isDummie) return;
+
+            const dX = Math.abs(pos.x - zona.x);
+            const dY = Math.abs(pos.y - zona.y);
+            const dZ = Math.floor(Math.abs((pos.z || 0) - (zona.z || 0)) / escala);
             
             if (Math.max(dX, dY, dZ) <= zona.raio) {
-                const valor = zona.danoAplicado;
+                hitLog.push(nome);
+                if (isDummie && idDummie && dData) {
+                    salvarDummie(idDummie, { ...dData, hpAtual: Math.max(0, dData.hpAtual - danoAtual) });
+                } else if (nome === meuNome) {
+                    updateFicha(f => { if (f.vida) f.vida.atual = Math.max(0, f.vida.atual - danoAtual); });
+                    salvarFichaSilencioso();
+                }
+            }
+        };
+
+        Object.entries(dummies || {}).forEach(([id, d]) => checkHit(d.posicao, d.nome, true, id, d));
+        if (minhaFicha?.posicao) checkHit(minhaFicha.posicao, meuNome, false, null, null);
+        
+        if (hitLog.length > 0) {
+            enviarParaFeed({
+                tipo: 'sistema', nome: 'SISTEMA',
+                texto: `🌪️ A Zona [${zona.nome}] castigou ${hitLog.join(', ')} com ${danoAtual} de efeito!`
+            });
+        }
+    }, [cenario, getDanoDinamicoZona, dummies, minhaFicha, meuNome, updateFicha]);
+
+    // 🔥 MOTOR DE DETEÇÃO DE ENTRADA NA ZONA 🔥
+    const processarEntradaNaZona = useCallback((oldPos, newX, newY, newZ, entidadeNome, isDummie, idDummie, dData) => {
+        const cenaAtivaId = cenario?.ativa || 'default';
+        const escala = cenario?.lista?.[cenaAtivaId]?.escala || 1.5;
+        const zonasCena = (cenario?.zonas || []).filter(zo => (zo.cenaId || 'default') === cenaRenderId && zo.danoOriginal);
+        
+        zonasCena.forEach(zona => {
+            if (zona.alvosFiltro === 'inimigos' && !isDummie) return;
+            if (zona.alvosFiltro === 'aliados' && isDummie) return;
+
+            let estavaDentro = false;
+            if (oldPos && oldPos.x !== undefined) {
+                const oldDX = Math.abs(oldPos.x - zona.x);
+                const oldDY = Math.abs(oldPos.y - zona.y);
+                const oldDZ = Math.floor(Math.abs((oldPos.z || 0) - (zona.z || 0)) / escala);
+                estavaDentro = Math.max(oldDX, oldDY, oldDZ) <= zona.raio;
+            }
+
+            const dX = Math.abs(newX - zona.x);
+            const dY = Math.abs(newY - zona.y);
+            const dZ = Math.floor(Math.abs(newZ - (zona.z || 0)) / escala);
+            const estaDentro = Math.max(dX, dY, dZ) <= zona.raio;
+
+            if (!estavaDentro && estaDentro) {
+                const danoAtual = getDanoDinamicoZona(zona);
                 enviarParaFeed({
                     tipo: 'sistema', nome: 'SISTEMA',
-                    texto: `⚠️ ${entidadeNome} entrou no campo de [${zona.nome}] e sofreu ${valor} pontos de efeito!`
+                    texto: `⚠️ ${entidadeNome} pisou na área de [${zona.nome}] e sofreu ${danoAtual} de efeito imediato!`
                 });
                 
                 if (isDummie && idDummie && dData) {
-                    const novoHp = Math.max(0, dData.hpAtual - valor);
-                    salvarDummie(idDummie, { ...dData, hpAtual: novoHp });
+                    salvarDummie(idDummie, { ...dData, hpAtual: Math.max(0, dData.hpAtual - danoAtual) });
                 } else if (entidadeNome === meuNome) {
-                    updateFicha(f => {
-                        if (f.vida) f.vida.atual = Math.max(0, f.vida.atual - valor);
-                    });
+                    updateFicha(f => { if (f.vida) f.vida.atual = Math.max(0, f.vida.atual - danoAtual); });
                     salvarFichaSilencioso();
                 }
             }
         });
-    }, [cenario, cenaRenderId, meuNome, updateFicha]);
+    }, [cenario, cenaRenderId, meuNome, updateFicha, getDanoDinamicoZona]);
 
     const handleCellClick = useCallback((x, y) => {
         const z = parseInt(altitudeInput) || 0;
+        
+        const oldPos = isMestre && alvoSelecionado && dummies[alvoSelecionado] ? dummies[alvoSelecionado].posicao : minhaFicha?.posicao;
+        
         if (isMestre && alvoSelecionado && dummies[alvoSelecionado]) {
             const d = dummies[alvoSelecionado];
             salvarDummie(alvoSelecionado, { ...d, posicao: { x, y, z }, cenaId: cenaRenderId });
-            processarEntradaNaZona(x, y, z, d.nome, true, alvoSelecionado, d);
+            processarEntradaNaZona(oldPos, x, y, z, d.nome, true, alvoSelecionado, d);
         } else {
             updateFicha((ficha) => {
                 if (!ficha.posicao) ficha.posicao = {};
@@ -376,9 +455,9 @@ export function MapaFormProvider({ children }) {
                 ficha.posicao.cenaId = cenaRenderId; 
             });
             salvarFichaSilencioso();
-            processarEntradaNaZona(x, y, z, meuNome, false, null, null);
+            processarEntradaNaZona(oldPos, x, y, z, meuNome, false, null, null);
         }
-    }, [isMestre, alvoSelecionado, dummies, cenaRenderId, altitudeInput, updateFicha, processarEntradaNaZona, meuNome]);
+    }, [isMestre, alvoSelecionado, dummies, cenaRenderId, altitudeInput, updateFicha, processarEntradaNaZona, meuNome, minhaFicha]);
 
     const alterarZoom = useCallback((direcao) => {
         setTamanhoCelula(prev => {
@@ -400,33 +479,43 @@ export function MapaFormProvider({ children }) {
         setFeedIndexTurnoAtual(feedCombate.length); 
     }, [iniciativaInput, cenaRenderId, updateFicha, feedCombate.length]);
 
+    // 🔥 O TEMPO PASSA E A ZONA CASTIGA 🔥
     const avancarTurno = useCallback(() => {
         if (ordemIniciativa.length === 0) return;
-        setTurnoAtualIndex(prev => {
-            let next = prev + 1;
-            // 🔥 Quando a rodada dá a volta, as Zonas Persistentes enfraquecem 🔥
-            if (next >= ordemIniciativa.length) {
-                next = 0;
-                const cenarioAtual = useStore.getState().cenario;
-                if (cenarioAtual?.zonas && cenarioAtual.zonas.length > 0) {
-                    const novoCenario = JSON.parse(JSON.stringify(cenarioAtual));
-                    let mudou = false;
-                    novoCenario.zonas = novoCenario.zonas.filter(z => {
-                        z.duracao -= 1;
-                        mudou = true;
-                        return z.duracao > 0;
-                    });
-                    if (mudou) {
-                        salvarCenarioCompleto(novoCenario);
-                        enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: '⏳ Uma rodada de combate passou. As zonas mágicas enfraqueceram...' });
-                    }
-                }
-            }
-            return next;
-        });
+        
+        let nextIndex = turnoAtualIndex + 1;
+        if (nextIndex >= ordemIniciativa.length) nextIndex = 0;
+        
+        const nextPlayer = ordemIniciativa[nextIndex];
+        
+        setTurnoAtualIndex(nextIndex);
         setFeedIndexTurnoAtual(feedCombate.length);
         setJogadorHistory(null);
-    }, [ordemIniciativa.length, feedCombate.length]);
+
+        const cenarioAtual = useStore.getState().cenario;
+        if (cenarioAtual?.zonas && cenarioAtual.zonas.length > 0) {
+            const novoCenario = JSON.parse(JSON.stringify(cenarioAtual));
+            let mudouCenario = false;
+            
+            novoCenario.zonas = novoCenario.zonas.filter(z => {
+                if (z.conjurador === nextPlayer.nome) {
+                    z.duracao -= 1;
+                    mudouCenario = true;
+                    
+                    if (z.duracao > 0 && z.danoOriginal) {
+                        dispararEfeitoDaZona(z);
+                    }
+                    
+                    return z.duracao > 0;
+                }
+                return true; 
+            });
+            
+            if (mudouCenario) {
+                salvarCenarioCompleto(novoCenario);
+            }
+        }
+    }, [ordemIniciativa, turnoAtualIndex, feedCombate.length, dispararEfeitoDaZona]);
 
     const sairDoCombate = useCallback(() => {
         updateFicha(ficha => { ficha.iniciativa = 0; });
@@ -447,7 +536,6 @@ export function MapaFormProvider({ children }) {
         setTurnoAtualIndex(0);
     }, [cenaAtual.nome, ordemIniciativa, updateFicha]);
 
-    // 🔥 MOTOR DE ACERTO RÁPIDO DO MAPA ATUALIZADO (Área de Efeito e Múltiplos Alvos)
     const rolarAcertoRapido = useCallback(() => {
         const qD = parseInt(mapQD) || 1;
         const fD = parseInt(mapFD) || 20;
