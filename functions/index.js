@@ -129,7 +129,7 @@ exports.falarComSextaFeira = onCall(
     }
 );
 
-// 2. 🔥 NOVA FUNÇÃO: O OUVINTE DE ÁUDIO DA SEXTA-FEIRA 🔥
+// 2. 🔥 NOVA FUNÇÃO: O OUVINTE DE ÁUDIO DA SEXTA-FEIRA COM SPEAKER ID 🔥
 exports.transcreverAudioSextaFeira = onCall(
     { 
         region: "us-central1", 
@@ -138,35 +138,26 @@ exports.transcreverAudioSextaFeira = onCall(
         secrets: [geminiApiKey] 
     },
     async (request) => {
-        const { fileName } = request.data;
-        if (!fileName) throw new HttpsError("invalid-argument", "Nome do arquivo de áudio ausente.");
+        const { fileName, nomesParticipantes } = request.data;
+        if (!fileName) throw new HttpsError("invalid-argument", "Arquivo ausente.");
 
         const tempFilePath = path.join(os.tmpdir(), fileName);
 
         try {
-            console.log(`[Sexta-Feira] 1. Recebi a missão. Procurando áudio: ${fileName}`);
-
-            // Passo A: Baixar o áudio do nosso Storage
-            // IMPORTANTE: Se o Firebase reclamar de 'bucket', seu amigo precisa trocar a linha abaixo para:
-            // const bucket = admin.storage().bucket("NOME-DO-PROJETO.appspot.com");
             const bucket = admin.storage().bucket();
             const file = bucket.file(`audios_mesa/${fileName}`);
-            
-            const [exists] = await file.exists();
-            if (!exists) throw new HttpsError("not-found", "Áudio não encontrado na nuvem.");
-
-            console.log(`[Sexta-Feira] 2. Áudio encontrado! Baixando para a memória do robô...`);
             await file.download({ destination: tempFilePath });
             
-            console.log(`[Sexta-Feira] 3. Áudio baixado. Enviando inline para o Gemini...`);
             const ai = new GoogleGenAI({ apiKey: geminiApiKey.value() });
-            const audioBuffer = fs.readFileSync(tempFilePath);
-            const audioBase64 = audioBuffer.toString("base64");
+            const audioBase64 = fs.readFileSync(tempFilePath).toString("base64");
 
-            console.log(`[Sexta-Feira] 4. Áudio convertido (${Math.round(audioBuffer.length / 1024)}KB). Pedindo o resumo...`);
-            
-            // 🔥 PROMPT CORRIGIDO: Agora ela é obrigada a ser LITERAL e não inventar histórias! 🔥
-            const prompt = `Você é a Sexta-Feira, IA assistente do nosso RPG. O áudio em anexo é a gravação de uma sessão da nossa mesa. A sua única tarefa é transcrever o que foi dito de forma LITERAL e EXATA. Transcreva o áudio palavra por palavra, com o tom original de quem falou. É ESTRITAMENTE PROIBIDO inventar histórias, adicionar 'lore' extra, fazer descrições poéticas ou narrar de forma épica. Se a pessoa disse apenas 'é foda', escreva APENAS 'é foda'. Se só houver ruído, avise que não conseguiu compreender palavras.`;
+            // 🔥 NOVO PROMPT: Ordena a Diarização e Legendas 🔥
+            const listaNomes = (nomesParticipantes || []).join(', ');
+            const prompt = `Você é a Sexta-Feira. O áudio em anexo é uma conversa entre estes jogadores de RPG: [${listaNomes}]. 
+            Sua tarefa é transcrever o diálogo no formato de um roteiro ou legendas.
+            Diferencie os locutores colocando o nome antes da fala (Exemplo: "Natsu: Olá pessoal").
+            Tente identificar quem é quem pelo tom de voz e contexto. Se houver uma voz que você não reconhece ou não está na lista, use "Voz Desconhecida". 
+            Seja literal e não invente histórias. Apenas transcreva quem disse o quê.`;
 
             const response = await ai.models.generateContent({
                 model: "gemini-2.5-flash",
@@ -179,18 +170,14 @@ exports.transcreverAudioSextaFeira = onCall(
                 }]
             });
 
-            console.log(`[Sexta-Feira] 5. Resumo pronto! Devolvendo para o site e apagando rastros.`);
-            
-            // Limpeza
             if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
             await file.delete(); 
 
             return { texto: response.text };
 
         } catch (err) {
-            console.error("[ERRO FATAL NA SEXTA-FEIRA]:", err);
             if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
-            throw new HttpsError("internal", "A IA travou: " + err.message);
+            throw new HttpsError("internal", "Erro na IA: " + err.message);
         }
     }
 );
