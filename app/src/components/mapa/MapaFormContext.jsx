@@ -332,17 +332,18 @@ export function MapaFormProvider({ children }) {
         return lista;
     }, [personagens, cenaRenderId]);
 
-    // 🔥 O MOTOR LÊ AGORA OS MULTIPLICADORES E STATUS DA FICHA EM TEMPO REAL (SEM CLOSURES STALE) 🔥
+    // 🔥 O MOTOR LÊ DANO E LETALIDADE DINAMICAMENTE 🔥
     const getDanoDinamicoZona = useCallback((zona) => {
-        if (!zona.danoOriginal) return zona.danoAplicado || 0;
+        let baseResult = { dano: zona.danoOriginal || zona.danoAplicado || 0, letalidade: zona.letalidadeOriginal || 0 };
         
         const storeState = useStore.getState();
         const fichaCaster = (zona.conjurador === storeState.meuNome) ? storeState.minhaFicha : storeState.personagens?.[zona.conjurador];
-        if (!fichaCaster) return zona.danoOriginal;
+        if (!fichaCaster) return baseResult;
         
         const buffs = getBuffs(fichaCaster);
         let maxFuria = 0;
         let danoBrutoAtual = 0;
+        let letalidadeAtual = 0;
         
         const scan = (efs) => {
             (efs || []).forEach(e => {
@@ -354,6 +355,9 @@ export function MapaFormProvider({ children }) {
                 }
                 if (prop === 'dano_bruto' || prop === 'dano_verdadeiro') {
                     danoBrutoAtual += parseFloat(e.valor) || 0;
+                }
+                if (prop === 'letalidade') {
+                    letalidadeAtual += parseFloat(e.valor) || 0;
                 }
             });
         };
@@ -374,18 +378,23 @@ export function MapaFormProvider({ children }) {
         
         const diffStatus = somaStatusAtual - (zona.somaStatusOriginal || somaStatusAtual);
         const diffBruto = danoBrutoAtual - (zona.danoBrutoOriginal || danoBrutoAtual);
+        const diffLetalidade = letalidadeAtual - (zona.letalidadeOriginalBuffs || letalidadeAtual);
         
-        // Desfaz o multiplicador antigo para revelar a base de Dano pura, soma as diferenças ativas (Formas/Passivas) e aplica o multiplicador atual
         const novoDanoBase = (zona.danoOriginal / baseMulti) + diffStatus + diffBruto;
         const novoDano = Math.floor(novoDanoBase * multAtual);
         
-        return novoDano > 0 ? novoDano : zona.danoOriginal;
+        return {
+            dano: novoDano > 0 ? novoDano : zona.danoOriginal,
+            letalidade: (zona.letalidadeOriginal || 0) + diffLetalidade
+        };
     }, []);
 
     const dispararEfeitoDaZona = useCallback((zona) => {
         const cenaAtivaId = cenario?.ativa || 'default';
         const escala = cenario?.lista?.[cenaAtivaId]?.escala || 1.5;
-        const danoAtual = getDanoDinamicoZona(zona);
+        const din = getDanoDinamicoZona(zona);
+        const danoAtual = din.dano;
+        const letalAtual = din.letalidade;
         let hitLog = [];
 
         const checkHit = (pos, nome, isDummie, idDummie, dData) => {
@@ -412,9 +421,10 @@ export function MapaFormProvider({ children }) {
         if (minhaFicha?.posicao) checkHit(minhaFicha.posicao, meuNome, false, null, null);
         
         if (hitLog.length > 0) {
+            const letalStr = letalAtual > 0 ? ` (+${letalAtual} Letalidade)` : '';
             enviarParaFeed({
                 tipo: 'sistema', nome: 'SISTEMA',
-                texto: `🌪️ A Zona [${zona.nome}] castigou ${hitLog.join(', ')} com ${danoAtual} de efeito!`
+                texto: `🌪️ A Zona [${zona.nome}] castigou ${hitLog.join(', ')} com ${danoAtual} de Dano${letalStr}!`
             });
         }
     }, [cenario, getDanoDinamicoZona, dummies, minhaFicha, meuNome, updateFicha]);
@@ -442,10 +452,14 @@ export function MapaFormProvider({ children }) {
             const estaDentro = Math.max(dX, dY, dZ) <= zona.raio;
 
             if (!estavaDentro && estaDentro) {
-                const danoAtual = getDanoDinamicoZona(zona);
+                const din = getDanoDinamicoZona(zona);
+                const danoAtual = din.dano;
+                const letalAtual = din.letalidade;
+                const letalStr = letalAtual > 0 ? ` (+${letalAtual} Letalidade)` : '';
+                
                 enviarParaFeed({
                     tipo: 'sistema', nome: 'SISTEMA',
-                    texto: `⚠️ ${entidadeNome} pisou na área de [${zona.nome}] e sofreu ${danoAtual} de efeito imediato!`
+                    texto: `⚠️ ${entidadeNome} pisou na área de [${zona.nome}] e sofreu ${danoAtual} de Dano${letalStr} imediatamente!`
                 });
                 
                 if (isDummie && idDummie && dData) {

@@ -203,7 +203,6 @@ export function AtaqueFormProvider({ children }) {
         salvarFichaSilencioso();
     }, [updateFicha, armaStatusUsados, armaEnergiaCombustao, armaPercEnergia, critNormalMin, critNormalMax, critFatalMin, critFatalMax, skillConfigs]);
 
-    // 🔥 MOTOR DE DANO: INJETA O DANO BASE E BUFFS ATUAIS NA ZONA 🔥
     const rolarDano = useCallback(() => {
         salvarConfigAtaque();
 
@@ -262,7 +261,7 @@ export function AtaqueFormProvider({ children }) {
             extraFeed = { alvoNome: dummieAlvo.nome, alvoSobreviveu: novoHp > 0, overkill: result.dano > hpAnterior ? result.dano - hpAnterior : 0 };
         }
 
-        // 🔥 GRAVA AS METRICAS TOTAIS (STATUS, BUFFS E FORMAS) NA ZONA PERSISTENTE 🔥
+        // 🔥 GRAVA AS METRICAS TOTAIS NA ZONA (AGORA INCLUINDO LETALIDADE!) 🔥
         if (meuUltimoAcerto && meuUltimoAcerto.zonaIdGerada) {
             const cenarioAtual = useStore.getState().cenario;
             if (cenarioAtual?.zonas) {
@@ -272,10 +271,8 @@ export function AtaqueFormProvider({ children }) {
                     const buffsAtuais = getBuffs(minhaFicha);
                     const furiaM = multiplicadorFuriaVisor > 0 ? multiplicadorFuriaVisor : 1;
                     
-                    // Capta todos os multiplicadores (Incluindo Formas e Absolutos!)
                     const multOrig = (buffsAtuais?.mbase || 1) * (buffsAtuais?.mgeral || 1) * (buffsAtuais?.mformas || 1) * (buffsAtuais?.mabs || 1) * furiaM;
 
-                    // Guarda a soma dos atributos que a magia usou neste exato momento
                     let keysUsadas = [];
                     todasHabilidades.forEach(h => { if(h.statusUsados) keysUsadas.push(...h.statusUsados); });
                     if (configArma?.statusUsados) keysUsadas.push(...configArma.statusUsados);
@@ -289,19 +286,26 @@ export function AtaqueFormProvider({ children }) {
                     });
                     zRef.somaStatusOriginal = somaStatusOriginal;
 
-                    // Guarda o Dano Bruto Passivo no momento do cast
+                    // Guarda Dano Bruto e LETALIDADE base do caster no momento do cast
                     let danoBrutoOrig = 0;
+                    let letalidadeBuffsOrig = 0;
                     const scanBruto = (efs) => {
                         (efs || []).forEach(e => {
-                            if (e && (e.propriedade === 'dano_bruto' || e.propriedade === 'dano_verdadeiro')) danoBrutoOrig += parseFloat(e.valor) || 0;
+                            if (!e) return;
+                            const prop = (e.propriedade || '').toLowerCase().trim();
+                            if (prop === 'dano_bruto' || prop === 'dano_verdadeiro') danoBrutoOrig += parseFloat(e.valor) || 0;
+                            if (prop === 'letalidade') letalidadeBuffsOrig += parseFloat(e.valor) || 0;
                         });
                     };
                     (minhaFicha.poderes || []).forEach(p => { if (p.ativa) scanBruto(p.efeitos); scanBruto(p.efeitosPassivos); });
                     (minhaFicha.inventario || []).forEach(i => { if (i.equipado) { scanBruto(i.efeitos); scanBruto(i.efeitosPassivos); } });
                     (minhaFicha.passivas || []).forEach(p => scanBruto(p.efeitos));
+                    
                     zRef.danoBrutoOriginal = danoBrutoOrig;
+                    zRef.letalidadeOriginalBuffs = letalidadeBuffsOrig;
 
                     zRef.danoOriginal = result.dano;
+                    zRef.letalidadeOriginal = result.letalidade || 0; // 🔥 Grava a Letalidade Final do Ataque
                     zRef.multiplicadorOriginal = multOrig === 0 ? 1 : multOrig;
                     zRef.danoAplicado = result.dano;
                     
