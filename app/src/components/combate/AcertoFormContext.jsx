@@ -6,7 +6,7 @@ import { enviarParaFeed, salvarFichaSilencioso, salvarCenarioCompleto } from '..
 
 // Importa para as Zonas de Efeito poderem ter a cor correspondente
 import { cores } from '../arsenal/ElementosFormContext';
-import { calcularCA } from '../mapa/MapaFormContext';
+import { calcularCA } from '../../core/engine';
 
 const AcertoFormContext = createContext(null);
 

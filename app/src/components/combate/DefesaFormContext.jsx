@@ -1,34 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import useStore from '../../stores/useStore';
-import { calcularReducao } from '../../core/engine';
+import { calcularReducao, calcularCA } from '../../core/engine';
 import { salvarFichaSilencioso, enviarParaFeed } from '../../services/firebase-sync';
-
-export function calcularCA(ficha, tipo) {
-    if (!ficha) return 10;
-    const getDoisDigitos = (valor) => {
-        if (!valor) return 0;
-        const strVal = String(valor).replace(/[^0-9]/g, '');
-        if (!strVal) return 0;
-        return parseInt(strVal.substring(0, 2), 10);
-    };
-    let base = 5;
-    if (tipo === 'evasiva') base += getDoisDigitos(ficha.destreza?.base);
-    if (tipo === 'resistencia') base += getDoisDigitos(ficha.forca?.base);
-    let bonus = 0;
-    (ficha.poderes || []).forEach(p => {
-        if (p.ativa) {
-            (p.efeitos || []).forEach(e => { if (e.atributo === tipo && e.propriedade === 'base') bonus += parseFloat(e.valor) || 0; });
-        }
-        (p.efeitosPassivos || []).forEach(e => { if (e.atributo === tipo && e.propriedade === 'base') bonus += parseFloat(e.valor) || 0; });
-    });
-    (ficha.passivas || []).forEach(p => {
-        (p.efeitos || []).forEach(e => { if (e.atributo === tipo && e.propriedade === 'base') bonus += parseFloat(e.valor) || 0; });
-    });
-    (ficha.inventario || []).filter(i => i.equipado).forEach(i => {
-        (i.efeitos || []).forEach(e => { if (e.atributo === tipo && e.propriedade === 'base') bonus += parseFloat(e.valor) || 0; });
-    });
-    return Math.floor(base + bonus);
-}
 
 const DefesaFormContext = createContext(null);
 

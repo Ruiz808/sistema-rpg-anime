@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapaFormProvider, calcularCA } from './MapaFormContext';
+import { MapaFormProvider } from './MapaFormContext';
 import {
     MapaDadoAnimado,
     MapaMestreRPToggle,
@@ -11,8 +11,6 @@ import {
     MapaIniciativaTracker,
     MapaHologramaAcao
 } from './MapaSubComponents';
-
-export { calcularCA };
 
 export default function MapaPanel() {
     return (

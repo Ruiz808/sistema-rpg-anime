@@ -29,34 +29,7 @@ import GravadorPanel from './components/ia/GravadorPanel'
 
 import { carregarFichaDoFirebase, iniciarListenerDummies, enviarParaFeed, salvarDummie, iniciarListenerCenario } from './services/firebase-sync'
 import { getMaximo } from './core/attributes'
-
-// 🔥 CÁLCULO DE CA E DEFESAS 🔥
-function calcularCA(ficha, tipo) {
-    if (!ficha) return 10;
-    const getDoisDigitos = (valor) => {
-        if (!valor) return 0;
-        const strVal = String(valor).replace(/[^0-9]/g, '');
-        if (!strVal) return 0;
-        return parseInt(strVal.substring(0, 2), 10);
-    };
-    let base = 5;
-    if (tipo === 'evasiva') base += getDoisDigitos(ficha.destreza?.base);
-    if (tipo === 'resistencia') base += getDoisDigitos(ficha.forca?.base);
-    let bonus = 0;
-    (ficha.poderes || []).forEach(p => {
-        if (p.ativa) {
-            (p.efeitos || []).forEach(e => { if (e.atributo === tipo && e.propriedade === 'base') bonus += parseFloat(e.valor) || 0; });
-        }
-        (p.efeitosPassivos || []).forEach(e => { if (e.atributo === tipo && e.propriedade === 'base') bonus += parseFloat(e.valor) || 0; });
-    });
-    (ficha.passivas || []).forEach(p => {
-        (p.efeitos || []).forEach(e => { if (e.atributo === tipo && e.propriedade === 'base') bonus += parseFloat(e.valor) || 0; });
-    });
-    (ficha.inventario || []).filter(i => i.equipado).forEach(i => {
-        (i.efeitos || []).forEach(e => { if (e.atributo === tipo && e.propriedade === 'base') bonus += parseFloat(e.valor) || 0; });
-    });
-    return Math.floor(base + bonus);
-}
+import { calcularCA } from './core/engine'
 
 // 🔥 MOTOR DE SINCRONIZAÇÃO BÁSICO 🔥
 function getStatusLimpo(ficha, chave, threshold) {

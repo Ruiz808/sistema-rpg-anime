@@ -14,40 +14,6 @@ export function urlSeguraParaCss(url) {
     return `url("${trimmed.replace(/["\\)]/g, '')}")`;
 }
 
-export function calcularCA(ficha, tipo) {
-    if (!ficha) return 10;
-    const getDoisDigitos = (valor) => {
-        if (!valor) return 0;
-        const strVal = String(valor).replace(/[^0-9]/g, '');
-        if (!strVal) return 0;
-        return parseInt(strVal.substring(0, 2), 10);
-    };
-    let base = 5;
-    if (tipo === 'evasiva') base += getDoisDigitos(ficha.destreza?.base);
-    if (tipo === 'resistencia') base += getDoisDigitos(ficha.forca?.base);
-
-    let bonus = 0;
-    const somarBonus = (efeitos) => {
-        (efeitos || []).forEach(e => {
-            if (e && e.atributo === tipo && e.propriedade === 'base') bonus += parseFloat(e.valor) || 0;
-        });
-    };
-
-    (ficha.poderes || []).forEach(p => {
-        let resolved = resolverEfeitosEntidade(p);
-        if (p.ativa) somarBonus(resolved.efeitos);
-        somarBonus(resolved.efeitosPassivos);
-    });
-    (ficha.passivas || []).forEach(p => { somarBonus(p.efeitos); });
-    (ficha.inventario || []).filter(i => i.equipado).forEach(i => {
-        let resolved = resolverEfeitosEntidade(i);
-        somarBonus(resolved.efeitos);
-        somarBonus(resolved.efeitosPassivos);
-    });
-
-    return Math.floor(base + bonus);
-}
-
 const MapaFormContext = createContext(null);
 
 export function useMapaForm() {

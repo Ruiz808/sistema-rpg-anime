@@ -1,5 +1,6 @@
 import React from 'react';
-import { useMapaForm, urlSeguraParaCss, calcularCA, MAP_SIZE } from './MapaFormContext';
+import { useMapaForm, urlSeguraParaCss, MAP_SIZE } from './MapaFormContext';
+import { calcularCA } from '../../core/engine';
 import Tabuleiro3D from './Tabuleiro3D';
 import DummieToken from '../combat/DummieToken';
 import { salvarDummie } from '../../services/firebase-sync';
@@ -473,11 +474,13 @@ export function MapaVisao() {
                         data-x={cell.x} data-y={cell.y} 
                         onClick={() => handleCellClick(cell.x, cell.y)} 
                         
-                        /* 🔥 AS TRÊS LINHAS MÁGICAS DO DRAG AND DROP 🔥 */
                         onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                        onDragEnter={(e) => { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }}
+                        onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) e.currentTarget.classList.remove('drag-over'); }}
                         onDrop={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
+                            e.currentTarget.classList.remove('drag-over');
                             try {
                                 const tokenStr = e.dataTransfer.getData('tokenData');
                                 if (tokenStr) {

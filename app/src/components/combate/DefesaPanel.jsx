@@ -1,8 +1,6 @@
 import React from 'react';
-import { DefesaFormProvider, calcularCA } from './DefesaFormContext';
+import { DefesaFormProvider } from './DefesaFormContext';
 import { DefesaEvasaoBox, DefesaResistenciaBox, DefesaEscudoBox } from './DefesaSubComponents';
-
-export { calcularCA };
 
 export default function DefesaPanel() {
     return (

@@ -311,6 +311,14 @@ input:focus, select:focus { border-color: #0ff; box-shadow: 0 0 10px rgba(0, 255
     box-shadow: 0 0 10px #00ffcc;
 }
 
+.map-cell.drag-over {
+    background: rgba(170, 0, 255, 0.5);
+    box-shadow: 0 0 15px #aa00ff, inset 0 0 8px rgba(170, 0, 255, 0.4);
+    transform: scale(1.15);
+    z-index: 10;
+    border-color: #aa00ff;
+}
+
 /* Tokens dos Jogadores */
 .player-token {
     border-radius: 50%;
