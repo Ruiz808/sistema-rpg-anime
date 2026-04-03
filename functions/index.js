@@ -164,7 +164,9 @@ exports.transcreverAudioSextaFeira = onCall(
             const audioBase64 = audioBuffer.toString("base64");
 
             console.log(`[Sexta-Feira] 4. Áudio convertido (${Math.round(audioBuffer.length / 1024)}KB). Pedindo o resumo...`);
-            const prompt = `Você é a Sexta-Feira, IA assistente do nosso RPG. O áudio em anexo é a gravação de uma sessão da nossa mesa. Por favor, escute e crie um "Registro Akáshico" (um resumo narrativo e detalhado) do que aconteceu de importante nessa parte da história. Escreva de forma épica, em português. Se só houver ruído, avise.`;
+            
+            // 🔥 PROMPT CORRIGIDO: Agora ela é obrigada a ser LITERAL e não inventar histórias! 🔥
+            const prompt = `Você é a Sexta-Feira, IA assistente do nosso RPG. O áudio em anexo é a gravação de uma sessão da nossa mesa. A sua única tarefa é transcrever o que foi dito de forma LITERAL e EXATA. Transcreva o áudio palavra por palavra, com o tom original de quem falou. É ESTRITAMENTE PROIBIDO inventar histórias, adicionar 'lore' extra, fazer descrições poéticas ou narrar de forma épica. Se a pessoa disse apenas 'é foda', escreva APENAS 'é foda'. Se só houver ruído, avise que não conseguiu compreender palavras.`;
 
             const response = await ai.models.generateContent({
                 model: "gemini-2.5-flash",
