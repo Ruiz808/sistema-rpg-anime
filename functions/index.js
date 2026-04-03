@@ -129,7 +129,7 @@ exports.falarComSextaFeira = onCall(
     }
 );
 
-// 2. 🔥 NOVA FUNÇÃO: O OUVINTE DE ÁUDIO DA SEXTA-FEIRA COM SPEAKER ID 🔥
+// 2. 🔥 NOVA FUNÇÃO: O OUVINTE DE ÁUDIO DA SEXTA-FEIRA (COM DIARIZAÇÃO INTELIGENTE) 🔥
 exports.transcreverAudioSextaFeira = onCall(
     { 
         region: "us-central1", 
@@ -138,7 +138,7 @@ exports.transcreverAudioSextaFeira = onCall(
         secrets: [geminiApiKey] 
     },
     async (request) => {
-        const { fileName, nomesParticipantes } = request.data;
+        const { fileName, nomesParticipantes } = request.data; 
         if (!fileName) throw new HttpsError("invalid-argument", "Arquivo ausente.");
 
         const tempFilePath = path.join(os.tmpdir(), fileName);
@@ -151,14 +151,22 @@ exports.transcreverAudioSextaFeira = onCall(
             const ai = new GoogleGenAI({ apiKey: geminiApiKey.value() });
             const audioBase64 = fs.readFileSync(tempFilePath).toString("base64");
 
-            // 🔥 NOVO PROMPT: Ordena a Diarização e Legendas 🔥
             const listaNomes = (nomesParticipantes || []).join(', ');
-            const prompt = `Você é a Sexta-Feira. O áudio em anexo é uma conversa entre estes jogadores de RPG: [${listaNomes}]. 
-            Sua tarefa é transcrever o diálogo no formato de um roteiro ou legendas.
-            Diferencie os locutores colocando o nome antes da fala (Exemplo: "Natsu: Olá pessoal").
-            Tente identificar quem é quem pelo tom de voz e contexto. Se houver uma voz que você não reconhece ou não está na lista, use "Voz Desconhecida". 
-            Seja literal e não invente histórias. Apenas transcreva quem disse o quê.`;
+            
+            // 🔥 PROMPT DE MESTRE: Instruções avançadas para limpar o áudio e focar no RPG 🔥
+            const prompt = `Você é a Sexta-Feira. O áudio em anexo é a gravação de uma sessão do nosso RPG de mesa (Anime System).
+            Os jogadores presentes na mesa (possíveis locutores) são: [${listaNomes}]. 
 
+            Sua tarefa é transcrever o áudio como um roteiro/legenda. Siga ESTAS REGRAS ESTRITAS:
+            1. FORMATO: Use sempre o padrão "Nome: Fala" em cada linha.
+            2. IDENTIFICAÇÃO: Tente associar a voz ao nome correto da lista. Se uma voz nova surgir ou você não tiver certeza de quem falou, use "Voz Desconhecida" ou "Mestre".
+            3. LIMPEZA (MUITO IMPORTANTE): Seja fiel ao sentido e às palavras exatas, mas REMOVA gaguejos, vícios de linguagem ("humm", "tipo", "ééé", "né"), tosses e hesitações. Torne o diálogo natural, direto e fluido para a leitura.
+            4. CONTEXTO NERD: Lembre-se que eles estão jogando RPG. Compreenda e escreva corretamente termos como "HP", "Mana", "dado", "D20", "turno", "dano", "mestre", "rolar", "iniciativa", etc.
+            5. ZERO ALUCINAÇÃO: Não descreva ações do ambiente (ex: *suspirou*, *barulho de porta*). Transcreva APENAS o diálogo falado. Sem histórias épicas.`;
+
+            // Nota: Se a IA continuar a ter dificuldade em distinguir as vozes, 
+            // você pode tentar mudar "gemini-2.5-flash" para "gemini-1.5-pro" aqui embaixo, 
+            // pois o modelo Pro tem "ouvidos" melhores para áudios longos e difíceis.
             const response = await ai.models.generateContent({
                 model: "gemini-2.5-flash",
                 contents: [{
