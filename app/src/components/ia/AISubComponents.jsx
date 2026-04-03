@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAIForm, TODOS_RANKS } from './AIFormContext';
 import GravadorPanel from './GravadorPanel';
 
@@ -44,14 +44,14 @@ export function AICapituladorHeader() {
                 </div>
             </div>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center', paddingBottom: '10px', borderBottom: '1px solid #333', flexWrap: 'wrap' }}>
-                <span style={{ color: loreFoco === 'presente' ? '#00ffcc' : '#ffcc00', fontWeight: 'bold' }}>📖 Capítulo:</span>
+                <span style={{ color: loreFoco === 'presente' ? '#00ffcc' : '#ffcc00', fontWeight: 'bold' }}>📖 Arco Atual:</span>
                 <select className="input-neon" value={loreFoco === 'presente' ? capituloAtivoId : capFuturoAtivoId} onChange={(e) => loreFoco === 'presente' ? setCapituloAtivoId(Number(e.target.value)) : setCapFuturoAtivoId(Number(e.target.value))} style={{ flex: 1, minWidth: '150px', borderColor: loreFoco === 'presente' ? '#00ffcc' : '#ffcc00', color: '#fff', padding: '8px', backgroundColor: 'rgba(0,0,0,0.5)' }}>
                     {(loreFoco === 'presente' ? capitulosPresente : capitulosFuturo).map(cap => <option key={cap.id} value={cap.id} style={{ color: '#000' }}>{cap.titulo}</option>)}
                 </select>
                 <div style={{ display: 'flex', gap: '5px' }}>
-                    <button className="btn-neon btn-gold" onClick={editarTituloCapitulo} style={{ padding: '8px 15px', margin: 0 }} title="Editar Nome do Capítulo">✏️</button>
-                    <button className="btn-neon btn-red" onClick={apagarCapitulo} style={{ padding: '8px 15px', margin: 0 }} title="Apagar Capítulo">🗑️</button>
-                    <button className="btn-neon btn-green" onClick={adicionarCapitulo} style={{ padding: '8px 15px', margin: 0 }}>➕ Novo</button>
+                    <button className="btn-neon btn-gold" onClick={editarTituloCapitulo} style={{ padding: '8px 15px', margin: 0 }} title="Editar Nome do Arco">✏️</button>
+                    <button className="btn-neon btn-red" onClick={apagarCapitulo} style={{ padding: '8px 15px', margin: 0 }} title="Apagar Arco Inteiro">🗑️</button>
+                    <button className="btn-neon btn-green" onClick={adicionarCapitulo} style={{ padding: '8px 15px', margin: 0 }}>➕ Novo Arco</button>
                 </div>
             </div>
         </div>
@@ -61,8 +61,12 @@ export function AICapituladorHeader() {
 export function AIChat() {
     const ctx = useAIForm();
     if (!ctx) return FALLBACK;
-    // 🔥 Adicionámos o adicionarCapituloComTexto aqui em cima para o botão usar
-    const { chatRef, historico, meuNome, mensagem, setMensagem, handleKeyDown, carregando, enviarMensagem, arquivoTexto, nomeArquivo, setArquivoTexto, setNomeArquivo, fileInputRef, handleArquivoSelecionado, limparChat, adicionarCapituloComTexto } = ctx;
+    const { chatRef, historico, meuNome, mensagem, setMensagem, handleKeyDown, carregando, enviarMensagem, arquivoTexto, nomeArquivo, setArquivoTexto, setNomeArquivo, fileInputRef, handleArquivoSelecionado, limparChat, salvarNoRegistro, loreFoco, capitulosPresente, capitulosFuturo } = ctx;
+
+    // 🔥 Estado para saber em que arco guardar a mensagem 🔥
+    const [destinoLore, setDestinoLore] = useState('novo');
+
+    const arcosDisponiveis = loreFoco === 'presente' ? capitulosPresente : capitulosFuturo;
 
     return (
         <>
@@ -84,19 +88,28 @@ export function AIChat() {
                             {msg.texto}
                         </div>
                         
-                        {/* 🔥 O NOSSO NOVO BOTÃO MÁGICO DE TRANSFERÊNCIA PARA LORE 🔥 */}
+                        {/* 🔥 SELETOR DE ARCOS DIRETO NO CHAT 🔥 */}
                         {msg.role === 'ai' && (
-                            <button 
-                                onClick={() => {
-                                    adicionarCapituloComTexto('Transcrição / Análise da IA', msg.texto);
-                                    alert('✅ Texto transferido com sucesso para a aba de Registros!');
-                                }}
-                                className="btn-neon btn-blue"
-                                style={{ alignSelf: 'flex-start', padding: '4px 10px', fontSize: '0.75em', margin: 0, opacity: 0.8 }}
-                                title="Copiar esta resposta para a aba de Registros"
-                            >
-                                📜 Enviar para Registros
-                            </button>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px', background: 'rgba(0,0,0,0.5)', padding: '5px', borderRadius: '5px', border: '1px solid #333', alignSelf: 'flex-start', flexWrap: 'wrap' }}>
+                                <span style={{ fontSize: '0.75em', color: '#aaa' }}>Destino:</span>
+                                <select className="input-neon" value={destinoLore} onChange={e => setDestinoLore(e.target.value)} style={{ padding: '2px 5px', fontSize: '0.75em', maxWidth: '150px', borderColor: '#444', color: '#fff' }}>
+                                    <option value="novo">➕ Criar Novo Arco</option>
+                                    <optgroup label="Adicionar a Arco Existente:">
+                                        {arcosDisponiveis.map(c => <option key={c.id} value={c.id}>{c.titulo}</option>)}
+                                    </optgroup>
+                                </select>
+                                <button 
+                                    onClick={() => {
+                                        salvarNoRegistro(msg.texto, 'Análise da Sexta-Feira', destinoLore, loreFoco);
+                                        alert('✅ Texto transferido com sucesso para a aba de Registros!');
+                                    }}
+                                    className="btn-neon btn-blue"
+                                    style={{ padding: '4px 10px', fontSize: '0.75em', margin: 0, opacity: 0.9 }}
+                                    title="Copiar esta resposta para a aba de Registros"
+                                >
+                                    📜 Enviar
+                                </button>
+                            </div>
                         )}
                     </div>
                 ))}
@@ -192,10 +205,10 @@ export function AILore() {
 export function AIAreaCentral() {
     const ctx = useAIForm();
     if (!ctx) return FALLBACK;
-    const { subAba, adicionarCapituloComTexto } = ctx;
+    const { subAba } = ctx;
 
     if (subAba === 'chat') return <AIChat />;
-    if (subAba === 'gravador') return <div style={{ flex: 1, overflowY: 'auto' }}><GravadorPanel onTranscricaoCompleta={adicionarCapituloComTexto} /></div>;
+    if (subAba === 'gravador') return <div style={{ flex: 1, overflowY: 'auto' }}><GravadorPanel /></div>;
     if (subAba === 'tierlist') return <AITierList />;
     if (subAba === 'lore') return <AILore />;
     return null;

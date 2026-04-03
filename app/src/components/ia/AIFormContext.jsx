@@ -6,7 +6,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
-// --- GERADOR DE RANKS (EX, Z+, Z, Z-, S+, S... até R-) ---
+// --- GERADOR DE RANKS ---
 export const baseRanks = [
     { id: 'EX', cor: '#ffffff', text: '#000' },
     { id: 'Z+', cor: '#e040fb', text: '#000' }, { id: 'Z', cor: '#aa00ff', text: '#fff' }, { id: 'Z-', cor: '#7b1fa2', text: '#fff' },
@@ -48,10 +48,7 @@ export function AIFormProvider({ children }) {
 
     const [subAba, setSubAba] = useState('chat');
     const [mensagem, setMensagem] = useState('');
-    
-    // 🔥 IA SEM AMNÉSIA: O Histórico agora fica vazio até o useEffect carregar o localStorage 🔥
     const [historico, setHistorico] = useState([]);
-    
     const [carregando, setCarregando] = useState(false);
     const [arquivoTexto, setArquivoTexto] = useState('');
     const [nomeArquivo, setNomeArquivo] = useState('');
@@ -67,7 +64,7 @@ export function AIFormProvider({ children }) {
             const salvo = localStorage.getItem('rpgSextaFeira_capitulos');
             if (salvo) return JSON.parse(salvo).map(c => ({ ...c, tierList: c.tierList || [] }));
         } catch (e) { }
-        return [{ id: 1, titulo: 'Capítulo 1 - Reino de Faku', texto: 'A marca da fênix...', tierList: [] }];
+        return [{ id: 1, titulo: 'Arco 1 - O Início', texto: 'A marca da fênix...', tierList: [] }];
     });
     const [capituloAtivoId, setCapituloAtivoId] = useState(() => Number(localStorage.getItem('rpgSextaFeira_capituloAtivo')) || 1);
 
@@ -76,7 +73,7 @@ export function AIFormProvider({ children }) {
             const salvo = localStorage.getItem('rpgSextaFeira_capitulosFuturo');
             if (salvo) return JSON.parse(salvo).map(c => ({ ...c, tierList: c.tierList || [] }));
         } catch (e) { }
-        return [{ id: 100, titulo: 'Ecos do Futuro - Parte 1', texto: 'Crônicas do Amanhã...', tierList: [] }];
+        return [{ id: 100, titulo: 'Ecos do Futuro - Arco 1', texto: 'Crônicas do Amanhã...', tierList: [] }];
     });
     const [capFuturoAtivoId, setCapFuturoAtivoId] = useState(() => Number(localStorage.getItem('rpgSextaFeira_capFuturoAtivo')) || 100);
 
@@ -89,7 +86,6 @@ export function AIFormProvider({ children }) {
     const textoAtivo = capituloAtivoObj?.texto || '';
     const tierListAtiva = capituloAtivoObj?.tierList || [];
 
-    // 🔥 MEMÓRIA DO CHAT: Carrega a conversa do personagem ativo 🔥
     useEffect(() => {
         if (meuNome) {
             try {
@@ -100,11 +96,8 @@ export function AIFormProvider({ children }) {
         }
     }, [meuNome]);
 
-    // 🔥 MEMÓRIA DO CHAT: Salva a conversa sempre que ela for atualizada 🔥
     useEffect(() => {
-        if (meuNome) {
-            localStorage.setItem(`rpgSextaFeira_chat_${meuNome}`, JSON.stringify(historico));
-        }
+        if (meuNome) localStorage.setItem(`rpgSextaFeira_chat_${meuNome}`, JSON.stringify(historico));
     }, [historico, meuNome]);
 
     useEffect(() => {
@@ -114,7 +107,6 @@ export function AIFormProvider({ children }) {
         localStorage.setItem('rpgSextaFeira_capFuturoAtivo', capFuturoAtivoId);
     }, [capitulosPresente, capituloAtivoId, capitulosFuturo, capFuturoAtivoId]);
 
-    // Botão para o utilizador limpar a memória se quiser começar de novo
     const limparChat = useCallback(() => {
         if (window.confirm("Deseja formatar a memória desta conversa? A Sexta-Feira esquecerá tudo o que falaram aqui.")) {
             setHistorico([]);
@@ -125,7 +117,6 @@ export function AIFormProvider({ children }) {
     const poolPersonagens = useMemo(() => {
         const avataresDoServidor = [];
         const nomesJaAdicionados = new Set();
-
         const extrairUrl = (img) => {
             if (!img) return '';
             if (typeof img === 'string') return img.trim();
@@ -139,18 +130,15 @@ export function AIFormProvider({ children }) {
         const varrerGaveta = (gaveta, nomeDono) => {
             if (!gaveta) return;
             const itens = Array.isArray(gaveta) ? gaveta : Object.values(gaveta);
-            
             itens.forEach(item => {
                 if (!item || typeof item !== 'object') return;
                 const nomeObj = item.nome || item.titulo || item.name;
                 const imgObj = item.imagemUrl || item.imagem || item.icone || item.avatar || item.url || item.img || item.foto || item.icon || item.token || item.capa;
-
                 if (nomeObj && typeof nomeObj === 'string' && imgObj) {
                     const url = extrairUrl(imgObj);
                     if (url) {
                         const jaTemNome = nomeDono && nomeObj.toLowerCase().includes(nomeDono.toLowerCase().split(' ')[0]);
                         const nomeCombo = (nomeDono && !jaTemNome) ? `${nomeDono} (${nomeObj})` : nomeObj;
-                        
                         if (!nomesJaAdicionados.has(nomeCombo)) {
                             avataresDoServidor.push({ nome: nomeCombo, avatar: url });
                             nomesJaAdicionados.add(nomeCombo);
@@ -168,37 +156,24 @@ export function AIFormProvider({ children }) {
 
         if (minhaFicha) {
             const urlBase = extrairUrl(minhaFicha.avatar || minhaFicha.bio?.avatar || minhaFicha.token || minhaFicha.imagem || minhaFicha.img);
-            if (urlBase && !nomesJaAdicionados.has(meuNome)) {
-                avataresDoServidor.push({ nome: meuNome, avatar: urlBase });
-                nomesJaAdicionados.add(meuNome);
-            }
+            if (urlBase && !nomesJaAdicionados.has(meuNome)) { avataresDoServidor.push({ nome: meuNome, avatar: urlBase }); nomesJaAdicionados.add(meuNome); }
             varrerGaveta(minhaFicha, meuNome);
         }
 
         Object.entries(personagens).forEach(([nomeFicha, ficha]) => {
             const urlBase = extrairUrl(ficha.avatar || ficha.bio?.avatar || ficha.token || ficha.imagem || ficha.img);
-            if (urlBase && !nomesJaAdicionados.has(nomeFicha)) {
-                avataresDoServidor.push({ nome: nomeFicha, avatar: urlBase });
-                nomesJaAdicionados.add(nomeFicha);
-            }
+            if (urlBase && !nomesJaAdicionados.has(nomeFicha)) { avataresDoServidor.push({ nome: nomeFicha, avatar: urlBase }); nomesJaAdicionados.add(nomeFicha); }
             varrerGaveta(ficha, nomeFicha);
         });
 
-        varrerGaveta(poderesGlobais, meuNome);
-        varrerGaveta(habilidadesGlobais, meuNome);
-        varrerGaveta(formasGlobais, meuNome);
-        varrerGaveta(inventarioGlobal, meuNome);
-
-        return avataresDoServidor
-            .filter(srvPers => srvPers.avatar !== '') 
-            .filter(srvPers => !tierListAtiva.some(tPers => tPers.nome === srvPers.nome));
+        varrerGaveta(poderesGlobais, meuNome); varrerGaveta(habilidadesGlobais, meuNome); varrerGaveta(formasGlobais, meuNome); varrerGaveta(inventarioGlobal, meuNome);
+        return avataresDoServidor.filter(srvPers => srvPers.avatar !== '').filter(srvPers => !tierListAtiva.some(tPers => tPers.nome === srvPers.nome));
     }, [minhaFicha, meuNome, personagens, poderesGlobais, habilidadesGlobais, formasGlobais, inventarioGlobal, tierListAtiva]);
 
     const moverPersonagem = useCallback((personagem, novoRank) => {
         const isPresente = loreFoco === 'presente';
         const setCapitulos = isPresente ? setCapitulosPresente : setCapitulosFuturo;
         const ativoId = isPresente ? capituloAtivoId : capFuturoAtivoId;
-
         setCapitulos(prev => prev.map(cap => {
             if (cap.id !== ativoId) return cap;
             let novaTierList = cap.tierList.filter(p => p.nome !== personagem.nome);
@@ -207,48 +182,29 @@ export function AIFormProvider({ children }) {
         }));
     }, [loreFoco, capituloAtivoId, capFuturoAtivoId]);
 
-    const handleDragStart = useCallback((e, personagem) => {
-        e.dataTransfer.setData('personagem', JSON.stringify(personagem));
-        e.dataTransfer.effectAllowed = 'move';
-    }, []);
-
-    const handleDragOver = useCallback((e) => {
-        e.preventDefault(); 
-        e.dataTransfer.dropEffect = 'move';
-    }, []);
-
-    const handleDrop = useCallback((e, novoRank) => {
-        e.preventDefault();
-        const data = e.dataTransfer.getData('personagem');
-        if (data) moverPersonagem(JSON.parse(data), novoRank);
-    }, [moverPersonagem]);
+    const handleDragStart = useCallback((e, personagem) => { e.dataTransfer.setData('personagem', JSON.stringify(personagem)); e.dataTransfer.effectAllowed = 'move'; }, []);
+    const handleDragOver = useCallback((e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }, []);
+    const handleDrop = useCallback((e, novoRank) => { e.preventDefault(); const data = e.dataTransfer.getData('personagem'); if (data) moverPersonagem(JSON.parse(data), novoRank); }, [moverPersonagem]);
 
     const adicionarCustomizado = useCallback(() => {
         if (!novoPersonagem.trim()) return;
-        const personagem = { nome: novoPersonagem.trim(), avatar: novoAvatar.trim() };
-        moverPersonagem(personagem, 'C');
-        setNovoPersonagem('');
-        setNovoAvatar('');
+        moverPersonagem({ nome: novoPersonagem.trim(), avatar: novoAvatar.trim() }, 'C');
+        setNovoPersonagem(''); setNovoAvatar('');
     }, [novoPersonagem, novoAvatar, moverPersonagem]);
 
     const adicionarCapitulo = useCallback(() => {
-        const titulo = window.prompt(`Nome do novo capítulo para o ${loreFoco}:`);
+        const titulo = window.prompt(`Nome do novo Arco/Capítulo para o ${loreFoco}:`);
         if (!titulo || titulo.trim() === '') return;
         const novoId = Date.now();
-        if (loreFoco === 'presente') {
-            setCapitulosPresente(prev => [...prev, { id: novoId, titulo, texto: '', tierList: [] }]);
-            setCapituloAtivoId(novoId);
-        } else {
-            setCapitulosFuturo(prev => [...prev, { id: novoId, titulo, texto: '', tierList: [] }]);
-            setCapFuturoAtivoId(novoId);
-        }
+        if (loreFoco === 'presente') { setCapitulosPresente(prev => [...prev, { id: novoId, titulo, texto: '', tierList: [] }]); setCapituloAtivoId(novoId); }
+        else { setCapitulosFuturo(prev => [...prev, { id: novoId, titulo, texto: '', tierList: [] }]); setCapFuturoAtivoId(novoId); }
     }, [loreFoco]);
 
     const editarTituloCapitulo = useCallback(() => {
         const lista = loreFoco === 'presente' ? capitulosPresente : capitulosFuturo;
         const idAtivo = loreFoco === 'presente' ? capituloAtivoId : capFuturoAtivoId;
         const capAtual = lista.find(cap => cap.id === idAtivo);
-        const novoTitulo = window.prompt("Editar nome do capítulo:", capAtual.titulo);
+        const novoTitulo = window.prompt("Editar nome do Arco:", capAtual.titulo);
         if (!novoTitulo || novoTitulo.trim() === '') return;
         if (loreFoco === 'presente') setCapitulosPresente(prev => prev.map(cap => cap.id === idAtivo ? { ...cap, titulo: novoTitulo } : cap));
         else setCapitulosFuturo(prev => prev.map(cap => cap.id === idAtivo ? { ...cap, titulo: novoTitulo } : cap));
@@ -256,9 +212,9 @@ export function AIFormProvider({ children }) {
 
     const apagarCapitulo = useCallback(() => {
         const lista = loreFoco === 'presente' ? capitulosPresente : capitulosFuturo;
-        if (lista.length <= 1) return alert("Não pode apagar o único capítulo!");
+        if (lista.length <= 1) return alert("Não pode apagar o único arco existente!");
         const idAtivo = loreFoco === 'presente' ? capituloAtivoId : capFuturoAtivoId;
-        if (!window.confirm("Tem certeza que deseja apagar?")) return;
+        if (!window.confirm("Tem certeza que deseja apagar este arco inteiro?")) return;
         if (loreFoco === 'presente') {
             const nova = capitulosPresente.filter(cap => cap.id !== idAtivo);
             setCapitulosPresente(nova); setCapituloAtivoId(nova[0].id);
@@ -273,12 +229,48 @@ export function AIFormProvider({ children }) {
         else setCapitulosFuturo(prev => prev.map(cap => cap.id === capFuturoAtivoId ? { ...cap, texto: novoTexto } : cap));
     }, [loreFoco, capituloAtivoId, capFuturoAtivoId]);
 
-    const adicionarCapituloComTexto = useCallback((titulo, texto) => {
-        const novoId = Date.now();
-        setCapitulosPresente(prev => [...prev, { id: novoId, titulo, texto, tierList: [] }]);
-        setCapituloAtivoId(novoId);
-        setLoreFoco('presente');
-    }, []);
+    // 🔥 NOVO MOTOR: Injeta texto em Arcos existentes ou cria novos 🔥
+    const salvarNoRegistro = useCallback((texto, tituloRegistro, destinoId, foco = 'presente') => {
+        const timestamp = new Date().toLocaleTimeString('pt-BR');
+        const separador = `\n\n================================\n[${tituloRegistro} - ${timestamp}]\n================================\n\n`;
+
+        if (destinoId === 'novo') {
+            const novoId = Date.now();
+            const nomeNovoArco = window.prompt("Como deseja chamar este Novo Arco?", `Arco de ${new Date().toLocaleDateString('pt-BR')}`);
+            if (!nomeNovoArco) return; // Cancelou
+            const novoObj = { id: novoId, titulo: nomeNovoArco, texto: texto, tierList: [] };
+            
+            if (foco === 'presente') {
+                setCapitulosPresente(prev => [...prev, novoObj]);
+                setCapituloAtivoId(novoId);
+                setLoreFoco('presente');
+            } else {
+                setCapitulosFuturo(prev => [...prev, novoObj]);
+                setCapFuturoAtivoId(novoId);
+                setLoreFoco('futuro');
+            }
+        } else {
+            // Adiciona a um arco já existente
+            const addTexto = (prev) => prev.map(cap => {
+                if (cap.id === Number(destinoId)) {
+                    // Se o arco estiver vazio, não põe quebra de linha inicial extra
+                    const newTexto = cap.texto.trim() ? cap.texto + separador + texto : texto;
+                    return { ...cap, texto: newTexto };
+                }
+                return cap;
+            });
+
+            if (foco === 'presente') {
+                setCapitulosPresente(addTexto);
+                setCapituloAtivoId(Number(destinoId));
+                setLoreFoco('presente');
+            } else {
+                setCapitulosFuturo(addTexto);
+                setCapFuturoAtivoId(Number(destinoId));
+                setLoreFoco('futuro');
+            }
+        }
+    }, [setCapitulosPresente, setCapituloAtivoId, setLoreFoco, setCapitulosFuturo, setCapFuturoAtivoId]);
 
     useEffect(() => { if (subAba === 'chat' && chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight; }, [historico, subAba]);
 
@@ -306,32 +298,20 @@ export function AIFormProvider({ children }) {
         return textoCompleto;
     }, []);
 
-    // 🔥 ATUALIZADO: Agora aceita ficheiros .md também 🔥
     const handleArquivoSelecionado = useCallback(async (e) => {
         const file = e.target.files[0];
         if (!file) return;
         try {
             let texto = '';
-            if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
-                texto = await extrairTextoPDF(file);
-            } else if (file.type === 'text/plain' || file.name.endsWith('.txt') || file.name.endsWith('.md')) {
-                texto = await file.text();
-            } else {
-                alert('Formato não suportado. Use PDF, TXT ou MD.');
-                return;
-            }
+            if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) texto = await extrairTextoPDF(file);
+            else if (file.type === 'text/plain' || file.name.endsWith('.txt') || file.name.endsWith('.md')) texto = await file.text();
+            else return alert('Formato não suportado. Use PDF, TXT ou MD.');
+            
             const MAX_CHARS = 15000;
-            if (texto.length > MAX_CHARS) {
-                texto = texto.substring(0, MAX_CHARS) + '\n...[TEXTO TRUNCADO]';
-            }
-            setArquivoTexto(texto);
-            setNomeArquivo(file.name);
-        } catch (err) {
-            console.error('[AIPanel] Erro ao extrair texto:', err);
-            alert('Erro ao ler o arquivo.');
-        } finally {
-            e.target.value = '';
-        }
+            if (texto.length > MAX_CHARS) texto = texto.substring(0, MAX_CHARS) + '\n...[TEXTO TRUNCADO]';
+            setArquivoTexto(texto); setNomeArquivo(file.name);
+        } catch (err) { alert('Erro ao ler o arquivo.'); } 
+        finally { e.target.value = ''; }
     }, [extrairTextoPDF]);
 
     const enviarMensagem = useCallback(async () => {
@@ -346,14 +326,9 @@ export function AIFormProvider({ children }) {
         
         try {
             const chamarIA = httpsCallable(functions, 'falarComSextaFeira');
-            
-            // 🔥 DIRETRIZ ANTI-ALUCINAÇÃO: Colocamos uma ordem invisível no prompt para a IA não inventar lore 🔥
             const instrucaoRestrita = "\n\n[DIRETRIZ DE SISTEMA: Aja de forma cirúrgica e objetiva. Baseie-se EXCLUSIVAMENTE nas informações fornecidas nesta mensagem ou no arquivo anexado. É ESTRITAMENTE PROIBIDO inventar histórias, adicionar 'lore', ou preencher lacunas de forma criativa. Atenha-se aos factos enviados.]";
             
-            const payload = { 
-                mensagem: (msgUsuario || 'Resuma o documento anexado.') + instrucaoRestrita, 
-                contextoFicha: montarContextoFicha() 
-            };
+            const payload = { mensagem: (msgUsuario || 'Resuma o documento anexado.') + instrucaoRestrita, contextoFicha: montarContextoFicha() };
             if (textoAnexo) payload.conteudoArquivo = textoAnexo;
             
             const resultado = await chamarIA(payload);
@@ -372,16 +347,16 @@ export function AIFormProvider({ children }) {
         capitulosFuturo, setCapitulosFuturo, capFuturoAtivoId, setCapFuturoAtivoId,
         capituloAtivoObj, textoAtivo, tierListAtiva, poolPersonagens,
         moverPersonagem, handleDragStart, handleDragOver, handleDrop, adicionarCustomizado,
-        adicionarCapitulo, editarTituloCapitulo, apagarCapitulo, atualizarTexto, adicionarCapituloComTexto,
+        adicionarCapitulo, editarTituloCapitulo, apagarCapitulo, atualizarTexto, salvarNoRegistro, // 🔥 Nova função injetada
         montarContextoFicha, enviarMensagem, handleKeyDown,
         arquivoTexto, nomeArquivo, setArquivoTexto, setNomeArquivo,
-        fileInputRef, handleArquivoSelecionado, limparChat // <- Adicionámos o limparChat aqui
+        fileInputRef, handleArquivoSelecionado, limparChat
     }), [
         minhaFicha, meuNome, personagens, subAba, mensagem, historico, carregando,
         loreFoco, novoPersonagem, novoAvatar, capitulosPresente, capituloAtivoId,
         capitulosFuturo, capFuturoAtivoId, capituloAtivoObj, textoAtivo, tierListAtiva, poolPersonagens,
         moverPersonagem, handleDragStart, handleDragOver, handleDrop, adicionarCustomizado,
-        adicionarCapitulo, editarTituloCapitulo, apagarCapitulo, atualizarTexto, adicionarCapituloComTexto,
+        adicionarCapitulo, editarTituloCapitulo, apagarCapitulo, atualizarTexto, salvarNoRegistro,
         montarContextoFicha, enviarMensagem, handleKeyDown,
         arquivoTexto, nomeArquivo, handleArquivoSelecionado, limparChat
     ]);
