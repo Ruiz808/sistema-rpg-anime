@@ -332,7 +332,7 @@ export function MapaFormProvider({ children }) {
         return lista;
     }, [personagens, cenaRenderId]);
 
-    // 🔥 HELPER DE DANO DINÂMICO PARA AS ZONAS 🔥
+    // 🔥 O MOTOR LÊ AGORA OS MULTIPLICADORES DE FORMAS E ABSOLUTOS DA FICHA DE QUEM LANÇOU A MAGIA 🔥
     const getDanoDinamicoZona = useCallback((zona) => {
         if (!zona.danoOriginal) return zona.danoAplicado || 0;
         const fichaCaster = (zona.conjurador === meuNome) ? minhaFicha : personagens?.[zona.conjurador];
@@ -353,7 +353,8 @@ export function MapaFormProvider({ children }) {
         (fichaCaster.passivas || []).forEach(p => scanFuria(p.efeitos));
         
         const furiaAtiva = maxFuria > 0 ? maxFuria : 1;
-        const multAtual = (buffs?.mbase || 1) * (buffs?.mgeral || 1) * furiaAtiva;
+        // ✅ CORREÇÃO: ADICIONADO buffs?.mformas e buffs?.mabs NA CONTA!
+        const multAtual = (buffs?.mbase || 1) * (buffs?.mgeral || 1) * (buffs?.mformas || 1) * (buffs?.mabs || 1) * furiaAtiva;
         const baseMulti = zona.multiplicadorOriginal || 1;
         
         const novoDano = Math.floor((zona.danoOriginal / baseMulti) * multAtual);
@@ -397,7 +398,6 @@ export function MapaFormProvider({ children }) {
         }
     }, [cenario, getDanoDinamicoZona, dummies, minhaFicha, meuNome, updateFicha]);
 
-    // 🔥 MOTOR DE DETEÇÃO DE ENTRADA NA ZONA 🔥
     const processarEntradaNaZona = useCallback((oldPos, newX, newY, newZ, entidadeNome, isDummie, idDummie, dData) => {
         const cenaAtivaId = cenario?.ativa || 'default';
         const escala = cenario?.lista?.[cenaAtivaId]?.escala || 1.5;
@@ -479,7 +479,6 @@ export function MapaFormProvider({ children }) {
         setFeedIndexTurnoAtual(feedCombate.length); 
     }, [iniciativaInput, cenaRenderId, updateFicha, feedCombate.length]);
 
-    // 🔥 O TEMPO PASSA E A ZONA CASTIGA 🔥
     const avancarTurno = useCallback(() => {
         if (ordemIniciativa.length === 0) return;
         

@@ -203,7 +203,6 @@ export function AtaqueFormProvider({ children }) {
         salvarFichaSilencioso();
     }, [updateFicha, armaStatusUsados, armaEnergiaCombustao, armaPercEnergia, critNormalMin, critNormalMax, critFatalMin, critFatalMax, skillConfigs]);
 
-    // 🔥 MOTOR DE DANO: INJETA O DANO BASE E BUFFS ATUAIS NA ZONA 🔥
     const rolarDano = useCallback(() => {
         salvarConfigAtaque();
 
@@ -262,7 +261,7 @@ export function AtaqueFormProvider({ children }) {
             extraFeed = { alvoNome: dummieAlvo.nome, alvoSobreviveu: novoHp > 0, overkill: result.dano > hpAnterior ? result.dano - hpAnterior : 0 };
         }
 
-        // 🔥 GRAVA AS METRICAS DE DANO NA ZONA PERSISTENTE 🔥
+        // 🔥 O MOTOR DE DANO AGORA LÊ TODOS OS MULTIPLICADORES CORRETAMENTE (INCLUINDO AS FORMAS!) 🔥
         if (meuUltimoAcerto && meuUltimoAcerto.zonaIdGerada) {
             const cenarioAtual = useStore.getState().cenario;
             if (cenarioAtual?.zonas) {
@@ -270,11 +269,12 @@ export function AtaqueFormProvider({ children }) {
                 const zRef = novoCenario.zonas.find(z => z.id === meuUltimoAcerto.zonaIdGerada);
                 if (zRef) {
                     const buffsAtuais = getBuffs(minhaFicha);
-                    const multOrig = (buffsAtuais?.mbase || 1) * (buffsAtuais?.mgeral || 1) * (multiplicadorFuriaVisor > 0 ? multiplicadorFuriaVisor : 1);
+                    const furiaM = multiplicadorFuriaVisor > 0 ? multiplicadorFuriaVisor : 1;
+                    const multOrig = (buffsAtuais?.mbase || 1) * (buffsAtuais?.mgeral || 1) * (buffsAtuais?.mformas || 1) * (buffsAtuais?.mabs || 1) * furiaM;
                     
                     zRef.danoOriginal = result.dano;
                     zRef.multiplicadorOriginal = multOrig === 0 ? 1 : multOrig;
-                    zRef.danoAplicado = result.dano; // Compatibilidade com zonas antigas
+                    zRef.danoAplicado = result.dano;
                     
                     salvarCenarioCompleto(novoCenario);
                     textoAlvos += `<br/><span style="color:#ff00ff; font-weight:bold;">🌪️ A Zona de Efeito absorveu o poder e castigará quem permanecer lá!</span>`;
