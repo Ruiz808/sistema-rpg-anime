@@ -24,6 +24,7 @@ import GravadorPanel from '../ia/GravadorPanel'
 
 export default function AppShell({
     className,
+    abaInicial,
     painelPerfil,
     painelMestre,
     painelStatus,
@@ -43,6 +44,14 @@ export default function AppShell({
     painelGravador
 }) {
     const abaAtiva = useStore(s => s.abaAtiva)
+    const setAbaAtiva = useStore(s => s.setAbaAtiva)
+
+    React.useEffect(() => {
+        if (abaInicial) {
+            setAbaAtiva(abaInicial)
+        }
+    }, [abaInicial, setAbaAtiva])
+
     const isMapMode = abaAtiva === 'aba-mapa'
 
     return (

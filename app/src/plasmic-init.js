@@ -83,6 +83,17 @@ PLASMIC.registerComponent(PlasmicAppShell, {
   name: 'AppShell',
   props: {
     className: 'string',
+    abaInicial: {
+      type: 'choice',
+      options: [
+        'aba-perfil', 'aba-mestre', 'aba-status', 'aba-testes',
+        'aba-ataque', 'aba-acerto', 'aba-defesa', 'aba-ficha',
+        'aba-poderes', 'aba-arsenal', 'aba-elementos', 'aba-log',
+        'aba-mapa', 'aba-musica', 'aba-compendio', 'aba-oraculo', 'aba-gravador'
+      ],
+      defaultValue: 'aba-status',
+      displayName: 'Aba visível no editor'
+    },
     painelPerfil: 'slot',
     painelMestre: 'slot',
     painelStatus: 'slot',

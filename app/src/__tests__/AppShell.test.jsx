@@ -165,6 +165,7 @@ vi.mock('../components/perfil/ModalConfirm', () => ({
 // ---------------------------------------------------------------------------
 
 import AppShell from '../components/layout/AppShell';
+import useStore from '../stores/useStore';
 
 // ---------------------------------------------------------------------------
 // Helper
@@ -559,5 +560,111 @@ describe('AppShell — structural integrity', () => {
         expectedIds.forEach((id) => {
             expect(container.querySelector(`#${id}`)).not.toBeNull();
         });
+    });
+});
+
+// ===========================================================================
+// SECTION 8 — abaInicial prop: calls setAbaAtiva on mount
+// ===========================================================================
+describe('AppShell — abaInicial prop', () => {
+    let setAbaAtivaMock;
+
+    beforeEach(() => {
+        mockAbaAtiva = 'aba-status';
+        // Retrieve the shared vi.fn() reference from the mocked store
+        setAbaAtivaMock = useStore(s => s.setAbaAtiva);
+        setAbaAtivaMock.mockClear();
+    });
+
+    // --- Happy Path ---
+
+    it('calls setAbaAtiva with the provided abaInicial value on mount', () => {
+        renderShell({ abaInicial: 'aba-ficha' });
+        expect(setAbaAtivaMock).toHaveBeenCalledTimes(1);
+        expect(setAbaAtivaMock).toHaveBeenCalledWith('aba-ficha');
+    });
+
+    it('calls setAbaAtiva with aba-mapa when abaInicial is aba-mapa', () => {
+        renderShell({ abaInicial: 'aba-mapa' });
+        expect(setAbaAtivaMock).toHaveBeenCalledTimes(1);
+        expect(setAbaAtivaMock).toHaveBeenCalledWith('aba-mapa');
+    });
+
+    it('calls setAbaAtiva with aba-status when abaInicial is aba-status', () => {
+        renderShell({ abaInicial: 'aba-status' });
+        expect(setAbaAtivaMock).toHaveBeenCalledTimes(1);
+        expect(setAbaAtivaMock).toHaveBeenCalledWith('aba-status');
+    });
+
+    it('calls setAbaAtiva with each valid tab id correctly', () => {
+        const validTabs = [
+            'aba-perfil', 'aba-mestre', 'aba-status', 'aba-testes',
+            'aba-ataque', 'aba-acerto', 'aba-defesa', 'aba-ficha',
+            'aba-poderes', 'aba-arsenal', 'aba-elementos', 'aba-log',
+            'aba-mapa', 'aba-musica', 'aba-compendio', 'aba-oraculo',
+            'aba-gravador',
+        ];
+        validTabs.forEach((aba) => {
+            setAbaAtivaMock.mockClear();
+            const { unmount } = renderShell({ abaInicial: aba });
+            expect(setAbaAtivaMock).toHaveBeenCalledTimes(1);
+            expect(setAbaAtivaMock).toHaveBeenCalledWith(aba);
+            unmount();
+        });
+    });
+
+    // --- Edge Cases ---
+
+    it('does NOT call setAbaAtiva when abaInicial is not provided', () => {
+        renderShell();
+        expect(setAbaAtivaMock).not.toHaveBeenCalled();
+    });
+
+    it('does NOT call setAbaAtiva when abaInicial is undefined', () => {
+        renderShell({ abaInicial: undefined });
+        expect(setAbaAtivaMock).not.toHaveBeenCalled();
+    });
+
+    it('does NOT call setAbaAtiva when abaInicial is null', () => {
+        renderShell({ abaInicial: null });
+        expect(setAbaAtivaMock).not.toHaveBeenCalled();
+    });
+
+    it('does NOT call setAbaAtiva when abaInicial is an empty string', () => {
+        renderShell({ abaInicial: '' });
+        expect(setAbaAtivaMock).not.toHaveBeenCalled();
+    });
+
+    // --- Isolation: abaInicial does not break rendering ---
+
+    it('still renders all 17 default panels when abaInicial is provided', () => {
+        renderShell({ abaInicial: 'aba-ficha' });
+        const defaultSlots = [
+            'default-perfil', 'default-mestre', 'default-status', 'default-testes',
+            'default-ataque', 'default-acerto', 'default-defesa', 'default-ficha',
+            'default-poderes', 'default-arsenal', 'default-elementos', 'default-log',
+            'default-mapa', 'default-musica', 'default-compendio', 'default-oraculo',
+            'default-gravador',
+        ];
+        defaultSlots.forEach((testId) => {
+            expect(screen.getByTestId(testId)).toBeTruthy();
+        });
+    });
+
+    it('still renders Sidebar and ModalConfirm when abaInicial is provided', () => {
+        const { container } = renderShell({ abaInicial: 'aba-poderes' });
+        expect(container.querySelector('nav.sidebar')).not.toBeNull();
+        expect(screen.getByTestId('modal-confirm')).toBeTruthy();
+    });
+
+    it('abaInicial alongside a custom slot prop still calls setAbaAtiva once', () => {
+        renderShell({
+            abaInicial: 'aba-arsenal',
+            painelArsenal: <div data-testid="custom-arsenal">Custom Arsenal</div>,
+        });
+        expect(setAbaAtivaMock).toHaveBeenCalledTimes(1);
+        expect(setAbaAtivaMock).toHaveBeenCalledWith('aba-arsenal');
+        expect(screen.getByTestId('custom-arsenal')).toBeTruthy();
+        expect(screen.queryByTestId('default-arsenal')).toBeNull();
     });
 });
