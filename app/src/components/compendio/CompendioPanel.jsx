@@ -14,7 +14,7 @@ export default function CompendioPanel({ className, children }) {
     const hasChildren = React.Children.count(children) > 0
     return (
         <CompendioFormProvider>
-            <div className={className} style={{ display: 'flex', gap: '20px', minHeight: '70vh', alignItems: 'flex-start' }}>
+            <div className={['compendio-panel', className].filter(Boolean).join(' ')} style={{ display: 'flex', gap: '20px', minHeight: '70vh', alignItems: 'flex-start' }}>
                 {hasChildren ? children : (
                     <>
                         <CompendioSidebar />

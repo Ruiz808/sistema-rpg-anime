@@ -43,11 +43,9 @@ function criarWrapper(importFn) {
   return function PlasmicWrapper({ className, style, ...props }) {
     return (
       <StoreInitializer>
-        <div className={className} style={style}>
-          <React.Suspense fallback={<div className="glass-panel ativo" style={{ padding: '1rem' }}>Carregando...</div>}>
-            <LazyComp {...props} />
-          </React.Suspense>
-        </div>
+        <React.Suspense fallback={<div className="glass-panel ativo" style={{ padding: '1rem' }}>Carregando...</div>}>
+          <LazyComp className={className} style={style} {...props} />
+        </React.Suspense>
       </StoreInitializer>
     )
   }
@@ -74,12 +72,16 @@ export const PlasmicSidebar = criarWrapper(() => import('./components/layout/Sid
 export const PlasmicMestrePanel = criarWrapper(() => import('./components/mestre/MestrePanel'))
 export const PlasmicTabelaPrestigio = criarWrapper(() => import('./components/ficha/TabelaPrestigio'))
 
-// --- Sub-componentes granulares (exportados de StatusPanel) ---
+// --- Sub-componentes granulares (status) ---
 // RadarChart e AtributosLista precisam de ficha como prop — injetamos do store
+const LazyRadarChart = React.lazy(() =>
+  import('./components/status/StatusSubComponents').then(m => ({ default: m.StatusRadarChart }))
+)
+const LazyAtributosLista = React.lazy(() =>
+  import('./components/status/StatusSubComponents').then(m => ({ default: m.StatusAtributosLista }))
+)
+
 export function PlasmicRadarChart({ isAtual = false, className, style, ...props }) {
-  const LazyRadarChart = React.lazy(() =>
-    import('./components/status/StatusPanel').then(m => ({ default: m.RadarChart }))
-  )
   const ficha = useStore(s => s.minhaFicha)
   return (
     <StoreInitializer>
@@ -93,9 +95,6 @@ export function PlasmicRadarChart({ isAtual = false, className, style, ...props 
 }
 
 export function PlasmicAtributosLista({ isAtual = false, className, style, ...props }) {
-  const LazyAtributosLista = React.lazy(() =>
-    import('./components/status/StatusPanel').then(m => ({ default: m.AtributosLista }))
-  )
   const ficha = useStore(s => s.minhaFicha)
   return (
     <StoreInitializer>
@@ -107,10 +106,6 @@ export function PlasmicAtributosLista({ isAtual = false, className, style, ...pr
     </StoreInitializer>
   )
 }
-
-export const PlasmicStatusPanelCore = criarWrapper(() =>
-  import('./components/status/StatusPanel').then(m => ({ default: m.StatusPanelCore }))
-)
 
 // ========================================
 // SUB-COMPONENTES INDIVIDUAIS (Fase 3)

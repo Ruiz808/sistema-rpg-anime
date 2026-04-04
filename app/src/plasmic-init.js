@@ -29,7 +29,6 @@ import {
   PlasmicTabelaPrestigio,
   PlasmicRadarChart,
   PlasmicAtributosLista,
-  PlasmicStatusPanelCore,
   // Ficha sub-componentes
   PlasmicFichaBioGroup,
   PlasmicFichaEditorAtributos,
@@ -131,7 +130,6 @@ PLASMIC.registerComponent(PlasmicRadarChart, {
   name: 'RadarChart',
   props: {
     className: 'string',
-    ficha: 'object',
     isAtual: 'boolean'
   }
 })
@@ -140,14 +138,8 @@ PLASMIC.registerComponent(PlasmicAtributosLista, {
   name: 'AtributosLista',
   props: {
     className: 'string',
-    ficha: 'object',
     isAtual: 'boolean'
   }
-})
-
-PLASMIC.registerComponent(PlasmicStatusPanelCore, {
-  name: 'StatusPanelCore',
-  props: { className: 'string' }
 })
 
 // ========================================
