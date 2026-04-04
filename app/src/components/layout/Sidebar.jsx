@@ -21,13 +21,13 @@ const tabs = [
     { id: 'aba-oraculo',    emoji: '🤖', label: 'Sexta-Feira (IA)' }
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ className }) {
     const abaAtiva = useStore((s) => s.abaAtiva);
     const setAbaAtiva = useStore((s) => s.setAbaAtiva);
     const isMestre = useStore((s) => s.isMestre);
 
     return (
-        <nav className="sidebar">
+        <nav className={['sidebar', className].filter(Boolean).join(' ')}>
             {tabs.map((tab) => {
                 if (tab.mestreOnly && !isMestre) {
                     return (

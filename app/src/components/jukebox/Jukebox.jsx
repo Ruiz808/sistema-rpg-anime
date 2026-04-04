@@ -31,7 +31,7 @@ function carregarYouTubeApi() {
     });
 }
 
-export default function Jukebox() {
+export default function Jukebox({ className }) {
     const [inputUrl, setInputUrl] = useState('');
     const [tocando, setTocando] = useState(false);
     const [videoId, setVideoId] = useState(null);
@@ -204,7 +204,7 @@ export default function Jukebox() {
     };
 
     return (
-        <div className="def-box" style={{ marginTop: '15px' }}>
+        <div className={['def-box', className].filter(Boolean).join(' ')} style={{ marginTop: '15px' }}>
             <h3 style={{ color: '#00ffcc', marginBottom: 15, display: 'flex', alignItems: 'center', gap: '10px' }}>
                 🎵 Mesa de Som (Controlo Mestre & Leitor)
             </h3>

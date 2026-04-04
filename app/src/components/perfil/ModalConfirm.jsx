@@ -2,7 +2,7 @@ import React from 'react';
 import useStore from '../../stores/useStore';
 import { deletarPersonagem } from '../../services/firebase-sync';
 
-export default function ModalConfirm() {
+export default function ModalConfirm({ className }) {
     const personagemParaDeletar = useStore(s => s.personagemParaDeletar);
     const setPersonagemParaDeletar = useStore(s => s.setPersonagemParaDeletar);
     const meuNome = useStore(s => s.meuNome);
@@ -26,7 +26,7 @@ export default function ModalConfirm() {
     }
 
     return (
-        <div className="modal-overlay" style={{ display: 'flex' }}>
+        <div className={['modal-overlay', className].filter(Boolean).join(' ')} style={{ display: 'flex' }}>
             <div className="modal-box">
                 <h2 className="modal-critical-title" style={{ color: '#ff003c' }}>
                     CONFIRMAR EXCLUSAO

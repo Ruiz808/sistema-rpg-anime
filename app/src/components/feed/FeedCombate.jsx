@@ -1,12 +1,12 @@
 import React from 'react';
 import useStore from '../../stores/useStore';
 
-export default function FeedCombate() {
+export default function FeedCombate({ className }) {
     const feedCombate = useStore(s => s.feedCombate);
 
     if (feedCombate.length === 0) {
         return (
-            <div id="feed-combate">
+            <div id="feed-combate" className={className}>
                 <p style={{ color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
                     Aguardando acoes de combate...
                 </p>
@@ -17,7 +17,7 @@ export default function FeedCombate() {
     const reversed = [...feedCombate].reverse();
 
     return (
-        <div id="feed-combate">
+        <div id="feed-combate" className={className}>
             {reversed.map((d, idx) => {
                 
                 // 🔥 NOVO: TRATAMENTO DE ÁREA DE EFEITO (AoE) 🔥

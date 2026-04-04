@@ -12,7 +12,11 @@ const formatNum = (n) => {
 };
 
 export default function DummieToken({ className, id, dummie }) {
-    const { isMestre, alvoSelecionado, setAlvoSelecionado } = useStore();
+    const isMestre = useStore(s => s.isMestre);
+    const alvoSelecionado = useStore(s => s.alvoSelecionado);
+    const setAlvoSelecionado = useStore(s => s.setAlvoSelecionado);
+
+    if (!dummie) return null;
 
     const isTarget = alvoSelecionado === id;
     const isDead = dummie.hpAtual <= 0;
@@ -41,7 +45,8 @@ export default function DummieToken({ className, id, dummie }) {
     const colorAC = dummie.tipoDefesa === 'evasiva' ? '#0088ff' : '#ccc';
 
     return (
-        <div 
+        <div
+            className={className}
             onClick={handleSelecionar}
             title={isTarget ? 'Desmarcar Alvo' : 'Selecionar como Alvo'}
             style={{

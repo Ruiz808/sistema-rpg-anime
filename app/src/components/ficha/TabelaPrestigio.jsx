@@ -53,7 +53,7 @@ const getBasePFor = (ficha, k) => {
     return safeGetPrestigioReal(k, safeGetRawBase(ficha, k));
 };
 
-export default function TabelaPrestigio() {
+export default function TabelaPrestigio({ className }) {
     const ficha = useStore((s) => s.minhaFicha);
     const updateFicha = useStore((s) => s.updateFicha);
     const [statusBotao, setStatusBotao] = useState('idle');
@@ -85,7 +85,7 @@ export default function TabelaPrestigio() {
     if (!ficha) return null;
 
     return (
-        <div className="tabela-prestigio-module" style={{ marginTop: '20px' }}>
+        <div className={['tabela-prestigio-module', className].filter(Boolean).join(' ')} style={{ marginTop: '20px' }}>
             <h3 className="section-title-mint-spaced" style={{ color: '#fff', fontSize: '1.2em', marginTop: 0 }}>
                 &gt; SISTEMA DE PRESTÍGIO E ASCENSÃO (CULTIVAÇÃO)
             </h3>

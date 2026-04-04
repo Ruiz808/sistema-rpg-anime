@@ -148,7 +148,7 @@ export default function FormasEditor({ className, itemRaridade, formas, formaAti
     };
 
     return (
-        <div style={{ marginTop: 10 }}>
+        <div className={className} style={{ marginTop: 10 }}>
             <button className="btn-neon" onClick={() => setMostrarFormas(!mostrarFormas)} style={{ padding: '4px 12px', fontSize: '0.85em', margin: 0, borderColor: '#ff8800', color: '#ff8800' }}>
                 {mostrarFormas ? '▼' : '▶'} FORMAS MÍSTICAS ({listaFormas.length})
             </button>
