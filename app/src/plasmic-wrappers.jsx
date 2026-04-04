@@ -51,6 +51,9 @@ function criarWrapper(importFn) {
   }
 }
 
+// --- Layout completo (AppShell) ---
+export const PlasmicAppShell = criarWrapper(() => import('./components/layout/AppShell'))
+
 // --- Painéis completos ---
 export const PlasmicStatusPanel = criarWrapper(() => import('./components/status/StatusPanel'))
 export const PlasmicFichaPanel = criarWrapper(() => import('./components/ficha/FichaPanel'))

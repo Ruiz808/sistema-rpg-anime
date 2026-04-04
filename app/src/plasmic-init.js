@@ -8,6 +8,7 @@ import FormasEditor from './components/shared/FormasEditor'
 
 // --- Wrappers para componentes com store ---
 import {
+  PlasmicAppShell,
   PlasmicStatusPanel,
   PlasmicFichaPanel,
   PlasmicAtaquePanel,
@@ -72,6 +73,34 @@ export const PLASMIC = initPlasmicLoader({
     }
   ],
   preview: import.meta.env.DEV
+})
+
+// ========================================
+// LAYOUT COMPLETO (AppShell)
+// ========================================
+
+PLASMIC.registerComponent(PlasmicAppShell, {
+  name: 'AppShell',
+  props: {
+    className: 'string',
+    painelPerfil: 'slot',
+    painelMestre: 'slot',
+    painelStatus: 'slot',
+    painelTestes: 'slot',
+    painelAtaque: 'slot',
+    painelAcerto: 'slot',
+    painelDefesa: 'slot',
+    painelFicha: 'slot',
+    painelPoderes: 'slot',
+    painelArsenal: 'slot',
+    painelElementos: 'slot',
+    painelLog: 'slot',
+    painelMapa: 'slot',
+    painelMusica: 'slot',
+    painelCompendio: 'slot',
+    painelOraculo: 'slot',
+    painelGravador: 'slot'
+  }
 })
 
 // ========================================
