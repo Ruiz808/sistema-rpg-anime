@@ -42,7 +42,8 @@ export default function AppShell({
     painelCompendio,
     painelOraculo,
     painelGravador
-}) {
+}
+  const [temaAberto, setTemaAberto] = useState(false);) {
     const abaAtiva = useStore(s => s.abaAtiva)
     const setAbaAtiva = useStore(s => s.setAbaAtiva)
 
@@ -56,7 +57,7 @@ export default function AppShell({
 
     return (
         <div className={['app-layout', className].filter(Boolean).join(' ')}>
-            <Sidebar />
+            <Sidebar onAbrirTemas={() => setTemaAberto(true)} />
             <div className={`main-content${isMapMode ? ' modo-mapa' : ''}`}>
                 {!isMapMode && <h1 className="title">RPG Anime System</h1>}
                 <TabPanel id="aba-perfil">{painelPerfil || <PerfilPanel />}</TabPanel>
@@ -78,6 +79,7 @@ export default function AppShell({
                 <TabPanel id="aba-gravador">{painelGravador || <GravadorPanel />}</TabPanel>
             </div>
             <ModalConfirm />
-        </div>
+              {temaAberto && <TemaEditor onFechar={() => setTemaAberto(false)} />}
+      </div>
     )
 }

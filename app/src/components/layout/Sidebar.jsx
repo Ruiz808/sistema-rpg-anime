@@ -53,6 +53,20 @@ export default function Sidebar({ className }) {
                     </button>
                 );
             })}
-        </nav>
+        
+      <button
+        onClick={onAbrirTemas}
+        title="Editor de Temas"
+        style={{
+          background: 'none', border: '1px solid #00ffff33',
+          borderRadius: '8px', padding: '8px', cursor: 'pointer',
+          color: '#00ffff', fontSize: '20px', display: 'flex',
+          alignItems: 'center', justifyContent: 'center',
+          width: '40px', height: '40px', marginTop: 'auto'
+        }}
+      >
+        🎨
+      </button>
+    </nav>
     );
 }
