@@ -43,8 +43,8 @@ export default function AppShell({
     painelOraculo,
     painelGravador
 }
-  const [temaAberto, setTemaAberto] = useState(false);) {
-    const abaAtiva = useStore(s => s.abaAtiva)
+  const [temaAberto, setTemaAberto] = useState(false);
+  const abaAtiva = useStore(s => s.abaAtiva)
     const setAbaAtiva = useStore(s => s.setAbaAtiva)
 
     React.useEffect(() => {
