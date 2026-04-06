@@ -1,12 +1,286 @@
-import React, { useState, useMemo } from 'react';
-import { createPortal } from 'react-dom'; // 🔥 PORTAL IMPORTADO PARA O DADO
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom'; 
 import { useMapaForm, urlSeguraParaCss, calcularCA, MAP_SIZE } from './MapaFormContext';
 import Tabuleiro3D from './Tabuleiro3D';
 import DummieToken from '../combat/DummieToken';
-import { salvarDummie, salvarCenarioCompleto } from '../../services/firebase-sync'; // 🔥 IMPORT ADICIONAL PARA OCULTAR
+import { salvarDummie, salvarCenarioCompleto } from '../../services/firebase-sync'; 
 import { getClassIconById } from '../../core/classIcons';
 
+// 🔥 IMPORTS DO FIREBASE PARA O GRAVADOR FLUTUANTE 🔥
+import { ref, uploadBytes } from 'firebase/storage';
+import { httpsCallable } from 'firebase/functions';
+import { storage, functions } from '../../services/firebase-config';
+
 const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Mapa provider não encontrado</div>;
+
+// ============================================================================
+// 🔥 O OLHO DE SAURON (WIDGET FLUTUANTE DA SEXTA-FEIRA NO MAPA) 🔥
+// ============================================================================
+export function MapaOlhoSextaFeira() {
+    const ctx = useMapaForm();
+    if (!ctx) return null;
+    const { meuNome, personagens, minhaFicha, cenario } = ctx;
+
+    const [gravando, setGravando] = useState(false);
+    const [expandido, setExpandido] = useState(false);
+    const [logs, setLogs] = useState(['Sexta-Feira: Olho de Escuta pronto.']);
+    const [destinoLore, setDestinoLore] = useState('novo_capitulo');
+    const [arcosCache, setArcosCache] = useState([]);
+
+    const streamRef = useRef(null);
+    const mediaRecorderRef = useRef(null);
+    const timerRef = useRef(null);
+    const audioContextRef = useRef(null);
+    const animationFrameRef = useRef(null);
+    const olhoRef = useRef(null);
+    const pedacoContadorRef = useRef(1);
+
+    const nomesAtivos = Array.isArray(cenario?.tavernaAtivos) ? cenario.tavernaAtivos : [];
+    const perfisJogadores = nomesAtivos.map(nome => {
+        const ficha = nome === meuNome ? minhaFicha : personagens?.[nome];
+        const classe = ficha?.bio?.classe || 'Mundano';
+        const raca = ficha?.bio?.raca || 'Desconhecida';
+        return `${nome} (Classe: ${classe}, Raça: ${raca})`;
+    });
+
+    useEffect(() => {
+        if (expandido) {
+            try {
+                const salvos = localStorage.getItem('rpgSextaFeira_capitulos');
+                if (salvos) setArcosCache(JSON.parse(salvos));
+            } catch(e) {}
+        }
+    }, [expandido]);
+
+    const addLog = (msg) => {
+        const hora = new Date().toLocaleTimeString();
+        setLogs(prev => [...prev.slice(-4), `[${hora}] ${msg}`]);
+    };
+
+    const salvarLoreMap = (textoGerado, tituloBloco) => {
+        try {
+            let caps = JSON.parse(localStorage.getItem('rpgSextaFeira_capitulos')) || [];
+            const timestamp = new Date().toLocaleTimeString('pt-BR');
+            const separador = `\n\n================================\n[${tituloBloco} - ${timestamp}]\n================================\n\n`;
+
+            if (destinoLore === 'novo_capitulo') {
+                const newCapId = Date.now();
+                const newArcId = Date.now() + 1;
+                const nomeCap = "Capítulo (Mapa) - " + new Date().toLocaleDateString('pt-BR');
+                caps.push({ id: newCapId, titulo: nomeCap, tierList: [], arcos: [{ id: newArcId, titulo: tituloBloco, texto: textoGerado }] });
+                localStorage.setItem('rpgSextaFeira_capituloAtivo', newCapId);
+                localStorage.setItem('rpgSextaFeira_arcoAtivoPresente', newArcId);
+            } else if (destinoLore.startsWith('novo_arco_')) {
+                const capId = Number(destinoLore.replace('novo_arco_', ''));
+                const newArcId = Date.now();
+                caps = caps.map(c => {
+                    if (c.id === capId) return { ...c, arcos: [...c.arcos, { id: newArcId, titulo: tituloBloco, texto: textoGerado }] };
+                    return c;
+                });
+                localStorage.setItem('rpgSextaFeira_capituloAtivo', capId);
+                localStorage.setItem('rpgSextaFeira_arcoAtivoPresente', newArcId);
+            } else {
+                const [capIdStr, arcIdStr] = destinoLore.split('_');
+                const capId = Number(capIdStr); const arcId = Number(arcIdStr);
+                caps = caps.map(c => {
+                    if (c.id === capId) {
+                        return { ...c, arcos: c.arcos.map(a => {
+                            if (a.id === arcId) return { ...a, texto: a.texto.trim() ? a.texto + separador + textoGerado : textoGerado };
+                            return a;
+                        })};
+                    }
+                    return c;
+                });
+            }
+            localStorage.setItem('rpgSextaFeira_capitulos', JSON.stringify(caps));
+        } catch(e) { console.error('Erro ao salvar lore local', e); }
+    };
+
+    const iniciarVisualizador = (stream) => {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        const source = audioCtx.createMediaStreamSource(stream);
+        source.connect(analyser);
+        audioContextRef.current = audioCtx;
+        
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+        const desenhar = () => {
+            analyser.getByteFrequencyData(dataArray);
+            let soma = 0;
+            for (let i = 0; i < dataArray.length; i++) soma += dataArray[i];
+            const media = Math.min(100, Math.max(0, (soma / dataArray.length) / 80 * 100));
+
+            if (olhoRef.current) {
+                const scale = 1 + (media / 300);
+                let cor = '#00ffcc';
+                if (media > 85) cor = '#ff003c';
+                else if (media > 50) cor = '#ffcc00';
+
+                olhoRef.current.style.transform = `scale(${scale})`;
+                olhoRef.current.style.boxShadow = `0 0 ${15 + media}px ${cor}, inset 0 0 ${10 + media/2}px ${cor}`;
+                olhoRef.current.style.borderColor = cor;
+                olhoRef.current.style.color = cor;
+            }
+            animationFrameRef.current = requestAnimationFrame(desenhar);
+        };
+        desenhar();
+    };
+
+    const pararVisualizador = () => {
+        if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+        if (audioContextRef.current) {
+            audioContextRef.current.close();
+            audioContextRef.current = null;
+        }
+        if (olhoRef.current) {
+            olhoRef.current.style.transform = 'scale(1)';
+            olhoRef.current.style.boxShadow = '0 0 10px #0088ff';
+            olhoRef.current.style.borderColor = '#0088ff';
+            olhoRef.current.style.color = '#0088ff';
+        }
+    };
+
+    const iniciarMediaRecorder = () => {
+        const recorder = new MediaRecorder(streamRef.current, { mimeType: 'audio/webm' });
+        let localChunks = [];
+        const numeroPedaco = pedacoContadorRef.current;
+        pedacoContadorRef.current++; 
+
+        recorder.ondataavailable = (event) => {
+            if (event.data.size > 0) localChunks.push(event.data);
+        };
+
+        recorder.onstop = async () => {
+            if (localChunks.length === 0) return;
+            const audioBlob = new Blob(localChunks, { type: 'audio/webm' });
+            localChunks = []; 
+            
+            addLog(`⏳ Processando P${numeroPedaco}... Iniciando upload.`);
+            
+            try {
+                const nomeArquivo = `sessao_mapa_${Date.now()}_pt${numeroPedaco}.webm`;
+                const audioRef = ref(storage, `audios_mesa/${nomeArquivo}`);
+                
+                await uploadBytes(audioRef, audioBlob);
+                addLog(`✅ P${numeroPedaco} enviada. Transcrevendo...`);
+
+                if (!functions) return addLog("❌ Erro: Functions offline.");
+
+                const transcrever = httpsCallable(functions, 'transcreverAudioSextaFeira');
+                const resultado = await transcrever({ 
+                    fileName: nomeArquivo,
+                    nomesParticipantes: perfisJogadores,
+                    gravadorPrincipal: meuNome 
+                });
+
+                const textoGerado = resultado.data?.texto;
+
+                if (textoGerado) {
+                    addLog(`📜 P${numeroPedaco} gerada! Salvando na Lore...`);
+                    salvarLoreMap(textoGerado, `Gravação do Mapa - Parte ${numeroPedaco}`);
+                } else {
+                    addLog(`⚠️ P${numeroPedaco}: Vazia.`);
+                }
+
+            } catch (erro) {
+                addLog(`❌ ERRO P${numeroPedaco}: ${erro.message}`);
+            }
+        };
+
+        recorder.start();
+        mediaRecorderRef.current = recorder;
+    };
+
+    const iniciarGravacao = async () => {
+        try {
+            if (!streamRef.current) streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
+            iniciarVisualizador(streamRef.current); 
+            pedacoContadorRef.current = 1;
+            iniciarMediaRecorder();
+            setGravando(true);
+            setExpandido(false); // Fecha o painel para ver o mapa e o olho pulsar!
+            addLog("🎙️ Sexta-Feira na escuta (Cortes de 20m).");
+
+            const TEMPO_CORTE = 20 * 60 * 1000; 
+            timerRef.current = setInterval(() => {
+                addLog("✂️ 20m. Fechando e abrindo novo bloco...");
+                if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") mediaRecorderRef.current.stop(); 
+                iniciarMediaRecorder(); 
+            }, TEMPO_CORTE);
+
+        } catch (err) { addLog(`❌ Erro mic: ${err.message}`); }
+    };
+
+    const pararGravacao = () => {
+        if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") mediaRecorderRef.current.stop(); 
+        if (streamRef.current) { streamRef.current.getTracks().forEach(track => track.stop()); streamRef.current = null; }
+        pararVisualizador();
+        setGravando(false);
+        addLog("⏹️ Gravação encerrada.");
+    };
+
+    return (
+        <div style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 99999, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
+            
+            {/* PAINEL EXPANDIDO */}
+            {expandido && (
+                <div className="fade-in" style={{ background: 'rgba(10,10,15,0.95)', border: `2px solid ${gravando ? '#ff003c' : '#0088ff'}`, borderRadius: '10px', padding: '15px', width: '300px', boxShadow: `0 0 20px ${gravando ? 'rgba(255,0,60,0.4)' : 'rgba(0,136,255,0.4)'}`, display: 'flex', flexDirection: 'column', gap: '10px', backdropFilter: 'blur(5px)' }}>
+                    <div style={{ borderBottom: '1px solid #333', paddingBottom: '5px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ color: gravando ? '#ff003c' : '#0088ff', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.9em' }}>
+                            {gravando ? '🔴 Gravando...' : '📡 Sexta-Feira'}
+                        </span>
+                        <button onClick={() => setExpandido(false)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>✕</button>
+                    </div>
+                    
+                    <div>
+                        <span style={{ color: '#aaa', fontSize: '0.8em' }}>Destino na Lore:</span>
+                        <select className="input-neon" value={destinoLore} onChange={e => setDestinoLore(e.target.value)} style={{ width: '100%', padding: '5px', marginTop: '3px', fontSize: '0.85em' }}>
+                            <option value="novo_capitulo">➕ Criar Novo Capítulo Inteiro</option>
+                            {arcosCache.map(cap => (
+                                <optgroup key={cap.id} label={`📖 ${cap.titulo}`}>
+                                    <option value={`novo_arco_${cap.id}`}>➕ Novo Arco aqui</option>
+                                    {cap.arcos.map(a => <option key={a.id} value={`${cap.id}_${a.id}`}>📂 {a.titulo}</option>)}
+                                </optgroup>
+                            ))}
+                        </select>
+                    </div>
+
+                    {!gravando ? (
+                        <button className="btn-neon btn-green" onClick={iniciarGravacao} style={{ padding: '8px', fontSize: '0.9em' }}>▶ INICIAR ESCUTA</button>
+                    ) : (
+                        <button className="btn-neon btn-red" onClick={pararGravacao} style={{ padding: '8px', fontSize: '0.9em', animation: 'pulse 1.5s infinite' }}>⏹ ENCERRAR</button>
+                    )}
+
+                    <div style={{ background: '#000', borderRadius: '5px', padding: '8px', fontSize: '0.7em', color: '#0f0', fontFamily: 'monospace', height: '80px', overflowY: 'auto', display: 'flex', flexDirection: 'column', border: '1px solid #222' }}>
+                        {logs.map((l, i) => <span key={i} style={{ opacity: i === logs.length -1 ? 1 : 0.6 }}>{l}</span>)}
+                    </div>
+                </div>
+            )}
+
+            {/* O OLHO (BOTÃO FLUTUANTE) */}
+            <div 
+                ref={olhoRef}
+                onClick={() => setExpandido(!expandido)}
+                title={gravando ? "Sexta-Feira na escuta! Clique para gerir." : "Ativar Sexta-Feira no Mapa"}
+                style={{
+                    width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(10,10,15,0.9)', 
+                    border: '2px solid #0088ff', boxShadow: '0 0 10px #0088ff', color: '#0088ff',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px',
+                    cursor: 'pointer', transition: gravando ? 'none' : 'all 0.3s', backdropFilter: 'blur(3px)'
+                }}
+            >
+                {gravando ? '🎙️' : '👁️'}
+            </div>
+        </div>
+    );
+}
+
+// ============================================================================
+// RESTANTE DO CÓDIGO (NÃO ALTERADO)
+// ============================================================================
 
 export function MapaDadoAnimado() {
     const ctx = useMapaForm();
@@ -15,7 +289,6 @@ export function MapaDadoAnimado() {
 
     if (!dadoAnim.ativo) return null;
 
-    // 🔥 O DADO É TELETRANSPORTADO PARA FORA DAS CAIXAS DO PLASMIC PARA COBRIR TUDO 🔥
     return createPortal(
         <>
             <style dangerouslySetInnerHTML={{__html: `
@@ -68,7 +341,6 @@ export function MapaDadoAnimado() {
     );
 }
 
-// 🔥 ACORDEÃO E FERRAMENTAS DO MESTRE 🔥
 export function MapaFerramentasMestre() {
     const ctx = useMapaForm();
     if (!ctx) return FALLBACK;
@@ -188,7 +460,6 @@ export function MapaMestreGerenciadorCenas() {
 }
 
 export function MapaMestreGavetaTokens() {
-    // ⚠️ COLOQUE AQUI O SEU CÓDIGO ORIGINAL DA GAVETA DE TOKENS
     return (
         <div style={{ background: 'rgba(0,0,0,0.5)', padding: 15, borderRadius: 5, border: '1px solid #00ff88' }}>
             <h3 style={{ color: '#00ff88', margin: 0 }}>📦 Gaveta de Tokens</h3>
@@ -268,7 +539,6 @@ export function MapaMestreGerenciadorZonas() {
     );
 }
 
-// 🔥 A BARRA DE ROLAGEM ULTRA-COMPACTA 🔥
 export function MapaRolagemRapida() {
     const ctx = useMapaForm();
     if (!ctx) return FALLBACK;
@@ -278,7 +548,6 @@ export function MapaRolagemRapida() {
         setMapUsarProf, alvoSelecionado, dummies, fichaSegura, cenaAtual, rolarAcertoRapido, isModoRP
     } = ctx;
 
-    // Oculta no modo Taverna
     if (isModoRP) return null;
 
     let dQuad = 0; let alcanceEf = 1; let maxArea = 0; let foraAlc = false;
@@ -398,7 +667,6 @@ export function MapaSessaoRP() {
     );
 }
 
-// 🔥 TOP-BAR FININHA E ELEGANTE 🔥
 export function MapaControlesSuperiores() {
     const ctx = useMapaForm();
     if (!ctx) return FALLBACK;
@@ -429,7 +697,6 @@ export function MapaControlesSuperiores() {
     );
 }
 
-// 🔥 VISÃO COM ZONAS PERSISTENTES E FILTRO DE OCULTAÇÃO 🔥
 export function MapaVisao() {
     const ctx = useMapaForm();
     if (!ctx) return FALLBACK;
@@ -456,7 +723,6 @@ export function MapaVisao() {
             backgroundImage: urlSeguraParaCss(cenaAtual.img), backgroundSize: 'cover', backgroundPosition: 'center',
             position: 'relative'
         }}>
-            {/* AS ZONAS MÁGICAS PERSISTENTES NO GRID */}
             {zonasCena.map(z => (
                 <div key={z.id} style={{
                     position: 'absolute', pointerEvents: 'none', zIndex: 3,
@@ -479,13 +745,12 @@ export function MapaVisao() {
             {cells.map((cell) => {
                 const key = `${cell.x},${cell.y}`;
                 
-                // 🔥 FILTRA TOKENS OCULTOS DO MAPA SE NÃO FOR MESTRE 🔥
                 const tokensNestaCelula = tokenMap[key] || [];
                 const visivelTokens = tokensNestaCelula.filter(tk => isMestre || !(cenario?.tokensOcultos?.includes(tk.nome)));
 
                 const cellDummies = Object.entries(dummies || {}).filter(([id, d]) => {
                     const isOculto = cenario?.tokensOcultos?.includes(id);
-                    if (!isMestre && isOculto) return false; // Jogadores não vêem
+                    if (!isMestre && isOculto) return false; 
                     const dCena = d.cenaId || 'default';
                     return d.posicao?.x === cell.x && d.posicao?.y === cell.y && dCena === cenaRenderId;
                 });
@@ -493,14 +758,12 @@ export function MapaVisao() {
                 return (
                     <div key={key} className="map-cell" data-x={cell.x} data-y={cell.y} onClick={() => handleCellClick(cell.x, cell.y)} style={{ width: tamanhoCelula, height: tamanhoCelula, border: '1px solid rgba(255,255,255,0.1)', position: 'relative', cursor: 'pointer' }}>
                         
-                        {/* DUMMIES */}
                         {cellDummies.map(([id, d]) => (
                             <div key={id} style={{ opacity: cenario?.tokensOcultos?.includes(id) ? 0.4 : 1 }}>
                                 <DummieToken id={id} dummie={d} />
                             </div>
                         ))}
                         
-                        {/* JOGADORES */}
                         {visivelTokens.map((tk) => {
                             const info = getAvatarInfo(tk.ficha);
                             const isMe = tk.nome === meuNome;
@@ -524,7 +787,7 @@ export function MapaVisao() {
                                 color: '#fff', fontSize: '0.7em', fontWeight: 'bold', border: bordaToken, boxShadow: sombraToken,
                                 transform: isFlying ? 'translateY(-5px)' : 'none', backgroundImage: urlSeguraParaCss(info.img) || 'none', backgroundSize: 'cover', backgroundPosition: 'center',
                                 zIndex: isFlying ? 10 : (tkGrand ? 5 : 1),
-                                opacity: isOculto ? 0.4 : 1 // Mestre vê translúcido
+                                opacity: isOculto ? 0.4 : 1 
                             };
                             return (
                                 <div key={tk.nome} className={`player-token${isMe ? ' my-token' : ''}`} title={`${tk.nome} | Altura: ${altitude}m`} style={style}>
@@ -555,7 +818,6 @@ export function MapaAreaCentral() {
     );
 }
 
-// 🔥 INICIATIVA: LISTA TODOS NA CENA E PERMITE OCULTAR TOKENS 🔥
 export function MapaIniciativaTracker() {
     const ctx = useMapaForm();
     if (!ctx) return FALLBACK;
@@ -567,16 +829,13 @@ export function MapaIniciativaTracker() {
         jogadores, dummies, cenaRenderId, cenario
     } = ctx;
 
-    // Apanha toda a gente (Jogadores e Dummies) que está a pisar o mapa neste momento
     const todasEntidades = useMemo(() => {
         const js = Object.entries(jogadores).filter(([n, f]) => (f.posicao?.cenaId || 'default') === cenaRenderId).map(([n, f]) => ({ id: n, nome: n, ficha: f, isDummie: false, init: f.iniciativa || 0 }));
         const ds = Object.entries(dummies || {}).filter(([id, d]) => (d.cenaId || 'default') === cenaRenderId).map(([id, d]) => ({ id, nome: d.nome, ficha: d, isDummie: true, init: d.iniciativa || 0 }));
         
-        // Ordena por iniciativa (quem não tem fica no fim)
         return [...js, ...ds].sort((a, b) => b.init - a.init);
     }, [jogadores, dummies, cenaRenderId]);
 
-    // Função Exclusiva do Mestre para Ligar/Desligar Visibilidade
     const toggleVisibilidadeToken = (e, idOuNome) => {
         e.stopPropagation();
         const novoCenario = JSON.parse(JSON.stringify(cenario || {}));
@@ -606,15 +865,12 @@ export function MapaIniciativaTracker() {
                 </div>
             </div>
 
-            {/* AVATARES: MOSTRA TODOS DA CENA (Filtra para os jogadores) */}
             <div id="lista-turnos" style={{ display: 'flex', gap: 8, marginTop: 15, overflowX: 'auto', paddingBottom: 5, minHeight: 50 }}>
                 {todasEntidades.length === 0 ? (
                     <p style={{ color: '#888', fontSize: '0.8em', margin: 0 }}>Nenhuma entidade encontra-se neste mapa.</p>
                 ) : (
                     todasEntidades.map((entidade) => {
                         const isOculto = cenario?.tokensOcultos?.includes(entidade.id);
-                        
-                        // Jogadores não veem quem está oculto
                         if (!isMestre && isOculto) return null;
 
                         const info = getAvatarInfo(entidade.ficha);
@@ -632,7 +888,6 @@ export function MapaIniciativaTracker() {
                                 }}>
                                     {!info.img && entidade.nome.charAt(0)}
                                 </div>
-                                {/* 🔥 BOTÃO EXCLUSIVO DO MESTRE PARA ESCONDER TOKENS 🔥 */}
                                 {isMestre && (
                                     <button 
                                         onClick={(e) => toggleVisibilidadeToken(e, entidade.id)}
@@ -648,7 +903,6 @@ export function MapaIniciativaTracker() {
                 )}
             </div>
 
-            {/* HISTÓRICO EXPANSÍVEL */}
             {jogadorHistory && (
                 <div style={{ marginTop: 15, padding: 15, background: 'rgba(0, 20, 40, 0.8)', border: '1px solid #0088ff', borderRadius: 8 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
@@ -665,7 +919,6 @@ export function MapaIniciativaTracker() {
                 </div>
             )}
 
-            {/* JOGADOR DA VEZ EM DESTAQUE */}
             {jogadorDaVez && (
                 <div style={{ marginTop: 15, display: 'flex', gap: 15, alignItems: 'center' }}>
                     <div id="turno-destaque" style={{ width: 60, height: 60, borderRadius: '50%', border: '3px solid #00ffcc', backgroundImage: urlSeguraParaCss(infoDaVez?.img) || 'none', backgroundSize: 'cover', backgroundPosition: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5em', fontWeight: 'bold', color: '#fff' }}>{(!infoDaVez || !infoDaVez.img) && jogadorDaVez.nome.charAt(0)}</div>

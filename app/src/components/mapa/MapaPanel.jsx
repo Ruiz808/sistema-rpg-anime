@@ -6,7 +6,8 @@ import {
     MapaAreaCentral,
     MapaRolagemRapida,
     MapaIniciativaTracker,
-    MapaHologramaAcao
+    MapaHologramaAcao,
+    MapaOlhoSextaFeira // 🔥 O NOVO WIDGET IMPORTADO AQUI
 } from './MapaSubComponents';
 
 export default function MapaPanel({ className, children }) {
@@ -14,18 +15,20 @@ export default function MapaPanel({ className, children }) {
     
     return (
         <MapaFormProvider>
-            <div className={['mapa-panel', className].filter(Boolean).join(' ')} style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+            <div className={['mapa-panel', className].filter(Boolean).join(' ')} style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', position: 'relative' }}>
+                
+                {/* 🔥 O OLHO DA SEXTA-FEIRA FLUTUANDO NO MAPA 🔥 */}
+                <MapaOlhoSextaFeira />
+
                 {hasChildren ? children : (
                     <>
                         <MapaDadoAnimado />
                         
                         <div style={{ flex: '1 1 70%', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-                            {/* 🔥 A CAIXA DE FERRAMENTAS DO MESTRE EM ACORDEÃO 🔥 */}
                             <MapaFerramentasMestre />
                             
                             <MapaAreaCentral />
                             
-                            {/* 🔥 BARRA COMPACTA E LISTA GERAL DE ENTIDADES 🔥 */}
                             <MapaRolagemRapida />
                             <MapaIniciativaTracker />
                         </div>
