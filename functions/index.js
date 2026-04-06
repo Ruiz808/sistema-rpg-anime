@@ -67,7 +67,6 @@ function formatarContexto(ctx) {
     return partes.join("\n");
 }
 
-// 1. FUNÇÃO DO CHAT
 exports.falarComSextaFeira = onCall(
     {
         region: "us-central1",
@@ -127,7 +126,7 @@ exports.falarComSextaFeira = onCall(
     }
 );
 
-// 2. 🔥 FUNÇÃO DO GRAVADOR (COM DIARIZAÇÃO POR CONTEXTO DE FICHA E ANTIALUCINAÇÃO) 🔥
+// 2. 🔥 FUNÇÃO DO GRAVADOR (COM DONO DO MICROFONE E ANCORAGEM DE VOZ) 🔥
 exports.transcreverAudioSextaFeira = onCall(
     { 
         region: "us-central1", 
@@ -136,7 +135,7 @@ exports.transcreverAudioSextaFeira = onCall(
         secrets: [geminiApiKey] 
     },
     async (request) => {
-        const { fileName, nomesParticipantes } = request.data; 
+        const { fileName, nomesParticipantes, gravadorPrincipal } = request.data; 
         if (!fileName) throw new HttpsError("invalid-argument", "Arquivo ausente.");
 
         const tempFilePath = path.join(os.tmpdir(), fileName);
@@ -149,26 +148,31 @@ exports.transcreverAudioSextaFeira = onCall(
             const ai = new GoogleGenAI({ apiKey: geminiApiKey.value() });
             const audioBase64 = fs.readFileSync(tempFilePath).toString("base64");
 
-            // 🔥 A MÁGICA DE SHERLOCK HOLMES AQUI 🔥
             const listaPerfis = (nomesParticipantes || []).join(' | ');
+            const donoMic = gravadorPrincipal || "Desconhecido";
             
-            // PROMPT 100% BLINDADO CONTRA LORE E HISTÓRIAS, FOCADO EM DEDUÇÃO
+            // 🔥 PROMPT FINAL: COM ANCORAGEM ACÚSTICA 🔥
             const prompt = `Abaixo está o áudio de uma conversa do nosso RPG de mesa.
             Os jogadores/personagens presentes na cena e os seus perfis são: [${listaPerfis}].
+            O dono do microfone (quem está gravando e possui a voz mais próxima/clara) é: ${donoMic}.
             
             Sua ÚNICA TAREFA é atuar como um software de transcrição de legendas.
             
             REGRAS ABSOLUTAS:
             1. Escreva APENAS o que foi dito, no formato "Nome: Fala" em cada linha.
-            2. IDENTIFICAÇÃO INTELIGENTE: Use os perfis dos personagens para deduzir quem está falando. Se alguém falar de furtividade ou roubo, atribua ao Ladino. Se falarem de feitiços, atribua ao Mago. Se a voz parecer comandar a mesa, usar termos como "rolem iniciativa" ou "os monstros atacam", atribua ao "Mestre". Se a voz não for reconhecida de todo, use "Voz Desconhecida".
+            2. IDENTIFICAÇÃO INTELIGENTE E ANCORAGEM DE VOZ:
+               - A voz principal e mais limpa pertence sempre a ${donoMic}.
+               - ANCORAGEM: Preste atenção a quando os jogadores chamam o nome uns dos outros. Se o ${donoMic} disser "Kiriya, testa aí", a voz que responder fica permanentemente associada ao Kiriya para o resto do áudio, mesmo quando ele disser coisas fora do personagem (ex: "tá funcionando?").
+               - Use as classes/raças para deduzir outras vozes (ex: feitiços = Mago).
+               - Se a voz der comandos de jogo, atribua ao "Mestre".
             3. NÃO crie histórias, NÃO crie títulos, NÃO faça resumos, NÃO escreva "Registro Akáshico".
             4. Limpe gaguejos ("humm", "ééé"). Torne o diálogo direto.
-            5. O contexto é um jogo de RPG (termos comuns: HP, Mana, D20, Mestre, Dano, Turno).
+            5. O contexto é RPG (termos: HP, Mana, D20, Mestre, Dano, Turno).
             
             Exemplo de saída esperada:
             Mestre: O dragão ataca vocês. Rolem evasiva.
             Natsu: É foda!
-            Kiriya: Eu me escondo nas sombras!
+            Kiriya: Tá funcionando o meu microfone?
             
             NÃO ADICIONE NENHUM TEXTO ALÉM DA TRANSCRIÇÃO.`;
 

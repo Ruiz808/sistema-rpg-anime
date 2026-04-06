@@ -9,20 +9,17 @@ export default function GravadorPanel() {
     const [gravando, setGravando] = useState(false);
     const [logs, setLogs] = useState(['Módulo de Escuta Contínua inicializado...']);
     
-    // Referências do Motor
     const streamRef = useRef(null);
     const mediaRecorderRef = useRef(null);
     const timerRef = useRef(null);
     const logsEndRef = useRef(null);
     const pedacoContadorRef = useRef(1);
 
-    // 🔥 REFERÊNCIAS DO VISUALIZADOR DE ÁUDIO 🔥
     const audioContextRef = useRef(null);
     const analyserRef = useRef(null);
     const animationFrameRef = useRef(null);
     const volumeBarRef = useRef(null);
 
-    // 🔥 DADOS DOS JOGADORES (LIGAR VOZ À FICHA) 🔥
     const cenario = useStore(s => s.cenario);
     const personagens = useStore(s => s.personagens); 
     const meuNome = useStore(s => s.meuNome); 
@@ -30,7 +27,6 @@ export default function GravadorPanel() {
 
     const nomesAtivos = Array.isArray(cenario?.tavernaAtivos) ? cenario.tavernaAtivos : [];
 
-    // Monta o perfil de cada jogador ativo para a IA saber quem é quem
     const perfisJogadores = nomesAtivos.map(nome => {
         const ficha = nome === meuNome ? minhaFicha : personagens?.[nome];
         const classe = ficha?.bio?.classe || 'Mundano';
@@ -51,7 +47,6 @@ export default function GravadorPanel() {
         if (logsEndRef.current) logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }, [logs]);
 
-    // 🔥 MOTOR DO VISUALIZADOR DE ÁUDIO 🔥
     const iniciarVisualizador = (stream) => {
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         const analyser = audioCtx.createAnalyser();
@@ -139,7 +134,8 @@ export default function GravadorPanel() {
                 
                 const resultado = await transcrever({ 
                     fileName: nomeArquivo,
-                    nomesParticipantes: perfisJogadores // 🔥 Envia as Classes e Raças para a IA!
+                    nomesParticipantes: perfisJogadores,
+                    gravadorPrincipal: meuNome // 🔥 ETIQUETA VIP: Dizemos à IA quem é o dono deste microfone!
                 });
 
                 const textoGerado = resultado.data?.texto;
@@ -167,7 +163,7 @@ export default function GravadorPanel() {
         try {
             if (!streamRef.current) streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
             
-            iniciarVisualizador(streamRef.current); // Liga o radar visual
+            iniciarVisualizador(streamRef.current); 
             
             pedacoContadorRef.current = 1;
             iniciarMediaRecorder();
@@ -190,7 +186,7 @@ export default function GravadorPanel() {
         if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") mediaRecorderRef.current.stop(); 
         if (streamRef.current) { streamRef.current.getTracks().forEach(track => track.stop()); streamRef.current = null; }
         
-        pararVisualizador(); // Desliga o radar
+        pararVisualizador();
         setGravando(false);
         addLog("⏹️ Gravação total encerrada pelo Mestre.");
     };
@@ -219,7 +215,6 @@ export default function GravadorPanel() {
                 </select>
             </div>
 
-            {/* 🔥 NOVO: RADAR DE ÁUDIO VISUAL 🔥 */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', padding: '0 20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75em', color: '#aaa' }}>
                     <span>Captação de Áudio</span>
