@@ -9,13 +9,19 @@ export default function GravadorPanel() {
     const [gravando, setGravando] = useState(false);
     const [logs, setLogs] = useState(['Módulo de Escuta Contínua (Auto-Fatiador) inicializado...']);
     
+    // Referências do Motor
     const streamRef = useRef(null);
     const mediaRecorderRef = useRef(null);
     const timerRef = useRef(null);
     const logsEndRef = useRef(null);
     const pedacoContadorRef = useRef(1);
 
-    // 🔥 DADOS DOS JOGADORES (SHERLOCK HOLMES) 🔥
+    // 🔥 REFERÊNCIAS DO VISUALIZADOR DE ÁUDIO 🔥
+    const audioContextRef = useRef(null);
+    const analyserRef = useRef(null);
+    const animationFrameRef = useRef(null);
+    const volumeBarRef = useRef(null);
+
     const cenario = useStore(s => s.cenario);
     const personagens = useStore(s => s.personagens); 
     const meuNome = useStore(s => s.meuNome); 
@@ -23,7 +29,6 @@ export default function GravadorPanel() {
 
     const nomesAtivos = Array.isArray(cenario?.tavernaAtivos) ? cenario.tavernaAtivos : [];
 
-    // Monta o perfil de cada jogador ativo para a IA saber quem é quem
     const perfisJogadores = nomesAtivos.map(nome => {
         const ficha = nome === meuNome ? minhaFicha : personagens?.[nome];
         const classe = ficha?.bio?.classe || 'Mundano';
@@ -43,6 +48,66 @@ export default function GravadorPanel() {
     useEffect(() => {
         if (logsEndRef.current) logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }, [logs]);
+
+    // 🔥 MOTOR DO VISUALIZADOR DE ÁUDIO 🔥
+    const iniciarVisualizador = (stream) => {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        
+        const source = audioCtx.createMediaStreamSource(stream);
+        source.connect(analyser);
+
+        audioContextRef.current = audioCtx;
+        analyserRef.current = analyser;
+
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+
+        const desenharVolume = () => {
+            analyser.getByteFrequencyData(dataArray);
+            let soma = 0;
+            for (let i = 0; i < bufferLength; i++) {
+                soma += dataArray[i];
+            }
+            const media = soma / bufferLength;
+            
+            // Converte a média de volume (0 a 255) numa percentagem para a barra
+            const volumePct = Math.min(100, Math.max(0, (media / 80) * 100));
+
+            if (volumeBarRef.current) {
+                volumeBarRef.current.style.width = `${volumePct}%`;
+                
+                // Muda a cor consoante o volume
+                if (volumePct > 85) {
+                    volumeBarRef.current.style.backgroundColor = '#ff003c';
+                    volumeBarRef.current.style.boxShadow = '0 0 15px #ff003c';
+                } else if (volumePct > 50) {
+                    volumeBarRef.current.style.backgroundColor = '#ffcc00';
+                    volumeBarRef.current.style.boxShadow = '0 0 10px #ffcc00';
+                } else {
+                    volumeBarRef.current.style.backgroundColor = '#00ffcc';
+                    volumeBarRef.current.style.boxShadow = '0 0 10px #00ffcc';
+                }
+            }
+
+            animationFrameRef.current = requestAnimationFrame(desenharVolume);
+        };
+        desenharVolume();
+    };
+
+    const pararVisualizador = () => {
+        if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+        if (audioContextRef.current) {
+            audioContextRef.current.close();
+            audioContextRef.current = null;
+        }
+        if (volumeBarRef.current) {
+            volumeBarRef.current.style.width = '0%';
+            volumeBarRef.current.style.backgroundColor = '#333';
+            volumeBarRef.current.style.boxShadow = 'none';
+        }
+    };
 
     const iniciarMediaRecorder = () => {
         const recorder = new MediaRecorder(streamRef.current, { mimeType: 'audio/webm' });
@@ -74,7 +139,7 @@ export default function GravadorPanel() {
                 
                 const resultado = await transcrever({ 
                     fileName: nomeArquivo,
-                    nomesParticipantes: perfisJogadores // 🔥 Envia os perfis completos!
+                    nomesParticipantes: perfisJogadores 
                 });
 
                 const textoGerado = resultado.data?.texto;
@@ -83,7 +148,6 @@ export default function GravadorPanel() {
                     addLog(`📜 Legendas da Parte ${numeroPedaco} geradas com sucesso! Salvando no Arco selecionado...`);
                     if (salvarNoRegistro) {
                         const dataHoje = new Date().toLocaleDateString('pt-BR');
-                        // Injeta o resumo da gravação diretamente no arco!
                         salvarNoRegistro(textoGerado, `Sessão ${dataHoje} - Parte ${numeroPedaco}`, destinoLore, loreFoco);
                     }
                 } else {
@@ -101,14 +165,19 @@ export default function GravadorPanel() {
 
     const iniciarGravacao = async () => {
         try {
-            if (!streamRef.current) streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
+            if (!streamRef.current) {
+                // Ao pedir o áudio, capturamos o microfone do usuário
+                streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
+            }
+            
+            iniciarVisualizador(streamRef.current); // Liga o radar de voz
             
             pedacoContadorRef.current = 1;
             iniciarMediaRecorder();
             setGravando(true);
             addLog("🎙️ Gravação contínua iniciada! O sistema fará cortes automáticos a cada 20 minutos.");
 
-            const TEMPO_CORTE = 20 * 60 * 1000; // 20 min
+            const TEMPO_CORTE = 20 * 60 * 1000; 
             
             timerRef.current = setInterval(() => {
                 addLog("✂️ 20 minutos atingidos. Fechando o bloco atual e abrindo o próximo sem perder áudio...");
@@ -123,6 +192,8 @@ export default function GravadorPanel() {
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
         if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") mediaRecorderRef.current.stop(); 
         if (streamRef.current) { streamRef.current.getTracks().forEach(track => track.stop()); streamRef.current = null; }
+        
+        pararVisualizador(); // Desliga o radar
         setGravando(false);
         addLog("⏹️ Gravação total encerrada pelo Mestre.");
     };
@@ -138,7 +209,6 @@ export default function GravadorPanel() {
                 </p>
             </div>
 
-            {/* 🔥 NOVO: SELETOR HIERÁRQUICO DO GRAVADOR 🔥 */}
             <div style={{ background: 'rgba(0,0,0,0.5)', padding: '15px', borderRadius: '8px', border: '1px solid #444', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                 <strong style={{ color: '#00ffcc' }}>Destino das Gravações:</strong>
                 <select className="input-neon" value={destinoLore} onChange={e => setDestinoLore(e.target.value)} style={{ flex: 1, minWidth: '200px', borderColor: '#00ffcc', color: '#fff' }}>
@@ -150,6 +220,26 @@ export default function GravadorPanel() {
                         </optgroup>
                     ))}
                 </select>
+            </div>
+
+            {/* 🔥 NOVO: RADAR DE ÁUDIO VISUAL 🔥 */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', padding: '0 20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75em', color: '#aaa' }}>
+                    <span>Captação de Áudio</span>
+                    <span>{gravando ? 'Em direto' : 'Standby'}</span>
+                </div>
+                <div style={{ width: '100%', height: '8px', background: '#222', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div 
+                        ref={volumeBarRef} 
+                        style={{ 
+                            width: '0%', 
+                            height: '100%', 
+                            background: '#333', 
+                            transition: 'width 0.1s ease, background-color 0.2s',
+                            borderRadius: '4px'
+                        }} 
+                    />
+                </div>
             </div>
 
             <div style={{ display: 'flex', gap: '15px', justifyContent: 'center', padding: '10px 0' }}>
