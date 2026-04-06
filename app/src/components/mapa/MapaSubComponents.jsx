@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom'; // 🔥 PORTAL IMPORTADO PARA O DADO
 import { useMapaForm, urlSeguraParaCss, calcularCA, MAP_SIZE } from './MapaFormContext';
 import Tabuleiro3D from './Tabuleiro3D';
 import DummieToken from '../combat/DummieToken';
-import { salvarDummie } from '../../services/firebase-sync';
+import { salvarDummie, salvarCenarioCompleto } from '../../services/firebase-sync'; // 🔥 IMPORT ADICIONAL PARA OCULTAR
 import { getClassIconById } from '../../core/classIcons';
 
 const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Mapa provider não encontrado</div>;
@@ -14,7 +15,8 @@ export function MapaDadoAnimado() {
 
     if (!dadoAnim.ativo) return null;
 
-    return (
+    // 🔥 O DADO É TELETRANSPORTADO PARA FORA DAS CAIXAS DO PLASMIC PARA COBRIR TUDO 🔥
+    return createPortal(
         <>
             <style dangerouslySetInnerHTML={{__html: `
                 @keyframes d20-spin {
@@ -32,8 +34,8 @@ export function MapaDadoAnimado() {
                 .d20-landed { animation: d20-land 0.4s ease-out forwards; }
             `}} />
             <div style={{
-                position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', 
-                background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(3px)', zIndex: 9999, 
+                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+                background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(3px)', zIndex: 999999,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 flexDirection: 'column'
             }}>
@@ -61,11 +63,12 @@ export function MapaDadoAnimado() {
                     </div>
                 )}
             </div>
-        </>
+        </>,
+        document.body
     );
 }
 
-// 🔥 ACORDEÃO DO MESTRE (NOVO) 🔥
+// 🔥 ACORDEÃO E FERRAMENTAS DO MESTRE 🔥
 export function MapaFerramentasMestre() {
     const ctx = useMapaForm();
     if (!ctx) return FALLBACK;
@@ -81,6 +84,8 @@ export function MapaFerramentasMestre() {
             
             {(!isModoRP || mestreVendoRP) && (
                 <div style={{ padding: '10px 15px' }}>
+                    <MapaMestreCenaVisualizada />
+                    
                     <div style={{ display: 'flex', gap: 5, marginBottom: abaMestre ? 15 : 0, overflowX: 'auto', paddingBottom: 5 }}>
                         <button className={`btn-neon ${abaMestre === 'cenas' ? 'btn-gold' : ''}`} onClick={() => setAbaMestre(a => a === 'cenas' ? '' : 'cenas')} style={{ padding: '4px 10px', fontSize: '0.85em', margin: 0, flex: 1, whiteSpace: 'nowrap' }}>🎬 Cenas</button>
                         <button className={`btn-neon ${abaMestre === 'tokens' ? 'btn-gold' : ''}`} onClick={() => setAbaMestre(a => a === 'tokens' ? '' : 'tokens')} style={{ padding: '4px 10px', fontSize: '0.85em', margin: 0, flex: 1, whiteSpace: 'nowrap' }}>📦 Gaveta</button>
@@ -98,7 +103,6 @@ export function MapaFerramentasMestre() {
     );
 }
 
-// 🔥 HUD COMPACTO: MODO TAVERNA 🔥
 export function MapaMestreRPToggle() {
     const ctx = useMapaForm();
     if (!ctx) return FALLBACK;
@@ -183,10 +187,8 @@ export function MapaMestreGerenciadorCenas() {
     );
 }
 
-// 🔥 SEU COMPONENTE DE GAVETA DE TOKENS FICA AQUI 🔥
 export function MapaMestreGavetaTokens() {
     // ⚠️ COLOQUE AQUI O SEU CÓDIGO ORIGINAL DA GAVETA DE TOKENS
-    // Exemplo: const ctx = useMapaForm(); if (!ctx) return FALLBACK; return <div>Sua Gaveta...</div>;
     return (
         <div style={{ background: 'rgba(0,0,0,0.5)', padding: 15, borderRadius: 5, border: '1px solid #00ff88' }}>
             <h3 style={{ color: '#00ff88', margin: 0 }}>📦 Gaveta de Tokens</h3>
@@ -266,10 +268,89 @@ export function MapaMestreGerenciadorZonas() {
     );
 }
 
+// 🔥 A BARRA DE ROLAGEM ULTRA-COMPACTA 🔥
+export function MapaRolagemRapida() {
+    const ctx = useMapaForm();
+    if (!ctx) return FALLBACK;
+    const { 
+        mapStat, setMapStat, mapQD, setMapQD, mapFD, setMapFD, mapBonus, setMapBonus, 
+        mapVantagens, changeVantagem, mapDesvantagens, changeDesvantagem, mapUsarProf, 
+        setMapUsarProf, alvoSelecionado, dummies, fichaSegura, cenaAtual, rolarAcertoRapido, isModoRP
+    } = ctx;
+
+    // Oculta no modo Taverna
+    if (isModoRP) return null;
+
+    let dQuad = 0; let alcanceEf = 1; let maxArea = 0; let foraAlc = false;
+    const alvoD = alvoSelecionado && dummies?.[alvoSelecionado] ? dummies[alvoSelecionado] : null;
+
+    if (alvoD) {
+        const dx = Math.abs((fichaSegura?.posicao?.x || 0) - (alvoD.posicao?.x || 0));
+        const dy = Math.abs((fichaSegura?.posicao?.y || 0) - (alvoD.posicao?.y || 0));
+        const dz = Math.abs((fichaSegura?.posicao?.z || 0) - (alvoD.posicao?.z || 0)) / (cenaAtual.escala || 1.5);
+        dQuad = Math.max(dx, dy, Math.floor(dz));
+        
+        const armasEq = (fichaSegura?.inventario || []).filter(i => i.tipo === 'arma' && i.equipado);
+        const maxAlcArmas = armasEq.length > 0 ? Math.max(...armasEq.map(a => a.alcance || 1)) : 1;
+        const maxAreaArmas = armasEq.length > 0 ? Math.max(...armasEq.map(a => a.areaQuad || a.area || 0)) : 0;
+        
+        const podAt = (fichaSegura?.poderes || []).filter(p => p.ativa);
+        const maxAlcPoderes = podAt.length > 0 ? Math.max(...podAt.map(p => p.alcance || 1)) : 1;
+        const maxAreaPoderes = podAt.length > 0 ? Math.max(...podAt.map(p => p.areaQuad || p.area || 0)) : 0;
+        
+        const magiasEq = (fichaSegura?.ataquesElementais || []).filter(m => m.equipado);
+        const maxAlcMagias = magiasEq.length > 0 ? Math.max(...magiasEq.map(m => m.alcanceQuad || 1)) : 1;
+        const maxAreaMagias = magiasEq.length > 0 ? Math.max(...magiasEq.map(m => m.areaQuad || 0)) : 0;
+
+        alcanceEf = Math.max(maxAlcArmas, maxAlcPoderes, maxAlcMagias);
+        maxArea = Math.max(maxAreaArmas, maxAreaPoderes, maxAreaMagias);
+        foraAlc = dQuad > alcanceEf;
+    }
+
+    return (
+        <div className="def-box" style={{ marginTop: 15, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 15, flexWrap: 'wrap', border: '1px solid #f90' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h4 style={{ color: '#f90', margin: 0, whiteSpace: 'nowrap' }}>🎯 Ação Rápida</h4>
+                <select className="input-neon" value={mapStat} onChange={e => setMapStat(e.target.value)} style={{ padding: '2px 4px', width: 90, height: 26, margin: 0 }}>
+                    <option value="forca">Força</option><option value="destreza">Des</option><option value="inteligencia">Int</option><option value="sabedoria">Sab</option>
+                    <option value="energiaEsp">Aura</option><option value="carisma">Carisma</option><option value="stamina">Stamina</option><option value="constituicao">Const</option>
+                </select>
+                <input className="input-neon" type="number" value={mapQD} onChange={e => setMapQD(e.target.value)} style={{ width: 40, padding: 2, height: 26, margin: 0 }} />
+                <span style={{ color: '#aaa', fontWeight: 'bold' }}>D</span>
+                <input className="input-neon" type="number" value={mapFD} onChange={e => setMapFD(e.target.value)} style={{ width: 45, padding: 2, height: 26, margin: 0 }} />
+                <span style={{ color: '#aaa', fontWeight: 'bold' }}>+</span>
+                <input className="input-neon" type="number" value={mapBonus} onChange={e => setMapBonus(e.target.value)} style={{ width: 45, padding: 2, height: 26, margin: 0 }} />
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderLeft: '1px solid #444', paddingLeft: 15 }}>
+                <span style={{ color: '#0f0', fontWeight: 'bold', fontSize: '0.85em' }}>V:</span>
+                <input className="input-neon" type="number" min="0" value={mapVantagens} onChange={changeVantagem} style={{ width: 40, padding: 2, height: 26, margin: 0, borderColor: '#0f0', color: '#0f0' }} />
+                <span style={{ color: '#f00', fontWeight: 'bold', fontSize: '0.85em' }}>D:</span>
+                <input className="input-neon" type="number" min="0" value={mapDesvantagens} onChange={changeDesvantagem} style={{ width: 40, padding: 2, height: 26, margin: 0, borderColor: '#f00', color: '#f00' }} />
+                <label style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', marginLeft: 5 }}>
+                    <input type="checkbox" checked={mapUsarProf} onChange={e => setMapUsarProf(e.target.checked)} /> Prof
+                </label>
+            </div>
+
+            <div style={{ flex: 1, textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10 }}>
+                {alvoD && (
+                    <span style={{ fontSize: '0.85em', color: foraAlc ? '#ff003c' : '#0f0', fontWeight: 'bold' }}>
+                        Alvo a {dQuad}Q (Alcance: {alcanceEf}Q) {foraAlc ? '❌' : '✅'}
+                    </span>
+                )}
+                {!alvoD && <span style={{ fontSize: '0.85em', color: '#888', fontStyle: 'italic' }}>Livre</span>}
+                <button className="btn-neon btn-gold" onClick={() => !foraAlc && rolarAcertoRapido()} disabled={foraAlc} style={{ margin: 0, padding: '4px 15px', opacity: foraAlc ? 0.5 : 1, borderColor: foraAlc ? '#555' : '#ffcc00' }}>
+                    🎲 ROLAR
+                </button>
+            </div>
+        </div>
+    );
+}
+
 export function MapaSessaoRP() {
     const ctx = useMapaForm();
     if (!ctx) return FALLBACK;
-    const { playersNaTaverna, isPresenteNaTaverna, togglePresencaTaverna, getAvatarInfo, fmt, mapStat, setMapStat, mapQD, setMapQD, mapFD, setMapFD, mapBonus, setMapBonus, mapVantagens, changeVantagem, mapDesvantagens, changeDesvantagem, mapUsarProf, setMapUsarProf, alvoSelecionado, dummies, fichaSegura, cenaAtual, rolarAcertoRapido } = ctx;
+    const { playersNaTaverna, isPresenteNaTaverna, togglePresencaTaverna, getAvatarInfo, fmt } = ctx;
 
     const playerCount = playersNaTaverna.length;
     let cardSize = '280px'; 
@@ -313,59 +394,6 @@ export function MapaSessaoRP() {
                     })}
                 </div>
             )}
-            <div style={{ background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255, 204, 0, 0.3)', padding: 25, borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 15, width: '100%', maxWidth: '600px' }}>
-                <h3 style={{ color: '#00ffcc', margin: '0 0 5px 0', textAlign: 'center', textTransform: 'uppercase', letterSpacing: 1 }}>Rolagem Livre (Teste de Perícia)</h3>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', alignItems: 'center' }}>
-                    <select className="input-neon" value={mapStat} onChange={e => setMapStat(e.target.value)} style={{ padding: 8, flex: 1, minWidth: 120, fontSize: '1.1em' }} title="Atributo">
-                        <option value="forca">Força</option><option value="destreza">Destreza</option><option value="inteligencia">Inteligência</option><option value="sabedoria">Sabedoria</option><option value="energiaEsp">Energia Espiritual</option><option value="carisma">Carisma</option><option value="stamina">Stamina</option><option value="constituicao">Constituição</option>
-                    </select>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                        <input className="input-neon" type="number" value={mapQD} onChange={e => setMapQD(e.target.value)} style={{ width: 55, padding: 8, fontSize: '1.1em' }} title="Quantidade de Dados" />
-                        <span style={{ color: '#aaa', fontSize: '1.2em', fontWeight: 'bold' }}>D</span>
-                        <input className="input-neon" type="number" value={mapFD} onChange={e => setMapFD(e.target.value)} style={{ width: 65, padding: 8, fontSize: '1.1em' }} title="Faces do Dado" />
-                        <span style={{ color: '#aaa', fontSize: '1.2em', fontWeight: 'bold' }}>+</span>
-                        <input className="input-neon" type="number" value={mapBonus} onChange={e => setMapBonus(e.target.value)} style={{ width: 65, padding: 8, fontSize: '1.1em' }} title="Bônus" />
-                    </div>
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 15, justifyContent: 'center', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: 10, borderRadius: 5 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ color: '#0f0', fontSize: '0.9em', fontWeight: 'bold' }}>VANTAGEM:</span><input className="input-neon" type="number" min="0" value={mapVantagens} onChange={changeVantagem} style={{ width: 50, padding: 6, borderColor: '#0f0', color: '#0f0', fontSize: '1em' }} /></div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ color: '#f00', fontSize: '0.9em', fontWeight: 'bold' }}>DESVANTAGEM:</span><input className="input-neon" type="number" min="0" value={mapDesvantagens} onChange={changeDesvantagem} style={{ width: 50, padding: 6, borderColor: '#f00', color: '#f00', fontSize: '1em' }} /></div>
-                    <label style={{ color: '#00ffcc', fontSize: '1em', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', marginLeft: 10 }}><input type="checkbox" checked={mapUsarProf} onChange={e => setMapUsarProf(e.target.checked)} style={{ transform: 'scale(1.3)' }} /> Somar Proficiência</label>
-                </div>
-                {alvoSelecionado && dummies?.[alvoSelecionado] ? (() => {
-                    const alvoD = dummies[alvoSelecionado];
-                    const dx = Math.abs((fichaSegura?.posicao?.x || 0) - (alvoD.posicao?.x || 0));
-                    const dy = Math.abs((fichaSegura?.posicao?.y || 0) - (alvoD.posicao?.y || 0));
-                    const dz = Math.abs((fichaSegura?.posicao?.z || 0) - (alvoD.posicao?.z || 0)) / (cenaAtual.escala || 1.5);
-                    const dQuad = Math.max(dx, dy, Math.floor(dz));
-                    
-                    const armasEq = (fichaSegura?.inventario || []).filter(i => i.tipo === 'arma' && i.equipado);
-                    const maxAlcArmas = armasEq.length > 0 ? Math.max(...armasEq.map(a => a.alcance || 1)) : 1;
-                    const maxAreaArmas = armasEq.length > 0 ? Math.max(...armasEq.map(a => a.areaQuad || a.area || 0)) : 0;
-                    
-                    const podAt = (fichaSegura?.poderes || []).filter(p => p.ativa);
-                    const maxAlcPoderes = podAt.length > 0 ? Math.max(...podAt.map(p => p.alcance || 1)) : 1;
-                    const maxAreaPoderes = podAt.length > 0 ? Math.max(...podAt.map(p => p.areaQuad || p.area || 0)) : 0;
-                    
-                    const magiasEq = (fichaSegura?.ataquesElementais || []).filter(m => m.equipado);
-                    const maxAlcMagias = magiasEq.length > 0 ? Math.max(...magiasEq.map(m => m.alcanceQuad || 1)) : 1;
-                    const maxAreaMagias = magiasEq.length > 0 ? Math.max(...magiasEq.map(m => m.areaQuad || 0)) : 0;
-
-                    const alcanceEf = Math.max(maxAlcArmas, maxAlcPoderes, maxAlcMagias);
-                    const maxArea = Math.max(maxAreaArmas, maxAreaPoderes, maxAreaMagias);
-                    const foraAlc = dQuad > alcanceEf;
-                    return (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 5 }}>
-                            <div style={{ textAlign: 'center', color: foraAlc ? '#ff003c' : '#0f0', fontWeight: 'bold', fontSize: '0.9em' }}>
-                                🎯 Alvo a {dQuad}Q | Alcance: {alcanceEf}Q {maxArea > 0 && <span style={{color: '#ff00ff'}}>| Exp: {maxArea}Q</span>} {foraAlc ? '(MUITO LONGE!)' : '(EM ALCANCE)'}
-                            </div>
-                            <button className="btn-neon btn-gold" onClick={() => !foraAlc && rolarAcertoRapido()} disabled={foraAlc} style={{ padding: '12px', fontSize: '1.2em', width: '100%', letterSpacing: 1, opacity: foraAlc ? 0.5 : 1, borderColor: foraAlc ? '#555' : '#ffcc00' }}>🎲 ROLAR ACERTO</button>
-                        </div>
-                    );
-                })() : (
-                    <button className="btn-neon btn-gold" onClick={rolarAcertoRapido} style={{ padding: '12px', fontSize: '1.2em', width: '100%', marginTop: 5, letterSpacing: 1 }}>🎲 ROLAR DADOS LIVRE</button>
-                )}
-            </div>
         </div>
     );
 }
@@ -401,14 +429,14 @@ export function MapaControlesSuperiores() {
     );
 }
 
-// 🔥 VISÃO COM ZONAS PERSISTENTES (SEM DUPLICADOS) 🔥
+// 🔥 VISÃO COM ZONAS PERSISTENTES E FILTRO DE OCULTAÇÃO 🔥
 export function MapaVisao() {
     const ctx = useMapaForm();
     if (!ctx) return FALLBACK;
     const { 
         modo3D, tamanhoCelula, cenaAtual, cells, tokenMap, dummies, 
         cenaRenderId, tokens3D, handleCellClick, getAvatarInfo, 
-        meuNome, corDoJogador, overridesCompendio, cenario 
+        meuNome, corDoJogador, overridesCompendio, cenario, isMestre 
     } = ctx;
 
     const zonasCena = (cenario?.zonas || []).filter(z => (z.cenaId || 'default') === cenaRenderId);
@@ -428,7 +456,7 @@ export function MapaVisao() {
             backgroundImage: urlSeguraParaCss(cenaAtual.img), backgroundSize: 'cover', backgroundPosition: 'center',
             position: 'relative'
         }}>
-            {/* 🔥 AS ZONAS MÁGICAS PERSISTENTES NO GRID 🔥 */}
+            {/* AS ZONAS MÁGICAS PERSISTENTES NO GRID */}
             {zonasCena.map(z => (
                 <div key={z.id} style={{
                     position: 'absolute', pointerEvents: 'none', zIndex: 3,
@@ -450,18 +478,33 @@ export function MapaVisao() {
 
             {cells.map((cell) => {
                 const key = `${cell.x},${cell.y}`;
-                const tokens = tokenMap[key] || [];
+                
+                // 🔥 FILTRA TOKENS OCULTOS DO MAPA SE NÃO FOR MESTRE 🔥
+                const tokensNestaCelula = tokenMap[key] || [];
+                const visivelTokens = tokensNestaCelula.filter(tk => isMestre || !(cenario?.tokensOcultos?.includes(tk.nome)));
+
                 const cellDummies = Object.entries(dummies || {}).filter(([id, d]) => {
+                    const isOculto = cenario?.tokensOcultos?.includes(id);
+                    if (!isMestre && isOculto) return false; // Jogadores não vêem
                     const dCena = d.cenaId || 'default';
                     return d.posicao?.x === cell.x && d.posicao?.y === cell.y && dCena === cenaRenderId;
                 });
+
                 return (
                     <div key={key} className="map-cell" data-x={cell.x} data-y={cell.y} onClick={() => handleCellClick(cell.x, cell.y)} style={{ width: tamanhoCelula, height: tamanhoCelula, border: '1px solid rgba(255,255,255,0.1)', position: 'relative', cursor: 'pointer' }}>
-                        {cellDummies.map(([id, d]) => <DummieToken key={id} id={id} dummie={d} />)}
                         
-                        {tokens.map((tk) => {
+                        {/* DUMMIES */}
+                        {cellDummies.map(([id, d]) => (
+                            <div key={id} style={{ opacity: cenario?.tokensOcultos?.includes(id) ? 0.4 : 1 }}>
+                                <DummieToken id={id} dummie={d} />
+                            </div>
+                        ))}
+                        
+                        {/* JOGADORES */}
+                        {visivelTokens.map((tk) => {
                             const info = getAvatarInfo(tk.ficha);
                             const isMe = tk.nome === meuNome;
+                            const isOculto = cenario?.tokensOcultos?.includes(tk.nome);
                             const altitude = tk.ficha?.posicao?.z || 0;
                             const isFlying = altitude > 0;
                             const tkMesa = tk.ficha?.bio?.mesa || 'presente';
@@ -469,16 +512,19 @@ export function MapaVisao() {
                             if ((tkClass === 'pretender' || tkClass === 'alterego') && tk.ficha?.bio?.subClasse) tkClass = tk.ficha?.bio?.subClasse;
                             const tkGrand = tkClass && overridesCompendio?.grands?.[`${tkClass}_${tkMesa}`] === tk.nome;
                             const tkCand = tkClass && !tkGrand && (overridesCompendio?.grands?.[`${tkClass}_${tkMesa}_candidatos`] || []).includes(tk.nome);
+                            
                             let bordaToken = isFlying ? '3px solid #00ccff' : (isMe ? '2px solid #00ffcc' : '1px solid rgba(255,255,255,0.3)');
                             let sombraToken = isFlying ? '0 10px 15px rgba(0, 204, 255, 0.5)' : 'none';
                             if (tkGrand) { bordaToken = '3px solid #ffcc00'; sombraToken = '0 0 15px #ff003c, inset 0 0 10px #ffcc00'; } 
                             else if (tkCand) { bordaToken = '2px solid #0088ff'; sombraToken = '0 0 10px #00ccff'; }
+
                             const style = {
                                 position: 'absolute', top: 2, left: 2, width: tamanhoCelula - 4, height: tamanhoCelula - 4,
                                 borderRadius: '50%', backgroundColor: corDoJogador(tk.nome), display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 color: '#fff', fontSize: '0.7em', fontWeight: 'bold', border: bordaToken, boxShadow: sombraToken,
                                 transform: isFlying ? 'translateY(-5px)' : 'none', backgroundImage: urlSeguraParaCss(info.img) || 'none', backgroundSize: 'cover', backgroundPosition: 'center',
-                                zIndex: isFlying ? 10 : (tkGrand ? 5 : 1)
+                                zIndex: isFlying ? 10 : (tkGrand ? 5 : 1),
+                                opacity: isOculto ? 0.4 : 1 // Mestre vê translúcido
                             };
                             return (
                                 <div key={tk.nome} className={`player-token${isMe ? ' my-token' : ''}`} title={`${tk.nome} | Altura: ${altitude}m`} style={style}>
@@ -509,7 +555,7 @@ export function MapaAreaCentral() {
     );
 }
 
-// 🔥 INICIATIVA COM A ROLAGEM LIVRE ESCONDIDA 🔥
+// 🔥 INICIATIVA: LISTA TODOS NA CENA E PERMITE OCULTAR TOKENS 🔥
 export function MapaIniciativaTracker() {
     const ctx = useMapaForm();
     if (!ctx) return FALLBACK;
@@ -518,63 +564,91 @@ export function MapaIniciativaTracker() {
         minhaFicha, iniciativaInput, setIniciativaInput, isMestre, sairDoCombate, encerrarCombate, 
         setMinhaIniciativa, avancarTurno, ordemIniciativa, turnoAtualIndex, jogadorHistory, 
         setJogadorHistory, feedCombate, getAvatarInfo, fmt, jogadorDaVez, infoDaVez, meuNome, 
-        mapStat, setMapStat, mapQD, setMapQD, mapFD, setMapFD, mapBonus, setMapBonus, 
-        mapVantagens, changeVantagem, mapDesvantagens, changeDesvantagem, mapUsarProf, 
-        setMapUsarProf, alvoSelecionado, dummies, fichaSegura, cenaAtual, rolarAcertoRapido 
+        jogadores, dummies, cenaRenderId, cenario
     } = ctx;
 
-    const [mostrarRolagem, setMostrarRolagem] = useState(false);
+    // Apanha toda a gente (Jogadores e Dummies) que está a pisar o mapa neste momento
+    const todasEntidades = useMemo(() => {
+        const js = Object.entries(jogadores).filter(([n, f]) => (f.posicao?.cenaId || 'default') === cenaRenderId).map(([n, f]) => ({ id: n, nome: n, ficha: f, isDummie: false, init: f.iniciativa || 0 }));
+        const ds = Object.entries(dummies || {}).filter(([id, d]) => (d.cenaId || 'default') === cenaRenderId).map(([id, d]) => ({ id, nome: d.nome, ficha: d, isDummie: true, init: d.iniciativa || 0 }));
+        
+        // Ordena por iniciativa (quem não tem fica no fim)
+        return [...js, ...ds].sort((a, b) => b.init - a.init);
+    }, [jogadores, dummies, cenaRenderId]);
+
+    // Função Exclusiva do Mestre para Ligar/Desligar Visibilidade
+    const toggleVisibilidadeToken = (e, idOuNome) => {
+        e.stopPropagation();
+        const novoCenario = JSON.parse(JSON.stringify(cenario || {}));
+        if (!novoCenario.tokensOcultos) novoCenario.tokensOcultos = [];
+        if (novoCenario.tokensOcultos.includes(idOuNome)) {
+            novoCenario.tokensOcultos = novoCenario.tokensOcultos.filter(t => t !== idOuNome);
+        } else {
+            novoCenario.tokensOcultos.push(idOuNome);
+        }
+        salvarCenarioCompleto(novoCenario);
+    };
 
     return (
         <div className="def-box" style={{ marginTop: 15, padding: 12 }}>
-            
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
-                    <h3 style={{ color: '#00ffcc', margin: 0, fontSize: '1.1em' }}>⚡ Iniciativa</h3>
+                    <h3 style={{ color: '#00ffcc', margin: 0, fontSize: '1.1em' }}>⚡ Iniciativa & Entidades</h3>
                     <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
                         <input className="input-neon" type="number" value={iniciativaInput} onChange={e => setIniciativaInput(e.target.value)} style={{ width: 50, padding: 4, height: 26, margin: 0 }} title="Sua Iniciativa" />
                         <button className="btn-neon btn-gold" onClick={setMinhaIniciativa} style={{ padding: '2px 8px', fontSize: '0.8em', margin: 0 }}>Rolar</button>
                     </div>
                 </div>
                 <div style={{ display: 'flex', gap: 10 }}>
-                    <button className="btn-neon" onClick={() => setMostrarRolagem(!mostrarRolagem)} style={{ padding: '2px 10px', fontSize: '0.8em', margin: 0, borderColor: '#f90', color: '#f90' }}>
-                        {mostrarRolagem ? '👁️ Ocultar Rolagem Livre' : '🎲 Rolagem Livre'}
-                    </button>
                     <button className="btn-neon" onClick={avancarTurno} style={{ borderColor: '#00ffcc', color: '#00ffcc', padding: '2px 10px', fontSize: '0.8em', margin: 0 }}>Passar Turno</button>
                     {minhaFicha?.iniciativa > 0 && <button className="btn-neon btn-red" onClick={sairDoCombate} style={{ padding: '2px 10px', fontSize: '0.8em', margin: 0 }}>Sair</button>}
                     {isMestre && <button className="btn-neon" onClick={encerrarCombate} style={{ borderColor: '#ff003c', color: '#ff003c', padding: '2px 10px', fontSize: '0.8em', margin: 0 }}>Zerar</button>}
                 </div>
             </div>
 
-            {mostrarRolagem && (
-                <div style={{ marginTop: 10, padding: 10, background: 'rgba(0,0,0,0.5)', borderRadius: 5, border: '1px dashed #f90' }}>
-                    <div style={{ display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'wrap' }}>
-                        <select className="input-neon" value={mapStat} onChange={e => setMapStat(e.target.value)} style={{ padding: 4, width: 100, margin: 0 }}><option value="forca">Força</option><option value="destreza">Destreza</option><option value="inteligencia">Intelig.</option><option value="sabedoria">Sabedoria</option><option value="energiaEsp">Energ. Esp.</option><option value="carisma">Carisma</option><option value="stamina">Stamina</option><option value="constituicao">Constit.</option></select>
-                        <input className="input-neon" type="number" value={mapQD} onChange={e => setMapQD(e.target.value)} style={{ width: 45, padding: 4, margin: 0 }} title="Dados" /><span style={{ color: '#aaa', fontSize: '0.8em' }}>D</span><input className="input-neon" type="number" value={mapFD} onChange={e => setMapFD(e.target.value)} style={{ width: 55, padding: 4, margin: 0 }} title="Faces" /><span style={{ color: '#aaa', fontSize: '0.8em' }}>+</span><input className="input-neon" type="number" value={mapBonus} onChange={e => setMapBonus(e.target.value)} style={{ width: 60, padding: 4, margin: 0 }} title="Bônus" />
-                        <span style={{ color: '#0f0', fontSize: '0.8em', marginLeft: 5, fontWeight: 'bold' }}>V:</span><input className="input-neon" type="number" min="0" value={mapVantagens} onChange={changeVantagem} style={{ width: 45, padding: 4, margin: 0, borderColor: '#0f0', color: '#0f0' }} />
-                        <span style={{ color: '#f00', fontSize: '0.8em', marginLeft: 5, fontWeight: 'bold' }}>D:</span><input className="input-neon" type="number" min="0" value={mapDesvantagens} onChange={changeDesvantagem} style={{ width: 45, padding: 4, margin: 0, borderColor: '#f00', color: '#f00' }} />
-                        <label style={{ color: '#00ffcc', fontSize: '0.85em', marginLeft: 10, fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer' }}><input type="checkbox" checked={mapUsarProf} onChange={e => setMapUsarProf(e.target.checked)} style={{ transform: 'scale(1.2)' }} /> Prof.</label>
-                        <button className="btn-neon btn-gold" onClick={rolarAcertoRapido} style={{ padding: '4px 10px', fontSize: '0.85em', margin: '0 0 0 auto' }}>🎲 Rolar no Chat</button>
-                    </div>
-                </div>
-            )}
-
-            <div id="lista-turnos" style={{ display: 'flex', gap: 8, marginTop: 15, overflowX: 'auto', paddingBottom: 5 }}>
-                {ordemIniciativa.length === 0 ? (
-                    <p style={{ color: '#888', fontSize: '0.8em', margin: 0 }}>Nenhum jogador rolou iniciativa ainda.</p>
+            {/* AVATARES: MOSTRA TODOS DA CENA (Filtra para os jogadores) */}
+            <div id="lista-turnos" style={{ display: 'flex', gap: 8, marginTop: 15, overflowX: 'auto', paddingBottom: 5, minHeight: 50 }}>
+                {todasEntidades.length === 0 ? (
+                    <p style={{ color: '#888', fontSize: '0.8em', margin: 0 }}>Nenhuma entidade encontra-se neste mapa.</p>
                 ) : (
-                    ordemIniciativa.map((j, i) => {
-                        const info = getAvatarInfo(j.ficha);
-                        const isActive = (i === turnoAtualIndex % ordemIniciativa.length);
+                    todasEntidades.map((entidade) => {
+                        const isOculto = cenario?.tokensOcultos?.includes(entidade.id);
+                        
+                        // Jogadores não veem quem está oculto
+                        if (!isMestre && isOculto) return null;
+
+                        const info = getAvatarInfo(entidade.ficha);
+                        const isRolled = entidade.init > 0;
+                        const isActive = isRolled && ordemIniciativa.length > 0 && (ordemIniciativa[turnoAtualIndex % ordemIniciativa.length]?.nome === entidade.nome);
+
                         return (
-                            <div key={j.nome} title={`Clique para ver o Histórico de ${j.nome}`} onClick={() => setJogadorHistory(j.nome)} style={{ cursor: 'pointer', minWidth: 40, height: 40, borderRadius: '50%', border: isActive ? '3px solid #00ffcc' : '2px solid #444', opacity: isActive ? 1 : 0.5, backgroundImage: urlSeguraParaCss(info.img) || 'none', backgroundSize: 'cover', backgroundPosition: 'top center', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.7em', color: 'white', textShadow: '1px 1px 2px black', transition: 'transform 0.2s' }}>
-                                {!info.img && j.nome.charAt(0)}
+                            <div key={entidade.id} style={{ position: 'relative' }}>
+                                <div title={`Clique para ver o Histórico de ${entidade.nome}`} onClick={() => setJogadorHistory(entidade.nome)} style={{ 
+                                    cursor: 'pointer', minWidth: 40, height: 40, borderRadius: '50%', 
+                                    border: isActive ? '3px solid #00ffcc' : (isRolled ? '2px solid #aaa' : '2px dashed #444'), 
+                                    opacity: isActive ? 1 : (isOculto ? 0.3 : (isRolled ? 0.8 : 0.5)), 
+                                    backgroundImage: urlSeguraParaCss(info.img) || 'none', backgroundSize: 'cover', backgroundPosition: 'top center', 
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.7em', color: 'white', textShadow: '1px 1px 2px black', transition: 'transform 0.2s' 
+                                }}>
+                                    {!info.img && entidade.nome.charAt(0)}
+                                </div>
+                                {/* 🔥 BOTÃO EXCLUSIVO DO MESTRE PARA ESCONDER TOKENS 🔥 */}
+                                {isMestre && (
+                                    <button 
+                                        onClick={(e) => toggleVisibilidadeToken(e, entidade.id)}
+                                        title={isOculto ? "Oculto dos Jogadores. Clique para Revelar." : "Visível. Clique para Ocultar."}
+                                        style={{ position: 'absolute', top: -5, right: -5, background: isOculto ? '#ff003c' : '#000', borderRadius: '50%', padding: '2px 4px', fontSize: '10px', cursor: 'pointer', border: '1px solid #fff' }}
+                                    >
+                                        {isOculto ? '👻' : '👁️'}
+                                    </button>
+                                )}
                             </div>
                         );
                     })
                 )}
             </div>
 
+            {/* HISTÓRICO EXPANSÍVEL */}
             {jogadorHistory && (
                 <div style={{ marginTop: 15, padding: 15, background: 'rgba(0, 20, 40, 0.8)', border: '1px solid #0088ff', borderRadius: 8 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
@@ -591,6 +665,7 @@ export function MapaIniciativaTracker() {
                 </div>
             )}
 
+            {/* JOGADOR DA VEZ EM DESTAQUE */}
             {jogadorDaVez && (
                 <div style={{ marginTop: 15, display: 'flex', gap: 15, alignItems: 'center' }}>
                     <div id="turno-destaque" style={{ width: 60, height: 60, borderRadius: '50%', border: '3px solid #00ffcc', backgroundImage: urlSeguraParaCss(infoDaVez?.img) || 'none', backgroundSize: 'cover', backgroundPosition: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5em', fontWeight: 'bold', color: '#fff' }}>{(!infoDaVez || !infoDaVez.img) && jogadorDaVez.nome.charAt(0)}</div>
@@ -608,14 +683,6 @@ export function MapaHologramaAcao() {
     const ctx = useMapaForm();
     if (!ctx) return FALLBACK;
     const { dadoAnim, ordemIniciativa, feedCombate, feedIndexTurnoAtual, jogadorDaVez, jogadores, overridesCompendio, getAvatarInfo, fmt, meuNome, minhaFicha } = ctx;
-
-    if (dadoAnim.ativo) {
-        return (
-            <div className="def-box" style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(10, 10, 15, 0.95)', border: `2px solid ${dadoAnim.cor}`, boxShadow: `0 0 30px ${dadoAnim.cor}50` }}>
-                <h2 style={{ color: dadoAnim.cor, textShadow: `0 0 10px ${dadoAnim.cor}`, textAlign: 'center', letterSpacing: 2, textTransform: 'uppercase' }}>{dadoAnim.quemRolou}<br/>está a jogar os dados...</h2>
-            </div>
-        );
-    }
 
     const emCombate = ordemIniciativa.length > 0;
     const acaoNovaNoTurno = feedCombate.length > feedIndexTurnoAtual ? feedCombate[feedCombate.length - 1] : null;
