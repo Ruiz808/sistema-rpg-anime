@@ -15,8 +15,21 @@ export default function GravadorPanel() {
     const logsEndRef = useRef(null);
     const pedacoContadorRef = useRef(1);
 
+    // 🔥 DADOS DOS JOGADORES (SHERLOCK HOLMES) 🔥
     const cenario = useStore(s => s.cenario);
+    const personagens = useStore(s => s.personagens); 
+    const meuNome = useStore(s => s.meuNome); 
+    const minhaFicha = useStore(s => s.minhaFicha); 
+
     const nomesAtivos = Array.isArray(cenario?.tavernaAtivos) ? cenario.tavernaAtivos : [];
+
+    // Monta o perfil de cada jogador ativo para a IA saber quem é quem
+    const perfisJogadores = nomesAtivos.map(nome => {
+        const ficha = nome === meuNome ? minhaFicha : personagens?.[nome];
+        const classe = ficha?.bio?.classe || 'Mundano';
+        const raca = ficha?.bio?.raca || 'Desconhecida';
+        return `${nome} (Classe: ${classe}, Raça: ${raca})`;
+    });
 
     const ctx = useAIForm();
     const { capitulosPresente, capitulosFuturo, salvarNoRegistro, loreFoco } = ctx || {};
@@ -61,7 +74,7 @@ export default function GravadorPanel() {
                 
                 const resultado = await transcrever({ 
                     fileName: nomeArquivo,
-                    nomesParticipantes: nomesAtivos 
+                    nomesParticipantes: perfisJogadores // 🔥 Envia os perfis completos!
                 });
 
                 const textoGerado = resultado.data?.texto;

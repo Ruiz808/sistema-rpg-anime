@@ -129,7 +129,7 @@ exports.falarComSextaFeira = onCall(
     }
 );
 
-// 2. 🔥 FUNÇÃO DO GRAVADOR (MÁQUINA DE LEGENDAS ABSOLUTA) 🔥
+// 2. 🔥 FUNÇÃO DO GRAVADOR (MÁQUINA DE LEGENDAS INTELIGENTE E BLINDADA) 🔥
 exports.transcreverAudioSextaFeira = onCall(
     { 
         region: "us-central1", 
@@ -151,24 +151,26 @@ exports.transcreverAudioSextaFeira = onCall(
             const ai = new GoogleGenAI({ apiKey: geminiApiKey.value() });
             const audioBase64 = fs.readFileSync(tempFilePath).toString("base64");
 
-            const listaNomes = (nomesParticipantes || []).join(', ');
+            // 🔥 A MÁGICA DE SHERLOCK HOLMES AQUI 🔥
+            const listaPerfis = (nomesParticipantes || []).join(' | ');
             
-            // PROMPT 100% BLINDADO CONTRA LORE E HISTÓRIAS
-            const prompt = `Abaixo está o áudio de uma conversa.
-            Locutores possíveis: [${listaNomes}].
+            // PROMPT 100% BLINDADO CONTRA LORE E HISTÓRIAS, FOCADO EM DEDUÇÃO
+            const prompt = `Abaixo está o áudio de uma conversa do nosso RPG de mesa.
+            Os jogadores/personagens presentes na cena e os seus perfis são: [${listaPerfis}].
             
             Sua ÚNICA TAREFA é atuar como um software de transcrição de legendas.
             
             REGRAS ABSOLUTAS:
-            1. Escreva APENAS o que foi dito, no formato "Nome: Fala".
-            2. NÃO crie histórias, NÃO crie títulos, NÃO faça resumos, NÃO escreva "Registro Akáshico".
-            3. Apenas ouça o áudio e transcreva as palavras exatas.
-            4. Limpe gaguejos ("humm", "ééé").
-            5. O contexto é um jogo de RPG (termos comuns: HP, Mana, D20, Mestre, Dano).
+            1. Escreva APENAS o que foi dito, no formato "Nome: Fala" em cada linha.
+            2. IDENTIFICAÇÃO INTELIGENTE: Use os perfis dos personagens para deduzir quem está falando. Se alguém falar de furtividade ou roubo, atribua ao Ladino. Se falarem de feitiços, atribua ao Mago. Se a voz parecer comandar a mesa, usar termos como "rolem iniciativa" ou "os monstros atacam", atribua ao "Mestre". Se a voz não for reconhecida de todo, use "Voz Desconhecida".
+            3. NÃO crie histórias, NÃO crie títulos, NÃO faça resumos, NÃO escreva "Registro Akáshico".
+            4. Limpe gaguejos ("humm", "ééé"). Torne o diálogo direto.
+            5. O contexto é um jogo de RPG (termos comuns: HP, Mana, D20, Mestre, Dano, Turno).
             
             Exemplo de saída esperada:
-            Natsu: É foda.
-            Kiriya: Verdade.
+            Mestre: O dragão ataca vocês. Rolem evasiva.
+            Natsu: É foda!
+            Kiriya: Eu me escondo nas sombras!
             
             NÃO ADICIONE NENHUM TEXTO ALÉM DA TRANSCRIÇÃO.`;
 
