@@ -52,11 +52,23 @@ export function MapaOlhoSextaFeira() {
         }
     }, [expandido]);
 
+    // 🔥 PREVENÇÃO DE VAZAMENTO DE MEMÓRIA 🔥
+    // Garante que a gravação para se o componente for desmontado (se você sair do mapa)
+    useEffect(() => {
+        return () => {
+            if (timerRef.current) clearInterval(timerRef.current);
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") mediaRecorderRef.current.stop();
+            if (audioContextRef.current) audioContextRef.current.close();
+            if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+        };
+    }, []);
+
     const addLog = (msg) => {
         const hora = new Date().toLocaleTimeString();
         setLogs(prev => [...prev.slice(-4), `[${hora}] ${msg}`]);
     };
 
+    // 🔥 MOTOR DE SALVAMENTO À PROVA DE BALAS 🔥
     const salvarLoreMap = (textoGerado, tituloBloco) => {
         try {
             let caps = JSON.parse(localStorage.getItem('rpgSextaFeira_capitulos')) || [];
@@ -74,7 +86,7 @@ export function MapaOlhoSextaFeira() {
                 const capId = Number(destinoLore.replace('novo_arco_', ''));
                 const newArcId = Date.now();
                 caps = caps.map(c => {
-                    if (c.id === capId) return { ...c, arcos: [...c.arcos, { id: newArcId, titulo: tituloBloco, texto: textoGerado }] };
+                    if (c.id === capId) return { ...c, arcos: [...(c.arcos || []), { id: newArcId, titulo: tituloBloco, texto: textoGerado }] };
                     return c;
                 });
                 localStorage.setItem('rpgSextaFeira_capituloAtivo', capId);
@@ -84,16 +96,27 @@ export function MapaOlhoSextaFeira() {
                 const capId = Number(capIdStr); const arcId = Number(arcIdStr);
                 caps = caps.map(c => {
                     if (c.id === capId) {
-                        return { ...c, arcos: c.arcos.map(a => {
-                            if (a.id === arcId) return { ...a, texto: a.texto.trim() ? a.texto + separador + textoGerado : textoGerado };
+                        return { ...c, arcos: (c.arcos || []).map(a => {
+                            if (a.id === arcId) {
+                                // Correção do erro silencioso de 'undefined' no texto!
+                                const textoAntigo = a.texto || '';
+                                const novoTexto = textoAntigo.trim() ? textoAntigo + separador + textoGerado : textoGerado;
+                                return { ...a, texto: novoTexto };
+                            }
                             return a;
                         })};
                     }
                     return c;
                 });
             }
+            
             localStorage.setItem('rpgSextaFeira_capitulos', JSON.stringify(caps));
-        } catch(e) { console.error('Erro ao salvar lore local', e); }
+            addLog(`✅ Salvo com sucesso! Abra os Registros para ler.`); // A mensagem mágica de paz de espírito!
+            
+        } catch(e) { 
+            console.error('Erro ao salvar lore local', e); 
+            addLog(`❌ Erro ao salvar no disco: ${e.message}`);
+        }
     };
 
     const iniciarVisualizador = (stream) => {
@@ -223,7 +246,7 @@ export function MapaOlhoSextaFeira() {
     };
 
     return (
-        <div style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 99999, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
+        <div style={{ position: 'absolute', bottom: '20px', right: '20px', zIndex: 99999, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
             
             {/* PAINEL EXPANDIDO */}
             {expandido && (
