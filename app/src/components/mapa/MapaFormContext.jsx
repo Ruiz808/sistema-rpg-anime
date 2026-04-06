@@ -138,12 +138,37 @@ export function MapaFormProvider({ children }) {
         return {};
     }, [isMestre, minhaFicha, personagens]);
 
+    // 🔥 NOVO: GESTOR DE PONTOS DE AÇÃO (Padrão, Bônus, Reações) 🔥
+    const toggleActionDot = useCallback((tipo, isAvailable, entidadeNome, isDummie, idDummie) => {
+        if (isDummie && idDummie && isMestre) {
+            const storeState = useStore.getState();
+            const dData = storeState.dummies[idDummie];
+            if (!dData) return;
+            const acoes = dData.acoes ? JSON.parse(JSON.stringify(dData.acoes)) : { padrao: {max:1, atual:1}, bonus: {max:1, atual:1}, reacao: {max:1, atual:1} };
+            if (isAvailable) {
+                acoes[tipo].atual = Math.max(0, acoes[tipo].atual - 1);
+            } else {
+                acoes[tipo].atual = Math.min(acoes[tipo].max, acoes[tipo].atual + 1);
+            }
+            salvarDummie(idDummie, { ...dData, acoes });
+        } else if (entidadeNome === meuNome) {
+            updateFicha(f => {
+                if (!f.acoes) f.acoes = { padrao: {max:1, atual:1}, bonus: {max:1, atual:1}, reacao: {max:1, atual:1} };
+                if (isAvailable) {
+                    f.acoes[tipo].atual = Math.max(0, f.acoes[tipo].atual - 1);
+                } else {
+                    f.acoes[tipo].atual = Math.min(f.acoes[tipo].max, f.acoes[tipo].atual + 1);
+                }
+            });
+            salvarFichaSilencioso();
+        }
+    }, [isMestre, meuNome, updateFicha]);
+
     useEffect(() => {
         if (feedCombate.length > prevFeedLen.current) {
             const newItem = feedCombate[feedCombate.length - 1];
             if (newItem && newItem.rolagem && (newItem.tipo === 'acerto' || newItem.tipo === 'dano')) {
                 
-                // 🔥 TRAVA DE SEGURANÇA: Só ativa a animação se o painel do Mapa estiver visível no ecrã! 🔥
                 const painelMapa = document.querySelector('.mapa-panel');
                 const mapaVisivel = painelMapa && (painelMapa.offsetWidth > 0 || painelMapa.offsetHeight > 0);
                 const isAbaMapa = String(abaAtiva || '').toLowerCase().includes('map');
@@ -533,6 +558,19 @@ export function MapaFormProvider({ children }) {
         setFeedIndexTurnoAtual(feedCombate.length);
         setJogadorHistory(null);
 
+        // 🔥 RECUPERAÇÃO DE AÇÕES AUTOMÁTICA (APENAS PARA DUMMIES QUANDO O MESTRE PASSA O TURNO) 🔥
+        if (nextPlayer.isDummie && isMestre) {
+            const storeState = useStore.getState();
+            const dData = storeState.dummies[nextPlayer.id];
+            if (dData && dData.acoes) {
+                const acoes = JSON.parse(JSON.stringify(dData.acoes));
+                if (acoes.padrao) acoes.padrao.atual = acoes.padrao.max;
+                if (acoes.bonus) acoes.bonus.atual = acoes.bonus.max;
+                if (acoes.reacao) acoes.reacao.atual = acoes.reacao.max;
+                salvarDummie(nextPlayer.id, { ...dData, acoes });
+            }
+        }
+
         const storeState = useStore.getState();
         const cenarioAtual = storeState.cenario;
 
@@ -558,7 +596,7 @@ export function MapaFormProvider({ children }) {
                 salvarCenarioCompleto(novoCenario);
             }
         }
-    }, [ordemIniciativa, turnoAtualIndex, feedCombate.length, dispararEfeitoDaZona]);
+    }, [ordemIniciativa, turnoAtualIndex, feedCombate.length, dispararEfeitoDaZona, isMestre]);
 
     const sairDoCombate = useCallback(() => {
         updateFicha(ficha => { ficha.iniciativa = 0; });
@@ -677,7 +715,7 @@ export function MapaFormProvider({ children }) {
         handleUploadNovaCena, ativarCena, deletarCena, corDoJogador, getAvatarInfo,
         cells, jogadores, playersNaTaverna, ordemIniciativa, handleCellClick,
         alterarZoom, setMinhaIniciativa, avancarTurno, sairDoCombate, encerrarCombate,
-        rolarAcertoRapido, tokenMap, tokens3D, jogadorDaVez, infoDaVez, fmt, deletarZona
+        rolarAcertoRapido, tokenMap, tokens3D, jogadorDaVez, infoDaVez, fmt, deletarZona, toggleActionDot
     }), [
         minhaFicha, meuNome, personagens, feedCombate, isMestre, dummies, alvoSelecionado, cenario, abaAtiva,
         fichaSegura, modo3D, tamanhoCelula, iniciativaInput, altitudeInput,
@@ -690,7 +728,7 @@ export function MapaFormProvider({ children }) {
         jogadorDaVez, infoDaVez, fmt, toggleModoRP, togglePresencaTaverna, changeVantagem,
         changeDesvantagem, handleUploadNovaCena, ativarCena, deletarCena, corDoJogador,
         getAvatarInfo, handleCellClick, alterarZoom, setMinhaIniciativa, avancarTurno,
-        sairDoCombate, encerrarCombate, rolarAcertoRapido, deletarZona
+        sairDoCombate, encerrarCombate, rolarAcertoRapido, deletarZona, toggleActionDot
     ]);
 
     return (
