@@ -2,13 +2,11 @@ const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
 const { GoogleGenAI } = require("@google/genai");
 
-// Novas importações necessárias para processar ficheiros e conectar ao Storage
 const admin = require("firebase-admin");
 const os = require("os");
 const path = require("path");
 const fs = require("fs");
 
-// Inicializa o Admin para termos acesso livre ao Storage
 if (!admin.apps.length) {
     admin.initializeApp();
 }
@@ -129,7 +127,7 @@ exports.falarComSextaFeira = onCall(
     }
 );
 
-// 2. 🔥 FUNÇÃO DO GRAVADOR (MÁQUINA DE LEGENDAS INTELIGENTE E BLINDADA) 🔥
+// 2. 🔥 FUNÇÃO DO GRAVADOR (COM DIARIZAÇÃO POR CONTEXTO DE FICHA E ANTIALUCINAÇÃO) 🔥
 exports.transcreverAudioSextaFeira = onCall(
     { 
         region: "us-central1", 

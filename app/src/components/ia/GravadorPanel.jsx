@@ -7,7 +7,7 @@ import { useAIForm } from './AIFormContext';
 
 export default function GravadorPanel() {
     const [gravando, setGravando] = useState(false);
-    const [logs, setLogs] = useState(['Módulo de Escuta Contínua (Auto-Fatiador) inicializado...']);
+    const [logs, setLogs] = useState(['Módulo de Escuta Contínua inicializado...']);
     
     // Referências do Motor
     const streamRef = useRef(null);
@@ -22,6 +22,7 @@ export default function GravadorPanel() {
     const animationFrameRef = useRef(null);
     const volumeBarRef = useRef(null);
 
+    // 🔥 DADOS DOS JOGADORES (LIGAR VOZ À FICHA) 🔥
     const cenario = useStore(s => s.cenario);
     const personagens = useStore(s => s.personagens); 
     const meuNome = useStore(s => s.meuNome); 
@@ -29,6 +30,7 @@ export default function GravadorPanel() {
 
     const nomesAtivos = Array.isArray(cenario?.tavernaAtivos) ? cenario.tavernaAtivos : [];
 
+    // Monta o perfil de cada jogador ativo para a IA saber quem é quem
     const perfisJogadores = nomesAtivos.map(nome => {
         const ficha = nome === meuNome ? minhaFicha : personagens?.[nome];
         const classe = ficha?.bio?.classe || 'Mundano';
@@ -72,13 +74,11 @@ export default function GravadorPanel() {
             }
             const media = soma / bufferLength;
             
-            // Converte a média de volume (0 a 255) numa percentagem para a barra
             const volumePct = Math.min(100, Math.max(0, (media / 80) * 100));
 
             if (volumeBarRef.current) {
                 volumeBarRef.current.style.width = `${volumePct}%`;
                 
-                // Muda a cor consoante o volume
                 if (volumePct > 85) {
                     volumeBarRef.current.style.backgroundColor = '#ff003c';
                     volumeBarRef.current.style.boxShadow = '0 0 15px #ff003c';
@@ -139,7 +139,7 @@ export default function GravadorPanel() {
                 
                 const resultado = await transcrever({ 
                     fileName: nomeArquivo,
-                    nomesParticipantes: perfisJogadores 
+                    nomesParticipantes: perfisJogadores // 🔥 Envia as Classes e Raças para a IA!
                 });
 
                 const textoGerado = resultado.data?.texto;
@@ -165,12 +165,9 @@ export default function GravadorPanel() {
 
     const iniciarGravacao = async () => {
         try {
-            if (!streamRef.current) {
-                // Ao pedir o áudio, capturamos o microfone do usuário
-                streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
-            }
+            if (!streamRef.current) streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
             
-            iniciarVisualizador(streamRef.current); // Liga o radar de voz
+            iniciarVisualizador(streamRef.current); // Liga o radar visual
             
             pedacoContadorRef.current = 1;
             iniciarMediaRecorder();
