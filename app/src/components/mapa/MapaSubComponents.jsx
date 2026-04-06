@@ -308,9 +308,14 @@ export function MapaOlhoSextaFeira() {
 export function MapaDadoAnimado() {
     const ctx = useMapaForm();
     if (!ctx) return FALLBACK;
-    const { dadoAnim } = ctx;
+    const { dadoAnim, abaAtiva } = ctx;
 
-    if (!dadoAnim.ativo) return null;
+    // 🔥 TRAVA DO PORTAL: Aborta se a aba ativa não for a do Mapa e o painel não estiver visível no ecrã! 🔥
+    const painelMapa = document.querySelector('.mapa-panel');
+    const mapaVisivel = painelMapa && (painelMapa.offsetWidth > 0 || painelMapa.offsetHeight > 0);
+    const isAbaMapa = String(abaAtiva || '').toLowerCase().includes('map');
+
+    if (!dadoAnim.ativo || (!mapaVisivel && !isAbaMapa)) return null;
 
     return createPortal(
         <>

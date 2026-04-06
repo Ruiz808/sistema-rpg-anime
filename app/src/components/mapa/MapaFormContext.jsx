@@ -58,7 +58,7 @@ export function useMapaForm() {
 }
 
 export function MapaFormProvider({ children }) {
-    const { minhaFicha, meuNome, personagens, updateFicha, feedCombate = [], isMestre, dummies, alvoSelecionado, cenario } = useStore();
+    const { minhaFicha, meuNome, personagens, updateFicha, feedCombate = [], isMestre, dummies, alvoSelecionado, cenario, abaAtiva } = useStore();
     
     const fichaSegura = minhaFicha || {};
 
@@ -142,50 +142,58 @@ export function MapaFormProvider({ children }) {
         if (feedCombate.length > prevFeedLen.current) {
             const newItem = feedCombate[feedCombate.length - 1];
             if (newItem && newItem.rolagem && (newItem.tipo === 'acerto' || newItem.tipo === 'dano')) {
-                let rawRoll = 0;
-                let regexStrong = /<strong>(\d+)<\/strong>/g;
-                let match;
-                while ((match = regexStrong.exec(newItem.rolagem)) !== null) {
-                    let v = parseInt(match[1]);
-                    if (v > rawRoll) rawRoll = v;
-                }
-                if (rawRoll === 0) { 
-                    let regexArr = /\[(.*?)\]/;
-                    let mArr = regexArr.exec(newItem.rolagem);
-                    if (mArr) {
-                        let clean = mArr[1].replace(/<[^>]*>?/gm, ''); 
-                        let nums = clean.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n));
-                        if (nums.length > 0) rawRoll = Math.max(...nums);
-                    }
-                }
                 
-                if (rawRoll > 0) {
-                    let corFinal = '#0088ff'; 
-                    if (newItem.tipo === 'dano') {
-                        if (newItem.armaStr?.includes('FATAL')) corFinal = '#ff003c'; 
-                        else if (newItem.armaStr?.includes('CRÍTICO')) corFinal = '#ffcc00'; 
-                    } else {
-                        if (rawRoll === 20) corFinal = '#ff003c'; 
-                        else if (rawRoll >= 18) corFinal = '#ffcc00'; 
-                        else if (rawRoll === 1) corFinal = '#660000'; 
-                    }
+                // 🔥 TRAVA DE SEGURANÇA: Só ativa a animação se o painel do Mapa estiver visível no ecrã! 🔥
+                const painelMapa = document.querySelector('.mapa-panel');
+                const mapaVisivel = painelMapa && (painelMapa.offsetWidth > 0 || painelMapa.offsetHeight > 0);
+                const isAbaMapa = String(abaAtiva || '').toLowerCase().includes('map');
 
-                    setDadoAnim({ ativo: true, numero: Math.floor(Math.random() * 20) + 1, finalResult: null, cor: '#00ffcc', quemRolou: newItem.nome });
-                    let intervalos = 0;
-                    const tempoGiro = setInterval(() => {
-                        setDadoAnim(prev => ({ ...prev, numero: Math.floor(Math.random() * 20) + 1 }));
-                        intervalos++;
-                        if (intervalos > 15) {
-                            clearInterval(tempoGiro);
-                            setDadoAnim({ ativo: true, numero: rawRoll, finalResult: rawRoll, cor: corFinal, quemRolou: newItem.nome });
-                            setTimeout(() => { setDadoAnim({ ativo: false, numero: 20, finalResult: null, cor: '#00ffcc', quemRolou: '' }); }, 2000);
+                if (mapaVisivel || isAbaMapa) {
+                    let rawRoll = 0;
+                    let regexStrong = /<strong>(\d+)<\/strong>/g;
+                    let match;
+                    while ((match = regexStrong.exec(newItem.rolagem)) !== null) {
+                        let v = parseInt(match[1]);
+                        if (v > rawRoll) rawRoll = v;
+                    }
+                    if (rawRoll === 0) { 
+                        let regexArr = /\[(.*?)\]/;
+                        let mArr = regexArr.exec(newItem.rolagem);
+                        if (mArr) {
+                            let clean = mArr[1].replace(/<[^>]*>?/gm, ''); 
+                            let nums = clean.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n));
+                            if (nums.length > 0) rawRoll = Math.max(...nums);
                         }
-                    }, 80);
+                    }
+                    
+                    if (rawRoll > 0) {
+                        let corFinal = '#0088ff'; 
+                        if (newItem.tipo === 'dano') {
+                            if (newItem.armaStr?.includes('FATAL')) corFinal = '#ff003c'; 
+                            else if (newItem.armaStr?.includes('CRÍTICO')) corFinal = '#ffcc00'; 
+                        } else {
+                            if (rawRoll === 20) corFinal = '#ff003c'; 
+                            else if (rawRoll >= 18) corFinal = '#ffcc00'; 
+                            else if (rawRoll === 1) corFinal = '#660000'; 
+                        }
+
+                        setDadoAnim({ ativo: true, numero: Math.floor(Math.random() * 20) + 1, finalResult: null, cor: '#00ffcc', quemRolou: newItem.nome });
+                        let intervalos = 0;
+                        const tempoGiro = setInterval(() => {
+                            setDadoAnim(prev => ({ ...prev, numero: Math.floor(Math.random() * 20) + 1 }));
+                            intervalos++;
+                            if (intervalos > 15) {
+                                clearInterval(tempoGiro);
+                                setDadoAnim({ ativo: true, numero: rawRoll, finalResult: rawRoll, cor: corFinal, quemRolou: newItem.nome });
+                                setTimeout(() => { setDadoAnim({ ativo: false, numero: 20, finalResult: null, cor: '#00ffcc', quemRolou: '' }); }, 2000);
+                            }
+                        }, 80);
+                    }
                 }
             }
         }
         prevFeedLen.current = feedCombate.length;
-    }, [feedCombate]);
+    }, [feedCombate, abaAtiva]);
 
     useEffect(() => {
         setMapVantagens(fichaSegura.ataqueConfig?.vantagens || 0);
@@ -332,7 +340,6 @@ export function MapaFormProvider({ children }) {
         return lista;
     }, [personagens, cenaRenderId]);
 
-    // 🔥 O MOTOR LÊ DANO E LETALIDADE DINAMICAMENTE 🔥
     const getDanoDinamicoZona = useCallback((zona) => {
         let baseResult = { dano: zona.danoOriginal || zona.danoAplicado || 0, letalidade: zona.letalidadeOriginal || 0 };
         
@@ -654,7 +661,7 @@ export function MapaFormProvider({ children }) {
     const infoDaVez = jogadorDaVez ? getAvatarInfo(jogadorDaVez.ficha) : null;
 
     const value = useMemo(() => ({
-        minhaFicha, meuNome, personagens, feedCombate, isMestre, dummies, alvoSelecionado, cenario,
+        minhaFicha, meuNome, personagens, feedCombate, isMestre, dummies, alvoSelecionado, cenario, abaAtiva,
         fichaSegura, modo3D, setModo3D, tamanhoCelula, setTamanhoCelula,
         iniciativaInput, setIniciativaInput, altitudeInput, setAltitudeInput,
         turnoAtualIndex, setTurnoAtualIndex, feedIndexTurnoAtual, setFeedIndexTurnoAtual,
@@ -672,7 +679,7 @@ export function MapaFormProvider({ children }) {
         alterarZoom, setMinhaIniciativa, avancarTurno, sairDoCombate, encerrarCombate,
         rolarAcertoRapido, tokenMap, tokens3D, jogadorDaVez, infoDaVez, fmt, deletarZona
     }), [
-        minhaFicha, meuNome, personagens, feedCombate, isMestre, dummies, alvoSelecionado, cenario,
+        minhaFicha, meuNome, personagens, feedCombate, isMestre, dummies, alvoSelecionado, cenario, abaAtiva,
         fichaSegura, modo3D, tamanhoCelula, iniciativaInput, altitudeInput,
         turnoAtualIndex, feedIndexTurnoAtual, jogadorHistory, mapQD, mapFD,
         mapBonus, mapStat, mapUsarProf, profGlobal, mapVantagens, mapDesvantagens,
