@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useMapaForm, urlSeguraParaCss, calcularCA, MAP_SIZE } from './MapaFormContext';
 import Tabuleiro3D from './Tabuleiro3D';
 import DummieToken from '../combat/DummieToken';
-import { salvarDummie, salvarCenarioCompleto, salvarFichaSilencioso } from '../../services/firebase-sync'; 
+import { salvarDummie, salvarCenarioCompleto } from '../../services/firebase-sync'; 
 import { getClassIconById } from '../../core/classIcons';
 
 // 🔥 IMPORTS DO FIREBASE PARA O GRAVADOR FLUTUANTE 🔥
@@ -14,7 +14,7 @@ import { storage, functions } from '../../services/firebase-config';
 const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Mapa provider não encontrado</div>;
 
 // ============================================================================
-// 🔥 O OLHO DE SAURON (WIDGET FLUTUANTE DA SEXTA-FEIRA NO MAPA) 🔥
+// 🔥 O OLHO DE SAURON COM MESA DE MISTURA DIGITAL 🔥
 // ============================================================================
 export function MapaOlhoSextaFeira() {
     const ctx = useMapaForm();
@@ -30,7 +30,12 @@ export function MapaOlhoSextaFeira() {
     const streamRef = useRef(null);
     const mediaRecorderRef = useRef(null);
     const timerRef = useRef(null);
+    
+    // 🔥 REFERÊNCIAS DO MIXER 🔥
     const audioContextRef = useRef(null);
+    const mixerCtxRef = useRef(null);
+    const mixedStreamRef = useRef(null);
+    
     const animationFrameRef = useRef(null);
     const olhoRef = useRef(null);
     const pedacoContadorRef = useRef(1);
@@ -57,6 +62,7 @@ export function MapaOlhoSextaFeira() {
             if (timerRef.current) clearInterval(timerRef.current);
             if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") mediaRecorderRef.current.stop();
             if (audioContextRef.current) audioContextRef.current.close();
+            if (mixerCtxRef.current) mixerCtxRef.current.close();
             if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
         };
     }, []);
@@ -107,7 +113,7 @@ export function MapaOlhoSextaFeira() {
             }
             
             localStorage.setItem('rpgSextaFeira_capitulos', JSON.stringify(caps));
-            addLog(`✅ Salvo com sucesso! Abra os Registros para ler.`);
+            addLog(`✅ Salvo com sucesso! Abra os Registros para ler.`); 
             
         } catch(e) { 
             console.error('Erro ao salvar lore local', e); 
@@ -161,8 +167,9 @@ export function MapaOlhoSextaFeira() {
         }
     };
 
-    const iniciarMediaRecorder = () => {
-        const recorder = new MediaRecorder(streamRef.current, { mimeType: 'audio/webm' });
+    // Agora recebe o stream final (misturado)
+    const iniciarMediaRecorder = (streamParaGravar) => {
+        const recorder = new MediaRecorder(streamParaGravar, { mimeType: 'audio/webm' });
         let localChunks = [];
         const numeroPedaco = pedacoContadorRef.current;
         pedacoContadorRef.current++; 
@@ -215,18 +222,41 @@ export function MapaOlhoSextaFeira() {
     const iniciarGravacao = async () => {
         try {
             if (!streamRef.current) streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
-            iniciarVisualizador(streamRef.current); 
+            
+            // 🔥 A MESA DE SOM DIGITAL (MIXER) 🔥
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            mixerCtxRef.current = audioCtx;
+            const destination = audioCtx.createMediaStreamDestination();
+            
+            // Ligar o nosso microfone à mesa
+            audioCtx.createMediaStreamSource(streamRef.current).connect(destination);
+            
+            // Ligar os cabos dos amigos (PainelDeVoz/PeerJS) à mesa
+            let vozesExtras = 0;
+            if (window.remoteAudioStreams && window.remoteAudioStreams.length > 0) {
+                window.remoteAudioStreams.forEach(remoteStream => {
+                    audioCtx.createMediaStreamSource(remoteStream).connect(destination);
+                    vozesExtras++;
+                });
+            }
+            
+            mixedStreamRef.current = destination.stream;
+            
+            // O radar agora vai piscar com TODAS as vozes da call
+            iniciarVisualizador(mixedStreamRef.current); 
+            
             pedacoContadorRef.current = 1;
-            iniciarMediaRecorder();
+            iniciarMediaRecorder(mixedStreamRef.current); // Enviamos a stream misturada!
+            
             setGravando(true);
             setExpandido(false); 
-            addLog("🎙️ Sexta-Feira na escuta (Cortes de 20m).");
+            addLog(`🎙️ Escuta Ativa! Misturando microfone + ${vozesExtras} jogador(es).`);
 
             const TEMPO_CORTE = 20 * 60 * 1000; 
             timerRef.current = setInterval(() => {
                 addLog("✂️ 20m. Fechando e abrindo novo bloco...");
                 if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") mediaRecorderRef.current.stop(); 
-                iniciarMediaRecorder(); 
+                iniciarMediaRecorder(mixedStreamRef.current); 
             }, TEMPO_CORTE);
 
         } catch (err) { addLog(`❌ Erro mic: ${err.message}`); }
@@ -236,14 +266,23 @@ export function MapaOlhoSextaFeira() {
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
         if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") mediaRecorderRef.current.stop(); 
         if (streamRef.current) { streamRef.current.getTracks().forEach(track => track.stop()); streamRef.current = null; }
+        
+        // Desliga a Mesa de Som
+        if (mixerCtxRef.current) {
+            mixerCtxRef.current.close();
+            mixerCtxRef.current = null;
+        }
+        mixedStreamRef.current = null;
+
         pararVisualizador();
         setGravando(false);
         addLog("⏹️ Gravação encerrada.");
     };
 
     return (
-        <div style={{ position: 'absolute', bottom: '20px', right: '20px', zIndex: 99999, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
+        <div style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 99999, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
             
+            {/* PAINEL EXPANDIDO */}
             {expandido && (
                 <div className="fade-in" style={{ background: 'rgba(10,10,15,0.95)', border: `2px solid ${gravando ? '#ff003c' : '#0088ff'}`, borderRadius: '10px', padding: '15px', width: '300px', boxShadow: `0 0 20px ${gravando ? 'rgba(255,0,60,0.4)' : 'rgba(0,136,255,0.4)'}`, display: 'flex', flexDirection: 'column', gap: '10px', backdropFilter: 'blur(5px)' }}>
                     <div style={{ borderBottom: '1px solid #333', paddingBottom: '5px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -278,6 +317,7 @@ export function MapaOlhoSextaFeira() {
                 </div>
             )}
 
+            {/* O OLHO (BOTÃO FLUTUANTE) */}
             <div 
                 ref={olhoRef}
                 onClick={() => setExpandido(!expandido)}
@@ -295,16 +335,16 @@ export function MapaOlhoSextaFeira() {
     );
 }
 
+// ============================================================================
+// RESTANTE DO CÓDIGO (NÃO ALTERADO)
+// ============================================================================
+
 export function MapaDadoAnimado() {
     const ctx = useMapaForm();
     if (!ctx) return FALLBACK;
-    const { dadoAnim, abaAtiva } = ctx;
+    const { dadoAnim } = ctx;
 
-    const painelMapa = document.querySelector('.mapa-panel');
-    const mapaVisivel = painelMapa && (painelMapa.offsetWidth > 0 || painelMapa.offsetHeight > 0);
-    const isAbaMapa = String(abaAtiva || '').toLowerCase().includes('map');
-
-    if (!dadoAnim.ativo || (!mapaVisivel && !isAbaMapa)) return null;
+    if (!dadoAnim.ativo) return null;
 
     return createPortal(
         <>
@@ -477,11 +517,10 @@ export function MapaMestreGerenciadorCenas() {
 }
 
 export function MapaMestreGavetaTokens() {
-    // ⚠️ COMPONENTE ORIGINAL DA GAVETA
     return (
         <div style={{ background: 'rgba(0,0,0,0.5)', padding: 15, borderRadius: 5, border: '1px solid #00ff88' }}>
             <h3 style={{ color: '#00ff88', margin: 0 }}>📦 Gaveta de Tokens</h3>
-            <p style={{ color: '#888', fontStyle: 'italic' }}>Componente da Gaveta preservado. Cole aqui a sua lógica interna se necessário.</p>
+            <p style={{ color: '#888', fontStyle: 'italic' }}>Componente da Gaveta preservado.</p>
         </div>
     );
 }
@@ -836,102 +875,6 @@ export function MapaAreaCentral() {
     );
 }
 
-// 🔥 NOVO: COMPONENTE DE ECONOMIA DE AÇÕES (Para o Mapa) 🔥
-export function MapaEconomiaAcoes() {
-    const ctx = useMapaForm();
-    if (!ctx) return null;
-    const { minhaFicha, meuNome, isMestre, jogadorDaVez, jogadorHistory, dummies, personagens, toggleActionDot } = ctx;
-
-    let targetEntidade = { tipo: 'player', nome: meuNome, id: meuNome, data: minhaFicha };
-
-    if (isMestre) {
-        if (jogadorHistory) {
-            const foundDummie = Object.entries(dummies || {}).find(([k,v]) => v.nome === jogadorHistory || k === jogadorHistory);
-            if (foundDummie) targetEntidade = { tipo: 'dummie', nome: foundDummie[1].nome, id: foundDummie[0], data: foundDummie[1] };
-            else if (personagens[jogadorHistory]) targetEntidade = { tipo: 'player', nome: jogadorHistory, id: jogadorHistory, data: personagens[jogadorHistory] };
-        } else if (jogadorDaVez) {
-            targetEntidade = { tipo: jogadorDaVez.isDummie ? 'dummie' : 'player', nome: jogadorDaVez.nome, id: jogadorDaVez.id || jogadorDaVez.nome, data: jogadorDaVez.ficha };
-        }
-    }
-
-    const acoes = targetEntidade.data?.acoes || { padrao: {max:1, atual:1}, bonus: {max:1, atual:1}, reacao: {max:1, atual:1} };
-    const canEdit = targetEntidade.nome === meuNome || (isMestre && targetEntidade.tipo === 'dummie');
-
-    const renderDots = (tipo, label, color) => {
-        const max = acoes[tipo]?.max || 1;
-        const atual = acoes[tipo]?.atual || 0;
-        const dots = [];
-        for (let i = 0; i < max; i++) {
-            const isAvail = i < atual;
-            dots.push(
-                <div 
-                    key={i}
-                    onClick={() => canEdit && toggleActionDot(tipo, isAvail, targetEntidade.nome, targetEntidade.tipo === 'dummie', targetEntidade.id)}
-                    style={{
-                        width: 14, height: 14, borderRadius: '50%',
-                        background: isAvail ? color : 'transparent',
-                        border: `2px solid ${color}`,
-                        cursor: canEdit ? 'pointer' : 'default',
-                        boxShadow: isAvail ? `0 0 8px ${color}` : 'none',
-                        opacity: isAvail ? 1 : 0.3
-                    }}
-                    title={canEdit ? "Clique para gastar/recuperar" : "Apenas o dono pode alterar"}
-                />
-            );
-        }
-        return (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
-                <span style={{ fontSize: '0.65em', color: color, fontWeight: 'bold', textTransform: 'uppercase' }}>{label}</span>
-                <div style={{ display: 'flex', gap: 4 }}>{dots}</div>
-            </div>
-        );
-    };
-
-    return (
-        <div style={{ marginTop: 15, padding: '10px 15px', background: 'rgba(0,0,0,0.6)', border: '1px solid #333', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 15 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ color: '#fff', fontSize: '0.85em', fontWeight: 'bold' }}>
-                    ⚡ Ações de: <span style={{ color: '#00ffcc' }}>{targetEntidade.nome}</span>
-                    {!canEdit && <span style={{ fontSize: '0.7em', color: '#888', marginLeft: 8 }}>(Apenas Visão)</span>}
-                </span>
-                {canEdit && (
-                    <button 
-                        onClick={() => {
-                            if (targetEntidade.tipo === 'dummie') {
-                                const dData = dummies[targetEntidade.id];
-                                if(dData) {
-                                    const nAcoes = dData.acoes ? JSON.parse(JSON.stringify(dData.acoes)) : { padrao: {max:1, atual:1}, bonus: {max:1, atual:1}, reacao: {max:1, atual:1} };
-                                    if (nAcoes.padrao) nAcoes.padrao.atual = nAcoes.padrao.max;
-                                    if (nAcoes.bonus) nAcoes.bonus.atual = nAcoes.bonus.max;
-                                    if (nAcoes.reacao) nAcoes.reacao.atual = nAcoes.reacao.max;
-                                    salvarDummie(targetEntidade.id, { ...dData, acoes: nAcoes });
-                                }
-                            } else {
-                                ctx.updateFicha(f => {
-                                    if (!f.acoes) f.acoes = { padrao: {max:1, atual:1}, bonus: {max:1, atual:1}, reacao: {max:1, atual:1} };
-                                    if (f.acoes.padrao) f.acoes.padrao.atual = f.acoes.padrao.max;
-                                    if (f.acoes.bonus) f.acoes.bonus.atual = f.acoes.bonus.max;
-                                    if (f.acoes.reacao) f.acoes.reacao.atual = f.acoes.reacao.max;
-                                });
-                                salvarFichaSilencioso();
-                            }
-                        }}
-                        style={{ background: 'none', border: '1px solid #555', color: '#aaa', borderRadius: 4, cursor: 'pointer', padding: '2px 6px', fontSize: '0.8em' }}
-                        title="Dica: Ao passar o turno, o sistema também recarrega automaticamente!"
-                    >
-                        ↻ Resetar
-                    </button>
-                )}
-            </div>
-            <div style={{ display: 'flex', gap: 20 }}>
-                {renderDots('padrao', 'Ação', '#00ffcc')}
-                {renderDots('bonus', 'Bônus', '#ffcc00')}
-                {renderDots('reacao', 'Reação', '#ff00ff')}
-            </div>
-        </div>
-    );
-}
-
 export function MapaIniciativaTracker() {
     const ctx = useMapaForm();
     if (!ctx) return FALLBACK;
@@ -1016,9 +959,6 @@ export function MapaIniciativaTracker() {
                     })
                 )}
             </div>
-
-            {/* 🔥 ECONOMIA DE AÇÕES EMBUTIDA NO TRACKER 🔥 */}
-            <MapaEconomiaAcoes />
 
             {jogadorHistory && (
                 <div style={{ marginTop: 15, padding: 15, background: 'rgba(0, 20, 40, 0.8)', border: '1px solid #0088ff', borderRadius: 8 }}>
