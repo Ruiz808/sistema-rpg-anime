@@ -100,12 +100,13 @@ export function MapaFormProvider({ children }) {
     const isPresenteNaTaverna = tavernaAtivos.includes(meuNome);
 
     // ========================================================================
-    // 🔥 SISTEMA DE VOZ AUTOMÁTICO (LIGA AO SENTAR NA MESA) 🔥
+    // 🔥 SISTEMA DE VOZ PROFISSIONAL (AUTO-RECONNECT + SUPRESSÃO DE RUÍDO) 🔥
     // ========================================================================
-    const [radioLigado, setRadioLigado] = useState(false); // 🔥 O INTERRUPTOR QUE FALTAVA!
+    const [radioLigado, setRadioLigado] = useState(false); 
     const [peerObj, setPeerObj] = useState(null);
     const [meuStream, setMeuStream] = useState(null);
     const meuStreamRef = useRef(null); 
+    const chamadasEmAndamento = useRef(new Set()); // Impede de ligar mil vezes ao mesmo
     const [conexoes, setConexoes] = useState([]);
     const [mutado, setMutado] = useState(false);
     const [surdo, setSurdo] = useState(false);
@@ -116,16 +117,22 @@ export function MapaFormProvider({ children }) {
     const meuIDTelefone = meuNome ? meuNome.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
     const rtcInicializado = useRef(false);
 
+    // 🔥 CONFIGURAÇÃO NATIVA PARA MATAR O RUÍDO DO VENTILADOR 🔥
+    const audioConfig = { 
+        noiseSuppression: true, 
+        echoCancellation: true, 
+        autoGainControl: true 
+    };
+
     // 1. INICIA OU DESLIGA O MIC BASEADO NA PRESENÇA
     useEffect(() => {
-        // 🔥 Agora só avança se você tiver clicado em "ENTRAR NO RÁDIO"
         if (!meuIDTelefone || !radioLigado) return;
 
         if (isPresenteNaTaverna && !rtcInicializado.current) {
             rtcInicializado.current = true;
             setVoiceStatus('A ligar Microfone...');
             
-            navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+            navigator.mediaDevices.getUserMedia({ audio: audioConfig }).then(stream => {
                 meuStreamRef.current = stream;
                 setMeuStream(stream);
 
@@ -159,6 +166,8 @@ export function MapaFormProvider({ children }) {
                                     return [...prev, { id: call.peer, stream: remoteStream }];
                                 });
                             });
+                            // Se ele desligar do lado dele, removemos!
+                            call.on('close', () => setConexoes(prev => prev.filter(c => c.id !== call.peer)));
                         } else {
                             setTimeout(attemptAnswer, 500); 
                         }
@@ -171,7 +180,7 @@ export function MapaFormProvider({ children }) {
                 rtcInicializado.current = false;
             });
         } else if (!isPresenteNaTaverna && rtcInicializado.current) {
-            // SAIR DA MESA: Desliga tudo e liberta o microfone!
+            // SAIR DA MESA: Desliga tudo!
             rtcInicializado.current = false;
             if (peerObj) { peerObj.destroy(); setPeerObj(null); }
             if (meuStreamRef.current) { meuStreamRef.current.getTracks().forEach(t => t.stop()); meuStreamRef.current = null; }
@@ -185,33 +194,57 @@ export function MapaFormProvider({ children }) {
         if (!peerObj || !meuStreamRef.current || !nomeDestino) return;
         const idFormatado = `anime-rpg-${nomeDestino.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
         
+        if (chamadasEmAndamento.current.has(idFormatado)) return;
+        chamadasEmAndamento.current.add(idFormatado);
+
         const call = peerObj.call(idFormatado, meuStreamRef.current);
-        if (!call) return;
+        if (!call) {
+            chamadasEmAndamento.current.delete(idFormatado);
+            return;
+        }
 
         call.on('stream', (remoteStream) => {
             setConexoes(prev => {
                 if (prev.find(c => c.id === idFormatado)) return prev.map(c => c.id === idFormatado ? { ...c, stream: remoteStream } : c);
                 return [...prev, { id: idFormatado, stream: remoteStream }];
             });
+            chamadasEmAndamento.current.delete(idFormatado);
+        });
+
+        // Limpa se a chamada cair, para o Heartbeat tentar de novo
+        call.on('close', () => {
+            setConexoes(prev => prev.filter(c => c.id !== idFormatado));
+            chamadasEmAndamento.current.delete(idFormatado);
+        });
+        call.on('error', () => {
+            setConexoes(prev => prev.filter(c => c.id !== idFormatado));
+            chamadasEmAndamento.current.delete(idFormatado);
         });
     }, [peerObj]);
 
-    // 2. AUTO-DIALER: Ligar automaticamente a quem já está na mesa!
+    // 2. 🔥 O HEARTBEAT (BATE-CORAÇÃO): Reconecta sozinhos os jogadores que caírem!
     useEffect(() => {
         if (!peerObj || !isPresenteNaTaverna || !meuStreamRef.current) return;
         
-        const ativos = Array.isArray(cenario?.tavernaAtivos) ? cenario.tavernaAtivos : [];
-        
-        ativos.forEach(nomeAmigo => {
-            if (nomeAmigo === meuNome) return;
-            const idFormatado = `anime-rpg-${nomeAmigo.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+        const interval = setInterval(() => {
+            const ativos = Array.isArray(cenario?.tavernaAtivos) ? cenario.tavernaAtivos : [];
             
-            // Se o amigo está na mesa e ainda não o ligámos, telefona!
-            if (!conexoes.find(c => c.id === idFormatado)) {
-                 fazerChamada(nomeAmigo);
-            }
-        });
-    }, [cenario?.tavernaAtivos, peerObj, isPresenteNaTaverna, conexoes.length, meuNome, fazerChamada]);
+            ativos.forEach(nomeAmigo => {
+                if (nomeAmigo === meuNome) return;
+                const idFormatado = `anime-rpg-${nomeAmigo.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+                
+                setConexoes(prev => {
+                    const exists = prev.find(c => c.id === idFormatado);
+                    if (!exists && !chamadasEmAndamento.current.has(idFormatado)) {
+                        fazerChamada(nomeAmigo);
+                    }
+                    return prev;
+                });
+            });
+        }, 3000); // Passa o "radar" a cada 3 segundos
+
+        return () => clearInterval(interval);
+    }, [cenario?.tavernaAtivos, peerObj, isPresenteNaTaverna, meuNome, fazerChamada]);
 
     const trocarMicrofone = useCallback(async (deviceId) => {
         try {
@@ -220,7 +253,7 @@ export function MapaFormProvider({ children }) {
                 meuStreamRef.current.getTracks().forEach(t => t.stop()); 
             }
             
-            const newStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: { exact: deviceId } } });
+            const newStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: { exact: deviceId }, ...audioConfig } });
             meuStreamRef.current = newStream;
             setMeuStream(newStream);
 
@@ -702,7 +735,7 @@ export function MapaFormProvider({ children }) {
         alterarZoom, setMinhaIniciativa, avancarTurno, sairDoCombate, encerrarCombate,
         rolarAcertoRapido, tokenMap, tokens3D, jogadorDaVez, infoDaVez, fmt, deletarZona,
         meuStream, conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen, fazerChamada, desconectarVoz,
-        mics, selectedMic, trocarMicrofone, radioLigado, setRadioLigado // 🔥 ESTADO DE RÁDIO ADICIONADO AQUI!
+        mics, selectedMic, trocarMicrofone, radioLigado, setRadioLigado
     }), [
         minhaFicha, meuNome, personagens, feedCombate, isMestre, dummies, alvoSelecionado, cenario,
         fichaSegura, modo3D, tamanhoCelula, iniciativaInput, altitudeInput,
