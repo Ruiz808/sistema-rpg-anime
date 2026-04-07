@@ -13,106 +13,141 @@ import { storage, functions } from '../../services/firebase-config';
 const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Mapa provider não encontrado</div>;
 
 // ============================================================================
-// 🔥 A CARTA DE AVATAR INTELIGENTE (SINTETIZADOR DE ÁUDIO WEB) 🔥
-// A solução definitiva contra bugs do Chrome: Toca o áudio matematicamente!
+// 🔥 A CARTA DE AVATAR INTELIGENTE (SEM BOTÕES DE LIGAR) 🔥
 // ============================================================================
-function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, fazerChamada, cardSize }) {
+function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, cardSize }) {
     const ctx = useMapaForm();
     const { getAvatarInfo, fmt } = ctx;
     const info = getAvatarInfo(ficha);
 
     const [isSpeaking, setIsSpeaking] = useState(false);
     const audioCtxRef = useRef(null);
+    const analyserRef = useRef(null);
     const rafRef = useRef(null);
 
+    // 1. 🔥 MOTOR DE ÁUDIO NATIVO COLADO NO HTML (APENAS PARA OS OUTROS) 🔥
     useEffect(() => {
-        if (!stream) {
+        if (isMe || !stream) return;
+
+        const audioEl = document.createElement('audio');
+        audioEl.srcObject = stream;
+        audioEl.autoplay = true;
+        audioEl.playsInline = true;
+        audioEl.muted = surdo; 
+        
+        audioEl.style.position = 'absolute';
+        audioEl.style.opacity = '0';
+        audioEl.style.pointerEvents = 'none';
+        
+        document.body.appendChild(audioEl);
+        window[`radio_${nome}`] = audioEl;
+
+        audioEl.play().catch(e => {
+            console.warn(`[Rádio] Áudio de ${nome} bloqueado pelo navegador. Clique na carta.`, e);
+        });
+
+        return () => {
+            audioEl.pause();
+            audioEl.srcObject = null;
+            if (document.body.contains(audioEl)) {
+                document.body.removeChild(audioEl);
+            }
+            delete window[`radio_${nome}`];
+        };
+    }, [stream, isMe, surdo, nome]);
+
+    // 2. 🔥 MOTOR DE DETEÇÃO DE VOZ (APENAS PARA O SEU MIC!) 🔥
+    useEffect(() => {
+        if (!stream || !isMe) {
             setIsSpeaking(false);
             return;
         }
 
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
-        const actx = audioCtxRef.current;
-
-        let source, analyser, gainNode;
-
         try {
-            // Liga o cabo de áudio
-            source = actx.createMediaStreamSource(stream);
-            
-            // Analisa o som para o NEON
-            analyser = actx.createAnalyser();
-            analyser.fftSize = 256;
-            analyser.smoothingTimeConstant = 0.4;
-            source.connect(analyser);
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
+            const actx = audioCtxRef.current;
 
-            // 🔥 Se FOR UM AMIGO, toca o som pela Placa de Som Virtual!
-            if (!isMe) {
-                gainNode = actx.createGain();
-                gainNode.gain.value = surdo ? 0 : 1; // Respeita o botão Ensurdecer
-                analyser.connect(gainNode);
-                gainNode.connect(actx.destination); // Envia o som direto para os auscultadores
+            if (actx.state === 'suspended') actx.resume();
+
+            if (stream.getAudioTracks().length > 0) {
+                const source = actx.createMediaStreamSource(stream);
+                const analyser = actx.createAnalyser();
+                analyser.fftSize = 256;
+                analyser.smoothingTimeConstant = 0.4; 
+                
+                source.connect(analyser);
+                analyserRef.current = analyser;
+
+                const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+                const checkVolume = () => {
+                    if (analyserRef.current) {
+                        analyserRef.current.getByteFrequencyData(dataArray);
+                        let sum = 0;
+                        for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+                        const average = sum / dataArray.length;
+
+                        setIsSpeaking(average > 10);
+                    }
+                    rafRef.current = requestAnimationFrame(checkVolume);
+                };
+                checkVolume();
             }
-
-            // O ciclo que faz o Neon piscar ao vivo
-            const dataArray = new Uint8Array(analyser.frequencyBinCount);
-            const checkVolume = () => {
-                analyser.getByteFrequencyData(dataArray);
-                let sum = 0;
-                for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
-                setIsSpeaking((sum / dataArray.length) > 10);
-                rafRef.current = requestAnimationFrame(checkVolume);
-            };
-            checkVolume();
-
-        } catch (e) {
-            console.error(`[Rádio] Erro ao sintetizar áudio de ${nome}`, e);
+        } catch(err) {
+            console.error("Erro ao analisar áudio", err);
         }
 
         return () => {
             if (rafRef.current) cancelAnimationFrame(rafRef.current);
-            if (source) source.disconnect();
-            if (analyser) analyser.disconnect();
-            if (gainNode) gainNode.disconnect();
+            if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
+                audioCtxRef.current.close().catch(e => console.log(e));
+            }
         };
-    }, [stream, isMe, surdo]);
+    }, [stream, isMe]);
 
-    // 🔥 TRUQUE: Um clique na tela da Taverna acorda o sintetizador se o Chrome o tiver adormecido
+    // 3. 🔥 O TRUQUE DE ACORDAR O NAVEGADOR 🔥
     const handleCardClick = () => {
-        if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
-            audioCtxRef.current.resume();
-            console.log(`[Rádio] Sintetizador de ${nome} acordado!`);
+        if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') audioCtxRef.current.resume();
+        if (!isMe && window[`radio_${nome}`]) {
+            window[`radio_${nome}`].play().catch(e => console.log("Ainda bloqueado:", e));
         }
     };
 
-    // 🔥 ESTILOS DINÂMICOS (O DISCORD NEON EFFECT) 🔥
+    // 🔥 ESTILOS DINÂMICOS 🔥
     let boxShadowCard = '0 0 15px rgba(0,0,0,0.8)';
     let borderCard = '2px solid #333';
-    let iconMic = '📞';
+    let iconMic = '⏳'; // A carregar
 
     if (isConnected) {
         if (isMe && mutado) {
             borderCard = '2px solid #ff003c';
             boxShadowCard = '0 0 20px rgba(255,0,60,0.4)';
             iconMic = '🔇';
-        } else if (isSpeaking) {
-            // A Falar! (Seja você ou o amigo) -> NEON BRILHANTE
+        } else if (isMe && isSpeaking) {
             borderCard = '2px solid #00ffcc';
             boxShadowCard = '0 0 35px #00ffcc, inset 0 0 20px rgba(0,255,204,0.4)';
             iconMic = '🔊';
+        } else if (!isMe && stream) {
+            borderCard = '2px solid #00aaff';
+            boxShadowCard = '0 0 20px rgba(0,170,255,0.4)';
+            iconMic = '🔊';
         } else {
-            // Calado. -> NEON AZUL ESCURO
             borderCard = '2px solid #005588';
             boxShadowCard = '0 0 10px rgba(0,85,136,0.5)';
             iconMic = '🎙️';
         }
+    } else if (!isMe) {
+        // Se ainda não conectou, mostra um alerta discreto em vez do botão gigante
+        borderCard = '2px dashed #ffcc00';
+        iconMic = '🔄';
     }
 
     return (
         <div 
             onClick={handleCardClick}
             className="fade-in" 
+            title={!isMe && stream ? `Clique para garantir o som de ${nome}!` : ''}
             style={{ position: 'relative', width: cardSize, aspectRatio: '4/3', background: '#111', border: borderCard, borderRadius: 6, overflow: 'hidden', backgroundImage: urlSeguraParaCss(info.img) || 'none', backgroundSize: 'cover', backgroundPosition: 'top center', boxShadow: boxShadowCard, transition: 'all 0.15s ease-out', cursor: 'pointer' }}
         >
             <div style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(0,0,0,0.8)', borderRadius: '50%', padding: '5px 8px', fontSize: '1.2em', border: borderCard, transition: 'all 0.15s ease-out' }}>
@@ -120,10 +155,8 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
             </div>
 
             {!isConnected && !isMe && (
-                <div style={{ position: 'absolute', top: '40%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10 }}>
-                    <button className="btn-neon btn-blue" onClick={(e) => { e.stopPropagation(); fazerChamada(nome); }} style={{ padding: '10px 25px', fontSize: '1.1em', fontWeight: 'bold', boxShadow: '0 0 15px #0088ff' }}>
-                        📞 LIGAR
-                    </button>
+                <div style={{ position: 'absolute', top: '40%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10, background: 'rgba(0,0,0,0.8)', padding: '5px 10px', borderRadius: '5px', border: '1px solid #ffcc00', color: '#ffcc00', fontSize: '0.8em', fontWeight: 'bold' }}>
+                    A CONECTAR...
                 </div>
             )}
 
@@ -456,14 +489,14 @@ export function MapaOlhoSextaFeira() {
 }
 
 // ============================================================================
-// 🔥 A SESSÃO RP QUE SE TRANSFORMOU NUM DISCORD! 🔥
+// 🔥 A SESSÃO RP QUE SE TRANSFORMOU NUM DISCORD AUTOMÁTICO! 🔥
 // ============================================================================
 export function MapaSessaoRP() {
     const ctx = useMapaForm();
     if (!ctx) return FALLBACK;
     const { 
         meuNome, playersNaTaverna, isPresenteNaTaverna, togglePresencaTaverna, getAvatarInfo, fmt,
-        conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen, fazerChamada,
+        conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen,
         mics, selectedMic, trocarMicrofone, meuStream 
     } = ctx;
 
@@ -481,35 +514,39 @@ export function MapaSessaoRP() {
             <h1 style={{ color: '#ffcc00', textShadow: '0 0 15px #ffcc00', margin: 0, letterSpacing: 3 }}>SESSÃO RP</h1>
             <p style={{ color: '#aaa', fontStyle: 'italic', marginBottom: 10, fontSize: '1.1em' }}>{playersNaTaverna.length} Lenda(s) Presente(s). O Mestre está a moldar o tecido da realidade...</p>
             
-            <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '20px', background: 'rgba(0,0,0,0.5)', padding: '5px 15px', borderRadius: '5px', border: '1px solid #333', flexWrap: 'wrap', justifyContent: 'center' }}>
-                <div style={{ color: '#00ffcc', fontSize: '0.85em', fontFamily: 'monospace' }}>📡 Status: {voiceStatus}</div>
-                
-                {mics && mics.length > 0 && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', borderLeft: '1px solid #444', paddingLeft: '20px' }}>
-                        <span style={{ color: '#aaa', fontSize: '0.8em' }}>🎙️ Mic:</span>
-                        <select 
-                            className="input-neon"
-                            value={selectedMic}
-                            onChange={(e) => trocarMicrofone(e.target.value)}
-                            style={{ padding: '4px 8px', fontSize: '0.8em', background: '#000', color: '#fff', borderColor: '#00ffcc', borderRadius: '5px', maxWidth: '200px' }}
-                        >
-                            {mics.map(m => (
-                                <option key={m.deviceId} value={m.deviceId}>
-                                    {m.label || `Microfone Padrão ${m.deviceId.slice(0,5)}`}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                )}
-            </div>
+            {isPresenteNaTaverna && (
+                <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '20px', background: 'rgba(0,0,0,0.5)', padding: '5px 15px', borderRadius: '5px', border: '1px solid #333', flexWrap: 'wrap', justifyContent: 'center' }}>
+                    <div style={{ color: '#00ffcc', fontSize: '0.85em', fontFamily: 'monospace' }}>📡 Status: {voiceStatus}</div>
+                    
+                    {mics && mics.length > 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', borderLeft: '1px solid #444', paddingLeft: '20px' }}>
+                            <span style={{ color: '#aaa', fontSize: '0.8em' }}>🎙️ Mic:</span>
+                            <select 
+                                className="input-neon"
+                                value={selectedMic}
+                                onChange={(e) => trocarMicrofone(e.target.value)}
+                                style={{ padding: '4px 8px', fontSize: '0.8em', background: '#000', color: '#fff', borderColor: '#00ffcc', borderRadius: '5px', maxWidth: '200px' }}
+                            >
+                                {mics.map(m => (
+                                    <option key={m.deviceId} value={m.deviceId}>
+                                        {m.label || `Microfone Padrão ${m.deviceId.slice(0,5)}`}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+                </div>
+            )}
             
             <div style={{ display: 'flex', gap: '15px', marginBottom: '30px', background: 'rgba(0,0,0,0.6)', padding: '10px 25px', borderRadius: '30px', border: '1px solid #333' }}>
-                <button onClick={toggleMute} title={mutado ? "Desmutar" : "Mutar"} style={{ width: '45px', height: '45px', borderRadius: '50%', border: 'none', background: mutado ? '#ff003c' : '#00ffcc', color: mutado ? '#fff' : '#000', fontSize: '1.2em', cursor: 'pointer', transition: '0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 10px ${mutado ? '#ff003c' : '#00ffcc'}` }}>
+                <button onClick={toggleMute} title={mutado ? "Desmutar" : "Mutar"} disabled={!isPresenteNaTaverna} style={{ opacity: isPresenteNaTaverna ? 1 : 0.3, width: '45px', height: '45px', borderRadius: '50%', border: 'none', background: mutado ? '#ff003c' : '#00ffcc', color: mutado ? '#fff' : '#000', fontSize: '1.2em', cursor: 'pointer', transition: '0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 10px ${mutado ? '#ff003c' : '#00ffcc'}` }}>
                     {mutado ? '🔇' : '🎙️'}
                 </button>
-                <button onClick={toggleDeafen} title={surdo ? "Ouvir" : "Ensurdecer"} style={{ width: '45px', height: '45px', borderRadius: '50%', border: 'none', background: surdo ? '#ff003c' : 'rgba(255,255,255,0.1)', color: '#fff', fontSize: '1.2em', cursor: 'pointer', transition: '0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <button onClick={toggleDeafen} title={surdo ? "Ouvir" : "Ensurdecer"} disabled={!isPresenteNaTaverna} style={{ opacity: isPresenteNaTaverna ? 1 : 0.3, width: '45px', height: '45px', borderRadius: '50%', border: 'none', background: surdo ? '#ff003c' : 'rgba(255,255,255,0.1)', color: '#fff', fontSize: '1.2em', cursor: 'pointer', transition: '0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {surdo ? '🔕' : '🎧'}
                 </button>
+                
+                {/* 🔥 O GRANDE BOTÃO DA VERDADE (SENTA E LIGA TUDO AO MESMO TEMPO) 🔥 */}
                 <button className={`btn-neon ${isPresenteNaTaverna ? 'btn-red' : 'btn-green'}`} onClick={togglePresencaTaverna} style={{ borderRadius: '25px', margin: 0, padding: '0 20px', fontSize: '0.9em', fontWeight: 'bold' }}>
                     {isPresenteNaTaverna ? 'SAIR DA TAVERNA' : 'SENTAR NA MESA'}
                 </button>
@@ -521,6 +558,8 @@ export function MapaSessaoRP() {
                         const isMe = n === meuNome;
                         const expectedIdTelefone = `anime-rpg-${n.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
                         const conRemota = conexoes.find(c => c.id === expectedIdTelefone);
+                        
+                        // Se não for você, e você estiver na mesa, assume "A Conectar..." até que a stream chegue
                         const isConnected = isMe || !!conRemota;
                         const streamParaAnalisar = isMe ? meuStream : conRemota?.stream;
 
@@ -534,7 +573,6 @@ export function MapaSessaoRP() {
                                 stream={streamParaAnalisar}
                                 mutado={mutado}
                                 surdo={surdo}
-                                fazerChamada={fazerChamada}
                                 cardSize={cardSize}
                             />
                         );
@@ -548,7 +586,7 @@ export function MapaSessaoRP() {
 export function MapaControlesSuperiores() {
     const ctx = useMapaForm();
     if (!ctx) return FALLBACK;
-    const { modo3D, setModo3D, alterarZoom, tamanhoCelula, isMestre, cenaVisualizadaId, cenaAtivaIdGlobal, cenaAtual, altitudeInput, setAltitudeInput, mutado, toggleMute } = ctx;
+    const { modo3D, setModo3D, alterarZoom, tamanhoCelula, isMestre, cenaVisualizadaId, cenaAtivaIdGlobal, cenaAtual, altitudeInput, setAltitudeInput, mutado, toggleMute, isPresenteNaTaverna } = ctx;
     
     return (
         <div style={{ display: 'flex', gap: 15, marginBottom: 10, alignItems: 'center', background: 'rgba(0,0,0,0.6)', padding: '6px 12px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', fontSize: '0.85em', flexWrap: 'wrap' }}>
@@ -564,11 +602,13 @@ export function MapaControlesSuperiores() {
                 <span style={{ color: '#fff', fontWeight: 'bold' }}>{cenaAtual.nome} <span style={{color: '#888', fontWeight: 'normal'}}>(1Q = {cenaAtual.escala}{cenaAtual.unidade})</span></span>
             </div>
             
-            <div style={{ display: 'flex', gap: 5, alignItems: 'center', borderLeft: '1px solid #444', paddingLeft: 15 }}>
-                <button onClick={toggleMute} title={mutado ? "Desmutar Mic" : "Mutar Mic"} style={{ background: mutado ? '#ff003c' : 'none', color: mutado ? '#fff' : '#00ffcc', border: `1px solid ${mutado ? '#ff003c' : '#00ffcc'}`, borderRadius: '5px', padding: '2px 8px', cursor: 'pointer' }}>
-                    {mutado ? '🔇' : '🎙️'}
-                </button>
-            </div>
+            {isPresenteNaTaverna && (
+                <div style={{ display: 'flex', gap: 5, alignItems: 'center', borderLeft: '1px solid #444', paddingLeft: 15 }}>
+                    <button onClick={toggleMute} title={mutado ? "Desmutar Mic" : "Mutar Mic"} style={{ background: mutado ? '#ff003c' : 'none', color: mutado ? '#fff' : '#00ffcc', border: `1px solid ${mutado ? '#ff003c' : '#00ffcc'}`, borderRadius: '5px', padding: '2px 8px', cursor: 'pointer' }}>
+                        {mutado ? '🔇' : '🎙️'}
+                    </button>
+                </div>
+            )}
 
             <div style={{ display: 'flex', gap: 5, alignItems: 'center', borderLeft: '1px solid #444', paddingLeft: 15, marginLeft: 'auto' }}>
                 <span style={{ color: '#00ccff', fontWeight: 'bold' }}>Z:</span>
