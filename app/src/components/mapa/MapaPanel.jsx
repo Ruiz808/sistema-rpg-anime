@@ -7,8 +7,11 @@ import {
     MapaRolagemRapida,
     MapaIniciativaTracker,
     MapaHologramaAcao,
-    MapaOlhoSextaFeira // 🔥 O NOVO WIDGET IMPORTADO AQUI
+    MapaOlhoSextaFeira
 } from './MapaSubComponents';
+
+// 🔥 IMPORTAR O NOVO PAINEL DE VOZ AQUI (AJUSTE O CAMINHO SE NECESSÁRIO) 🔥
+import PainelDeVoz from '../ia/PainelDeVoz'; 
 
 export default function MapaPanel({ className, children }) {
     const hasChildren = React.Children.count(children) > 0;
@@ -17,8 +20,11 @@ export default function MapaPanel({ className, children }) {
         <MapaFormProvider>
             <div className={['mapa-panel', className].filter(Boolean).join(' ')} style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', position: 'relative' }}>
                 
-                {/* 🔥 O OLHO DA SEXTA-FEIRA FLUTUANDO NO MAPA 🔥 */}
+                {/* ============================================================== */}
+                {/* 🔥 WIDGETS GLOBAIS: NUNCA SÃO DESTRUÍDOS AO MUDAR DE TELA 🔥 */}
+                {/* ============================================================== */}
                 <MapaOlhoSextaFeira />
+                <PainelDeVoz />
 
                 {hasChildren ? children : (
                     <>
