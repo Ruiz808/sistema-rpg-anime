@@ -13,119 +13,103 @@ import { storage, functions } from '../../services/firebase-config';
 const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Mapa provider não encontrado</div>;
 
 // ============================================================================
-// 🔥 A CARTA DE AVATAR INTELIGENTE (SEM BOTÕES DE LIGAR) 🔥
-// O Áudio é colado no documento e não pode ser destruído pelo React.
+// 🔥 A CARTA DE AVATAR INTELIGENTE (COM CONTROLO DE VOLUME INDIVIDUAL) 🔥
 // ============================================================================
-function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, cardSize }) {
+function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, fazerChamada, cardSize }) {
     const ctx = useMapaForm();
     const { getAvatarInfo, fmt } = ctx;
     const info = getAvatarInfo(ficha);
 
     const [isSpeaking, setIsSpeaking] = useState(false);
+    
+    // 🔥 NOVO: Estado de Volume Individual (Salvo no disco!)
+    const [volume, setVolume] = useState(() => {
+        const saved = localStorage.getItem(`rpg_vol_${nome}`);
+        return saved !== null ? parseFloat(saved) : 1; // 1 = 100%
+    });
+
     const audioCtxRef = useRef(null);
     const analyserRef = useRef(null);
     const rafRef = useRef(null);
+    const gainNodeRef = useRef(null); // Guarda a nossa "roda de volume"
 
-    // 1. 🔥 MOTOR DE ÁUDIO NATIVO (APENAS PARA OS OUTROS) 🔥
+    // 1. Atualiza o volume ao vivo sem cortar a chamada
     useEffect(() => {
-        if (isMe || !stream) return;
+        localStorage.setItem(`rpg_vol_${nome}`, volume);
+        if (gainNodeRef.current) {
+            gainNodeRef.current.gain.value = surdo ? 0 : volume;
+        }
+    }, [volume, surdo, nome]);
 
-        const audioEl = document.createElement('audio');
-        audioEl.srcObject = stream;
-        audioEl.autoplay = true;
-        audioEl.playsInline = true;
-        audioEl.muted = surdo; 
-        
-        audioEl.style.position = 'absolute';
-        audioEl.style.opacity = '0';
-        audioEl.style.pointerEvents = 'none';
-        
-        document.body.appendChild(audioEl);
-        window[`radio_${nome}`] = audioEl;
-
-        audioEl.play().catch(e => {
-            console.warn(`[Rádio] Áudio de ${nome} bloqueado. Se não ouvir nada, clique na carta dele!`, e);
-        });
-
-        return () => {
-            audioEl.pause();
-            audioEl.srcObject = null;
-            if (document.body.contains(audioEl)) {
-                document.body.removeChild(audioEl);
-            }
-            delete window[`radio_${nome}`];
-        };
-    }, [stream, isMe, surdo, nome]);
-
-    // 2. 🔥 MOTOR DE DETEÇÃO DE VOZ (APENAS PARA O SEU MIC!) 🔥
+    // 2. Sintetizador de Áudio Web (Oculto do Chrome)
     useEffect(() => {
-        if (!stream || !isMe) {
+        if (!stream) {
             setIsSpeaking(false);
             return;
         }
 
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
+        const actx = audioCtxRef.current;
+
+        let source, analyser, gainNode;
+
         try {
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
-            const actx = audioCtxRef.current;
+            source = actx.createMediaStreamSource(stream);
+            
+            analyser = actx.createAnalyser();
+            analyser.fftSize = 256;
+            analyser.smoothingTimeConstant = 0.4;
+            source.connect(analyser);
 
-            if (actx.state === 'suspended') actx.resume();
-
-            if (stream.getAudioTracks().length > 0) {
-                const source = actx.createMediaStreamSource(stream);
-                const analyser = actx.createAnalyser();
-                analyser.fftSize = 256;
-                analyser.smoothingTimeConstant = 0.4; 
-                
-                source.connect(analyser);
-                analyserRef.current = analyser;
-
-                const dataArray = new Uint8Array(analyser.frequencyBinCount);
-
-                const checkVolume = () => {
-                    if (analyserRef.current) {
-                        analyserRef.current.getByteFrequencyData(dataArray);
-                        let sum = 0;
-                        for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
-                        const average = sum / dataArray.length;
-
-                        setIsSpeaking(average > 10);
-                    }
-                    rafRef.current = requestAnimationFrame(checkVolume);
-                };
-                checkVolume();
+            // Apenas para amigos: Liga a voz às colunas com controlo de volume!
+            if (!isMe) {
+                gainNode = actx.createGain();
+                gainNodeRef.current = gainNode;
+                gainNode.gain.value = surdo ? 0 : volume;
+                analyser.connect(gainNode);
+                gainNode.connect(actx.destination); 
             }
-        } catch(err) {
-            console.error("Erro ao analisar áudio", err);
+
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            const checkVolume = () => {
+                analyser.getByteFrequencyData(dataArray);
+                let sum = 0;
+                for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+                setIsSpeaking((sum / dataArray.length) > 10);
+                rafRef.current = requestAnimationFrame(checkVolume);
+            };
+            checkVolume();
+
+        } catch (e) {
+            console.error(`[Rádio] Erro ao sintetizar áudio de ${nome}`, e);
         }
 
         return () => {
             if (rafRef.current) cancelAnimationFrame(rafRef.current);
-            if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
-                audioCtxRef.current.close().catch(e => console.log(e));
-            }
+            if (source) source.disconnect();
+            if (analyser) analyser.disconnect();
+            if (gainNode) gainNode.disconnect();
         };
-    }, [stream, isMe]);
+    }, [stream, isMe]); // Removemos as dependências para não reiniciar o áudio quando mexe no volume!
 
-    // 3. 🔥 O TRUQUE DE ACORDAR O NAVEGADOR 🔥
     const handleCardClick = () => {
-        if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') audioCtxRef.current.resume();
-        if (!isMe && window[`radio_${nome}`]) {
-            window[`radio_${nome}`].play().catch(e => console.log("Ainda bloqueado:", e));
+        if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
+            audioCtxRef.current.resume();
         }
     };
 
-    // 🔥 ESTILOS DINÂMICOS 🔥
+    // ESTILOS DINÂMICOS
     let boxShadowCard = '0 0 15px rgba(0,0,0,0.8)';
     let borderCard = '2px solid #333';
-    let iconMic = '⏳';
+    let iconMic = '📞';
 
     if (isConnected) {
         if (isMe && mutado) {
             borderCard = '2px solid #ff003c';
             boxShadowCard = '0 0 20px rgba(255,0,60,0.4)';
             iconMic = '🔇';
-        } else if (isMe && isSpeaking) {
+        } else if (isSpeaking) {
             borderCard = '2px solid #00ffcc';
             boxShadowCard = '0 0 35px #00ffcc, inset 0 0 20px rgba(0,255,204,0.4)';
             iconMic = '🔊';
@@ -138,16 +122,13 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
             boxShadowCard = '0 0 10px rgba(0,85,136,0.5)';
             iconMic = '🎙️';
         }
-    } else if (!isMe) {
-        borderCard = '2px dashed #ffcc00';
-        iconMic = '🔄';
     }
 
     return (
         <div 
             onClick={handleCardClick}
             className="fade-in" 
-            title={!isMe && stream ? `Clique para garantir o som de ${nome}!` : ''}
+            title={!isMe && stream ? `Clique na carta se o áudio não arrancar!` : ''}
             style={{ position: 'relative', width: cardSize, aspectRatio: '4/3', background: '#111', border: borderCard, borderRadius: 6, overflow: 'hidden', backgroundImage: urlSeguraParaCss(info.img) || 'none', backgroundSize: 'cover', backgroundPosition: 'top center', boxShadow: boxShadowCard, transition: 'all 0.15s ease-out', cursor: 'pointer' }}
         >
             <div style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(0,0,0,0.8)', borderRadius: '50%', padding: '5px 8px', fontSize: '1.2em', border: borderCard, transition: 'all 0.15s ease-out' }}>
@@ -155,13 +136,35 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
             </div>
 
             {!isConnected && !isMe && (
-                <div style={{ position: 'absolute', top: '40%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10, background: 'rgba(0,0,0,0.8)', padding: '5px 10px', borderRadius: '5px', border: '1px solid #ffcc00', color: '#ffcc00', fontSize: '0.8em', fontWeight: 'bold' }}>
-                    A LIGAR...
+                <div style={{ position: 'absolute', top: '40%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10 }}>
+                    <button className="btn-neon btn-blue" onClick={(e) => { e.stopPropagation(); fazerChamada(nome); }} style={{ padding: '10px 25px', fontSize: '1.1em', fontWeight: 'bold', boxShadow: '0 0 15px #0088ff' }}>
+                        📞 LIGAR
+                    </button>
                 </div>
             )}
 
             <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', display: 'flex', flexDirection: 'column', background: 'rgba(10,10,15,0.9)', borderTop: '2px solid #222', padding: '6px 10px', backdropFilter: 'blur(3px)' }}>
-                <span style={{ color: isConnected ? (isSpeaking ? '#00ffcc' : '#00aaff') : '#fff', fontWeight: 'bold', fontSize: '0.8em', textTransform: 'uppercase', marginBottom: 4, letterSpacing: 1, textShadow: '1px 1px 2px #000', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', transition: 'color 0.2s' }}>{nome}</span>
+                
+                {/* 🔥 ÁREA DO NOME E SLIDER DE VOLUME 🔥 */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <span style={{ color: isConnected ? (isSpeaking ? '#00ffcc' : '#00aaff') : '#fff', fontWeight: 'bold', fontSize: '0.8em', textTransform: 'uppercase', letterSpacing: 1, textShadow: '1px 1px 2px #000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', transition: 'color 0.2s', paddingRight: '5px' }}>
+                        {nome}
+                    </span>
+                    
+                    {!isMe && isConnected && stream && (
+                        <div onClick={e => e.stopPropagation()} title={`Volume: ${Math.round(volume * 100)}%`} style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '70px', background: 'rgba(0,0,0,0.5)', padding: '2px 5px', borderRadius: '10px', border: '1px solid #333' }}>
+                            <span style={{ fontSize: '9px', color: volume === 0 ? '#ff003c' : '#aaa' }}>{volume === 0 ? '🔇' : '🔉'}</span>
+                            <input 
+                                type="range" 
+                                min="0" max="2" step="0.05" 
+                                value={volume} 
+                                onChange={e => setVolume(parseFloat(e.target.value))}
+                                style={{ width: '100%', height: '3px', cursor: 'pointer', accentColor: volume > 1 ? '#ffcc00' : '#00ffcc' }} 
+                            />
+                        </div>
+                    )}
+                </div>
+
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
                     <span style={{ color: '#ff003c', fontSize: '0.6em', fontWeight: 'bold', width: '15px' }}>HP</span>
                     <div style={{ flex: 1, background: '#300', height: 6, border: '1px solid #000', position: 'relative' }}><div style={{ width: '100%', height: '100%', background: '#ff003c', boxShadow: '0 0 5px #ff003c' }}></div></div>
@@ -496,8 +499,8 @@ export function MapaSessaoRP() {
     if (!ctx) return FALLBACK;
     const { 
         meuNome, playersNaTaverna, isPresenteNaTaverna, togglePresencaTaverna, getAvatarInfo, fmt,
-        conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen,
-        mics, selectedMic, trocarMicrofone, meuStream 
+        conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen, fazerChamada,
+        mics, selectedMic, trocarMicrofone, meuStream, radioLigado, setRadioLigado 
     } = ctx;
 
     const playerCount = playersNaTaverna.length;
@@ -506,6 +509,19 @@ export function MapaSessaoRP() {
     else if (playerCount === 2) cardSize = '350px';
     else if (playerCount === 3 || playerCount === 4) cardSize = '280px';
     else cardSize = '220px';
+
+    if (!radioLigado) {
+        return (
+            <div className="fade-in" style={{ minHeight: '60vh', background: 'radial-gradient(circle, rgba(30,10,20,0.9) 0%, rgba(0,0,0,1) 100%)', borderRadius: 5, border: '2px solid #ffcc00', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '50px' }}>
+                <div style={{ fontSize: '4em', marginBottom: 20, filter: 'drop-shadow(0 0 15px #00ffcc)' }}>🎧</div>
+                <h1 style={{ color: '#00ffcc', textShadow: '0 0 15px #00ffcc', letterSpacing: 3 }}>SALA DE RÁDIO DA PARTY</h1>
+                <p style={{ color: '#aaa', fontStyle: 'italic', marginBottom: 30, fontSize: '1.2em', textAlign: 'center', maxWidth: '500px' }}>O navegador exige que você entre manualmente para liberar o áudio das colunas.</p>
+                <button className="btn-neon btn-green" onClick={() => setRadioLigado(true)} style={{ fontSize: '1.2em', padding: '15px 40px', borderRadius: '30px', boxShadow: '0 0 20px #00ff88' }}>
+                    ▶ ENTRAR NO RÁDIO
+                </button>
+            </div>
+        );
+    }
 
     return (
         <div className="fade-in" style={{ minHeight: '60vh', background: 'radial-gradient(circle, rgba(30,10,20,0.9) 0%, rgba(0,0,0,1) 100%)', borderRadius: 5, border: '2px solid #ffcc00', boxShadow: '0 0 30px rgba(255, 204, 0, 0.2)', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px 20px 50px 20px', marginBottom: 15 }}>
@@ -545,7 +561,6 @@ export function MapaSessaoRP() {
                 <button onClick={toggleDeafen} title={surdo ? "Ouvir" : "Ensurdecer"} disabled={!isPresenteNaTaverna} style={{ opacity: isPresenteNaTaverna ? 1 : 0.3, width: '45px', height: '45px', borderRadius: '50%', border: 'none', background: surdo ? '#ff003c' : 'rgba(255,255,255,0.1)', color: '#fff', fontSize: '1.2em', cursor: 'pointer', transition: '0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {surdo ? '🔕' : '🎧'}
                 </button>
-                
                 <button className={`btn-neon ${isPresenteNaTaverna ? 'btn-red' : 'btn-green'}`} onClick={togglePresencaTaverna} style={{ borderRadius: '25px', margin: 0, padding: '0 20px', fontSize: '0.9em', fontWeight: 'bold' }}>
                     {isPresenteNaTaverna ? 'SAIR DA TAVERNA' : 'SENTAR NA MESA'}
                 </button>
@@ -571,6 +586,7 @@ export function MapaSessaoRP() {
                                 stream={streamParaAnalisar}
                                 mutado={mutado}
                                 surdo={surdo}
+                                fazerChamada={fazerChamada}
                                 cardSize={cardSize}
                             />
                         );
