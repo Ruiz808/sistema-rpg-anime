@@ -13,7 +13,7 @@ import { storage, functions } from '../../services/firebase-config';
 const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Mapa provider não encontrado</div>;
 
 // ============================================================================
-// 🔥 A CARTA DE AVATAR INTELIGENTE (DETETA VOZ AO VIVO E TOCA O ÁUDIO) 🔥
+// 🔥 A CARTA DE AVATAR INTELIGENTE (DETETA VOZ AO VIVO E TOCA O ÁUDIO NATIVAMENTE) 🔥
 // ============================================================================
 function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, fazerChamada, cardSize }) {
     const ctx = useMapaForm();
@@ -21,25 +21,43 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
     const info = getAvatarInfo(ficha);
 
     const [isSpeaking, setIsSpeaking] = useState(false);
-    const audioRef = useRef(null);
     const audioCtxRef = useRef(null);
     const analyserRef = useRef(null);
     const rafRef = useRef(null);
 
-    // 🔥 O MOTOR DE DETEÇÃO DE VOZ (VAD) E REPRODUÇÃO 🔥
+    // 1. 🔥 MOTOR DE ÁUDIO NATIVO (ANTI-BLOQUEIO DO REACT) 🔥
+    // Colocamos o áudio puro no Javascript para o React não o destruir
+    useEffect(() => {
+        if (isMe || !stream) return;
+
+        console.log(`[Rádio] Estabelecendo canal de áudio bruto para ${nome}...`);
+        const audioEl = new Audio();
+        audioEl.srcObject = stream;
+        audioEl.autoplay = true;
+        audioEl.playsInline = true;
+        audioEl.muted = surdo;
+        
+        // Salva na Window para o Garbage Collector do Chrome não limpar a voz no meio do RP
+        window[`radio_${nome}`] = audioEl;
+
+        audioEl.play().catch(e => {
+            console.warn(`[Rádio] Navegador bloqueou som de ${nome}. Clicar na carta resolve.`, e);
+        });
+
+        return () => {
+            audioEl.pause();
+            audioEl.srcObject = null;
+            delete window[`radio_${nome}`];
+        };
+    }, [stream, isMe, surdo, nome]);
+
+    // 2. 🔥 MOTOR DE DETEÇÃO DE VOZ (VAD) PARA O NEON PISCAR 🔥
     useEffect(() => {
         if (!stream) {
             setIsSpeaking(false);
             return;
         }
 
-        // 1. FORÇAR A REPRODUÇÃO DO ÁUDIO NAS COLUNAS (Apenas para os outros)
-        if (!isMe && audioRef.current) {
-            audioRef.current.srcObject = stream;
-            audioRef.current.play().catch(e => console.warn(`Clique na carta de ${nome} para ativar o som.`, e));
-        }
-
-        // 2. ANALISADOR DE VOLUME PARA FAZER O NEON BRILHAR
         try {
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
@@ -47,16 +65,14 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
 
             if (actx.state === 'suspended') actx.resume();
 
-            // Só tenta analisar se o stream tiver faixas de áudio válidas
             if (stream.getAudioTracks().length > 0) {
                 const source = actx.createMediaStreamSource(stream);
                 const analyser = actx.createAnalyser();
                 analyser.fftSize = 256;
-                analyser.smoothingTimeConstant = 0.4; // Deixa o piscar do Neon mais suave
+                analyser.smoothingTimeConstant = 0.4; 
                 
                 source.connect(analyser);
                 analyserRef.current = analyser;
-                // NOTA: Não ligamos o analyser ao 'destination' senão você ouvia a sua própria voz com eco!
 
                 const dataArray = new Uint8Array(analyser.frequencyBinCount);
 
@@ -67,8 +83,8 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
                         for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
                         const average = sum / dataArray.length;
 
-                        // Se a onda de som for maior que 15, a pessoa está a falar!
-                        setIsSpeaking(average > 15);
+                        // Se a onda de som passar de 10, a pessoa está a falar!
+                        setIsSpeaking(average > 10);
                     }
                     rafRef.current = requestAnimationFrame(checkVolume);
                 };
@@ -84,13 +100,15 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
                 audioCtxRef.current.close().catch(e => console.log(e));
             }
         };
-    }, [stream, isMe]);
+    }, [stream]);
 
-    // 🔥 TRUQUE ANTI-BLOQUEIO DO NAVEGADOR 🔥
-    // Se o som não sair, o utilizador clica na carta e forçamos as caixas de som a acordar!
+    // 3. 🔥 TRUQUE ANTI-BLOQUEIO DO NAVEGADOR 🔥
+    // Se o Chrome forçar silêncio, basta um clique na carta para "acordar" as colunas!
     const handleCardClick = () => {
         if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') audioCtxRef.current.resume();
-        if (audioRef.current) audioRef.current.play().catch(e => console.log(e));
+        if (!isMe && window[`radio_${nome}`]) {
+            window[`radio_${nome}`].play().catch(e => console.log("Ainda bloqueado:", e));
+        }
     };
 
     // 🔥 ESTILOS DINÂMICOS (O DISCORD NEON EFFECT) 🔥
@@ -109,7 +127,7 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
             boxShadowCard = '0 0 35px #00ffcc, inset 0 0 20px rgba(0,255,204,0.4)';
             iconMic = '🔊';
         } else {
-            // Na call, mas calado. NEON ESCURO (Azul Marinho)
+            // Na call, mas calado. NEON ESCURO
             borderCard = '2px solid #005588';
             boxShadowCard = '0 0 10px rgba(0,85,136,0.5)';
             iconMic = '🎙️';
@@ -122,23 +140,10 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
             className="fade-in" 
             style={{ position: 'relative', width: cardSize, aspectRatio: '4/3', background: '#111', border: borderCard, borderRadius: 6, overflow: 'hidden', backgroundImage: urlSeguraParaCss(info.img) || 'none', backgroundSize: 'cover', backgroundPosition: 'top center', boxShadow: boxShadowCard, transition: 'all 0.15s ease-out', cursor: 'pointer' }}
         >
-            {/* ÍCONE DE STATUS */}
             <div style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(0,0,0,0.8)', borderRadius: '50%', padding: '5px 8px', fontSize: '1.2em', border: borderCard, transition: 'all 0.15s ease-out' }}>
                 {iconMic}
             </div>
 
-            {/* O ÁUDIO INVISÍVEL FICA AQUI DENTRO DESSA CARTA */}
-            {!isMe && stream && (
-                <audio
-                    ref={audioRef}
-                    autoPlay
-                    playsInline
-                    muted={surdo}
-                    style={{ position: 'absolute', opacity: 0, width: 0, height: 0, pointerEvents: 'none' }}
-                />
-            )}
-
-            {/* BOTÃO LIGAR */}
             {!isConnected && !isMe && (
                 <div style={{ position: 'absolute', top: '40%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10 }}>
                     <button className="btn-neon btn-blue" onClick={(e) => { e.stopPropagation(); fazerChamada(nome); }} style={{ padding: '10px 25px', fontSize: '1.1em', fontWeight: 'bold', boxShadow: '0 0 15px #0088ff' }}>
@@ -147,7 +152,6 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
                 </div>
             )}
 
-            {/* STATUS BARS */}
             <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', display: 'flex', flexDirection: 'column', background: 'rgba(10,10,15,0.9)', borderTop: '2px solid #222', padding: '6px 10px', backdropFilter: 'blur(3px)' }}>
                 <span style={{ color: isConnected ? (isSpeaking ? '#00ffcc' : '#00aaff') : '#fff', fontWeight: 'bold', fontSize: '0.8em', textTransform: 'uppercase', marginBottom: 4, letterSpacing: 1, textShadow: '1px 1px 2px #000', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', transition: 'color 0.2s' }}>{nome}</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
@@ -498,16 +502,13 @@ export function MapaSessaoRP() {
     return (
         <div className="fade-in" style={{ minHeight: '60vh', background: 'radial-gradient(circle, rgba(30,10,20,0.9) 0%, rgba(0,0,0,1) 100%)', borderRadius: 5, border: '2px solid #ffcc00', boxShadow: '0 0 30px rgba(255, 204, 0, 0.2)', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px 20px 50px 20px', marginBottom: 15 }}>
             
-            {/* CABEÇALHO */}
             <div style={{ fontSize: '3em', marginBottom: 10, filter: 'drop-shadow(0 0 10px #ffcc00)' }}>🎲</div>
             <h1 style={{ color: '#ffcc00', textShadow: '0 0 15px #ffcc00', margin: 0, letterSpacing: 3 }}>SESSÃO RP</h1>
             <p style={{ color: '#aaa', fontStyle: 'italic', marginBottom: 10, fontSize: '1.1em' }}>{playersNaTaverna.length} Lenda(s) Presente(s). O Mestre está a moldar o tecido da realidade...</p>
             
-            {/* 🔥 PAINEL DE CONTROLO DE REDE E HARDWARE 🔥 */}
             <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '20px', background: 'rgba(0,0,0,0.5)', padding: '5px 15px', borderRadius: '5px', border: '1px solid #333', flexWrap: 'wrap', justifyContent: 'center' }}>
                 <div style={{ color: '#00ffcc', fontSize: '0.85em', fontFamily: 'monospace' }}>📡 Status: {voiceStatus}</div>
                 
-                {/* SELETOR DE MICROFONE */}
                 {mics && mics.length > 0 && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', borderLeft: '1px solid #444', paddingLeft: '20px' }}>
                         <span style={{ color: '#aaa', fontSize: '0.8em' }}>🎙️ Mic:</span>
@@ -527,7 +528,6 @@ export function MapaSessaoRP() {
                 )}
             </div>
             
-            {/* BOTÕES ESTILO DISCORD (PARTY CALL) */}
             <div style={{ display: 'flex', gap: '15px', marginBottom: '30px', background: 'rgba(0,0,0,0.6)', padding: '10px 25px', borderRadius: '30px', border: '1px solid #333' }}>
                 <button onClick={toggleMute} title={mutado ? "Desmutar" : "Mutar"} style={{ width: '45px', height: '45px', borderRadius: '50%', border: 'none', background: mutado ? '#ff003c' : '#00ffcc', color: mutado ? '#fff' : '#000', fontSize: '1.2em', cursor: 'pointer', transition: '0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 10px ${mutado ? '#ff003c' : '#00ffcc'}` }}>
                     {mutado ? '🔇' : '🎙️'}
@@ -540,7 +540,7 @@ export function MapaSessaoRP() {
                 </button>
             </div>
 
-            {/* AS CARTAS / AVATARES DE VOZ COM O NOVO SISTEMA NEON DETETOR DE VOZ */}
+            {/* AS CARTAS AVATAR VOZ */}
             {playersNaTaverna.length > 0 && (
                 <div style={{ width: '100%', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '25px' }}>
                     {playersNaTaverna.map(([n, f]) => {
