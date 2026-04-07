@@ -13,26 +13,159 @@ import { storage, functions } from '../../services/firebase-config';
 const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Mapa provider não encontrado</div>;
 
 // ============================================================================
-// 🔥 COMPONENTE DE ÁUDIO BLINDADO PARA REACT 🔥
-// CORREÇÃO: Removido o display: 'none' que faz o Chrome suspender o áudio!
+// 🔥 A CARTA DE AVATAR INTELIGENTE (DETETA VOZ AO VIVO E TOCA O ÁUDIO) 🔥
 // ============================================================================
-function PlayerDeAudioRemoto({ stream, isMuted }) {
+function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, fazerChamada, cardSize }) {
+    const ctx = useMapaForm();
+    const { getAvatarInfo, fmt } = ctx;
+    const info = getAvatarInfo(ficha);
+
+    const [isSpeaking, setIsSpeaking] = useState(false);
     const audioRef = useRef(null);
+    const audioCtxRef = useRef(null);
+    const analyserRef = useRef(null);
+    const rafRef = useRef(null);
 
+    // 🔥 O MOTOR DE DETEÇÃO DE VOZ (VAD) E REPRODUÇÃO 🔥
     useEffect(() => {
-        if (audioRef.current && stream) {
-            audioRef.current.srcObject = stream;
-            
-            // 🔥 CORREÇÃO: Força o play ignorando o onloadedmetadata (que as vezes falha no WebRTC)
-            const playPromise = audioRef.current.play();
-            if (playPromise !== undefined) {
-                playPromise.catch(e => console.warn("Navegador bloqueou o áudio. Clique na tela para ouvir a voz!", e));
-            }
+        if (!stream) {
+            setIsSpeaking(false);
+            return;
         }
-    }, [stream]);
 
-    // 🔥 O Segredo: Se usar display: none, o navegador corta o áudio para poupar RAM. Usamos opacity: 0!
-    return <audio ref={audioRef} autoPlay playsInline muted={isMuted} style={{ position: 'absolute', width: 0, height: 0, opacity: 0, pointerEvents: 'none' }} />;
+        // 1. FORÇAR A REPRODUÇÃO DO ÁUDIO NAS COLUNAS (Apenas para os outros)
+        if (!isMe && audioRef.current) {
+            audioRef.current.srcObject = stream;
+            audioRef.current.play().catch(e => console.warn(`Clique na carta de ${nome} para ativar o som.`, e));
+        }
+
+        // 2. ANALISADOR DE VOLUME PARA FAZER O NEON BRILHAR
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
+            const actx = audioCtxRef.current;
+
+            if (actx.state === 'suspended') actx.resume();
+
+            // Só tenta analisar se o stream tiver faixas de áudio válidas
+            if (stream.getAudioTracks().length > 0) {
+                const source = actx.createMediaStreamSource(stream);
+                const analyser = actx.createAnalyser();
+                analyser.fftSize = 256;
+                analyser.smoothingTimeConstant = 0.4; // Deixa o piscar do Neon mais suave
+                
+                source.connect(analyser);
+                analyserRef.current = analyser;
+                // NOTA: Não ligamos o analyser ao 'destination' senão você ouvia a sua própria voz com eco!
+
+                const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+                const checkVolume = () => {
+                    if (analyserRef.current) {
+                        analyserRef.current.getByteFrequencyData(dataArray);
+                        let sum = 0;
+                        for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+                        const average = sum / dataArray.length;
+
+                        // Se a onda de som for maior que 15, a pessoa está a falar!
+                        setIsSpeaking(average > 15);
+                    }
+                    rafRef.current = requestAnimationFrame(checkVolume);
+                };
+                checkVolume();
+            }
+        } catch(err) {
+            console.error("Erro ao analisar áudio de", nome, err);
+        }
+
+        return () => {
+            if (rafRef.current) cancelAnimationFrame(rafRef.current);
+            if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
+                audioCtxRef.current.close().catch(e => console.log(e));
+            }
+        };
+    }, [stream, isMe]);
+
+    // 🔥 TRUQUE ANTI-BLOQUEIO DO NAVEGADOR 🔥
+    // Se o som não sair, o utilizador clica na carta e forçamos as caixas de som a acordar!
+    const handleCardClick = () => {
+        if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') audioCtxRef.current.resume();
+        if (audioRef.current) audioRef.current.play().catch(e => console.log(e));
+    };
+
+    // 🔥 ESTILOS DINÂMICOS (O DISCORD NEON EFFECT) 🔥
+    let boxShadowCard = '0 0 15px rgba(0,0,0,0.8)';
+    let borderCard = '2px solid #333';
+    let iconMic = '📞';
+
+    if (isConnected) {
+        if (isMe && mutado) {
+            borderCard = '2px solid #ff003c';
+            boxShadowCard = '0 0 20px rgba(255,0,60,0.4)';
+            iconMic = '🔇';
+        } else if (isSpeaking) {
+            // A falar! NEON BRILHANTE
+            borderCard = '2px solid #00ffcc';
+            boxShadowCard = '0 0 35px #00ffcc, inset 0 0 20px rgba(0,255,204,0.4)';
+            iconMic = '🔊';
+        } else {
+            // Na call, mas calado. NEON ESCURO (Azul Marinho)
+            borderCard = '2px solid #005588';
+            boxShadowCard = '0 0 10px rgba(0,85,136,0.5)';
+            iconMic = '🎙️';
+        }
+    }
+
+    return (
+        <div 
+            onClick={handleCardClick}
+            className="fade-in" 
+            style={{ position: 'relative', width: cardSize, aspectRatio: '4/3', background: '#111', border: borderCard, borderRadius: 6, overflow: 'hidden', backgroundImage: urlSeguraParaCss(info.img) || 'none', backgroundSize: 'cover', backgroundPosition: 'top center', boxShadow: boxShadowCard, transition: 'all 0.15s ease-out', cursor: 'pointer' }}
+        >
+            {/* ÍCONE DE STATUS */}
+            <div style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(0,0,0,0.8)', borderRadius: '50%', padding: '5px 8px', fontSize: '1.2em', border: borderCard, transition: 'all 0.15s ease-out' }}>
+                {iconMic}
+            </div>
+
+            {/* O ÁUDIO INVISÍVEL FICA AQUI DENTRO DESSA CARTA */}
+            {!isMe && stream && (
+                <audio
+                    ref={audioRef}
+                    autoPlay
+                    playsInline
+                    muted={surdo}
+                    style={{ position: 'absolute', opacity: 0, width: 0, height: 0, pointerEvents: 'none' }}
+                />
+            )}
+
+            {/* BOTÃO LIGAR */}
+            {!isConnected && !isMe && (
+                <div style={{ position: 'absolute', top: '40%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10 }}>
+                    <button className="btn-neon btn-blue" onClick={(e) => { e.stopPropagation(); fazerChamada(nome); }} style={{ padding: '10px 25px', fontSize: '1.1em', fontWeight: 'bold', boxShadow: '0 0 15px #0088ff' }}>
+                        📞 LIGAR
+                    </button>
+                </div>
+            )}
+
+            {/* STATUS BARS */}
+            <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', display: 'flex', flexDirection: 'column', background: 'rgba(10,10,15,0.9)', borderTop: '2px solid #222', padding: '6px 10px', backdropFilter: 'blur(3px)' }}>
+                <span style={{ color: isConnected ? (isSpeaking ? '#00ffcc' : '#00aaff') : '#fff', fontWeight: 'bold', fontSize: '0.8em', textTransform: 'uppercase', marginBottom: 4, letterSpacing: 1, textShadow: '1px 1px 2px #000', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', transition: 'color 0.2s' }}>{nome}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
+                    <span style={{ color: '#ff003c', fontSize: '0.6em', fontWeight: 'bold', width: '15px' }}>HP</span>
+                    <div style={{ flex: 1, background: '#300', height: 6, border: '1px solid #000', position: 'relative' }}><div style={{ width: '100%', height: '100%', background: '#ff003c', boxShadow: '0 0 5px #ff003c' }}></div></div>
+                    <span style={{ color: '#fff', fontSize: '0.6em', fontWeight: 'bold', minWidth: '35px', textAlign: 'right' }}>{fmt(ficha?.vida?.atual)}</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '2px 6px', fontSize: '0.55em', fontWeight: 'bold' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#0088ff', textShadow: '0 0 3px #0088ff' }}><span>MP</span> <span>{fmt(ficha?.mana?.atual)}</span></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#aa00ff', textShadow: '0 0 3px #aa00ff' }}><span>AU</span> <span>{fmt(ficha?.aura?.atual)}</span></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#00ffaa', textShadow: '0 0 3px #00ffaa' }}><span>CK</span> <span>{fmt(ficha?.chakra?.atual)}</span></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ff8800', textShadow: '0 0 3px #ff8800' }}><span>CP</span> <span>{fmt(ficha?.corpo?.atual)}</span></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#fff', textShadow: '0 0 3px #fff' }}><span>PV</span> <span>{fmt(ficha?.pontosVitais?.atual)}</span></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ff3333', textShadow: '0 0 3px #ff3333' }}><span>PM</span> <span>{fmt(ficha?.pontosMortais?.atual)}</span></div>
+                </div>
+            </div>
+        </div>
+    );
 }
 
 // ============================================================================
@@ -350,9 +483,9 @@ export function MapaSessaoRP() {
     const ctx = useMapaForm();
     if (!ctx) return FALLBACK;
     const { 
-        meuNome, playersNaTaverna, isPresenteNaTaverna, togglePresencaTaverna, getAvatarInfo, fmt,
+        meuNome, playersNaTaverna, isPresenteNaTaverna, togglePresencaTaverna,
         conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen, fazerChamada,
-        mics, selectedMic, trocarMicrofone 
+        mics, selectedMic, trocarMicrofone, meuStream 
     } = ctx;
 
     const playerCount = playersNaTaverna.length;
@@ -407,60 +540,29 @@ export function MapaSessaoRP() {
                 </button>
             </div>
 
-            {/* AS CARTAS / AVATARES DE VOZ */}
+            {/* AS CARTAS / AVATARES DE VOZ COM O NOVO SISTEMA NEON DETETOR DE VOZ */}
             {playersNaTaverna.length > 0 && (
                 <div style={{ width: '100%', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '25px' }}>
                     {playersNaTaverna.map(([n, f]) => {
-                        const info = getAvatarInfo(f);
                         const isMe = n === meuNome;
                         const expectedIdTelefone = `anime-rpg-${n.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
                         const conRemota = conexoes.find(c => c.id === expectedIdTelefone);
                         const isConnected = isMe || !!conRemota;
-
-                        let boxShadowCard = '0 0 15px rgba(0,0,0,0.8)';
-                        let borderCard = '2px solid #333';
-                        let iconMic = '⏳';
-                        
-                        if (isConnected) {
-                            if (isMe && mutado) { borderCard = '2px solid #ff003c'; boxShadowCard = '0 0 20px rgba(255,0,60,0.4)'; iconMic = '🔇'; }
-                            else { borderCard = '2px solid #00ffcc'; boxShadowCard = '0 0 25px rgba(0,255,204,0.3)'; iconMic = '🎙️'; }
-                        }
+                        const streamParaAnalisar = isMe ? meuStream : conRemota?.stream;
 
                         return (
-                            <div key={n} className="fade-in" style={{ position: 'relative', width: cardSize, aspectRatio: '4/3', background: '#111', border: borderCard, borderRadius: 6, overflow: 'hidden', backgroundImage: urlSeguraParaCss(info.img) || 'none', backgroundSize: 'cover', backgroundPosition: 'top center', boxShadow: boxShadowCard, transition: 'all 0.3s' }}>
-                                
-                                <div style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(0,0,0,0.7)', borderRadius: '50%', padding: '5px 8px', fontSize: '1.2em', border: borderCard }}>
-                                    {iconMic}
-                                </div>
-
-                                {/* 🔥 CONEXÃO BLINDADA DE ÁUDIO 🔥 */}
-                                {conRemota && <PlayerDeAudioRemoto stream={conRemota.stream} isMuted={surdo} />}
-
-                                {!isConnected && !isMe && (
-                                    <div style={{ position: 'absolute', top: '40%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10 }}>
-                                        <button className="btn-neon btn-blue" onClick={() => fazerChamada(n)} style={{ padding: '10px 25px', fontSize: '1.1em', fontWeight: 'bold', boxShadow: '0 0 15px #0088ff' }}>
-                                            📞 LIGAR
-                                        </button>
-                                    </div>
-                                )}
-
-                                <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', display: 'flex', flexDirection: 'column', background: 'rgba(10,10,15,0.9)', borderTop: '2px solid #222', padding: '6px 10px', backdropFilter: 'blur(3px)' }}>
-                                    <span style={{ color: isConnected ? '#00ffcc' : '#fff', fontWeight: 'bold', fontSize: '0.8em', textTransform: 'uppercase', marginBottom: 4, letterSpacing: 1, textShadow: '1px 1px 2px #000', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{n}</span>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
-                                        <span style={{ color: '#ff003c', fontSize: '0.6em', fontWeight: 'bold', width: '15px' }}>HP</span>
-                                        <div style={{ flex: 1, background: '#300', height: 6, border: '1px solid #000', position: 'relative' }}><div style={{ width: '100%', height: '100%', background: '#ff003c', boxShadow: '0 0 5px #ff003c' }}></div></div>
-                                        <span style={{ color: '#fff', fontSize: '0.6em', fontWeight: 'bold', minWidth: '35px', textAlign: 'right' }}>{fmt(f?.vida?.atual)}</span>
-                                    </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '2px 6px', fontSize: '0.55em', fontWeight: 'bold' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#0088ff', textShadow: '0 0 3px #0088ff' }}><span>MP</span> <span>{fmt(f?.mana?.atual)}</span></div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#aa00ff', textShadow: '0 0 3px #aa00ff' }}><span>AU</span> <span>{fmt(f?.aura?.atual)}</span></div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#00ffaa', textShadow: '0 0 3px #00ffaa' }}><span>CK</span> <span>{fmt(f?.chakra?.atual)}</span></div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ff8800', textShadow: '0 0 3px #ff8800' }}><span>CP</span> <span>{fmt(f?.corpo?.atual)}</span></div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#fff', textShadow: '0 0 3px #fff' }}><span>PV</span> <span>{fmt(f?.pontosVitais?.atual)}</span></div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ff3333', textShadow: '0 0 3px #ff3333' }}><span>PM</span> <span>{fmt(f?.pontosMortais?.atual)}</span></div>
-                                    </div>
-                                </div>
-                            </div>
+                            <AvatarCardVoz 
+                                key={n}
+                                nome={n}
+                                ficha={f}
+                                isMe={isMe}
+                                isConnected={isConnected}
+                                stream={streamParaAnalisar}
+                                mutado={mutado}
+                                surdo={surdo}
+                                fazerChamada={fazerChamada}
+                                cardSize={cardSize}
+                            />
                         );
                     })}
                 </div>
