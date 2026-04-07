@@ -13,7 +13,7 @@ import { storage, functions } from '../../services/firebase-config';
 const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Mapa provider não encontrado</div>;
 
 // ============================================================================
-// 🔥 A CARTA DE AVATAR INTELIGENTE (CORREÇÃO DO BUG DE ÁUDIO DO CHROME) 🔥
+// 🔥 A CARTA DE AVATAR INTELIGENTE (CORREÇÃO FINAL: SOM + NEON) 🔥
 // ============================================================================
 function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, fazerChamada, cardSize }) {
     const ctx = useMapaForm();
@@ -25,47 +25,9 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
     const analyserRef = useRef(null);
     const rafRef = useRef(null);
 
-    // 1. 🔥 MOTOR DE ÁUDIO NATIVO COLADO NO HTML (APENAS PARA OS OUTROS) 🔥
+    // 🔥 O SEGREDO: O Neon SÓ É LIDO se for o seu Microfone! 
+    // Se lermos o áudio do Kiriya, o Chrome silencia o Kiriya.
     useEffect(() => {
-        if (isMe || !stream) return;
-
-        console.log(`[Rádio] Colando coluna de som para ${nome} no site...`);
-        const audioEl = document.createElement('audio');
-        audioEl.srcObject = stream;
-        audioEl.autoplay = true;
-        audioEl.playsInline = true;
-        audioEl.muted = surdo; // Respeita o botão de Ensurdecer
-        
-        // Escondemos o áudio para o Chrome não bloquear
-        audioEl.style.position = 'absolute';
-        audioEl.style.opacity = '0';
-        audioEl.style.pointerEvents = 'none';
-        
-        // Colado no Body para o React não o destruir!
-        document.body.appendChild(audioEl);
-        window[`radio_${nome}`] = audioEl;
-
-        const tentarTocar = () => {
-            audioEl.play().catch(e => {
-                console.warn(`[Rádio] Áudio de ${nome} bloqueado. Clique na tela!`, e);
-            });
-        };
-        tentarTocar();
-
-        return () => {
-            audioEl.pause();
-            audioEl.srcObject = null;
-            if (document.body.contains(audioEl)) {
-                document.body.removeChild(audioEl);
-            }
-            delete window[`radio_${nome}`];
-        };
-    }, [stream, isMe, surdo, nome]);
-
-    // 2. 🔥 MOTOR DE DETEÇÃO DE VOZ (APENAS PARA O SEU MIC!) 🔥
-    useEffect(() => {
-        // CORREÇÃO: Se tentarmos analisar o som dos amigos, o Chrome silencia-os. 
-        // Portanto, o Neon dinâmico só funciona na sua própria carta!
         if (!stream || !isMe) {
             setIsSpeaking(false);
             return;
@@ -96,8 +58,7 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
                         for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
                         const average = sum / dataArray.length;
 
-                        // Se a onda de som passar de 10, a pessoa está a falar!
-                        setIsSpeaking(average > 10);
+                        setIsSpeaking(average > 10); // Se passar de 10, acende o Neon!
                     }
                     rafRef.current = requestAnimationFrame(checkVolume);
                 };
@@ -115,15 +76,7 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
         };
     }, [stream, isMe]);
 
-    // 3. 🔥 TRUQUE ANTI-BLOQUEIO DO NAVEGADOR 🔥
-    const handleCardClick = () => {
-        if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') audioCtxRef.current.resume();
-        if (!isMe && window[`radio_${nome}`]) {
-            window[`radio_${nome}`].play().catch(e => console.log("Ainda bloqueado:", e));
-        }
-    };
-
-    // 🔥 ESTILOS DINÂMICOS (O DISCORD NEON EFFECT) 🔥
+    // ESTILOS DINÂMICOS
     let boxShadowCard = '0 0 15px rgba(0,0,0,0.8)';
     let borderCard = '2px solid #333';
     let iconMic = '📞';
@@ -133,18 +86,18 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
             borderCard = '2px solid #ff003c';
             boxShadowCard = '0 0 20px rgba(255,0,60,0.4)';
             iconMic = '🔇';
-        } else if (isSpeaking) {
-            // Você a falar! NEON BRILHANTE
+        } else if (isMe && isSpeaking) {
+            // Você a falar! NEON BRILHANTE VERDE ÁGUA
             borderCard = '2px solid #00ffcc';
             boxShadowCard = '0 0 35px #00ffcc, inset 0 0 20px rgba(0,255,204,0.4)';
             iconMic = '🔊';
         } else if (!isMe && stream) {
-            // Amigos conectados (Luz Fixa, pois não analisamos o volume deles para proteger o áudio)
+            // Kiriya (amigo) conectado. Fica fixo a Azul Ciano para sabermos que a voz dele está a entrar.
             borderCard = '2px solid #00aaff';
             boxShadowCard = '0 0 20px rgba(0,170,255,0.4)';
             iconMic = '🔊';
         } else {
-            // Você conectado, mas calado
+            // Você conectado, mas calado.
             borderCard = '2px solid #005588';
             boxShadowCard = '0 0 10px rgba(0,85,136,0.5)';
             iconMic = '🎙️';
@@ -153,14 +106,30 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
 
     return (
         <div 
-            onClick={handleCardClick}
             className="fade-in" 
-            style={{ position: 'relative', width: cardSize, aspectRatio: '4/3', background: '#111', border: borderCard, borderRadius: 6, overflow: 'hidden', backgroundImage: urlSeguraParaCss(info.img) || 'none', backgroundSize: 'cover', backgroundPosition: 'top center', boxShadow: boxShadowCard, transition: 'all 0.15s ease-out', cursor: 'pointer' }}
+            style={{ position: 'relative', width: cardSize, aspectRatio: '4/3', background: '#111', border: borderCard, borderRadius: 6, overflow: 'hidden', backgroundImage: urlSeguraParaCss(info.img) || 'none', backgroundSize: 'cover', backgroundPosition: 'top center', boxShadow: boxShadowCard, transition: 'all 0.15s ease-out' }}
         >
             <div style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(0,0,0,0.8)', borderRadius: '50%', padding: '5px 8px', fontSize: '1.2em', border: borderCard, transition: 'all 0.15s ease-out' }}>
                 {iconMic}
             </div>
 
+            {/* 🔥 ÁUDIO PURO E DIRECIONADO ÀS COLUNAS 🔥 */}
+            {!isMe && stream && (
+                <audio 
+                    autoPlay 
+                    playsInline 
+                    muted={surdo} 
+                    style={{ display: 'none' }}
+                    ref={el => { 
+                        if (el && el.srcObject !== stream) {
+                            el.srcObject = stream;
+                            el.play().catch(e => console.warn(`Clique na tela para liberar a voz de ${nome}`, e));
+                        } 
+                    }} 
+                />
+            )}
+
+            {/* Se Kiriya não está conectado, Natsu clica aqui para Ligar a ele! */}
             {!isConnected && !isMe && (
                 <div style={{ position: 'absolute', top: '40%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10 }}>
                     <button className="btn-neon btn-blue" onClick={(e) => { e.stopPropagation(); fazerChamada(nome); }} style={{ padding: '10px 25px', fontSize: '1.1em', fontWeight: 'bold', boxShadow: '0 0 15px #0088ff' }}>
@@ -170,7 +139,7 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
             )}
 
             <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', display: 'flex', flexDirection: 'column', background: 'rgba(10,10,15,0.9)', borderTop: '2px solid #222', padding: '6px 10px', backdropFilter: 'blur(3px)' }}>
-                <span style={{ color: isConnected ? (isSpeaking ? '#00ffcc' : '#00aaff') : '#fff', fontWeight: 'bold', fontSize: '0.8em', textTransform: 'uppercase', marginBottom: 4, letterSpacing: 1, textShadow: '1px 1px 2px #000', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', transition: 'color 0.2s' }}>{nome}</span>
+                <span style={{ color: isConnected ? '#fff' : '#888', fontWeight: 'bold', fontSize: '0.8em', textTransform: 'uppercase', marginBottom: 4, letterSpacing: 1, textShadow: '1px 1px 2px #000', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', transition: 'color 0.2s' }}>{nome}</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
                     <span style={{ color: '#ff003c', fontSize: '0.6em', fontWeight: 'bold', width: '15px' }}>HP</span>
                     <div style={{ flex: 1, background: '#300', height: 6, border: '1px solid #000', position: 'relative' }}><div style={{ width: '100%', height: '100%', background: '#ff003c', boxShadow: '0 0 5px #ff003c' }}></div></div>
@@ -504,7 +473,7 @@ export function MapaSessaoRP() {
     const ctx = useMapaForm();
     if (!ctx) return FALLBACK;
     const { 
-        meuNome, playersNaTaverna, isPresenteNaTaverna, togglePresencaTaverna,
+        meuNome, playersNaTaverna, isPresenteNaTaverna, togglePresencaTaverna, getAvatarInfo, fmt,
         conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen, fazerChamada,
         mics, selectedMic, trocarMicrofone, meuStream 
     } = ctx;

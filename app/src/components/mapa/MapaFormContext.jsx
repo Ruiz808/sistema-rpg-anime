@@ -131,13 +131,12 @@ export function MapaFormProvider({ children }) {
                 setMics(audioInputs);
                 if (audioInputs.length > 0) setSelectedMic(audioInputs[0].deviceId);
 
-                // 🔥 CORREÇÃO 1: ADICIONANDO SERVIDORES STUN DA GOOGLE PARA FURAR O ROTEADOR 🔥
+                // 🔥 CORREÇÃO: SERVIDORES STUN PODEROSOS PARA FURAR A OPERADORA DE INTERNET 🔥
                 const novoPeer = new Peer(`anime-rpg-${meuIDTelefone}`, {
                     config: {
                         iceServers: [
                             { urls: 'stun:stun.l.google.com:19302' },
-                            { urls: 'stun:stun1.l.google.com:19302' },
-                            { urls: 'stun:stun2.l.google.com:19302' }
+                            { urls: 'stun:global.stun.twilio.com:3478' }
                         ]
                     }
                 });
