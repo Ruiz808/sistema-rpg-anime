@@ -100,29 +100,39 @@ export function MapaFormProvider({ children }) {
     const isPresenteNaTaverna = tavernaAtivos.includes(meuNome);
 
     // ========================================================================
-    // 🔥 SISTEMA DE VOZ PROFISSIONAL (AUTO-RECONNECT + SUPRESSÃO DE RUÍDO) 🔥
+    // 🔥 SISTEMA DE VOZ PROFISSIONAL (AUTO-RECONNECT + SUPRESSÃO DE RUÍDO OPIONAL) 🔥
     // ========================================================================
     const [radioLigado, setRadioLigado] = useState(false); 
     const [peerObj, setPeerObj] = useState(null);
     const [meuStream, setMeuStream] = useState(null);
     const meuStreamRef = useRef(null); 
-    const chamadasEmAndamento = useRef(new Set()); // Impede de ligar mil vezes ao mesmo
+    const chamadasEmAndamento = useRef(new Set()); 
     const [conexoes, setConexoes] = useState([]);
     const [mutado, setMutado] = useState(false);
     const [surdo, setSurdo] = useState(false);
     const [voiceStatus, setVoiceStatus] = useState('Desconectado');
     const [mics, setMics] = useState([]);
     const [selectedMic, setSelectedMic] = useState('');
+    
+    // 🔥 ESTADO DO SUPRESSOR DE RUÍDO
+    const [supressorAtivo, setSupressorAtivo] = useState(true);
 
     const meuIDTelefone = meuNome ? meuNome.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
     const rtcInicializado = useRef(false);
 
-    // 🔥 CONFIGURAÇÃO NATIVA PARA MATAR O RUÍDO DO VENTILADOR 🔥
-    const audioConfig = { 
-        noiseSuppression: true, 
-        echoCancellation: true, 
-        autoGainControl: true 
-    };
+    // Atualiza o supressor ao vivo sem precisar reiniciar a chamada!
+    useEffect(() => {
+        if (meuStreamRef.current) {
+            meuStreamRef.current.getAudioTracks().forEach(track => {
+                if (track.applyConstraints) {
+                    track.applyConstraints({
+                        noiseSuppression: supressorAtivo,
+                        echoCancellation: supressorAtivo
+                    }).catch(e => console.warn("[Rádio] Falha ao atualizar Supressor:", e));
+                }
+            });
+        }
+    }, [supressorAtivo]);
 
     // 1. INICIA OU DESLIGA O MIC BASEADO NA PRESENÇA
     useEffect(() => {
@@ -132,7 +142,13 @@ export function MapaFormProvider({ children }) {
             rtcInicializado.current = true;
             setVoiceStatus('A ligar Microfone...');
             
-            navigator.mediaDevices.getUserMedia({ audio: audioConfig }).then(stream => {
+            navigator.mediaDevices.getUserMedia({ 
+                audio: { 
+                    noiseSuppression: supressorAtivo, 
+                    echoCancellation: supressorAtivo, 
+                    autoGainControl: true 
+                } 
+            }).then(stream => {
                 meuStreamRef.current = stream;
                 setMeuStream(stream);
 
@@ -166,7 +182,6 @@ export function MapaFormProvider({ children }) {
                                     return [...prev, { id: call.peer, stream: remoteStream }];
                                 });
                             });
-                            // Se ele desligar do lado dele, removemos!
                             call.on('close', () => setConexoes(prev => prev.filter(c => c.id !== call.peer)));
                         } else {
                             setTimeout(attemptAnswer, 500); 
@@ -180,7 +195,6 @@ export function MapaFormProvider({ children }) {
                 rtcInicializado.current = false;
             });
         } else if (!isPresenteNaTaverna && rtcInicializado.current) {
-            // SAIR DA MESA: Desliga tudo!
             rtcInicializado.current = false;
             if (peerObj) { peerObj.destroy(); setPeerObj(null); }
             if (meuStreamRef.current) { meuStreamRef.current.getTracks().forEach(t => t.stop()); meuStreamRef.current = null; }
@@ -188,7 +202,7 @@ export function MapaFormProvider({ children }) {
             setConexoes([]);
             setVoiceStatus('Fora da Taverna (Mic Desligado)');
         }
-    }, [isPresenteNaTaverna, meuIDTelefone, radioLigado]);
+    }, [isPresenteNaTaverna, meuIDTelefone, radioLigado]); // Removed supressorAtivo from deps to prevent reconnect loop
 
     const fazerChamada = useCallback((nomeDestino) => {
         if (!peerObj || !meuStreamRef.current || !nomeDestino) return;
@@ -211,7 +225,6 @@ export function MapaFormProvider({ children }) {
             chamadasEmAndamento.current.delete(idFormatado);
         });
 
-        // Limpa se a chamada cair, para o Heartbeat tentar de novo
         call.on('close', () => {
             setConexoes(prev => prev.filter(c => c.id !== idFormatado));
             chamadasEmAndamento.current.delete(idFormatado);
@@ -222,7 +235,7 @@ export function MapaFormProvider({ children }) {
         });
     }, [peerObj]);
 
-    // 2. 🔥 O HEARTBEAT (BATE-CORAÇÃO): Reconecta sozinhos os jogadores que caírem!
+    // 2. AUTO-DIALER (Bate-Coração contínuo)
     useEffect(() => {
         if (!peerObj || !isPresenteNaTaverna || !meuStreamRef.current) return;
         
@@ -241,7 +254,7 @@ export function MapaFormProvider({ children }) {
                     return prev;
                 });
             });
-        }, 3000); // Passa o "radar" a cada 3 segundos
+        }, 3000); 
 
         return () => clearInterval(interval);
     }, [cenario?.tavernaAtivos, peerObj, isPresenteNaTaverna, meuNome, fazerChamada]);
@@ -253,7 +266,14 @@ export function MapaFormProvider({ children }) {
                 meuStreamRef.current.getTracks().forEach(t => t.stop()); 
             }
             
-            const newStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: { exact: deviceId }, ...audioConfig } });
+            const newStream = await navigator.mediaDevices.getUserMedia({ 
+                audio: { 
+                    deviceId: { exact: deviceId },
+                    noiseSuppression: supressorAtivo, 
+                    echoCancellation: supressorAtivo, 
+                    autoGainControl: true 
+                } 
+            });
             meuStreamRef.current = newStream;
             setMeuStream(newStream);
 
@@ -270,7 +290,7 @@ export function MapaFormProvider({ children }) {
         } catch (err) {
             console.error("Erro ao trocar mic:", err);
         }
-    }, [peerObj]);
+    }, [peerObj, supressorAtivo]);
 
     const toggleMute = useCallback(() => {
         if (meuStream) {
@@ -735,7 +755,7 @@ export function MapaFormProvider({ children }) {
         alterarZoom, setMinhaIniciativa, avancarTurno, sairDoCombate, encerrarCombate,
         rolarAcertoRapido, tokenMap, tokens3D, jogadorDaVez, infoDaVez, fmt, deletarZona,
         meuStream, conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen, fazerChamada, desconectarVoz,
-        mics, selectedMic, trocarMicrofone, radioLigado, setRadioLigado
+        mics, selectedMic, trocarMicrofone, radioLigado, setRadioLigado, supressorAtivo, setSupressorAtivo // 🔥 EXPORTAMOS TUDO!
     }), [
         minhaFicha, meuNome, personagens, feedCombate, isMestre, dummies, alvoSelecionado, cenario,
         fichaSegura, modo3D, tamanhoCelula, iniciativaInput, altitudeInput,
@@ -750,7 +770,7 @@ export function MapaFormProvider({ children }) {
         getAvatarInfo, handleCellClick, alterarZoom, setMinhaIniciativa, avancarTurno,
         sairDoCombate, encerrarCombate, rolarAcertoRapido, deletarZona,
         meuStream, conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen, fazerChamada, desconectarVoz,
-        mics, selectedMic, trocarMicrofone, radioLigado, setRadioLigado
+        mics, selectedMic, trocarMicrofone, radioLigado, setRadioLigado, supressorAtivo, setSupressorAtivo
     ]);
 
     return (

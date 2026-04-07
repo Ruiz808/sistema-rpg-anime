@@ -13,9 +13,9 @@ import { storage, functions } from '../../services/firebase-config';
 const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Mapa provider não encontrado</div>;
 
 // ============================================================================
-// 🔥 A CARTA DE AVATAR INTELIGENTE (COM CONTROLO DE VOLUME BLINDADO) 🔥
+// 🔥 A CARTA DE AVATAR INTELIGENTE (COM CONTROLO DE VOLUME INDIVIDUAL) 🔥
 // ============================================================================
-function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, fazerChamada, cardSize }) {
+function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, cardSize }) {
     const ctx = useMapaForm();
     const { getAvatarInfo, fmt } = ctx;
     const info = getAvatarInfo(ficha);
@@ -33,27 +33,15 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
     const rafRef = useRef(null);
     const gainNodeRef = useRef(null);
 
-    // 1. 🔥 HACK DO CHROME: O Áudio "Mudo" invisível mantém a stream viva!
+    // 1. Atualiza o volume ao vivo sem cortar a chamada
     useEffect(() => {
-        if (!stream || isMe) return;
-        
-        const audioKeeper = new Audio();
-        audioKeeper.srcObject = stream;
-        audioKeeper.muted = true; // Sempre mudo! A voz sai pelo Sintetizador.
-        audioKeeper.autoplay = true;
-        audioKeeper.playsInline = true;
-        audioKeeper.play().catch(()=>{});
-        
-        window[`keeper_${nome}`] = audioKeeper;
-        
-        return () => {
-            audioKeeper.pause();
-            audioKeeper.srcObject = null;
-            delete window[`keeper_${nome}`];
-        };
-    }, [stream, isMe, nome]);
+        localStorage.setItem(`rpg_vol_${nome}`, volume);
+        if (gainNodeRef.current) {
+            gainNodeRef.current.gain.value = surdo ? 0 : volume;
+        }
+    }, [volume, surdo, nome]);
 
-    // 2. 🔥 SINTETIZADOR + DETETOR DE NEON (A Falar para a placa de som real) 🔥
+    // 2. Sintetizador de Áudio Web (Oculto do Chrome)
     useEffect(() => {
         if (!stream) {
             setIsSpeaking(false);
@@ -74,7 +62,7 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
             analyser.smoothingTimeConstant = 0.4;
             source.connect(analyser);
 
-            // Apenas liga às caixas de som se FOR UM AMIGO (isMe = falso)
+            // Apenas para amigos: Liga a voz às colunas com controlo de volume!
             if (!isMe) {
                 gainNode = actx.createGain();
                 gainNodeRef.current = gainNode;
@@ -103,15 +91,7 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
             if (analyser) analyser.disconnect();
             if (gainNode) gainNode.disconnect();
         };
-    }, [stream, isMe]); 
-
-    // 3. Atualiza o Volume em tempo real (Suave)
-    useEffect(() => {
-        localStorage.setItem(`rpg_vol_${nome}`, volume);
-        if (gainNodeRef.current && audioCtxRef.current) {
-            gainNodeRef.current.gain.setTargetAtTime(surdo ? 0 : volume, audioCtxRef.current.currentTime || 0, 0.1);
-        }
-    }, [volume, surdo, nome]);
+    }, [stream, isMe]);
 
     const handleCardClick = () => {
         if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
@@ -119,10 +99,10 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
         }
     };
 
-    // 🔥 ESTILOS DINÂMICOS (O DISCORD NEON EFFECT) 🔥
+    // ESTILOS DINÂMICOS
     let boxShadowCard = '0 0 15px rgba(0,0,0,0.8)';
     let borderCard = '2px solid #333';
-    let iconMic = '⏳';
+    let iconMic = '📡';
 
     if (isConnected) {
         if (isMe && mutado) {
@@ -143,8 +123,10 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
             iconMic = '🎙️';
         }
     } else if (!isMe) {
-        borderCard = '2px dashed #ffcc00';
-        iconMic = '🔄';
+        // Carta neutra enquanto o Auto-Dialer não estabelece conexão
+        borderCard = '2px solid #333';
+        boxShadowCard = '0 0 10px rgba(0,0,0,0.5)';
+        iconMic = '📡';
     }
 
     return (
@@ -158,12 +140,6 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
                 {iconMic}
             </div>
 
-            {!isConnected && !isMe && (
-                <div style={{ position: 'absolute', top: '40%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10, background: 'rgba(0,0,0,0.8)', padding: '5px 10px', borderRadius: '5px', border: '1px solid #ffcc00', color: '#ffcc00', fontSize: '0.8em', fontWeight: 'bold' }}>
-                    A LIGAR...
-                </div>
-            )}
-
             <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', display: 'flex', flexDirection: 'column', background: 'rgba(10,10,15,0.9)', borderTop: '2px solid #222', padding: '6px 10px', backdropFilter: 'blur(3px)' }}>
                 
                 {/* NOME E CONTROLO DE VOLUME */}
@@ -172,9 +148,8 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
                         {nome}
                     </span>
                     
-                    {/* A BARRA DE VOLUME (SLIDER) */}
                     {!isMe && isConnected && stream && (
-                        <div onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '70px', background: 'rgba(0,0,0,0.5)', padding: '2px 5px', borderRadius: '10px', border: '1px solid #333' }}>
+                        <div onClick={e => e.stopPropagation()} title={`Volume: ${Math.round(volume * 100)}%`} style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '70px', background: 'rgba(0,0,0,0.5)', padding: '2px 5px', borderRadius: '10px', border: '1px solid #333' }}>
                             <span style={{ fontSize: '9px', color: volume === 0 ? '#ff003c' : '#aaa' }}>{volume === 0 ? '🔇' : '🔉'}</span>
                             <input 
                                 type="range" 
@@ -521,8 +496,9 @@ export function MapaSessaoRP() {
     if (!ctx) return FALLBACK;
     const { 
         meuNome, playersNaTaverna, isPresenteNaTaverna, togglePresencaTaverna, getAvatarInfo, fmt,
-        conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen, fazerChamada,
-        mics, selectedMic, trocarMicrofone, meuStream, radioLigado, setRadioLigado 
+        conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen,
+        mics, selectedMic, trocarMicrofone, meuStream, radioLigado, setRadioLigado,
+        supressorAtivo, setSupressorAtivo // 🔥 IMPORTANDO O ESTADO DO SUPRESSOR
     } = ctx;
 
     const playerCount = playersNaTaverna.length;
@@ -552,27 +528,42 @@ export function MapaSessaoRP() {
             <h1 style={{ color: '#ffcc00', textShadow: '0 0 15px #ffcc00', margin: 0, letterSpacing: 3 }}>SESSÃO RP</h1>
             <p style={{ color: '#aaa', fontStyle: 'italic', marginBottom: 10, fontSize: '1.1em' }}>{playersNaTaverna.length} Lenda(s) Presente(s). O Mestre está a moldar o tecido da realidade...</p>
             
-            <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '20px', background: 'rgba(0,0,0,0.5)', padding: '5px 15px', borderRadius: '5px', border: '1px solid #333', flexWrap: 'wrap', justifyContent: 'center' }}>
-                <div style={{ color: '#00ffcc', fontSize: '0.85em', fontFamily: 'monospace' }}>📡 Status: {voiceStatus}</div>
-                
-                {mics && mics.length > 0 && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', borderLeft: '1px solid #444', paddingLeft: '20px' }}>
-                        <span style={{ color: '#aaa', fontSize: '0.8em' }}>🎙️ Mic:</span>
-                        <select 
-                            className="input-neon"
-                            value={selectedMic}
-                            onChange={(e) => trocarMicrofone(e.target.value)}
-                            style={{ padding: '4px 8px', fontSize: '0.8em', background: '#000', color: '#fff', borderColor: '#00ffcc', borderRadius: '5px', maxWidth: '200px' }}
-                        >
-                            {mics.map(m => (
-                                <option key={m.deviceId} value={m.deviceId}>
-                                    {m.label || `Microfone Padrão ${m.deviceId.slice(0,5)}`}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                )}
-            </div>
+            {isPresenteNaTaverna && (
+                <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '20px', background: 'rgba(0,0,0,0.5)', padding: '5px 15px', borderRadius: '5px', border: '1px solid #333', flexWrap: 'wrap', justifyContent: 'center' }}>
+                    <div style={{ color: '#00ffcc', fontSize: '0.85em', fontFamily: 'monospace' }}>📡 Status: {voiceStatus}</div>
+                    
+                    {mics && mics.length > 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px', borderLeft: '1px solid #444', paddingLeft: '20px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                <span style={{ color: '#aaa', fontSize: '0.8em' }}>🎙️ Mic:</span>
+                                <select 
+                                    className="input-neon"
+                                    value={selectedMic}
+                                    onChange={(e) => trocarMicrofone(e.target.value)}
+                                    style={{ padding: '4px 8px', fontSize: '0.8em', background: '#000', color: '#fff', borderColor: '#00ffcc', borderRadius: '5px', maxWidth: '150px' }}
+                                >
+                                    {mics.map(m => (
+                                        <option key={m.deviceId} value={m.deviceId}>
+                                            {m.label || `Microfone Padrão ${m.deviceId.slice(0,5)}`}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            
+                            {/* 🔥 BOTÃO PARA LIGAR/DESLIGAR O SUPRESSOR DE RUÍDO 🔥 */}
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#00ffcc', fontSize: '0.8em', cursor: 'pointer', borderLeft: '1px solid #444', paddingLeft: '15px' }}>
+                                <input 
+                                    type="checkbox" 
+                                    checked={supressorAtivo} 
+                                    onChange={e => setSupressorAtivo(e.target.checked)} 
+                                    style={{ accentColor: '#00ffcc', cursor: 'pointer' }} 
+                                />
+                                🎧 Supressor de Ruído
+                            </label>
+                        </div>
+                    )}
+                </div>
+            )}
             
             <div style={{ display: 'flex', gap: '15px', marginBottom: '30px', background: 'rgba(0,0,0,0.6)', padding: '10px 25px', borderRadius: '30px', border: '1px solid #333' }}>
                 <button onClick={toggleMute} title={mutado ? "Desmutar" : "Mutar"} disabled={!isPresenteNaTaverna} style={{ opacity: isPresenteNaTaverna ? 1 : 0.3, width: '45px', height: '45px', borderRadius: '50%', border: 'none', background: mutado ? '#ff003c' : '#00ffcc', color: mutado ? '#fff' : '#000', fontSize: '1.2em', cursor: 'pointer', transition: '0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 10px ${mutado ? '#ff003c' : '#00ffcc'}` }}>
@@ -605,7 +596,6 @@ export function MapaSessaoRP() {
                                 stream={streamParaAnalisar}
                                 mutado={mutado}
                                 surdo={surdo}
-                                fazerChamada={fazerChamada}
                                 cardSize={cardSize}
                             />
                         );
