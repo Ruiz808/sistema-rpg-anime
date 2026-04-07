@@ -100,14 +100,19 @@ export function MapaFormProvider({ children }) {
     const isPresenteNaTaverna = tavernaAtivos.includes(meuNome);
 
     // ========================================================================
-    // 🔥 SISTEMA GLOBAL DE VOZ (PEERJS) BLINDADO 🔥
+    // 🔥 SISTEMA GLOBAL DE VOZ (PEERJS) BLINDADO + SELETOR DE MICROFONE 🔥
     // ========================================================================
     const [peerObj, setPeerObj] = useState(null);
     const [meuStream, setMeuStream] = useState(null);
+    const meuStreamRef = useRef(null); // Ref para garantir que usamos sempre o mic certo nas chamadas
     const [conexoes, setConexoes] = useState([]);
     const [mutado, setMutado] = useState(false);
     const [surdo, setSurdo] = useState(false);
     const [voiceStatus, setVoiceStatus] = useState('Aguardando Mic...');
+
+    // 🔥 NOVO: Estados do Microfone 🔥
+    const [mics, setMics] = useState([]);
+    const [selectedMic, setSelectedMic] = useState('');
 
     const meuIDTelefone = meuNome ? meuNome.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
     const rtcInicializado = useRef(false);
@@ -116,37 +121,77 @@ export function MapaFormProvider({ children }) {
         if (!meuIDTelefone || rtcInicializado.current) return;
         rtcInicializado.current = true;
 
-        navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
-            setMeuStream(stream);
-            const novoPeer = new Peer(`anime-rpg-${meuIDTelefone}`);
-            
-            novoPeer.on('open', (id) => {
-                setPeerObj(novoPeer);
-                setVoiceStatus('Rádio Online');
-            });
+        const iniciarSistemaDeVoz = async () => {
+            try {
+                // Pede permissão geral primeiro
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                meuStreamRef.current = stream;
+                setMeuStream(stream);
 
-            novoPeer.on('call', (call) => {
-                setVoiceStatus(`Recebendo chamada...`);
-                call.answer(stream);
-                call.on('stream', (remoteStream) => {
-                    setConexoes(prev => {
-                        // 🔥 Prevenção do Bug do Duplo Stream do PeerJS 🔥
-                        const existe = prev.find(c => c.id === call.peer);
-                        if (existe) {
-                            // Substitui o stream antigo (vazio) pelo novo (com som)
-                            return prev.map(c => c.id === call.peer ? { ...c, stream: remoteStream } : c);
-                        }
-                        return [...prev, { id: call.peer, stream: remoteStream }];
-                    });
-                    setVoiceStatus('Conectado!'); 
+                // Agora que temos permissão, listamos os nomes físicos dos microfones
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const audioInputs = devices.filter(d => d.kind === 'audioinput');
+                setMics(audioInputs);
+                if (audioInputs.length > 0) setSelectedMic(audioInputs[0].deviceId);
+
+                const novoPeer = new Peer(`anime-rpg-${meuIDTelefone}`);
+                
+                novoPeer.on('open', (id) => {
+                    setPeerObj(novoPeer);
+                    setVoiceStatus('Rádio Online');
                 });
-            });
-        }).catch(err => {
-            setVoiceStatus(`Erro: Sem Microfone.`);
-            console.error(err);
-        });
 
+                novoPeer.on('call', (call) => {
+                    setVoiceStatus(`Recebendo chamada...`);
+                    // 🔥 Responde com a stream atrelada ao ref, para usar o mic que foi escolhido!
+                    call.answer(meuStreamRef.current);
+                    call.on('stream', (remoteStream) => {
+                        setConexoes(prev => {
+                            const existe = prev.find(c => c.id === call.peer);
+                            if (existe) return prev.map(c => c.id === call.peer ? { ...c, stream: remoteStream } : c);
+                            return [...prev, { id: call.peer, stream: remoteStream }];
+                        });
+                        setVoiceStatus('Conectado!'); 
+                    });
+                });
+            } catch (err) {
+                setVoiceStatus(`Erro: Sem Microfone.`);
+                console.error(err);
+            }
+        };
+
+        iniciarSistemaDeVoz();
     }, [meuIDTelefone]);
+
+    // 🔥 NOVO: Função para trocar de microfone ao vivo 🔥
+    const trocarMicrofone = useCallback(async (deviceId) => {
+        try {
+            setSelectedMic(deviceId);
+            if (meuStreamRef.current) {
+                meuStreamRef.current.getTracks().forEach(t => t.stop()); // Desliga o mic antigo
+            }
+            
+            // Pede o novo microfone específico
+            const newStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: { exact: deviceId } } });
+            meuStreamRef.current = newStream;
+            setMeuStream(newStream);
+
+            // Se já estiver numa chamada, substitui o áudio ao vivo sem cair a ligação!
+            if (peerObj) {
+                Object.values(peerObj.connections).forEach(conns => {
+                    conns.forEach(conn => {
+                        if (conn.peerConnection) {
+                            const sender = conn.peerConnection.getSenders().find(s => s.track && s.track.kind === 'audio');
+                            if (sender) sender.replaceTrack(newStream.getAudioTracks()[0]);
+                        }
+                    });
+                });
+            }
+        } catch (err) {
+            console.error("Erro ao trocar mic:", err);
+            setVoiceStatus("Erro ao trocar Mic.");
+        }
+    }, [peerObj]);
 
     const toggleMute = useCallback(() => {
         if (meuStream) {
@@ -158,24 +203,21 @@ export function MapaFormProvider({ children }) {
     const toggleDeafen = useCallback(() => setSurdo(s => !s), []);
 
     const fazerChamada = useCallback((nomeDestino) => {
-        if (!peerObj || !meuStream || !nomeDestino) return;
+        if (!peerObj || !meuStreamRef.current || !nomeDestino) return;
         const idFormatado = `anime-rpg-${nomeDestino.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
         setVoiceStatus(`Chamando ${nomeDestino}...`);
         
-        const call = peerObj.call(idFormatado, meuStream);
+        const call = peerObj.call(idFormatado, meuStreamRef.current);
         call.on('stream', (remoteStream) => {
             setConexoes(prev => {
-                // 🔥 Prevenção do Bug do Duplo Stream na saída 🔥
                 const existe = prev.find(c => c.id === idFormatado);
-                if (existe) {
-                    return prev.map(c => c.id === idFormatado ? { ...c, stream: remoteStream } : c);
-                }
+                if (existe) return prev.map(c => c.id === idFormatado ? { ...c, stream: remoteStream } : c);
                 return [...prev, { id: idFormatado, stream: remoteStream }];
             });
             setVoiceStatus('Conectado!');
         });
         call.on('error', () => setVoiceStatus(`${nomeDestino} Offline`));
-    }, [peerObj, meuStream]);
+    }, [peerObj]);
 
     const desconectarVoz = useCallback((idPeer) => {
         setConexoes(prev => prev.filter(c => c.id !== idPeer));
@@ -612,6 +654,7 @@ export function MapaFormProvider({ children }) {
     const jogadorDaVez = ordemIniciativa.length > 0 ? ordemIniciativa[turnoAtualIndex % ordemIniciativa.length] : null;
     const infoDaVez = jogadorDaVez ? getAvatarInfo(jogadorDaVez.ficha) : null;
 
+    // 🔥 Adicionamos o mics, selectedMic e trocarMicrofone à lista de exportação do contexto 🔥
     const value = useMemo(() => ({
         minhaFicha, meuNome, personagens, feedCombate, isMestre, dummies, alvoSelecionado, cenario,
         fichaSegura, modo3D, setModo3D, tamanhoCelula, setTamanhoCelula,
@@ -630,7 +673,8 @@ export function MapaFormProvider({ children }) {
         cells, jogadores, playersNaTaverna, ordemIniciativa, handleCellClick,
         alterarZoom, setMinhaIniciativa, avancarTurno, sairDoCombate, encerrarCombate,
         rolarAcertoRapido, tokenMap, tokens3D, jogadorDaVez, infoDaVez, fmt, deletarZona,
-        meuStream, conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen, fazerChamada, desconectarVoz
+        meuStream, conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen, fazerChamada, desconectarVoz,
+        mics, selectedMic, trocarMicrofone
     }), [
         minhaFicha, meuNome, personagens, feedCombate, isMestre, dummies, alvoSelecionado, cenario,
         fichaSegura, modo3D, tamanhoCelula, iniciativaInput, altitudeInput,
@@ -644,7 +688,8 @@ export function MapaFormProvider({ children }) {
         changeDesvantagem, handleUploadNovaCena, ativarCena, deletarCena, corDoJogador,
         getAvatarInfo, handleCellClick, alterarZoom, setMinhaIniciativa, avancarTurno,
         sairDoCombate, encerrarCombate, rolarAcertoRapido, deletarZona,
-        meuStream, conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen, fazerChamada, desconectarVoz
+        meuStream, conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen, fazerChamada, desconectarVoz,
+        mics, selectedMic, trocarMicrofone
     ]);
 
     return (

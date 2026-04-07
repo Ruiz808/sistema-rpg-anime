@@ -348,7 +348,8 @@ export function MapaSessaoRP() {
     if (!ctx) return FALLBACK;
     const { 
         meuNome, playersNaTaverna, isPresenteNaTaverna, togglePresencaTaverna, getAvatarInfo, fmt,
-        conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen, fazerChamada 
+        conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen, fazerChamada,
+        mics, selectedMic, trocarMicrofone // 🔥 IMPORTA O CONTROLO DE MICROFONES
     } = ctx;
 
     const playerCount = playersNaTaverna.length;
@@ -365,7 +366,30 @@ export function MapaSessaoRP() {
             <div style={{ fontSize: '3em', marginBottom: 10, filter: 'drop-shadow(0 0 10px #ffcc00)' }}>🎲</div>
             <h1 style={{ color: '#ffcc00', textShadow: '0 0 15px #ffcc00', margin: 0, letterSpacing: 3 }}>SESSÃO RP</h1>
             <p style={{ color: '#aaa', fontStyle: 'italic', marginBottom: 10, fontSize: '1.1em' }}>{playersNaTaverna.length} Lenda(s) Presente(s). O Mestre está a moldar o tecido da realidade...</p>
-            <div style={{ color: '#00ffcc', fontSize: '0.85em', marginBottom: '20px', fontFamily: 'monospace' }}>📡 Status da Rede: {voiceStatus}</div>
+            
+            {/* 🔥 PAINEL DE CONTROLO DE REDE E HARDWARE 🔥 */}
+            <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '20px', background: 'rgba(0,0,0,0.5)', padding: '5px 15px', borderRadius: '5px', border: '1px solid #333', flexWrap: 'wrap', justifyContent: 'center' }}>
+                <div style={{ color: '#00ffcc', fontSize: '0.85em', fontFamily: 'monospace' }}>📡 Status: {voiceStatus}</div>
+                
+                {/* SELETOR DE MICROFONE */}
+                {mics && mics.length > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', borderLeft: '1px solid #444', paddingLeft: '20px' }}>
+                        <span style={{ color: '#aaa', fontSize: '0.8em' }}>🎙️ Mic:</span>
+                        <select 
+                            className="input-neon"
+                            value={selectedMic}
+                            onChange={(e) => trocarMicrofone(e.target.value)}
+                            style={{ padding: '4px 8px', fontSize: '0.8em', background: '#000', color: '#fff', borderColor: '#00ffcc', borderRadius: '5px', maxWidth: '200px' }}
+                        >
+                            {mics.map(m => (
+                                <option key={m.deviceId} value={m.deviceId}>
+                                    {m.label || `Microfone Padrão ${m.deviceId.slice(0,5)}`}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                )}
+            </div>
             
             {/* BOTÕES ESTILO DISCORD (PARTY CALL) */}
             <div style={{ display: 'flex', gap: '15px', marginBottom: '30px', background: 'rgba(0,0,0,0.6)', padding: '10px 25px', borderRadius: '30px', border: '1px solid #333' }}>
