@@ -131,7 +131,6 @@ export function MapaFormProvider({ children }) {
                 setMics(audioInputs);
                 if (audioInputs.length > 0) setSelectedMic(audioInputs[0].deviceId);
 
-                // 🔥 CORREÇÃO: SERVIDORES STUN PODEROSOS PARA FURAR A OPERADORA DE INTERNET 🔥
                 const novoPeer = new Peer(`anime-rpg-${meuIDTelefone}`, {
                     config: {
                         iceServers: [
@@ -147,16 +146,25 @@ export function MapaFormProvider({ children }) {
                 });
 
                 novoPeer.on('call', (call) => {
-                    setVoiceStatus(`Recebendo chamada...`);
-                    call.answer(meuStreamRef.current);
-                    call.on('stream', (remoteStream) => {
-                        setConexoes(prev => {
-                            const existe = prev.find(c => c.id === call.peer);
-                            if (existe) return prev.map(c => c.id === call.peer ? { ...c, stream: remoteStream } : c);
-                            return [...prev, { id: call.peer, stream: remoteStream }];
-                        });
-                        setVoiceStatus('Conectado!'); 
-                    });
+                    setVoiceStatus(`Recebendo chamada de ${call.peer}...`);
+                    
+                    // 🔥 CORREÇÃO: Espera o microfone estar pronto antes de atender a chamada!
+                    const attemptAnswer = () => {
+                        if (meuStreamRef.current) {
+                            call.answer(meuStreamRef.current);
+                            call.on('stream', (remoteStream) => {
+                                setConexoes(prev => {
+                                    const existe = prev.find(c => c.id === call.peer);
+                                    if (existe) return prev.map(c => c.id === call.peer ? { ...c, stream: remoteStream } : c);
+                                    return [...prev, { id: call.peer, stream: remoteStream }];
+                                });
+                                setVoiceStatus('Conectado!'); 
+                            });
+                        } else {
+                            setTimeout(attemptAnswer, 500); // Tenta de novo se o mic não estiver pronto
+                        }
+                    };
+                    attemptAnswer();
                 });
             } catch (err) {
                 setVoiceStatus(`Erro: Sem Microfone.`);
