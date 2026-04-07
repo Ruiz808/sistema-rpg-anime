@@ -104,13 +104,12 @@ export function MapaFormProvider({ children }) {
     // ========================================================================
     const [peerObj, setPeerObj] = useState(null);
     const [meuStream, setMeuStream] = useState(null);
-    const meuStreamRef = useRef(null); // Ref para garantir que usamos sempre o mic certo nas chamadas
+    const meuStreamRef = useRef(null); 
     const [conexoes, setConexoes] = useState([]);
     const [mutado, setMutado] = useState(false);
     const [surdo, setSurdo] = useState(false);
     const [voiceStatus, setVoiceStatus] = useState('Aguardando Mic...');
 
-    // 🔥 NOVO: Estados do Microfone 🔥
     const [mics, setMics] = useState([]);
     const [selectedMic, setSelectedMic] = useState('');
 
@@ -123,18 +122,25 @@ export function MapaFormProvider({ children }) {
 
         const iniciarSistemaDeVoz = async () => {
             try {
-                // Pede permissão geral primeiro
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 meuStreamRef.current = stream;
                 setMeuStream(stream);
 
-                // Agora que temos permissão, listamos os nomes físicos dos microfones
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 const audioInputs = devices.filter(d => d.kind === 'audioinput');
                 setMics(audioInputs);
                 if (audioInputs.length > 0) setSelectedMic(audioInputs[0].deviceId);
 
-                const novoPeer = new Peer(`anime-rpg-${meuIDTelefone}`);
+                // 🔥 CORREÇÃO 1: ADICIONANDO SERVIDORES STUN DA GOOGLE PARA FURAR O ROTEADOR 🔥
+                const novoPeer = new Peer(`anime-rpg-${meuIDTelefone}`, {
+                    config: {
+                        iceServers: [
+                            { urls: 'stun:stun.l.google.com:19302' },
+                            { urls: 'stun:stun1.l.google.com:19302' },
+                            { urls: 'stun:stun2.l.google.com:19302' }
+                        ]
+                    }
+                });
                 
                 novoPeer.on('open', (id) => {
                     setPeerObj(novoPeer);
@@ -143,7 +149,6 @@ export function MapaFormProvider({ children }) {
 
                 novoPeer.on('call', (call) => {
                     setVoiceStatus(`Recebendo chamada...`);
-                    // 🔥 Responde com a stream atrelada ao ref, para usar o mic que foi escolhido!
                     call.answer(meuStreamRef.current);
                     call.on('stream', (remoteStream) => {
                         setConexoes(prev => {
@@ -163,20 +168,17 @@ export function MapaFormProvider({ children }) {
         iniciarSistemaDeVoz();
     }, [meuIDTelefone]);
 
-    // 🔥 NOVO: Função para trocar de microfone ao vivo 🔥
     const trocarMicrofone = useCallback(async (deviceId) => {
         try {
             setSelectedMic(deviceId);
             if (meuStreamRef.current) {
-                meuStreamRef.current.getTracks().forEach(t => t.stop()); // Desliga o mic antigo
+                meuStreamRef.current.getTracks().forEach(t => t.stop()); 
             }
             
-            // Pede o novo microfone específico
             const newStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: { exact: deviceId } } });
             meuStreamRef.current = newStream;
             setMeuStream(newStream);
 
-            // Se já estiver numa chamada, substitui o áudio ao vivo sem cair a ligação!
             if (peerObj) {
                 Object.values(peerObj.connections).forEach(conns => {
                     conns.forEach(conn => {
@@ -654,7 +656,6 @@ export function MapaFormProvider({ children }) {
     const jogadorDaVez = ordemIniciativa.length > 0 ? ordemIniciativa[turnoAtualIndex % ordemIniciativa.length] : null;
     const infoDaVez = jogadorDaVez ? getAvatarInfo(jogadorDaVez.ficha) : null;
 
-    // 🔥 Adicionamos o mics, selectedMic e trocarMicrofone à lista de exportação do contexto 🔥
     const value = useMemo(() => ({
         minhaFicha, meuNome, personagens, feedCombate, isMestre, dummies, alvoSelecionado, cenario,
         fichaSegura, modo3D, setModo3D, tamanhoCelula, setTamanhoCelula,

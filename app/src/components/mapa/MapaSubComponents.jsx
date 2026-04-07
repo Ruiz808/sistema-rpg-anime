@@ -14,7 +14,7 @@ const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Mapa provider não 
 
 // ============================================================================
 // 🔥 COMPONENTE DE ÁUDIO BLINDADO PARA REACT 🔥
-// Isso impede que o navegador feche a conexão a cada atualização da página.
+// CORREÇÃO: Removido o display: 'none' que faz o Chrome suspender o áudio!
 // ============================================================================
 function PlayerDeAudioRemoto({ stream, isMuted }) {
     const audioRef = useRef(null);
@@ -22,14 +22,17 @@ function PlayerDeAudioRemoto({ stream, isMuted }) {
     useEffect(() => {
         if (audioRef.current && stream) {
             audioRef.current.srcObject = stream;
-            // O onloadedmetadata garante que o navegador só tenta dar play quando a faixa de áudio já "chegou"
-            audioRef.current.onloadedmetadata = () => {
-                audioRef.current.play().catch(e => console.warn("Autoplay bloqueado pelo navegador. Clique na tela.", e));
-            };
+            
+            // 🔥 CORREÇÃO: Força o play ignorando o onloadedmetadata (que as vezes falha no WebRTC)
+            const playPromise = audioRef.current.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(e => console.warn("Navegador bloqueou o áudio. Clique na tela para ouvir a voz!", e));
+            }
         }
     }, [stream]);
 
-    return <audio ref={audioRef} autoPlay playsInline muted={isMuted} style={{ display: 'none' }} />;
+    // 🔥 O Segredo: Se usar display: none, o navegador corta o áudio para poupar RAM. Usamos opacity: 0!
+    return <audio ref={audioRef} autoPlay playsInline muted={isMuted} style={{ position: 'absolute', width: 0, height: 0, opacity: 0, pointerEvents: 'none' }} />;
 }
 
 // ============================================================================
@@ -349,7 +352,7 @@ export function MapaSessaoRP() {
     const { 
         meuNome, playersNaTaverna, isPresenteNaTaverna, togglePresencaTaverna, getAvatarInfo, fmt,
         conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen, fazerChamada,
-        mics, selectedMic, trocarMicrofone // 🔥 IMPORTA O CONTROLO DE MICROFONES
+        mics, selectedMic, trocarMicrofone 
     } = ctx;
 
     const playerCount = playersNaTaverna.length;
