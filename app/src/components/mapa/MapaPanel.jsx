@@ -10,9 +10,6 @@ import {
     MapaOlhoSextaFeira
 } from './MapaSubComponents';
 
-// 🔥 IMPORTAR O NOVO PAINEL DE VOZ AQUI (AJUSTE O CAMINHO SE NECESSÁRIO) 🔥
-import PainelDeVoz from '../ia/PainelDeVoz'; 
-
 export default function MapaPanel({ className, children }) {
     const hasChildren = React.Children.count(children) > 0;
     
@@ -20,11 +17,8 @@ export default function MapaPanel({ className, children }) {
         <MapaFormProvider>
             <div className={['mapa-panel', className].filter(Boolean).join(' ')} style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', position: 'relative' }}>
                 
-                {/* ============================================================== */}
-                {/* 🔥 WIDGETS GLOBAIS: NUNCA SÃO DESTRUÍDOS AO MUDAR DE TELA 🔥 */}
-                {/* ============================================================== */}
+                {/* O OLHO E A MESA DE MISTURA */}
                 <MapaOlhoSextaFeira />
-                <PainelDeVoz />
 
                 {hasChildren ? children : (
                     <>

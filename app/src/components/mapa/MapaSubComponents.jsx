@@ -6,7 +6,6 @@ import DummieToken from '../combat/DummieToken';
 import { salvarDummie, salvarCenarioCompleto } from '../../services/firebase-sync'; 
 import { getClassIconById } from '../../core/classIcons';
 
-// 🔥 IMPORTS DO FIREBASE PARA O GRAVADOR FLUTUANTE 🔥
 import { ref, uploadBytes } from 'firebase/storage';
 import { httpsCallable } from 'firebase/functions';
 import { storage, functions } from '../../services/firebase-config';
@@ -19,7 +18,7 @@ const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Mapa provider não 
 export function MapaOlhoSextaFeira() {
     const ctx = useMapaForm();
     if (!ctx) return null;
-    const { meuNome, personagens, minhaFicha, cenario } = ctx;
+    const { meuNome, personagens, minhaFicha, cenario, meuStream, conexoes } = ctx;
 
     const [gravando, setGravando] = useState(false);
     const [expandido, setExpandido] = useState(false);
@@ -27,11 +26,10 @@ export function MapaOlhoSextaFeira() {
     const [destinoLore, setDestinoLore] = useState('novo_capitulo');
     const [arcosCache, setArcosCache] = useState([]);
 
-    const streamRef = useRef(null);
     const mediaRecorderRef = useRef(null);
     const timerRef = useRef(null);
     
-    // 🔥 REFERÊNCIAS DO MIXER 🔥
+    // REFERÊNCIAS DO MIXER
     const audioContextRef = useRef(null);
     const mixerCtxRef = useRef(null);
     const mixedStreamRef = useRef(null);
@@ -115,10 +113,7 @@ export function MapaOlhoSextaFeira() {
             localStorage.setItem('rpgSextaFeira_capitulos', JSON.stringify(caps));
             addLog(`✅ Salvo com sucesso! Abra os Registros para ler.`); 
             
-        } catch(e) { 
-            console.error('Erro ao salvar lore local', e); 
-            addLog(`❌ Erro ao salvar no disco: ${e.message}`);
-        }
+        } catch(e) { addLog(`❌ Erro ao salvar no disco: ${e.message}`); }
     };
 
     const iniciarVisualizador = (stream) => {
@@ -167,7 +162,6 @@ export function MapaOlhoSextaFeira() {
         }
     };
 
-    // Agora recebe o stream final (misturado)
     const iniciarMediaRecorder = (streamParaGravar) => {
         const recorder = new MediaRecorder(streamParaGravar, { mimeType: 'audio/webm' });
         let localChunks = [];
@@ -219,34 +213,32 @@ export function MapaOlhoSextaFeira() {
         mediaRecorderRef.current = recorder;
     };
 
-    const iniciarGravacao = async () => {
+    const iniciarGravacao = () => {
         try {
-            if (!streamRef.current) streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
+            if (!meuStream) return addLog("❌ Erro: O microfone (Rádio) não está inicializado. Tente dar F5.");
             
-            // 🔥 A MESA DE SOM DIGITAL (MIXER) 🔥
+            // 🔥 MESA DE SOM DIGITAL A USAR AS STREAMS GLOBAIS DO CONTEXTO 🔥
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             mixerCtxRef.current = audioCtx;
             const destination = audioCtx.createMediaStreamDestination();
             
-            // Ligar o nosso microfone à mesa
-            audioCtx.createMediaStreamSource(streamRef.current).connect(destination);
+            audioCtx.createMediaStreamSource(meuStream).connect(destination);
             
-            // Ligar os cabos dos amigos (PainelDeVoz/PeerJS) à mesa
             let vozesExtras = 0;
-            if (window.remoteAudioStreams && window.remoteAudioStreams.length > 0) {
-                window.remoteAudioStreams.forEach(remoteStream => {
-                    audioCtx.createMediaStreamSource(remoteStream).connect(destination);
-                    vozesExtras++;
+            if (conexoes && conexoes.length > 0) {
+                conexoes.forEach(c => {
+                    if (c.stream) {
+                        audioCtx.createMediaStreamSource(c.stream).connect(destination);
+                        vozesExtras++;
+                    }
                 });
             }
             
             mixedStreamRef.current = destination.stream;
             
-            // O radar agora vai piscar com TODAS as vozes da call
             iniciarVisualizador(mixedStreamRef.current); 
-            
             pedacoContadorRef.current = 1;
-            iniciarMediaRecorder(mixedStreamRef.current); // Enviamos a stream misturada!
+            iniciarMediaRecorder(mixedStreamRef.current); 
             
             setGravando(true);
             setExpandido(false); 
@@ -265,9 +257,7 @@ export function MapaOlhoSextaFeira() {
     const pararGravacao = () => {
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
         if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") mediaRecorderRef.current.stop(); 
-        if (streamRef.current) { streamRef.current.getTracks().forEach(track => track.stop()); streamRef.current = null; }
         
-        // Desliga a Mesa de Som
         if (mixerCtxRef.current) {
             mixerCtxRef.current.close();
             mixerCtxRef.current = null;
@@ -281,8 +271,6 @@ export function MapaOlhoSextaFeira() {
 
     return (
         <div style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 99999, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
-            
-            {/* PAINEL EXPANDIDO */}
             {expandido && (
                 <div className="fade-in" style={{ background: 'rgba(10,10,15,0.95)', border: `2px solid ${gravando ? '#ff003c' : '#0088ff'}`, borderRadius: '10px', padding: '15px', width: '300px', boxShadow: `0 0 20px ${gravando ? 'rgba(255,0,60,0.4)' : 'rgba(0,136,255,0.4)'}`, display: 'flex', flexDirection: 'column', gap: '10px', backdropFilter: 'blur(5px)' }}>
                     <div style={{ borderBottom: '1px solid #333', paddingBottom: '5px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -317,7 +305,6 @@ export function MapaOlhoSextaFeira() {
                 </div>
             )}
 
-            {/* O OLHO (BOTÃO FLUTUANTE) */}
             <div 
                 ref={olhoRef}
                 onClick={() => setExpandido(!expandido)}
@@ -336,9 +323,153 @@ export function MapaOlhoSextaFeira() {
 }
 
 // ============================================================================
-// RESTANTE DO CÓDIGO (NÃO ALTERADO)
+// 🔥 A SESSÃO RP QUE SE TRANSFORMOU NUM DISCORD! 🔥
 // ============================================================================
+export function MapaSessaoRP() {
+    const ctx = useMapaForm();
+    if (!ctx) return FALLBACK;
+    const { 
+        meuNome, playersNaTaverna, isPresenteNaTaverna, togglePresencaTaverna, getAvatarInfo, fmt,
+        conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen, fazerChamada 
+    } = ctx;
 
+    const playerCount = playersNaTaverna.length;
+    let cardSize = '280px'; 
+    if (playerCount === 1) cardSize = '400px';
+    else if (playerCount === 2) cardSize = '350px';
+    else if (playerCount === 3 || playerCount === 4) cardSize = '280px';
+    else cardSize = '220px';
+
+    return (
+        <div className="fade-in" style={{ minHeight: '60vh', background: 'radial-gradient(circle, rgba(30,10,20,0.9) 0%, rgba(0,0,0,1) 100%)', borderRadius: 5, border: '2px solid #ffcc00', boxShadow: '0 0 30px rgba(255, 204, 0, 0.2)', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px 20px 50px 20px', marginBottom: 15 }}>
+            
+            {/* CABEÇALHO */}
+            <div style={{ fontSize: '3em', marginBottom: 10, filter: 'drop-shadow(0 0 10px #ffcc00)' }}>🎲</div>
+            <h1 style={{ color: '#ffcc00', textShadow: '0 0 15px #ffcc00', margin: 0, letterSpacing: 3 }}>SESSÃO RP</h1>
+            <p style={{ color: '#aaa', fontStyle: 'italic', marginBottom: 10, fontSize: '1.1em' }}>{playersNaTaverna.length} Lenda(s) Presente(s). O Mestre está a moldar o tecido da realidade...</p>
+            <div style={{ color: '#00ffcc', fontSize: '0.85em', marginBottom: '20px', fontFamily: 'monospace' }}>📡 Status da Rede: {voiceStatus}</div>
+            
+            {/* BOTÕES ESTILO DISCORD (PARTY CALL) */}
+            <div style={{ display: 'flex', gap: '15px', marginBottom: '30px', background: 'rgba(0,0,0,0.6)', padding: '10px 25px', borderRadius: '30px', border: '1px solid #333' }}>
+                <button onClick={toggleMute} title={mutado ? "Desmutar" : "Mutar"} style={{ width: '45px', height: '45px', borderRadius: '50%', border: 'none', background: mutado ? '#ff003c' : '#00ffcc', color: mutado ? '#fff' : '#000', fontSize: '1.2em', cursor: 'pointer', transition: '0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 10px ${mutado ? '#ff003c' : '#00ffcc'}` }}>
+                    {mutado ? '🔇' : '🎙️'}
+                </button>
+                <button onClick={toggleDeafen} title={surdo ? "Ouvir" : "Ensurdecer"} style={{ width: '45px', height: '45px', borderRadius: '50%', border: 'none', background: surdo ? '#ff003c' : 'rgba(255,255,255,0.1)', color: '#fff', fontSize: '1.2em', cursor: 'pointer', transition: '0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {surdo ? '🔕' : '🎧'}
+                </button>
+                <button className={`btn-neon ${isPresenteNaTaverna ? 'btn-red' : 'btn-green'}`} onClick={togglePresencaTaverna} style={{ borderRadius: '25px', margin: 0, padding: '0 20px', fontSize: '0.9em', fontWeight: 'bold' }}>
+                    {isPresenteNaTaverna ? 'SAIR DA TAVERNA' : 'SENTAR NA MESA'}
+                </button>
+            </div>
+
+            {/* AS CARTAS / AVATARES DE VOZ */}
+            {playersNaTaverna.length > 0 && (
+                <div style={{ width: '100%', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '25px' }}>
+                    {playersNaTaverna.map(([n, f]) => {
+                        const info = getAvatarInfo(f);
+                        const isMe = n === meuNome;
+                        const expectedIdTelefone = `anime-rpg-${n.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+                        const conRemota = conexoes.find(c => c.id === expectedIdTelefone);
+                        const isConnected = isMe || !!conRemota;
+
+                        // Estilização Dinâmica baseada no Rádio
+                        let boxShadowCard = '0 0 15px rgba(0,0,0,0.8)';
+                        let borderCard = '2px solid #333';
+                        let iconMic = '⏳';
+                        
+                        if (isConnected) {
+                            if (isMe && mutado) { borderCard = '2px solid #ff003c'; boxShadowCard = '0 0 20px rgba(255,0,60,0.4)'; iconMic = '🔇'; }
+                            else { borderCard = '2px solid #00ffcc'; boxShadowCard = '0 0 25px rgba(0,255,204,0.3)'; iconMic = '🎙️'; }
+                        }
+
+                        return (
+                            <div key={n} className="fade-in" style={{ position: 'relative', width: cardSize, aspectRatio: '4/3', background: '#111', border: borderCard, borderRadius: 6, overflow: 'hidden', backgroundImage: urlSeguraParaCss(info.img) || 'none', backgroundSize: 'cover', backgroundPosition: 'top center', boxShadow: boxShadowCard, transition: 'all 0.3s' }}>
+                                
+                                {/* O ÍCONE DO MICROFONE NA CARTA */}
+                                <div style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(0,0,0,0.7)', borderRadius: '50%', padding: '5px 8px', fontSize: '1.2em', border: borderCard }}>
+                                    {iconMic}
+                                </div>
+
+                                {/* O ÁUDIO REMOTO INVISÍVEL */}
+                                {conRemota && (
+                                    <audio autoPlay muted={surdo} ref={el => { if (el && !el.srcObject) el.srcObject = conRemota.stream; }} />
+                                )}
+
+                                {/* BOTÃO "LIGAR" SE NÃO ESTIVER CONECTADO */}
+                                {!isConnected && !isMe && (
+                                    <div style={{ position: 'absolute', top: '40%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10 }}>
+                                        <button className="btn-neon btn-blue" onClick={() => fazerChamada(n)} style={{ padding: '10px 25px', fontSize: '1.1em', fontWeight: 'bold', boxShadow: '0 0 15px #0088ff' }}>
+                                            📞 LIGAR
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* STATUS BARS INFERIORES */}
+                                <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', display: 'flex', flexDirection: 'column', background: 'rgba(10,10,15,0.9)', borderTop: '2px solid #222', padding: '6px 10px', backdropFilter: 'blur(3px)' }}>
+                                    <span style={{ color: isConnected ? '#00ffcc' : '#fff', fontWeight: 'bold', fontSize: '0.8em', textTransform: 'uppercase', marginBottom: 4, letterSpacing: 1, textShadow: '1px 1px 2px #000', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{n}</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
+                                        <span style={{ color: '#ff003c', fontSize: '0.6em', fontWeight: 'bold', width: '15px' }}>HP</span>
+                                        <div style={{ flex: 1, background: '#300', height: 6, border: '1px solid #000', position: 'relative' }}><div style={{ width: '100%', height: '100%', background: '#ff003c', boxShadow: '0 0 5px #ff003c' }}></div></div>
+                                        <span style={{ color: '#fff', fontSize: '0.6em', fontWeight: 'bold', minWidth: '35px', textAlign: 'right' }}>{fmt(f?.vida?.atual)}</span>
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '2px 6px', fontSize: '0.55em', fontWeight: 'bold' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#0088ff', textShadow: '0 0 3px #0088ff' }}><span>MP</span> <span>{fmt(f?.mana?.atual)}</span></div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#aa00ff', textShadow: '0 0 3px #aa00ff' }}><span>AU</span> <span>{fmt(f?.aura?.atual)}</span></div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#00ffaa', textShadow: '0 0 3px #00ffaa' }}><span>CK</span> <span>{fmt(f?.chakra?.atual)}</span></div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ff8800', textShadow: '0 0 3px #ff8800' }}><span>CP</span> <span>{fmt(f?.corpo?.atual)}</span></div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#fff', textShadow: '0 0 3px #fff' }}><span>PV</span> <span>{fmt(f?.pontosVitais?.atual)}</span></div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ff3333', textShadow: '0 0 3px #ff3333' }}><span>PM</span> <span>{fmt(f?.pontosMortais?.atual)}</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// 🔥 CONTROLES SUPERIORES (ADICIONADO O BOTÃO DE MUTE GLOBAL) 🔥
+export function MapaControlesSuperiores() {
+    const ctx = useMapaForm();
+    if (!ctx) return FALLBACK;
+    const { modo3D, setModo3D, alterarZoom, tamanhoCelula, isMestre, cenaVisualizadaId, cenaAtivaIdGlobal, cenaAtual, altitudeInput, setAltitudeInput, mutado, toggleMute } = ctx;
+    
+    return (
+        <div style={{ display: 'flex', gap: 15, marginBottom: 10, alignItems: 'center', background: 'rgba(0,0,0,0.6)', padding: '6px 12px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', fontSize: '0.85em', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 5, alignItems: 'center', opacity: modo3D ? 0.3 : 1 }}>
+                <button className="btn-neon" onClick={() => alterarZoom(-1)} style={{ padding: '2px 8px', margin: 0 }} disabled={modo3D}>-</button>
+                <span style={{ color: '#aaa', minWidth: '80px', textAlign: 'center' }}>Zoom: {tamanhoCelula}px</span>
+                <button className="btn-neon" onClick={() => alterarZoom(1)} style={{ padding: '2px 8px', margin: 0 }} disabled={modo3D}>+</button>
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', borderLeft: '1px solid #444', paddingLeft: 15 }}>
+                <span style={{ color: isMestre && cenaVisualizadaId && cenaVisualizadaId !== cenaAtivaIdGlobal ? '#0088ff' : '#ffcc00', fontWeight: 'bold' }}>
+                    {isMestre && cenaVisualizadaId && cenaVisualizadaId !== cenaAtivaIdGlobal ? '👁️ Previsão:' : 'Cena:'}
+                </span>
+                <span style={{ color: '#fff', fontWeight: 'bold' }}>{cenaAtual.nome} <span style={{color: '#888', fontWeight: 'normal'}}>(1Q = {cenaAtual.escala}{cenaAtual.unidade})</span></span>
+            </div>
+            
+            {/* MINI BOTÃO DE MUTE PARA O MODO COMBATE */}
+            <div style={{ display: 'flex', gap: 5, alignItems: 'center', borderLeft: '1px solid #444', paddingLeft: 15 }}>
+                <button onClick={toggleMute} title={mutado ? "Desmutar Mic" : "Mutar Mic"} style={{ background: mutado ? '#ff003c' : 'none', color: mutado ? '#fff' : '#00ffcc', border: `1px solid ${mutado ? '#ff003c' : '#00ffcc'}`, borderRadius: '5px', padding: '2px 8px', cursor: 'pointer' }}>
+                    {mutado ? '🔇' : '🎙️'}
+                </button>
+            </div>
+
+            <div style={{ display: 'flex', gap: 5, alignItems: 'center', borderLeft: '1px solid #444', paddingLeft: 15, marginLeft: 'auto' }}>
+                <span style={{ color: '#00ccff', fontWeight: 'bold' }}>Z:</span>
+                <input className="input-neon" type="number" value={altitudeInput} onChange={e => setAltitudeInput(e.target.value)} style={{ width: 50, padding: 2, height: 24, borderColor: '#00ccff', color: '#fff', margin: 0 }} title="Altitude" />
+                <span style={{ color: '#888' }}>m</span>
+            </div>
+            <button className={`btn-neon ${modo3D ? 'btn-gold' : ''}`} onClick={() => setModo3D(!modo3D)} style={{ padding: '2px 10px', margin: 0, borderColor: modo3D ? '#ffcc00' : '#00ffcc' }}>
+                {modo3D ? '🌌 2D' : '🌌 3D'}
+            </button>
+        </div>
+    );
+}
+
+// (O resto dos subcomponentes como MapaVisao, MapaIniciativaTracker, etc, continuam inalterados abaixo - insira o resto do seu ficheiro normal aqui)
 export function MapaDadoAnimado() {
     const ctx = useMapaForm();
     if (!ctx) return FALLBACK;
@@ -673,87 +804,6 @@ export function MapaRolagemRapida() {
     );
 }
 
-export function MapaSessaoRP() {
-    const ctx = useMapaForm();
-    if (!ctx) return FALLBACK;
-    const { playersNaTaverna, isPresenteNaTaverna, togglePresencaTaverna, getAvatarInfo, fmt } = ctx;
-
-    const playerCount = playersNaTaverna.length;
-    let cardSize = '280px'; 
-    if (playerCount === 1) cardSize = '400px';
-    else if (playerCount === 2) cardSize = '350px';
-    else if (playerCount === 3 || playerCount === 4) cardSize = '280px';
-    else cardSize = '220px';
-
-    return (
-        <div className="fade-in" style={{ minHeight: '60vh', background: 'radial-gradient(circle, rgba(30,10,20,0.9) 0%, rgba(0,0,0,1) 100%)', borderRadius: 5, border: '2px solid #ffcc00', boxShadow: '0 0 30px rgba(255, 204, 0, 0.2)', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 20, marginBottom: 15 }}>
-            <div style={{ fontSize: '3em', marginBottom: 10, filter: 'drop-shadow(0 0 10px #ffcc00)' }}>🎲</div>
-            <h1 style={{ color: '#ffcc00', textShadow: '0 0 15px #ffcc00', margin: 0, letterSpacing: 3 }}>SESSÃO RP</h1>
-            <p style={{ color: '#aaa', fontStyle: 'italic', marginBottom: 20, fontSize: '1.1em' }}>{playersNaTaverna.length} Lenda(s) Presente(s). O Mestre está a moldar o tecido da realidade...</p>
-            <button className={`btn-neon ${isPresenteNaTaverna ? 'btn-red' : 'btn-green'}`} onClick={togglePresencaTaverna} style={{ marginBottom: '30px', padding: '10px 20px', fontSize: '1.1em', fontWeight: 'bold' }}>
-                {isPresenteNaTaverna ? '🚪 SAIR DA MESA (ESCONDER CÂMERA)' : '🚪 SENTAR NA MESA (LIGAR CÂMERA)'}
-            </button>
-            {playersNaTaverna.length > 0 && (
-                <div style={{ width: '100%', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '15px', marginBottom: '40px' }}>
-                    {playersNaTaverna.map(([n, f]) => {
-                        const info = getAvatarInfo(f);
-                        return (
-                            <div key={n} className="fade-in" style={{ position: 'relative', width: cardSize, aspectRatio: '4/3', background: '#111', border: '2px solid #333', borderRadius: 6, overflow: 'hidden', backgroundImage: urlSeguraParaCss(info.img) || 'none', backgroundSize: 'cover', backgroundPosition: 'top center', boxShadow: '0 0 15px rgba(0,0,0,0.8)' }}>
-                                <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', display: 'flex', flexDirection: 'column', background: 'rgba(10,10,15,0.9)', borderTop: '2px solid #222', padding: '6px 10px', backdropFilter: 'blur(3px)' }}>
-                                    <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '0.8em', textTransform: 'uppercase', marginBottom: 4, letterSpacing: 1, textShadow: '1px 1px 2px #000', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{n}</span>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
-                                        <span style={{ color: '#ff003c', fontSize: '0.6em', fontWeight: 'bold', width: '15px' }}>HP</span>
-                                        <div style={{ flex: 1, background: '#300', height: 6, border: '1px solid #000', position: 'relative' }}><div style={{ width: '100%', height: '100%', background: '#ff003c', boxShadow: '0 0 5px #ff003c' }}></div></div>
-                                        <span style={{ color: '#fff', fontSize: '0.6em', fontWeight: 'bold', minWidth: '35px', textAlign: 'right' }}>{fmt(f?.vida?.atual)}</span>
-                                    </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '2px 6px', fontSize: '0.55em', fontWeight: 'bold' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#0088ff', textShadow: '0 0 3px #0088ff' }}><span>MP</span> <span>{fmt(f?.mana?.atual)}</span></div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#aa00ff', textShadow: '0 0 3px #aa00ff' }}><span>AU</span> <span>{fmt(f?.aura?.atual)}</span></div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#00ffaa', textShadow: '0 0 3px #00ffaa' }}><span>CK</span> <span>{fmt(f?.chakra?.atual)}</span></div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ff8800', textShadow: '0 0 3px #ff8800' }}><span>CP</span> <span>{fmt(f?.corpo?.atual)}</span></div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#fff', textShadow: '0 0 3px #fff' }}><span>PV</span> <span>{fmt(f?.pontosVitais?.atual)}</span></div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ff3333', textShadow: '0 0 3px #ff3333' }}><span>PM</span> <span>{fmt(f?.pontosMortais?.atual)}</span></div>
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
-        </div>
-    );
-}
-
-export function MapaControlesSuperiores() {
-    const ctx = useMapaForm();
-    if (!ctx) return FALLBACK;
-    const { modo3D, setModo3D, alterarZoom, tamanhoCelula, isMestre, cenaVisualizadaId, cenaAtivaIdGlobal, cenaAtual, altitudeInput, setAltitudeInput } = ctx;
-    
-    return (
-        <div style={{ display: 'flex', gap: 15, marginBottom: 10, alignItems: 'center', background: 'rgba(0,0,0,0.6)', padding: '6px 12px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', fontSize: '0.85em', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', gap: 5, alignItems: 'center', opacity: modo3D ? 0.3 : 1 }}>
-                <button className="btn-neon" onClick={() => alterarZoom(-1)} style={{ padding: '2px 8px', margin: 0 }} disabled={modo3D}>-</button>
-                <span style={{ color: '#aaa', minWidth: '80px', textAlign: 'center' }}>Zoom: {tamanhoCelula}px</span>
-                <button className="btn-neon" onClick={() => alterarZoom(1)} style={{ padding: '2px 8px', margin: 0 }} disabled={modo3D}>+</button>
-            </div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', borderLeft: '1px solid #444', paddingLeft: 15 }}>
-                <span style={{ color: isMestre && cenaVisualizadaId && cenaVisualizadaId !== cenaAtivaIdGlobal ? '#0088ff' : '#ffcc00', fontWeight: 'bold' }}>
-                    {isMestre && cenaVisualizadaId && cenaVisualizadaId !== cenaAtivaIdGlobal ? '👁️ Previsão:' : 'Cena:'}
-                </span>
-                <span style={{ color: '#fff', fontWeight: 'bold' }}>{cenaAtual.nome} <span style={{color: '#888', fontWeight: 'normal'}}>(1Q = {cenaAtual.escala}{cenaAtual.unidade})</span></span>
-            </div>
-            <div style={{ display: 'flex', gap: 5, alignItems: 'center', borderLeft: '1px solid #444', paddingLeft: 15, marginLeft: 'auto' }}>
-                <span style={{ color: '#00ccff', fontWeight: 'bold' }}>Z:</span>
-                <input className="input-neon" type="number" value={altitudeInput} onChange={e => setAltitudeInput(e.target.value)} style={{ width: 50, padding: 2, height: 24, borderColor: '#00ccff', color: '#fff', margin: 0 }} title="Altitude" />
-                <span style={{ color: '#888' }}>m</span>
-            </div>
-            <button className={`btn-neon ${modo3D ? 'btn-gold' : ''}`} onClick={() => setModo3D(!modo3D)} style={{ padding: '2px 10px', margin: 0, borderColor: modo3D ? '#ffcc00' : '#00ffcc' }}>
-                {modo3D ? '🌌 2D' : '🌌 3D'}
-            </button>
-        </div>
-    );
-}
-
 export function MapaVisao() {
     const ctx = useMapaForm();
     if (!ctx) return FALLBACK;
@@ -801,10 +851,8 @@ export function MapaVisao() {
 
             {cells.map((cell) => {
                 const key = `${cell.x},${cell.y}`;
-                
                 const tokensNestaCelula = tokenMap[key] || [];
                 const visivelTokens = tokensNestaCelula.filter(tk => isMestre || !(cenario?.tokensOcultos?.includes(tk.nome)));
-
                 const cellDummies = Object.entries(dummies || {}).filter(([id, d]) => {
                     const isOculto = cenario?.tokensOcultos?.includes(id);
                     if (!isMestre && isOculto) return false; 
@@ -814,7 +862,6 @@ export function MapaVisao() {
 
                 return (
                     <div key={key} className="map-cell" data-x={cell.x} data-y={cell.y} onClick={() => handleCellClick(cell.x, cell.y)} style={{ width: tamanhoCelula, height: tamanhoCelula, border: '1px solid rgba(255,255,255,0.1)', position: 'relative', cursor: 'pointer' }}>
-                        
                         {cellDummies.map(([id, d]) => (
                             <div key={id} style={{ opacity: cenario?.tokensOcultos?.includes(id) ? 0.4 : 1 }}>
                                 <DummieToken id={id} dummie={d} />
@@ -864,9 +911,7 @@ export function MapaAreaCentral() {
     const ctx = useMapaForm();
     if (!ctx) return FALLBACK;
     const { isModoRP, isMestre, mestreVendoRP } = ctx;
-    
     if (isModoRP && (!isMestre || mestreVendoRP)) return <MapaSessaoRP />;
-    
     return (
         <>
             <MapaControlesSuperiores />
@@ -889,7 +934,6 @@ export function MapaIniciativaTracker() {
     const todasEntidades = useMemo(() => {
         const js = Object.entries(jogadores).filter(([n, f]) => (f.posicao?.cenaId || 'default') === cenaRenderId).map(([n, f]) => ({ id: n, nome: n, ficha: f, isDummie: false, init: f.iniciativa || 0 }));
         const ds = Object.entries(dummies || {}).filter(([id, d]) => (d.cenaId || 'default') === cenaRenderId).map(([id, d]) => ({ id, nome: d.nome, ficha: d, isDummie: true, init: d.iniciativa || 0 }));
-        
         return [...js, ...ds].sort((a, b) => b.init - a.init);
     }, [jogadores, dummies, cenaRenderId]);
 
@@ -897,11 +941,8 @@ export function MapaIniciativaTracker() {
         e.stopPropagation();
         const novoCenario = JSON.parse(JSON.stringify(cenario || {}));
         if (!novoCenario.tokensOcultos) novoCenario.tokensOcultos = [];
-        if (novoCenario.tokensOcultos.includes(idOuNome)) {
-            novoCenario.tokensOcultos = novoCenario.tokensOcultos.filter(t => t !== idOuNome);
-        } else {
-            novoCenario.tokensOcultos.push(idOuNome);
-        }
+        if (novoCenario.tokensOcultos.includes(idOuNome)) novoCenario.tokensOcultos = novoCenario.tokensOcultos.filter(t => t !== idOuNome);
+        else novoCenario.tokensOcultos.push(idOuNome);
         salvarCenarioCompleto(novoCenario);
     };
 
