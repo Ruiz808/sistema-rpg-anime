@@ -13,7 +13,7 @@ import { storage, functions } from '../../services/firebase-config';
 const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Mapa provider não encontrado</div>;
 
 // ============================================================================
-// 🔥 A CARTA DE AVATAR INTELIGENTE (DETETA VOZ AO VIVO E TOCA O ÁUDIO NATIVAMENTE) 🔥
+// 🔥 A CARTA DE AVATAR INTELIGENTE (CORREÇÃO DO BUG DE ÁUDIO DO CHROME) 🔥
 // ============================================================================
 function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, fazerChamada, cardSize }) {
     const ctx = useMapaForm();
@@ -25,35 +25,48 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
     const analyserRef = useRef(null);
     const rafRef = useRef(null);
 
-    // 1. 🔥 MOTOR DE ÁUDIO NATIVO (ANTI-BLOQUEIO DO REACT) 🔥
-    // Colocamos o áudio puro no Javascript para o React não o destruir
+    // 1. 🔥 MOTOR DE ÁUDIO NATIVO COLADO NO HTML (APENAS PARA OS OUTROS) 🔥
     useEffect(() => {
         if (isMe || !stream) return;
 
-        console.log(`[Rádio] Estabelecendo canal de áudio bruto para ${nome}...`);
-        const audioEl = new Audio();
+        console.log(`[Rádio] Colando coluna de som para ${nome} no site...`);
+        const audioEl = document.createElement('audio');
         audioEl.srcObject = stream;
         audioEl.autoplay = true;
         audioEl.playsInline = true;
-        audioEl.muted = surdo;
+        audioEl.muted = surdo; // Respeita o botão de Ensurdecer
         
-        // Salva na Window para o Garbage Collector do Chrome não limpar a voz no meio do RP
+        // Escondemos o áudio para o Chrome não bloquear
+        audioEl.style.position = 'absolute';
+        audioEl.style.opacity = '0';
+        audioEl.style.pointerEvents = 'none';
+        
+        // Colado no Body para o React não o destruir!
+        document.body.appendChild(audioEl);
         window[`radio_${nome}`] = audioEl;
 
-        audioEl.play().catch(e => {
-            console.warn(`[Rádio] Navegador bloqueou som de ${nome}. Clicar na carta resolve.`, e);
-        });
+        const tentarTocar = () => {
+            audioEl.play().catch(e => {
+                console.warn(`[Rádio] Áudio de ${nome} bloqueado. Clique na tela!`, e);
+            });
+        };
+        tentarTocar();
 
         return () => {
             audioEl.pause();
             audioEl.srcObject = null;
+            if (document.body.contains(audioEl)) {
+                document.body.removeChild(audioEl);
+            }
             delete window[`radio_${nome}`];
         };
     }, [stream, isMe, surdo, nome]);
 
-    // 2. 🔥 MOTOR DE DETEÇÃO DE VOZ (VAD) PARA O NEON PISCAR 🔥
+    // 2. 🔥 MOTOR DE DETEÇÃO DE VOZ (APENAS PARA O SEU MIC!) 🔥
     useEffect(() => {
-        if (!stream) {
+        // CORREÇÃO: Se tentarmos analisar o som dos amigos, o Chrome silencia-os. 
+        // Portanto, o Neon dinâmico só funciona na sua própria carta!
+        if (!stream || !isMe) {
             setIsSpeaking(false);
             return;
         }
@@ -100,10 +113,9 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
                 audioCtxRef.current.close().catch(e => console.log(e));
             }
         };
-    }, [stream]);
+    }, [stream, isMe]);
 
     // 3. 🔥 TRUQUE ANTI-BLOQUEIO DO NAVEGADOR 🔥
-    // Se o Chrome forçar silêncio, basta um clique na carta para "acordar" as colunas!
     const handleCardClick = () => {
         if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') audioCtxRef.current.resume();
         if (!isMe && window[`radio_${nome}`]) {
@@ -122,12 +134,17 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
             boxShadowCard = '0 0 20px rgba(255,0,60,0.4)';
             iconMic = '🔇';
         } else if (isSpeaking) {
-            // A falar! NEON BRILHANTE
+            // Você a falar! NEON BRILHANTE
             borderCard = '2px solid #00ffcc';
             boxShadowCard = '0 0 35px #00ffcc, inset 0 0 20px rgba(0,255,204,0.4)';
             iconMic = '🔊';
+        } else if (!isMe && stream) {
+            // Amigos conectados (Luz Fixa, pois não analisamos o volume deles para proteger o áudio)
+            borderCard = '2px solid #00aaff';
+            boxShadowCard = '0 0 20px rgba(0,170,255,0.4)';
+            iconMic = '🔊';
         } else {
-            // Na call, mas calado. NEON ESCURO
+            // Você conectado, mas calado
             borderCard = '2px solid #005588';
             boxShadowCard = '0 0 10px rgba(0,85,136,0.5)';
             iconMic = '🎙️';
@@ -540,7 +557,6 @@ export function MapaSessaoRP() {
                 </button>
             </div>
 
-            {/* AS CARTAS AVATAR VOZ */}
             {playersNaTaverna.length > 0 && (
                 <div style={{ width: '100%', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '25px' }}>
                     {playersNaTaverna.map(([n, f]) => {
