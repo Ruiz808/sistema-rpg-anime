@@ -2,33 +2,37 @@ import React from 'react';
 import { MapaFormProvider } from './MapaFormContext';
 import {
     MapaDadoAnimado,
-    MapaMestreRPToggle,
-    MapaMestreCenaVisualizada,
-    MapaMestreGerenciadorCenas,
-    MapaMestreGavetaTokens, // 🔥 ADICIONAMOS A GAVETA AQUI 🔥
-    MapaMestreGeradorDummies,
+    MapaFerramentasMestre,
     MapaAreaCentral,
+    MapaRolagemRapida,
     MapaIniciativaTracker,
-    MapaHologramaAcao
+    MapaHologramaAcao,
+    MapaOlhoSextaFeira
 } from './MapaSubComponents';
 
 export default function MapaPanel({ className, children }) {
-    const hasChildren = React.Children.count(children) > 0
+    const hasChildren = React.Children.count(children) > 0;
+    
     return (
         <MapaFormProvider>
-            <div className={['mapa-panel', className].filter(Boolean).join(' ')} style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+            <div className={['mapa-panel', className].filter(Boolean).join(' ')} style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', position: 'relative' }}>
+                
+                {/* O OLHO E A MESA DE MISTURA */}
+                <MapaOlhoSextaFeira />
+
                 {hasChildren ? children : (
                     <>
                         <MapaDadoAnimado />
-                        <div style={{ flex: '1 1 70%', minWidth: 0 }}>
-                            <MapaMestreRPToggle />
-                            <MapaMestreCenaVisualizada />
-                            <MapaMestreGerenciadorCenas />
-                            <MapaMestreGavetaTokens />
-                            <MapaMestreGeradorDummies />
+                        
+                        <div style={{ flex: '1 1 70%', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                            <MapaFerramentasMestre />
+                            
                             <MapaAreaCentral />
+                            
+                            <MapaRolagemRapida />
                             <MapaIniciativaTracker />
                         </div>
+
                         <div style={{ flex: '1 1 30%', minWidth: '300px', position: 'sticky', top: 10, height: '85vh' }}>
                             <MapaHologramaAcao />
                         </div>
