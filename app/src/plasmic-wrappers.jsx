@@ -177,3 +177,31 @@ export const PlasmicStatusEconomiaAcoes = criarSubWrapper(statusSubImport('Statu
 export const PlasmicStatusControleRapido = criarSubWrapper(statusSubImport('StatusControleRapido'), StatusFormProvider)
 export const PlasmicStatusAnalisePoder = criarSubWrapper(statusSubImport('StatusAnalisePoder'), StatusFormProvider)
 export const PlasmicStatusPaletaCores = criarSubWrapper(statusSubImport('StatusPaletaCores'), StatusFormProvider)
+
+// --- Tema componentes (sem provider específico, apenas StoreInitializer) ---
+const temaSelectorLazy = React.lazy(() => import('./components/shared/TemaSelector'))
+const temaEditorLazy = React.lazy(() => import('./components/shared/TemaEditor'))
+
+export function PlasmicTemaSelector({ className, style, ...props }) {
+  return (
+    <StoreInitializer>
+      <div className={className} style={style}>
+        <React.Suspense fallback={<div className="glass-panel ativo" style={{ padding: '1rem' }}>Carregando...</div>}>
+          <temaSelectorLazy {...props} />
+        </React.Suspense>
+      </div>
+    </StoreInitializer>
+  )
+}
+
+export function PlasmicTemaEditor({ className, style, ...props }) {
+  return (
+    <StoreInitializer>
+      <div className={className} style={style}>
+        <React.Suspense fallback={<div className="glass-panel ativo" style={{ padding: '1rem' }}>Carregando...</div>}>
+          <temaEditorLazy {...props} />
+        </React.Suspense>
+      </div>
+    </StoreInitializer>
+  )
+}
