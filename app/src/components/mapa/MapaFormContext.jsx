@@ -102,22 +102,24 @@ export function MapaFormProvider({ children }) {
     // ========================================================================
     // 🔥 SISTEMA DE VOZ AUTOMÁTICO (LIGA AO SENTAR NA MESA) 🔥
     // ========================================================================
+    const [radioLigado, setRadioLigado] = useState(false); // 🔥 O INTERRUPTOR QUE FALTAVA!
     const [peerObj, setPeerObj] = useState(null);
     const [meuStream, setMeuStream] = useState(null);
     const meuStreamRef = useRef(null); 
     const [conexoes, setConexoes] = useState([]);
     const [mutado, setMutado] = useState(false);
     const [surdo, setSurdo] = useState(false);
-    const [voiceStatus, setVoiceStatus] = useState('Fora da Taverna (Desconectado)');
+    const [voiceStatus, setVoiceStatus] = useState('Desconectado');
     const [mics, setMics] = useState([]);
     const [selectedMic, setSelectedMic] = useState('');
 
     const meuIDTelefone = meuNome ? meuNome.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
     const rtcInicializado = useRef(false);
 
-    // 1. INICIA OU DESLIGA O MIC BASEADO NA PRESENÇA NA MESA
+    // 1. INICIA OU DESLIGA O MIC BASEADO NA PRESENÇA
     useEffect(() => {
-        if (!meuIDTelefone) return;
+        // 🔥 Agora só avança se você tiver clicado em "ENTRAR NO RÁDIO"
+        if (!meuIDTelefone || !radioLigado) return;
 
         if (isPresenteNaTaverna && !rtcInicializado.current) {
             rtcInicializado.current = true;
@@ -177,7 +179,7 @@ export function MapaFormProvider({ children }) {
             setConexoes([]);
             setVoiceStatus('Fora da Taverna (Mic Desligado)');
         }
-    }, [isPresenteNaTaverna, meuIDTelefone]);
+    }, [isPresenteNaTaverna, meuIDTelefone, radioLigado]);
 
     const fazerChamada = useCallback((nomeDestino) => {
         if (!peerObj || !meuStreamRef.current || !nomeDestino) return;
@@ -700,7 +702,7 @@ export function MapaFormProvider({ children }) {
         alterarZoom, setMinhaIniciativa, avancarTurno, sairDoCombate, encerrarCombate,
         rolarAcertoRapido, tokenMap, tokens3D, jogadorDaVez, infoDaVez, fmt, deletarZona,
         meuStream, conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen, fazerChamada, desconectarVoz,
-        mics, selectedMic, trocarMicrofone
+        mics, selectedMic, trocarMicrofone, radioLigado, setRadioLigado // 🔥 ESTADO DE RÁDIO ADICIONADO AQUI!
     }), [
         minhaFicha, meuNome, personagens, feedCombate, isMestre, dummies, alvoSelecionado, cenario,
         fichaSegura, modo3D, tamanhoCelula, iniciativaInput, altitudeInput,
@@ -715,7 +717,7 @@ export function MapaFormProvider({ children }) {
         getAvatarInfo, handleCellClick, alterarZoom, setMinhaIniciativa, avancarTurno,
         sairDoCombate, encerrarCombate, rolarAcertoRapido, deletarZona,
         meuStream, conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen, fazerChamada, desconectarVoz,
-        mics, selectedMic, trocarMicrofone
+        mics, selectedMic, trocarMicrofone, radioLigado, setRadioLigado
     ]);
 
     return (
