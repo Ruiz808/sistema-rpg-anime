@@ -100,7 +100,7 @@ export function MapaFormProvider({ children }) {
     const isPresenteNaTaverna = tavernaAtivos.includes(meuNome);
 
     // ========================================================================
-    // 🔥 SISTEMA GLOBAL DE VOZ (PEERJS) BLINDADO + SELETOR DE MICROFONE 🔥
+    // 🔥 SISTEMA DE VOZ AUTOMÁTICO (LIGA AO SENTAR NA MESA) 🔥
     // ========================================================================
     const [peerObj, setPeerObj] = useState(null);
     const [meuStream, setMeuStream] = useState(null);
@@ -108,28 +108,30 @@ export function MapaFormProvider({ children }) {
     const [conexoes, setConexoes] = useState([]);
     const [mutado, setMutado] = useState(false);
     const [surdo, setSurdo] = useState(false);
-    const [voiceStatus, setVoiceStatus] = useState('Aguardando Mic...');
-
+    const [voiceStatus, setVoiceStatus] = useState('Fora da Taverna (Desconectado)');
     const [mics, setMics] = useState([]);
     const [selectedMic, setSelectedMic] = useState('');
 
     const meuIDTelefone = meuNome ? meuNome.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
     const rtcInicializado = useRef(false);
 
+    // 1. INICIA OU DESLIGA O MIC BASEADO NA PRESENÇA NA MESA
     useEffect(() => {
-        if (!meuIDTelefone || rtcInicializado.current) return;
-        rtcInicializado.current = true;
+        if (!meuIDTelefone) return;
 
-        const iniciarSistemaDeVoz = async () => {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        if (isPresenteNaTaverna && !rtcInicializado.current) {
+            rtcInicializado.current = true;
+            setVoiceStatus('A ligar Microfone...');
+            
+            navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
                 meuStreamRef.current = stream;
                 setMeuStream(stream);
 
-                const devices = await navigator.mediaDevices.enumerateDevices();
-                const audioInputs = devices.filter(d => d.kind === 'audioinput');
-                setMics(audioInputs);
-                if (audioInputs.length > 0) setSelectedMic(audioInputs[0].deviceId);
+                navigator.mediaDevices.enumerateDevices().then(devices => {
+                    const audioInputs = devices.filter(d => d.kind === 'audioinput');
+                    setMics(audioInputs);
+                    if (audioInputs.length > 0) setSelectedMic(audioInputs[0].deviceId);
+                });
 
                 const novoPeer = new Peer(`anime-rpg-${meuIDTelefone}`, {
                     config: {
@@ -140,40 +142,74 @@ export function MapaFormProvider({ children }) {
                     }
                 });
                 
-                novoPeer.on('open', (id) => {
+                novoPeer.on('open', () => {
                     setPeerObj(novoPeer);
-                    setVoiceStatus('Rádio Online');
+                    setVoiceStatus('Online na Taverna!');
                 });
 
                 novoPeer.on('call', (call) => {
-                    setVoiceStatus(`Recebendo chamada de ${call.peer}...`);
-                    
-                    // 🔥 CORREÇÃO: Espera o microfone estar pronto antes de atender a chamada!
                     const attemptAnswer = () => {
                         if (meuStreamRef.current) {
                             call.answer(meuStreamRef.current);
                             call.on('stream', (remoteStream) => {
                                 setConexoes(prev => {
-                                    const existe = prev.find(c => c.id === call.peer);
-                                    if (existe) return prev.map(c => c.id === call.peer ? { ...c, stream: remoteStream } : c);
+                                    if (prev.find(c => c.id === call.peer)) return prev.map(c => c.id === call.peer ? { ...c, stream: remoteStream } : c);
                                     return [...prev, { id: call.peer, stream: remoteStream }];
                                 });
-                                setVoiceStatus('Conectado!'); 
                             });
                         } else {
-                            setTimeout(attemptAnswer, 500); // Tenta de novo se o mic não estiver pronto
+                            setTimeout(attemptAnswer, 500); 
                         }
                     };
                     attemptAnswer();
                 });
-            } catch (err) {
-                setVoiceStatus(`Erro: Sem Microfone.`);
+            }).catch(err => {
+                setVoiceStatus(`Microfone Bloqueado! Permita no cadeado acima.`);
                 console.error(err);
-            }
-        };
+                rtcInicializado.current = false;
+            });
+        } else if (!isPresenteNaTaverna && rtcInicializado.current) {
+            // SAIR DA MESA: Desliga tudo e liberta o microfone!
+            rtcInicializado.current = false;
+            if (peerObj) { peerObj.destroy(); setPeerObj(null); }
+            if (meuStreamRef.current) { meuStreamRef.current.getTracks().forEach(t => t.stop()); meuStreamRef.current = null; }
+            setMeuStream(null);
+            setConexoes([]);
+            setVoiceStatus('Fora da Taverna (Mic Desligado)');
+        }
+    }, [isPresenteNaTaverna, meuIDTelefone]);
 
-        iniciarSistemaDeVoz();
-    }, [meuIDTelefone]);
+    const fazerChamada = useCallback((nomeDestino) => {
+        if (!peerObj || !meuStreamRef.current || !nomeDestino) return;
+        const idFormatado = `anime-rpg-${nomeDestino.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+        
+        const call = peerObj.call(idFormatado, meuStreamRef.current);
+        if (!call) return;
+
+        call.on('stream', (remoteStream) => {
+            setConexoes(prev => {
+                if (prev.find(c => c.id === idFormatado)) return prev.map(c => c.id === idFormatado ? { ...c, stream: remoteStream } : c);
+                return [...prev, { id: idFormatado, stream: remoteStream }];
+            });
+        });
+    }, [peerObj]);
+
+    // 2. AUTO-DIALER: Ligar automaticamente a quem já está na mesa!
+    useEffect(() => {
+        if (!peerObj || !isPresenteNaTaverna || !meuStreamRef.current) return;
+        
+        const ativos = Array.isArray(cenario?.tavernaAtivos) ? cenario.tavernaAtivos : [];
+        
+        ativos.forEach(nomeAmigo => {
+            if (nomeAmigo === meuNome) return;
+            const idFormatado = `anime-rpg-${nomeAmigo.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+            
+            // Se o amigo está na mesa e ainda não o ligámos, telefona!
+            if (!conexoes.find(c => c.id === idFormatado)) {
+                 fazerChamada(nomeAmigo);
+            }
+        });
+    }, [cenario?.tavernaAtivos, peerObj, isPresenteNaTaverna, conexoes.length, meuNome, fazerChamada]);
 
     const trocarMicrofone = useCallback(async (deviceId) => {
         try {
@@ -198,7 +234,6 @@ export function MapaFormProvider({ children }) {
             }
         } catch (err) {
             console.error("Erro ao trocar mic:", err);
-            setVoiceStatus("Erro ao trocar Mic.");
         }
     }, [peerObj]);
 
@@ -210,23 +245,6 @@ export function MapaFormProvider({ children }) {
     }, [meuStream]);
 
     const toggleDeafen = useCallback(() => setSurdo(s => !s), []);
-
-    const fazerChamada = useCallback((nomeDestino) => {
-        if (!peerObj || !meuStreamRef.current || !nomeDestino) return;
-        const idFormatado = `anime-rpg-${nomeDestino.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
-        setVoiceStatus(`Chamando ${nomeDestino}...`);
-        
-        const call = peerObj.call(idFormatado, meuStreamRef.current);
-        call.on('stream', (remoteStream) => {
-            setConexoes(prev => {
-                const existe = prev.find(c => c.id === idFormatado);
-                if (existe) return prev.map(c => c.id === idFormatado ? { ...c, stream: remoteStream } : c);
-                return [...prev, { id: idFormatado, stream: remoteStream }];
-            });
-            setVoiceStatus('Conectado!');
-        });
-        call.on('error', () => setVoiceStatus(`${nomeDestino} Offline`));
-    }, [peerObj]);
 
     const desconectarVoz = useCallback((idPeer) => {
         setConexoes(prev => prev.filter(c => c.id !== idPeer));
