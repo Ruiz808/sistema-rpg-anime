@@ -29,7 +29,6 @@ export function MapaOlhoSextaFeira() {
     const mediaRecorderRef = useRef(null);
     const timerRef = useRef(null);
     
-    // REFERÊNCIAS DO MIXER
     const audioContextRef = useRef(null);
     const mixerCtxRef = useRef(null);
     const mixedStreamRef = useRef(null);
@@ -217,7 +216,6 @@ export function MapaOlhoSextaFeira() {
         try {
             if (!meuStream) return addLog("❌ Erro: O microfone (Rádio) não está inicializado. Tente dar F5.");
             
-            // 🔥 MESA DE SOM DIGITAL A USAR AS STREAMS GLOBAIS DO CONTEXTO 🔥
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             mixerCtxRef.current = audioCtx;
             const destination = audioCtx.createMediaStreamDestination();
@@ -372,7 +370,6 @@ export function MapaSessaoRP() {
                         const conRemota = conexoes.find(c => c.id === expectedIdTelefone);
                         const isConnected = isMe || !!conRemota;
 
-                        // Estilização Dinâmica baseada no Rádio
                         let boxShadowCard = '0 0 15px rgba(0,0,0,0.8)';
                         let borderCard = '2px solid #333';
                         let iconMic = '⏳';
@@ -385,17 +382,25 @@ export function MapaSessaoRP() {
                         return (
                             <div key={n} className="fade-in" style={{ position: 'relative', width: cardSize, aspectRatio: '4/3', background: '#111', border: borderCard, borderRadius: 6, overflow: 'hidden', backgroundImage: urlSeguraParaCss(info.img) || 'none', backgroundSize: 'cover', backgroundPosition: 'top center', boxShadow: boxShadowCard, transition: 'all 0.3s' }}>
                                 
-                                {/* O ÍCONE DO MICROFONE NA CARTA */}
                                 <div style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(0,0,0,0.7)', borderRadius: '50%', padding: '5px 8px', fontSize: '1.2em', border: borderCard }}>
                                     {iconMic}
                                 </div>
 
-                                {/* O ÁUDIO REMOTO INVISÍVEL */}
+                                {/* 🔥 CORREÇÃO: ÁUDIO FORÇADO PARA IGNORAR BLOQUEIOS DO NAVEGADOR 🔥 */}
                                 {conRemota && (
-                                    <audio autoPlay muted={surdo} ref={el => { if (el && !el.srcObject) el.srcObject = conRemota.stream; }} />
+                                    <audio 
+                                        autoPlay 
+                                        playsInline
+                                        muted={surdo} 
+                                        ref={el => { 
+                                            if (el && el.srcObject !== conRemota.stream) {
+                                                el.srcObject = conRemota.stream;
+                                                el.play().catch(e => console.warn("Aguardando interação para tocar o áudio...", e));
+                                            } 
+                                        }} 
+                                    />
                                 )}
 
-                                {/* BOTÃO "LIGAR" SE NÃO ESTIVER CONECTADO */}
                                 {!isConnected && !isMe && (
                                     <div style={{ position: 'absolute', top: '40%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10 }}>
                                         <button className="btn-neon btn-blue" onClick={() => fazerChamada(n)} style={{ padding: '10px 25px', fontSize: '1.1em', fontWeight: 'bold', boxShadow: '0 0 15px #0088ff' }}>
@@ -404,7 +409,6 @@ export function MapaSessaoRP() {
                                     </div>
                                 )}
 
-                                {/* STATUS BARS INFERIORES */}
                                 <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', display: 'flex', flexDirection: 'column', background: 'rgba(10,10,15,0.9)', borderTop: '2px solid #222', padding: '6px 10px', backdropFilter: 'blur(3px)' }}>
                                     <span style={{ color: isConnected ? '#00ffcc' : '#fff', fontWeight: 'bold', fontSize: '0.8em', textTransform: 'uppercase', marginBottom: 4, letterSpacing: 1, textShadow: '1px 1px 2px #000', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{n}</span>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
@@ -430,7 +434,6 @@ export function MapaSessaoRP() {
     );
 }
 
-// 🔥 CONTROLES SUPERIORES (ADICIONADO O BOTÃO DE MUTE GLOBAL) 🔥
 export function MapaControlesSuperiores() {
     const ctx = useMapaForm();
     if (!ctx) return FALLBACK;
@@ -450,7 +453,6 @@ export function MapaControlesSuperiores() {
                 <span style={{ color: '#fff', fontWeight: 'bold' }}>{cenaAtual.nome} <span style={{color: '#888', fontWeight: 'normal'}}>(1Q = {cenaAtual.escala}{cenaAtual.unidade})</span></span>
             </div>
             
-            {/* MINI BOTÃO DE MUTE PARA O MODO COMBATE */}
             <div style={{ display: 'flex', gap: 5, alignItems: 'center', borderLeft: '1px solid #444', paddingLeft: 15 }}>
                 <button onClick={toggleMute} title={mutado ? "Desmutar Mic" : "Mutar Mic"} style={{ background: mutado ? '#ff003c' : 'none', color: mutado ? '#fff' : '#00ffcc', border: `1px solid ${mutado ? '#ff003c' : '#00ffcc'}`, borderRadius: '5px', padding: '2px 8px', cursor: 'pointer' }}>
                     {mutado ? '🔇' : '🎙️'}
@@ -469,7 +471,6 @@ export function MapaControlesSuperiores() {
     );
 }
 
-// (O resto dos subcomponentes como MapaVisao, MapaIniciativaTracker, etc, continuam inalterados abaixo - insira o resto do seu ficheiro normal aqui)
 export function MapaDadoAnimado() {
     const ctx = useMapaForm();
     if (!ctx) return FALLBACK;
@@ -851,8 +852,10 @@ export function MapaVisao() {
 
             {cells.map((cell) => {
                 const key = `${cell.x},${cell.y}`;
+                
                 const tokensNestaCelula = tokenMap[key] || [];
                 const visivelTokens = tokensNestaCelula.filter(tk => isMestre || !(cenario?.tokensOcultos?.includes(tk.nome)));
+
                 const cellDummies = Object.entries(dummies || {}).filter(([id, d]) => {
                     const isOculto = cenario?.tokensOcultos?.includes(id);
                     if (!isMestre && isOculto) return false; 
@@ -862,6 +865,7 @@ export function MapaVisao() {
 
                 return (
                     <div key={key} className="map-cell" data-x={cell.x} data-y={cell.y} onClick={() => handleCellClick(cell.x, cell.y)} style={{ width: tamanhoCelula, height: tamanhoCelula, border: '1px solid rgba(255,255,255,0.1)', position: 'relative', cursor: 'pointer' }}>
+                        
                         {cellDummies.map(([id, d]) => (
                             <div key={id} style={{ opacity: cenario?.tokensOcultos?.includes(id) ? 0.4 : 1 }}>
                                 <DummieToken id={id} dummie={d} />
@@ -911,7 +915,9 @@ export function MapaAreaCentral() {
     const ctx = useMapaForm();
     if (!ctx) return FALLBACK;
     const { isModoRP, isMestre, mestreVendoRP } = ctx;
+    
     if (isModoRP && (!isMestre || mestreVendoRP)) return <MapaSessaoRP />;
+    
     return (
         <>
             <MapaControlesSuperiores />
@@ -934,6 +940,7 @@ export function MapaIniciativaTracker() {
     const todasEntidades = useMemo(() => {
         const js = Object.entries(jogadores).filter(([n, f]) => (f.posicao?.cenaId || 'default') === cenaRenderId).map(([n, f]) => ({ id: n, nome: n, ficha: f, isDummie: false, init: f.iniciativa || 0 }));
         const ds = Object.entries(dummies || {}).filter(([id, d]) => (d.cenaId || 'default') === cenaRenderId).map(([id, d]) => ({ id, nome: d.nome, ficha: d, isDummie: true, init: d.iniciativa || 0 }));
+        
         return [...js, ...ds].sort((a, b) => b.init - a.init);
     }, [jogadores, dummies, cenaRenderId]);
 
@@ -941,8 +948,11 @@ export function MapaIniciativaTracker() {
         e.stopPropagation();
         const novoCenario = JSON.parse(JSON.stringify(cenario || {}));
         if (!novoCenario.tokensOcultos) novoCenario.tokensOcultos = [];
-        if (novoCenario.tokensOcultos.includes(idOuNome)) novoCenario.tokensOcultos = novoCenario.tokensOcultos.filter(t => t !== idOuNome);
-        else novoCenario.tokensOcultos.push(idOuNome);
+        if (novoCenario.tokensOcultos.includes(idOuNome)) {
+            novoCenario.tokensOcultos = novoCenario.tokensOcultos.filter(t => t !== idOuNome);
+        } else {
+            novoCenario.tokensOcultos.push(idOuNome);
+        }
         salvarCenarioCompleto(novoCenario);
     };
 

@@ -4,7 +4,7 @@ import { salvarFichaSilencioso, enviarParaFeed, salvarDummie, uploadImagem, salv
 import { calcularAcerto } from '../../core/engine';
 import { resolverEfeitosEntidade } from '../../core/efeitos-resolver';
 import { getBuffs } from '../../core/attributes';
-import Peer from 'peerjs'; // 🔥 O MOTOR DE RÁDIO AGORA VIVE AQUI 🔥
+import Peer from 'peerjs';
 
 export const MAP_SIZE = 30;
 export const PALETA = ['#ff003c', '#0088ff', '#00ff88', '#ffcc00', '#ff00ff', '#00ffff', '#ff8800', '#88ff00'];
@@ -133,6 +133,7 @@ export function MapaFormProvider({ children }) {
                         if (prev.find(c => c.id === call.peer)) return prev;
                         return [...prev, { id: call.peer, stream: remoteStream }];
                     });
+                    setVoiceStatus('Conectado!'); // 🔥 Atualiza o status quando a chamada entra
                 });
             });
         }).catch(err => {
@@ -162,7 +163,7 @@ export function MapaFormProvider({ children }) {
                 if (prev.find(c => c.id === idFormatado)) return prev;
                 return [...prev, { id: idFormatado, stream: remoteStream }];
             });
-            setVoiceStatus('Conectado');
+            setVoiceStatus('Conectado!');
         });
         call.on('error', () => setVoiceStatus(`${nomeDestino} Offline`));
     }, [peerObj, meuStream]);
@@ -602,9 +603,6 @@ export function MapaFormProvider({ children }) {
     const jogadorDaVez = ordemIniciativa.length > 0 ? ordemIniciativa[turnoAtualIndex % ordemIniciativa.length] : null;
     const infoDaVez = jogadorDaVez ? getAvatarInfo(jogadorDaVez.ficha) : null;
 
-    // ========================================================================
-    // 🔥 EXPORTAMOS OS DADOS DE VOZ NO CONTEXTO 🔥
-    // ========================================================================
     const value = useMemo(() => ({
         minhaFicha, meuNome, personagens, feedCombate, isMestre, dummies, alvoSelecionado, cenario,
         fichaSegura, modo3D, setModo3D, tamanhoCelula, setTamanhoCelula,
@@ -623,7 +621,6 @@ export function MapaFormProvider({ children }) {
         cells, jogadores, playersNaTaverna, ordemIniciativa, handleCellClick,
         alterarZoom, setMinhaIniciativa, avancarTurno, sairDoCombate, encerrarCombate,
         rolarAcertoRapido, tokenMap, tokens3D, jogadorDaVez, infoDaVez, fmt, deletarZona,
-        // DADOS DO RÁDIO
         meuStream, conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen, fazerChamada, desconectarVoz
     }), [
         minhaFicha, meuNome, personagens, feedCombate, isMestre, dummies, alvoSelecionado, cenario,
