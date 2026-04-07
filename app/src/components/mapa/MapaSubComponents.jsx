@@ -13,6 +13,26 @@ import { storage, functions } from '../../services/firebase-config';
 const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Mapa provider não encontrado</div>;
 
 // ============================================================================
+// 🔥 COMPONENTE DE ÁUDIO BLINDADO PARA REACT 🔥
+// Isso impede que o navegador feche a conexão a cada atualização da página.
+// ============================================================================
+function PlayerDeAudioRemoto({ stream, isMuted }) {
+    const audioRef = useRef(null);
+
+    useEffect(() => {
+        if (audioRef.current && stream) {
+            audioRef.current.srcObject = stream;
+            // O onloadedmetadata garante que o navegador só tenta dar play quando a faixa de áudio já "chegou"
+            audioRef.current.onloadedmetadata = () => {
+                audioRef.current.play().catch(e => console.warn("Autoplay bloqueado pelo navegador. Clique na tela.", e));
+            };
+        }
+    }, [stream]);
+
+    return <audio ref={audioRef} autoPlay playsInline muted={isMuted} style={{ display: 'none' }} />;
+}
+
+// ============================================================================
 // 🔥 O OLHO DE SAURON COM MESA DE MISTURA DIGITAL 🔥
 // ============================================================================
 export function MapaOlhoSextaFeira() {
@@ -386,20 +406,8 @@ export function MapaSessaoRP() {
                                     {iconMic}
                                 </div>
 
-                                {/* 🔥 CORREÇÃO: ÁUDIO FORÇADO PARA IGNORAR BLOQUEIOS DO NAVEGADOR 🔥 */}
-                                {conRemota && (
-                                    <audio 
-                                        autoPlay 
-                                        playsInline
-                                        muted={surdo} 
-                                        ref={el => { 
-                                            if (el && el.srcObject !== conRemota.stream) {
-                                                el.srcObject = conRemota.stream;
-                                                el.play().catch(e => console.warn("Aguardando interação para tocar o áudio...", e));
-                                            } 
-                                        }} 
-                                    />
-                                )}
+                                {/* 🔥 CONEXÃO BLINDADA DE ÁUDIO 🔥 */}
+                                {conRemota && <PlayerDeAudioRemoto stream={conRemota.stream} isMuted={surdo} />}
 
                                 {!isConnected && !isMe && (
                                     <div style={{ position: 'absolute', top: '40%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10 }}>

@@ -100,7 +100,7 @@ export function MapaFormProvider({ children }) {
     const isPresenteNaTaverna = tavernaAtivos.includes(meuNome);
 
     // ========================================================================
-    // 🔥 SISTEMA GLOBAL DE VOZ (PEERJS) 🔥
+    // 🔥 SISTEMA GLOBAL DE VOZ (PEERJS) BLINDADO 🔥
     // ========================================================================
     const [peerObj, setPeerObj] = useState(null);
     const [meuStream, setMeuStream] = useState(null);
@@ -130,10 +130,15 @@ export function MapaFormProvider({ children }) {
                 call.answer(stream);
                 call.on('stream', (remoteStream) => {
                     setConexoes(prev => {
-                        if (prev.find(c => c.id === call.peer)) return prev;
+                        // 🔥 Prevenção do Bug do Duplo Stream do PeerJS 🔥
+                        const existe = prev.find(c => c.id === call.peer);
+                        if (existe) {
+                            // Substitui o stream antigo (vazio) pelo novo (com som)
+                            return prev.map(c => c.id === call.peer ? { ...c, stream: remoteStream } : c);
+                        }
                         return [...prev, { id: call.peer, stream: remoteStream }];
                     });
-                    setVoiceStatus('Conectado!'); // 🔥 Atualiza o status quando a chamada entra
+                    setVoiceStatus('Conectado!'); 
                 });
             });
         }).catch(err => {
@@ -160,7 +165,11 @@ export function MapaFormProvider({ children }) {
         const call = peerObj.call(idFormatado, meuStream);
         call.on('stream', (remoteStream) => {
             setConexoes(prev => {
-                if (prev.find(c => c.id === idFormatado)) return prev;
+                // 🔥 Prevenção do Bug do Duplo Stream na saída 🔥
+                const existe = prev.find(c => c.id === idFormatado);
+                if (existe) {
+                    return prev.map(c => c.id === idFormatado ? { ...c, stream: remoteStream } : c);
+                }
                 return [...prev, { id: idFormatado, stream: remoteStream }];
             });
             setVoiceStatus('Conectado!');
