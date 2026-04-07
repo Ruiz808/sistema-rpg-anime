@@ -218,3 +218,38 @@ export function zerarIniciativaGlobal(nomesArray) {
         set(refIni, 0).catch(err => console.error('[Sync] Erro ao zerar iniciativa:', err));
     });
 }
+
+// 🔥 MOTOR DE SINCRONIZAÇÃO DE TEMAS CUSTOMIZADOS
+export function iniciarListenerTemasCustom(callback) {
+    if (isInPlasmicCanvas()) return () => {};
+    if (!db) return () => {};
+
+    const temasRef = ref(db, 'temas');
+    return onValue(temasRef, (snapshot) => {
+        const dados = snapshot.val() || {};
+        if (callback) callback(dados);
+    }, (err) => {
+        console.error('[Sync] Erro no listener de temas:', err);
+    });
+}
+
+export function salvarTemaFirebase(id, dadosTema) {
+    if (isInPlasmicCanvas()) return Promise.resolve();
+    if (!db) return Promise.resolve();
+
+    const temaRef = ref(db, `temas/${id}`);
+    return set(temaRef, dadosTema).catch((err) => {
+        console.error('[Sync] Erro ao salvar tema no Firebase:', err);
+        throw err;
+    });
+}
+
+export function deletarTemaFirebase(id) {
+    if (isInPlasmicCanvas()) return;
+    if (!db) return;
+
+    const temaRef = ref(db, `temas/${id}`);
+    remove(temaRef).catch((err) => {
+        console.error('[Sync] Erro ao deletar tema do Firebase:', err);
+    });
+}

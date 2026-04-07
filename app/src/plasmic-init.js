@@ -5,6 +5,8 @@ import VitalBar from './components/status/VitalBar'
 import TabPanel from './components/layout/TabPanel'
 import DummieToken from './components/combat/DummieToken'
 import FormasEditor from './components/shared/FormasEditor'
+import TemaSelector from './components/shared/TemaSelector'
+import TemaEditor from './components/shared/TemaEditor'
 
 // --- Wrappers para componentes com store ---
 import {
@@ -159,6 +161,34 @@ PLASMIC.registerComponent(FormasEditor, {
     onSalvarForma: { type: 'eventHandler', argTypes: [] },
     onDeletarForma: { type: 'eventHandler', argTypes: [] },
     onAtivarForma: { type: 'eventHandler', argTypes: [] }
+  }
+})
+
+PLASMIC.registerComponent(TemaSelector, {
+  name: 'TemaSelector',
+  props: {
+    className: 'string'
+  }
+})
+
+PLASMIC.registerComponent(TemaEditor, {
+  name: 'TemaEditor',
+  props: {
+    className: 'string',
+    nomeTema: 'string',
+    emoji: 'string',
+    corPrimaria: 'string',
+    corPrimariaRgb: 'string',
+    corSecundaria: 'string',
+    corSecundariaRgb: 'string',
+    corDestaque: 'string',
+    corDestaqueRgb: 'string',
+    bgBody1: 'string',
+    bgBody2: 'string',
+    bgPanel: 'string',
+    borderPrimary: 'string',
+    gridColor: 'string',
+    shadowPrimary: 'string'
   }
 })
 
