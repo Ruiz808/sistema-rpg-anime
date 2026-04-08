@@ -100,7 +100,7 @@ export function MapaFormProvider({ children }) {
     const isPresenteNaTaverna = tavernaAtivos.includes(meuNome);
 
     // ========================================================================
-    // 🔥 SISTEMA DE VOZ BLINDADO (CORREÇÃO MULTIPLAYER & COLISÃO) 🔥
+    // 🔥 SISTEMA DE VOZ BLINDADO (CORREÇÃO DO ECO ACÚSTICO) 🔥
     // ========================================================================
     const [radioLigado, setRadioLigado] = useState(false); 
     const [peerObj, setPeerObj] = useState(null);
@@ -111,7 +111,7 @@ export function MapaFormProvider({ children }) {
 
     const chamadasEmAndamento = useRef(new Set()); 
     const [conexoes, setConexoes] = useState([]);
-    const conexoesRef = useRef([]); // Previne bugs de estado atrasado no React
+    const conexoesRef = useRef([]); 
     useEffect(() => { conexoesRef.current = conexoes; }, [conexoes]);
 
     const [mutado, setMutado] = useState(false);
@@ -129,11 +129,13 @@ export function MapaFormProvider({ children }) {
     const meuIDTelefone = meuNome ? meuNome.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
     const rtcLigado = useRef(false);
 
+    // 🔥 ATUALIZAÇÃO DO SUPRESSOR AO VIVO (AGORA O ECO FICA SEMPRE ON!)
     useEffect(() => {
         if (meuStreamRef.current) {
             meuStreamRef.current.getAudioTracks().forEach(track => {
                 if (track.applyConstraints) {
-                    track.applyConstraints({ noiseSuppression: supressorAtivo, echoCancellation: supressorAtivo }).catch(()=>{});
+                    // O echoCancellation tem de estar sempre 'true' para a voz do Kiriya não voltar!
+                    track.applyConstraints({ noiseSuppression: supressorAtivo, echoCancellation: true }).catch(()=>{});
                 }
             });
         }
@@ -143,7 +145,7 @@ export function MapaFormProvider({ children }) {
         localStorage.setItem('rpg_sensibilidade_voz', sensibilidadeVoz);
     }, [sensibilidadeVoz]);
 
-    // 🔥 PASSO 1: INICIALIZA A IDENTIDADE (A ANTENA) IMEDIATAMENTE 🔥
+    // 🔥 PASSO 1: INICIALIZA A IDENTIDADE (PEER) IMEDIATAMENTE 🔥
     useEffect(() => {
         if (!meuIDTelefone || peerObj) return;
 
@@ -160,7 +162,6 @@ export function MapaFormProvider({ children }) {
 
         novoPeer.on('call', (call) => {
             const attemptAnswer = () => {
-                // SÓ ATENDE SE O SEU CABO DE VOZ JÁ EXISTIR (i.e. Se você "Sentou na Mesa")
                 if (peerStreamRef.current) {
                     call.answer(peerStreamRef.current);
                     call.on('stream', (remoteStream) => {
@@ -183,7 +184,7 @@ export function MapaFormProvider({ children }) {
         };
     }, [meuIDTelefone]); 
 
-    // 🔥 PASSO 2: LIGA O MICROFONE SÓ QUANDO "SENTAR NA MESA" 🔥
+    // 🔥 PASSO 2: LIGA O MICROFONE SÓ QUANDO "ENTRAR NO RÁDIO" E "SENTAR NA MESA" 🔥
     useEffect(() => {
         if (!radioLigado) return;
 
@@ -191,8 +192,9 @@ export function MapaFormProvider({ children }) {
             rtcLigado.current = true;
             setVoiceStatus('A ligar Microfone...');
             
+            // echoCancellation sempre TRUE por segurança
             navigator.mediaDevices.getUserMedia({ 
-                audio: { noiseSuppression: supressorAtivo, echoCancellation: supressorAtivo, autoGainControl: true } 
+                audio: { noiseSuppression: supressorAtivo, echoCancellation: true, autoGainControl: true } 
             }).then(stream => {
                 meuStreamRef.current = stream;
                 setMeuStream(stream);
@@ -212,7 +214,6 @@ export function MapaFormProvider({ children }) {
 
         } else if (!isPresenteNaTaverna && rtcLigado.current) {
             rtcLigado.current = false;
-            // IMPORTANTE: Deixamos a Antena (peerObj) intacta, cortamos apenas os fios de voz.
             if (meuStreamRef.current) { meuStreamRef.current.getTracks().forEach(t => t.stop()); meuStreamRef.current = null; }
             if (peerStreamRef.current) { peerStreamRef.current.getTracks().forEach(t => t.stop()); peerStreamRef.current = null; }
             setMeuStream(null);
@@ -221,6 +222,7 @@ export function MapaFormProvider({ children }) {
         }
     }, [isPresenteNaTaverna, radioLigado]); 
 
+    // 🔥 PASSO 3: O AUTO-DIALER (FAZ AS CHAMADAS) 🔥
     const fazerChamada = useCallback((nomeDestino) => {
         if (!peerObj || !peerStreamRef.current || !nomeDestino) return;
         const idFormatado = `anime-rpg-${nomeDestino.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
@@ -252,7 +254,7 @@ export function MapaFormProvider({ children }) {
         call.on('error', () => { setConexoes(prev => prev.filter(c => c.id !== idFormatado)); chamadasEmAndamento.current.delete(idFormatado); });
     }, [peerObj]);
 
-    // 🔥 PASSO 3: O AUTO-DIALER INTELIGENTE (SEM COLISÕES MESH) 🔥
+    // O HEARTBEAT (Bate-Coração)
     useEffect(() => {
         if (!peerObj || !isPresenteNaTaverna || !peerStreamRef.current) return;
         
@@ -265,13 +267,9 @@ export function MapaFormProvider({ children }) {
                 const meuId = `anime-rpg-${meuNome.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
                 const amigoId = `anime-rpg-${nomeAmigo.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
 
-                // REGRAS DE OURO DA MESH WEBRTC:
-                // Quem tem o ID alfabeticamente menor LIGA. O maior ESPERA. 
-                // Isso extingue as quedas por colisão quando 3 pessoas se sentam ao mesmo tempo.
                 if (meuId < amigoId) {
                     const isAlreadyConnected = conexoesRef.current.find(c => c.id === amigoId);
                     if (!isAlreadyConnected && !chamadasEmAndamento.current.has(amigoId)) {
-                        console.log(`[Rádio] Auto-Ligando para ${nomeAmigo}...`);
                         fazerChamada(nomeAmigo);
                     }
                 }
@@ -288,7 +286,8 @@ export function MapaFormProvider({ children }) {
             if (peerStreamRef.current) peerStreamRef.current.getTracks().forEach(t => t.stop()); 
             
             const newStream = await navigator.mediaDevices.getUserMedia({ 
-                audio: { deviceId: { exact: deviceId }, noiseSuppression: supressorAtivo, echoCancellation: supressorAtivo, autoGainControl: true } 
+                // Eco Cancellation fica fixo em TRUE para proteger a voz dos amigos
+                audio: { deviceId: { exact: deviceId }, noiseSuppression: supressorAtivo, echoCancellation: true, autoGainControl: true } 
             });
             
             meuStreamRef.current = newStream;
