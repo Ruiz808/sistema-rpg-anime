@@ -4,7 +4,6 @@ import { salvarFichaSilencioso, enviarParaFeed, salvarDummie, uploadImagem, salv
 import { calcularAcerto } from '../../core/engine';
 import { resolverEfeitosEntidade } from '../../core/efeitos-resolver';
 import { getBuffs } from '../../core/attributes';
-import Peer from 'peerjs';
 
 export const MAP_SIZE = 30;
 export const PALETA = ['#ff003c', '#0088ff', '#00ff88', '#ffcc00', '#ff00ff', '#00ffff', '#ff8800', '#88ff00'];
@@ -100,204 +99,171 @@ export function MapaFormProvider({ children }) {
     const isPresenteNaTaverna = tavernaAtivos.includes(meuNome);
 
     // ========================================================================
-    // 🔥 O "DISCORD" (REDE WEBRTC E CLONAGEM DE ÁUDIO) 🔥
+    // 🔥 SISTEMA DE GRAVAÇÃO LOCAL (SEM REDES WEBRTC) 🔥
     // ========================================================================
     const [radioLigado, setRadioLigado] = useState(false); 
-    const [peerObj, setPeerObj] = useState(null);
     
-    const [meuStream, setMeuStream] = useState(null); // Cabo que vai pela Internet
-    const [streamAnalisador, setStreamAnalisador] = useState(null); // Cabo que vai para a barra verde
-    const meuStreamRef = useRef(null); 
-
-    const chamadasEmAndamento = useRef(new Set()); 
-    const [conexoes, setConexoes] = useState([]);
-    const conexoesRef = useRef([]); 
-    useEffect(() => { conexoesRef.current = conexoes; }, [conexoes]);
+    const [meuStreamPuro, setMeuStreamPuro] = useState(null); 
+    const [meuStreamProcessado, setMeuStreamProcessado] = useState(null); 
+    
+    const gateGainRef = useRef(null); 
+    const audioCtxGlobalRef = useRef(null); 
 
     const [mutado, setMutado] = useState(false);
-    const [surdo, setSurdo] = useState(false);
-    const [voiceStatus, setVoiceStatus] = useState('Desconectado');
+    const mutadoRef = useRef(mutado);
+    useEffect(() => { mutadoRef.current = mutado; }, [mutado]);
+
+    const [voiceStatus, setVoiceStatus] = useState('Fora do Estúdio');
     const [mics, setMics] = useState([]);
     const [selectedMic, setSelectedMic] = useState('');
     
+    const [euEstouFalandoState, setEuEstouFalandoState] = useState(false);
+
     const [supressorAtivo, setSupressorAtivo] = useState(true);
     const [sensibilidadeVoz, setSensibilidadeVoz] = useState(() => {
         const saved = localStorage.getItem('rpg_sensibilidade_voz');
         return saved !== null ? parseInt(saved, 10) : 10;
     });
 
-    const meuIDTelefone = meuNome ? meuNome.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
     const rtcLigado = useRef(false);
 
+    // Atualiza as constraints do mic em tempo real
     useEffect(() => {
-        if (meuStreamRef.current) {
-            meuStreamRef.current.getAudioTracks().forEach(track => {
+        if (meuStreamPuro) {
+            meuStreamPuro.getAudioTracks().forEach(track => {
                 if (track.applyConstraints) {
                     track.applyConstraints({ noiseSuppression: supressorAtivo, echoCancellation: true }).catch(()=>{});
                 }
             });
         }
-    }, [supressorAtivo]);
+    }, [supressorAtivo, meuStreamPuro]);
 
     useEffect(() => { localStorage.setItem('rpg_sensibilidade_voz', sensibilidadeVoz); }, [sensibilidadeVoz]);
 
-    // 1. INICIALIZA A ANTENA PEERJS IMEDIATAMENTE
-    useEffect(() => {
-        if (!meuIDTelefone || peerObj) return;
-
-        const novoPeer = new Peer(`anime-rpg-${meuIDTelefone}`, {
-            config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:global.stun.twilio.com:3478' }] }
-        });
+    // O CÉREBRO DA GRAVAÇÃO LOCAL E NOISE GATE
+    const startAudioEngine = useCallback((streamRaw) => {
+        if (audioCtxGlobalRef.current) {
+            audioCtxGlobalRef.current.close();
+        }
         
-        novoPeer.on('open', () => { setPeerObj(novoPeer); });
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const actx = new AudioContext();
+        audioCtxGlobalRef.current = actx;
+        
+        const source = actx.createMediaStreamSource(streamRaw);
+        const analyser = actx.createAnalyser();
+        analyser.fftSize = 256;
+        
+        const gainNode = actx.createGain();
+        gateGainRef.current = gainNode;
+        gainNode.gain.value = 0; // Começa fechado para não gravar lixo inicial
 
-        novoPeer.on('call', (call) => {
-            const attemptAnswer = () => {
-                if (meuStreamRef.current) {
-                    call.answer(meuStreamRef.current);
-                    call.on('stream', (remoteStream) => {
-                        setConexoes(prev => {
-                            if (prev.find(c => c.id === call.peer)) return prev.map(c => c.id === call.peer ? { ...c, stream: remoteStream } : c);
-                            return [...prev, { id: call.peer, stream: remoteStream }];
-                        });
-                    });
-                    call.on('close', () => setConexoes(prev => prev.filter(c => c.id !== call.peer)));
-                    call.on('error', () => setConexoes(prev => prev.filter(c => c.id !== call.peer)));
-                } else { setTimeout(attemptAnswer, 500); }
-            };
-            attemptAnswer();
-        });
+        const dest = actx.createMediaStreamDestination(); 
 
-        return () => { novoPeer.destroy(); };
-    }, [meuIDTelefone]); 
+        source.connect(analyser);
+        source.connect(gainNode);
+        gainNode.connect(dest);
 
-    // 2. LIGA O MICROFONE (CRIA O CABO ORIGINAL E O CABO CLONE)
+        setMeuStreamProcessado(dest.stream); // Esta stream filtrada é a que será gravada!
+        
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        let framesSilence = 0;
+
+        const loop = () => {
+            if (!rtcLigado.current) return;
+            
+            analyser.getByteFrequencyData(dataArray);
+            let sum = 0; for(let i=0; i<dataArray.length; i++) sum += dataArray[i];
+            let avg = sum / dataArray.length;
+            
+            const thresh = parseInt(localStorage.getItem('rpg_sensibilidade_voz')) || 10;
+            
+            if (avg > thresh) {
+                framesSilence = 0;
+                setEuEstouFalandoState(true);
+                gainNode.gain.value = mutadoRef.current ? 0 : 1;
+            } else {
+                framesSilence++;
+                if (framesSilence > 20) {
+                    setEuEstouFalandoState(false);
+                    gainNode.gain.value = 0; 
+                }
+            }
+            requestAnimationFrame(loop);
+        };
+        requestAnimationFrame(loop);
+    }, []);
+
+    // INICIAR CAPTAÇÃO
     useEffect(() => {
         if (!radioLigado) return;
 
         if (isPresenteNaTaverna && !rtcLigado.current) {
             rtcLigado.current = true;
-            setVoiceStatus('A ligar Microfone...');
+            setVoiceStatus('Aceder ao Microfone...');
             
             navigator.mediaDevices.getUserMedia({ 
                 audio: { noiseSuppression: supressorAtivo, echoCancellation: true, autoGainControl: true } 
             }).then(stream => {
-                
-                // O Cabo Original (Que vai para a Rede / Amigos)
-                meuStreamRef.current = stream;
-                setMeuStream(stream);
-
-                // O Cabo Clone (Sempre Ligado, vai para a barra do Noise Gate)
-                const cloneTrack = stream.getAudioTracks()[0].clone();
-                const cloneStream = new MediaStream([cloneTrack]);
-                setStreamAnalisador(cloneStream);
+                setMeuStreamPuro(stream); 
+                startAudioEngine(stream); 
 
                 navigator.mediaDevices.enumerateDevices().then(devices => {
                     const audioInputs = devices.filter(d => d.kind === 'audioinput');
                     setMics(audioInputs);
-                    if (audioInputs.length > 0) setSelectedMic(audioInputs[0].deviceId);
+                    
+                    // Se o Chrome tentar dar-nos a Mixagem Estéreo por defeito, nós tentamos ignorar
+                    const badWords = ['mixagem', 'stereo mix', 'virtual'];
+                    let bestMic = audioInputs[0]?.deviceId;
+                    for (let mic of audioInputs) {
+                        if (mic.label && !badWords.some(bw => mic.label.toLowerCase().includes(bw))) {
+                            bestMic = mic.deviceId;
+                            break; // Apanhámos um mic físico
+                        }
+                    }
+                    if (bestMic) setSelectedMic(bestMic);
                 });
 
-                setVoiceStatus('Online na Taverna!');
+                setVoiceStatus('Microfone Ativo (Pronto a Gravar)');
             }).catch(err => {
-                setVoiceStatus(`Microfone Bloqueado! Permitir acesso.`);
+                setVoiceStatus(`Erro: Permita o microfone no cadeado.`);
                 rtcLigado.current = false;
             });
 
         } else if (!isPresenteNaTaverna && rtcLigado.current) {
             rtcLigado.current = false;
-            if (meuStreamRef.current) meuStreamRef.current.getTracks().forEach(t => t.stop());
-            if (streamAnalisador) streamAnalisador.getTracks().forEach(t => t.stop());
+            if (meuStreamPuro) meuStreamPuro.getTracks().forEach(t => t.stop());
+            if (audioCtxGlobalRef.current) audioCtxGlobalRef.current.close();
             
-            meuStreamRef.current = null;
-            setMeuStream(null);
-            setStreamAnalisador(null);
-            
-            setConexoes([]);
-            setVoiceStatus('Fora da Taverna');
+            setMeuStreamPuro(null);
+            setMeuStreamProcessado(null);
+            setEuEstouFalandoState(false);
+            setVoiceStatus('Fora do Estúdio');
         }
-    }, [isPresenteNaTaverna, radioLigado]); 
+    }, [isPresenteNaTaverna, radioLigado, supressorAtivo, startAudioEngine]); 
 
-    // 3. O ALGORITMO ANTI-COLISÃO DE CHAMADAS
-    const fazerChamada = useCallback((nomeDestino) => {
-        if (!peerObj || !meuStreamRef.current || !nomeDestino) return;
-        const idFormatado = `anime-rpg-${nomeDestino.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
-        
-        if (chamadasEmAndamento.current.has(idFormatado)) return;
-        chamadasEmAndamento.current.add(idFormatado);
-
-        const call = peerObj.call(idFormatado, meuStreamRef.current);
-        if (!call) { chamadasEmAndamento.current.delete(idFormatado); return; }
-
-        call.on('stream', (remoteStream) => {
-            setConexoes(prev => {
-                if (prev.find(c => c.id === idFormatado)) return prev.map(c => c.id === idFormatado ? { ...c, stream: remoteStream } : c);
-                return [...prev, { id: idFormatado, stream: remoteStream }];
-            });
-            chamadasEmAndamento.current.delete(idFormatado);
-        });
-
-        call.on('close', () => { setConexoes(prev => prev.filter(c => c.id !== idFormatado)); chamadasEmAndamento.current.delete(idFormatado); });
-        call.on('error', () => { setConexoes(prev => prev.filter(c => c.id !== idFormatado)); chamadasEmAndamento.current.delete(idFormatado); });
-    }, [peerObj]);
-
-    useEffect(() => {
-        if (!peerObj || !isPresenteNaTaverna || !meuStreamRef.current) return;
-        const interval = setInterval(() => {
-            const ativos = Array.isArray(cenario?.tavernaAtivos) ? cenario.tavernaAtivos : [];
-            ativos.forEach(nomeAmigo => {
-                if (nomeAmigo === meuNome) return;
-                
-                const meuId = `anime-rpg-${meuNome.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
-                const amigoId = `anime-rpg-${nomeAmigo.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
-                
-                // ORDEM ALFABÉTICA: Natsu liga ao Kiriya, mas espera a chamada do Ketsuda!
-                if (meuId < amigoId) {
-                    const exists = conexoesRef.current.find(c => c.id === amigoId);
-                    if (!exists && !chamadasEmAndamento.current.has(amigoId)) fazerChamada(nomeAmigo);
-                }
-            });
-        }, 3000); 
-        return () => clearInterval(interval);
-    }, [cenario?.tavernaAtivos, peerObj, isPresenteNaTaverna, meuNome, fazerChamada]);
-
-    // 4. TROCA DE MICROFONE SEM DERRUBAR A CHAMADA (replaceTrack)
+    // MUDAR MICROFONE ESTÁ BLINDADO
     const trocarMicrofone = useCallback(async (deviceId) => {
         try {
             setSelectedMic(deviceId);
+            if (meuStreamPuro) meuStreamPuro.getTracks().forEach(t => t.stop()); 
             
-            // Cria a nova stream primeiro
             const newStream = await navigator.mediaDevices.getUserMedia({ 
                 audio: { deviceId: { exact: deviceId }, noiseSuppression: supressorAtivo, echoCancellation: true, autoGainControl: true } 
             });
             
-            // Injeta a nova stream nas chamadas que já estão a decorrer!
-            if (peerObj) {
-                Object.values(peerObj.connections).forEach(conns => {
-                    conns.forEach(conn => {
-                        if (conn.peerConnection) {
-                            const sender = conn.peerConnection.getSenders().find(s => s.track && s.track.kind === 'audio');
-                            if (sender) sender.replaceTrack(newStream.getAudioTracks()[0]);
-                        }
-                    });
-                });
-            }
-
-            // Desliga a antiga e guarda a nova
-            if (meuStreamRef.current) meuStreamRef.current.getTracks().forEach(t => t.stop()); 
-            if (streamAnalisador) streamAnalisador.getTracks().forEach(t => t.stop()); 
-
-            meuStreamRef.current = newStream;
-            setMeuStream(newStream);
-
-            const newClone = newStream.getAudioTracks()[0].clone();
-            setStreamAnalisador(new MediaStream([newClone]));
-
+            setMeuStreamPuro(newStream);
+            startAudioEngine(newStream); 
         } catch (err) { console.error("Erro ao trocar mic:", err); }
-    }, [peerObj, supressorAtivo, streamAnalisador]);
+    }, [supressorAtivo, meuStreamPuro, startAudioEngine]);
 
-    const toggleMute = useCallback(() => setMutado(m => !m), []);
-    const toggleDeafen = useCallback(() => setSurdo(s => !s), []);
+    const toggleMute = useCallback(() => {
+        setMutado(m => {
+            const next = !m;
+            if (gateGainRef.current) gateGainRef.current.gain.value = next ? 0 : 1;
+            return next;
+        });
+    }, []);
 
     // ========================================================================
     // RESTO DO CÓDIGO (LÓGICA DO MAPA)
@@ -748,9 +714,9 @@ export function MapaFormProvider({ children }) {
         cells, jogadores, playersNaTaverna, ordemIniciativa, handleCellClick,
         alterarZoom, setMinhaIniciativa, avancarTurno, sairDoCombate, encerrarCombate,
         rolarAcertoRapido, tokenMap, tokens3D, jogadorDaVez, infoDaVez, fmt, deletarZona,
-        meuStream, streamAnalisador, conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen,
+        meuStreamPuro, meuStreamProcessado, mutado, voiceStatus, toggleMute,
         mics, selectedMic, trocarMicrofone, radioLigado, setRadioLigado, supressorAtivo, setSupressorAtivo,
-        sensibilidadeVoz, setSensibilidadeVoz
+        sensibilidadeVoz, setSensibilidadeVoz, euEstouFalandoState
     }), [
         minhaFicha, meuNome, personagens, feedCombate, isMestre, dummies, alvoSelecionado, cenario,
         fichaSegura, modo3D, tamanhoCelula, iniciativaInput, altitudeInput,
@@ -764,9 +730,9 @@ export function MapaFormProvider({ children }) {
         changeDesvantagem, handleUploadNovaCena, ativarCena, deletarCena, corDoJogador,
         getAvatarInfo, handleCellClick, alterarZoom, setMinhaIniciativa, avancarTurno,
         sairDoCombate, encerrarCombate, rolarAcertoRapido, deletarZona,
-        meuStream, streamAnalisador, conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen,
+        meuStreamPuro, meuStreamProcessado, mutado, voiceStatus, toggleMute,
         mics, selectedMic, trocarMicrofone, radioLigado, setRadioLigado, supressorAtivo, setSupressorAtivo,
-        sensibilidadeVoz, setSensibilidadeVoz
+        sensibilidadeVoz, setSensibilidadeVoz, euEstouFalandoState
     ]);
 
     return (
