@@ -13,7 +13,35 @@ import { storage, functions } from '../../services/firebase-config';
 const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Mapa provider não encontrado</div>;
 
 // ============================================================================
-// 🔥 CALIBRADOR VISUAL LOCAL (DIRETO NO DOM, SEM LAG) 🔥
+// 🔥 REPRODUTOR NATIVO BLINDADO (O Chrome trata do Eco sozinho aqui!) 🔥
+// ============================================================================
+function PlayerDeAudioRemoto({ stream, volume, surdo, nome }) {
+    const audioRef = useRef(null);
+
+    useEffect(() => {
+        if (audioRef.current && stream) {
+            if (audioRef.current.srcObject !== stream) {
+                audioRef.current.srcObject = stream;
+                audioRef.current.play().catch(e => console.warn(`Aguardando clique para tocar a voz de ${nome}:`, e));
+            }
+        }
+    }, [stream, nome]);
+
+    useEffect(() => {
+        if (audioRef.current) {
+            let v = surdo ? 0 : volume;
+            if (v > 1) v = 1; 
+            if (v < 0) v = 0;
+            audioRef.current.volume = v;
+        }
+    }, [volume, surdo]);
+
+    return <audio ref={audioRef} autoPlay playsInline style={{ display: 'none' }} />;
+}
+
+// ============================================================================
+// 🔥 CALIBRADOR VISUAL (DIRETO NO DOM, SEM LAG) 🔥
+// Usa o Cabo B (Clone) para não interferir na chamada principal
 // ============================================================================
 function CalibradorDeVoz({ stream, sensibilidade, setSensibilidade }) {
     const barraRef = useRef(null);
@@ -66,25 +94,137 @@ function CalibradorDeVoz({ stream, sensibilidade, setSensibilidade }) {
 }
 
 // ============================================================================
-// 🔥 A CARTA DE AVATAR (Apenas visual, sem chamadas) 🔥
+// 🔥 A CARTA DE AVATAR INTELIGENTE 🔥
+// O Cérebro do Gate usa o Clone para mutar o Cabo Principal quando há ruído!
 // ============================================================================
-function AvatarCardVoz({ nome, ficha, isMe, isConnected, mutado, cardSize }) {
+function AvatarCardVoz({ nome, ficha, isMe, isConnected, streamParaTocar, streamAnalisador, meuStream, mutado, surdo, fazerChamada, cardSize }) {
     const ctx = useMapaForm();
-    const { getAvatarInfo, fmt, euEstouFalandoState } = ctx;
+    const { getAvatarInfo, fmt, sensibilidadeVoz } = ctx;
     const info = getAvatarInfo(ficha);
+
+    const [isSpeakingRemote, setIsSpeakingRemote] = useState(false);
+    
+    const [volume, setVolume] = useState(() => {
+        const saved = localStorage.getItem(`rpg_vol_${nome}`);
+        return saved !== null ? parseFloat(saved) : 1; 
+    });
+
+    const sensibilidadeRef = useRef(sensibilidadeVoz);
+    const mutadoRef = useRef(mutado);
+    useEffect(() => { sensibilidadeRef.current = sensibilidadeVoz; }, [sensibilidadeVoz]);
+    useEffect(() => { mutadoRef.current = mutado; }, [mutado]);
+
+    useEffect(() => { localStorage.setItem(`rpg_vol_${nome}`, volume); }, [volume, nome]);
+
+    const audioCtxRef = useRef(null);
+    const rafRef = useRef(null);
+
+    // 🔥 O CÉREBRO DO NOISE GATE (Se for o SEU Avatar) 🔥
+    useEffect(() => {
+        if (!isMe || !streamAnalisador || !meuStream) return;
+
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
+            const actx = audioCtxRef.current;
+            if (actx.state === 'suspended') actx.resume();
+
+            // Analisa SEMPRE a Faixa Clone
+            const source = actx.createMediaStreamSource(streamAnalisador);
+            const analyser = actx.createAnalyser();
+            analyser.fftSize = 256;
+            analyser.smoothingTimeConstant = 0.4; 
+            source.connect(analyser);
+
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            let framesEmSilencio = 0;
+
+            const checkVolume = () => {
+                analyser.getByteFrequencyData(dataArray);
+                let sum = 0; for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+                const average = sum / dataArray.length;
+
+                const falandoAgora = average > sensibilidadeRef.current;
+
+                if (falandoAgora) {
+                    framesEmSilencio = 0; 
+                    // LIGA A FAIXA ORIGINAL PARA OS AMIGOS
+                    if (meuStream && meuStream.getAudioTracks()[0]) {
+                        meuStream.getAudioTracks()[0].enabled = !mutadoRef.current;
+                    }
+                } else {
+                    framesEmSilencio++;
+                    if (framesEmSilencio > 15) { // 15 frames = Release Time
+                        // DESLIGA A FAIXA ORIGINAL (Ventilador!)
+                        if (meuStream && meuStream.getAudioTracks()[0]) {
+                            meuStream.getAudioTracks()[0].enabled = false;
+                        }
+                    }
+                }
+                rafRef.current = requestAnimationFrame(checkVolume);
+            };
+            checkVolume();
+            
+        } catch(err) { console.error("Erro ao analisar sua voz", err); }
+
+        return () => {
+            if (rafRef.current) cancelAnimationFrame(rafRef.current);
+            if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') audioCtxRef.current.close().catch(()=>{});
+        };
+    }, [streamAnalisador, isMe, meuStream]); 
+
+    // 🔥 O NEON DOS AMIGOS (Lê o som remoto) 🔥
+    useEffect(() => {
+        if (isMe || !streamParaTocar) {
+            setIsSpeakingRemote(false);
+            return;
+        }
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
+            const actx = audioCtxRef.current;
+            if (actx.state === 'suspended') actx.resume();
+
+            const source = actx.createMediaStreamSource(streamParaTocar);
+            const analyser = actx.createAnalyser();
+            analyser.fftSize = 256;
+            analyser.smoothingTimeConstant = 0.4; 
+            source.connect(analyser); // Não liga às colunas! O áudio nativo trata disso.
+
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            const checkVolume = () => {
+                analyser.getByteFrequencyData(dataArray);
+                let sum = 0; for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+                setIsSpeakingRemote((sum / dataArray.length) > 5);
+                rafRef.current = requestAnimationFrame(checkVolume);
+            };
+            checkVolume();
+        } catch(err) {}
+
+        return () => {
+            if (rafRef.current) cancelAnimationFrame(rafRef.current);
+            if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') audioCtxRef.current.close().catch(()=>{});
+        };
+    }, [streamParaTocar, isMe]);
 
     let boxShadowCard = '0 0 15px rgba(0,0,0,0.8)';
     let borderCard = '2px solid #333';
     let iconMic = '⏳';
+
+    const isSpeakingFinal = isMe ? ctx.euEstouFalandoState : isSpeakingRemote;
 
     if (isConnected) {
         if (isMe && mutado) {
             borderCard = '2px solid #ff003c';
             boxShadowCard = '0 0 20px rgba(255,0,60,0.4)';
             iconMic = '🔇';
-        } else if (isMe && euEstouFalandoState) {
+        } else if (isSpeakingFinal) {
             borderCard = '2px solid #00ffcc';
             boxShadowCard = '0 0 35px #00ffcc, inset 0 0 20px rgba(0,255,204,0.4)';
+            iconMic = '🔊';
+        } else if (!isMe && streamParaTocar) {
+            borderCard = '2px solid #00aaff';
+            boxShadowCard = '0 0 20px rgba(0,170,255,0.4)';
             iconMic = '🔊';
         } else {
             borderCard = '2px solid #005588';
@@ -94,24 +234,42 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, mutado, cardSize }) {
     } else if (!isMe) {
         borderCard = '2px dashed #444';
         boxShadowCard = 'none';
-        iconMic = '💤';
+        iconMic = '🔄';
     }
 
     return (
         <div 
             className="fade-in" 
+            title={!isMe && streamParaTocar ? `Volume de ${nome}: ${Math.round(volume * 100)}%` : ''}
             style={{ position: 'relative', width: cardSize, aspectRatio: '4/3', background: '#111', border: borderCard, borderRadius: 6, overflow: 'hidden', backgroundImage: urlSeguraParaCss(info.img) || 'none', backgroundSize: 'cover', backgroundPosition: 'top center', boxShadow: boxShadowCard, transition: 'all 0.15s ease-out' }}
         >
             <div style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(0,0,0,0.8)', borderRadius: '50%', padding: '5px 8px', fontSize: '1.2em', border: borderCard, transition: 'all 0.15s ease-out' }}>
                 {iconMic}
             </div>
 
+            {!isMe && isConnected && streamParaTocar && (
+                <PlayerDeAudioRemoto stream={streamParaTocar} volume={volume} surdo={surdo} nome={nome} />
+            )}
+
             <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', display: 'flex', flexDirection: 'column', background: 'rgba(10,10,15,0.9)', borderTop: '2px solid #222', padding: '6px 10px', backdropFilter: 'blur(3px)' }}>
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                    <span style={{ color: isConnected ? (isMe && euEstouFalandoState ? '#00ffcc' : '#00aaff') : '#fff', fontWeight: 'bold', fontSize: '0.8em', textTransform: 'uppercase', letterSpacing: 1, textShadow: '1px 1px 2px #000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', transition: 'color 0.2s', paddingRight: '5px' }}>
+                    <span style={{ color: isConnected ? (isSpeakingFinal ? '#00ffcc' : '#00aaff') : '#fff', fontWeight: 'bold', fontSize: '0.8em', textTransform: 'uppercase', letterSpacing: 1, textShadow: '1px 1px 2px #000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', transition: 'color 0.2s', paddingRight: '5px' }}>
                         {nome}
                     </span>
+                    
+                    {!isMe && isConnected && streamParaTocar && (
+                        <div onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '70px', background: 'rgba(0,0,0,0.5)', padding: '2px 5px', borderRadius: '10px', border: '1px solid #333' }}>
+                            <span style={{ fontSize: '9px', color: volume === 0 ? '#ff003c' : '#aaa' }}>{volume === 0 ? '🔇' : '🔉'}</span>
+                            <input 
+                                type="range" 
+                                min="0" max="1" step="0.05" 
+                                value={volume} 
+                                onChange={e => setVolume(parseFloat(e.target.value))}
+                                style={{ width: '100%', height: '3px', cursor: 'pointer', accentColor: '#00ffcc' }} 
+                            />
+                        </div>
+                    )}
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
@@ -133,12 +291,12 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, mutado, cardSize }) {
 }
 
 // ============================================================================
-// 🔥 O OLHO DE SAURON (GRAVA APENAS O SEU MICROFONE LOCAL) 🔥
+// 🔥 O OLHO DE SAURON (GRAVA A PARTY INTEIRA) 🔥
 // ============================================================================
 export function MapaOlhoSextaFeira() {
     const ctx = useMapaForm();
     if (!ctx) return null;
-    const { meuNome, personagens, minhaFicha, cenario, meuStreamProcessado } = ctx;
+    const { meuNome, personagens, minhaFicha, cenario, meuStream, conexoes } = ctx;
 
     const [gravando, setGravando] = useState(false);
     const [expandido, setExpandido] = useState(false);
@@ -149,6 +307,12 @@ export function MapaOlhoSextaFeira() {
     const mediaRecorderRef = useRef(null);
     const timerRef = useRef(null);
     
+    const audioContextRef = useRef(null);
+    const mixerCtxRef = useRef(null);
+    const mixedStreamRef = useRef(null);
+    
+    const animationFrameRef = useRef(null);
+    const olhoRef = useRef(null);
     const pedacoContadorRef = useRef(1);
 
     const nomesAtivos = Array.isArray(cenario?.tavernaAtivos) ? cenario.tavernaAtivos : [];
@@ -172,6 +336,9 @@ export function MapaOlhoSextaFeira() {
         return () => {
             if (timerRef.current) clearInterval(timerRef.current);
             if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") mediaRecorderRef.current.stop();
+            if (audioContextRef.current) audioContextRef.current.close();
+            if (mixerCtxRef.current) mixerCtxRef.current.close();
+            if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
         };
     }, []);
 
@@ -226,6 +393,52 @@ export function MapaOlhoSextaFeira() {
         } catch(e) { addLog(`❌ Erro ao salvar no disco: ${e.message}`); }
     };
 
+    const iniciarVisualizador = (stream) => {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        const source = audioCtx.createMediaStreamSource(stream);
+        source.connect(analyser);
+        audioContextRef.current = audioCtx;
+        
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+        const desenhar = () => {
+            analyser.getByteFrequencyData(dataArray);
+            let soma = 0;
+            for (let i = 0; i < dataArray.length; i++) soma += dataArray[i];
+            const media = Math.min(100, Math.max(0, (soma / dataArray.length) / 80 * 100));
+
+            if (olhoRef.current) {
+                const scale = 1 + (media / 300);
+                let cor = '#00ffcc';
+                if (media > 85) cor = '#ff003c';
+                else if (media > 50) cor = '#ffcc00';
+
+                olhoRef.current.style.transform = `scale(${scale})`;
+                olhoRef.current.style.boxShadow = `0 0 ${15 + media}px ${cor}, inset 0 0 ${10 + media/2}px ${cor}`;
+                olhoRef.current.style.borderColor = cor;
+                olhoRef.current.style.color = cor;
+            }
+            animationFrameRef.current = requestAnimationFrame(desenhar);
+        };
+        desenhar();
+    };
+
+    const pararVisualizador = () => {
+        if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+        if (audioContextRef.current) {
+            audioContextRef.current.close();
+            audioContextRef.current = null;
+        }
+        if (olhoRef.current) {
+            olhoRef.current.style.transform = 'scale(1)';
+            olhoRef.current.style.boxShadow = '0 0 10px #0088ff';
+            olhoRef.current.style.borderColor = '#0088ff';
+            olhoRef.current.style.color = '#0088ff';
+        }
+    };
+
     const iniciarMediaRecorder = (streamParaGravar) => {
         const recorder = new MediaRecorder(streamParaGravar, { mimeType: 'audio/webm' });
         let localChunks = [];
@@ -244,8 +457,7 @@ export function MapaOlhoSextaFeira() {
             addLog(`⏳ Processando P${numeroPedaco}... Iniciando upload.`);
             
             try {
-                // Nome único para evitar que as gravações de Natsu e Kiriya se sobreponham
-                const nomeArquivo = `sessao_mapa_${meuNome}_${Date.now()}_pt${numeroPedaco}.webm`;
+                const nomeArquivo = `sessao_mapa_${Date.now()}_pt${numeroPedaco}.webm`;
                 const audioRef = ref(storage, `audios_mesa/${nomeArquivo}`);
                 
                 await uploadBytes(audioRef, audioBlob);
@@ -264,7 +476,7 @@ export function MapaOlhoSextaFeira() {
 
                 if (textoGerado) {
                     addLog(`📜 P${numeroPedaco} gerada! Salvando na Lore...`);
-                    salvarLoreMap(textoGerado, `Gravação do Mapa - Parte ${numeroPedaco} (${meuNome})`);
+                    salvarLoreMap(textoGerado, `Gravação do Mapa - Parte ${numeroPedaco}`);
                 } else {
                     addLog(`⚠️ P${numeroPedaco}: Vazia.`);
                 }
@@ -280,20 +492,39 @@ export function MapaOlhoSextaFeira() {
 
     const iniciarGravacao = () => {
         try {
-            if (!meuStreamProcessado) return addLog("❌ Erro: Sente-se na Taverna primeiro.");
+            if (!meuStream) return addLog("❌ Erro: O microfone (Rádio) não está inicializado. Tente dar F5.");
             
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            mixerCtxRef.current = audioCtx;
+            const destination = audioCtx.createMediaStreamDestination();
+            
+            audioCtx.createMediaStreamSource(meuStream).connect(destination);
+            
+            let vozesExtras = 0;
+            if (conexoes && conexoes.length > 0) {
+                conexoes.forEach(c => {
+                    if (c.stream) {
+                        audioCtx.createMediaStreamSource(c.stream).connect(destination);
+                        vozesExtras++;
+                    }
+                });
+            }
+            
+            mixedStreamRef.current = destination.stream;
+            
+            iniciarVisualizador(mixedStreamRef.current); 
             pedacoContadorRef.current = 1;
-            iniciarMediaRecorder(meuStreamProcessado); 
+            iniciarMediaRecorder(mixedStreamRef.current); 
             
             setGravando(true);
             setExpandido(false); 
-            addLog(`🎙️ Escuta Ativa! Gravando apenas o seu microfone de forma isolada.`);
+            addLog(`🎙️ Escuta Ativa! Misturando microfone + ${vozesExtras} jogador(es).`);
 
             const TEMPO_CORTE = 20 * 60 * 1000; 
             timerRef.current = setInterval(() => {
                 addLog("✂️ 20m. Fechando e abrindo novo bloco...");
                 if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") mediaRecorderRef.current.stop(); 
-                iniciarMediaRecorder(meuStreamProcessado); 
+                iniciarMediaRecorder(mixedStreamRef.current); 
             }, TEMPO_CORTE);
 
         } catch (err) { addLog(`❌ Erro mic: ${err.message}`); }
@@ -303,6 +534,13 @@ export function MapaOlhoSextaFeira() {
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
         if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") mediaRecorderRef.current.stop(); 
         
+        if (mixerCtxRef.current) {
+            mixerCtxRef.current.close();
+            mixerCtxRef.current = null;
+        }
+        mixedStreamRef.current = null;
+
+        pararVisualizador();
         setGravando(false);
         addLog("⏹️ Gravação encerrada.");
     };
@@ -313,7 +551,7 @@ export function MapaOlhoSextaFeira() {
                 <div className="fade-in" style={{ background: 'rgba(10,10,15,0.95)', border: `2px solid ${gravando ? '#ff003c' : '#0088ff'}`, borderRadius: '10px', padding: '15px', width: '300px', boxShadow: `0 0 20px ${gravando ? 'rgba(255,0,60,0.4)' : 'rgba(0,136,255,0.4)'}`, display: 'flex', flexDirection: 'column', gap: '10px', backdropFilter: 'blur(5px)' }}>
                     <div style={{ borderBottom: '1px solid #333', paddingBottom: '5px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ color: gravando ? '#ff003c' : '#0088ff', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.9em' }}>
-                            {gravando ? '🔴 Gravando Seu Mic...' : '📡 Sexta-Feira'}
+                            {gravando ? '🔴 Gravando...' : '📡 Sexta-Feira'}
                         </span>
                         <button onClick={() => setExpandido(false)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>✕</button>
                     </div>
@@ -332,7 +570,7 @@ export function MapaOlhoSextaFeira() {
                     </div>
 
                     {!gravando ? (
-                        <button className="btn-neon btn-green" onClick={iniciarGravacao} style={{ padding: '8px', fontSize: '0.9em' }}>▶ INICIAR ESCUTA (INDIVIDUAL)</button>
+                        <button className="btn-neon btn-green" onClick={iniciarGravacao} style={{ padding: '8px', fontSize: '0.9em' }}>▶ INICIAR ESCUTA</button>
                     ) : (
                         <button className="btn-neon btn-red" onClick={pararGravacao} style={{ padding: '8px', fontSize: '0.9em', animation: 'pulse 1.5s infinite' }}>⏹ ENCERRAR</button>
                     )}
@@ -344,8 +582,9 @@ export function MapaOlhoSextaFeira() {
             )}
 
             <div 
+                ref={olhoRef}
                 onClick={() => setExpandido(!expandido)}
-                title={gravando ? "Sexta-Feira na escuta do seu microfone!" : "Ativar Sexta-Feira no Mapa"}
+                title={gravando ? "Sexta-Feira na escuta! Clique para gerir." : "Ativar Sexta-Feira no Mapa"}
                 style={{
                     width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(10,10,15,0.9)', 
                     border: '2px solid #0088ff', boxShadow: '0 0 10px #0088ff', color: '#0088ff',
@@ -360,17 +599,17 @@ export function MapaOlhoSextaFeira() {
 }
 
 // ============================================================================
-// 🔥 A TAVERNA DE GRAVAÇÃO (SEM WEBRTC) 🔥
+// 🔥 A SESSÃO RP QUE SE TRANSFORMOU NUM DISCORD! 🔥
 // ============================================================================
 export function MapaSessaoRP() {
     const ctx = useMapaForm();
     if (!ctx) return FALLBACK;
     const { 
         meuNome, playersNaTaverna, isPresenteNaTaverna, togglePresencaTaverna, getAvatarInfo, fmt,
-        mutado, surdo, voiceStatus, toggleMute, toggleDeafen,
+        conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen,
         mics, selectedMic, trocarMicrofone, radioLigado, setRadioLigado,
         supressorAtivo, setSupressorAtivo, sensibilidadeVoz, setSensibilidadeVoz,
-        meuStreamPuro
+        streamAnalisador, meuStream
     } = ctx;
 
     const playerCount = playersNaTaverna.length;
@@ -383,11 +622,11 @@ export function MapaSessaoRP() {
     if (!radioLigado) {
         return (
             <div className="fade-in" style={{ minHeight: '60vh', background: 'radial-gradient(circle, rgba(30,10,20,0.9) 0%, rgba(0,0,0,1) 100%)', borderRadius: 5, border: '2px solid #ffcc00', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '50px' }}>
-                <div style={{ fontSize: '4em', marginBottom: 20, filter: 'drop-shadow(0 0 15px #00ffcc)' }}>🎙️</div>
-                <h1 style={{ color: '#00ffcc', textShadow: '0 0 15px #00ffcc', letterSpacing: 3 }}>ESTÚDIO DA SEXTA-FEIRA</h1>
-                <p style={{ color: '#aaa', fontStyle: 'italic', marginBottom: 30, fontSize: '1.2em', textAlign: 'center', maxWidth: '500px' }}>Ative o seu microfone local para que a IA possa transcrever as suas falas durante a sessão de Discord.</p>
+                <div style={{ fontSize: '4em', marginBottom: 20, filter: 'drop-shadow(0 0 15px #00ffcc)' }}>🎧</div>
+                <h1 style={{ color: '#00ffcc', textShadow: '0 0 15px #00ffcc', letterSpacing: 3 }}>SALA DE RÁDIO DA PARTY</h1>
+                <p style={{ color: '#aaa', fontStyle: 'italic', marginBottom: 30, fontSize: '1.2em', textAlign: 'center', maxWidth: '500px' }}>O navegador exige que você entre manualmente para liberar o áudio das colunas.</p>
                 <button className="btn-neon btn-green" onClick={() => setRadioLigado(true)} style={{ fontSize: '1.2em', padding: '15px 40px', borderRadius: '30px', boxShadow: '0 0 20px #00ff88' }}>
-                    ▶ LIGAR MICROFONE
+                    ▶ ENTRAR NO RÁDIO
                 </button>
             </div>
         );
@@ -404,7 +643,7 @@ export function MapaSessaoRP() {
                 <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '20px', background: 'rgba(0,0,0,0.5)', padding: '10px 15px', borderRadius: '5px', border: '1px solid #333', flexWrap: 'wrap', justifyContent: 'center' }}>
                     
                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px', width: '100%', justifyContent: 'center' }}>
-                        <div style={{ color: '#00ffcc', fontSize: '0.85em', fontFamily: 'monospace' }}>📡 {voiceStatus}</div>
+                        <div style={{ color: '#00ffcc', fontSize: '0.85em', fontFamily: 'monospace' }}>📡 Status: {voiceStatus}</div>
                         
                         {mics && mics.length > 0 && (
                             <>
@@ -423,18 +662,21 @@ export function MapaSessaoRP() {
                         )}
                     </div>
 
-                    {/* O NOISE GATE PARA CORTAR O ECO DO DISCORD */}
-                    {meuStreamPuro && (
+                    {/* CALIBRADOR NATIVO EM TEMPO REAL (O Clone) */}
+                    {streamAnalisador && (
                         <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: '5px' }}>
-                            <CalibradorDeVoz stream={meuStreamPuro} sensibilidade={sensibilidadeVoz} setSensibilidade={setSensibilidadeVoz} />
+                            <CalibradorDeVoz stream={streamAnalisador} sensibilidade={sensibilidadeVoz} setSensibilidade={setSensibilidadeVoz} />
                         </div>
                     )}
                 </div>
             )}
             
             <div style={{ display: 'flex', gap: '15px', marginBottom: '30px', background: 'rgba(0,0,0,0.6)', padding: '10px 25px', borderRadius: '30px', border: '1px solid #333' }}>
-                <button onClick={toggleMute} title={mutado ? "Desmutar" : "Mutar Gravação"} disabled={!isPresenteNaTaverna} style={{ opacity: isPresenteNaTaverna ? 1 : 0.3, width: '45px', height: '45px', borderRadius: '50%', border: 'none', background: mutado ? '#ff003c' : '#00ffcc', color: mutado ? '#fff' : '#000', fontSize: '1.2em', cursor: 'pointer', transition: '0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 10px ${mutado ? '#ff003c' : '#00ffcc'}` }}>
+                <button onClick={toggleMute} title={mutado ? "Desmutar" : "Mutar"} disabled={!isPresenteNaTaverna} style={{ opacity: isPresenteNaTaverna ? 1 : 0.3, width: '45px', height: '45px', borderRadius: '50%', border: 'none', background: mutado ? '#ff003c' : '#00ffcc', color: mutado ? '#fff' : '#000', fontSize: '1.2em', cursor: 'pointer', transition: '0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 10px ${mutado ? '#ff003c' : '#00ffcc'}` }}>
                     {mutado ? '🔇' : '🎙️'}
+                </button>
+                <button onClick={toggleDeafen} title={surdo ? "Ouvir" : "Ensurdecer"} disabled={!isPresenteNaTaverna} style={{ opacity: isPresenteNaTaverna ? 1 : 0.3, width: '45px', height: '45px', borderRadius: '50%', border: 'none', background: surdo ? '#ff003c' : 'rgba(255,255,255,0.1)', color: '#fff', fontSize: '1.2em', cursor: 'pointer', transition: '0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {surdo ? '🔕' : '🎧'}
                 </button>
                 <button className={`btn-neon ${isPresenteNaTaverna ? 'btn-red' : 'btn-green'}`} onClick={togglePresencaTaverna} style={{ borderRadius: '25px', margin: 0, padding: '0 20px', fontSize: '0.9em', fontWeight: 'bold' }}>
                     {isPresenteNaTaverna ? 'SAIR DA TAVERNA' : 'SENTAR NA MESA'}
@@ -445,14 +687,22 @@ export function MapaSessaoRP() {
                 <div style={{ width: '100%', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '25px' }}>
                     {playersNaTaverna.map(([n, f]) => {
                         const isMe = n === meuNome;
+                        const expectedIdTelefone = `anime-rpg-${n.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+                        const conRemota = conexoes.find(c => c.id === expectedIdTelefone);
+                        const isConnected = isMe || !!conRemota;
+
                         return (
                             <AvatarCardVoz 
                                 key={n}
                                 nome={n}
                                 ficha={f}
                                 isMe={isMe}
-                                isConnected={isMe ? isPresenteNaTaverna : true}
+                                isConnected={isConnected}
+                                streamParaTocar={conRemota?.stream}
+                                streamAnalisador={isMe ? streamAnalisador : null}
+                                meuStream={isMe ? meuStream : null}
                                 mutado={mutado}
+                                surdo={surdo}
                                 cardSize={cardSize}
                             />
                         );
