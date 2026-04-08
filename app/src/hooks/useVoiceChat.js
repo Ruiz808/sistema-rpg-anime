@@ -48,7 +48,6 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
         novoPeer.on('call', (call) => {
             const attemptAnswer = () => {
                 if (meuStreamRef.current) {
-                    // Atende a chamada enviando a stream crua para manter o AEC do Chrome
                     call.answer(meuStreamRef.current);
                     call.on('stream', (remoteStream) => {
                         setConexoes(prev => {
@@ -116,7 +115,7 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
         }
     }, [isPresenteNaTaverna, supressorAtivo]);
 
-    // 3. AUTO-DIALER ANTI-COLISÃO (Quem vem primeiro no alfabeto liga)
+    // 3. AUTO-DIALER ANTI-COLISÃO
     const fazerChamada = useCallback((nomeDestino) => {
         if (!peerObj || !meuStreamRef.current || !nomeDestino) return;
         const idFormatado = `anime-rpg-${nomeDestino.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
@@ -155,7 +154,7 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
         return () => clearInterval(interval);
     }, [tavernaAtivos, peerObj, isPresenteNaTaverna, meuNome, fazerChamada]);
 
-    // 4. TROCA DE MICROFONE SEM CORTAR A CHAMADA (replaceTrack)
+    // 4. TROCA DE MICROFONE SEM CORTAR A CHAMADA
     const trocarMicrofone = useCallback(async (deviceId) => {
         try {
             setSelectedMic(deviceId);
@@ -175,13 +174,12 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
             }
 
             if (meuStreamRef.current) meuStreamRef.current.getTracks().forEach(t => t.stop());
-
             meuStreamRef.current = newStream;
             setMeuStream(newStream);
         } catch (err) { console.error("Erro ao trocar mic:", err); }
     }, [peerObj]);
 
-    // 5. FUNÇÃO DE MUTE NATIVO
+    // 5. MUTE NATIVO
     const toggleMute = useCallback(() => {
         setMutado(prev => {
             const isMutedNow = !prev;
@@ -193,9 +191,13 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
     }, []);
 
     const toggleDeafen = useCallback(() => setSurdo(s => !s), []);
+    
+    // Na Fase 1 o Neon do seu cartão fica sempre aceso (se não estiver mutado) para confirmar que o mic está aberto
+    const euEstouFalandoState = meuStream !== null && !mutado;
 
     return {
-        meuStream, conexoes, mutado, surdo, voiceStatus, mics, selectedMic,
-        supressorAtivo, toggleMute, toggleDeafen, trocarMicrofone, setSupressorAtivo, fazerChamada
+        meuStream, streamAnalisador: null, conexoes, mutado, surdo, voiceStatus, mics, selectedMic,
+        supressorAtivo, sensibilidadeVoz: 10, euEstouFalandoState,
+        toggleMute, toggleDeafen, trocarMicrofone, setSupressorAtivo, setSensibilidadeVoz: () => {}, fazerChamada
     };
 }
