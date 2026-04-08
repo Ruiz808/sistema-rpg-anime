@@ -1,20 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import Peer from 'peerjs';
 
-const BLACKLIST_MIC = ['mixagem', 'stereo mix', 'wave out', 'loopback', 'virtual', 'cable', 'voicemeeter', 'what u hear', 'monitor', 'wasapi'];
-
-function encontrarMelhorMic(audioInputs) {
-    for (let mic of audioInputs) {
-        if (mic.label && !BLACKLIST_MIC.some(bw => mic.label.toLowerCase().includes(bw))) {
-            return mic.deviceId;
-        }
-    }
-    return audioInputs[0]?.deviceId || null;
-}
-
 export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
     const [peerObj, setPeerObj] = useState(null);
     const [meuStream, setMeuStream] = useState(null);
+    const [streamAnalisador, setStreamAnalisador] = useState(null);
     const [conexoes, setConexoes] = useState([]);
 
     const [voiceStatus, setVoiceStatus] = useState('Fora da Taverna');
@@ -23,17 +13,31 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
     const [mutado, setMutado] = useState(false);
     const [surdo, setSurdo] = useState(false);
     const [supressorAtivo, setSupressorAtivo] = useState(true);
+    const [sensibilidadeVoz, setSensibilidadeVoz] = useState(() => {
+        const saved = localStorage.getItem('rpg_sensibilidade_voz');
+        return saved !== null ? parseInt(saved, 10) : 10;
+    });
+
+    const [euEstouFalandoState, setEuEstouFalandoState] = useState(false);
 
     const meuStreamRef = useRef(null);
     const conexoesRef = useRef([]);
     const chamadasEmAndamento = useRef(new Set());
     const rtcLigado = useRef(false);
+    const mutadoRef = useRef(mutado);
+    const sensibilidadeRef = useRef(sensibilidadeVoz);
+    const euEstouFalandoRef = useRef(false);
     const supressorAtivoRef = useRef(supressorAtivo);
 
     const meuIDTelefone = meuNome ? meuNome.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
 
     useEffect(() => { conexoesRef.current = conexoes; }, [conexoes]);
+    useEffect(() => { mutadoRef.current = mutado; }, [mutado]);
     useEffect(() => { supressorAtivoRef.current = supressorAtivo; }, [supressorAtivo]);
+    useEffect(() => {
+        sensibilidadeRef.current = sensibilidadeVoz;
+        localStorage.setItem('rpg_sensibilidade_voz', sensibilidadeVoz);
+    }, [sensibilidadeVoz]);
 
     // 1. INICIALIZA A ANTENA PEERJS
     useEffect(() => {
@@ -65,7 +69,7 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
         return () => novoPeer.destroy();
     }, [meuIDTelefone]);
 
-    // 2. LIGAR/DESLIGAR O MICROFONE FÍSICO
+    // 2. LIGAR/DESLIGAR O MICROFONE (SEM AUTO-TROCA DESTRUTIVA)
     useEffect(() => {
         if (isPresenteNaTaverna && !rtcLigado.current) {
             rtcLigado.current = true;
@@ -74,31 +78,23 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
             navigator.mediaDevices.getUserMedia({
                 audio: { noiseSuppression: supressorAtivoRef.current, echoCancellation: true, autoGainControl: true }
             }).then(async (stream) => {
+                // Guarda o Mic Padrão Imediatamente e mantem a rede estável!
                 meuStreamRef.current = stream;
                 setMeuStream(stream);
+                
+                const cloneTrack = stream.getAudioTracks()[0].clone();
+                setStreamAnalisador(new MediaStream([cloneTrack]));
+                
                 setVoiceStatus('Online na Taverna!');
 
+                // Carrega a lista, mas DEIXA a decisão de trocar para o utilizador
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 const audioInputs = devices.filter(d => d.kind === 'audioinput');
                 setMics(audioInputs);
-
-                const bestMicId = encontrarMelhorMic(audioInputs);
-                if (!bestMicId) return;
-
-                setSelectedMic(bestMicId);
+                
                 const currentDeviceId = stream.getAudioTracks()[0]?.getSettings()?.deviceId;
-                if (currentDeviceId && currentDeviceId === bestMicId) return; 
+                setSelectedMic(currentDeviceId || audioInputs[0]?.deviceId || '');
 
-                try {
-                    const correctStream = await navigator.mediaDevices.getUserMedia({
-                        audio: { deviceId: { exact: bestMicId }, noiseSuppression: supressorAtivoRef.current, echoCancellation: true, autoGainControl: true }
-                    });
-                    stream.getTracks().forEach(t => t.stop());
-                    meuStreamRef.current = correctStream;
-                    setMeuStream(correctStream);
-                } catch (err) {
-                    console.warn('Não foi possível trocar para o mic preferido:', err);
-                }
             }).catch(() => {
                 setVoiceStatus('Microfone Bloqueado! Permitir acesso.');
                 rtcLigado.current = false;
@@ -107,15 +103,71 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
         } else if (!isPresenteNaTaverna && rtcLigado.current) {
             rtcLigado.current = false;
             if (meuStreamRef.current) meuStreamRef.current.getTracks().forEach(t => t.stop());
+            if (streamAnalisador) streamAnalisador.getTracks().forEach(t => t.stop());
 
             meuStreamRef.current = null;
             setMeuStream(null);
+            setStreamAnalisador(null);
             setConexoes([]);
             setVoiceStatus('Fora da Taverna');
+            setEuEstouFalandoState(false);
+            euEstouFalandoRef.current = false;
         }
     }, [isPresenteNaTaverna, supressorAtivo]);
 
-    // 3. AUTO-DIALER ANTI-COLISÃO
+    // 3. O LEITOR VISUAL (APENAS PISCA A BORDA, NÃO CORTA A VOZ!)
+    useEffect(() => {
+        if (!streamAnalisador || !meuStream) return;
+        let raf;
+        const actx = new (window.AudioContext || window.webkitAudioContext)();
+
+        try {
+            const source = actx.createMediaStreamSource(streamAnalisador);
+            const analyser = actx.createAnalyser();
+            analyser.fftSize = 256;
+            analyser.smoothingTimeConstant = 0.4;
+            source.connect(analyser);
+
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            let framesEmSilencio = 0;
+
+            const checkVolume = () => {
+                if (!rtcLigado.current) return;
+                analyser.getByteFrequencyData(dataArray);
+                let sum = 0; for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+                const avg = sum / dataArray.length;
+
+                // Controla apenas a Borda Neon
+                if (avg > sensibilidadeRef.current) {
+                    framesEmSilencio = 0;
+                    if (!euEstouFalandoRef.current) {
+                        euEstouFalandoRef.current = true;
+                        setEuEstouFalandoState(true);
+                    }
+                } else {
+                    framesEmSilencio++;
+                    if (framesEmSilencio > 20) {
+                        if (euEstouFalandoRef.current) {
+                            euEstouFalandoRef.current = false;
+                            setEuEstouFalandoState(false);
+                        }
+                    }
+                }
+                
+                // A ÚNICA COISA que corta a voz é o botão Mute físico
+                if (meuStream.getAudioTracks()[0]) {
+                    meuStream.getAudioTracks()[0].enabled = !mutadoRef.current;
+                }
+
+                raf = requestAnimationFrame(checkVolume);
+            };
+            checkVolume();
+        } catch (e) { console.error("Gate Error:", e); }
+
+        return () => { cancelAnimationFrame(raf); actx.close(); };
+    }, [streamAnalisador, meuStream]);
+
+    // 4. AUTO-DIALER ANTI-COLISÃO
     const fazerChamada = useCallback((nomeDestino) => {
         if (!peerObj || !meuStreamRef.current || !nomeDestino) return;
         const idFormatado = `anime-rpg-${nomeDestino.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
@@ -154,7 +206,7 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
         return () => clearInterval(interval);
     }, [tavernaAtivos, peerObj, isPresenteNaTaverna, meuNome, fazerChamada]);
 
-    // 4. TROCA DE MICROFONE SEM CORTAR A CHAMADA
+    // 5. TROCA DE MICROFONE MANUAL (Segura e Testada)
     const trocarMicrofone = useCallback(async (deviceId) => {
         try {
             setSelectedMic(deviceId);
@@ -174,12 +226,16 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
             }
 
             if (meuStreamRef.current) meuStreamRef.current.getTracks().forEach(t => t.stop());
+            if (streamAnalisador) streamAnalisador.getTracks().forEach(t => t.stop());
+
             meuStreamRef.current = newStream;
             setMeuStream(newStream);
-        } catch (err) { console.error("Erro ao trocar mic:", err); }
-    }, [peerObj]);
 
-    // 5. MUTE NATIVO
+            const newClone = newStream.getAudioTracks()[0].clone();
+            setStreamAnalisador(new MediaStream([newClone]));
+        } catch (err) { console.error("Erro ao trocar mic:", err); }
+    }, [peerObj, streamAnalisador]);
+
     const toggleMute = useCallback(() => {
         setMutado(prev => {
             const isMutedNow = !prev;
@@ -191,13 +247,10 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
     }, []);
 
     const toggleDeafen = useCallback(() => setSurdo(s => !s), []);
-    
-    // Na Fase 1 o Neon do seu cartão fica sempre aceso (se não estiver mutado) para confirmar que o mic está aberto
-    const euEstouFalandoState = meuStream !== null && !mutado;
 
     return {
-        meuStream, streamAnalisador: null, conexoes, mutado, surdo, voiceStatus, mics, selectedMic,
-        supressorAtivo, sensibilidadeVoz: 10, euEstouFalandoState,
-        toggleMute, toggleDeafen, trocarMicrofone, setSupressorAtivo, setSensibilidadeVoz: () => {}, fazerChamada
+        meuStream, streamAnalisador, conexoes, mutado, surdo, voiceStatus, mics, selectedMic,
+        supressorAtivo, sensibilidadeVoz, euEstouFalandoState,
+        toggleMute, toggleDeafen, trocarMicrofone, setSupressorAtivo, setSensibilidadeVoz, fazerChamada
     };
 }
