@@ -13,8 +13,7 @@ import { storage, functions } from '../../services/firebase-config';
 const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Mapa provider não encontrado</div>;
 
 // ============================================================================
-// 🔥 REPRODUTOR NATIVO BLINDADO (SEM ECO!) 🔥
-// Usa a tag <audio> pura, garantindo que o Chrome consegue cancelar o próprio som.
+// 🔥 REPRODUTOR NATIVO BLINDADO (100% ANTI-ECO DO CHROME) 🔥
 // ============================================================================
 function PlayerDeAudioRemoto({ stream, volume, surdo, nome }) {
     const audioRef = useRef(null);
@@ -23,7 +22,7 @@ function PlayerDeAudioRemoto({ stream, volume, surdo, nome }) {
         if (audioRef.current && stream) {
             if (audioRef.current.srcObject !== stream) {
                 audioRef.current.srcObject = stream;
-                audioRef.current.play().catch(e => console.warn(`Aguardando clique para tocar a voz de ${nome}:`, e));
+                audioRef.current.play().catch(e => console.warn(`Clique na tela para ouvir ${nome}:`, e));
             }
         }
     }, [stream, nome]);
@@ -41,8 +40,7 @@ function PlayerDeAudioRemoto({ stream, volume, surdo, nome }) {
 }
 
 // ============================================================================
-// 🔥 CALIBRADOR VISUAL (ULTRA RÁPIDO - 60 FPS) 🔥
-// Não usa React State! Atualiza a barrinha diretamente no DOM. Zero Lag!
+// 🔥 CALIBRADOR VISUAL (ULTRA RÁPIDO - 60 FPS DIRETOS NO DOM) 🔥
 // ============================================================================
 function CalibradorDeVoz({ stream, sensibilidade, setSensibilidade }) {
     const barraRef = useRef(null);
@@ -95,9 +93,10 @@ function CalibradorDeVoz({ stream, sensibilidade, setSensibilidade }) {
 }
 
 // ============================================================================
-// 🔥 A CARTA DE AVATAR INTELIGENTE (COM NOISE GATE NO CABO B) 🔥
+// 🔥 A CARTA DE AVATAR INTELIGENTE 🔥
+// O Cérebro do Gate Muta o Cabo B (gateGainRef), sem nunca cortar o cabo real!
 // ============================================================================
-function AvatarCardVoz({ nome, ficha, isMe, isConnected, streamParaTocar, streamPura, peerStreamRef, mutado, surdo, cardSize }) {
+function AvatarCardVoz({ nome, ficha, isMe, isConnected, streamParaTocar, streamPura, gateGainRef, mutado, surdo, fazerChamada, cardSize }) {
     const ctx = useMapaForm();
     const { getAvatarInfo, fmt, sensibilidadeVoz } = ctx;
     const info = getAvatarInfo(ficha);
@@ -121,7 +120,7 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, streamParaTocar, stream
     const audioCtxRef = useRef(null);
     const rafRef = useRef(null);
 
-    // 🔥 O CÉREBRO DO NOISE GATE (Abre e Fecha o Cabo B da Rede de WebRTC) 🔥
+    // 🔥 O CÉREBRO DO NOISE GATE DA MESA DE MISTURA 🔥
     useEffect(() => {
         if (!isMe || !streamPura) {
             setIsSpeaking(false);
@@ -135,7 +134,6 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, streamParaTocar, stream
 
             if (actx.state === 'suspended') actx.resume();
 
-            // O Analisador lê SEMPRE o Cabo A puro
             const source = actx.createMediaStreamSource(streamPura);
             const analyser = actx.createAnalyser();
             analyser.fftSize = 256;
@@ -156,19 +154,15 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, streamParaTocar, stream
                 if (falandoAgora) {
                     framesEmSilencio = 0; 
                     setIsSpeaking(true);
-                    // LIGA O CABO B (Para os amigos ouvirem)
-                    if (peerStreamRef.current && peerStreamRef.current.getAudioTracks()[0]) {
-                        peerStreamRef.current.getAudioTracks()[0].enabled = !mutadoRef.current;
-                    }
+                    // ABRE A MESA DE MISTURA (Apenas se o botão vermelho não estiver mutado)
+                    if (gateGainRef.current) gateGainRef.current.gain.value = mutadoRef.current ? 0 : 1;
                 } else {
                     framesEmSilencio++;
-                    // Release Time (15 frames)
+                    // O Som só corta se você ficar calado 15 frames seguidos (Suaviza o fim das palavras)
                     if (framesEmSilencio > 15) {
                         setIsSpeaking(false);
-                        // DESLIGA O CABO B (Silencia o Ventilador para os amigos!)
-                        if (peerStreamRef.current && peerStreamRef.current.getAudioTracks()[0]) {
-                            peerStreamRef.current.getAudioTracks()[0].enabled = false;
-                        }
+                        // CORTA A MESA DE MISTURA MATEMATICAMENTE (Sinal continua, mas com volume 0)
+                        if (gateGainRef.current) gateGainRef.current.gain.value = 0;
                     }
                 }
                 rafRef.current = requestAnimationFrame(checkVolume);
@@ -185,11 +179,11 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, streamParaTocar, stream
                 audioCtxRef.current.close().catch(e => console.log(e));
             }
         };
-    }, [streamPura, isMe, peerStreamRef]); 
+    }, [streamPura, isMe, gateGainRef]); 
 
     let boxShadowCard = '0 0 15px rgba(0,0,0,0.8)';
     let borderCard = '2px solid #333';
-    let iconMic = '📡';
+    let iconMic = '⏳';
 
     if (isConnected) {
         if (isMe && mutado) {
@@ -225,7 +219,15 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, streamParaTocar, stream
                 {iconMic}
             </div>
 
-            {/* Áudio Nativo para os Amigos */}
+            {/* BOTÃO DE EMERGÊNCIA - Se o Auto Dialer falhar por bloqueio de rede! */}
+            {!isConnected && !isMe && (
+                <div style={{ position: 'absolute', top: '40%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10 }}>
+                    <button className="btn-neon btn-blue" onClick={(e) => { e.stopPropagation(); fazerChamada(nome); }} style={{ padding: '8px 15px', fontSize: '0.9em', fontWeight: 'bold', boxShadow: '0 0 10px #0088ff' }}>
+                        📞 FORÇAR LIGAÇÃO
+                    </button>
+                </div>
+            )}
+
             {!isMe && isConnected && streamParaTocar && (
                 <PlayerDeAudioRemoto stream={streamParaTocar} volume={volume} surdo={surdo} nome={nome} />
             )}
@@ -585,10 +587,10 @@ export function MapaSessaoRP() {
     if (!ctx) return FALLBACK;
     const { 
         meuNome, playersNaTaverna, isPresenteNaTaverna, togglePresencaTaverna, getAvatarInfo, fmt,
-        conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen,
+        conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen, fazerChamada,
         mics, selectedMic, trocarMicrofone, radioLigado, setRadioLigado,
         supressorAtivo, setSupressorAtivo, sensibilidadeVoz, setSensibilidadeVoz,
-        meuStreamPuro, peerStreamRef
+        meuStreamPuro, peerStreamRef, gateGainRef
     } = ctx;
 
     const playerCount = playersNaTaverna.length;
@@ -628,20 +630,20 @@ export function MapaSessaoRP() {
                             <>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px', borderLeft: '1px solid #444', paddingLeft: '15px' }}>
                                     <span style={{ color: '#aaa', fontSize: '0.8em' }}>🎙️ Mic:</span>
-                                    <select className="input-neon" value={selectedMic} onChange={(e) => trocarMicrofone(e.target.value)} style={{ padding: '2px 8px', fontSize: '0.8em', background: '#000', color: '#fff', borderColor: '#00ffcc', borderRadius: '5px', maxWidth: '150px' }}>
+                                    <select className="input-neon" value={selectedMic} onChange={(e) => trocarMicrofone(e.target.value)} style={{ padding: '4px 8px', fontSize: '0.8em', background: '#000', color: '#fff', borderColor: '#00ffcc', borderRadius: '5px', maxWidth: '150px' }}>
                                         {mics.map(m => (<option key={m.deviceId} value={m.deviceId}>{m.label || `Padrão ${m.deviceId.slice(0,5)}`}</option>))}
                                     </select>
                                 </div>
                                 
                                 <label style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#00ffcc', fontSize: '0.8em', cursor: 'pointer', borderLeft: '1px solid #444', paddingLeft: '15px' }}>
                                     <input type="checkbox" checked={supressorAtivo} onChange={e => setSupressorAtivo(e.target.checked)} style={{ accentColor: '#00ffcc', cursor: 'pointer' }} />
-                                    🎧 Supressor (IA)
+                                    🎧 Supressor IA
                                 </label>
                             </>
                         )}
                     </div>
 
-                    {/* CALIBRADOR NATIVO EM TEMPO REAL */}
+                    {/* CALIBRADOR NATIVO EM TEMPO REAL 60FPS */}
                     {meuStreamPuro && (
                         <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: '5px' }}>
                             <CalibradorDeVoz stream={meuStreamPuro} sensibilidade={sensibilidadeVoz} setSensibilidade={setSensibilidadeVoz} />
@@ -678,9 +680,11 @@ export function MapaSessaoRP() {
                                 isMe={isMe}
                                 isConnected={isConnected}
                                 streamParaTocar={conRemota?.stream}
-                                streamPura={meuStreamPuro}
+                                streamPura={isMe ? meuStreamPuro : null}
+                                gateGainRef={isMe ? gateGainRef : null}
                                 mutado={mutado}
                                 surdo={surdo}
+                                fazerChamada={fazerChamada}
                                 cardSize={cardSize}
                             />
                         );
