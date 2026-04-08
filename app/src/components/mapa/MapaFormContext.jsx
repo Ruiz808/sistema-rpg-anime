@@ -98,177 +98,6 @@ export function MapaFormProvider({ children }) {
     const tavernaAtivos = Array.isArray(cenario?.tavernaAtivos) ? cenario.tavernaAtivos : [];
     const isPresenteNaTaverna = tavernaAtivos.includes(meuNome);
 
-    // ========================================================================
-    // 🔥 SISTEMA DE GRAVAÇÃO LOCAL (SEM REDES WEBRTC) 🔥
-    // ========================================================================
-    const [radioLigado, setRadioLigado] = useState(false); 
-    
-    const [meuStreamPuro, setMeuStreamPuro] = useState(null); 
-    const [meuStreamProcessado, setMeuStreamProcessado] = useState(null); 
-    
-    const gateGainRef = useRef(null); 
-    const audioCtxGlobalRef = useRef(null); 
-
-    const [mutado, setMutado] = useState(false);
-    const mutadoRef = useRef(mutado);
-    useEffect(() => { mutadoRef.current = mutado; }, [mutado]);
-
-    const [voiceStatus, setVoiceStatus] = useState('Fora do Estúdio');
-    const [mics, setMics] = useState([]);
-    const [selectedMic, setSelectedMic] = useState('');
-    
-    const [euEstouFalandoState, setEuEstouFalandoState] = useState(false);
-
-    const [supressorAtivo, setSupressorAtivo] = useState(true);
-    const [sensibilidadeVoz, setSensibilidadeVoz] = useState(() => {
-        const saved = localStorage.getItem('rpg_sensibilidade_voz');
-        return saved !== null ? parseInt(saved, 10) : 10;
-    });
-
-    const rtcLigado = useRef(false);
-
-    // Atualiza as constraints do mic em tempo real
-    useEffect(() => {
-        if (meuStreamPuro) {
-            meuStreamPuro.getAudioTracks().forEach(track => {
-                if (track.applyConstraints) {
-                    track.applyConstraints({ noiseSuppression: supressorAtivo, echoCancellation: true }).catch(()=>{});
-                }
-            });
-        }
-    }, [supressorAtivo, meuStreamPuro]);
-
-    useEffect(() => { localStorage.setItem('rpg_sensibilidade_voz', sensibilidadeVoz); }, [sensibilidadeVoz]);
-
-    // O CÉREBRO DA GRAVAÇÃO LOCAL E NOISE GATE
-    const startAudioEngine = useCallback((streamRaw) => {
-        if (audioCtxGlobalRef.current) {
-            audioCtxGlobalRef.current.close();
-        }
-        
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        const actx = new AudioContext();
-        audioCtxGlobalRef.current = actx;
-        
-        const source = actx.createMediaStreamSource(streamRaw);
-        const analyser = actx.createAnalyser();
-        analyser.fftSize = 256;
-        
-        const gainNode = actx.createGain();
-        gateGainRef.current = gainNode;
-        gainNode.gain.value = 0; // Começa fechado para não gravar lixo inicial
-
-        const dest = actx.createMediaStreamDestination(); 
-
-        source.connect(analyser);
-        source.connect(gainNode);
-        gainNode.connect(dest);
-
-        setMeuStreamProcessado(dest.stream); // Esta stream filtrada é a que será gravada!
-        
-        const dataArray = new Uint8Array(analyser.frequencyBinCount);
-        let framesSilence = 0;
-
-        const loop = () => {
-            if (!rtcLigado.current) return;
-            
-            analyser.getByteFrequencyData(dataArray);
-            let sum = 0; for(let i=0; i<dataArray.length; i++) sum += dataArray[i];
-            let avg = sum / dataArray.length;
-            
-            const thresh = parseInt(localStorage.getItem('rpg_sensibilidade_voz')) || 10;
-            
-            if (avg > thresh) {
-                framesSilence = 0;
-                setEuEstouFalandoState(true);
-                gainNode.gain.value = mutadoRef.current ? 0 : 1;
-            } else {
-                framesSilence++;
-                if (framesSilence > 20) {
-                    setEuEstouFalandoState(false);
-                    gainNode.gain.value = 0; 
-                }
-            }
-            requestAnimationFrame(loop);
-        };
-        requestAnimationFrame(loop);
-    }, []);
-
-    // INICIAR CAPTAÇÃO
-    useEffect(() => {
-        if (!radioLigado) return;
-
-        if (isPresenteNaTaverna && !rtcLigado.current) {
-            rtcLigado.current = true;
-            setVoiceStatus('Aceder ao Microfone...');
-            
-            navigator.mediaDevices.getUserMedia({ 
-                audio: { noiseSuppression: supressorAtivo, echoCancellation: true, autoGainControl: true } 
-            }).then(stream => {
-                setMeuStreamPuro(stream); 
-                startAudioEngine(stream); 
-
-                navigator.mediaDevices.enumerateDevices().then(devices => {
-                    const audioInputs = devices.filter(d => d.kind === 'audioinput');
-                    setMics(audioInputs);
-                    
-                    // Se o Chrome tentar dar-nos a Mixagem Estéreo por defeito, nós tentamos ignorar
-                    const badWords = ['mixagem', 'stereo mix', 'virtual'];
-                    let bestMic = audioInputs[0]?.deviceId;
-                    for (let mic of audioInputs) {
-                        if (mic.label && !badWords.some(bw => mic.label.toLowerCase().includes(bw))) {
-                            bestMic = mic.deviceId;
-                            break; // Apanhámos um mic físico
-                        }
-                    }
-                    if (bestMic) setSelectedMic(bestMic);
-                });
-
-                setVoiceStatus('Microfone Ativo (Pronto a Gravar)');
-            }).catch(err => {
-                setVoiceStatus(`Erro: Permita o microfone no cadeado.`);
-                rtcLigado.current = false;
-            });
-
-        } else if (!isPresenteNaTaverna && rtcLigado.current) {
-            rtcLigado.current = false;
-            if (meuStreamPuro) meuStreamPuro.getTracks().forEach(t => t.stop());
-            if (audioCtxGlobalRef.current) audioCtxGlobalRef.current.close();
-            
-            setMeuStreamPuro(null);
-            setMeuStreamProcessado(null);
-            setEuEstouFalandoState(false);
-            setVoiceStatus('Fora do Estúdio');
-        }
-    }, [isPresenteNaTaverna, radioLigado, supressorAtivo, startAudioEngine]); 
-
-    // MUDAR MICROFONE ESTÁ BLINDADO
-    const trocarMicrofone = useCallback(async (deviceId) => {
-        try {
-            setSelectedMic(deviceId);
-            if (meuStreamPuro) meuStreamPuro.getTracks().forEach(t => t.stop()); 
-            
-            const newStream = await navigator.mediaDevices.getUserMedia({ 
-                audio: { deviceId: { exact: deviceId }, noiseSuppression: supressorAtivo, echoCancellation: true, autoGainControl: true } 
-            });
-            
-            setMeuStreamPuro(newStream);
-            startAudioEngine(newStream); 
-        } catch (err) { console.error("Erro ao trocar mic:", err); }
-    }, [supressorAtivo, meuStreamPuro, startAudioEngine]);
-
-    const toggleMute = useCallback(() => {
-        setMutado(m => {
-            const next = !m;
-            if (gateGainRef.current) gateGainRef.current.gain.value = next ? 0 : 1;
-            return next;
-        });
-    }, []);
-
-    // ========================================================================
-    // RESTO DO CÓDIGO (LÓGICA DO MAPA)
-    // ========================================================================
-
     const toggleModoRP = useCallback(() => {
         const novoCenario = JSON.parse(JSON.stringify(cenario || {}));
         novoCenario.modoRP = !novoCenario.modoRP;
@@ -714,9 +543,7 @@ export function MapaFormProvider({ children }) {
         cells, jogadores, playersNaTaverna, ordemIniciativa, handleCellClick,
         alterarZoom, setMinhaIniciativa, avancarTurno, sairDoCombate, encerrarCombate,
         rolarAcertoRapido, tokenMap, tokens3D, jogadorDaVez, infoDaVez, fmt, deletarZona,
-        meuStreamPuro, meuStreamProcessado, mutado, voiceStatus, toggleMute,
-        mics, selectedMic, trocarMicrofone, radioLigado, setRadioLigado, supressorAtivo, setSupressorAtivo,
-        sensibilidadeVoz, setSensibilidadeVoz, euEstouFalandoState
+        toggleModoRP // (As funcões do Estúdio desapareceram daqui!)
     }), [
         minhaFicha, meuNome, personagens, feedCombate, isMestre, dummies, alvoSelecionado, cenario,
         fichaSegura, modo3D, tamanhoCelula, iniciativaInput, altitudeInput,
@@ -729,10 +556,7 @@ export function MapaFormProvider({ children }) {
         jogadorDaVez, infoDaVez, fmt, toggleModoRP, togglePresencaTaverna, changeVantagem,
         changeDesvantagem, handleUploadNovaCena, ativarCena, deletarCena, corDoJogador,
         getAvatarInfo, handleCellClick, alterarZoom, setMinhaIniciativa, avancarTurno,
-        sairDoCombate, encerrarCombate, rolarAcertoRapido, deletarZona,
-        meuStreamPuro, meuStreamProcessado, mutado, voiceStatus, toggleMute,
-        mics, selectedMic, trocarMicrofone, radioLigado, setRadioLigado, supressorAtivo, setSupressorAtivo,
-        sensibilidadeVoz, setSensibilidadeVoz, euEstouFalandoState
+        sairDoCombate, encerrarCombate, rolarAcertoRapido, deletarZona
     ]);
 
     return (
