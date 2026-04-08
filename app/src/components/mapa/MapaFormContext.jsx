@@ -100,15 +100,14 @@ export function MapaFormProvider({ children }) {
     const isPresenteNaTaverna = tavernaAtivos.includes(meuNome);
 
     // ========================================================================
-    // 🔥 SISTEMA DE VOZ BLINDADO (CLONAGEM DE STREAM) 🔥
+    // 🔥 SISTEMA DE VOZ BLINDADO (CORREÇÃO DO CRASH) 🔥
     // ========================================================================
     const [radioLigado, setRadioLigado] = useState(false); 
     const [peerObj, setPeerObj] = useState(null);
     
-    // As nossas duas Streams Mágicas
-    const [meuStream, setMeuStream] = useState(null); // Stream NUNCA CORTADA (Para a barra verde)
+    const [meuStream, setMeuStream] = useState(null); 
     const meuStreamRef = useRef(null); 
-    const peerStreamRef = useRef(null); // Stream CORTADA PELO GATE (Para enviar aos amigos)
+    const peerStreamRef = useRef(null); 
 
     const chamadasEmAndamento = useRef(new Set()); 
     const [conexoes, setConexoes] = useState([]);
@@ -125,8 +124,9 @@ export function MapaFormProvider({ children }) {
     });
 
     const meuIDTelefone = meuNome ? meuNome.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
-    const rtcInicializado = useRef(false);
+    const rtcLigado = useRef(false); // Substitui o antigo rtcInicializado
 
+    // ATUALIZAÇÃO DO SUPRESSOR AO VIVO
     useEffect(() => {
         if (meuStreamRef.current) {
             meuStreamRef.current.getAudioTracks().forEach(track => {
@@ -141,23 +141,61 @@ export function MapaFormProvider({ children }) {
         localStorage.setItem('rpg_sensibilidade_voz', sensibilidadeVoz);
     }, [sensibilidadeVoz]);
 
-    // 1. INICIA OU DESLIGA O MIC (E CRIA O CLONE)
+    // 🔥 PASSO 1: INICIALIZA A IDENTIDADE (PEER) IMEDIATAMENTE 🔥
+    // Garante que o Kiriya existe na rede mesmo antes de ligar o microfone, evitando que o Natsu ligue para o vazio!
     useEffect(() => {
-        if (!meuIDTelefone || !radioLigado) return;
+        if (!meuIDTelefone || peerObj) return;
 
-        if (isPresenteNaTaverna && !rtcInicializado.current) {
-            rtcInicializado.current = true;
+        const novoPeer = new Peer(`anime-rpg-${meuIDTelefone}`, {
+            config: {
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:global.stun.twilio.com:3478' }]
+            }
+        });
+        
+        novoPeer.on('open', () => {
+            setPeerObj(novoPeer);
+            console.log(`[Rádio] Identidade de rede criada: ${meuIDTelefone}`);
+        });
+
+        novoPeer.on('call', (call) => {
+            const attemptAnswer = () => {
+                // SÓ ATENDE SE O MICROFONE JÁ ESTIVER LIGADO!
+                if (peerStreamRef.current) {
+                    call.answer(peerStreamRef.current);
+                    call.on('stream', (remoteStream) => {
+                        setConexoes(prev => {
+                            if (prev.find(c => c.id === call.peer)) return prev.map(c => c.id === call.peer ? { ...c, stream: remoteStream } : c);
+                            return [...prev, { id: call.peer, stream: remoteStream }];
+                        });
+                    });
+                    call.on('close', () => setConexoes(prev => prev.filter(c => c.id !== call.peer)));
+                } else { 
+                    setTimeout(attemptAnswer, 500); 
+                }
+            };
+            attemptAnswer();
+        });
+
+        return () => {
+            novoPeer.destroy();
+        };
+    }, [meuIDTelefone]); // Executa apenas uma vez quando o nome é carregado
+
+    // 🔥 PASSO 2: LIGA O MICROFONE SÓ QUANDO "ENTRAR NO RÁDIO" E "SENTAR NA MESA" 🔥
+    useEffect(() => {
+        // Se não clicou para entrar, ou não está na mesa, não faz nada!
+        if (!radioLigado) return;
+
+        if (isPresenteNaTaverna && !rtcLigado.current) {
+            rtcLigado.current = true;
             setVoiceStatus('A ligar Microfone...');
             
             navigator.mediaDevices.getUserMedia({ 
                 audio: { noiseSuppression: supressorAtivo, echoCancellation: supressorAtivo, autoGainControl: true } 
             }).then(stream => {
-                // Guarda a stream pura para nós
                 meuStreamRef.current = stream;
                 setMeuStream(stream);
-                
-                // 🔥 CRIA O CLONE PARA OS AMIGOS 🔥
-                peerStreamRef.current = stream.clone();
+                peerStreamRef.current = stream.clone(); // Clone para o Gate
 
                 navigator.mediaDevices.enumerateDevices().then(devices => {
                     const audioInputs = devices.filter(d => d.kind === 'audioinput');
@@ -165,48 +203,24 @@ export function MapaFormProvider({ children }) {
                     if (audioInputs.length > 0) setSelectedMic(audioInputs[0].deviceId);
                 });
 
-                const novoPeer = new Peer(`anime-rpg-${meuIDTelefone}`, {
-                    config: {
-                        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:global.stun.twilio.com:3478' }]
-                    }
-                });
-                
-                novoPeer.on('open', () => {
-                    setPeerObj(novoPeer);
-                    setVoiceStatus('Online na Taverna!');
-                });
-
-                novoPeer.on('call', (call) => {
-                    const attemptAnswer = () => {
-                        // Responde usando a Stream CLONADA
-                        if (peerStreamRef.current) {
-                            call.answer(peerStreamRef.current);
-                            call.on('stream', (remoteStream) => {
-                                setConexoes(prev => {
-                                    if (prev.find(c => c.id === call.peer)) return prev.map(c => c.id === call.peer ? { ...c, stream: remoteStream } : c);
-                                    return [...prev, { id: call.peer, stream: remoteStream }];
-                                });
-                            });
-                            call.on('close', () => setConexoes(prev => prev.filter(c => c.id !== call.peer)));
-                        } else { setTimeout(attemptAnswer, 500); }
-                    };
-                    attemptAnswer();
-                });
+                setVoiceStatus('Online na Taverna!');
             }).catch(err => {
                 setVoiceStatus(`Microfone Bloqueado!`);
-                rtcInicializado.current = false;
+                rtcLigado.current = false;
             });
-        } else if (!isPresenteNaTaverna && rtcInicializado.current) {
-            rtcInicializado.current = false;
-            if (peerObj) { peerObj.destroy(); setPeerObj(null); }
+
+        } else if (!isPresenteNaTaverna && rtcLigado.current) {
+            // DESLIGA O MIC QUANDO SAI DA MESA (Mas mantém o Peer vivo)
+            rtcLigado.current = false;
             if (meuStreamRef.current) { meuStreamRef.current.getTracks().forEach(t => t.stop()); meuStreamRef.current = null; }
             if (peerStreamRef.current) { peerStreamRef.current.getTracks().forEach(t => t.stop()); peerStreamRef.current = null; }
             setMeuStream(null);
             setConexoes([]);
             setVoiceStatus('Fora da Taverna (Mic Desligado)');
         }
-    }, [isPresenteNaTaverna, meuIDTelefone, radioLigado]); 
+    }, [isPresenteNaTaverna, radioLigado]); // Depende do botão verde!
 
+    // 🔥 PASSO 3: O AUTO-DIALER (FAZ AS CHAMADAS) 🔥
     const fazerChamada = useCallback((nomeDestino) => {
         if (!peerObj || !peerStreamRef.current || !nomeDestino) return;
         const idFormatado = `anime-rpg-${nomeDestino.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
@@ -214,7 +228,6 @@ export function MapaFormProvider({ children }) {
         if (chamadasEmAndamento.current.has(idFormatado)) return;
         chamadasEmAndamento.current.add(idFormatado);
 
-        // Telefona usando a Stream CLONADA
         const call = peerObj.call(idFormatado, peerStreamRef.current);
         if (!call) {
             chamadasEmAndamento.current.delete(idFormatado);
@@ -233,6 +246,7 @@ export function MapaFormProvider({ children }) {
         call.on('error', () => { setConexoes(prev => prev.filter(c => c.id !== idFormatado)); chamadasEmAndamento.current.delete(idFormatado); });
     }, [peerObj]);
 
+    // O HEARTBEAT (Bate-Coração)
     useEffect(() => {
         if (!peerObj || !isPresenteNaTaverna || !meuStreamRef.current) return;
         const interval = setInterval(() => {
@@ -263,7 +277,6 @@ export function MapaFormProvider({ children }) {
             meuStreamRef.current = newStream;
             setMeuStream(newStream);
             
-            // Recria o clone para os amigos
             const newPeerStream = newStream.clone();
             peerStreamRef.current = newPeerStream;
 
@@ -280,12 +293,15 @@ export function MapaFormProvider({ children }) {
         } catch (err) { console.error("Erro ao trocar mic:", err); }
     }, [peerObj, supressorAtivo]);
 
-    // O Botão Mutar agora só muda o estado. A Carta trata de cortar o áudio!
     const toggleMute = useCallback(() => {
         setMutado(m => !m);
     }, []);
 
     const toggleDeafen = useCallback(() => setSurdo(s => !s), []);
+
+    const desconectarVoz = useCallback((idPeer) => {
+        setConexoes(prev => prev.filter(c => c.id !== idPeer));
+    }, []);
 
     // ========================================================================
     // RESTO DO CÓDIGO (LÓGICA DO MAPA)
@@ -738,7 +754,7 @@ export function MapaFormProvider({ children }) {
         rolarAcertoRapido, tokenMap, tokens3D, jogadorDaVez, infoDaVez, fmt, deletarZona,
         meuStream, conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen, fazerChamada, desconectarVoz,
         mics, selectedMic, trocarMicrofone, radioLigado, setRadioLigado, supressorAtivo, setSupressorAtivo,
-        sensibilidadeVoz, setSensibilidadeVoz, peerStreamRef // 🔥 AGORA EXPORTAMOS O CABO B (A STREAM CLONADA)
+        sensibilidadeVoz, setSensibilidadeVoz, peerStreamRef
     }), [
         minhaFicha, meuNome, personagens, feedCombate, isMestre, dummies, alvoSelecionado, cenario,
         fichaSegura, modo3D, tamanhoCelula, iniciativaInput, altitudeInput,
