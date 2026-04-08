@@ -13,7 +13,36 @@ import { storage, functions } from '../../services/firebase-config';
 const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Mapa provider não encontrado</div>;
 
 // ============================================================================
-// 🔥 A CARTA DE AVATAR INTELIGENTE (COM CONTROLO DE VOLUME INDIVIDUAL) 🔥
+// 🔥 REPRODUTOR NATIVO BLINDADO (O CHROME NÃO PODE SILENCIAR ISTO) 🔥
+// ============================================================================
+function PlayerDeAudioRemoto({ stream, volume, surdo, nome }) {
+    const audioRef = useRef(null);
+
+    // Conecta o cabo de áudio
+    useEffect(() => {
+        if (audioRef.current && stream) {
+            if (audioRef.current.srcObject !== stream) {
+                audioRef.current.srcObject = stream;
+                audioRef.current.play().catch(e => console.warn(`Aguardando clique para tocar a voz de ${nome}:`, e));
+            }
+        }
+    }, [stream, nome]);
+
+    // Regula o volume ao vivo
+    useEffect(() => {
+        if (audioRef.current) {
+            let v = surdo ? 0 : volume;
+            if (v > 1) v = 1; // Limite de 100% para evitar bugs nativos
+            if (v < 0) v = 0;
+            audioRef.current.volume = v;
+        }
+    }, [volume, surdo]);
+
+    return <audio ref={audioRef} autoPlay playsInline style={{ display: 'none' }} />;
+}
+
+// ============================================================================
+// 🔥 A CARTA DE AVATAR INTELIGENTE 🔥
 // ============================================================================
 function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, cardSize }) {
     const ctx = useMapaForm();
@@ -22,84 +51,71 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
 
     const [isSpeaking, setIsSpeaking] = useState(false);
     
-    // Volume guardado no PC de quem está a ouvir (Até 200%)
+    // Volume de 0 a 1 (0% a 100%)
     const [volume, setVolume] = useState(() => {
         const saved = localStorage.getItem(`rpg_vol_${nome}`);
         return saved !== null ? parseFloat(saved) : 1; 
     });
 
+    useEffect(() => {
+        localStorage.setItem(`rpg_vol_${nome}`, volume);
+    }, [volume, nome]);
+
     const audioCtxRef = useRef(null);
     const analyserRef = useRef(null);
     const rafRef = useRef(null);
-    const gainNodeRef = useRef(null);
 
-    // 1. Atualiza o volume ao vivo sem cortar a chamada
+    // 🔥 NEON DA VOZ (APENAS PARA O SEU MICROFONE) 🔥
+    // Se tentarmos analisar a voz dos amigos, o Chrome corta o som deles!
     useEffect(() => {
-        localStorage.setItem(`rpg_vol_${nome}`, volume);
-        if (gainNodeRef.current) {
-            gainNodeRef.current.gain.value = surdo ? 0 : volume;
-        }
-    }, [volume, surdo, nome]);
-
-    // 2. Sintetizador de Áudio Web (Oculto do Chrome)
-    useEffect(() => {
-        if (!stream) {
+        if (!stream || !isMe) {
             setIsSpeaking(false);
             return;
         }
 
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
-        const actx = audioCtxRef.current;
-
-        let source, analyser, gainNode;
-
         try {
-            source = actx.createMediaStreamSource(stream);
-            
-            analyser = actx.createAnalyser();
-            analyser.fftSize = 256;
-            analyser.smoothingTimeConstant = 0.4;
-            source.connect(analyser);
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
+            const actx = audioCtxRef.current;
 
-            // Apenas para amigos: Liga a voz às colunas com controlo de volume!
-            if (!isMe) {
-                gainNode = actx.createGain();
-                gainNodeRef.current = gainNode;
-                gainNode.gain.value = surdo ? 0 : volume;
-                analyser.connect(gainNode);
-                gainNode.connect(actx.destination); 
+            if (actx.state === 'suspended') actx.resume();
+
+            if (stream.getAudioTracks().length > 0) {
+                const source = actx.createMediaStreamSource(stream);
+                const analyser = actx.createAnalyser();
+                analyser.fftSize = 256;
+                analyser.smoothingTimeConstant = 0.4; 
+                
+                source.connect(analyser);
+                analyserRef.current = analyser;
+
+                const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+                const checkVolume = () => {
+                    if (analyserRef.current) {
+                        analyserRef.current.getByteFrequencyData(dataArray);
+                        let sum = 0;
+                        for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+                        const average = sum / dataArray.length;
+                        setIsSpeaking(average > 10);
+                    }
+                    rafRef.current = requestAnimationFrame(checkVolume);
+                };
+                checkVolume();
             }
-
-            const dataArray = new Uint8Array(analyser.frequencyBinCount);
-            const checkVolume = () => {
-                analyser.getByteFrequencyData(dataArray);
-                let sum = 0;
-                for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
-                setIsSpeaking((sum / dataArray.length) > 10);
-                rafRef.current = requestAnimationFrame(checkVolume);
-            };
-            checkVolume();
-
-        } catch (e) {
-            console.error(`[Rádio] Erro ao sintetizar áudio de ${nome}`, e);
+        } catch(err) {
+            console.error("Erro ao analisar sua voz", err);
         }
 
         return () => {
             if (rafRef.current) cancelAnimationFrame(rafRef.current);
-            if (source) source.disconnect();
-            if (analyser) analyser.disconnect();
-            if (gainNode) gainNode.disconnect();
+            if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
+                audioCtxRef.current.close().catch(e => console.log(e));
+            }
         };
     }, [stream, isMe]);
 
-    const handleCardClick = () => {
-        if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
-            audioCtxRef.current.resume();
-        }
-    };
-
-    // ESTILOS DINÂMICOS
+    // 🔥 ESTILOS DINÂMICOS 🔥
     let boxShadowCard = '0 0 15px rgba(0,0,0,0.8)';
     let borderCard = '2px solid #333';
     let iconMic = '📡';
@@ -109,11 +125,12 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
             borderCard = '2px solid #ff003c';
             boxShadowCard = '0 0 20px rgba(255,0,60,0.4)';
             iconMic = '🔇';
-        } else if (isSpeaking) {
+        } else if (isMe && isSpeaking) {
             borderCard = '2px solid #00ffcc';
             boxShadowCard = '0 0 35px #00ffcc, inset 0 0 20px rgba(0,255,204,0.4)';
             iconMic = '🔊';
         } else if (!isMe && stream) {
+            // Amigo Conectado -> Luz fixa!
             borderCard = '2px solid #00aaff';
             boxShadowCard = '0 0 20px rgba(0,170,255,0.4)';
             iconMic = '🔊';
@@ -123,40 +140,42 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
             iconMic = '🎙️';
         }
     } else if (!isMe) {
-        // Carta neutra enquanto o Auto-Dialer não estabelece conexão
-        borderCard = '2px solid #333';
-        boxShadowCard = '0 0 10px rgba(0,0,0,0.5)';
-        iconMic = '📡';
+        borderCard = '2px dashed #444';
+        boxShadowCard = 'none';
+        iconMic = '🔄';
     }
 
     return (
         <div 
-            onClick={handleCardClick}
             className="fade-in" 
-            title={!isMe && stream ? `Volume: ${Math.round(volume * 100)}%` : ''}
-            style={{ position: 'relative', width: cardSize, aspectRatio: '4/3', background: '#111', border: borderCard, borderRadius: 6, overflow: 'hidden', backgroundImage: urlSeguraParaCss(info.img) || 'none', backgroundSize: 'cover', backgroundPosition: 'top center', boxShadow: boxShadowCard, transition: 'all 0.15s ease-out', cursor: 'pointer' }}
+            title={!isMe && stream ? `Volume de ${nome}: ${Math.round(volume * 100)}%` : ''}
+            style={{ position: 'relative', width: cardSize, aspectRatio: '4/3', background: '#111', border: borderCard, borderRadius: 6, overflow: 'hidden', backgroundImage: urlSeguraParaCss(info.img) || 'none', backgroundSize: 'cover', backgroundPosition: 'top center', boxShadow: boxShadowCard, transition: 'all 0.15s ease-out' }}
         >
             <div style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(0,0,0,0.8)', borderRadius: '50%', padding: '5px 8px', fontSize: '1.2em', border: borderCard, transition: 'all 0.15s ease-out' }}>
                 {iconMic}
             </div>
 
+            {/* Áudio Nativo para os Amigos */}
+            {!isMe && isConnected && stream && (
+                <PlayerDeAudioRemoto stream={stream} volume={volume} surdo={surdo} nome={nome} />
+            )}
+
             <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', display: 'flex', flexDirection: 'column', background: 'rgba(10,10,15,0.9)', borderTop: '2px solid #222', padding: '6px 10px', backdropFilter: 'blur(3px)' }}>
                 
-                {/* NOME E CONTROLO DE VOLUME */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                    <span style={{ color: isConnected ? (isSpeaking ? '#00ffcc' : '#00aaff') : '#fff', fontWeight: 'bold', fontSize: '0.8em', textTransform: 'uppercase', letterSpacing: 1, textShadow: '1px 1px 2px #000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', transition: 'color 0.2s', paddingRight: '5px' }}>
+                    <span style={{ color: isConnected ? (isMe && isSpeaking ? '#00ffcc' : '#00aaff') : '#fff', fontWeight: 'bold', fontSize: '0.8em', textTransform: 'uppercase', letterSpacing: 1, textShadow: '1px 1px 2px #000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', transition: 'color 0.2s', paddingRight: '5px' }}>
                         {nome}
                     </span>
                     
                     {!isMe && isConnected && stream && (
-                        <div onClick={e => e.stopPropagation()} title={`Volume: ${Math.round(volume * 100)}%`} style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '70px', background: 'rgba(0,0,0,0.5)', padding: '2px 5px', borderRadius: '10px', border: '1px solid #333' }}>
+                        <div onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '70px', background: 'rgba(0,0,0,0.5)', padding: '2px 5px', borderRadius: '10px', border: '1px solid #333' }}>
                             <span style={{ fontSize: '9px', color: volume === 0 ? '#ff003c' : '#aaa' }}>{volume === 0 ? '🔇' : '🔉'}</span>
                             <input 
                                 type="range" 
-                                min="0" max="2" step="0.05" 
+                                min="0" max="1" step="0.05" 
                                 value={volume} 
                                 onChange={e => setVolume(parseFloat(e.target.value))}
-                                style={{ width: '100%', height: '3px', cursor: 'pointer', accentColor: volume > 1 ? '#ffcc00' : '#00ffcc' }} 
+                                style={{ width: '100%', height: '3px', cursor: 'pointer', accentColor: '#00ffcc' }} 
                             />
                         </div>
                     )}
@@ -498,7 +517,7 @@ export function MapaSessaoRP() {
         meuNome, playersNaTaverna, isPresenteNaTaverna, togglePresencaTaverna, getAvatarInfo, fmt,
         conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen,
         mics, selectedMic, trocarMicrofone, meuStream, radioLigado, setRadioLigado,
-        supressorAtivo, setSupressorAtivo // 🔥 IMPORTANDO O ESTADO DO SUPRESSOR
+        supressorAtivo, setSupressorAtivo
     } = ctx;
 
     const playerCount = playersNaTaverna.length;
@@ -550,7 +569,6 @@ export function MapaSessaoRP() {
                                 </select>
                             </div>
                             
-                            {/* 🔥 BOTÃO PARA LIGAR/DESLIGAR O SUPRESSOR DE RUÍDO 🔥 */}
                             <label style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#00ffcc', fontSize: '0.8em', cursor: 'pointer', borderLeft: '1px solid #444', paddingLeft: '15px' }}>
                                 <input 
                                     type="checkbox" 
