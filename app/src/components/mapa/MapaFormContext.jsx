@@ -542,8 +542,7 @@ export function MapaFormProvider({ children }) {
         handleUploadNovaCena, ativarCena, deletarCena, corDoJogador, getAvatarInfo,
         cells, jogadores, playersNaTaverna, ordemIniciativa, handleCellClick,
         alterarZoom, setMinhaIniciativa, avancarTurno, sairDoCombate, encerrarCombate,
-        rolarAcertoRapido, tokenMap, tokens3D, jogadorDaVez, infoDaVez, fmt, deletarZona,
-        toggleModoRP // (As funcões do Estúdio desapareceram daqui!)
+        rolarAcertoRapido, tokenMap, tokens3D, jogadorDaVez, infoDaVez, fmt, deletarZona
     }), [
         minhaFicha, meuNome, personagens, feedCombate, isMestre, dummies, alvoSelecionado, cenario,
         fichaSegura, modo3D, tamanhoCelula, iniciativaInput, altitudeInput,
