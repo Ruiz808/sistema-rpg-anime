@@ -105,20 +105,16 @@ export function MapaFormProvider({ children }) {
     const [radioLigado, setRadioLigado] = useState(false); 
     const [peerObj, setPeerObj] = useState(null);
     
-    const [meuStream, setMeuStream] = useState(null); 
-    const peerStreamRef = useRef(null); // Cabo B (Para os amigos)
-    const audioEngineRef = useRef({ actx: null, raf: null });
-
-    const [meuVolumeLocal, setMeuVolumeLocal] = useState(0);
-    const [euEstouFalando, setEuEstouFalando] = useState(false);
+    // O CABO DUPLO!
+    const [meuStreamPuro, setMeuStreamPuro] = useState(null); // Cabo A: Apenas para nós lermos a barra
+    const peerStreamRef = useRef(null); // Cabo B: Vai para o Kiriya
 
     const chamadasEmAndamento = useRef(new Set()); 
     const [conexoes, setConexoes] = useState([]);
-    
-    const [mutado, setMutado] = useState(false);
-    const mutadoRef = useRef(mutado);
-    useEffect(() => { mutadoRef.current = mutado; }, [mutado]);
+    const conexoesRef = useRef([]); 
+    useEffect(() => { conexoesRef.current = conexoes; }, [conexoes]);
 
+    const [mutado, setMutado] = useState(false);
     const [surdo, setSurdo] = useState(false);
     const [voiceStatus, setVoiceStatus] = useState('Desconectado');
     const [mics, setMics] = useState([]);
@@ -133,68 +129,20 @@ export function MapaFormProvider({ children }) {
     const meuIDTelefone = meuNome ? meuNome.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
     const rtcLigado = useRef(false);
 
-    useEffect(() => { localStorage.setItem('rpg_sensibilidade_voz', sensibilidadeVoz); }, [sensibilidadeVoz]);
-
-    // 🔥 O MOTOR DE ÁUDIO BLINDADO (A MESA DE MISTURA) 🔥
-    const startAudioEngine = useCallback((streamRaw) => {
-        if (audioEngineRef.current.actx) {
-            audioEngineRef.current.actx.close();
-            cancelAnimationFrame(audioEngineRef.current.raf);
-        }
-        
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        const actx = new AudioContext();
-        
-        const source = actx.createMediaStreamSource(streamRaw);
-        
-        // Cabo A (Leitor Visual)
-        const analyser = actx.createAnalyser();
-        analyser.fftSize = 256;
-        
-        // Cabo B (Noise Gate que vai para a chamada WebRTC)
-        const gainNode = actx.createGain();
-        const dest = actx.createMediaStreamDestination();
-
-        source.connect(analyser);
-        source.connect(gainNode);
-        gainNode.connect(dest);
-
-        peerStreamRef.current = dest.stream; // <- ESTE É O SOM QUE OS AMIGOS OUVEM
-        
-        const dataArray = new Uint8Array(analyser.frequencyBinCount);
-        let framesSilence = 0;
-
-        const loop = () => {
-            if (!rtcLigado.current) return;
-            
-            analyser.getByteFrequencyData(dataArray);
-            let sum = 0; for(let i=0; i<dataArray.length; i++) sum += dataArray[i];
-            let avg = sum / dataArray.length;
-            
-            setMeuVolumeLocal(avg);
-
-            const thresh = parseInt(localStorage.getItem('rpg_sensibilidade_voz')) || 10;
-            
-            // Lógica do Noise Gate
-            if (avg > thresh) {
-                framesSilence = 0;
-                setEuEstouFalando(true);
-                // Se não estiver mutado manualmente, abre o som!
-                gainNode.gain.value = mutadoRef.current ? 0 : 1;
-            } else {
-                framesSilence++;
-                // 20 frames de "Release" para não cortar o final das palavras
-                if (framesSilence > 20) {
-                    setEuEstouFalando(false);
-                    gainNode.gain.value = 0; // Som a zero, mas o cabo WebRTC continua intacto!
+    // Atualiza opções ao vivo com Echo Cancellation SEMPRE ligado!
+    useEffect(() => {
+        if (meuStreamPuro) {
+            meuStreamPuro.getAudioTracks().forEach(track => {
+                if (track.applyConstraints) {
+                    track.applyConstraints({ noiseSuppression: supressorAtivo, echoCancellation: true }).catch(()=>{});
                 }
-            }
-            audioEngineRef.current.raf = requestAnimationFrame(loop);
-        };
-        
-        audioEngineRef.current.actx = actx;
-        audioEngineRef.current.raf = requestAnimationFrame(loop);
-    }, []);
+            });
+        }
+    }, [supressorAtivo, meuStreamPuro]);
+
+    useEffect(() => {
+        localStorage.setItem('rpg_sensibilidade_voz', sensibilidadeVoz);
+    }, [sensibilidadeVoz]);
 
     // 1. INICIALIZA A ANTENA PEERJS
     useEffect(() => {
@@ -226,7 +174,7 @@ export function MapaFormProvider({ children }) {
         return () => { novoPeer.destroy(); };
     }, [meuIDTelefone]); 
 
-    // 2. LIGA O MICROFONE AO "SENTAR NA MESA"
+    // 2. LIGA O MICROFONE (CRIA O CABO A E O CLONE CABO B)
     useEffect(() => {
         if (!radioLigado) return;
 
@@ -237,8 +185,8 @@ export function MapaFormProvider({ children }) {
             navigator.mediaDevices.getUserMedia({ 
                 audio: { noiseSuppression: supressorAtivo, echoCancellation: true, autoGainControl: true } 
             }).then(stream => {
-                setMeuStream(stream);
-                startAudioEngine(stream); // Cria a Mesa de Mistura Mágica
+                setMeuStreamPuro(stream); // Cabo A: Apenas para nós e barra verde
+                peerStreamRef.current = stream.clone(); // Cabo B: Clone seguro para WebRTC
 
                 navigator.mediaDevices.enumerateDevices().then(devices => {
                     const audioInputs = devices.filter(d => d.kind === 'audioinput');
@@ -254,19 +202,15 @@ export function MapaFormProvider({ children }) {
 
         } else if (!isPresenteNaTaverna && rtcLigado.current) {
             rtcLigado.current = false;
-            if (meuStream) meuStream.getTracks().forEach(t => t.stop());
+            if (meuStreamPuro) meuStreamPuro.getTracks().forEach(t => t.stop());
             if (peerStreamRef.current) peerStreamRef.current.getTracks().forEach(t => t.stop());
-            if (audioEngineRef.current.actx) audioEngineRef.current.actx.close();
-            
-            setMeuStream(null);
+            setMeuStreamPuro(null);
             setConexoes([]);
-            setMeuVolumeLocal(0);
-            setEuEstouFalando(false);
             setVoiceStatus('Fora da Taverna');
         }
-    }, [isPresenteNaTaverna, radioLigado, supressorAtivo, startAudioEngine]); 
+    }, [isPresenteNaTaverna, radioLigado]); 
 
-    // 3. AUTO-DIALER AGRESSIVO (Todos tentam ligar a Todos, garantindo conexão rápida!)
+    // 3. O AUTO-DIALER AGRESSIVO
     const fazerChamada = useCallback((nomeDestino) => {
         if (!peerObj || !peerStreamRef.current || !nomeDestino) return;
         const idFormatado = `anime-rpg-${nomeDestino.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
@@ -301,7 +245,7 @@ export function MapaFormProvider({ children }) {
                 setConexoes(prev => {
                     const isAlreadyConnected = prev.find(c => c.id === amigoId);
                     if (!isAlreadyConnected && !chamadasEmAndamento.current.has(amigoId)) {
-                        fazerChamada(nomeAmigo); // Se a chamada falhar, o sistema volta a ligar em 3s!
+                        fazerChamada(nomeAmigo); 
                     }
                     return prev;
                 });
@@ -314,31 +258,33 @@ export function MapaFormProvider({ children }) {
     const trocarMicrofone = useCallback(async (deviceId) => {
         try {
             setSelectedMic(deviceId);
-            if (meuStream) meuStream.getTracks().forEach(t => t.stop()); 
+            if (meuStreamPuro) meuStreamPuro.getTracks().forEach(t => t.stop()); 
             if (peerStreamRef.current) peerStreamRef.current.getTracks().forEach(t => t.stop()); 
             
             const newStream = await navigator.mediaDevices.getUserMedia({ 
                 audio: { deviceId: { exact: deviceId }, noiseSuppression: supressorAtivo, echoCancellation: true, autoGainControl: true } 
             });
             
-            setMeuStream(newStream);
-            startAudioEngine(newStream); // Refaz a mesa de mistura no novo mic
+            setMeuStreamPuro(newStream);
+            const newPeerStream = newStream.clone();
+            peerStreamRef.current = newPeerStream;
 
             if (peerObj) {
                 Object.values(peerObj.connections).forEach(conns => {
                     conns.forEach(conn => {
                         if (conn.peerConnection) {
                             const sender = conn.peerConnection.getSenders().find(s => s.track && s.track.kind === 'audio');
-                            if (sender) sender.replaceTrack(peerStreamRef.current.getAudioTracks()[0]);
+                            if (sender) sender.replaceTrack(newPeerStream.getAudioTracks()[0]);
                         }
                     });
                 });
             }
         } catch (err) { console.error("Erro ao trocar mic:", err); }
-    }, [peerObj, supressorAtivo, meuStream, startAudioEngine]);
+    }, [peerObj, supressorAtivo, meuStreamPuro]);
 
     const toggleMute = useCallback(() => setMutado(m => !m), []);
     const toggleDeafen = useCallback(() => setSurdo(s => !s), []);
+    const desconectarVoz = useCallback((idPeer) => setConexoes(prev => prev.filter(c => c.id !== idPeer)), []);
 
     // ========================================================================
     // RESTO DO CÓDIGO (LÓGICA DO MAPA)
@@ -789,9 +735,9 @@ export function MapaFormProvider({ children }) {
         cells, jogadores, playersNaTaverna, ordemIniciativa, handleCellClick,
         alterarZoom, setMinhaIniciativa, avancarTurno, sairDoCombate, encerrarCombate,
         rolarAcertoRapido, tokenMap, tokens3D, jogadorDaVez, infoDaVez, fmt, deletarZona,
-        meuStream, conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen,
+        meuStreamPuro, peerStreamRef, conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen, fazerChamada, desconectarVoz,
         mics, selectedMic, trocarMicrofone, radioLigado, setRadioLigado, supressorAtivo, setSupressorAtivo,
-        sensibilidadeVoz, setSensibilidadeVoz, meuVolumeLocal, euEstouFalando // 🔥 EXPORTAMOS O VOLUME LOCAL PURO
+        sensibilidadeVoz, setSensibilidadeVoz
     }), [
         minhaFicha, meuNome, personagens, feedCombate, isMestre, dummies, alvoSelecionado, cenario,
         fichaSegura, modo3D, tamanhoCelula, iniciativaInput, altitudeInput,
@@ -805,9 +751,9 @@ export function MapaFormProvider({ children }) {
         changeDesvantagem, handleUploadNovaCena, ativarCena, deletarCena, corDoJogador,
         getAvatarInfo, handleCellClick, alterarZoom, setMinhaIniciativa, avancarTurno,
         sairDoCombate, encerrarCombate, rolarAcertoRapido, deletarZona,
-        meuStream, conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen,
+        meuStreamPuro, peerStreamRef, conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen, fazerChamada, desconectarVoz,
         mics, selectedMic, trocarMicrofone, radioLigado, setRadioLigado, supressorAtivo, setSupressorAtivo,
-        sensibilidadeVoz, setSensibilidadeVoz, meuVolumeLocal, euEstouFalando
+        sensibilidadeVoz, setSensibilidadeVoz
     ]);
 
     return (
