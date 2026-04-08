@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom'; 
-import { useMapaForm, urlSeguraParaCss, calcularCA, MAP_SIZE } from './MapaFormContext';
-import { useVoiceChat } from '../../hooks/useVoiceChat'; // O MOTOR DE ÁUDIO NOVO!
+import { useMapaForm, urlSeguraParaCss, MAP_SIZE } from './MapaFormContext';
+import { useVoiceChat } from '../../hooks/useVoiceChat'; 
 import Tabuleiro3D from './Tabuleiro3D';
 import DummieToken from '../combat/DummieToken';
 import { salvarDummie, salvarCenarioCompleto } from '../../services/firebase-sync'; 
@@ -14,7 +14,7 @@ import { storage, functions } from '../../services/firebase-config';
 const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Mapa provider não encontrado</div>;
 
 // ============================================================================
-// 🔥 COMPONENTES DE ÁUDIO (Apenas renderizados se a Taverna estiver aberta)
+// 🔥 REPRODUTOR NATIVO BLINDADO (SEM ECO)
 // ============================================================================
 function PlayerDeAudioRemoto({ stream, volume, surdo, nome }) {
     const audioRef = useRef(null);
@@ -30,101 +30,33 @@ function PlayerDeAudioRemoto({ stream, volume, surdo, nome }) {
     return <audio ref={audioRef} autoPlay playsInline style={{ display: 'none' }} />;
 }
 
-function CalibradorDeVoz({ stream, sensibilidade, setSensibilidade }) {
-    const barraRef = useRef(null);
-    useEffect(() => {
-        if (!stream) return;
-        let raf;
-        const actx = new (window.AudioContext || window.webkitAudioContext)();
-        try {
-            const source = actx.createMediaStreamSource(stream); 
-            const analyser = actx.createAnalyser();
-            analyser.fftSize = 256;
-            analyser.smoothingTimeConstant = 0.5;
-            source.connect(analyser);
-
-            const dataArray = new Uint8Array(analyser.frequencyBinCount);
-            const draw = () => {
-                analyser.getByteFrequencyData(dataArray);
-                let sum = 0; for(let i=0; i<dataArray.length; i++) sum += dataArray[i];
-                const avg = sum / dataArray.length; 
-                const percent = Math.min(100, (avg / 60) * 100); 
-                
-                if (barraRef.current) {
-                    barraRef.current.style.width = `${percent}%`;
-                    barraRef.current.style.backgroundColor = avg > sensibilidade ? '#00ffcc' : '#ffcc00';
-                }
-                raf = requestAnimationFrame(draw);
-            };
-            draw();
-            return () => { cancelAnimationFrame(raf); actx.close(); };
-        } catch(e) {}
-    }, [stream, sensibilidade]);
-
-    return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', borderLeft: '1px solid #444', paddingLeft: '15px' }}>
-            <span style={{ color: '#aaa', fontSize: '0.8em' }}>Limiar:</span>
-            <div style={{ position: 'relative', width: '120px', height: '14px', background: '#000', borderRadius: '7px', border: '1px solid #333', overflow: 'hidden' }}>
-                <div ref={barraRef} style={{ width: '0%', height: '100%', background: '#ffcc00', transition: 'width 0.05s ease-out, background-color 0.1s' }} />
-                <input type="range" min="1" max="50" value={sensibilidade} onChange={e => setSensibilidade(parseInt(e.target.value))} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }} />
-                <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${(sensibilidade / 60) * 100}%`, width: '2px', background: '#fff', boxShadow: '0 0 5px #fff', pointerEvents: 'none' }} />
-            </div>
-        </div>
-    );
-}
-
-function AvatarCardVoz({ nome, info, ficha, isMe, isConnected, streamParaTocar, euEstouFalandoState, mutado, surdo, fazerChamada, cardSize, fmt }) {
-    const [isSpeakingRemote, setIsSpeakingRemote] = useState(false);
+// ============================================================================
+// 🔥 A CARTA DE AVATAR (FASE 1 - PURAMENTE VISUAL)
+// ============================================================================
+function AvatarCardVoz({ nome, info, ficha, isMe, isConnected, streamParaTocar, mutado, surdo, fazerChamada, cardSize, fmt }) {
     const [volume, setVolume] = useState(() => {
         const saved = localStorage.getItem(`rpg_vol_${nome}`);
         return saved !== null ? parseFloat(saved) : 1; 
     });
     useEffect(() => { localStorage.setItem(`rpg_vol_${nome}`, volume); }, [volume, nome]);
-    
-    const rafRef = useRef(null);
-    const audioCtxRef = useRef(null);
-
-    useEffect(() => {
-        if (isMe || !streamParaTocar) return;
-        try {
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
-            const actx = audioCtxRef.current;
-            if (actx.state === 'suspended') actx.resume();
-
-            const source = actx.createMediaStreamSource(streamParaTocar);
-            const analyser = actx.createAnalyser();
-            analyser.fftSize = 256;
-            analyser.smoothingTimeConstant = 0.4; 
-            source.connect(analyser); 
-
-            const dataArray = new Uint8Array(analyser.frequencyBinCount);
-            const checkVolume = () => {
-                analyser.getByteFrequencyData(dataArray);
-                let sum = 0; for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
-                setIsSpeakingRemote((sum / dataArray.length) > 5);
-                rafRef.current = requestAnimationFrame(checkVolume);
-            };
-            checkVolume();
-        } catch(err) {}
-
-        return () => {
-            if (rafRef.current) cancelAnimationFrame(rafRef.current);
-            if (audioCtxRef.current) audioCtxRef.current.close().catch(()=>{});
-        };
-    }, [streamParaTocar, isMe]);
 
     let boxShadowCard = '0 0 15px rgba(0,0,0,0.8)';
     let borderCard = '2px solid #333';
     let iconMic = '⏳';
-    const isSpeakingFinal = isMe ? euEstouFalandoState : isSpeakingRemote;
 
     if (isConnected) {
-        if (isMe && mutado) { borderCard = '2px solid #ff003c'; boxShadowCard = '0 0 20px rgba(255,0,60,0.4)'; iconMic = '🔇'; } 
-        else if (isSpeakingFinal) { borderCard = '2px solid #00ffcc'; boxShadowCard = '0 0 35px #00ffcc, inset 0 0 20px rgba(0,255,204,0.4)'; iconMic = '🔊'; } 
-        else if (!isMe && streamParaTocar) { borderCard = '2px solid #00aaff'; boxShadowCard = '0 0 20px rgba(0,170,255,0.4)'; iconMic = '🔊'; } 
-        else { borderCard = '2px solid #005588'; boxShadowCard = '0 0 10px rgba(0,85,136,0.5)'; iconMic = '🎙️'; }
-    } else if (!isMe) { borderCard = '2px dashed #444'; boxShadowCard = 'none'; iconMic = '🔄'; }
+        if (isMe && mutado) { 
+            borderCard = '2px solid #ff003c'; boxShadowCard = '0 0 20px rgba(255,0,60,0.4)'; iconMic = '🔇'; 
+        } else if (isMe) { 
+            borderCard = '2px solid #00ffcc'; boxShadowCard = '0 0 10px rgba(0,255,204,0.5)'; iconMic = '🎙️'; 
+        } else if (!isMe && streamParaTocar) { 
+            borderCard = '2px solid #00aaff'; boxShadowCard = '0 0 20px rgba(0,170,255,0.4)'; iconMic = '🔊'; 
+        } else { 
+            borderCard = '2px solid #005588'; boxShadowCard = '0 0 10px rgba(0,85,136,0.5)'; iconMic = '🎙️'; 
+        }
+    } else if (!isMe) { 
+        borderCard = '2px dashed #444'; boxShadowCard = 'none'; iconMic = '🔄'; 
+    }
 
     return (
         <div className="fade-in" style={{ position: 'relative', width: cardSize, aspectRatio: '4/3', background: '#111', border: borderCard, borderRadius: 6, overflow: 'hidden', backgroundImage: urlSeguraParaCss(info.img) || 'none', backgroundSize: 'cover', backgroundPosition: 'top center', boxShadow: boxShadowCard, transition: 'all 0.15s ease-out' }}>
@@ -139,7 +71,7 @@ function AvatarCardVoz({ nome, info, ficha, isMe, isConnected, streamParaTocar, 
 
             <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', display: 'flex', flexDirection: 'column', background: 'rgba(10,10,15,0.9)', borderTop: '2px solid #222', padding: '6px 10px', backdropFilter: 'blur(3px)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                    <span style={{ color: isConnected ? (isSpeakingFinal ? '#00ffcc' : '#00aaff') : '#fff', fontWeight: 'bold', fontSize: '0.8em', textTransform: 'uppercase', letterSpacing: 1, textShadow: '1px 1px 2px #000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', transition: 'color 0.2s', paddingRight: '5px' }}>{nome}</span>
+                    <span style={{ color: isConnected ? (isMe ? '#00ffcc' : '#00aaff') : '#fff', fontWeight: 'bold', fontSize: '0.8em', textTransform: 'uppercase', letterSpacing: 1, textShadow: '1px 1px 2px #000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', transition: 'color 0.2s', paddingRight: '5px' }}>{nome}</span>
                     {!isMe && isConnected && streamParaTocar && (
                         <div onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '70px', background: 'rgba(0,0,0,0.5)', padding: '2px 5px', borderRadius: '10px', border: '1px solid #333' }}>
                             <span style={{ fontSize: '9px', color: volume === 0 ? '#ff003c' : '#aaa' }}>{volume === 0 ? '🔇' : '🔉'}</span>
@@ -157,104 +89,9 @@ function AvatarCardVoz({ nome, info, ficha, isMe, isConnected, streamParaTocar, 
     );
 }
 
-export function MapaOlhoSextaFeira({ meuNome, personagens, minhaFicha, tavernaAtivos, meuStream, conexoes }) {
-    const [gravando, setGravando] = useState(false);
-    const [expandido, setExpandido] = useState(false);
-    const [logs, setLogs] = useState(['Sexta-Feira: Olho de Escuta pronto.']);
-    const [destinoLore, setDestinoLore] = useState('novo_capitulo');
-    const [arcosCache, setArcosCache] = useState([]);
-
-    const mediaRecorderRef = useRef(null);
-    const timerRef = useRef(null);
-    const mixerCtxRef = useRef(null);
-    const pedacoContadorRef = useRef(1);
-
-    const perfisJogadores = (Array.isArray(tavernaAtivos) ? tavernaAtivos : []).map(nome => {
-        const ficha = nome === meuNome ? minhaFicha : personagens?.[nome];
-        return `${nome} (Classe: ${ficha?.bio?.classe || 'Mundano'}, Raça: ${ficha?.bio?.raca || 'Desconhecida'})`;
-    });
-
-    useEffect(() => {
-        try { const salvos = localStorage.getItem('rpgSextaFeira_capitulos'); if (salvos) setArcosCache(JSON.parse(salvos)); } catch(e) {}
-    }, [expandido]);
-
-    useEffect(() => {
-        return () => {
-            if (timerRef.current) clearInterval(timerRef.current);
-            if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") mediaRecorderRef.current.stop();
-            if (mixerCtxRef.current) mixerCtxRef.current.close();
-        };
-    }, []);
-
-    const addLog = (msg) => { const hora = new Date().toLocaleTimeString(); setLogs(prev => [...prev.slice(-4), `[${hora}] ${msg}`]); };
-
-    const iniciarGravacao = () => {
-        if (!meuStream) return addLog("❌ Erro: Microfone offline.");
-        try {
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            mixerCtxRef.current = audioCtx;
-            const destination = audioCtx.createMediaStreamDestination();
-            
-            audioCtx.createMediaStreamSource(meuStream).connect(destination);
-            let vozesExtras = 0;
-            conexoes.forEach(c => { if (c.stream) { audioCtx.createMediaStreamSource(c.stream).connect(destination); vozesExtras++; } });
-            
-            const recorder = new MediaRecorder(destination.stream, { mimeType: 'audio/webm' });
-            let chunks = [];
-            pedacoContadorRef.current = 1;
-
-            recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
-            recorder.onstop = async () => {
-                if (chunks.length === 0) return;
-                const audioBlob = new Blob(chunks, { type: 'audio/webm' }); chunks = [];
-                const num = pedacoContadorRef.current; pedacoContadorRef.current++;
-                try {
-                    const nomeArquivo = `sessao_mapa_${Date.now()}_pt${num}.webm`;
-                    await uploadBytes(ref(storage, `audios_mesa/${nomeArquivo}`), audioBlob);
-                    const transcrever = httpsCallable(functions, 'transcreverAudioSextaFeira');
-                    await transcrever({ fileName: nomeArquivo, nomesParticipantes: perfisJogadores, gravadorPrincipal: meuNome });
-                    addLog(`✅ P${num} gravada e salva!`);
-                } catch(e) { addLog(`❌ Erro P${num}`); }
-            };
-
-            recorder.start();
-            mediaRecorderRef.current = recorder;
-            setGravando(true); setExpandido(false);
-            addLog(`🎙️ A gravar Mic + ${vozesExtras} amigos!`);
-
-            timerRef.current = setInterval(() => {
-                if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
-                recorder.start();
-            }, 20 * 60 * 1000);
-        } catch(e) { addLog("❌ Erro ao iniciar."); }
-    };
-
-    const pararGravacao = () => {
-        if (timerRef.current) clearInterval(timerRef.current);
-        if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
-        if (mixerCtxRef.current) mixerCtxRef.current.close();
-        setGravando(false); addLog("⏹️ Gravação parada.");
-    };
-
-    return (
-        <div style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 99999, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
-            {expandido && (
-                <div className="fade-in" style={{ background: 'rgba(10,10,15,0.95)', border: `2px solid ${gravando ? '#ff003c' : '#0088ff'}`, borderRadius: '10px', padding: '15px', width: '300px', boxShadow: `0 0 20px ${gravando ? 'rgba(255,0,60,0.4)' : 'rgba(0,136,255,0.4)'}` }}>
-                    <div style={{ borderBottom: '1px solid #333', paddingBottom: '5px', display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: gravando ? '#ff003c' : '#0088ff', fontWeight: 'bold' }}>{gravando ? '🔴 Gravando...' : '📡 Sexta-Feira'}</span>
-                        <button onClick={() => setExpandido(false)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>✕</button>
-                    </div>
-                    {!gravando ? <button className="btn-neon btn-green" onClick={iniciarGravacao} style={{ marginTop: 10, width: '100%' }}>▶ INICIAR ESCUTA</button> : <button className="btn-neon btn-red" onClick={pararGravacao} style={{ marginTop: 10, width: '100%', animation: 'pulse 1.5s infinite' }}>⏹ ENCERRAR</button>}
-                    <div style={{ background: '#000', marginTop: 10, borderRadius: '5px', padding: '8px', fontSize: '0.7em', color: '#0f0', fontFamily: 'monospace', height: '80px', overflowY: 'auto', border: '1px solid #222' }}>
-                        {logs.map((l, i) => <div key={i}>{l}</div>)}
-                    </div>
-                </div>
-            )}
-            <div onClick={() => setExpandido(!expandido)} style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(10,10,15,0.9)', border: '2px solid #0088ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', cursor: 'pointer' }}>{gravando ? '🎙️' : '👁️'}</div>
-        </div>
-    );
-}
-
+// ============================================================================
+// 🔥 A TAVERNA (O VOSSO DISCORD PRIVADO EM FASE 1)
+// ============================================================================
 export function MapaSessaoRP({ chatCtx, meuNome, minhaFicha, personagens, cenario, isPresenteNaTaverna, togglePresencaTaverna, getAvatarInfo, fmt }) {
     const playerCount = cenario?.tavernaAtivos?.length || 0;
     const cardSize = playerCount === 1 ? '400px' : playerCount === 2 ? '350px' : '280px';
@@ -263,14 +100,15 @@ export function MapaSessaoRP({ chatCtx, meuNome, minhaFicha, personagens, cenari
     if (!radioLigado) return (
         <div className="fade-in" style={{ minHeight: '60vh', background: 'radial-gradient(circle, rgba(30,10,20,0.9) 0%, rgba(0,0,0,1) 100%)', borderRadius: 5, border: '2px solid #ffcc00', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
             <h1 style={{ color: '#00ffcc' }}>SALA DE RÁDIO DA PARTY</h1>
-            <p style={{ color: '#aaa' }}>Fechem o vosso Discord e entrem no rádio para comunicarem por aqui com a IA a gravar tudo.</p>
+            <p style={{ color: '#aaa' }}>Fechem o vosso Discord e entrem no rádio para testarmos a comunicação pura.</p>
             <button className="btn-neon btn-green" onClick={() => setRadioLigado(true)}>▶ ENTRAR NO RÁDIO</button>
         </div>
     );
 
     return (
         <div className="fade-in" style={{ minHeight: '60vh', background: 'radial-gradient(circle, rgba(30,10,20,0.9) 0%, rgba(0,0,0,1) 100%)', borderRadius: 5, border: '2px solid #ffcc00', padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <h1 style={{ color: '#ffcc00', margin: 0 }}>SESSÃO RP</h1>
+            <h1 style={{ color: '#ffcc00', margin: 0 }}>SESSÃO RP (FASE 1)</h1>
+            <p style={{ color: '#aaa', fontStyle: 'italic', marginBottom: 10, fontSize: '1.1em' }}>A testar a estabilidade da ligação nativa...</p>
             
             {isPresenteNaTaverna && (
                 <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '20px', background: 'rgba(0,0,0,0.5)', padding: '10px', borderRadius: '5px', border: '1px solid #333' }}>
@@ -280,8 +118,7 @@ export function MapaSessaoRP({ chatCtx, meuNome, minhaFicha, personagens, cenari
                             {chatCtx.mics.map(m => <option key={m.deviceId} value={m.deviceId}>{m.label}</option>)}
                         </select>
                     )}
-                    <label style={{ color: '#00ffcc', fontSize: '0.8em', cursor: 'pointer' }}><input type="checkbox" checked={chatCtx.supressorAtivo} onChange={e => chatCtx.setSupressorAtivo(e.target.checked)} /> 🎧 Supressor</label>
-                    {chatCtx.streamAnalisador && <CalibradorDeVoz stream={chatCtx.streamAnalisador} sensibilidade={chatCtx.sensibilidadeVoz} setSensibilidade={chatCtx.setSensibilidadeVoz} />}
+                    <label style={{ color: '#00ffcc', fontSize: '0.8em', cursor: 'pointer' }}><input type="checkbox" checked={chatCtx.supressorAtivo} onChange={e => chatCtx.setSupressorAtivo(e.target.checked)} /> 🎧 Supressor Nativo</label>
                 </div>
             )}
             
@@ -298,11 +135,9 @@ export function MapaSessaoRP({ chatCtx, meuNome, minhaFicha, personagens, cenari
                     const info = getAvatarInfo(f);
                     const con = chatCtx.conexoes.find(c => c.id === `anime-rpg-${nome.toLowerCase().replace(/[^a-z0-9]/g, '')}`);
                     
-                    return <AvatarCardVoz key={nome} nome={nome} info={info} ficha={f} isMe={isMe} isConnected={isMe || !!con} streamParaTocar={con?.stream} euEstouFalandoState={chatCtx.euEstouFalandoState} mutado={chatCtx.mutado} surdo={chatCtx.surdo} fazerChamada={chatCtx.fazerChamada} cardSize={cardSize} fmt={fmt} />;
+                    return <AvatarCardVoz key={nome} nome={nome} info={info} ficha={f} isMe={isMe} isConnected={isMe || !!con} streamParaTocar={con?.stream} mutado={chatCtx.mutado} surdo={chatCtx.surdo} fazerChamada={chatCtx.fazerChamada} cardSize={cardSize} fmt={fmt} />;
                 })}
             </div>
-            
-            <MapaOlhoSextaFeira meuNome={meuNome} personagens={personagens} minhaFicha={minhaFicha} tavernaAtivos={cenario?.tavernaAtivos} meuStream={chatCtx.meuStream} conexoes={chatCtx.conexoes} />
         </div>
     );
 }
@@ -312,7 +147,6 @@ export function MapaAreaCentral() {
     if (!ctx) return FALLBACK;
     const { isModoRP, isMestre, mestreVendoRP, meuNome, cenario, isPresenteNaTaverna, minhaFicha, personagens, getAvatarInfo, fmt, togglePresencaTaverna } = ctx;
     
-    // O Hook só é chamado se estivermos no Modo RP, poupando a máquina!
     const chatCtx = useVoiceChat(meuNome, cenario?.tavernaAtivos, isPresenteNaTaverna);
     
     if (isModoRP && (!isMestre || mestreVendoRP)) {
@@ -326,6 +160,10 @@ export function MapaAreaCentral() {
         </>
     );
 }
+
+// ============================================================================
+// RESTO DOS COMPONENTES VISUAIS (INTATOS!)
+// ============================================================================
 
 export function MapaControlesSuperiores() {
     const ctx = useMapaForm();
