@@ -41,50 +41,17 @@ function PlayerDeAudioRemoto({ stream, volume, surdo, nome }) {
 
 // ============================================================================
 // 🔥 COMPONENTE: CALIBRADOR VISUAL DE SENSIBILIDADE DO MICROFONE 🔥
+// Agora recebe os dados mastigados. 100% crash-proof!
 // ============================================================================
-function CalibradorDeVoz({ stream, sensibilidade, setSensibilidade }) {
-    const barraRef = useRef(null);
-
-    useEffect(() => {
-        if (!stream) return;
-        
-        let raf;
-        const actx = new (window.AudioContext || window.webkitAudioContext)();
-        
-        try {
-            const source = actx.createMediaStreamSource(stream); // CABO A (Puro)
-            const analyser = actx.createAnalyser();
-            analyser.fftSize = 256;
-            analyser.smoothingTimeConstant = 0.5;
-            source.connect(analyser);
-
-            const dataArray = new Uint8Array(analyser.frequencyBinCount);
-            
-            const draw = () => {
-                analyser.getByteFrequencyData(dataArray);
-                let sum = 0; 
-                for(let i=0; i<dataArray.length; i++) sum += dataArray[i];
-                
-                const avg = sum / dataArray.length; 
-                const percent = Math.min(100, (avg / 60) * 100); 
-                
-                if (barraRef.current) {
-                    barraRef.current.style.width = `${percent}%`;
-                    barraRef.current.style.backgroundColor = avg > sensibilidade ? '#00ffcc' : '#ffcc00';
-                }
-                raf = requestAnimationFrame(draw);
-            };
-            draw();
-
-            return () => { cancelAnimationFrame(raf); actx.close(); };
-        } catch(e) { console.error("Erro no calibrador:", e); }
-    }, [stream, sensibilidade]);
+function CalibradorDeVoz({ volumeAtual, sensibilidade, setSensibilidade }) {
+    const percent = Math.min(100, (volumeAtual / 60) * 100); 
+    const corBarra = volumeAtual > sensibilidade ? '#00ffcc' : '#ffcc00';
 
     return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', borderLeft: '1px solid #444', paddingLeft: '15px' }}>
-            <span style={{ color: '#aaa', fontSize: '0.8em' }}>Limiar de Voz:</span>
+            <span style={{ color: '#aaa', fontSize: '0.8em' }}>Limiar:</span>
             <div style={{ position: 'relative', width: '120px', height: '14px', background: '#000', borderRadius: '7px', border: '1px solid #333', overflow: 'hidden' }}>
-                <div ref={barraRef} style={{ width: '0%', height: '100%', background: '#ffcc00', transition: 'width 0.05s ease-out, background-color 0.1s' }} />
+                <div style={{ width: `${percent}%`, height: '100%', background: corBarra, transition: 'width 0.05s ease-out, background-color 0.1s' }} />
                 <input type="range" min="1" max="50" value={sensibilidade} onChange={e => setSensibilidade(parseInt(e.target.value))} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }} />
                 <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${(sensibilidade / 60) * 100}%`, width: '2px', background: '#fff', boxShadow: '0 0 5px #fff', pointerEvents: 'none' }} />
             </div>
@@ -93,106 +60,23 @@ function CalibradorDeVoz({ stream, sensibilidade, setSensibilidade }) {
 }
 
 // ============================================================================
-// 🔥 A CARTA DE AVATAR INTELIGENTE (COM NOISE GATE NO CABO B) 🔥
+// 🔥 A CARTA DE AVATAR INTELIGENTE (SUPER LEVE) 🔥
 // ============================================================================
 function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, cardSize }) {
     const ctx = useMapaForm();
-    const { getAvatarInfo, fmt, sensibilidadeVoz, peerStreamRef } = ctx;
+    const { getAvatarInfo, fmt, euEstouFalando } = ctx;
     const info = getAvatarInfo(ficha);
-
-    const [isSpeaking, setIsSpeaking] = useState(false);
     
     const [volume, setVolume] = useState(() => {
         const saved = localStorage.getItem(`rpg_vol_${nome}`);
         return saved !== null ? parseFloat(saved) : 1; 
     });
 
-    const sensibilidadeRef = useRef(sensibilidadeVoz);
-    const mutadoRef = useRef(mutado);
-    useEffect(() => { sensibilidadeRef.current = sensibilidadeVoz; }, [sensibilidadeVoz]);
-    useEffect(() => { mutadoRef.current = mutado; }, [mutado]);
-
     useEffect(() => {
         localStorage.setItem(`rpg_vol_${nome}`, volume);
     }, [volume, nome]);
 
-    const audioCtxRef = useRef(null);
-    const rafRef = useRef(null);
-
-    // 🔥 O CÉREBRO DO NOISE GATE (Abre e Fecha o Cabo B da Rede) 🔥
-    useEffect(() => {
-        if (!stream || !isMe) {
-            setIsSpeaking(false);
-            return;
-        }
-
-        try {
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
-            const actx = audioCtxRef.current;
-
-            if (actx.state === 'suspended') actx.resume();
-
-            // O Analisador lê SEMPRE o cabo A puro (que você vê na barrinha visual)
-            const source = actx.createMediaStreamSource(stream);
-            const analyser = actx.createAnalyser();
-            analyser.fftSize = 256;
-            analyser.smoothingTimeConstant = 0.4; 
-            
-            source.connect(analyser);
-
-            const dataArray = new Uint8Array(analyser.frequencyBinCount);
-            let framesEmSilencio = 0;
-
-            const checkVolume = () => {
-                analyser.getByteFrequencyData(dataArray);
-                let sum = 0;
-                for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
-                const average = sum / dataArray.length;
-
-                const falandoAgora = average > sensibilidadeRef.current;
-
-                if (falandoAgora) {
-                    framesEmSilencio = 0; 
-                    setIsSpeaking(true);
-                    // LIGA O CABO B! (Se não estiver mutado manualmente no botão vermelho)
-                    if (peerStreamRef.current && peerStreamRef.current.getAudioTracks()[0]) {
-                        peerStreamRef.current.getAudioTracks()[0].enabled = !mutadoRef.current;
-                    }
-                } else {
-                    framesEmSilencio++;
-                    // O Som só corta se você ficar calado 20 frames seguidos (Suaviza o fim das palavras)
-                    if (framesEmSilencio > 20) {
-                        setIsSpeaking(false);
-                        // CORTA O CABO B! (Impede o ventilador de passar para os amigos)
-                        if (peerStreamRef.current && peerStreamRef.current.getAudioTracks()[0]) {
-                            peerStreamRef.current.getAudioTracks()[0].enabled = false;
-                        }
-                    }
-                }
-                rafRef.current = requestAnimationFrame(checkVolume);
-            };
-            checkVolume();
-            
-        } catch(err) {
-            console.error("Erro ao analisar sua voz", err);
-        }
-
-        return () => {
-            if (rafRef.current) cancelAnimationFrame(rafRef.current);
-            if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
-                audioCtxRef.current.close().catch(e => console.log(e));
-            }
-        };
-    }, [stream, isMe, peerStreamRef]); 
-
-    // Mute Absoluto do Botão Vermelho
-    useEffect(() => {
-        if (isSpeaking && peerStreamRef.current && peerStreamRef.current.getAudioTracks()[0]) {
-            peerStreamRef.current.getAudioTracks()[0].enabled = !mutado;
-        }
-    }, [mutado, isSpeaking, peerStreamRef]);
-
+    // 🔥 ESTILOS DINÂMICOS 🔥
     let boxShadowCard = '0 0 15px rgba(0,0,0,0.8)';
     let borderCard = '2px solid #333';
     let iconMic = '📡';
@@ -202,15 +86,18 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
             borderCard = '2px solid #ff003c';
             boxShadowCard = '0 0 20px rgba(255,0,60,0.4)';
             iconMic = '🔇';
-        } else if (isMe && isSpeaking) {
+        } else if (isMe && euEstouFalando) {
+            // Você falando no Gate!
             borderCard = '2px solid #00ffcc';
             boxShadowCard = '0 0 35px #00ffcc, inset 0 0 20px rgba(0,255,204,0.4)';
             iconMic = '🔊';
         } else if (!isMe && stream) {
+            // Amigo ligado à mesa
             borderCard = '2px solid #00aaff';
             boxShadowCard = '0 0 20px rgba(0,170,255,0.4)';
             iconMic = '🔊';
         } else {
+            // Gate Fechado (mutado pelo limitador)
             borderCard = '2px solid #005588';
             boxShadowCard = '0 0 10px rgba(0,85,136,0.5)';
             iconMic = '🎙️';
@@ -238,7 +125,7 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
             <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', display: 'flex', flexDirection: 'column', background: 'rgba(10,10,15,0.9)', borderTop: '2px solid #222', padding: '6px 10px', backdropFilter: 'blur(3px)' }}>
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                    <span style={{ color: isConnected ? (isMe && isSpeaking ? '#00ffcc' : '#00aaff') : '#fff', fontWeight: 'bold', fontSize: '0.8em', textTransform: 'uppercase', letterSpacing: 1, textShadow: '1px 1px 2px #000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', transition: 'color 0.2s', paddingRight: '5px' }}>
+                    <span style={{ color: isConnected ? (isMe && euEstouFalando ? '#00ffcc' : '#00aaff') : '#fff', fontWeight: 'bold', fontSize: '0.8em', textTransform: 'uppercase', letterSpacing: 1, textShadow: '1px 1px 2px #000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', transition: 'color 0.2s', paddingRight: '5px' }}>
                         {nome}
                     </span>
                     
@@ -247,7 +134,7 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
                             <span style={{ fontSize: '9px', color: volume === 0 ? '#ff003c' : '#aaa' }}>{volume === 0 ? '🔇' : '🔉'}</span>
                             <input 
                                 type="range" 
-                                min="0" max="1" step="0.05" 
+                                min="0" max="2" step="0.05" 
                                 value={volume} 
                                 onChange={e => setVolume(parseFloat(e.target.value))}
                                 style={{ width: '100%', height: '3px', cursor: 'pointer', accentColor: '#00ffcc' }} 
@@ -583,7 +470,7 @@ export function MapaOlhoSextaFeira() {
 }
 
 // ============================================================================
-// 🔥 A SESSÃO RP QUE SE TRANSFORMOU NUM DISCORD AUTOMÁTICO! 🔥
+// 🔥 A SESSÃO RP QUE SE TRANSFORMOU NUM DISCORD! 🔥
 // ============================================================================
 export function MapaSessaoRP() {
     const ctx = useMapaForm();
@@ -591,8 +478,9 @@ export function MapaSessaoRP() {
     const { 
         meuNome, playersNaTaverna, isPresenteNaTaverna, togglePresencaTaverna, getAvatarInfo, fmt,
         conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen,
-        mics, selectedMic, trocarMicrofone, meuStream, radioLigado, setRadioLigado,
-        supressorAtivo, setSupressorAtivo, sensibilidadeVoz, setSensibilidadeVoz
+        mics, selectedMic, trocarMicrofone, radioLigado, setRadioLigado,
+        supressorAtivo, setSupressorAtivo, sensibilidadeVoz, setSensibilidadeVoz,
+        meuVolumeLocal
     } = ctx;
 
     const playerCount = playersNaTaverna.length;
@@ -632,7 +520,7 @@ export function MapaSessaoRP() {
                             <>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px', borderLeft: '1px solid #444', paddingLeft: '15px' }}>
                                     <span style={{ color: '#aaa', fontSize: '0.8em' }}>🎙️ Mic:</span>
-                                    <select className="input-neon" value={selectedMic} onChange={(e) => trocarMicrofone(e.target.value)} style={{ padding: '2px 8px', fontSize: '0.8em', background: '#000', color: '#fff', borderColor: '#00ffcc', borderRadius: '5px', maxWidth: '150px' }}>
+                                    <select className="input-neon" value={selectedMic} onChange={(e) => trocarMicrofone(e.target.value)} style={{ padding: '4px 8px', fontSize: '0.8em', background: '#000', color: '#fff', borderColor: '#00ffcc', borderRadius: '5px', maxWidth: '150px' }}>
                                         {mics.map(m => (<option key={m.deviceId} value={m.deviceId}>{m.label || `Padrão ${m.deviceId.slice(0,5)}`}</option>))}
                                     </select>
                                 </div>
@@ -645,12 +533,9 @@ export function MapaSessaoRP() {
                         )}
                     </div>
 
-                    {/* CALIBRADOR COM A STREAM PURA (Cabo A) */}
-                    {meuStream && (
-                        <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: '5px' }}>
-                            <CalibradorDeVoz stream={meuStream} sensibilidade={sensibilidadeVoz} setSensibilidade={setSensibilidadeVoz} />
-                        </div>
-                    )}
+                    <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: '5px' }}>
+                        <CalibradorDeVoz volumeAtual={meuVolumeLocal} sensibilidade={sensibilidadeVoz} setSensibilidade={setSensibilidadeVoz} />
+                    </div>
                 </div>
             )}
             
@@ -673,7 +558,7 @@ export function MapaSessaoRP() {
                         const expectedIdTelefone = `anime-rpg-${n.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
                         const conRemota = conexoes.find(c => c.id === expectedIdTelefone);
                         const isConnected = isMe || !!conRemota;
-                        
+
                         return (
                             <AvatarCardVoz 
                                 key={n}
@@ -681,7 +566,7 @@ export function MapaSessaoRP() {
                                 ficha={f}
                                 isMe={isMe}
                                 isConnected={isConnected}
-                                stream={isMe ? meuStream : conRemota?.stream}
+                                stream={conRemota?.stream}
                                 mutado={mutado}
                                 surdo={surdo}
                                 cardSize={cardSize}
