@@ -4,7 +4,6 @@ import { salvarFichaSilencioso, enviarParaFeed, salvarDummie, uploadImagem, salv
 import { calcularAcerto } from '../../core/engine';
 import { resolverEfeitosEntidade } from '../../core/efeitos-resolver';
 import { getBuffs } from '../../core/attributes';
-import Peer from 'peerjs';
 
 export const MAP_SIZE = 30;
 export const PALETA = ['#ff003c', '#0088ff', '#00ff88', '#ffcc00', '#ff00ff', '#00ffff', '#ff8800', '#88ff00'];
@@ -100,19 +99,15 @@ export function MapaFormProvider({ children }) {
     const isPresenteNaTaverna = tavernaAtivos.includes(meuNome);
 
     // ========================================================================
-    // 🔥 SISTEMA DE VOZ RAW (ANTI-ECO DO CHROME + AUTO-DIALER INTELIGENTE) 🔥
+    // 🔥 SISTEMA DE MICROFONE LOCAL (APENAS PARA A SEXTA-FEIRA GRAVAR) 🔥
     // ========================================================================
     const [radioLigado, setRadioLigado] = useState(false); 
-    const [peerObj, setPeerObj] = useState(null);
     
-    // O CABO SPLITTER!
-    const [meuStream, setMeuStream] = useState(null); // Cabo A: Nativo para o WebRTC (Eco Off)
-    const [streamAnalisador, setStreamAnalisador] = useState(null); // Cabo B: Clone visual (Sempre a ouvir)
-
-    const chamadasEmAndamento = useRef(new Set()); 
-    const [conexoes, setConexoes] = useState([]);
-    const conexoesRef = useRef([]); 
-    useEffect(() => { conexoesRef.current = conexoes; }, [conexoes]);
+    const [meuStreamPuro, setMeuStreamPuro] = useState(null); 
+    const [meuStreamProcessado, setMeuStreamProcessado] = useState(null); 
+    
+    const gateGainRef = useRef(null); 
+    const audioCtxGlobalRef = useRef(null); 
 
     const [mutado, setMutado] = useState(false);
     const mutadoRef = useRef(mutado);
@@ -123,9 +118,7 @@ export function MapaFormProvider({ children }) {
     const [mics, setMics] = useState([]);
     const [selectedMic, setSelectedMic] = useState('');
     
-    // Estado Visual (A falar / Calado) - Otimizado para não bugar o React
     const [euEstouFalandoState, setEuEstouFalandoState] = useState(false);
-    const euEstouFalandoRef = useRef(false);
 
     const [supressorAtivo, setSupressorAtivo] = useState(true);
     const [sensibilidadeVoz, setSensibilidadeVoz] = useState(() => {
@@ -133,72 +126,88 @@ export function MapaFormProvider({ children }) {
         return saved !== null ? parseInt(saved, 10) : 10;
     });
 
-    const sensibilidadeRef = useRef(sensibilidadeVoz);
-    useEffect(() => { 
-        sensibilidadeRef.current = sensibilidadeVoz; 
-        localStorage.setItem('rpg_sensibilidade_voz', sensibilidadeVoz);
-    }, [sensibilidadeVoz]);
-
-    const meuIDTelefone = meuNome ? meuNome.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
     const rtcLigado = useRef(false);
 
-    // ATUALIZAÇÃO AO VIVO DO SUPRESSOR DO CHROME
     useEffect(() => {
-        if (meuStream) {
-            meuStream.getAudioTracks().forEach(track => {
+        if (meuStreamPuro) {
+            meuStreamPuro.getAudioTracks().forEach(track => {
                 if (track.applyConstraints) {
                     track.applyConstraints({ noiseSuppression: supressorAtivo, echoCancellation: true }).catch(()=>{});
                 }
             });
         }
-    }, [supressorAtivo, meuStream]);
+    }, [supressorAtivo, meuStreamPuro]);
 
-    // 1. INICIALIZA A ANTENA PEERJS (Cria a porta para receber logo!)
-    useEffect(() => {
-        if (!meuIDTelefone || peerObj) return;
+    useEffect(() => { localStorage.setItem('rpg_sensibilidade_voz', sensibilidadeVoz); }, [sensibilidadeVoz]);
 
-        const novoPeer = new Peer(`anime-rpg-${meuIDTelefone}`, {
-            config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:global.stun.twilio.com:3478' }] }
-        });
+    // 🔥 O MOTOR DE ÁUDIO PARA GRAVAÇÃO DA SEXTA-FEIRA 🔥
+    const startAudioEngine = useCallback((streamRaw) => {
+        if (audioCtxGlobalRef.current) {
+            audioCtxGlobalRef.current.close();
+        }
         
-        novoPeer.on('open', () => { setPeerObj(novoPeer); });
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const actx = new AudioContext();
+        audioCtxGlobalRef.current = actx;
+        
+        const source = actx.createMediaStreamSource(streamRaw);
+        const analyser = actx.createAnalyser();
+        analyser.fftSize = 256;
+        
+        const gainNode = actx.createGain();
+        gateGainRef.current = gainNode;
+        gainNode.gain.value = 0; // Começa mudo
 
-        novoPeer.on('call', (call) => {
-            const attemptAnswer = () => {
-                // Atende a chamada com o CABO NATIVO (Mantém o Cancelamento de Eco do Chrome vivo)
-                if (meuStream) {
-                    call.answer(meuStream);
-                    call.on('stream', (remoteStream) => {
-                        setConexoes(prev => {
-                            if (prev.find(c => c.id === call.peer)) return prev.map(c => c.id === call.peer ? { ...c, stream: remoteStream } : c);
-                            return [...prev, { id: call.peer, stream: remoteStream }];
-                        });
-                    });
-                    call.on('close', () => setConexoes(prev => prev.filter(c => c.id !== call.peer)));
-                    call.on('error', () => setConexoes(prev => prev.filter(c => c.id !== call.peer)));
-                } else { setTimeout(attemptAnswer, 500); }
-            };
-            attemptAnswer();
-        });
+        const dest = actx.createMediaStreamDestination(); // A saída final (para a Sexta-Feira gravar)
 
-        return () => { novoPeer.destroy(); };
-    }, [meuIDTelefone, meuStream]); 
+        source.connect(analyser);
+        source.connect(gainNode);
+        gainNode.connect(dest);
 
-    // 2. LIGA O MICROFONE AO "SENTAR NA MESA" E DIVIDE OS CABOS
+        setMeuStreamProcessado(dest.stream);
+        
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        let framesSilence = 0;
+
+        const loop = () => {
+            if (!rtcLigado.current) return;
+            
+            analyser.getByteFrequencyData(dataArray);
+            let sum = 0; for(let i=0; i<dataArray.length; i++) sum += dataArray[i];
+            let avg = sum / dataArray.length;
+            
+            const thresh = parseInt(localStorage.getItem('rpg_sensibilidade_voz')) || 10;
+            
+            // Noise Gate (Se passar do limiar, a gravação abre!)
+            if (avg > thresh) {
+                framesSilence = 0;
+                setEuEstouFalandoState(true);
+                gainNode.gain.value = mutadoRef.current ? 0 : 1;
+            } else {
+                framesSilence++;
+                if (framesSilence > 20) {
+                    setEuEstouFalandoState(false);
+                    gainNode.gain.value = 0; // Corta o ruído da gravação
+                }
+            }
+            requestAnimationFrame(loop);
+        };
+        requestAnimationFrame(loop);
+    }, []);
+
+    // LIGA O MICROFONE LOCAL QUANDO "SENTAR NA MESA"
     useEffect(() => {
         if (!radioLigado) return;
 
         if (isPresenteNaTaverna && !rtcLigado.current) {
             rtcLigado.current = true;
-            setVoiceStatus('A ligar Microfone...');
+            setVoiceStatus('Aceder ao Microfone...');
             
             navigator.mediaDevices.getUserMedia({ 
                 audio: { noiseSuppression: supressorAtivo, echoCancellation: true, autoGainControl: true } 
             }).then(stream => {
-                setMeuStream(stream); // CABO A (Nativo)
-
-                const clone = stream.getAudioTracks()[0].clone();
-                setStreamAnalisador(new MediaStream([clone])); // CABO B (Para o Analisador)
+                setMeuStreamPuro(stream); 
+                startAudioEngine(stream); 
 
                 navigator.mediaDevices.enumerateDevices().then(devices => {
                     const audioInputs = devices.filter(d => d.kind === 'audioinput');
@@ -206,167 +215,46 @@ export function MapaFormProvider({ children }) {
                     if (audioInputs.length > 0) setSelectedMic(audioInputs[0].deviceId);
                 });
 
-                setVoiceStatus('Online na Taverna!');
+                setVoiceStatus('Microfone Ativo (Gravação Local)');
             }).catch(err => {
-                setVoiceStatus(`Microfone Bloqueado! Permitir acesso.`);
+                setVoiceStatus(`Erro: Permita o microfone no topo.`);
                 rtcLigado.current = false;
             });
 
         } else if (!isPresenteNaTaverna && rtcLigado.current) {
             rtcLigado.current = false;
-            if (meuStream) meuStream.getTracks().forEach(t => t.stop());
-            if (streamAnalisador) streamAnalisador.getTracks().forEach(t => t.stop());
+            if (meuStreamPuro) meuStreamPuro.getTracks().forEach(t => t.stop());
+            if (audioCtxGlobalRef.current) audioCtxGlobalRef.current.close();
             
-            setMeuStream(null);
-            setStreamAnalisador(null);
-            setConexoes([]);
+            setMeuStreamPuro(null);
+            setMeuStreamProcessado(null);
             setVoiceStatus('Fora da Taverna');
-            
-            if (euEstouFalandoRef.current) {
-                euEstouFalandoRef.current = false;
-                setEuEstouFalandoState(false);
-            }
         }
-    }, [isPresenteNaTaverna, radioLigado]); 
+    }, [isPresenteNaTaverna, radioLigado, supressorAtivo, startAudioEngine]); 
 
-    // 3. O CÉREBRO DO NOISE GATE (Desliga o Cabo A quando o ventilador bate)
-    useEffect(() => {
-        if (!streamAnalisador || !meuStream) return;
-        
-        let raf;
-        const actx = new (window.AudioContext || window.webkitAudioContext)();
-        
-        try {
-            const source = actx.createMediaStreamSource(streamAnalisador); // Lê sempre o Clone
-            const analyser = actx.createAnalyser();
-            analyser.fftSize = 256;
-            analyser.smoothingTimeConstant = 0.4;
-            source.connect(analyser);
-
-            const dataArray = new Uint8Array(analyser.frequencyBinCount);
-            let framesEmSilencio = 0;
-
-            const checkVolume = () => {
-                if (!rtcLigado.current) return;
-                
-                analyser.getByteFrequencyData(dataArray);
-                let sum = 0; for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
-                const avg = sum / dataArray.length;
-
-                const falandoAgora = avg > sensibilidadeRef.current;
-
-                if (falandoAgora) {
-                    framesEmSilencio = 0;
-                    if (!euEstouFalandoRef.current) {
-                        euEstouFalandoRef.current = true;
-                        setEuEstouFalandoState(true);
-                    }
-                    // Dá ordem ao Microfone Original para Abrir
-                    if (meuStream.getAudioTracks()[0]) meuStream.getAudioTracks()[0].enabled = !mutadoRef.current;
-                } else {
-                    framesEmSilencio++;
-                    if (framesEmSilencio > 20) { // 20 frames = Release Time
-                        if (euEstouFalandoRef.current) {
-                            euEstouFalandoRef.current = false;
-                            setEuEstouFalandoState(false);
-                        }
-                        // Dá ordem ao Microfone Original para Fechar (Silencia o WebRTC)
-                        if (meuStream.getAudioTracks()[0]) meuStream.getAudioTracks()[0].enabled = false;
-                    }
-                }
-                raf = requestAnimationFrame(checkVolume);
-            };
-            checkVolume();
-            
-        } catch (e) { console.error("Gate Error:", e); }
-
-        return () => { cancelAnimationFrame(raf); actx.close(); };
-    }, [streamAnalisador, meuStream]);
-
-    // 4. AUTO-DIALER ANTI-COLISÃO (Mesh Perfeita)
-    const fazerChamada = useCallback((nomeDestino) => {
-        if (!peerObj || !meuStream || !nomeDestino) return;
-        const idFormatado = `anime-rpg-${nomeDestino.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
-        
-        if (chamadasEmAndamento.current.has(idFormatado)) return;
-        chamadasEmAndamento.current.add(idFormatado);
-
-        const call = peerObj.call(idFormatado, meuStream); // Envia o cabo original
-        if (!call) { chamadasEmAndamento.current.delete(idFormatado); return; }
-
-        call.on('stream', (remoteStream) => {
-            setConexoes(prev => {
-                if (prev.find(c => c.id === idFormatado)) return prev.map(c => c.id === idFormatado ? { ...c, stream: remoteStream } : c);
-                return [...prev, { id: idFormatado, stream: remoteStream }];
-            });
-            chamadasEmAndamento.current.delete(idFormatado);
-        });
-
-        call.on('close', () => { setConexoes(prev => prev.filter(c => c.id !== idFormatado)); chamadasEmAndamento.current.delete(idFormatado); });
-        call.on('error', () => { setConexoes(prev => prev.filter(c => c.id !== idFormatado)); chamadasEmAndamento.current.delete(idFormatado); });
-    }, [peerObj, meuStream]);
-
-    useEffect(() => {
-        if (!peerObj || !isPresenteNaTaverna || !meuStream) return;
-        
-        const interval = setInterval(() => {
-            const ativos = Array.isArray(cenario?.tavernaAtivos) ? cenario.tavernaAtivos : [];
-            ativos.forEach(nomeAmigo => {
-                if (nomeAmigo === meuNome) return;
-                
-                const meuId = `anime-rpg-${meuNome.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
-                const amigoId = `anime-rpg-${nomeAmigo.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
-                
-                // O TRUQUE: O Natsu liga, o Kiriya aguarda! 100% Anti-Colisão!
-                if (meuId < amigoId) {
-                    const exists = conexoesRef.current.find(c => c.id === amigoId);
-                    if (!exists && !chamadasEmAndamento.current.has(amigoId)) fazerChamada(nomeAmigo);
-                }
-            });
-        }, 3000); 
-        return () => clearInterval(interval);
-    }, [cenario?.tavernaAtivos, peerObj, isPresenteNaTaverna, meuNome, fazerChamada, meuStream]);
-
-    // TROCA DE MICROFONE
     const trocarMicrofone = useCallback(async (deviceId) => {
         try {
             setSelectedMic(deviceId);
-            if (meuStream) meuStream.getTracks().forEach(t => t.stop()); 
-            if (streamAnalisador) streamAnalisador.getTracks().forEach(t => t.stop()); 
+            if (meuStreamPuro) meuStreamPuro.getTracks().forEach(t => t.stop()); 
             
             const newStream = await navigator.mediaDevices.getUserMedia({ 
                 audio: { deviceId: { exact: deviceId }, noiseSuppression: supressorAtivo, echoCancellation: true, autoGainControl: true } 
             });
             
-            setMeuStream(newStream);
-            const newClone = newStream.getAudioTracks()[0].clone();
-            setStreamAnalisador(new MediaStream([newClone]));
-
-            // Atualiza os amigos instantaneamente com a nova stream
-            if (peerObj) {
-                Object.values(peerObj.connections).forEach(conns => {
-                    conns.forEach(conn => {
-                        if (conn.peerConnection) {
-                            const sender = conn.peerConnection.getSenders().find(s => s.track && s.track.kind === 'audio');
-                            if (sender) sender.replaceTrack(newStream.getAudioTracks()[0]);
-                        }
-                    });
-                });
-            }
+            setMeuStreamPuro(newStream);
+            startAudioEngine(newStream); 
         } catch (err) { console.error("Erro ao trocar mic:", err); }
-    }, [peerObj, supressorAtivo, meuStream, streamAnalisador]);
+    }, [supressorAtivo, meuStreamPuro, startAudioEngine]);
 
     const toggleMute = useCallback(() => {
         setMutado(m => {
             const next = !m;
-            // Se silenciar, desliga a emissão logo na hora!
-            if (next && meuStream && meuStream.getAudioTracks()[0]) meuStream.getAudioTracks()[0].enabled = false;
+            if (gateGainRef.current) gateGainRef.current.gain.value = next ? 0 : 1;
             return next;
         });
-    }, [meuStream]);
+    }, []);
 
     const toggleDeafen = useCallback(() => setSurdo(s => !s), []);
-    const desconectarVoz = useCallback((idPeer) => setConexoes(prev => prev.filter(c => c.id !== idPeer)), []);
 
     // ========================================================================
     // RESTO DO CÓDIGO (LÓGICA DO MAPA)
@@ -817,7 +705,7 @@ export function MapaFormProvider({ children }) {
         cells, jogadores, playersNaTaverna, ordemIniciativa, handleCellClick,
         alterarZoom, setMinhaIniciativa, avancarTurno, sairDoCombate, encerrarCombate,
         rolarAcertoRapido, tokenMap, tokens3D, jogadorDaVez, infoDaVez, fmt, deletarZona,
-        meuStream, streamAnalisador, conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen, fazerChamada, desconectarVoz,
+        meuStreamPuro, meuStreamProcessado, mutado, surdo, voiceStatus, toggleMute, toggleDeafen,
         mics, selectedMic, trocarMicrofone, radioLigado, setRadioLigado, supressorAtivo, setSupressorAtivo,
         sensibilidadeVoz, setSensibilidadeVoz, euEstouFalandoState
     }), [
@@ -833,7 +721,7 @@ export function MapaFormProvider({ children }) {
         changeDesvantagem, handleUploadNovaCena, ativarCena, deletarCena, corDoJogador,
         getAvatarInfo, handleCellClick, alterarZoom, setMinhaIniciativa, avancarTurno,
         sairDoCombate, encerrarCombate, rolarAcertoRapido, deletarZona,
-        meuStream, streamAnalisador, conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen, fazerChamada, desconectarVoz,
+        meuStreamPuro, meuStreamProcessado, mutado, surdo, voiceStatus, toggleMute, toggleDeafen,
         mics, selectedMic, trocarMicrofone, radioLigado, setRadioLigado, supressorAtivo, setSupressorAtivo,
         sensibilidadeVoz, setSensibilidadeVoz, euEstouFalandoState
     ]);
