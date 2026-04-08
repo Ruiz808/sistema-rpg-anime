@@ -41,7 +41,6 @@ function PlayerDeAudioRemoto({ stream, volume, surdo, nome }) {
 
 // ============================================================================
 // 🔥 COMPONENTE: CALIBRADOR VISUAL DE SENSIBILIDADE DO MICROFONE 🔥
-// Lê sempre o "Cabo A" para ser 100% fiel ao som real.
 // ============================================================================
 function CalibradorDeVoz({ stream, sensibilidade, setSensibilidade }) {
     const barraRef = useRef(null);
@@ -108,7 +107,6 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
         return saved !== null ? parseFloat(saved) : 1; 
     });
 
-    // Guardamos estas variáveis numa Ref para o nosso Analisador não se reiniciar a cada clique!
     const sensibilidadeRef = useRef(sensibilidadeVoz);
     const mutadoRef = useRef(mutado);
     useEffect(() => { sensibilidadeRef.current = sensibilidadeVoz; }, [sensibilidadeVoz]);
@@ -121,7 +119,7 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
     const audioCtxRef = useRef(null);
     const rafRef = useRef(null);
 
-    // 🔥 O CÉREBRO DO NOISE GATE (Abre e Fecha o Cabo B) 🔥
+    // 🔥 O CÉREBRO DO NOISE GATE (Abre e Fecha o Cabo B da Rede) 🔥
     useEffect(() => {
         if (!stream || !isMe) {
             setIsSpeaking(false);
@@ -135,7 +133,7 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
 
             if (actx.state === 'suspended') actx.resume();
 
-            // Lemos sempre do CABO A (Puro, nunca é desligado)
+            // O Analisador lê SEMPRE o cabo A puro (que você vê na barrinha visual)
             const source = actx.createMediaStreamSource(stream);
             const analyser = actx.createAnalyser();
             analyser.fftSize = 256;
@@ -152,22 +150,21 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
                 for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
                 const average = sum / dataArray.length;
 
-                // Passou a barra? Você está a falar!
                 const falandoAgora = average > sensibilidadeRef.current;
 
                 if (falandoAgora) {
                     framesEmSilencio = 0; 
                     setIsSpeaking(true);
-                    // LIGA O CABO B! (Se não estiver mutado manualmente)
+                    // LIGA O CABO B! (Se não estiver mutado manualmente no botão vermelho)
                     if (peerStreamRef.current && peerStreamRef.current.getAudioTracks()[0]) {
                         peerStreamRef.current.getAudioTracks()[0].enabled = !mutadoRef.current;
                     }
                 } else {
                     framesEmSilencio++;
-                    // Release Time: Só corta se ficar calado por 20 frames (suaviza as palavras)
+                    // O Som só corta se você ficar calado 20 frames seguidos (Suaviza o fim das palavras)
                     if (framesEmSilencio > 20) {
                         setIsSpeaking(false);
-                        // CORTA O CABO B! (Ventilador não passa!)
+                        // CORTA O CABO B! (Impede o ventilador de passar para os amigos)
                         if (peerStreamRef.current && peerStreamRef.current.getAudioTracks()[0]) {
                             peerStreamRef.current.getAudioTracks()[0].enabled = false;
                         }
@@ -187,9 +184,9 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
                 audioCtxRef.current.close().catch(e => console.log(e));
             }
         };
-    }, [stream, isMe, peerStreamRef]); // Sem dependências perigosas para evitar resets
+    }, [stream, isMe, peerStreamRef]); 
 
-    // Garante que o botão Mute atua imediatamente na hora
+    // Mute Absoluto do Botão Vermelho
     useEffect(() => {
         if (isSpeaking && peerStreamRef.current && peerStreamRef.current.getAudioTracks()[0]) {
             peerStreamRef.current.getAudioTracks()[0].enabled = !mutado;
@@ -676,8 +673,7 @@ export function MapaSessaoRP() {
                         const expectedIdTelefone = `anime-rpg-${n.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
                         const conRemota = conexoes.find(c => c.id === expectedIdTelefone);
                         const isConnected = isMe || !!conRemota;
-                        const streamParaAnalisar = isMe ? meuStream : conRemota?.stream;
-
+                        
                         return (
                             <AvatarCardVoz 
                                 key={n}
@@ -685,7 +681,7 @@ export function MapaSessaoRP() {
                                 ficha={f}
                                 isMe={isMe}
                                 isConnected={isConnected}
-                                stream={streamParaAnalisar}
+                                stream={isMe ? meuStream : conRemota?.stream}
                                 mutado={mutado}
                                 surdo={surdo}
                                 cardSize={cardSize}
