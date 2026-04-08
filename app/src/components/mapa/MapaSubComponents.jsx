@@ -18,7 +18,6 @@ const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Mapa provider não 
 function PlayerDeAudioRemoto({ stream, volume, surdo, nome }) {
     const audioRef = useRef(null);
 
-    // Conecta o cabo de áudio
     useEffect(() => {
         if (audioRef.current && stream) {
             if (audioRef.current.srcObject !== stream) {
@@ -28,11 +27,10 @@ function PlayerDeAudioRemoto({ stream, volume, surdo, nome }) {
         }
     }, [stream, nome]);
 
-    // Regula o volume ao vivo
     useEffect(() => {
         if (audioRef.current) {
             let v = surdo ? 0 : volume;
-            if (v > 1) v = 1; // Limite de 100% para evitar bugs nativos
+            if (v > 1) v = 1; 
             if (v < 0) v = 0;
             audioRef.current.volume = v;
         }
@@ -42,16 +40,91 @@ function PlayerDeAudioRemoto({ stream, volume, surdo, nome }) {
 }
 
 // ============================================================================
-// 🔥 A CARTA DE AVATAR INTELIGENTE 🔥
+// 🔥 COMPONENTE: CALIBRADOR VISUAL DE SENSIBILIDADE DO MICROFONE 🔥
+// O mesmo sistema verde e amarelo do Discord!
+// ============================================================================
+function CalibradorDeVoz({ stream, sensibilidade, setSensibilidade }) {
+    const barraRef = useRef(null);
+
+    useEffect(() => {
+        if (!stream) return;
+        
+        let raf;
+        const actx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        try {
+            // Clona a track para podermos lê-la sempre (mesmo que o Gate esteja a cortar o envio)
+            const trackClone = stream.getAudioTracks()[0].clone();
+            const cloneStream = new MediaStream([trackClone]);
+            
+            const source = actx.createMediaStreamSource(cloneStream);
+            const analyser = actx.createAnalyser();
+            analyser.fftSize = 256;
+            analyser.smoothingTimeConstant = 0.5;
+            source.connect(analyser);
+
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            
+            const draw = () => {
+                analyser.getByteFrequencyData(dataArray);
+                let sum = 0; 
+                for(let i=0; i<dataArray.length; i++) sum += dataArray[i];
+                
+                // Volume vai de 0 a ~60
+                const avg = sum / dataArray.length; 
+                const percent = Math.min(100, (avg / 60) * 100); 
+                
+                if (barraRef.current) {
+                    barraRef.current.style.width = `${percent}%`;
+                    // Amarelo se for muito baixo (cortado pelo gate), Verde se passar da barra!
+                    barraRef.current.style.backgroundColor = avg > sensibilidade ? '#00ffcc' : '#ffcc00';
+                }
+                raf = requestAnimationFrame(draw);
+            };
+            draw();
+
+            return () => { 
+                cancelAnimationFrame(raf); 
+                actx.close(); 
+                trackClone.stop(); 
+            };
+        } catch(e) {
+            console.error("Erro no calibrador:", e);
+        }
+    }, [stream, sensibilidade]);
+
+    return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', borderLeft: '1px solid #444', paddingLeft: '15px' }}>
+            <span style={{ color: '#aaa', fontSize: '0.8em' }}>Limiar de Voz:</span>
+            <div style={{ position: 'relative', width: '120px', height: '14px', background: '#000', borderRadius: '7px', border: '1px solid #333', overflow: 'hidden' }}>
+                {/* A Barra Verde/Amarela que mexe com a voz */}
+                <div ref={barraRef} style={{ width: '0%', height: '100%', background: '#ffcc00', transition: 'width 0.05s ease-out, background-color 0.1s' }} />
+                
+                {/* O Slider Invisível por cima */}
+                <input 
+                    type="range" min="1" max="50" value={sensibilidade} 
+                    onChange={e => setSensibilidade(parseInt(e.target.value))}
+                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
+                />
+                
+                {/* O Tracinho Branco que marca o Limiar */}
+                <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${(sensibilidade / 60) * 100}%`, width: '2px', background: '#fff', boxShadow: '0 0 5px #fff', pointerEvents: 'none' }} />
+            </div>
+        </div>
+    );
+}
+
+// ============================================================================
+// 🔥 A CARTA DE AVATAR INTELIGENTE (COM NOISE GATE PROFISSIONAL) 🔥
 // ============================================================================
 function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, cardSize }) {
     const ctx = useMapaForm();
-    const { getAvatarInfo, fmt } = ctx;
+    const { getAvatarInfo, fmt, sensibilidadeVoz } = ctx;
     const info = getAvatarInfo(ficha);
 
     const [isSpeaking, setIsSpeaking] = useState(false);
     
-    // Volume de 0 a 1 (0% a 100%)
+    // Volume guardado no PC de quem está a ouvir (Até 200%)
     const [volume, setVolume] = useState(() => {
         const saved = localStorage.getItem(`rpg_vol_${nome}`);
         return saved !== null ? parseFloat(saved) : 1; 
@@ -65,44 +138,66 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
     const analyserRef = useRef(null);
     const rafRef = useRef(null);
 
-    // 🔥 NEON DA VOZ (APENAS PARA O SEU MICROFONE) 🔥
-    // Se tentarmos analisar a voz dos amigos, o Chrome corta o som deles!
+    // 🔥 O VERDADEIRO NOISE GATE (SÓ NO SEU MICROFONE) 🔥
     useEffect(() => {
         if (!stream || !isMe) {
             setIsSpeaking(false);
             return;
         }
 
+        let trackClone = null;
+
         try {
+            // Clonamos a pista do mic! 
+            // Assim o Analisador consegue ler a onda mesmo que o cabo principal seja "Mudo" pelo Gate!
+            trackClone = stream.getAudioTracks()[0].clone();
+            const cloneStream = new MediaStream([trackClone]);
+            
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
             const actx = audioCtxRef.current;
 
             if (actx.state === 'suspended') actx.resume();
 
-            if (stream.getAudioTracks().length > 0) {
-                const source = actx.createMediaStreamSource(stream);
-                const analyser = actx.createAnalyser();
-                analyser.fftSize = 256;
-                analyser.smoothingTimeConstant = 0.4; 
-                
-                source.connect(analyser);
-                analyserRef.current = analyser;
+            const source = actx.createMediaStreamSource(cloneStream);
+            const analyser = actx.createAnalyser();
+            analyser.fftSize = 256;
+            analyser.smoothingTimeConstant = 0.4; 
+            
+            source.connect(analyser);
+            analyserRef.current = analyser;
 
-                const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            
+            let framesEmSilencio = 0;
 
-                const checkVolume = () => {
-                    if (analyserRef.current) {
-                        analyserRef.current.getByteFrequencyData(dataArray);
-                        let sum = 0;
-                        for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
-                        const average = sum / dataArray.length;
-                        setIsSpeaking(average > 10);
+            const checkVolume = () => {
+                if (analyserRef.current) {
+                    analyserRef.current.getByteFrequencyData(dataArray);
+                    let sum = 0;
+                    for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+                    const average = sum / dataArray.length;
+
+                    const falandoAgora = average > sensibilidadeVoz;
+
+                    if (falandoAgora) {
+                        framesEmSilencio = 0; // Reset ao contador
+                        setIsSpeaking(true);
+                        // Abre a "torneira" do Microfone para a Party (a menos que esteja mutado no botão!)
+                        if (stream.getAudioTracks()[0]) stream.getAudioTracks()[0].enabled = !mutado;
+                    } else {
+                        framesEmSilencio++;
+                        // Release Time: Só desliga o mic se ficar calado por 30 frames (~0.5 segundos)
+                        if (framesEmSilencio > 30) {
+                            setIsSpeaking(false);
+                            if (stream.getAudioTracks()[0]) stream.getAudioTracks()[0].enabled = false;
+                        }
                     }
-                    rafRef.current = requestAnimationFrame(checkVolume);
-                };
-                checkVolume();
-            }
+                }
+                rafRef.current = requestAnimationFrame(checkVolume);
+            };
+            checkVolume();
+            
         } catch(err) {
             console.error("Erro ao analisar sua voz", err);
         }
@@ -112,10 +207,11 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
             if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
                 audioCtxRef.current.close().catch(e => console.log(e));
             }
+            if (trackClone) trackClone.stop();
         };
-    }, [stream, isMe]);
+    }, [stream, isMe, sensibilidadeVoz, mutado]); // Reconstrói se a sensibilidade ou botão de mute mudarem
 
-    // 🔥 ESTILOS DINÂMICOS 🔥
+    // ESTILOS DINÂMICOS
     let boxShadowCard = '0 0 15px rgba(0,0,0,0.8)';
     let borderCard = '2px solid #333';
     let iconMic = '📡';
@@ -126,15 +222,17 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
             boxShadowCard = '0 0 20px rgba(255,0,60,0.4)';
             iconMic = '🔇';
         } else if (isMe && isSpeaking) {
+            // Você a falar e o Gate está aberto!
             borderCard = '2px solid #00ffcc';
             boxShadowCard = '0 0 35px #00ffcc, inset 0 0 20px rgba(0,255,204,0.4)';
             iconMic = '🔊';
         } else if (!isMe && stream) {
-            // Amigo Conectado -> Luz fixa!
+            // Amigo Conectado -> Luz fixa! Ocultamos o brilho dele para não acionar o bug do Chrome
             borderCard = '2px solid #00aaff';
             boxShadowCard = '0 0 20px rgba(0,170,255,0.4)';
             iconMic = '🔊';
         } else {
+            // Gate fechado (ventilador ignorado!)
             borderCard = '2px solid #005588';
             boxShadowCard = '0 0 10px rgba(0,85,136,0.5)';
             iconMic = '🎙️';
@@ -155,7 +253,7 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
                 {iconMic}
             </div>
 
-            {/* Áudio Nativo para os Amigos */}
+            {/* Áudio Nativo Indestrutível para os Amigos */}
             {!isMe && isConnected && stream && (
                 <PlayerDeAudioRemoto stream={stream} volume={volume} surdo={surdo} nome={nome} />
             )}
@@ -167,15 +265,16 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, stream, mutado, surdo, 
                         {nome}
                     </span>
                     
+                    {/* O SLIDER DE VOLUME ATÉ 200% PARA OS AMIGOS */}
                     {!isMe && isConnected && stream && (
                         <div onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '70px', background: 'rgba(0,0,0,0.5)', padding: '2px 5px', borderRadius: '10px', border: '1px solid #333' }}>
                             <span style={{ fontSize: '9px', color: volume === 0 ? '#ff003c' : '#aaa' }}>{volume === 0 ? '🔇' : '🔉'}</span>
                             <input 
                                 type="range" 
-                                min="0" max="1" step="0.05" 
+                                min="0" max="2" step="0.05" 
                                 value={volume} 
                                 onChange={e => setVolume(parseFloat(e.target.value))}
-                                style={{ width: '100%', height: '3px', cursor: 'pointer', accentColor: '#00ffcc' }} 
+                                style={{ width: '100%', height: '3px', cursor: 'pointer', accentColor: volume > 1 ? '#ffcc00' : '#00ffcc' }} 
                             />
                         </div>
                     )}
@@ -508,16 +607,16 @@ export function MapaOlhoSextaFeira() {
 }
 
 // ============================================================================
-// 🔥 A SESSÃO RP QUE SE TRANSFORMOU NUM DISCORD AUTOMÁTICO! 🔥
+// 🔥 A SESSÃO RP (O DISCORD PERFEITO) 🔥
 // ============================================================================
 export function MapaSessaoRP() {
     const ctx = useMapaForm();
     if (!ctx) return FALLBACK;
     const { 
         meuNome, playersNaTaverna, isPresenteNaTaverna, togglePresencaTaverna, getAvatarInfo, fmt,
-        conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen,
+        conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen, fazerChamada,
         mics, selectedMic, trocarMicrofone, meuStream, radioLigado, setRadioLigado,
-        supressorAtivo, setSupressorAtivo
+        supressorAtivo, setSupressorAtivo, sensibilidadeVoz, setSensibilidadeVoz
     } = ctx;
 
     const playerCount = playersNaTaverna.length;
@@ -548,36 +647,33 @@ export function MapaSessaoRP() {
             <p style={{ color: '#aaa', fontStyle: 'italic', marginBottom: 10, fontSize: '1.1em' }}>{playersNaTaverna.length} Lenda(s) Presente(s). O Mestre está a moldar o tecido da realidade...</p>
             
             {isPresenteNaTaverna && (
-                <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '20px', background: 'rgba(0,0,0,0.5)', padding: '5px 15px', borderRadius: '5px', border: '1px solid #333', flexWrap: 'wrap', justifyContent: 'center' }}>
-                    <div style={{ color: '#00ffcc', fontSize: '0.85em', fontFamily: 'monospace' }}>📡 Status: {voiceStatus}</div>
+                <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '20px', background: 'rgba(0,0,0,0.5)', padding: '10px 15px', borderRadius: '5px', border: '1px solid #333', flexWrap: 'wrap', justifyContent: 'center' }}>
                     
-                    {mics && mics.length > 0 && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px', borderLeft: '1px solid #444', paddingLeft: '20px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                <span style={{ color: '#aaa', fontSize: '0.8em' }}>🎙️ Mic:</span>
-                                <select 
-                                    className="input-neon"
-                                    value={selectedMic}
-                                    onChange={(e) => trocarMicrofone(e.target.value)}
-                                    style={{ padding: '4px 8px', fontSize: '0.8em', background: '#000', color: '#fff', borderColor: '#00ffcc', borderRadius: '5px', maxWidth: '150px' }}
-                                >
-                                    {mics.map(m => (
-                                        <option key={m.deviceId} value={m.deviceId}>
-                                            {m.label || `Microfone Padrão ${m.deviceId.slice(0,5)}`}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                            
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#00ffcc', fontSize: '0.8em', cursor: 'pointer', borderLeft: '1px solid #444', paddingLeft: '15px' }}>
-                                <input 
-                                    type="checkbox" 
-                                    checked={supressorAtivo} 
-                                    onChange={e => setSupressorAtivo(e.target.checked)} 
-                                    style={{ accentColor: '#00ffcc', cursor: 'pointer' }} 
-                                />
-                                🎧 Supressor de Ruído
-                            </label>
+                    {/* LINHA 1: Status e Escolha de Mic */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px', width: '100%', justifyContent: 'center' }}>
+                        <div style={{ color: '#00ffcc', fontSize: '0.85em', fontFamily: 'monospace' }}>📡 Status: {voiceStatus}</div>
+                        
+                        {mics && mics.length > 0 && (
+                            <>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', borderLeft: '1px solid #444', paddingLeft: '15px' }}>
+                                    <span style={{ color: '#aaa', fontSize: '0.8em' }}>🎙️ Mic:</span>
+                                    <select className="input-neon" value={selectedMic} onChange={(e) => trocarMicrofone(e.target.value)} style={{ padding: '2px 8px', fontSize: '0.8em', background: '#000', color: '#fff', borderColor: '#00ffcc', borderRadius: '5px', maxWidth: '150px' }}>
+                                        {mics.map(m => (<option key={m.deviceId} value={m.deviceId}>{m.label || `Padrão ${m.deviceId.slice(0,5)}`}</option>))}
+                                    </select>
+                                </div>
+                                
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#00ffcc', fontSize: '0.8em', cursor: 'pointer', borderLeft: '1px solid #444', paddingLeft: '15px' }}>
+                                    <input type="checkbox" checked={supressorAtivo} onChange={e => setSupressorAtivo(e.target.checked)} style={{ accentColor: '#00ffcc', cursor: 'pointer' }} />
+                                    🎧 Supressor (IA)
+                                </label>
+                            </>
+                        )}
+                    </div>
+
+                    {/* LINHA 2: O Calibrador Visual de Discord (O NOISE GATE VERDADEIRO) */}
+                    {meuStream && (
+                        <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: '5px' }}>
+                            <CalibradorDeVoz stream={meuStream} sensibilidade={sensibilidadeVoz} setSensibilidade={setSensibilidadeVoz} />
                         </div>
                     )}
                 </div>
