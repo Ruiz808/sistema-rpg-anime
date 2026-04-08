@@ -7,7 +7,6 @@ import {
     MapaRolagemRapida,
     MapaIniciativaTracker,
     MapaHologramaAcao,
-    MapaOlhoSextaFeira
 } from './MapaSubComponents';
 
 export default function MapaPanel({ className, children }) {
@@ -17,9 +16,6 @@ export default function MapaPanel({ className, children }) {
         <MapaFormProvider>
             <div className={['mapa-panel', className].filter(Boolean).join(' ')} style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', position: 'relative' }}>
                 
-                {/* O OLHO E A MESA DE MISTURA */}
-                <MapaOlhoSextaFeira />
-
                 {hasChildren ? children : (
                     <>
                         <MapaDadoAnimado />

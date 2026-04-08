@@ -186,7 +186,7 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
     useEffect(() => {
         if (!peerObj || !isPresenteNaTaverna || !meuStreamRef.current) return;
         const interval = setInterval(() => {
-            ativosAmigos = Array.isArray(tavernaAtivos) ? tavernaAtivos : [];
+            const ativosAmigos = Array.isArray(tavernaAtivos) ? tavernaAtivos : [];
             ativosAmigos.forEach(nomeAmigo => {
                 if (nomeAmigo === meuNome) return;
                 const meuId = `anime-rpg-${meuNome.toLowerCase().replace(/[^a-z0-9]/g, '')}`;

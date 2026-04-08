@@ -302,7 +302,7 @@ export function MapaSessaoRP({ chatCtx, meuNome, minhaFicha, personagens, cenari
                 })}
             </div>
             
-            <MapaOlhoSextaFeira meuNome={meuNome} personagens={personagens} minhaFicha={minhaFicha} cenario={cenario} meuStream={chatCtx.meuStream} conexoes={chatCtx.conexoes} />
+            <MapaOlhoSextaFeira meuNome={meuNome} personagens={personagens} minhaFicha={minhaFicha} tavernaAtivos={cenario?.tavernaAtivos} meuStream={chatCtx.meuStream} conexoes={chatCtx.conexoes} />
         </div>
     );
 }
