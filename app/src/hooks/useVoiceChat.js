@@ -1,12 +1,23 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import Peer from 'peerjs';
 
+const BLACKLIST_MIC = ['mixagem', 'stereo mix', 'wave out', 'loopback', 'virtual', 'cable', 'voicemeeter', 'what u hear', 'monitor', 'wasapi'];
+
+function encontrarMelhorMic(audioInputs) {
+    for (let mic of audioInputs) {
+        if (mic.label && !BLACKLIST_MIC.some(bw => mic.label.toLowerCase().includes(bw))) {
+            return mic.deviceId;
+        }
+    }
+    return audioInputs[0]?.deviceId || null;
+}
+
 export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
     const [peerObj, setPeerObj] = useState(null);
-    const [meuStream, setMeuStream] = useState(null); // Cabo A: Vai para a rede (Com AEC do Chrome)
-    const [streamAnalisador, setStreamAnalisador] = useState(null); // Cabo B: Clone para a barra/Gate
+    const [meuStream, setMeuStream] = useState(null);
+    const [streamAnalisador, setStreamAnalisador] = useState(null);
     const [conexoes, setConexoes] = useState([]);
-    
+
     const [voiceStatus, setVoiceStatus] = useState('Fora da Taverna');
     const [mics, setMics] = useState([]);
     const [selectedMic, setSelectedMic] = useState('');
@@ -19,7 +30,7 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
     });
 
     const [euEstouFalandoState, setEuEstouFalandoState] = useState(false);
-    
+
     const meuStreamRef = useRef(null);
     const conexoesRef = useRef([]);
     const chamadasEmAndamento = useRef(new Set());
@@ -27,14 +38,16 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
     const mutadoRef = useRef(mutado);
     const sensibilidadeRef = useRef(sensibilidadeVoz);
     const euEstouFalandoRef = useRef(false);
+    const supressorAtivoRef = useRef(supressorAtivo);
 
     const meuIDTelefone = meuNome ? meuNome.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
 
     useEffect(() => { conexoesRef.current = conexoes; }, [conexoes]);
     useEffect(() => { mutadoRef.current = mutado; }, [mutado]);
-    useEffect(() => { 
-        sensibilidadeRef.current = sensibilidadeVoz; 
-        localStorage.setItem('rpg_sensibilidade_voz', sensibilidadeVoz); 
+    useEffect(() => { supressorAtivoRef.current = supressorAtivo; }, [supressorAtivo]);
+    useEffect(() => {
+        sensibilidadeRef.current = sensibilidadeVoz;
+        localStorage.setItem('rpg_sensibilidade_voz', sensibilidadeVoz);
     }, [sensibilidadeVoz]);
 
     // 1. INICIALIZA A ANTENA PEERJS
@@ -44,7 +57,7 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
         const novoPeer = new Peer(`anime-rpg-${meuIDTelefone}`, {
             config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:global.stun.twilio.com:3478' }] }
         });
-        
+
         novoPeer.on('open', () => setPeerObj(novoPeer));
 
         novoPeer.on('call', (call) => {
@@ -72,39 +85,54 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
         if (isPresenteNaTaverna && !rtcLigado.current) {
             rtcLigado.current = true;
             setVoiceStatus('A ligar Microfone...');
-            
-            navigator.mediaDevices.getUserMedia({ 
-                audio: { noiseSuppression: supressorAtivo, echoCancellation: true, autoGainControl: true } 
-            }).then(stream => {
+
+            // FIX: fluxo em 2 passos — pega permissão com default, depois troca pro mic correto
+            navigator.mediaDevices.getUserMedia({
+                audio: { noiseSuppression: supressorAtivoRef.current, echoCancellation: true, autoGainControl: true }
+            }).then(async (stream) => {
+                // Configura com o stream default imediatamente (para o peer poder responder chamadas)
                 meuStreamRef.current = stream;
                 setMeuStream(stream);
-
                 const cloneTrack = stream.getAudioTracks()[0].clone();
                 setStreamAnalisador(new MediaStream([cloneTrack]));
-
-                navigator.mediaDevices.enumerateDevices().then(devices => {
-                    const audioInputs = devices.filter(d => d.kind === 'audioinput');
-                    setMics(audioInputs);
-                    let bestMic = audioInputs[0]?.deviceId;
-                    for (let mic of audioInputs) {
-                        if (mic.label && !['mixagem', 'stereo mix'].some(bw => mic.label.toLowerCase().includes(bw))) {
-                            bestMic = mic.deviceId; break;
-                        }
-                    }
-                    if (bestMic) setSelectedMic(bestMic);
-                });
-
                 setVoiceStatus('Online na Taverna!');
-            }).catch(err => {
-                setVoiceStatus(`Microfone Bloqueado! Permitir acesso.`);
+
+                // Agora com permissão concedida, enumera os devices com labels
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const audioInputs = devices.filter(d => d.kind === 'audioinput');
+                setMics(audioInputs);
+
+                const bestMicId = encontrarMelhorMic(audioInputs);
+                if (!bestMicId) return;
+
+                setSelectedMic(bestMicId);
+
+                // Verifica se o stream atual é de um device indesejado (loopback/stereo mix)
+                const currentDeviceId = stream.getAudioTracks()[0]?.getSettings()?.deviceId;
+                if (currentDeviceId && currentDeviceId === bestMicId) return; // já está no mic correto
+
+                // Troca para o mic correto
+                try {
+                    const correctStream = await navigator.mediaDevices.getUserMedia({
+                        audio: { deviceId: { exact: bestMicId }, noiseSuppression: supressorAtivoRef.current, echoCancellation: true, autoGainControl: true }
+                    });
+                    stream.getTracks().forEach(t => t.stop());
+                    meuStreamRef.current = correctStream;
+                    setMeuStream(correctStream);
+                    const newClone = correctStream.getAudioTracks()[0].clone();
+                    setStreamAnalisador(new MediaStream([newClone]));
+                } catch (err) {
+                    console.warn('Não foi possível trocar para o mic preferido:', err);
+                }
+            }).catch(() => {
+                setVoiceStatus('Microfone Bloqueado! Permitir acesso.');
                 rtcLigado.current = false;
             });
 
         } else if (!isPresenteNaTaverna && rtcLigado.current) {
             rtcLigado.current = false;
             if (meuStreamRef.current) meuStreamRef.current.getTracks().forEach(t => t.stop());
-            if (streamAnalisador) streamAnalisador.getTracks().forEach(t => t.stop());
-            
+
             meuStreamRef.current = null;
             setMeuStream(null);
             setStreamAnalisador(null);
@@ -115,12 +143,12 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
         }
     }, [isPresenteNaTaverna, supressorAtivo]);
 
-    // 3. O CÉREBRO DO NOISE GATE (Desliga a faixa da rede sem matar o AEC)
+    // 3. O CÉREBRO DO NOISE GATE
     useEffect(() => {
         if (!streamAnalisador || !meuStream) return;
         let raf;
         const actx = new (window.AudioContext || window.webkitAudioContext)();
-        
+
         try {
             const source = actx.createMediaStreamSource(streamAnalisador);
             const analyser = actx.createAnalyser();
@@ -163,6 +191,8 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
     }, [streamAnalisador, meuStream]);
 
     // 4. AUTO-DIALER ANTI-COLISÃO
+    // FIX: removido !meuStreamRef.current da guarda — era ref não reativa, causava race condition
+    // onde o stream ainda não estava pronto quando o efeito rodava. fazerChamada já faz a guarda interna.
     const fazerChamada = useCallback((nomeDestino) => {
         if (!peerObj || !meuStreamRef.current || !nomeDestino) return;
         const idFormatado = `anime-rpg-${nomeDestino.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
@@ -184,20 +214,22 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
     }, [peerObj]);
 
     useEffect(() => {
-        if (!peerObj || !isPresenteNaTaverna || !meuStreamRef.current) return;
+        // FIX: guarda sem !meuStreamRef.current (ref não reativa = race condition)
+        // O intervalo começa logo; fazerChamada só executa quando meuStreamRef.current estiver pronto
+        if (!peerObj || !isPresenteNaTaverna) return;
         const interval = setInterval(() => {
             const ativosAmigos = Array.isArray(tavernaAtivos) ? tavernaAtivos : [];
             ativosAmigos.forEach(nomeAmigo => {
                 if (nomeAmigo === meuNome) return;
                 const meuId = `anime-rpg-${meuNome.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
                 const amigoId = `anime-rpg-${nomeAmigo.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
-                
+
                 if (meuId < amigoId) {
                     const exists = conexoesRef.current.find(c => c.id === amigoId);
                     if (!exists && !chamadasEmAndamento.current.has(amigoId)) fazerChamada(nomeAmigo);
                 }
             });
-        }, 3000); 
+        }, 3000);
         return () => clearInterval(interval);
     }, [tavernaAtivos, peerObj, isPresenteNaTaverna, meuNome, fazerChamada]);
 
@@ -205,10 +237,10 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
     const trocarMicrofone = useCallback(async (deviceId) => {
         try {
             setSelectedMic(deviceId);
-            const newStream = await navigator.mediaDevices.getUserMedia({ 
-                audio: { deviceId: { exact: deviceId }, noiseSuppression: supressorAtivo, echoCancellation: true, autoGainControl: true } 
+            const newStream = await navigator.mediaDevices.getUserMedia({
+                audio: { deviceId: { exact: deviceId }, noiseSuppression: supressorAtivoRef.current, echoCancellation: true, autoGainControl: true }
             });
-            
+
             if (peerObj) {
                 Object.values(peerObj.connections).forEach(conns => {
                     conns.forEach(conn => {
@@ -220,8 +252,7 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
                 });
             }
 
-            if (meuStreamRef.current) meuStreamRef.current.getTracks().forEach(t => t.stop()); 
-            if (streamAnalisador) streamAnalisador.getTracks().forEach(t => t.stop()); 
+            if (meuStreamRef.current) meuStreamRef.current.getTracks().forEach(t => t.stop());
 
             meuStreamRef.current = newStream;
             setMeuStream(newStream);
@@ -229,13 +260,13 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
             const newClone = newStream.getAudioTracks()[0].clone();
             setStreamAnalisador(new MediaStream([newClone]));
         } catch (err) { console.error("Erro ao trocar mic:", err); }
-    }, [peerObj, supressorAtivo, streamAnalisador]);
+    }, [peerObj]);
 
     const toggleMute = useCallback(() => setMutado(m => !m), []);
     const toggleDeafen = useCallback(() => setSurdo(s => !s), []);
 
     return {
-        meuStream, streamAnalisador, conexoes, mutado, surdo, voiceStatus, mics, selectedMic, 
+        meuStream, streamAnalisador, conexoes, mutado, surdo, voiceStatus, mics, selectedMic,
         supressorAtivo, sensibilidadeVoz, euEstouFalandoState,
         toggleMute, toggleDeafen, trocarMicrofone, setSupressorAtivo, setSensibilidadeVoz, fazerChamada
     };
