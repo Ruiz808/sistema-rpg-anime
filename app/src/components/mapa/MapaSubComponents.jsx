@@ -13,7 +13,7 @@ import { storage, functions } from '../../services/firebase-config';
 const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Mapa provider não encontrado</div>;
 
 // ============================================================================
-// 🔥 REPRODUTOR NATIVO BLINDADO (100% ANTI-ECO DO CHROME) 🔥
+// 🔥 REPRODUTOR NATIVO BLINDADO 🔥
 // ============================================================================
 function PlayerDeAudioRemoto({ stream, volume, surdo, nome }) {
     const audioRef = useRef(null);
@@ -22,7 +22,7 @@ function PlayerDeAudioRemoto({ stream, volume, surdo, nome }) {
         if (audioRef.current && stream) {
             if (audioRef.current.srcObject !== stream) {
                 audioRef.current.srcObject = stream;
-                audioRef.current.play().catch(e => console.warn(`Clique na tela para ouvir ${nome}:`, e));
+                audioRef.current.play().catch(e => console.warn(`Aguardando clique para tocar a voz de ${nome}:`, e));
             }
         }
     }, [stream, nome]);
@@ -40,7 +40,8 @@ function PlayerDeAudioRemoto({ stream, volume, surdo, nome }) {
 }
 
 // ============================================================================
-// 🔥 CALIBRADOR VISUAL (ULTRA RÁPIDO - 60 FPS DIRETOS NO DOM) 🔥
+// 🔥 COMPONENTE: CALIBRADOR VISUAL DE SENSIBILIDADE DO MICROFONE 🔥
+// Lê sempre o "Cabo A" para ser 100% fiel ao som real.
 // ============================================================================
 function CalibradorDeVoz({ stream, sensibilidade, setSensibilidade }) {
     const barraRef = useRef(null);
@@ -52,7 +53,7 @@ function CalibradorDeVoz({ stream, sensibilidade, setSensibilidade }) {
         const actx = new (window.AudioContext || window.webkitAudioContext)();
         
         try {
-            const source = actx.createMediaStreamSource(stream); // CABO A (Puro)
+            const source = actx.createMediaStreamSource(stream); // CABO A (Clone Seguro)
             const analyser = actx.createAnalyser();
             analyser.fftSize = 256;
             analyser.smoothingTimeConstant = 0.5;
@@ -82,7 +83,7 @@ function CalibradorDeVoz({ stream, sensibilidade, setSensibilidade }) {
 
     return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', borderLeft: '1px solid #444', paddingLeft: '15px' }}>
-            <span style={{ color: '#aaa', fontSize: '0.8em' }}>Limiar:</span>
+            <span style={{ color: '#aaa', fontSize: '0.8em' }}>Limiar de Voz:</span>
             <div style={{ position: 'relative', width: '120px', height: '14px', background: '#000', borderRadius: '7px', border: '1px solid #333', overflow: 'hidden' }}>
                 <div ref={barraRef} style={{ width: '0%', height: '100%', background: '#ffcc00', transition: 'width 0.05s ease-out, background-color 0.1s' }} />
                 <input type="range" min="1" max="50" value={sensibilidade} onChange={e => setSensibilidade(parseInt(e.target.value))} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }} />
@@ -93,10 +94,9 @@ function CalibradorDeVoz({ stream, sensibilidade, setSensibilidade }) {
 }
 
 // ============================================================================
-// 🔥 A CARTA DE AVATAR INTELIGENTE 🔥
-// O Cérebro do Gate Muta o Cabo B (gateGainRef), sem nunca cortar o cabo real!
+// 🔥 A CARTA DE AVATAR INTELIGENTE (COM NOISE GATE NO CABO B) 🔥
 // ============================================================================
-function AvatarCardVoz({ nome, ficha, isMe, isConnected, streamParaTocar, streamPura, gateGainRef, mutado, surdo, fazerChamada, cardSize }) {
+function AvatarCardVoz({ nome, ficha, isMe, isConnected, streamParaTocar, streamAnalisador, peerStreamRef, mutado, surdo, fazerChamada, cardSize }) {
     const ctx = useMapaForm();
     const { getAvatarInfo, fmt, sensibilidadeVoz } = ctx;
     const info = getAvatarInfo(ficha);
@@ -120,9 +120,9 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, streamParaTocar, stream
     const audioCtxRef = useRef(null);
     const rafRef = useRef(null);
 
-    // 🔥 O CÉREBRO DO NOISE GATE DA MESA DE MISTURA 🔥
+    // 🔥 O CÉREBRO DO NOISE GATE (Abre e Fecha o Cabo B) 🔥
     useEffect(() => {
-        if (!isMe || !streamPura) {
+        if (!isMe || !streamAnalisador) {
             setIsSpeaking(false);
             return;
         }
@@ -134,10 +134,12 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, streamParaTocar, stream
 
             if (actx.state === 'suspended') actx.resume();
 
-            const source = actx.createMediaStreamSource(streamPura);
+            // O Analisador lê SEMPRE o Clone Seguro
+            const source = actx.createMediaStreamSource(streamAnalisador);
             const analyser = actx.createAnalyser();
             analyser.fftSize = 256;
             analyser.smoothingTimeConstant = 0.4; 
+            
             source.connect(analyser);
 
             const dataArray = new Uint8Array(analyser.frequencyBinCount);
@@ -149,20 +151,25 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, streamParaTocar, stream
                 for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
                 const average = sum / dataArray.length;
 
+                // Passou a barra? Você está a falar!
                 const falandoAgora = average > sensibilidadeRef.current;
 
                 if (falandoAgora) {
                     framesEmSilencio = 0; 
                     setIsSpeaking(true);
-                    // ABRE A MESA DE MISTURA (Apenas se o botão vermelho não estiver mutado)
-                    if (gateGainRef.current) gateGainRef.current.gain.value = mutadoRef.current ? 0 : 1;
+                    // LIGA O CABO B! (Se não estiver mutado manualmente)
+                    if (peerStreamRef.current && peerStreamRef.current.getAudioTracks()[0]) {
+                        peerStreamRef.current.getAudioTracks()[0].enabled = !mutadoRef.current;
+                    }
                 } else {
                     framesEmSilencio++;
-                    // O Som só corta se você ficar calado 15 frames seguidos (Suaviza o fim das palavras)
-                    if (framesEmSilencio > 15) {
+                    // Release Time: Só corta se ficar calado por 20 frames (suaviza as palavras)
+                    if (framesEmSilencio > 20) {
                         setIsSpeaking(false);
-                        // CORTA A MESA DE MISTURA MATEMATICAMENTE (Sinal continua, mas com volume 0)
-                        if (gateGainRef.current) gateGainRef.current.gain.value = 0;
+                        // CORTA O CABO B! (Ventilador não passa!)
+                        if (peerStreamRef.current && peerStreamRef.current.getAudioTracks()[0]) {
+                            peerStreamRef.current.getAudioTracks()[0].enabled = false;
+                        }
                     }
                 }
                 rafRef.current = requestAnimationFrame(checkVolume);
@@ -179,7 +186,14 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, streamParaTocar, stream
                 audioCtxRef.current.close().catch(e => console.log(e));
             }
         };
-    }, [streamPura, isMe, gateGainRef]); 
+    }, [streamAnalisador, isMe, peerStreamRef]); // O Clone garante que isto nunca perde o sinal!
+
+    // Garante que o botão Mute atua imediatamente na hora
+    useEffect(() => {
+        if (isSpeaking && peerStreamRef.current && peerStreamRef.current.getAudioTracks()[0]) {
+            peerStreamRef.current.getAudioTracks()[0].enabled = !mutado;
+        }
+    }, [mutado, isSpeaking, peerStreamRef]);
 
     let boxShadowCard = '0 0 15px rgba(0,0,0,0.8)';
     let borderCard = '2px solid #333';
@@ -191,14 +205,17 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, streamParaTocar, stream
             boxShadowCard = '0 0 20px rgba(255,0,60,0.4)';
             iconMic = '🔇';
         } else if (isMe && isSpeaking) {
+            // Você a falar e o Gate está aberto!
             borderCard = '2px solid #00ffcc';
             boxShadowCard = '0 0 35px #00ffcc, inset 0 0 20px rgba(0,255,204,0.4)';
             iconMic = '🔊';
         } else if (!isMe && streamParaTocar) {
+            // Amigo Conectado -> Luz fixa! 
             borderCard = '2px solid #00aaff';
             boxShadowCard = '0 0 20px rgba(0,170,255,0.4)';
             iconMic = '🔊';
         } else {
+            // Gate fechado (ventilador ignorado!)
             borderCard = '2px solid #005588';
             boxShadowCard = '0 0 10px rgba(0,85,136,0.5)';
             iconMic = '🎙️';
@@ -219,7 +236,7 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, streamParaTocar, stream
                 {iconMic}
             </div>
 
-            {/* BOTÃO DE EMERGÊNCIA - Se o Auto Dialer falhar por bloqueio de rede! */}
+            {/* BOTÃO DE EMERGÊNCIA */}
             {!isConnected && !isMe && (
                 <div style={{ position: 'absolute', top: '40%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10 }}>
                     <button className="btn-neon btn-blue" onClick={(e) => { e.stopPropagation(); fazerChamada(nome); }} style={{ padding: '8px 15px', fontSize: '0.9em', fontWeight: 'bold', boxShadow: '0 0 10px #0088ff' }}>
@@ -228,6 +245,7 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, streamParaTocar, stream
                 </div>
             )}
 
+            {/* Áudio Nativo Indestrutível para os Amigos */}
             {!isMe && isConnected && streamParaTocar && (
                 <PlayerDeAudioRemoto stream={streamParaTocar} volume={volume} surdo={surdo} nome={nome} />
             )}
@@ -239,6 +257,7 @@ function AvatarCardVoz({ nome, ficha, isMe, isConnected, streamParaTocar, stream
                         {nome}
                     </span>
                     
+                    {/* O SLIDER DE VOLUME ATÉ 100% PARA OS AMIGOS */}
                     {!isMe && isConnected && streamParaTocar && (
                         <div onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '70px', background: 'rgba(0,0,0,0.5)', padding: '2px 5px', borderRadius: '10px', border: '1px solid #333' }}>
                             <span style={{ fontSize: '9px', color: volume === 0 ? '#ff003c' : '#aaa' }}>{volume === 0 ? '🔇' : '🔉'}</span>
@@ -590,7 +609,7 @@ export function MapaSessaoRP() {
         conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen, fazerChamada,
         mics, selectedMic, trocarMicrofone, radioLigado, setRadioLigado,
         supressorAtivo, setSupressorAtivo, sensibilidadeVoz, setSensibilidadeVoz,
-        meuStreamPuro, peerStreamRef, gateGainRef
+        streamAnalisador, peerStreamRef // O CLONE que usamos na barrinha verde!
     } = ctx;
 
     const playerCount = playersNaTaverna.length;
@@ -643,10 +662,10 @@ export function MapaSessaoRP() {
                         )}
                     </div>
 
-                    {/* CALIBRADOR NATIVO EM TEMPO REAL 60FPS */}
-                    {meuStreamPuro && (
+                    {/* CALIBRADOR NATIVO EM TEMPO REAL 60FPS COM O CLONE */}
+                    {streamAnalisador && (
                         <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: '5px' }}>
-                            <CalibradorDeVoz stream={meuStreamPuro} sensibilidade={sensibilidadeVoz} setSensibilidade={setSensibilidadeVoz} />
+                            <CalibradorDeVoz stream={streamAnalisador} sensibilidade={sensibilidadeVoz} setSensibilidade={setSensibilidadeVoz} />
                         </div>
                     )}
                 </div>
@@ -680,8 +699,8 @@ export function MapaSessaoRP() {
                                 isMe={isMe}
                                 isConnected={isConnected}
                                 streamParaTocar={conRemota?.stream}
-                                streamPura={isMe ? meuStreamPuro : null}
-                                gateGainRef={isMe ? gateGainRef : null}
+                                streamAnalisador={isMe ? streamAnalisador : null}
+                                peerStreamRef={isMe ? peerStreamRef : null}
                                 mutado={mutado}
                                 surdo={surdo}
                                 fazerChamada={fazerChamada}

@@ -100,15 +100,15 @@ export function MapaFormProvider({ children }) {
     const isPresenteNaTaverna = tavernaAtivos.includes(meuNome);
 
     // ========================================================================
-    // 🔥 SISTEMA DE VOZ PROFISSIONAL (MESA DE MISTURA NATIVA) 🔥
+    // 🔥 SISTEMA DE VOZ RAW (ANTI-ECO DO CHROME + NOISE GATE) 🔥
     // ========================================================================
     const [radioLigado, setRadioLigado] = useState(false); 
     const [peerObj, setPeerObj] = useState(null);
     
-    const [meuStreamPuro, setMeuStreamPuro] = useState(null); 
-    const peerStreamRef = useRef(null); // Stream processada para enviar aos amigos
-    const gateGainRef = useRef(null); // O botão de volume matemático que corta o ruído!
-    const audioCtxGlobalRef = useRef(null); 
+    // O SEGREDO DOS ESTÚDIOS: FAZER UM SPLITTER DO CABO!
+    const [meuStreamPuro, setMeuStreamPuro] = useState(null); // Stream NATIVA (Enviada aos amigos com AEC do Chrome)
+    const [streamAnalisador, setStreamAnalisador] = useState(null); // Stream CLONE (Usada só pela barrinha visual)
+    const peerStreamRef = useRef(null); // Ref para enviar o Stream Puro
 
     const chamadasEmAndamento = useRef(new Set()); 
     const [conexoes, setConexoes] = useState([]);
@@ -142,7 +142,7 @@ export function MapaFormProvider({ children }) {
 
     useEffect(() => { localStorage.setItem('rpg_sensibilidade_voz', sensibilidadeVoz); }, [sensibilidadeVoz]);
 
-    // 🔥 1. CRIAÇÃO DA ANTENA PEERJS 🔥
+    // 1. INICIALIZA A ANTENA PEERJS
     useEffect(() => {
         if (!meuIDTelefone || peerObj) return;
 
@@ -154,6 +154,7 @@ export function MapaFormProvider({ children }) {
 
         novoPeer.on('call', (call) => {
             const attemptAnswer = () => {
+                // ATENDE COM A STREAM PURA (MANTÉM O AEC DO CHROME!)
                 if (peerStreamRef.current) {
                     call.answer(peerStreamRef.current);
                     call.on('stream', (remoteStream) => {
@@ -172,7 +173,7 @@ export function MapaFormProvider({ children }) {
         return () => { novoPeer.destroy(); };
     }, [meuIDTelefone]); 
 
-    // 🔥 2. LIGA MICROFONE E CRIA A MESA DE MISTURA (GANHO) 🔥
+    // 2. LIGA O MICROFONE (CRIA A STREAM PURA E O CLONE)
     useEffect(() => {
         if (!radioLigado) return;
 
@@ -183,24 +184,13 @@ export function MapaFormProvider({ children }) {
             navigator.mediaDevices.getUserMedia({ 
                 audio: { noiseSuppression: supressorAtivo, echoCancellation: true, autoGainControl: true } 
             }).then(stream => {
-                
-                // 1. Cria a Mesa de Mistura de Áudio (Web Audio API)
-                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                audioCtxGlobalRef.current = audioCtx;
-                
-                const source = audioCtx.createMediaStreamSource(stream);
-                const gainNode = audioCtx.createGain();
-                const dest = audioCtx.createMediaStreamDestination();
-                
-                // Liga o Mic Puro -> Válvula de Volume (Gain) -> Saída
-                source.connect(gainNode);
-                gainNode.connect(dest);
-                
-                gateGainRef.current = gainNode;
-                gateGainRef.current.gain.value = 0; // Começa fechado para evitar ecos!
-
+                // CABO A (Puro) - Vai para a rede!
                 setMeuStreamPuro(stream); 
-                peerStreamRef.current = dest.stream; // O PeerJS transmite a saída desta mesa de mistura!
+                peerStreamRef.current = stream; 
+
+                // CABO B (Clone) - Vai para a barra visual e o Noise Gate!
+                const cloneTrack = stream.getAudioTracks()[0].clone();
+                setStreamAnalisador(new MediaStream([cloneTrack]));
 
                 navigator.mediaDevices.enumerateDevices().then(devices => {
                     const audioInputs = devices.filter(d => d.kind === 'audioinput');
@@ -217,18 +207,15 @@ export function MapaFormProvider({ children }) {
         } else if (!isPresenteNaTaverna && rtcLigado.current) {
             rtcLigado.current = false;
             if (meuStreamPuro) meuStreamPuro.getTracks().forEach(t => t.stop());
-            if (peerStreamRef.current) peerStreamRef.current.getTracks().forEach(t => t.stop());
-            if (audioCtxGlobalRef.current) {
-                audioCtxGlobalRef.current.close();
-                audioCtxGlobalRef.current = null;
-            }
+            if (streamAnalisador) streamAnalisador.getTracks().forEach(t => t.stop());
+            
             setMeuStreamPuro(null);
+            setStreamAnalisador(null);
             setConexoes([]);
             setVoiceStatus('Fora da Taverna');
         }
     }, [isPresenteNaTaverna, radioLigado]); 
 
-    // 🔥 3. AUTO-DIALER INTELIGENTE 🔥
     const fazerChamada = useCallback((nomeDestino) => {
         if (!peerObj || !peerStreamRef.current || !nomeDestino) return;
         const idFormatado = `anime-rpg-${nomeDestino.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
@@ -260,7 +247,6 @@ export function MapaFormProvider({ children }) {
                 const meuId = `anime-rpg-${meuNome.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
                 const amigoId = `anime-rpg-${nomeAmigo.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
                 
-                // Evitar colisão: Apenas um liga!
                 if (meuId < amigoId) {
                     const exists = conexoesRef.current.find(c => c.id === amigoId);
                     if (!exists && !chamadasEmAndamento.current.has(amigoId)) fazerChamada(nomeAmigo);
@@ -274,55 +260,35 @@ export function MapaFormProvider({ children }) {
         try {
             setSelectedMic(deviceId);
             if (meuStreamPuro) meuStreamPuro.getTracks().forEach(t => t.stop()); 
+            if (streamAnalisador) streamAnalisador.getTracks().forEach(t => t.stop()); 
             
             const newStream = await navigator.mediaDevices.getUserMedia({ 
-                audio: { deviceId: { exact: deviceId }, noiseSuppression: supressorAtivo, echoCancellation: true, autoGainControl: true } 
+                audio: { deviceId: deviceId ? { exact: deviceId } : undefined, noiseSuppression: supressorAtivo, echoCancellation: true, autoGainControl: true } 
             });
             
+            // ATUALIZA A STREAM PURA (O AEC ESTÁ SALVO!)
             setMeuStreamPuro(newStream);
+            peerStreamRef.current = newStream;
             
-            // Refazer a Mesa de Mistura
-            if (audioCtxGlobalRef.current) {
-                audioCtxGlobalRef.current.close();
-            }
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            audioCtxGlobalRef.current = audioCtx;
-            
-            const source = audioCtx.createMediaStreamSource(newStream);
-            const gainNode = audioCtx.createGain();
-            const dest = audioCtx.createMediaStreamDestination();
-            
-            source.connect(gainNode);
-            gainNode.connect(dest);
-            
-            gateGainRef.current = gainNode;
-            gateGainRef.current.gain.value = mutado ? 0 : 1; 
+            // ATUALIZA O CLONE
+            const newClone = newStream.getAudioTracks()[0].clone();
+            setStreamAnalisador(new MediaStream([newClone]));
 
-            const newPeerStream = dest.stream;
-            peerStreamRef.current = newPeerStream;
-
+            // ENVIA A NOVA STREAM AOS AMIGOS AO VIVO
             if (peerObj) {
                 Object.values(peerObj.connections).forEach(conns => {
                     conns.forEach(conn => {
                         if (conn.peerConnection) {
                             const sender = conn.peerConnection.getSenders().find(s => s.track && s.track.kind === 'audio');
-                            if (sender) sender.replaceTrack(newPeerStream.getAudioTracks()[0]);
+                            if (sender) sender.replaceTrack(newStream.getAudioTracks()[0]);
                         }
                     });
                 });
             }
         } catch (err) { console.error("Erro ao trocar mic:", err); }
-    }, [peerObj, supressorAtivo, mutado, meuStreamPuro]);
+    }, [peerObj, supressorAtivo, meuStreamPuro, streamAnalisador]);
 
-    const toggleMute = useCallback(() => {
-        setMutado(m => {
-            const next = !m;
-            // Fecha a válvula de volume IMEDIATAMENTE
-            if (gateGainRef.current) gateGainRef.current.gain.value = next ? 0 : 1;
-            return next;
-        });
-    }, []);
-
+    const toggleMute = useCallback(() => setMutado(m => !m), []);
     const toggleDeafen = useCallback(() => setSurdo(s => !s), []);
     const desconectarVoz = useCallback((idPeer) => setConexoes(prev => prev.filter(c => c.id !== idPeer)), []);
 
@@ -534,6 +500,110 @@ export function MapaFormProvider({ children }) {
         return lista;
     }, [personagens, cenaRenderId]);
 
+    const getDanoDinamicoZona = useCallback((zona) => {
+        let baseResult = { dano: zona.danoOriginal || zona.danoAplicado || 0, letalidade: zona.letalidadeOriginal || 0 };
+        const storeState = useStore.getState();
+        const fichaCaster = (zona.conjurador === storeState.meuNome) ? storeState.minhaFicha : storeState.personagens?.[zona.conjurador];
+        if (!fichaCaster) return baseResult;
+        
+        const buffs = getBuffs(fichaCaster);
+        let maxFuria = 0; let danoBrutoAtual = 0; let letalidadeAtual = 0;
+        
+        const scan = (efs) => {
+            (efs || []).forEach(e => {
+                if (!e) return;
+                const prop = (e.propriedade || '').toLowerCase().trim();
+                if (prop === 'furia_berserker') { const v = parseFloat(e.valor) || 0; if (v > maxFuria) maxFuria = v; }
+                if (prop === 'dano_bruto' || prop === 'dano_verdadeiro') danoBrutoAtual += parseFloat(e.valor) || 0;
+                if (prop === 'letalidade') letalidadeAtual += parseFloat(e.valor) || 0;
+            });
+        };
+        
+        (fichaCaster.poderes || []).forEach(p => { if (p.ativa) scan(p.efeitos); scan(p.efeitosPassivos); });
+        (fichaCaster.inventario || []).forEach(i => { if (i.equipado) { scan(i.efeitos); scan(i.efeitosPassivos); } });
+        (fichaCaster.passivas || []).forEach(p => scan(p.efeitos));
+        
+        const furiaAtiva = maxFuria > 0 ? maxFuria : 1;
+        const multAtual = (buffs?.mbase || 1) * (buffs?.mgeral || 1) * (buffs?.mformas || 1) * (buffs?.mabs || 1) * furiaAtiva;
+        const baseMulti = zona.multiplicadorOriginal || 1;
+        
+        let somaStatusAtual = 0;
+        (zona.statusKeys || []).forEach(k => {
+            const str = String(fichaCaster[k]?.base || '').replace(/[^0-9]/g, '');
+            somaStatusAtual += parseInt(str.substring(0, 2), 10) || 0;
+        });
+        
+        const diffStatus = somaStatusAtual - (zona.somaStatusOriginal || somaStatusAtual);
+        const diffBruto = danoBrutoAtual - (zona.danoBrutoOriginal || danoBrutoAtual);
+        const diffLetalidade = letalidadeAtual - (zona.letalidadeOriginalBuffs || letalidadeAtual);
+        
+        const novoDanoBase = (zona.danoOriginal / baseMulti) + diffStatus + diffBruto;
+        const novoDano = Math.floor(novoDanoBase * multAtual);
+        
+        return { dano: novoDano > 0 ? novoDano : zona.danoOriginal, letalidade: (zona.letalidadeOriginal || 0) + diffLetalidade };
+    }, []);
+
+    const dispararEfeitoDaZona = useCallback((zona) => {
+        const cenaAtivaId = cenario?.ativa || 'default';
+        const escala = cenario?.lista?.[cenaAtivaId]?.escala || 1.5;
+        const din = getDanoDinamicoZona(zona);
+        const danoAtual = din.dano;
+        const letalAtual = din.letalidade;
+        let hitLog = [];
+
+        const checkHit = (pos, nome, isDummie, idDummie, dData) => {
+            if ((pos?.cenaId || 'default') !== (zona.cenaId || 'default')) return;
+            if (zona.alvosFiltro === 'inimigos' && !isDummie) return;
+            if (zona.alvosFiltro === 'aliados' && isDummie) return;
+
+            const dX = Math.abs(pos.x - zona.x); const dY = Math.abs(pos.y - zona.y); const dZ = Math.floor(Math.abs((pos.z || 0) - (zona.z || 0)) / escala);
+            
+            if (Math.max(dX, dY, dZ) <= zona.raio) {
+                hitLog.push(nome);
+                if (isDummie && idDummie && dData) salvarDummie(idDummie, { ...dData, hpAtual: Math.max(0, dData.hpAtual - danoAtual) });
+                else if (nome === meuNome) { updateFicha(f => { if (f.vida) f.vida.atual = Math.max(0, f.vida.atual - danoAtual); }); salvarFichaSilencioso(); }
+            }
+        };
+
+        Object.entries(dummies || {}).forEach(([id, d]) => checkHit(d.posicao, d.nome, true, id, d));
+        if (minhaFicha?.posicao) checkHit(minhaFicha.posicao, meuNome, false, null, null);
+        
+        if (hitLog.length > 0) {
+            const letalStr = letalAtual > 0 ? ` (+${letalAtual} Letalidade)` : '';
+            enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `🌪️ A Zona [${zona.nome}] castigou ${hitLog.join(', ')} com ${danoAtual} de Dano${letalStr}!` });
+        }
+    }, [cenario, getDanoDinamicoZona, dummies, minhaFicha, meuNome, updateFicha]);
+
+    const processarEntradaNaZona = useCallback((oldPos, newX, newY, newZ, entidadeNome, isDummie, idDummie, dData) => {
+        const cenaAtivaId = cenario?.ativa || 'default';
+        const escala = cenario?.lista?.[cenaAtivaId]?.escala || 1.5;
+        const zonasCena = (cenario?.zonas || []).filter(zo => (zo.cenaId || 'default') === cenaRenderId && zo.danoOriginal);
+        
+        zonasCena.forEach(zona => {
+            if (zona.alvosFiltro === 'inimigos' && !isDummie) return;
+            if (zona.alvosFiltro === 'aliados' && isDummie) return;
+
+            let estavaDentro = false;
+            if (oldPos && oldPos.x !== undefined) {
+                const oldDX = Math.abs(oldPos.x - zona.x); const oldDY = Math.abs(oldPos.y - zona.y); const oldDZ = Math.floor(Math.abs((oldPos.z || 0) - (zona.z || 0)) / escala);
+                estavaDentro = Math.max(oldDX, oldDY, oldDZ) <= zona.raio;
+            }
+
+            const dX = Math.abs(newX - zona.x); const dY = Math.abs(newY - zona.y); const dZ = Math.floor(Math.abs(newZ - (zona.z || 0)) / escala);
+            const estaDentro = Math.max(dX, dY, dZ) <= zona.raio;
+
+            if (!estavaDentro && estaDentro) {
+                const din = getDanoDinamicoZona(zona);
+                const danoAtual = din.dano; const letalAtual = din.letalidade;
+                const letalStr = letalAtual > 0 ? ` (+${letalAtual} Letalidade)` : '';
+                
+                enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `⚠️ ${entidadeNome} pisou na área de [${zona.nome}] e sofreu ${danoAtual} de Dano${letalStr} imediatamente!` });
+                if (isDummie && idDummie && dData) salvarDummie(idDummie, { ...dData, hpAtual: Math.max(0, dData.hpAtual - danoAtual) });
+                else if (entidadeNome === meuNome) { updateFicha(f => { if (f.vida) f.vida.atual = Math.max(0, f.vida.atual - danoAtual); }); salvarFichaSilencioso(); }
+            }
+        });
+    }, [cenario, cenaRenderId, meuNome, updateFicha, getDanoDinamicoZona]);
+
     const handleCellClick = useCallback((x, y) => {
         const z = parseInt(altitudeInput) || 0;
         const oldPos = isMestre && alvoSelecionado && dummies[alvoSelecionado] ? dummies[alvoSelecionado].posicao : minhaFicha?.posicao;
@@ -541,14 +611,16 @@ export function MapaFormProvider({ children }) {
         if (isMestre && alvoSelecionado && dummies[alvoSelecionado]) {
             const d = dummies[alvoSelecionado];
             salvarDummie(alvoSelecionado, { ...d, posicao: { x, y, z }, cenaId: cenaRenderId });
+            processarEntradaNaZona(oldPos, x, y, z, d.nome, true, alvoSelecionado, d);
         } else {
             updateFicha((ficha) => {
                 if (!ficha.posicao) ficha.posicao = {};
                 ficha.posicao.x = x; ficha.posicao.y = y; ficha.posicao.z = z; ficha.posicao.cenaId = cenaRenderId; 
             });
             salvarFichaSilencioso();
+            processarEntradaNaZona(oldPos, x, y, z, meuNome, false, null, null);
         }
-    }, [isMestre, alvoSelecionado, dummies, cenaRenderId, altitudeInput, updateFicha, meuNome, minhaFicha]);
+    }, [isMestre, alvoSelecionado, dummies, cenaRenderId, altitudeInput, updateFicha, processarEntradaNaZona, meuNome, minhaFicha]);
 
     const alterarZoom = useCallback((direcao) => {
         setTamanhoCelula(prev => { let novo = prev + (direcao > 0 ? 5 : -5); if (novo < 15) novo = 15; if (novo > 80) novo = 80; return novo; });
@@ -565,8 +637,27 @@ export function MapaFormProvider({ children }) {
         if (ordemIniciativa.length === 0) return;
         let nextIndex = turnoAtualIndex + 1;
         if (nextIndex >= ordemIniciativa.length) nextIndex = 0;
+        const nextPlayer = ordemIniciativa[nextIndex];
+        
         setTurnoAtualIndex(nextIndex); setFeedIndexTurnoAtual(feedCombate.length); setJogadorHistory(null);
-    }, [ordemIniciativa, turnoAtualIndex, feedCombate.length]);
+
+        const storeState = useStore.getState();
+        const cenarioAtual = storeState.cenario;
+
+        if (cenarioAtual?.zonas && cenarioAtual.zonas.length > 0) {
+            const novoCenario = JSON.parse(JSON.stringify(cenarioAtual));
+            let mudouCenario = false;
+            novoCenario.zonas = novoCenario.zonas.filter(z => {
+                if (z.conjurador === nextPlayer.nome) {
+                    z.duracao -= 1; mudouCenario = true;
+                    if (z.duracao > 0 && z.danoOriginal) dispararEfeitoDaZona(z);
+                    return z.duracao > 0;
+                }
+                return true; 
+            });
+            if (mudouCenario) salvarCenarioCompleto(novoCenario);
+        }
+    }, [ordemIniciativa, turnoAtualIndex, feedCombate.length, dispararEfeitoDaZona]);
 
     const sairDoCombate = useCallback(() => { updateFicha(ficha => { ficha.iniciativa = 0; }); setIniciativaInput(0); salvarFichaSilencioso(); setJogadorHistory(null); }, [updateFicha]);
 
@@ -586,8 +677,27 @@ export function MapaFormProvider({ children }) {
         const alvoDummie = alvoSelecionado && dummies[alvoSelecionado] ? dummies[alvoSelecionado] : null;
 
         if (alvoDummie) {
-            maxArea = 1; 
-            alvosAtingidos.push({ nome: alvoDummie.nome, defesa: alvoDummie.valorDefesa, acertou: result.acertoTotal >= alvoDummie.valorDefesa });
+            const armasEqMap = itensEq.filter(i => i.tipo === 'arma');
+            const maxAreaArmas = armasEqMap.length > 0 ? Math.max(...armasEqMap.map(a => a.areaQuad || a.area || 0)) : 0;
+            const podAtMap = (fichaSegura?.poderes || []).filter(p => p.ativa);
+            const maxAreaPoderes = podAtMap.length > 0 ? Math.max(...podAtMap.map(p => p.areaQuad || p.area || 0)) : 0;
+            const magiasEqMap = (fichaSegura?.ataquesElementais || []).filter(m => m.equipado);
+            const maxAreaMagias = magiasEqMap.length > 0 ? Math.max(...magiasEqMap.map(m => m.areaQuad || 0)) : 0;
+
+            maxArea = Math.max(maxAreaArmas, maxAreaPoderes, maxAreaMagias);
+
+            if (maxArea > 0) {
+                const cenaAtivaId = cenario?.ativa || 'default';
+                const escala = cenario?.lista?.[cenaAtivaId]?.escala || 1.5;
+
+                Object.entries(dummies).forEach(([id, dObj]) => {
+                    const isSameScene = (dObj.cenaId || 'default') === (alvoDummie.cenaId || 'default');
+                    if (isSameScene && dObj.posicao && alvoDummie.posicao) {
+                        const dX = Math.abs(dObj.posicao.x - alvoDummie.posicao.x); const dY = Math.abs(dObj.posicao.y - alvoDummie.posicao.y); const dZ = Math.floor(Math.abs((dObj.posicao.z || 0) - (alvoDummie.posicao.z || 0)) / escala);
+                        if (Math.max(dX, dY, dZ) <= maxArea) alvosAtingidos.push({ nome: dObj.nome, defesa: dObj.valorDefesa, acertou: result.acertoTotal >= dObj.valorDefesa });
+                    }
+                });
+            } else { alvosAtingidos.push({ nome: alvoDummie.nome, defesa: alvoDummie.valorDefesa, acertou: result.acertoTotal >= alvoDummie.valorDefesa }); }
         }
         enviarParaFeed({ tipo: 'acerto', nome: meuNome, ...result, alvosArea: alvosAtingidos, areaEf: maxArea }); 
     }, [mapQD, mapFD, mapBonus, mapUsarProf, profGlobal, mapStat, fichaSegura, mapVantagens, mapDesvantagens, alvoSelecionado, dummies, meuNome, cenario]);
@@ -631,9 +741,9 @@ export function MapaFormProvider({ children }) {
         cells, jogadores, playersNaTaverna, ordemIniciativa, handleCellClick,
         alterarZoom, setMinhaIniciativa, avancarTurno, sairDoCombate, encerrarCombate,
         rolarAcertoRapido, tokenMap, tokens3D, jogadorDaVez, infoDaVez, fmt, deletarZona,
-        meuStreamPuro, peerStreamRef, gateGainRef, conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen, fazerChamada, desconectarVoz,
+        meuStreamPuro, streamAnalisador, peerStreamRef, conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen, fazerChamada, desconectarVoz,
         mics, selectedMic, trocarMicrofone, radioLigado, setRadioLigado, supressorAtivo, setSupressorAtivo,
-        sensibilidadeVoz, setSensibilidadeVoz
+        sensibilidadeVoz, setSensibilidadeVoz // 🔥 EXPORTAMOS O CLONE E A STREAM PURA
     }), [
         minhaFicha, meuNome, personagens, feedCombate, isMestre, dummies, alvoSelecionado, cenario,
         fichaSegura, modo3D, tamanhoCelula, iniciativaInput, altitudeInput,
@@ -647,7 +757,7 @@ export function MapaFormProvider({ children }) {
         changeDesvantagem, handleUploadNovaCena, ativarCena, deletarCena, corDoJogador,
         getAvatarInfo, handleCellClick, alterarZoom, setMinhaIniciativa, avancarTurno,
         sairDoCombate, encerrarCombate, rolarAcertoRapido, deletarZona,
-        meuStreamPuro, peerStreamRef, gateGainRef, conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen, fazerChamada, desconectarVoz,
+        meuStreamPuro, streamAnalisador, peerStreamRef, conexoes, mutado, surdo, voiceStatus, toggleMute, toggleDeafen, fazerChamada, desconectarVoz,
         mics, selectedMic, trocarMicrofone, radioLigado, setRadioLigado, supressorAtivo, setSupressorAtivo,
         sensibilidadeVoz, setSensibilidadeVoz
     ]);
