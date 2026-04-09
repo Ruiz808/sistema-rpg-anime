@@ -58,7 +58,8 @@ export function useMapaForm() {
 }
 
 export function MapaFormProvider({ children }) {
-    const { minhaFicha, meuNome, personagens, updateFicha, feedCombate = [], isMestre, dummies, alvoSelecionado, cenario } = useStore();
+    const { minhaFicha, meuNome, personagens, updateFicha, feedCombate = [], isMestre, dummies, alvoSelecionado, cenario, abaAtiva } = useStore();
+    
     const fichaSegura = minhaFicha || {};
 
     const [modo3D, setModo3D] = useState(false);
@@ -73,6 +74,7 @@ export function MapaFormProvider({ children }) {
     const [mapFD, setMapFD] = useState(20);
     const [mapBonus, setMapBonus] = useState(0);
     const [mapStat, setMapStat] = useState('destreza');
+    
     const [mapUsarProf, setMapUsarProf] = useState(false);
     const profGlobal = parseInt(fichaSegura.proficienciaBase) || 0;
     
@@ -89,6 +91,7 @@ export function MapaFormProvider({ children }) {
 
     const [cenaVisualizadaId, setCenaVisualizadaId] = useState(null);
     const cenaAtivaIdGlobal = cenario?.ativa || 'default';
+    
     const cenaRenderId = (isMestre && cenaVisualizadaId) ? cenaVisualizadaId : cenaAtivaIdGlobal;
     const cenaAtual = cenario?.lista?.[cenaRenderId] || { nome: 'Desconhecido', img: '', escala: 1.5, unidade: 'm' };
 
@@ -104,16 +107,22 @@ export function MapaFormProvider({ children }) {
         if (!novoCenario.modoRP) novoCenario.tavernaAtivos = [];
         salvarCenarioCompleto(novoCenario);
         enviarParaFeed({ 
-            tipo: 'sistema', nome: 'SISTEMA', 
-            texto: novoCenario.modoRP ? '🍻 A Party entrou na Sala de Espera! O Mestre está a moldar a realidade...' : '🌍 O VÉU FOI LEVANTADO! A REALIDADE É REVELADA!' 
+            tipo: 'sistema', 
+            nome: 'SISTEMA', 
+            texto: novoCenario.modoRP 
+                ? '🍻 A Party entrou na Sala de Espera! O Mestre está a moldar a realidade...' 
+                : '🌍 O VÉU FOI LEVANTADO! A REALIDADE É REVELADA!' 
         });
     }, [cenario]);
 
     const togglePresencaTaverna = useCallback(() => {
         const novoCenario = JSON.parse(JSON.stringify(cenario || {}));
         if (!Array.isArray(novoCenario.tavernaAtivos)) novoCenario.tavernaAtivos = [];
-        if (isPresenteNaTaverna) novoCenario.tavernaAtivos = novoCenario.tavernaAtivos.filter(n => n !== meuNome);
-        else novoCenario.tavernaAtivos.push(meuNome);
+        if (isPresenteNaTaverna) {
+            novoCenario.tavernaAtivos = novoCenario.tavernaAtivos.filter(n => n !== meuNome);
+        } else {
+            novoCenario.tavernaAtivos.push(meuNome);
+        }
         salvarCenarioCompleto(novoCenario);
     }, [cenario, isPresenteNaTaverna, meuNome]);
 
@@ -122,62 +131,102 @@ export function MapaFormProvider({ children }) {
         if (isMestre && minhaFicha.compendioOverrides) return minhaFicha.compendioOverrides;
         if (personagens) {
             const chaves = Object.keys(personagens);
-            for(let k of chaves) { if (personagens[k]?.compendioOverrides) return personagens[k].compendioOverrides; }
+            for(let k of chaves) {
+                if (personagens[k]?.compendioOverrides) return personagens[k].compendioOverrides;
+            }
         }
         return {};
     }, [isMestre, minhaFicha, personagens]);
+
+    const toggleActionDot = useCallback((tipo, isAvailable, entidadeNome, isDummie, idDummie) => {
+        if (isDummie && idDummie && isMestre) {
+            const storeState = useStore.getState();
+            const dData = storeState.dummies[idDummie];
+            if (!dData) return;
+            const acoes = dData.acoes ? JSON.parse(JSON.stringify(dData.acoes)) : { padrao: {max:1, atual:1}, bonus: {max:1, atual:1}, reacao: {max:1, atual:1} };
+            if (isAvailable) {
+                acoes[tipo].atual = Math.max(0, acoes[tipo].atual - 1);
+            } else {
+                acoes[tipo].atual = Math.min(acoes[tipo].max, acoes[tipo].atual + 1);
+            }
+            salvarDummie(idDummie, { ...dData, acoes });
+        } else if (entidadeNome === meuNome) {
+            updateFicha(f => {
+                if (!f.acoes) f.acoes = { padrao: {max:1, atual:1}, bonus: {max:1, atual:1}, reacao: {max:1, atual:1} };
+                if (isAvailable) {
+                    f.acoes[tipo].atual = Math.max(0, f.acoes[tipo].atual - 1);
+                } else {
+                    f.acoes[tipo].atual = Math.min(f.acoes[tipo].max, f.acoes[tipo].atual + 1);
+                }
+            });
+            salvarFichaSilencioso();
+        }
+    }, [isMestre, meuNome, updateFicha]);
 
     useEffect(() => {
         if (feedCombate.length > prevFeedLen.current) {
             const newItem = feedCombate[feedCombate.length - 1];
             if (newItem && newItem.rolagem && (newItem.tipo === 'acerto' || newItem.tipo === 'dano')) {
-                let rawRoll = 0;
-                let regexStrong = /<strong>(\d+)<\/strong>/g;
-                let match;
-                while ((match = regexStrong.exec(newItem.rolagem)) !== null) {
-                    let v = parseInt(match[1]);
-                    if (v > rawRoll) rawRoll = v;
-                }
-                if (rawRoll === 0) { 
-                    let regexArr = /\[(.*?)\]/;
-                    let mArr = regexArr.exec(newItem.rolagem);
-                    if (mArr) {
-                        let clean = mArr[1].replace(/<[^>]*>?/gm, ''); 
-                        let nums = clean.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n));
-                        if (nums.length > 0) rawRoll = Math.max(...nums);
-                    }
-                }
                 
-                if (rawRoll > 0) {
-                    let corFinal = '#0088ff'; 
-                    if (newItem.tipo === 'dano') {
-                        if (newItem.armaStr?.includes('FATAL')) corFinal = '#ff003c'; 
-                        else if (newItem.armaStr?.includes('CRÍTICO')) corFinal = '#ffcc00'; 
-                    } else {
-                        if (rawRoll === 20) corFinal = '#ff003c'; 
-                        else if (rawRoll >= 18) corFinal = '#ffcc00'; 
-                        else if (rawRoll === 1) corFinal = '#660000'; 
-                    }
+                const painelMapa = document.querySelector('.mapa-panel');
+                const mapaVisivel = painelMapa && (painelMapa.offsetWidth > 0 || painelMapa.offsetHeight > 0);
+                const isAbaMapa = String(abaAtiva || '').toLowerCase().includes('map');
 
-                    setDadoAnim({ ativo: true, numero: Math.floor(Math.random() * 20) + 1, finalResult: null, cor: '#00ffcc', quemRolou: newItem.nome });
-                    let intervalos = 0;
-                    const tempoGiro = setInterval(() => {
-                        setDadoAnim(prev => ({ ...prev, numero: Math.floor(Math.random() * 20) + 1 }));
-                        intervalos++;
-                        if (intervalos > 15) {
-                            clearInterval(tempoGiro);
-                            setDadoAnim({ ativo: true, numero: rawRoll, finalResult: rawRoll, cor: corFinal, quemRolou: newItem.nome });
-                            setTimeout(() => { setDadoAnim({ ativo: false, numero: 20, finalResult: null, cor: '#00ffcc', quemRolou: '' }); }, 2000);
+                if (mapaVisivel || isAbaMapa) {
+                    let rawRoll = 0;
+                    let regexStrong = /<strong>(\d+)<\/strong>/g;
+                    let match;
+                    while ((match = regexStrong.exec(newItem.rolagem)) !== null) {
+                        let v = parseInt(match[1]);
+                        if (v > rawRoll) rawRoll = v;
+                    }
+                    if (rawRoll === 0) { 
+                        let regexArr = /\[(.*?)\]/;
+                        let mArr = regexArr.exec(newItem.rolagem);
+                        if (mArr) {
+                            let clean = mArr[1].replace(/<[^>]*>?/gm, ''); 
+                            let nums = clean.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n));
+                            if (nums.length > 0) rawRoll = Math.max(...nums);
                         }
-                    }, 80);
+                    }
+                    
+                    if (rawRoll > 0) {
+                        let corFinal = '#0088ff'; 
+                        if (newItem.tipo === 'dano') {
+                            if (newItem.armaStr?.includes('FATAL')) corFinal = '#ff003c'; 
+                            else if (newItem.armaStr?.includes('CRÍTICO')) corFinal = '#ffcc00'; 
+                        } else {
+                            if (rawRoll === 20) corFinal = '#ff003c'; 
+                            else if (rawRoll >= 18) corFinal = '#ffcc00'; 
+                            else if (rawRoll === 1) corFinal = '#660000'; 
+                        }
+
+                        setDadoAnim({ ativo: true, numero: Math.floor(Math.random() * 20) + 1, finalResult: null, cor: '#00ffcc', quemRolou: newItem.nome });
+                        let intervalos = 0;
+                        const tempoGiro = setInterval(() => {
+                            setDadoAnim(prev => ({ ...prev, numero: Math.floor(Math.random() * 20) + 1 }));
+                            intervalos++;
+                            if (intervalos > 15) {
+                                clearInterval(tempoGiro);
+                                setDadoAnim({ ativo: true, numero: rawRoll, finalResult: rawRoll, cor: corFinal, quemRolou: newItem.nome });
+                                setTimeout(() => { setDadoAnim({ ativo: false, numero: 20, finalResult: null, cor: '#00ffcc', quemRolou: '' }); }, 2000);
+                            }
+                        }, 80);
+                    }
                 }
             }
         }
         prevFeedLen.current = feedCombate.length;
-    }, [feedCombate]);
+    }, [feedCombate, abaAtiva]);
 
-    useEffect(() => { setMapVantagens(fichaSegura.ataqueConfig?.vantagens || 0); setMapDesvantagens(fichaSegura.ataqueConfig?.desvantagens || 0); }, [fichaSegura.ataqueConfig?.vantagens, fichaSegura.ataqueConfig?.desvantagens]);
-    useEffect(() => { setAltitudeInput(fichaSegura.posicao?.z || 0); }, [fichaSegura.posicao?.z]);
+    useEffect(() => {
+        setMapVantagens(fichaSegura.ataqueConfig?.vantagens || 0);
+        setMapDesvantagens(fichaSegura.ataqueConfig?.desvantagens || 0);
+    }, [fichaSegura.ataqueConfig?.vantagens, fichaSegura.ataqueConfig?.desvantagens]);
+
+    useEffect(() => {
+        setAltitudeInput(fichaSegura.posicao?.z || 0);
+    }, [fichaSegura.posicao?.z]);
 
     const changeVantagem = useCallback((e) => {
         const val = parseInt(e.target.value) || 0;
@@ -208,7 +257,12 @@ export function MapaFormProvider({ children }) {
             setCenaVisualizadaId(novaCenaId);
             enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `🗺️ O Mestre começou a preparar uma área desconhecida...` });
             setNovaCenaNome('');
-        } catch (err) { alert('Erro ao enviar a imagem.'); } finally { setUploadingMap(false); }
+        } catch (err) {
+            console.error(err);
+            alert('Erro ao enviar a imagem para o Mapa. Verifique o Firebase Storage.');
+        } finally {
+            setUploadingMap(false);
+        }
     }, [novaCenaNome, novaCenaEscala, novaCenaUnidade, cenario]);
 
     const ativarCena = useCallback((id) => {
@@ -232,12 +286,15 @@ export function MapaFormProvider({ children }) {
     const coresJogadoresRef = useRef({});
     const corIndexRef = useRef(0);
     const corDoJogador = useCallback((nome) => {
-        if (!coresJogadoresRef.current[nome]) { coresJogadoresRef.current[nome] = PALETA[corIndexRef.current % PALETA.length]; corIndexRef.current++; }
+        if (!coresJogadoresRef.current[nome]) {
+            coresJogadoresRef.current[nome] = PALETA[corIndexRef.current % PALETA.length];
+            corIndexRef.current++;
+        }
         return coresJogadoresRef.current[nome];
     }, []);
 
     const deletarZona = useCallback((idZona) => {
-        if(!window.confirm("Apagar a Zona de Efeito do mapa?")) return;
+        if(!window.confirm("O fluxo do tempo dissipa esta magia. Apagar a Zona de Efeito do mapa?")) return;
         const novoCenario = JSON.parse(JSON.stringify(cenario));
         novoCenario.zonas = (novoCenario.zonas || []).filter(z => z.id !== idZona);
         salvarCenarioCompleto(novoCenario);
@@ -249,7 +306,10 @@ export function MapaFormProvider({ children }) {
         if (ficha.poderes) {
             for (let j = 0; j < ficha.poderes.length; j++) {
                 const p = ficha.poderes[j];
-                if (p.ativa && p.imagemUrl && p.imagemUrl.trim() !== '') { result.img = p.imagemUrl; result.forma = p.nome; }
+                if (p.ativa && p.imagemUrl && p.imagemUrl.trim() !== '') {
+                    result.img = p.imagemUrl;
+                    result.forma = p.nome;
+                }
             }
         }
         return result;
@@ -259,7 +319,9 @@ export function MapaFormProvider({ children }) {
 
     const cells = useMemo(() => {
         const arr = [];
-        for (let y = 0; y < MAP_SIZE; y++) { for (let x = 0; x < MAP_SIZE; x++) { arr.push({ x, y }); } }
+        for (let y = 0; y < MAP_SIZE; y++) {
+            for (let x = 0; x < MAP_SIZE; x++) { arr.push({ x, y }); }
+        }
         return arr;
     }, []);
 
@@ -285,8 +347,11 @@ export function MapaFormProvider({ children }) {
         }).filter(([n, f]) => f != null);
     }, [tavernaAtivos, meuNome, minhaFicha, personagens]);
 
+    // 🔥 FIX: A ORDEM DE INICIATIVA AGORA INCLUI OS DUMMIES 🔥
     const ordemIniciativa = useMemo(() => {
         const lista = [];
+        
+        // 1. Adiciona Jogadores
         if (personagens) {
             const nomes = Object.keys(personagens);
             for (let i = 0; i < nomes.length; i++) {
@@ -294,30 +359,55 @@ export function MapaFormProvider({ children }) {
                 const f = personagens[n];
                 const cenaDoJogador = f?.posicao?.cenaId || 'default';
                 if (f && f.iniciativa !== undefined && f.iniciativa > 0 && cenaDoJogador === cenaRenderId) {
-                    lista.push({ nome: n, ficha: f, iniciativa: f.iniciativa });
+                    lista.push({ id: n, nome: n, ficha: f, iniciativa: f.iniciativa, isDummie: false });
                 }
             }
         }
+        
+        // 2. Adiciona Dummies
+        if (dummies) {
+            const dIds = Object.keys(dummies);
+            for (let i = 0; i < dIds.length; i++) {
+                const id = dIds[i];
+                const d = dummies[id];
+                const cenaDoDummie = d?.cenaId || 'default';
+                if (d && d.iniciativa !== undefined && d.iniciativa > 0 && cenaDoDummie === cenaRenderId) {
+                    lista.push({ id: id, nome: d.nome, ficha: d, iniciativa: d.iniciativa, isDummie: true });
+                }
+            }
+        }
+
+        // Ordena tudo do maior para o menor
         lista.sort((a, b) => b.iniciativa - a.iniciativa);
         return lista;
-    }, [personagens, cenaRenderId]);
+    }, [personagens, dummies, cenaRenderId]);
 
     const getDanoDinamicoZona = useCallback((zona) => {
         let baseResult = { dano: zona.danoOriginal || zona.danoAplicado || 0, letalidade: zona.letalidadeOriginal || 0 };
+        
         const storeState = useStore.getState();
         const fichaCaster = (zona.conjurador === storeState.meuNome) ? storeState.minhaFicha : storeState.personagens?.[zona.conjurador];
         if (!fichaCaster) return baseResult;
         
         const buffs = getBuffs(fichaCaster);
-        let maxFuria = 0; let danoBrutoAtual = 0; let letalidadeAtual = 0;
+        let maxFuria = 0;
+        let danoBrutoAtual = 0;
+        let letalidadeAtual = 0;
         
         const scan = (efs) => {
             (efs || []).forEach(e => {
                 if (!e) return;
                 const prop = (e.propriedade || '').toLowerCase().trim();
-                if (prop === 'furia_berserker') { const v = parseFloat(e.valor) || 0; if (v > maxFuria) maxFuria = v; }
-                if (prop === 'dano_bruto' || prop === 'dano_verdadeiro') danoBrutoAtual += parseFloat(e.valor) || 0;
-                if (prop === 'letalidade') letalidadeAtual += parseFloat(e.valor) || 0;
+                if (prop === 'furia_berserker') {
+                    const v = parseFloat(e.valor) || 0;
+                    if (v > maxFuria) maxFuria = v;
+                }
+                if (prop === 'dano_bruto' || prop === 'dano_verdadeiro') {
+                    danoBrutoAtual += parseFloat(e.valor) || 0;
+                }
+                if (prop === 'letalidade') {
+                    letalidadeAtual += parseFloat(e.valor) || 0;
+                }
             });
         };
         
@@ -342,7 +432,10 @@ export function MapaFormProvider({ children }) {
         const novoDanoBase = (zona.danoOriginal / baseMulti) + diffStatus + diffBruto;
         const novoDano = Math.floor(novoDanoBase * multAtual);
         
-        return { dano: novoDano > 0 ? novoDano : zona.danoOriginal, letalidade: (zona.letalidadeOriginal || 0) + diffLetalidade };
+        return {
+            dano: novoDano > 0 ? novoDano : zona.danoOriginal,
+            letalidade: (zona.letalidadeOriginal || 0) + diffLetalidade
+        };
     }, []);
 
     const dispararEfeitoDaZona = useCallback((zona) => {
@@ -358,12 +451,18 @@ export function MapaFormProvider({ children }) {
             if (zona.alvosFiltro === 'inimigos' && !isDummie) return;
             if (zona.alvosFiltro === 'aliados' && isDummie) return;
 
-            const dX = Math.abs(pos.x - zona.x); const dY = Math.abs(pos.y - zona.y); const dZ = Math.floor(Math.abs((pos.z || 0) - (zona.z || 0)) / escala);
+            const dX = Math.abs(pos.x - zona.x);
+            const dY = Math.abs(pos.y - zona.y);
+            const dZ = Math.floor(Math.abs((pos.z || 0) - (zona.z || 0)) / escala);
             
             if (Math.max(dX, dY, dZ) <= zona.raio) {
                 hitLog.push(nome);
-                if (isDummie && idDummie && dData) salvarDummie(idDummie, { ...dData, hpAtual: Math.max(0, dData.hpAtual - danoAtual) });
-                else if (nome === meuNome) { updateFicha(f => { if (f.vida) f.vida.atual = Math.max(0, f.vida.atual - danoAtual); }); salvarFichaSilencioso(); }
+                if (isDummie && idDummie && dData) {
+                    salvarDummie(idDummie, { ...dData, hpAtual: Math.max(0, dData.hpAtual - danoAtual) });
+                } else if (nome === meuNome) {
+                    updateFicha(f => { if (f.vida) f.vida.atual = Math.max(0, f.vida.atual - danoAtual); });
+                    salvarFichaSilencioso();
+                }
             }
         };
 
@@ -372,7 +471,10 @@ export function MapaFormProvider({ children }) {
         
         if (hitLog.length > 0) {
             const letalStr = letalAtual > 0 ? ` (+${letalAtual} Letalidade)` : '';
-            enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `🌪️ A Zona [${zona.nome}] castigou ${hitLog.join(', ')} com ${danoAtual} de Dano${letalStr}!` });
+            enviarParaFeed({
+                tipo: 'sistema', nome: 'SISTEMA',
+                texto: `🌪️ A Zona [${zona.nome}] castigou ${hitLog.join(', ')} com ${danoAtual} de Dano${letalStr}!`
+            });
         }
     }, [cenario, getDanoDinamicoZona, dummies, minhaFicha, meuNome, updateFicha]);
 
@@ -387,27 +489,41 @@ export function MapaFormProvider({ children }) {
 
             let estavaDentro = false;
             if (oldPos && oldPos.x !== undefined) {
-                const oldDX = Math.abs(oldPos.x - zona.x); const oldDY = Math.abs(oldPos.y - zona.y); const oldDZ = Math.floor(Math.abs((oldPos.z || 0) - (zona.z || 0)) / escala);
+                const oldDX = Math.abs(oldPos.x - zona.x);
+                const oldDY = Math.abs(oldPos.y - zona.y);
+                const oldDZ = Math.floor(Math.abs((oldPos.z || 0) - (zona.z || 0)) / escala);
                 estavaDentro = Math.max(oldDX, oldDY, oldDZ) <= zona.raio;
             }
 
-            const dX = Math.abs(newX - zona.x); const dY = Math.abs(newY - zona.y); const dZ = Math.floor(Math.abs(newZ - (zona.z || 0)) / escala);
+            const dX = Math.abs(newX - zona.x);
+            const dY = Math.abs(newY - zona.y);
+            const dZ = Math.floor(Math.abs(newZ - (zona.z || 0)) / escala);
             const estaDentro = Math.max(dX, dY, dZ) <= zona.raio;
 
             if (!estavaDentro && estaDentro) {
                 const din = getDanoDinamicoZona(zona);
-                const danoAtual = din.dano; const letalAtual = din.letalidade;
+                const danoAtual = din.dano;
+                const letalAtual = din.letalidade;
                 const letalStr = letalAtual > 0 ? ` (+${letalAtual} Letalidade)` : '';
                 
-                enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `⚠️ ${entidadeNome} pisou na área de [${zona.nome}] e sofreu ${danoAtual} de Dano${letalStr} imediatamente!` });
-                if (isDummie && idDummie && dData) salvarDummie(idDummie, { ...dData, hpAtual: Math.max(0, dData.hpAtual - danoAtual) });
-                else if (entidadeNome === meuNome) { updateFicha(f => { if (f.vida) f.vida.atual = Math.max(0, f.vida.atual - danoAtual); }); salvarFichaSilencioso(); }
+                enviarParaFeed({
+                    tipo: 'sistema', nome: 'SISTEMA',
+                    texto: `⚠️ ${entidadeNome} pisou na área de [${zona.nome}] e sofreu ${danoAtual} de Dano${letalStr} imediatamente!`
+                });
+                
+                if (isDummie && idDummie && dData) {
+                    salvarDummie(idDummie, { ...dData, hpAtual: Math.max(0, dData.hpAtual - danoAtual) });
+                } else if (entidadeNome === meuNome) {
+                    updateFicha(f => { if (f.vida) f.vida.atual = Math.max(0, f.vida.atual - danoAtual); });
+                    salvarFichaSilencioso();
+                }
             }
         });
     }, [cenario, cenaRenderId, meuNome, updateFicha, getDanoDinamicoZona]);
 
     const handleCellClick = useCallback((x, y) => {
         const z = parseInt(altitudeInput) || 0;
+        
         const oldPos = isMestre && alvoSelecionado && dummies[alvoSelecionado] ? dummies[alvoSelecionado].posicao : minhaFicha?.posicao;
         
         if (isMestre && alvoSelecionado && dummies[alvoSelecionado]) {
@@ -417,7 +533,10 @@ export function MapaFormProvider({ children }) {
         } else {
             updateFicha((ficha) => {
                 if (!ficha.posicao) ficha.posicao = {};
-                ficha.posicao.x = x; ficha.posicao.y = y; ficha.posicao.z = z; ficha.posicao.cenaId = cenaRenderId; 
+                ficha.posicao.x = x;
+                ficha.posicao.y = y;
+                ficha.posicao.z = z;
+                ficha.posicao.cenaId = cenaRenderId; 
             });
             salvarFichaSilencioso();
             processarEntradaNaZona(oldPos, x, y, z, meuNome, false, null, null);
@@ -425,23 +544,49 @@ export function MapaFormProvider({ children }) {
     }, [isMestre, alvoSelecionado, dummies, cenaRenderId, altitudeInput, updateFicha, processarEntradaNaZona, meuNome, minhaFicha]);
 
     const alterarZoom = useCallback((direcao) => {
-        setTamanhoCelula(prev => { let novo = prev + (direcao > 0 ? 5 : -5); if (novo < 15) novo = 15; if (novo > 80) novo = 80; return novo; });
+        setTamanhoCelula(prev => {
+            let novo = prev + (direcao > 0 ? 5 : -5);
+            if (novo < 15) novo = 15;
+            if (novo > 80) novo = 80;
+            return novo;
+        });
     }, []);
 
     const setMinhaIniciativa = useCallback(() => {
         const val = parseInt(iniciativaInput) || 0;
-        updateFicha((ficha) => { ficha.iniciativa = val; if (!ficha.posicao) ficha.posicao = {}; ficha.posicao.cenaId = cenaRenderId; });
+        updateFicha((ficha) => {
+            ficha.iniciativa = val;
+            if (!ficha.posicao) ficha.posicao = {};
+            ficha.posicao.cenaId = cenaRenderId; 
+        });
         salvarFichaSilencioso();
         setFeedIndexTurnoAtual(feedCombate.length); 
     }, [iniciativaInput, cenaRenderId, updateFicha, feedCombate.length]);
 
     const avancarTurno = useCallback(() => {
         if (ordemIniciativa.length === 0) return;
+        
         let nextIndex = turnoAtualIndex + 1;
         if (nextIndex >= ordemIniciativa.length) nextIndex = 0;
+        
         const nextPlayer = ordemIniciativa[nextIndex];
         
-        setTurnoAtualIndex(nextIndex); setFeedIndexTurnoAtual(feedCombate.length); setJogadorHistory(null);
+        setTurnoAtualIndex(nextIndex);
+        setFeedIndexTurnoAtual(feedCombate.length);
+        setJogadorHistory(null);
+
+        // RECUPERAÇÃO DE AÇÕES AUTOMÁTICA (APENAS PARA DUMMIES QUANDO O MESTRE PASSA O TURNO)
+        if (nextPlayer.isDummie && isMestre) {
+            const storeState = useStore.getState();
+            const dData = storeState.dummies[nextPlayer.id];
+            if (dData && dData.acoes) {
+                const acoes = JSON.parse(JSON.stringify(dData.acoes));
+                if (acoes.padrao) acoes.padrao.atual = acoes.padrao.max;
+                if (acoes.bonus) acoes.bonus.atual = acoes.bonus.max;
+                if (acoes.reacao) acoes.reacao.atual = acoes.reacao.max;
+                salvarDummie(nextPlayer.id, { ...dData, acoes });
+            }
+        }
 
         const storeState = useStore.getState();
         const cenarioAtual = storeState.cenario;
@@ -449,40 +594,81 @@ export function MapaFormProvider({ children }) {
         if (cenarioAtual?.zonas && cenarioAtual.zonas.length > 0) {
             const novoCenario = JSON.parse(JSON.stringify(cenarioAtual));
             let mudouCenario = false;
+            
             novoCenario.zonas = novoCenario.zonas.filter(z => {
                 if (z.conjurador === nextPlayer.nome) {
-                    z.duracao -= 1; mudouCenario = true;
-                    if (z.duracao > 0 && z.danoOriginal) dispararEfeitoDaZona(z);
+                    z.duracao -= 1;
+                    mudouCenario = true;
+                    
+                    if (z.duracao > 0 && z.danoOriginal) {
+                        dispararEfeitoDaZona(z);
+                    }
+                    
                     return z.duracao > 0;
                 }
                 return true; 
             });
-            if (mudouCenario) salvarCenarioCompleto(novoCenario);
+            
+            if (mudouCenario) {
+                salvarCenarioCompleto(novoCenario);
+            }
         }
-    }, [ordemIniciativa, turnoAtualIndex, feedCombate.length, dispararEfeitoDaZona]);
+    }, [ordemIniciativa, turnoAtualIndex, feedCombate.length, dispararEfeitoDaZona, isMestre]);
 
-    const sairDoCombate = useCallback(() => { updateFicha(ficha => { ficha.iniciativa = 0; }); setIniciativaInput(0); salvarFichaSilencioso(); setJogadorHistory(null); }, [updateFicha]);
+    const sairDoCombate = useCallback(() => {
+        updateFicha(ficha => { ficha.iniciativa = 0; });
+        setIniciativaInput(0);
+        salvarFichaSilencioso();
+        setJogadorHistory(null);
+    }, [updateFicha]);
 
+    // 🔥 FIX: ENCERRAR COMBATE AGORA ZERA OS DUMMIES TAMBÉM 🔥
     const encerrarCombate = useCallback(() => {
-        if (!window.confirm(`Zerar a iniciativa de TODOS na cena "${cenaAtual.nome}"?`)) return;
+        if (!window.confirm(`Tem a certeza que deseja ZERAR A INICIATIVA DE TODOS OS JOGADORES E ENTIDADES presentes na cena "${cenaAtual.nome}"?`)) return;
         enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `⚔️ O COMBATE EM ${cenaAtual.nome.toUpperCase()} FOI ENCERRADO PELO MESTRE! ⚔️` });
-        zerarIniciativaGlobal(ordemIniciativa.map(j => j.nome));
-        updateFicha(ficha => { ficha.iniciativa = 0; }); setIniciativaInput(0); salvarFichaSilencioso(); setJogadorHistory(null); setTurnoAtualIndex(0);
+        
+        // Zera os jogadores
+        const nomesNaCena = ordemIniciativa.filter(j => !j.isDummie).map(j => j.nome);
+        if (nomesNaCena.length > 0) zerarIniciativaGlobal(nomesNaCena);
+
+        // Zera os dummies locais do Mestre
+        const storeState = useStore.getState();
+        ordemIniciativa.filter(j => j.isDummie).forEach(d => {
+            const dData = storeState.dummies[d.id];
+            if (dData) salvarDummie(d.id, { ...dData, iniciativa: 0 });
+        });
+
+        updateFicha(ficha => { ficha.iniciativa = 0; });
+        setIniciativaInput(0);
+        salvarFichaSilencioso();
+        setJogadorHistory(null);
+        setTurnoAtualIndex(0);
     }, [cenaAtual.nome, ordemIniciativa, updateFicha]);
 
     const rolarAcertoRapido = useCallback(() => {
-        const qD = parseInt(mapQD) || 1; const fD = parseInt(mapFD) || 20; const bonus = parseInt(mapBonus) || 0; const prof = mapUsarProf ? profGlobal : 0;
-        const sels = [mapStat]; const itensEq = fichaSegura?.inventario ? fichaSegura.inventario.filter(i => i.equipado) : [];
-        const result = calcularAcerto({ qD, fD, prof, bonus, sels, minhaFicha: fichaSegura, itensEquipados: itensEq, vantagens: mapVantagens, desvantagens: mapDesvantagens });
+        const qD = parseInt(mapQD) || 1;
+        const fD = parseInt(mapFD) || 20;
+        const bonus = parseInt(mapBonus) || 0;
+        const prof = mapUsarProf ? profGlobal : 0;
+        const sels = [mapStat]; 
+        const itensEq = fichaSegura?.inventario ? fichaSegura.inventario.filter(i => i.equipado) : [];
 
-        let alvosAtingidos = []; let maxArea = 0;
+        const result = calcularAcerto({ 
+            qD, fD, prof, bonus, sels, minhaFicha: fichaSegura, itensEquipados: itensEq, 
+            vantagens: mapVantagens, desvantagens: mapDesvantagens 
+        });
+
+        let alvosAtingidos = [];
+        let maxArea = 0;
         const alvoDummie = alvoSelecionado && dummies[alvoSelecionado] ? dummies[alvoSelecionado] : null;
 
         if (alvoDummie) {
             const armasEqMap = itensEq.filter(i => i.tipo === 'arma');
             const maxAreaArmas = armasEqMap.length > 0 ? Math.max(...armasEqMap.map(a => a.areaQuad || a.area || 0)) : 0;
+            
             const podAtMap = (fichaSegura?.poderes || []).filter(p => p.ativa);
             const maxAreaPoderes = podAtMap.length > 0 ? Math.max(...podAtMap.map(p => p.areaQuad || p.area || 0)) : 0;
+            
             const magiasEqMap = (fichaSegura?.ataquesElementais || []).filter(m => m.equipado);
             const maxAreaMagias = magiasEqMap.length > 0 ? Math.max(...magiasEqMap.map(m => m.areaQuad || 0)) : 0;
 
@@ -495,38 +681,53 @@ export function MapaFormProvider({ children }) {
                 Object.entries(dummies).forEach(([id, dObj]) => {
                     const isSameScene = (dObj.cenaId || 'default') === (alvoDummie.cenaId || 'default');
                     if (isSameScene && dObj.posicao && alvoDummie.posicao) {
-                        const dX = Math.abs(dObj.posicao.x - alvoDummie.posicao.x); const dY = Math.abs(dObj.posicao.y - alvoDummie.posicao.y); const dZ = Math.floor(Math.abs((dObj.posicao.z || 0) - (alvoDummie.posicao.z || 0)) / escala);
-                        if (Math.max(dX, dY, dZ) <= maxArea) alvosAtingidos.push({ nome: dObj.nome, defesa: dObj.valorDefesa, acertou: result.acertoTotal >= dObj.valorDefesa });
+                        const dX = Math.abs(dObj.posicao.x - alvoDummie.posicao.x);
+                        const dY = Math.abs(dObj.posicao.y - alvoDummie.posicao.y);
+                        const dZ = Math.floor(Math.abs((dObj.posicao.z || 0) - (alvoDummie.posicao.z || 0)) / escala);
+                        
+                        if (Math.max(dX, dY, dZ) <= maxArea) {
+                            alvosAtingidos.push({ nome: dObj.nome, defesa: dObj.valorDefesa, acertou: result.acertoTotal >= dObj.valorDefesa });
+                        }
                     }
                 });
-            } else { alvosAtingidos.push({ nome: alvoDummie.nome, defesa: alvoDummie.valorDefesa, acertou: result.acertoTotal >= alvoDummie.valorDefesa }); }
+            } else {
+                alvosAtingidos.push({ nome: alvoDummie.nome, defesa: alvoDummie.valorDefesa, acertou: result.acertoTotal >= alvoDummie.valorDefesa });
+            }
         }
-        enviarParaFeed({ tipo: 'acerto', nome: meuNome, ...result, alvosArea: alvosAtingidos, areaEf: maxArea }); 
+
+        const feedData = { tipo: 'acerto', nome: meuNome, ...result, alvosArea: alvosAtingidos, areaEf: maxArea };
+        enviarParaFeed(feedData); 
     }, [mapQD, mapFD, mapBonus, mapUsarProf, profGlobal, mapStat, fichaSegura, mapVantagens, mapDesvantagens, alvoSelecionado, dummies, meuNome, cenario]);
 
     const tokenMap = useMemo(() => {
         const map = {};
         const nomes = Object.keys(jogadores);
         for (let i = 0; i < nomes.length; i++) {
-            const nome = nomes[i]; const pos = jogadores[nome].posicao; const pCena = pos?.cenaId || 'default'; 
+            const nome = nomes[i];
+            const pos = jogadores[nome].posicao;
+            const pCena = pos?.cenaId || 'default'; 
             if (pos && pos.x !== undefined && pCena === cenaRenderId) {
                 const key = `${pos.x},${pos.y}`;
-                if (!map[key]) map[key] = []; map[key].push({ nome, ficha: jogadores[nome] });
+                if (!map[key]) map[key] = [];
+                map[key].push({ nome, ficha: jogadores[nome] });
             }
         }
         return map;
     }, [jogadores, cenaRenderId]);
 
     const tokens3D = useMemo(() => {
-        return Object.entries(jogadores).filter(([nome, ficha]) => (ficha.posicao?.cenaId || 'default') === cenaRenderId)
-            .map(([nome, ficha]) => ({ nome, x: ficha.posicao?.x || 0, y: ficha.posicao?.y || 0, z: ficha.posicao?.z || 0, cor: corDoJogador(nome) }));
+        return Object.entries(jogadores)
+            .filter(([nome, ficha]) => (ficha.posicao?.cenaId || 'default') === cenaRenderId)
+            .map(([nome, ficha]) => ({
+                nome, x: ficha.posicao?.x || 0, y: ficha.posicao?.y || 0, z: ficha.posicao?.z || 0, cor: corDoJogador(nome)
+            }));
     }, [jogadores, cenaRenderId, corDoJogador]);
 
     const jogadorDaVez = ordemIniciativa.length > 0 ? ordemIniciativa[turnoAtualIndex % ordemIniciativa.length] : null;
     const infoDaVez = jogadorDaVez ? getAvatarInfo(jogadorDaVez.ficha) : null;
 
     const value = useMemo(() => ({
-        minhaFicha, meuNome, personagens, feedCombate, isMestre, dummies, alvoSelecionado, cenario,
+        minhaFicha, meuNome, personagens, feedCombate, isMestre, dummies, alvoSelecionado, cenario, abaAtiva,
         fichaSegura, modo3D, setModo3D, tamanhoCelula, setTamanhoCelula,
         iniciativaInput, setIniciativaInput, altitudeInput, setAltitudeInput,
         turnoAtualIndex, setTurnoAtualIndex, feedIndexTurnoAtual, setFeedIndexTurnoAtual,
@@ -542,9 +743,9 @@ export function MapaFormProvider({ children }) {
         handleUploadNovaCena, ativarCena, deletarCena, corDoJogador, getAvatarInfo,
         cells, jogadores, playersNaTaverna, ordemIniciativa, handleCellClick,
         alterarZoom, setMinhaIniciativa, avancarTurno, sairDoCombate, encerrarCombate,
-        rolarAcertoRapido, tokenMap, tokens3D, jogadorDaVez, infoDaVez, fmt, deletarZona
+        rolarAcertoRapido, tokenMap, tokens3D, jogadorDaVez, infoDaVez, fmt, deletarZona, toggleActionDot
     }), [
-        minhaFicha, meuNome, personagens, feedCombate, isMestre, dummies, alvoSelecionado, cenario,
+        minhaFicha, meuNome, personagens, feedCombate, isMestre, dummies, alvoSelecionado, cenario, abaAtiva,
         fichaSegura, modo3D, tamanhoCelula, iniciativaInput, altitudeInput,
         turnoAtualIndex, feedIndexTurnoAtual, jogadorHistory, mapQD, mapFD,
         mapBonus, mapStat, mapUsarProf, profGlobal, mapVantagens, mapDesvantagens,
@@ -555,7 +756,7 @@ export function MapaFormProvider({ children }) {
         jogadorDaVez, infoDaVez, fmt, toggleModoRP, togglePresencaTaverna, changeVantagem,
         changeDesvantagem, handleUploadNovaCena, ativarCena, deletarCena, corDoJogador,
         getAvatarInfo, handleCellClick, alterarZoom, setMinhaIniciativa, avancarTurno,
-        sairDoCombate, encerrarCombate, rolarAcertoRapido, deletarZona
+        sairDoCombate, encerrarCombate, rolarAcertoRapido, deletarZona, toggleActionDot
     ]);
 
     return (
