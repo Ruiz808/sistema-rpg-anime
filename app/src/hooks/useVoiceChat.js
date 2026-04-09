@@ -12,20 +12,18 @@ function encontrarMelhorMic(audioInputs) {
     return audioInputs[0]?.deviceId || null;
 }
 
-// AS REGRAS SUPREMAS ANTI-ECO DO GOOGLE CHROME
 const getAudioConstraints = (deviceId, supressor) => ({
     deviceId: deviceId ? { exact: deviceId } : undefined,
     echoCancellation: true,
     noiseSuppression: supressor,
     autoGainControl: true,
-    // Comandos forçados para o motor WebRTC do Chromium
     googEchoCancellation: true,
     googExperimentalEchoCancellation: true,
     googNoiseSuppression: supressor,
     googExperimentalNoiseSuppression: supressor,
     googHighpassFilter: true,
     googTypingNoiseDetection: true,
-    googAudioMirroring: false // Impede que o Chrome espelhe o som do sistema
+    googAudioMirroring: false
 });
 
 export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
@@ -35,8 +33,13 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
     const [conexoes, setConexoes] = useState([]);
 
     const [voiceStatus, setVoiceStatus] = useState('Fora da Taverna');
+    
+    // ESTADOS SEPARADOS PARA ENTRADA E SAÍDA
     const [mics, setMics] = useState([]);
+    const [speakers, setSpeakers] = useState([]);
     const [selectedMic, setSelectedMic] = useState('');
+    const [selectedSpeaker, setSelectedSpeaker] = useState('');
+
     const [mutado, setMutado] = useState(false);
     const [surdo, setSurdo] = useState(false);
     const [supressorAtivo, setSupressorAtivo] = useState(true);
@@ -82,11 +85,11 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
         return () => novoPeer.destroy();
     }, [meuIDTelefone]);
 
-    // 2. LIGAR O MICROFONE COM OS FILTROS ANTI-ECO
+    // 2. LIGAR MICROFONE E LER SAÍDAS DE ÁUDIO
     useEffect(() => {
         if (isPresenteNaTaverna && !rtcLigado.current) {
             rtcLigado.current = true;
-            setVoiceStatus('A ligar Microfone...');
+            setVoiceStatus('A ligar Equipamentos...');
 
             navigator.mediaDevices.getUserMedia({
                 audio: getAudioConstraints(null, supressorAtivoRef.current)
@@ -102,35 +105,43 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
                 
                 setVoiceStatus('Online na Taverna!');
 
+                // MAPEIA ENTRADAS E SAÍDAS
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 const audioInputs = devices.filter(d => d.kind === 'audioinput');
+                const audioOutputs = devices.filter(d => d.kind === 'audiooutput');
+                
                 setMics(audioInputs);
+                setSpeakers(audioOutputs);
 
+                // SELECIONA PADRÕES
                 const bestMicId = encontrarMelhorMic(audioInputs);
-                if (!bestMicId) return;
+                if (bestMicId) setSelectedMic(bestMicId);
+                if (audioOutputs.length > 0) setSelectedSpeaker(audioOutputs[0].deviceId);
 
-                setSelectedMic(bestMicId);
                 const currentDeviceId = stream.getAudioTracks()[0]?.getSettings()?.deviceId;
                 if (currentDeviceId && currentDeviceId === bestMicId) return; 
 
-                try {
-                    const correctStream = await navigator.mediaDevices.getUserMedia({
-                        audio: getAudioConstraints(bestMicId, supressorAtivoRef.current)
-                    });
-                    stream.getTracks().forEach(t => t.stop());
-                    meuStreamRef.current = correctStream;
-                    setMeuStream(correctStream);
-                    
-                    const newTrack = correctStream.getAudioTracks()[0];
-                    if (newTrack) {
-                        const newClone = newTrack.clone();
-                        setStreamAnalisador(new MediaStream([newClone]));
+                // TROCA PARA O MICROFONE CERTO SE NECESSÁRIO
+                if (bestMicId) {
+                    try {
+                        const correctStream = await navigator.mediaDevices.getUserMedia({
+                            audio: getAudioConstraints(bestMicId, supressorAtivoRef.current)
+                        });
+                        stream.getTracks().forEach(t => t.stop());
+                        meuStreamRef.current = correctStream;
+                        setMeuStream(correctStream);
+                        
+                        const newTrack = correctStream.getAudioTracks()[0];
+                        if (newTrack) {
+                            const newClone = newTrack.clone();
+                            setStreamAnalisador(new MediaStream([newClone]));
+                        }
+                    } catch (err) {
+                        console.warn('Não foi possível forçar o mic preferido:', err);
                     }
-                } catch (err) {
-                    console.warn('Não foi possível trocar para o mic preferido:', err);
                 }
             }).catch(() => {
-                setVoiceStatus('Microfone Bloqueado! Permitir acesso.');
+                setVoiceStatus('Microfone Bloqueado! Permita no cadeado.');
                 rtcLigado.current = false;
             });
 
@@ -147,7 +158,7 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
         }
     }, [isPresenteNaTaverna, supressorAtivo]);
 
-    // 3. AUTO-DIALER ANTI-COLISÃO
+    // 3. AUTO-DIALER
     const fazerChamada = useCallback((nomeDestino) => {
         if (!peerObj || !meuStreamRef.current || !nomeDestino) return;
         const idFormatado = `anime-rpg-${(nomeDestino || '').toLowerCase().replace(/[^a-z0-9]/g, '')}`;
@@ -186,7 +197,7 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
         return () => clearInterval(interval);
     }, [tavernaAtivos, peerObj, isPresenteNaTaverna, meuNome, fazerChamada]);
 
-    // 4. TROCA DE MICROFONE SEGURA
+    // 4. TROCA DE EQUIPAMENTOS
     const trocarMicrofone = useCallback(async (deviceId) => {
         try {
             setSelectedMic(deviceId);
@@ -219,6 +230,10 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
         } catch (err) { console.error("Erro ao trocar mic:", err); }
     }, [peerObj, streamAnalisador]);
 
+    const trocarSpeaker = useCallback((deviceId) => {
+        setSelectedSpeaker(deviceId);
+    }, []);
+
     const toggleMute = useCallback(() => {
         setMutado(prev => {
             const isMutedNow = !prev;
@@ -232,7 +247,9 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
     const toggleDeafen = useCallback(() => setSurdo(s => !s), []);
 
     return {
-        meuStream, streamAnalisador, conexoes, mutado, surdo, voiceStatus, mics, selectedMic,
-        supressorAtivo, toggleMute, toggleDeafen, trocarMicrofone, setSupressorAtivo, fazerChamada
+        meuStream, streamAnalisador, conexoes, mutado, surdo, voiceStatus, 
+        mics, selectedMic, trocarMicrofone, 
+        speakers, selectedSpeaker, trocarSpeaker,
+        supressorAtivo, toggleMute, toggleDeafen, setSupressorAtivo, fazerChamada
     };
 }

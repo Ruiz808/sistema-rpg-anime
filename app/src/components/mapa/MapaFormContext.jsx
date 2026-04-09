@@ -1,566 +1,986 @@
-import React, { createContext, useContext, useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom'; 
+import { useMapaForm, urlSeguraParaCss, calcularCA, MAP_SIZE } from './MapaFormContext';
+import { useVoiceChat } from '../../hooks/useVoiceChat'; 
+import Tabuleiro3D from './Tabuleiro3D';
+import DummieToken from '../combat/DummieToken';
+import { salvarDummie, salvarCenarioCompleto, enviarParaFeed, salvarFichaSilencioso } from '../../services/firebase-sync'; 
+import { getClassIconById } from '../../core/classIcons';
 import useStore from '../../stores/useStore';
-import { salvarFichaSilencioso, enviarParaFeed, salvarDummie, uploadImagem, salvarCenarioCompleto, zerarIniciativaGlobal } from '../../services/firebase-sync';
-import { calcularAcerto } from '../../core/engine';
-import { resolverEfeitosEntidade } from '../../core/efeitos-resolver';
-import { getBuffs } from '../../core/attributes';
 
-export const MAP_SIZE = 30;
-export const PALETA = ['#ff003c', '#0088ff', '#00ff88', '#ffcc00', '#ff00ff', '#00ffff', '#ff8800', '#88ff00'];
+const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Mapa provider não encontrado</div>;
 
-export function urlSeguraParaCss(url) {
-    if (!url || typeof url !== 'string') return '';
-    const trimmed = url.trim();
-    if (!/^https?:\/\//i.test(trimmed) && !/^data:image\//i.test(trimmed)) return '';
-    return `url("${trimmed.replace(/["\\)]/g, '')}")`;
-}
-
-export function calcularCA(ficha, tipo) {
-    if (!ficha) return 10;
-    const getDoisDigitos = (valor) => {
-        if (!valor) return 0;
-        const strVal = String(valor).replace(/[^0-9]/g, '');
-        if (!strVal) return 0;
-        return parseInt(strVal.substring(0, 2), 10);
-    };
-    let base = 5;
-    if (tipo === 'evasiva') base += getDoisDigitos(ficha.destreza?.base);
-    if (tipo === 'resistencia') base += getDoisDigitos(ficha.forca?.base);
-
-    let bonus = 0;
-    const somarBonus = (efeitos) => {
-        (efeitos || []).forEach(e => {
-            if (e && e.atributo === tipo && e.propriedade === 'base') bonus += parseFloat(e.valor) || 0;
-        });
-    };
-
-    (ficha.poderes || []).forEach(p => {
-        let resolved = resolverEfeitosEntidade(p);
-        if (p.ativa) somarBonus(resolved.efeitos);
-        somarBonus(resolved.efeitosPassivos);
-    });
-    (ficha.passivas || []).forEach(p => { somarBonus(p.efeitos); });
-    (ficha.inventario || []).filter(i => i.equipado).forEach(i => {
-        let resolved = resolverEfeitosEntidade(i);
-        somarBonus(resolved.efeitos);
-        somarBonus(resolved.efeitosPassivos);
-    });
-
-    return Math.floor(base + bonus);
-}
-
-const MapaFormContext = createContext(null);
-
-export function useMapaForm() {
-    const ctx = useContext(MapaFormContext);
-    if (!ctx) return null;
-    return ctx;
-}
-
-export function MapaFormProvider({ children }) {
-    const { minhaFicha, meuNome, personagens, updateFicha, feedCombate = [], isMestre, dummies, alvoSelecionado, cenario } = useStore();
-    const fichaSegura = minhaFicha || {};
-
-    const [modo3D, setModo3D] = useState(false);
-    const [tamanhoCelula, setTamanhoCelula] = useState(35);
-    const [iniciativaInput, setIniciativaInput] = useState(() => fichaSegura.iniciativa || 0);
-    const [altitudeInput, setAltitudeInput] = useState(() => fichaSegura.posicao?.z || 0);
-    const [turnoAtualIndex, setTurnoAtualIndex] = useState(0);
-    const [feedIndexTurnoAtual, setFeedIndexTurnoAtual] = useState(0);
-    const [jogadorHistory, setJogadorHistory] = useState(null);
-
-    const [mapQD, setMapQD] = useState(1);
-    const [mapFD, setMapFD] = useState(20);
-    const [mapBonus, setMapBonus] = useState(0);
-    const [mapStat, setMapStat] = useState('destreza');
-    const [mapUsarProf, setMapUsarProf] = useState(false);
-    const profGlobal = parseInt(fichaSegura.proficienciaBase) || 0;
+// ============================================================================
+// 🔥 REPRODUTOR NATIVO (COM SELETOR DE SAÍDA DE FONES) 🔥
+// ============================================================================
+function PlayerDeAudioRemoto({ stream, volume, surdo, nome, sinkId }) {
+    const audioRef = useRef(null);
     
-    const [mapVantagens, setMapVantagens] = useState(() => fichaSegura.ataqueConfig?.vantagens || 0);
-    const [mapDesvantagens, setMapDesvantagens] = useState(() => fichaSegura.ataqueConfig?.desvantagens || 0);
-    
-    const [novaCenaNome, setNovaCenaNome] = useState('');
-    const [novaCenaEscala, setNovaCenaEscala] = useState(1.5);
-    const [novaCenaUnidade, setNovaCenaUnidade] = useState('m');
-    const [uploadingMap, setUploadingMap] = useState(false);
-
-    const [dadoAnim, setDadoAnim] = useState({ ativo: false, numero: 20, finalResult: null, cor: '#00ffcc', quemRolou: '' });
-    const prevFeedLen = useRef(feedCombate.length);
-
-    const [cenaVisualizadaId, setCenaVisualizadaId] = useState(null);
-    const cenaAtivaIdGlobal = cenario?.ativa || 'default';
-    const cenaRenderId = (isMestre && cenaVisualizadaId) ? cenaVisualizadaId : cenaAtivaIdGlobal;
-    const cenaAtual = cenario?.lista?.[cenaRenderId] || { nome: 'Desconhecido', img: '', escala: 1.5, unidade: 'm' };
-
-    const isModoRP = cenario?.modoRP === true;
-    const [mestreVendoRP, setMestreVendoRP] = useState(false);
-    
-    const tavernaAtivos = Array.isArray(cenario?.tavernaAtivos) ? cenario.tavernaAtivos : [];
-    const isPresenteNaTaverna = tavernaAtivos.includes(meuNome);
-
-    const toggleModoRP = useCallback(() => {
-        const novoCenario = JSON.parse(JSON.stringify(cenario || {}));
-        novoCenario.modoRP = !novoCenario.modoRP;
-        if (!novoCenario.modoRP) novoCenario.tavernaAtivos = [];
-        salvarCenarioCompleto(novoCenario);
-        enviarParaFeed({ 
-            tipo: 'sistema', nome: 'SISTEMA', 
-            texto: novoCenario.modoRP ? '🍻 A Party entrou na Sala de Espera! O Mestre está a moldar a realidade...' : '🌍 O VÉU FOI LEVANTADO! A REALIDADE É REVELADA!' 
-        });
-    }, [cenario]);
-
-    const togglePresencaTaverna = useCallback(() => {
-        const novoCenario = JSON.parse(JSON.stringify(cenario || {}));
-        if (!Array.isArray(novoCenario.tavernaAtivos)) novoCenario.tavernaAtivos = [];
-        if (isPresenteNaTaverna) novoCenario.tavernaAtivos = novoCenario.tavernaAtivos.filter(n => n !== meuNome);
-        else novoCenario.tavernaAtivos.push(meuNome);
-        salvarCenarioCompleto(novoCenario);
-    }, [cenario, isPresenteNaTaverna, meuNome]);
-
-    const overridesCompendio = useMemo(() => {
-        if (!minhaFicha) return {};
-        if (isMestre && minhaFicha.compendioOverrides) return minhaFicha.compendioOverrides;
-        if (personagens) {
-            const chaves = Object.keys(personagens);
-            for(let k of chaves) { if (personagens[k]?.compendioOverrides) return personagens[k].compendioOverrides; }
+    useEffect(() => {
+        if (audioRef.current && stream && audioRef.current.srcObject !== stream) {
+            audioRef.current.srcObject = stream;
+            audioRef.current.play().catch(e => console.warn(`Clique na tela para ouvir ${nome}`));
         }
-        return {};
-    }, [isMestre, minhaFicha, personagens]);
+    }, [stream, nome]);
+    
+    useEffect(() => {
+        if (audioRef.current) audioRef.current.volume = surdo ? 0 : Math.min(1, Math.max(0, volume));
+    }, [volume, surdo]);
+
+    // O SEGREDO ANTI-ECO: Força o áudio a sair nos fones selecionados!
+    useEffect(() => {
+        if (audioRef.current && sinkId && typeof audioRef.current.setSinkId === 'function') {
+            audioRef.current.setSinkId(sinkId).catch(err => console.log('O navegador bloqueou a troca de saída:', err));
+        }
+    }, [sinkId]);
+
+    return <audio ref={audioRef} autoPlay playsInline style={{ display: 'none' }} />;
+}
+
+// ============================================================================
+// 🔥 A CARTA DE AVATAR (COM NEON SEGURO)
+// ============================================================================
+function AvatarCardVoz({ nome, info, ficha, isMe, isConnected, streamParaTocar, streamAnalisador, mutado, surdo, fazerChamada, cardSize, fmt, selectedSpeaker }) {
+    const [isSpeaking, setIsSpeaking] = useState(false);
+    const [volume, setVolume] = useState(() => {
+        const saved = localStorage.getItem(`rpg_vol_${nome}`);
+        return saved !== null ? parseFloat(saved) : 1; 
+    });
+    
+    useEffect(() => { localStorage.setItem(`rpg_vol_${nome}`, volume); }, [volume, nome]);
 
     useEffect(() => {
-        if (feedCombate.length > prevFeedLen.current) {
-            const newItem = feedCombate[feedCombate.length - 1];
-            if (newItem && newItem.rolagem && (newItem.tipo === 'acerto' || newItem.tipo === 'dano')) {
-                let rawRoll = 0;
-                let regexStrong = /<strong>(\d+)<\/strong>/g;
-                let match;
-                while ((match = regexStrong.exec(newItem.rolagem)) !== null) {
-                    let v = parseInt(match[1]);
-                    if (v > rawRoll) rawRoll = v;
-                }
-                if (rawRoll === 0) { 
-                    let regexArr = /\[(.*?)\]/;
-                    let mArr = regexArr.exec(newItem.rolagem);
-                    if (mArr) {
-                        let clean = mArr[1].replace(/<[^>]*>?/gm, ''); 
-                        let nums = clean.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n));
-                        if (nums.length > 0) rawRoll = Math.max(...nums);
-                    }
-                }
-                
-                if (rawRoll > 0) {
-                    let corFinal = '#0088ff'; 
-                    if (newItem.tipo === 'dano') {
-                        if (newItem.armaStr?.includes('FATAL')) corFinal = '#ff003c'; 
-                        else if (newItem.armaStr?.includes('CRÍTICO')) corFinal = '#ffcc00'; 
-                    } else {
-                        if (rawRoll === 20) corFinal = '#ff003c'; 
-                        else if (rawRoll >= 18) corFinal = '#ffcc00'; 
-                        else if (rawRoll === 1) corFinal = '#660000'; 
-                    }
+        const targetStream = isMe ? streamAnalisador : streamParaTocar;
+        if (!targetStream) return;
 
-                    setDadoAnim({ ativo: true, numero: Math.floor(Math.random() * 20) + 1, finalResult: null, cor: '#00ffcc', quemRolou: newItem.nome });
-                    let intervalos = 0;
-                    const tempoGiro = setInterval(() => {
-                        setDadoAnim(prev => ({ ...prev, numero: Math.floor(Math.random() * 20) + 1 }));
-                        intervalos++;
-                        if (intervalos > 15) {
-                            clearInterval(tempoGiro);
-                            setDadoAnim({ ativo: true, numero: rawRoll, finalResult: rawRoll, cor: corFinal, quemRolou: newItem.nome });
-                            setTimeout(() => { setDadoAnim({ ativo: false, numero: 20, finalResult: null, cor: '#00ffcc', quemRolou: '' }); }, 2000);
-                        }
-                    }, 80);
-                }
-            }
-        }
-        prevFeedLen.current = feedCombate.length;
-    }, [feedCombate]);
+        let actx;
+        let raf;
 
-    useEffect(() => { setMapVantagens(fichaSegura.ataqueConfig?.vantagens || 0); setMapDesvantagens(fichaSegura.ataqueConfig?.desvantagens || 0); }, [fichaSegura.ataqueConfig?.vantagens, fichaSegura.ataqueConfig?.desvantagens]);
-    useEffect(() => { setAltitudeInput(fichaSegura.posicao?.z || 0); }, [fichaSegura.posicao?.z]);
-
-    const changeVantagem = useCallback((e) => {
-        const val = parseInt(e.target.value) || 0;
-        setMapVantagens(val);
-        updateFicha(f => { if(!f.ataqueConfig) f.ataqueConfig = {}; f.ataqueConfig.vantagens = val; });
-        salvarFichaSilencioso();
-    }, [updateFicha]);
-
-    const changeDesvantagem = useCallback((e) => {
-        const val = parseInt(e.target.value) || 0;
-        setMapDesvantagens(val);
-        updateFicha(f => { if(!f.ataqueConfig) f.ataqueConfig = {}; f.ataqueConfig.desvantagens = val; });
-        salvarFichaSilencioso();
-    }, [updateFicha]);
-
-    const handleUploadNovaCena = useCallback(async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        if (!novaCenaNome.trim()) return alert('Por favor, dê um nome à cena antes de anexar o mapa!');
-        setUploadingMap(true);
         try {
-            const urlPermanente = await uploadImagem(file, `mapas/${Date.now()}`);
-            const novaCenaId = 'cena_' + Date.now();
-            const novoCenario = JSON.parse(JSON.stringify(cenario));
-            if (!novoCenario.lista) novoCenario.lista = {};
-            novoCenario.lista[novaCenaId] = { nome: novaCenaNome, img: urlPermanente, escala: parseFloat(novaCenaEscala) || 1.5, unidade: novaCenaUnidade };
-            salvarCenarioCompleto(novoCenario);
-            setCenaVisualizadaId(novaCenaId);
-            enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `🗺️ O Mestre começou a preparar uma área desconhecida...` });
-            setNovaCenaNome('');
-        } catch (err) { alert('Erro ao enviar a imagem.'); } finally { setUploadingMap(false); }
-    }, [novaCenaNome, novaCenaEscala, novaCenaUnidade, cenario]);
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            actx = new AudioContext();
+            if (actx.state === 'suspended') actx.resume();
 
-    const ativarCena = useCallback((id) => {
-        const novoCenario = JSON.parse(JSON.stringify(cenario));
-        novoCenario.ativa = id;
-        salvarCenarioCompleto(novoCenario);
-        setCenaVisualizadaId(null); 
-        enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `🗺️ O cenário mudou para: ${novoCenario.lista[id].nome}!` });
-    }, [cenario]);
+            const source = actx.createMediaStreamSource(targetStream);
+            const analyser = actx.createAnalyser();
+            analyser.fftSize = 256;
+            analyser.smoothingTimeConstant = 0.4; 
+            source.connect(analyser); 
 
-    const deletarCena = useCallback((id) => {
-        if(id === 'default') return alert("A cena inicial não pode ser apagada.");
-        if(!window.confirm("Tem certeza que deseja apagar esta cena?")) return;
-        const novoCenario = JSON.parse(JSON.stringify(cenario));
-        delete novoCenario.lista[id];
-        if(novoCenario.ativa === id) novoCenario.ativa = 'default';
-        salvarCenarioCompleto(novoCenario);
-        if(cenaVisualizadaId === id) setCenaVisualizadaId(null);
-    }, [cenario, cenaVisualizadaId]);
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            const getLimiar = () => isMe ? (parseInt(localStorage.getItem('rpg_sensibilidade_voz')) || 10) : 5;
 
-    const coresJogadoresRef = useRef({});
-    const corIndexRef = useRef(0);
-    const corDoJogador = useCallback((nome) => {
-        if (!coresJogadoresRef.current[nome]) { coresJogadoresRef.current[nome] = PALETA[corIndexRef.current % PALETA.length]; corIndexRef.current++; }
-        return coresJogadoresRef.current[nome];
-    }, []);
-
-    const deletarZona = useCallback((idZona) => {
-        if(!window.confirm("Apagar a Zona de Efeito do mapa?")) return;
-        const novoCenario = JSON.parse(JSON.stringify(cenario));
-        novoCenario.zonas = (novoCenario.zonas || []).filter(z => z.id !== idZona);
-        salvarCenarioCompleto(novoCenario);
-    }, [cenario]);
-
-    const getAvatarInfo = useCallback((ficha) => {
-        if (!ficha) return { img: '', forma: null };
-        const result = { img: ficha.avatar ? ficha.avatar.base : '', forma: null };
-        if (ficha.poderes) {
-            for (let j = 0; j < ficha.poderes.length; j++) {
-                const p = ficha.poderes[j];
-                if (p.ativa && p.imagemUrl && p.imagemUrl.trim() !== '') { result.img = p.imagemUrl; result.forma = p.nome; }
-            }
+            const checkVolume = () => {
+                analyser.getByteFrequencyData(dataArray);
+                let sum = 0; for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+                setIsSpeaking((sum / dataArray.length) > getLimiar());
+                raf = requestAnimationFrame(checkVolume);
+            };
+            checkVolume();
+        } catch(err) {
+            console.warn("Erro no analisador visual do avatar:", err);
         }
-        return result;
-    }, []);
 
-    const fmt = useCallback((n) => Number(n || 0).toLocaleString('pt-BR'), []);
-
-    const cells = useMemo(() => {
-        const arr = [];
-        for (let y = 0; y < MAP_SIZE; y++) { for (let x = 0; x < MAP_SIZE; x++) { arr.push({ x, y }); } }
-        return arr;
-    }, []);
-
-    const jogadores = useMemo(() => {
-        const result = {};
-        if (meuNome && minhaFicha?.posicao && minhaFicha.posicao.x !== undefined) result[meuNome] = minhaFicha;
-        if (personagens) {
-            const nomes = Object.keys(personagens);
-            for (let i = 0; i < nomes.length; i++) {
-                const nome = nomes[i];
-                if (nome === meuNome) continue;
-                const ficha = personagens[nome];
-                if (ficha && ficha.posicao && ficha.posicao.x !== undefined) result[nome] = ficha;
-            }
-        }
-        return result;
-    }, [meuNome, minhaFicha, personagens]);
-
-    const playersNaTaverna = useMemo(() => {
-        return tavernaAtivos.map(nome => {
-            const f = (nome === meuNome) ? minhaFicha : personagens?.[nome];
-            return [nome, f];
-        }).filter(([n, f]) => f != null);
-    }, [tavernaAtivos, meuNome, minhaFicha, personagens]);
-
-    const ordemIniciativa = useMemo(() => {
-        const lista = [];
-        if (personagens) {
-            const nomes = Object.keys(personagens);
-            for (let i = 0; i < nomes.length; i++) {
-                const n = nomes[i];
-                const f = personagens[n];
-                const cenaDoJogador = f?.posicao?.cenaId || 'default';
-                if (f && f.iniciativa !== undefined && f.iniciativa > 0 && cenaDoJogador === cenaRenderId) {
-                    lista.push({ nome: n, ficha: f, iniciativa: f.iniciativa });
-                }
-            }
-        }
-        lista.sort((a, b) => b.iniciativa - a.iniciativa);
-        return lista;
-    }, [personagens, cenaRenderId]);
-
-    const getDanoDinamicoZona = useCallback((zona) => {
-        let baseResult = { dano: zona.danoOriginal || zona.danoAplicado || 0, letalidade: zona.letalidadeOriginal || 0 };
-        const storeState = useStore.getState();
-        const fichaCaster = (zona.conjurador === storeState.meuNome) ? storeState.minhaFicha : storeState.personagens?.[zona.conjurador];
-        if (!fichaCaster) return baseResult;
-        
-        const buffs = getBuffs(fichaCaster);
-        let maxFuria = 0; let danoBrutoAtual = 0; let letalidadeAtual = 0;
-        
-        const scan = (efs) => {
-            (efs || []).forEach(e => {
-                if (!e) return;
-                const prop = (e.propriedade || '').toLowerCase().trim();
-                if (prop === 'furia_berserker') { const v = parseFloat(e.valor) || 0; if (v > maxFuria) maxFuria = v; }
-                if (prop === 'dano_bruto' || prop === 'dano_verdadeiro') danoBrutoAtual += parseFloat(e.valor) || 0;
-                if (prop === 'letalidade') letalidadeAtual += parseFloat(e.valor) || 0;
-            });
+        return () => {
+            if (raf) cancelAnimationFrame(raf);
+            if (actx && actx.state !== 'closed') actx.close().catch(()=>{});
         };
-        
-        (fichaCaster.poderes || []).forEach(p => { if (p.ativa) scan(p.efeitos); scan(p.efeitosPassivos); });
-        (fichaCaster.inventario || []).forEach(i => { if (i.equipado) { scan(i.efeitos); scan(i.efeitosPassivos); } });
-        (fichaCaster.passivas || []).forEach(p => scan(p.efeitos));
-        
-        const furiaAtiva = maxFuria > 0 ? maxFuria : 1;
-        const multAtual = (buffs?.mbase || 1) * (buffs?.mgeral || 1) * (buffs?.mformas || 1) * (buffs?.mabs || 1) * furiaAtiva;
-        const baseMulti = zona.multiplicadorOriginal || 1;
-        
-        let somaStatusAtual = 0;
-        (zona.statusKeys || []).forEach(k => {
-            const str = String(fichaCaster[k]?.base || '').replace(/[^0-9]/g, '');
-            somaStatusAtual += parseInt(str.substring(0, 2), 10) || 0;
-        });
-        
-        const diffStatus = somaStatusAtual - (zona.somaStatusOriginal || somaStatusAtual);
-        const diffBruto = danoBrutoAtual - (zona.danoBrutoOriginal || danoBrutoAtual);
-        const diffLetalidade = letalidadeAtual - (zona.letalidadeOriginalBuffs || letalidadeAtual);
-        
-        const novoDanoBase = (zona.danoOriginal / baseMulti) + diffStatus + diffBruto;
-        const novoDano = Math.floor(novoDanoBase * multAtual);
-        
-        return { dano: novoDano > 0 ? novoDano : zona.danoOriginal, letalidade: (zona.letalidadeOriginal || 0) + diffLetalidade };
-    }, []);
+    }, [streamAnalisador, streamParaTocar, isMe]);
 
-    const dispararEfeitoDaZona = useCallback((zona) => {
-        const cenaAtivaId = cenario?.ativa || 'default';
-        const escala = cenario?.lista?.[cenaAtivaId]?.escala || 1.5;
-        const din = getDanoDinamicoZona(zona);
-        const danoAtual = din.dano;
-        const letalAtual = din.letalidade;
-        let hitLog = [];
+    let boxShadowCard = '0 0 15px rgba(0,0,0,0.8)';
+    let borderCard = '2px solid #333';
+    let iconMic = '⏳';
 
-        const checkHit = (pos, nome, isDummie, idDummie, dData) => {
-            if ((pos?.cenaId || 'default') !== (zona.cenaId || 'default')) return;
-            if (zona.alvosFiltro === 'inimigos' && !isDummie) return;
-            if (zona.alvosFiltro === 'aliados' && isDummie) return;
-
-            const dX = Math.abs(pos.x - zona.x); const dY = Math.abs(pos.y - zona.y); const dZ = Math.floor(Math.abs((pos.z || 0) - (zona.z || 0)) / escala);
-            
-            if (Math.max(dX, dY, dZ) <= zona.raio) {
-                hitLog.push(nome);
-                if (isDummie && idDummie && dData) salvarDummie(idDummie, { ...dData, hpAtual: Math.max(0, dData.hpAtual - danoAtual) });
-                else if (nome === meuNome) { updateFicha(f => { if (f.vida) f.vida.atual = Math.max(0, f.vida.atual - danoAtual); }); salvarFichaSilencioso(); }
-            }
-        };
-
-        Object.entries(dummies || {}).forEach(([id, d]) => checkHit(d.posicao, d.nome, true, id, d));
-        if (minhaFicha?.posicao) checkHit(minhaFicha.posicao, meuNome, false, null, null);
-        
-        if (hitLog.length > 0) {
-            const letalStr = letalAtual > 0 ? ` (+${letalAtual} Letalidade)` : '';
-            enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `🌪️ A Zona [${zona.nome}] castigou ${hitLog.join(', ')} com ${danoAtual} de Dano${letalStr}!` });
+    if (isConnected) {
+        if (isMe && mutado) { 
+            borderCard = '2px solid #ff003c'; boxShadowCard = '0 0 20px rgba(255,0,60,0.4)'; iconMic = '🔇'; 
+        } else if (isSpeaking) { 
+            borderCard = '2px solid #00ffcc'; boxShadowCard = '0 0 35px #00ffcc, inset 0 0 20px rgba(0,255,204,0.4)'; iconMic = '🔊'; 
+        } else if (!isMe && streamParaTocar) { 
+            borderCard = '2px solid #00aaff'; boxShadowCard = '0 0 20px rgba(0,170,255,0.4)'; iconMic = '🔊'; 
+        } else { 
+            borderCard = '2px solid #005588'; boxShadowCard = '0 0 10px rgba(0,85,136,0.5)'; iconMic = '🎙️'; 
         }
-    }, [cenario, getDanoDinamicoZona, dummies, minhaFicha, meuNome, updateFicha]);
-
-    const processarEntradaNaZona = useCallback((oldPos, newX, newY, newZ, entidadeNome, isDummie, idDummie, dData) => {
-        const cenaAtivaId = cenario?.ativa || 'default';
-        const escala = cenario?.lista?.[cenaAtivaId]?.escala || 1.5;
-        const zonasCena = (cenario?.zonas || []).filter(zo => (zo.cenaId || 'default') === cenaRenderId && zo.danoOriginal);
-        
-        zonasCena.forEach(zona => {
-            if (zona.alvosFiltro === 'inimigos' && !isDummie) return;
-            if (zona.alvosFiltro === 'aliados' && isDummie) return;
-
-            let estavaDentro = false;
-            if (oldPos && oldPos.x !== undefined) {
-                const oldDX = Math.abs(oldPos.x - zona.x); const oldDY = Math.abs(oldPos.y - zona.y); const oldDZ = Math.floor(Math.abs((oldPos.z || 0) - (zona.z || 0)) / escala);
-                estavaDentro = Math.max(oldDX, oldDY, oldDZ) <= zona.raio;
-            }
-
-            const dX = Math.abs(newX - zona.x); const dY = Math.abs(newY - zona.y); const dZ = Math.floor(Math.abs(newZ - (zona.z || 0)) / escala);
-            const estaDentro = Math.max(dX, dY, dZ) <= zona.raio;
-
-            if (!estavaDentro && estaDentro) {
-                const din = getDanoDinamicoZona(zona);
-                const danoAtual = din.dano; const letalAtual = din.letalidade;
-                const letalStr = letalAtual > 0 ? ` (+${letalAtual} Letalidade)` : '';
-                
-                enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `⚠️ ${entidadeNome} pisou na área de [${zona.nome}] e sofreu ${danoAtual} de Dano${letalStr} imediatamente!` });
-                if (isDummie && idDummie && dData) salvarDummie(idDummie, { ...dData, hpAtual: Math.max(0, dData.hpAtual - danoAtual) });
-                else if (entidadeNome === meuNome) { updateFicha(f => { if (f.vida) f.vida.atual = Math.max(0, f.vida.atual - danoAtual); }); salvarFichaSilencioso(); }
-            }
-        });
-    }, [cenario, cenaRenderId, meuNome, updateFicha, getDanoDinamicoZona]);
-
-    const handleCellClick = useCallback((x, y) => {
-        const z = parseInt(altitudeInput) || 0;
-        const oldPos = isMestre && alvoSelecionado && dummies[alvoSelecionado] ? dummies[alvoSelecionado].posicao : minhaFicha?.posicao;
-        
-        if (isMestre && alvoSelecionado && dummies[alvoSelecionado]) {
-            const d = dummies[alvoSelecionado];
-            salvarDummie(alvoSelecionado, { ...d, posicao: { x, y, z }, cenaId: cenaRenderId });
-            processarEntradaNaZona(oldPos, x, y, z, d.nome, true, alvoSelecionado, d);
-        } else {
-            updateFicha((ficha) => {
-                if (!ficha.posicao) ficha.posicao = {};
-                ficha.posicao.x = x; ficha.posicao.y = y; ficha.posicao.z = z; ficha.posicao.cenaId = cenaRenderId; 
-            });
-            salvarFichaSilencioso();
-            processarEntradaNaZona(oldPos, x, y, z, meuNome, false, null, null);
-        }
-    }, [isMestre, alvoSelecionado, dummies, cenaRenderId, altitudeInput, updateFicha, processarEntradaNaZona, meuNome, minhaFicha]);
-
-    const alterarZoom = useCallback((direcao) => {
-        setTamanhoCelula(prev => { let novo = prev + (direcao > 0 ? 5 : -5); if (novo < 15) novo = 15; if (novo > 80) novo = 80; return novo; });
-    }, []);
-
-    const setMinhaIniciativa = useCallback(() => {
-        const val = parseInt(iniciativaInput) || 0;
-        updateFicha((ficha) => { ficha.iniciativa = val; if (!ficha.posicao) ficha.posicao = {}; ficha.posicao.cenaId = cenaRenderId; });
-        salvarFichaSilencioso();
-        setFeedIndexTurnoAtual(feedCombate.length); 
-    }, [iniciativaInput, cenaRenderId, updateFicha, feedCombate.length]);
-
-    const avancarTurno = useCallback(() => {
-        if (ordemIniciativa.length === 0) return;
-        let nextIndex = turnoAtualIndex + 1;
-        if (nextIndex >= ordemIniciativa.length) nextIndex = 0;
-        const nextPlayer = ordemIniciativa[nextIndex];
-        
-        setTurnoAtualIndex(nextIndex); setFeedIndexTurnoAtual(feedCombate.length); setJogadorHistory(null);
-
-        const storeState = useStore.getState();
-        const cenarioAtual = storeState.cenario;
-
-        if (cenarioAtual?.zonas && cenarioAtual.zonas.length > 0) {
-            const novoCenario = JSON.parse(JSON.stringify(cenarioAtual));
-            let mudouCenario = false;
-            novoCenario.zonas = novoCenario.zonas.filter(z => {
-                if (z.conjurador === nextPlayer.nome) {
-                    z.duracao -= 1; mudouCenario = true;
-                    if (z.duracao > 0 && z.danoOriginal) dispararEfeitoDaZona(z);
-                    return z.duracao > 0;
-                }
-                return true; 
-            });
-            if (mudouCenario) salvarCenarioCompleto(novoCenario);
-        }
-    }, [ordemIniciativa, turnoAtualIndex, feedCombate.length, dispararEfeitoDaZona]);
-
-    const sairDoCombate = useCallback(() => { updateFicha(ficha => { ficha.iniciativa = 0; }); setIniciativaInput(0); salvarFichaSilencioso(); setJogadorHistory(null); }, [updateFicha]);
-
-    const encerrarCombate = useCallback(() => {
-        if (!window.confirm(`Zerar a iniciativa de TODOS na cena "${cenaAtual.nome}"?`)) return;
-        enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `⚔️ O COMBATE EM ${cenaAtual.nome.toUpperCase()} FOI ENCERRADO PELO MESTRE! ⚔️` });
-        zerarIniciativaGlobal(ordemIniciativa.map(j => j.nome));
-        updateFicha(ficha => { ficha.iniciativa = 0; }); setIniciativaInput(0); salvarFichaSilencioso(); setJogadorHistory(null); setTurnoAtualIndex(0);
-    }, [cenaAtual.nome, ordemIniciativa, updateFicha]);
-
-    const rolarAcertoRapido = useCallback(() => {
-        const qD = parseInt(mapQD) || 1; const fD = parseInt(mapFD) || 20; const bonus = parseInt(mapBonus) || 0; const prof = mapUsarProf ? profGlobal : 0;
-        const sels = [mapStat]; const itensEq = fichaSegura?.inventario ? fichaSegura.inventario.filter(i => i.equipado) : [];
-        const result = calcularAcerto({ qD, fD, prof, bonus, sels, minhaFicha: fichaSegura, itensEquipados: itensEq, vantagens: mapVantagens, desvantagens: mapDesvantagens });
-
-        let alvosAtingidos = []; let maxArea = 0;
-        const alvoDummie = alvoSelecionado && dummies[alvoSelecionado] ? dummies[alvoSelecionado] : null;
-
-        if (alvoDummie) {
-            const armasEqMap = itensEq.filter(i => i.tipo === 'arma');
-            const maxAreaArmas = armasEqMap.length > 0 ? Math.max(...armasEqMap.map(a => a.areaQuad || a.area || 0)) : 0;
-            const podAtMap = (fichaSegura?.poderes || []).filter(p => p.ativa);
-            const maxAreaPoderes = podAtMap.length > 0 ? Math.max(...podAtMap.map(p => p.areaQuad || p.area || 0)) : 0;
-            const magiasEqMap = (fichaSegura?.ataquesElementais || []).filter(m => m.equipado);
-            const maxAreaMagias = magiasEqMap.length > 0 ? Math.max(...magiasEqMap.map(m => m.areaQuad || 0)) : 0;
-
-            maxArea = Math.max(maxAreaArmas, maxAreaPoderes, maxAreaMagias);
-
-            if (maxArea > 0) {
-                const cenaAtivaId = cenario?.ativa || 'default';
-                const escala = cenario?.lista?.[cenaAtivaId]?.escala || 1.5;
-
-                Object.entries(dummies).forEach(([id, dObj]) => {
-                    const isSameScene = (dObj.cenaId || 'default') === (alvoDummie.cenaId || 'default');
-                    if (isSameScene && dObj.posicao && alvoDummie.posicao) {
-                        const dX = Math.abs(dObj.posicao.x - alvoDummie.posicao.x); const dY = Math.abs(dObj.posicao.y - alvoDummie.posicao.y); const dZ = Math.floor(Math.abs((dObj.posicao.z || 0) - (alvoDummie.posicao.z || 0)) / escala);
-                        if (Math.max(dX, dY, dZ) <= maxArea) alvosAtingidos.push({ nome: dObj.nome, defesa: dObj.valorDefesa, acertou: result.acertoTotal >= dObj.valorDefesa });
-                    }
-                });
-            } else { alvosAtingidos.push({ nome: alvoDummie.nome, defesa: alvoDummie.valorDefesa, acertou: result.acertoTotal >= alvoDummie.valorDefesa }); }
-        }
-        enviarParaFeed({ tipo: 'acerto', nome: meuNome, ...result, alvosArea: alvosAtingidos, areaEf: maxArea }); 
-    }, [mapQD, mapFD, mapBonus, mapUsarProf, profGlobal, mapStat, fichaSegura, mapVantagens, mapDesvantagens, alvoSelecionado, dummies, meuNome, cenario]);
-
-    const tokenMap = useMemo(() => {
-        const map = {};
-        const nomes = Object.keys(jogadores);
-        for (let i = 0; i < nomes.length; i++) {
-            const nome = nomes[i]; const pos = jogadores[nome].posicao; const pCena = pos?.cenaId || 'default'; 
-            if (pos && pos.x !== undefined && pCena === cenaRenderId) {
-                const key = `${pos.x},${pos.y}`;
-                if (!map[key]) map[key] = []; map[key].push({ nome, ficha: jogadores[nome] });
-            }
-        }
-        return map;
-    }, [jogadores, cenaRenderId]);
-
-    const tokens3D = useMemo(() => {
-        return Object.entries(jogadores).filter(([nome, ficha]) => (ficha.posicao?.cenaId || 'default') === cenaRenderId)
-            .map(([nome, ficha]) => ({ nome, x: ficha.posicao?.x || 0, y: ficha.posicao?.y || 0, z: ficha.posicao?.z || 0, cor: corDoJogador(nome) }));
-    }, [jogadores, cenaRenderId, corDoJogador]);
-
-    const jogadorDaVez = ordemIniciativa.length > 0 ? ordemIniciativa[turnoAtualIndex % ordemIniciativa.length] : null;
-    const infoDaVez = jogadorDaVez ? getAvatarInfo(jogadorDaVez.ficha) : null;
-
-    const value = useMemo(() => ({
-        minhaFicha, meuNome, personagens, feedCombate, isMestre, dummies, alvoSelecionado, cenario,
-        fichaSegura, modo3D, setModo3D, tamanhoCelula, setTamanhoCelula,
-        iniciativaInput, setIniciativaInput, altitudeInput, setAltitudeInput,
-        turnoAtualIndex, setTurnoAtualIndex, feedIndexTurnoAtual, setFeedIndexTurnoAtual,
-        jogadorHistory, setJogadorHistory, mapQD, setMapQD, mapFD, setMapFD,
-        mapBonus, setMapBonus, mapStat, setMapStat, mapUsarProf, setMapUsarProf,
-        profGlobal, mapVantagens, setMapVantagens, mapDesvantagens, setMapDesvantagens,
-        novaCenaNome, setNovaCenaNome, novaCenaEscala, setNovaCenaEscala,
-        novaCenaUnidade, setNovaCenaUnidade, uploadingMap, setUploadingMap,
-        dadoAnim, setDadoAnim, cenaVisualizadaId, setCenaVisualizadaId,
-        cenaAtivaIdGlobal, cenaRenderId, cenaAtual, isModoRP, mestreVendoRP, setMestreVendoRP,
-        tavernaAtivos, isPresenteNaTaverna, overridesCompendio,
-        toggleModoRP, togglePresencaTaverna, changeVantagem, changeDesvantagem,
-        handleUploadNovaCena, ativarCena, deletarCena, corDoJogador, getAvatarInfo,
-        cells, jogadores, playersNaTaverna, ordemIniciativa, handleCellClick,
-        alterarZoom, setMinhaIniciativa, avancarTurno, sairDoCombate, encerrarCombate,
-        rolarAcertoRapido, tokenMap, tokens3D, jogadorDaVez, infoDaVez, fmt, deletarZona
-    }), [
-        minhaFicha, meuNome, personagens, feedCombate, isMestre, dummies, alvoSelecionado, cenario,
-        fichaSegura, modo3D, tamanhoCelula, iniciativaInput, altitudeInput,
-        turnoAtualIndex, feedIndexTurnoAtual, jogadorHistory, mapQD, mapFD,
-        mapBonus, mapStat, mapUsarProf, profGlobal, mapVantagens, mapDesvantagens,
-        novaCenaNome, novaCenaEscala, novaCenaUnidade, uploadingMap, dadoAnim,
-        cenaVisualizadaId, cenaAtivaIdGlobal, cenaRenderId, cenaAtual, isModoRP,
-        mestreVendoRP, tavernaAtivos, isPresenteNaTaverna, overridesCompendio,
-        cells, jogadores, playersNaTaverna, ordemIniciativa, tokenMap, tokens3D,
-        jogadorDaVez, infoDaVez, fmt, toggleModoRP, togglePresencaTaverna, changeVantagem,
-        changeDesvantagem, handleUploadNovaCena, ativarCena, deletarCena, corDoJogador,
-        getAvatarInfo, handleCellClick, alterarZoom, setMinhaIniciativa, avancarTurno,
-        sairDoCombate, encerrarCombate, rolarAcertoRapido, deletarZona
-    ]);
+    } else if (!isMe) { 
+        borderCard = '2px dashed #444'; boxShadowCard = 'none'; iconMic = '🔄'; 
+    }
 
     return (
-        <MapaFormContext.Provider value={value}>
-            {children}
-        </MapaFormContext.Provider>
+        <div className="fade-in" style={{ position: 'relative', width: cardSize, aspectRatio: '4/3', background: '#111', border: borderCard, borderRadius: 6, overflow: 'hidden', backgroundImage: urlSeguraParaCss(info.img) || 'none', backgroundSize: 'cover', backgroundPosition: 'top center', boxShadow: boxShadowCard, transition: 'all 0.15s ease-out' }}>
+            <div style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(0,0,0,0.8)', borderRadius: '50%', padding: '5px 8px', fontSize: '1.2em', border: borderCard, transition: 'all 0.15s ease-out' }}>{iconMic}</div>
+            
+            {!isConnected && !isMe && (
+                <div style={{ position: 'absolute', top: '40%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10 }}>
+                    <button className="btn-neon btn-blue" onClick={(e) => { e.stopPropagation(); fazerChamada(nome); }} style={{ padding: '8px 15px', fontSize: '0.9em', fontWeight: 'bold', boxShadow: '0 0 10px #0088ff' }}>📞 FORÇAR LIGAÇÃO</button>
+                </div>
+            )}
+            
+            {!isMe && isConnected && streamParaTocar && (
+                <PlayerDeAudioRemoto stream={streamParaTocar} volume={volume} surdo={surdo} nome={nome} sinkId={selectedSpeaker} />
+            )}
+
+            <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', display: 'flex', flexDirection: 'column', background: 'rgba(10,10,15,0.9)', borderTop: '2px solid #222', padding: '6px 10px', backdropFilter: 'blur(3px)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <span style={{ color: isConnected ? (isSpeaking ? '#00ffcc' : '#00aaff') : '#fff', fontWeight: 'bold', fontSize: '0.8em', textTransform: 'uppercase', letterSpacing: 1, textShadow: '1px 1px 2px #000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', transition: 'color 0.2s', paddingRight: '5px' }}>{nome}</span>
+                    {!isMe && isConnected && streamParaTocar && (
+                        <div onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '70px', background: 'rgba(0,0,0,0.5)', padding: '2px 5px', borderRadius: '10px', border: '1px solid #333' }}>
+                            <span style={{ fontSize: '9px', color: volume === 0 ? '#ff003c' : '#aaa' }}>{volume === 0 ? '🔇' : '🔉'}</span>
+                            <input type="range" min="0" max="1" step="0.05" value={volume} onChange={e => setVolume(parseFloat(e.target.value))} style={{ width: '100%', height: '3px', cursor: 'pointer', accentColor: '#00ffcc' }} />
+                        </div>
+                    )}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
+                    <span style={{ color: '#ff003c', fontSize: '0.6em', fontWeight: 'bold', width: '15px' }}>HP</span>
+                    <div style={{ flex: 1, background: '#300', height: 6, border: '1px solid #000', position: 'relative' }}><div style={{ width: '100%', height: '100%', background: '#ff003c', boxShadow: '0 0 5px #ff003c' }}></div></div>
+                    <span style={{ color: '#fff', fontSize: '0.6em', fontWeight: 'bold', minWidth: '35px', textAlign: 'right' }}>{fmt(ficha?.vida?.atual)}</span>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ============================================================================
+// 🔥 A TAVERNA (ENTRADA E SAÍDA)
+// ============================================================================
+export function MapaSessaoRP() {
+    const ctx = useMapaForm();
+    
+    const meuNome = ctx?.meuNome || '';
+    const tavernaAtivos = ctx?.cenario?.tavernaAtivos || [];
+    const isPresenteNaTaverna = ctx?.isPresenteNaTaverna || false;
+
+    const chatCtx = useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna);
+
+    const [radioLigado, setRadioLigado] = useState(false);
+
+    if (!ctx) return FALLBACK;
+    const { minhaFicha, personagens, cenario, togglePresencaTaverna, getAvatarInfo, fmt } = ctx;
+    
+    const playerCount = cenario?.tavernaAtivos?.length || 0;
+    const cardSize = playerCount === 1 ? '400px' : playerCount === 2 ? '350px' : '280px';
+
+    if (!radioLigado) return (
+        <div className="fade-in" style={{ minHeight: '60vh', background: 'radial-gradient(circle, rgba(30,10,20,0.9) 0%, rgba(0,0,0,1) 100%)', borderRadius: 5, border: '2px solid #ffcc00', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <h1 style={{ color: '#00ffcc' }}>SALA DE RÁDIO DA PARTY</h1>
+            <p style={{ color: '#aaa' }}>Liguem os vossos fones e entrem no rádio para testarmos a comunicação pura.</p>
+            <button className="btn-neon btn-green" onClick={() => setRadioLigado(true)}>▶ ENTRAR NO RÁDIO</button>
+        </div>
+    );
+
+    return (
+        <div className="fade-in" style={{ minHeight: '60vh', background: 'radial-gradient(circle, rgba(30,10,20,0.9) 0%, rgba(0,0,0,1) 100%)', borderRadius: 5, border: '2px solid #ffcc00', padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <h1 style={{ color: '#ffcc00', margin: 0 }}>SESSÃO RP (FASE 1)</h1>
+            <p style={{ color: '#aaa', fontStyle: 'italic', marginBottom: 10, fontSize: '1.1em' }}>A testar a estabilidade da ligação nativa...</p>
+            
+            {isPresenteNaTaverna && (
+                <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '20px', background: 'rgba(0,0,0,0.5)', padding: '10px 15px', borderRadius: '5px', border: '1px solid #333', flexWrap: 'wrap', justifyContent: 'center' }}>
+                    <div style={{ color: '#00ffcc', fontSize: '0.85em', fontFamily: 'monospace' }}>📡 {chatCtx.voiceStatus}</div>
+                    
+                    {/* INPUT: MICROFONE */}
+                    {chatCtx.mics.length > 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                            <span style={{ fontSize: '1.2em' }}>🎙️</span>
+                            <select className="input-neon" value={chatCtx.selectedMic} onChange={e => chatCtx.trocarMicrofone(e.target.value)} style={{ padding: '4px', fontSize: '0.8em', background: '#000', color: '#fff', borderColor: '#00ffcc', borderRadius: '5px', maxWidth: '200px' }}>
+                                {chatCtx.mics.map(m => <option key={m.deviceId} value={m.deviceId}>{m.label || `Mic ${m.deviceId.substring(0,4)}`}</option>)}
+                            </select>
+                        </div>
+                    )}
+                    
+                    {/* OUTPUT: FONES / COLUNAS */}
+                    {chatCtx.speakers.length > 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, borderLeft: '1px solid #444', paddingLeft: '15px' }}>
+                            <span style={{ fontSize: '1.2em' }}>🎧</span>
+                            <select className="input-neon" value={chatCtx.selectedSpeaker} onChange={e => chatCtx.trocarSpeaker(e.target.value)} style={{ padding: '4px', fontSize: '0.8em', background: '#000', color: '#fff', borderColor: '#00aaff', borderRadius: '5px', maxWidth: '200px' }}>
+                                {chatCtx.speakers.map(s => <option key={s.deviceId} value={s.deviceId}>{s.label || `Saída ${s.deviceId.substring(0,4)}`}</option>)}
+                            </select>
+                        </div>
+                    )}
+                    
+                    <label style={{ color: '#00ffcc', fontSize: '0.8em', cursor: 'pointer', borderLeft: '1px solid #444', paddingLeft: '15px' }}>
+                        <input type="checkbox" checked={chatCtx.supressorAtivo} onChange={e => chatCtx.setSupressorAtivo(e.target.checked)} /> Filtro de Eco/Ruído
+                    </label>
+                </div>
+            )}
+            
+            <div style={{ display: 'flex', gap: '15px', marginBottom: '30px' }}>
+                <button onClick={chatCtx.toggleMute} disabled={!isPresenteNaTaverna} style={{ opacity: isPresenteNaTaverna ? 1 : 0.3, width: '45px', height: '45px', borderRadius: '50%', background: chatCtx.mutado ? '#ff003c' : '#00ffcc', color: '#000', cursor: 'pointer', border: 'none', boxShadow: `0 0 10px ${chatCtx.mutado ? '#ff003c' : '#00ffcc'}` }}>{chatCtx.mutado ? '🔇' : '🎙️'}</button>
+                <button onClick={chatCtx.toggleDeafen} disabled={!isPresenteNaTaverna} style={{ opacity: isPresenteNaTaverna ? 1 : 0.3, width: '45px', height: '45px', borderRadius: '50%', background: chatCtx.surdo ? '#ff003c' : 'rgba(255,255,255,0.1)', color: '#fff', cursor: 'pointer', border: 'none' }}>{chatCtx.surdo ? '🔕' : '🎧'}</button>
+                <button className={`btn-neon ${isPresenteNaTaverna ? 'btn-red' : 'btn-green'}`} onClick={togglePresencaTaverna}>{isPresenteNaTaverna ? 'SAIR DA TAVERNA' : 'SENTAR NA MESA'}</button>
+            </div>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '25px', width: '100%' }}>
+                {Array.isArray(cenario?.tavernaAtivos) && cenario.tavernaAtivos.map(nome => {
+                    const isMe = nome === meuNome;
+                    const f = isMe ? minhaFicha : personagens?.[nome];
+                    const info = getAvatarInfo(f);
+                    const con = chatCtx.conexoes.find(c => c.id === `anime-rpg-${(nome||'').toLowerCase().replace(/[^a-z0-9]/g, '')}`);
+                    
+                    return (
+                        <AvatarCardVoz 
+                            key={nome} nome={nome} info={info} ficha={f} isMe={isMe} 
+                            isConnected={isMe || !!con} streamParaTocar={con?.stream} streamAnalisador={isMe ? chatCtx.streamAnalisador : null} 
+                            mutado={chatCtx.mutado} surdo={chatCtx.surdo} fazerChamada={chatCtx.fazerChamada} 
+                            cardSize={cardSize} fmt={fmt} selectedSpeaker={chatCtx.selectedSpeaker} 
+                        />
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
+export function MapaAreaCentral() {
+    const ctx = useMapaForm();
+    if (!ctx) return FALLBACK;
+    const { isModoRP, isMestre, mestreVendoRP } = ctx;
+    
+    if (isModoRP && (!isMestre || mestreVendoRP)) {
+        return <MapaSessaoRP />;
+    }
+    
+    return (
+        <>
+            <MapaControlesSuperiores />
+            <MapaVisao />
+        </>
+    );
+}
+
+// ============================================================================
+// RESTO DOS COMPONENTES VISUAIS (INTATOS E SEGUROS!)
+// ============================================================================
+
+export function MapaControlesSuperiores() {
+    const ctx = useMapaForm();
+    if (!ctx) return FALLBACK;
+    const { modo3D, setModo3D, alterarZoom, tamanhoCelula, isMestre, cenaVisualizadaId, cenaAtivaIdGlobal, cenaAtual, altitudeInput, setAltitudeInput } = ctx;
+    
+    return (
+        <div style={{ display: 'flex', gap: 15, marginBottom: 10, alignItems: 'center', background: 'rgba(0,0,0,0.6)', padding: '6px 12px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', fontSize: '0.85em', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 5, alignItems: 'center', opacity: modo3D ? 0.3 : 1 }}>
+                <button className="btn-neon" onClick={() => alterarZoom(-1)} style={{ padding: '2px 8px', margin: 0 }} disabled={modo3D}>-</button>
+                <span style={{ color: '#aaa', minWidth: '80px', textAlign: 'center' }}>Zoom: {tamanhoCelula}px</span>
+                <button className="btn-neon" onClick={() => alterarZoom(1)} style={{ padding: '2px 8px', margin: 0 }} disabled={modo3D}>+</button>
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', borderLeft: '1px solid #444', paddingLeft: 15 }}>
+                <span style={{ color: isMestre && cenaVisualizadaId && cenaVisualizadaId !== cenaAtivaIdGlobal ? '#0088ff' : '#ffcc00', fontWeight: 'bold' }}>
+                    {isMestre && cenaVisualizadaId && cenaVisualizadaId !== cenaAtivaIdGlobal ? '👁️ Previsão:' : 'Cena:'}
+                </span>
+                <span style={{ color: '#fff', fontWeight: 'bold' }}>{cenaAtual.nome} <span style={{color: '#888', fontWeight: 'normal'}}>(1Q = {cenaAtual.escala}{cenaAtual.unidade})</span></span>
+            </div>
+
+            <div style={{ display: 'flex', gap: 5, alignItems: 'center', borderLeft: '1px solid #444', paddingLeft: 15, marginLeft: 'auto' }}>
+                <span style={{ color: '#00ccff', fontWeight: 'bold' }}>Z:</span>
+                <input className="input-neon" type="number" value={altitudeInput} onChange={e => setAltitudeInput(e.target.value)} style={{ width: 50, padding: 2, height: 24, borderColor: '#00ccff', color: '#fff', margin: 0 }} title="Altitude" />
+                <span style={{ color: '#888' }}>m</span>
+            </div>
+            <button className={`btn-neon ${modo3D ? 'btn-gold' : ''}`} onClick={() => setModo3D(!modo3D)} style={{ padding: '2px 10px', margin: 0, borderColor: modo3D ? '#ffcc00' : '#00ffcc' }}>
+                {modo3D ? '🌌 2D' : '🌌 3D'}
+            </button>
+        </div>
+    );
+}
+
+export function MapaDadoAnimado() {
+    const ctx = useMapaForm();
+    if (!ctx) return FALLBACK;
+    const { dadoAnim } = ctx;
+
+    if (!dadoAnim.ativo) return null;
+
+    return createPortal(
+        <>
+            <style dangerouslySetInnerHTML={{__html: `
+                @keyframes d20-spin {
+                    0% { transform: rotate(0deg) scale(1); filter: brightness(1) drop-shadow(0 0 10px #00ffcc); }
+                    25% { transform: rotate(90deg) scale(1.1); filter: brightness(1.2) drop-shadow(0 0 20px #00ffcc); }
+                    50% { transform: rotate(180deg) scale(0.9); filter: brightness(1) drop-shadow(0 0 10px #00ffcc); }
+                    75% { transform: rotate(270deg) scale(1.1); filter: brightness(1.2) drop-shadow(0 0 20px #00ffcc); }
+                    100% { transform: rotate(360deg) scale(1); filter: brightness(1) drop-shadow(0 0 10px #00ffcc); }
+                }
+                @keyframes d20-land {
+                    0% { transform: scale(1.5); filter: brightness(2) drop-shadow(0 0 40px var(--land-color)); }
+                    100% { transform: scale(1); filter: brightness(1) drop-shadow(0 0 15px var(--land-color)); }
+                }
+                .d20-spinning { animation: d20-spin 0.2s infinite linear; }
+                .d20-landed { animation: d20-land 0.4s ease-out forwards; }
+            `}} />
+            <div style={{
+                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+                background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(3px)', zIndex: 999999,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexDirection: 'column'
+            }}>
+                <div className={dadoAnim.finalResult ? 'd20-landed' : 'd20-spinning'} style={{ '--land-color': dadoAnim.cor }}>
+                    <svg viewBox="0 0 100 100" style={{ width: '250px', height: '250px' }}>
+                        <polygon points="50,5 95,30 95,75 50,95 5,75 5,30" fill="rgba(10,10,15,0.95)" stroke={dadoAnim.cor} strokeWidth="4" strokeLinejoin="round" />
+                        <polygon points="50,85 20,35 80,35" fill="none" stroke={dadoAnim.cor} strokeWidth="3" strokeLinejoin="round" opacity="0.8" />
+                        <line x1="50" y1="5" x2="20" y2="35" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
+                        <line x1="50" y1="5" x2="80" y2="35" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
+                        <line x1="95" y1="30" x2="80" y2="35" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
+                        <line x1="95" y1="75" x2="80" y2="35" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
+                        <line x1="95" y1="75" x2="50" y2="85" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
+                        <line x1="50" y1="95" x2="50" y2="85" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
+                        <line x1="5" y1="75" x2="50" y2="85" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
+                        <line x1="5" y1="75" x2="20" y2="35" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
+                        <line x1="5" y1="30" x2="20" y2="35" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
+                        <text x="50%" y="56%" dominantBaseline="middle" textAnchor="middle" fill="#fff" fontSize="32" fontWeight="bold" fontFamily="sans-serif">
+                            {dadoAnim.numero}
+                        </text>
+                    </svg>
+                </div>
+                {dadoAnim.finalResult && (
+                    <div style={{ marginTop: '30px', color: dadoAnim.cor, fontSize: '2em', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '3px', textShadow: `0 0 20px ${dadoAnim.cor}` }}>
+                        {dadoAnim.cor === '#ff003c' ? 'CRÍTICO FATAL!' : dadoAnim.cor === '#ffcc00' ? 'CRÍTICO!' : dadoAnim.cor === '#660000' ? 'FALHA CRÍTICA' : 'ROLADO!'}
+                    </div>
+                )}
+            </div>
+        </>,
+        document.body
+    );
+}
+
+export function MapaFerramentasMestre() {
+    const ctx = useMapaForm();
+    if (!ctx) return FALLBACK;
+    
+    const { isMestre, isModoRP, mestreVendoRP } = ctx;
+    const [abaMestre, setAbaMestre] = useState('');
+
+    if (!isMestre) return null;
+
+    return (
+        <div style={{ marginBottom: 15, background: 'rgba(0,0,0,0.4)', borderRadius: 5, border: '1px solid #333', overflow: 'hidden' }}>
+            <MapaMestreRPToggle />
+            
+            {(!isModoRP || mestreVendoRP) && (
+                <div style={{ padding: '10px 15px' }}>
+                    <MapaMestreCenaVisualizada />
+                    
+                    <div style={{ display: 'flex', gap: 5, marginBottom: abaMestre ? 15 : 0, overflowX: 'auto', paddingBottom: 5 }}>
+                        <button className={`btn-neon ${abaMestre === 'cenas' ? 'btn-gold' : ''}`} onClick={() => setAbaMestre(a => a === 'cenas' ? '' : 'cenas')} style={{ padding: '4px 10px', fontSize: '0.85em', margin: 0, flex: 1, whiteSpace: 'nowrap' }}>🎬 Cenas</button>
+                        <button className={`btn-neon ${abaMestre === 'tokens' ? 'btn-gold' : ''}`} onClick={() => setAbaMestre(a => a === 'tokens' ? '' : 'tokens')} style={{ padding: '4px 10px', fontSize: '0.85em', margin: 0, flex: 1, whiteSpace: 'nowrap' }}>📦 Gaveta</button>
+                        <button className={`btn-neon ${abaMestre === 'dummies' ? 'btn-gold' : ''}`} onClick={() => setAbaMestre(a => a === 'dummies' ? '' : 'dummies')} style={{ padding: '4px 10px', fontSize: '0.85em', margin: 0, flex: 1, whiteSpace: 'nowrap' }}>🤖 Entidades</button>
+                        <button className={`btn-neon ${abaMestre === 'zonas' ? 'btn-gold' : ''}`} onClick={() => setAbaMestre(a => a === 'zonas' ? '' : 'zonas')} style={{ padding: '4px 10px', fontSize: '0.85em', margin: 0, flex: 1, whiteSpace: 'nowrap' }}>🌪️ Zonas</button>
+                    </div>
+
+                    {abaMestre === 'cenas' && <MapaMestreGerenciadorCenas />}
+                    {abaMestre === 'tokens' && <MapaMestreGavetaTokens />}
+                    {abaMestre === 'dummies' && <MapaMestreGeradorDummies />}
+                    {abaMestre === 'zonas' && <MapaMestreGerenciadorZonas />}
+                </div>
+            )}
+        </div>
+    );
+}
+
+export function MapaMestreRPToggle() {
+    const ctx = useMapaForm();
+    if (!ctx) return FALLBACK;
+    const { isMestre, isModoRP, mestreVendoRP, setMestreVendoRP, toggleModoRP } = ctx;
+    
+    if (!isMestre) return null;
+    
+    return (
+        <div style={{ background: isModoRP ? 'rgba(255, 0, 255, 0.15)' : 'rgba(0, 255, 136, 0.15)', padding: '8px 15px', borderBottom: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+            <span style={{ color: isModoRP ? '#ff00ff' : '#00ff88', fontWeight: 'bold', fontSize: '0.9em' }}>
+                {isModoRP ? '🍻 MODO TAVERNA (Oculto dos Jogadores)' : '🌍 MODO COMBATE (Mapa Visível)'}
+            </span>
+            <div style={{ display: 'flex', gap: 10 }}>
+                {isModoRP && (
+                    <button className={`btn-neon ${mestreVendoRP ? 'btn-blue' : 'btn-gold'}`} onClick={() => setMestreVendoRP(!mestreVendoRP)} style={{ padding: '2px 10px', fontSize: '0.8em', margin: 0 }}>
+                        {mestreVendoRP ? '🗺️ OCULTAR' : '👁️ ESPIAR RP'}
+                    </button>
+                )}
+                <button className={`btn-neon ${isModoRP ? 'btn-green' : 'btn-purple'}`} onClick={toggleModoRP} style={{ padding: '2px 10px', fontSize: '0.8em', margin: 0 }}>
+                    {isModoRP ? '🌍 REVELAR MAPA' : '🍻 MODO TAVERNA'}
+                </button>
+            </div>
+        </div>
+    );
+}
+
+export function MapaMestreCenaVisualizada() {
+    const ctx = useMapaForm();
+    if (!ctx) return FALLBACK;
+    const { isMestre, cenaVisualizadaId, cenaAtivaIdGlobal, cenaAtual, cenaRenderId, ativarCena } = ctx;
+    if (!isMestre || !cenaVisualizadaId || cenaVisualizadaId === cenaAtivaIdGlobal) return null;
+    return (
+        <div style={{ background: 'rgba(0, 136, 255, 0.2)', border: '2px dashed #0088ff', padding: '10px 15px', borderRadius: '5px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+            <span style={{ color: '#0088ff', fontWeight: 'bold', fontSize: '1.1em' }}>👁️ MODO EDIÇÃO OCULTA: Apenas você vê a cena "{cenaAtual.nome}".</span>
+            <button className="btn-neon btn-green" onClick={() => ativarCena(cenaRenderId)} style={{ padding: '5px 15px', margin: 0 }}>
+                🌍 PUBLICAR ESTA CENA PARA TODOS
+            </button>
+        </div>
+    );
+}
+
+export function MapaMestreGerenciadorCenas() {
+    const ctx = useMapaForm();
+    if (!ctx) return FALLBACK;
+    const { isMestre, isModoRP, mestreVendoRP, cenario, cenaAtivaIdGlobal, cenaRenderId, setCenaVisualizadaId, ativarCena, deletarCena, novaCenaNome, setNovaCenaNome, novaCenaEscala, setNovaCenaEscala, novaCenaUnidade, setNovaCenaUnidade, uploadingMap, handleUploadNovaCena } = ctx;
+    if (!isMestre || (isModoRP && !mestreVendoRP)) return null;
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 15, background: 'rgba(0,0,0,0.5)', padding: 15, borderRadius: 5, border: '1px solid #ffcc00' }}>
+            <h3 style={{ color: '#ffcc00', margin: 0 }}>🎬 Gerenciador de Cenas</h3>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', background: '#0a0a0a', padding: 10, borderRadius: 5 }}>
+                {Object.entries(cenario?.lista || {}).map(([id, cena]) => {
+                    const isAtivaGlobal = cenaAtivaIdGlobal === id;
+                    const isVisualizada = cenaRenderId === id;
+                    return (
+                        <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 5, background: isAtivaGlobal ? 'rgba(0, 255, 136, 0.2)' : isVisualizada ? 'rgba(0, 136, 255, 0.2)' : '#222', border: `1px solid ${isAtivaGlobal ? '#00ff88' : isVisualizada ? '#0088ff' : '#555'}`, padding: '5px 10px', borderRadius: 4, flexWrap: 'wrap' }}>
+                            <span style={{ color: isAtivaGlobal ? '#00ff88' : isVisualizada ? '#0088ff' : '#fff', fontWeight: 'bold' }}>{cena.nome}</span>
+                            {isAtivaGlobal && <span style={{ fontSize: '0.6em', background: '#00ff88', color: '#000', padding: '2px 4px', borderRadius: 3, fontWeight: 'bold', marginLeft: 4 }}>🌍 PUBLICA</span>}
+                            {isVisualizada && !isAtivaGlobal && <span style={{ fontSize: '0.6em', background: '#0088ff', color: '#fff', padding: '2px 4px', borderRadius: 3, fontWeight: 'bold', marginLeft: 4 }}>👁️ VENDO</span>}
+                            {!isVisualizada && <button className="btn-neon btn-blue btn-small" onClick={() => setCenaVisualizadaId(id)} style={{ padding: '2px 8px', fontSize: '0.8em', margin: '0 0 0 5px' }}>Ver Cena Oculta</button>}
+                            {!isAtivaGlobal && <button className="btn-neon btn-green btn-small" onClick={() => ativarCena(id)} style={{ padding: '2px 8px', fontSize: '0.8em', margin: '0 0 0 5px' }}>Publicar para Todos</button>}
+                            <button className="btn-neon btn-red btn-small" onClick={() => deletarCena(id)} style={{ padding: '2px 8px', fontSize: '0.8em', margin: 0 }}>X</button>
+                        </div>
+                    );
+                })}
+            </div>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', borderTop: '1px solid #444', paddingTop: 10 }}>
+                <span style={{ color: '#ffcc00', fontWeight: 'bold' }}>Nova Cena:</span>
+                <input className="input-neon" type="text" placeholder="Nome (Ex: Taverna)" value={novaCenaNome} onChange={e => setNovaCenaNome(e.target.value)} style={{ width: 150, padding: 5 }}/>
+                <label className="btn-neon btn-blue" style={{ cursor: 'pointer', padding: '5px 15px', margin: 0, opacity: uploadingMap ? 0.5 : 1 }}>
+                    {uploadingMap ? 'Enviando...' : '📁 Anexar Fundo'}
+                    <input type="file" accept="image/png, image/jpeg, image/webp" onChange={handleUploadNovaCena} style={{ display: 'none' }} disabled={uploadingMap} />
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#111', padding: '3px 8px', borderRadius: 5, border: '1px solid #444' }}>
+                    <span style={{ color: '#aaa', fontSize: '0.8em' }}>Escala:</span>
+                    <input className="input-neon" type="number" min="0.1" step="0.1" value={novaCenaEscala} onChange={e => setNovaCenaEscala(e.target.value)} style={{ width: 60, padding: 4, margin: 0 }} />
+                    <select className="input-neon" value={novaCenaUnidade} onChange={e => setNovaCenaUnidade(e.target.value)} style={{ padding: 4, margin: 0 }}>
+                        <option value="m">m</option><option value="km">km</option><option value="milhas">mi</option><option value="anos-luz">Ly</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+export function MapaMestreGavetaTokens() {
+    return (
+        <div style={{ background: 'rgba(0,0,0,0.5)', padding: 15, borderRadius: 5, border: '1px solid #00ff88' }}>
+            <h3 style={{ color: '#00ff88', margin: 0 }}>📦 Gaveta de Tokens</h3>
+            <p style={{ color: '#888', fontStyle: 'italic' }}>Componente da Gaveta preservado.</p>
+        </div>
+    );
+}
+
+export function MapaMestreGeradorDummies() {
+    const ctx = useMapaForm();
+    if (!ctx) return FALLBACK;
+    const { isMestre, isModoRP, mestreVendoRP, cenaRenderId } = ctx;
+    if (!isMestre || (isModoRP && !mestreVendoRP)) return null;
+    return (
+        <div style={{ padding: 10, border: '1px solid #0088ff', borderRadius: 5, background: 'rgba(0, 136, 255, 0.1)' }}>
+            <h3 style={{ color: '#0088ff', marginTop: 0, marginBottom: 10 }}>🤖 Gerador de Entidades (Nesta Cena)</h3>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                <input className="input-neon" type="text" placeholder="Nome" id="dummieNome" defaultValue="Boneco" style={{ width: 100, padding: 5 }}/>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#111', padding: '3px 8px', borderRadius: 5, border: '1px solid #444' }}>
+                    <span style={{ color: '#aaa', fontSize: '0.8em' }}>HP Base:</span>
+                    <input className="input-neon" type="number" id="dummieHp" defaultValue="100" style={{ width: 60, padding: 4, margin: 0 }} />
+                    <span style={{ color: '#0f0', fontSize: '0.8em', fontWeight: 'bold' }}>+Vit:</span>
+                    <input className="input-neon" type="number" id="dummieVitalidade" defaultValue="0" min="0" max="15" style={{ width: 45, padding: 4, margin: 0, borderColor: '#0f0', color: '#0f0' }} title="Ex: Vit 3 = adiciona 3 zeros" />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#111', padding: '3px 8px', borderRadius: 5, border: '1px solid #444' }}>
+                    <select className="input-neon" id="dummieDefTipo" style={{ width: 90, padding: 4, margin: 0 }}>
+                        <option value="evasiva">Evasiva</option><option value="resistencia">Resistência</option>
+                    </select>
+                    <span style={{ color: '#0088ff', fontSize: '0.8em', fontWeight: 'bold' }}>CA:</span>
+                    <input className="input-neon" type="number" id="dummieDef" defaultValue="10" style={{ width: 50, padding: 4, margin: 0 }} title="Classe de Armadura (5 + Base)"/>
+                </div>
+                <select className="input-neon" id="dummieVisivel" style={{ width: 110, padding: 5 }} title="Visibilidade do HP">
+                    <option value="todos">HP Visível</option><option value="mestre">HP Oculto</option>
+                </select>
+                <button className="btn-neon btn-blue" onClick={() => {
+                    const n = document.getElementById('dummieNome').value || 'Entidade';
+                    const hBase = parseInt(document.getElementById('dummieHp').value) || 100;
+                    const vit = parseInt(document.getElementById('dummieVitalidade').value) || 0;
+                    const h = hBase * Math.pow(10, vit);
+                    const dt = document.getElementById('dummieDefTipo').value;
+                    const dv = parseInt(document.getElementById('dummieDef').value) || 10;
+                    const vHp = document.getElementById('dummieVisivel').value;
+                    const id = 'dummie_' + Date.now();
+                    salvarDummie(id, { nome: n, hpMax: h, hpAtual: h, tipoDefesa: dt, valorDefesa: dv, visibilidadeHp: vHp, cenaId: cenaRenderId, posicao: { x: 0, y: 0 } });
+                }} style={{ padding: '5px 15px', margin: 0 }}>+ Injetar na Cena</button>
+            </div>
+        </div>
+    );
+}
+
+export function MapaMestreGerenciadorZonas() {
+    const ctx = useMapaForm();
+    if (!ctx) return FALLBACK;
+    const { isMestre, isModoRP, mestreVendoRP, cenario, deletarZona } = ctx;
+    if (!isMestre || (isModoRP && !mestreVendoRP)) return null;
+
+    const zonas = cenario?.zonas || [];
+    if (zonas.length === 0) return (
+        <div style={{ background: 'rgba(255, 0, 100, 0.1)', padding: 15, borderRadius: 5, border: '1px solid #ff00ff' }}>
+            <h3 style={{ color: '#ff00ff', margin: 0 }}>🌪️ Zonas e Anomalias</h3>
+            <p style={{ color: '#888', fontStyle: 'italic', margin: '5px 0 0' }}>O mapa está limpo. Nenhuma zona ativa.</p>
+        </div>
+    );
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: 'rgba(255, 0, 100, 0.1)', padding: 15, borderRadius: 5, border: '1px solid #ff00ff' }}>
+            <h3 style={{ color: '#ff00ff', margin: 0 }}>🌪️ Zonas e Anomalias no Campo</h3>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                {zonas.map(z => (
+                    <div key={z.id} style={{ background: 'rgba(0,0,0,0.6)', border: `1px solid rgba(${z.rgb}, 0.8)`, padding: '5px 10px', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ color: `rgb(${z.rgb})`, fontWeight: 'bold', fontSize: '0.85em' }}>{z.nome} (Raio {z.raio}Q | {z.duracao}T)</span>
+                        <button className="btn-neon btn-red btn-small" onClick={() => deletarZona(z.id)} style={{ padding: '2px 8px', fontSize: '0.8em', margin: 0 }}>Dissipar</button>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+export function MapaRolagemRapida() {
+    const ctx = useMapaForm();
+    if (!ctx) return FALLBACK;
+    const { 
+        mapStat, setMapStat, mapQD, setMapQD, mapFD, setMapFD, mapBonus, setMapBonus, 
+        mapVantagens, changeVantagem, mapDesvantagens, changeDesvantagem, mapUsarProf, 
+        setMapUsarProf, alvoSelecionado, dummies, fichaSegura, cenaAtual, rolarAcertoRapido, isModoRP
+    } = ctx;
+
+    if (isModoRP) return null;
+
+    let dQuad = 0; let alcanceEf = 1; let maxArea = 0; let foraAlc = false;
+    const alvoD = alvoSelecionado && dummies?.[alvoSelecionado] ? dummies[alvoSelecionado] : null;
+
+    if (alvoD) {
+        const dx = Math.abs((fichaSegura?.posicao?.x || 0) - (alvoD.posicao?.x || 0));
+        const dy = Math.abs((fichaSegura?.posicao?.y || 0) - (alvoD.posicao?.y || 0));
+        const dz = Math.abs((fichaSegura?.posicao?.z || 0) - (alvoD.posicao?.z || 0)) / (cenaAtual.escala || 1.5);
+        dQuad = Math.max(dx, dy, Math.floor(dz));
+        
+        const armasEq = (fichaSegura?.inventario || []).filter(i => i.tipo === 'arma' && i.equipado);
+        const maxAlcArmas = armasEq.length > 0 ? Math.max(...armasEq.map(a => a.alcance || 1)) : 1;
+        const maxAreaArmas = armasEq.length > 0 ? Math.max(...armasEq.map(a => a.areaQuad || a.area || 0)) : 0;
+        
+        const podAt = (fichaSegura?.poderes || []).filter(p => p.ativa);
+        const maxAlcPoderes = podAt.length > 0 ? Math.max(...podAt.map(p => p.alcance || 1)) : 1;
+        const maxAreaPoderes = podAt.length > 0 ? Math.max(...podAt.map(p => p.areaQuad || p.area || 0)) : 0;
+        
+        const magiasEq = (fichaSegura?.ataquesElementais || []).filter(m => m.equipado);
+        const maxAlcMagias = magiasEq.length > 0 ? Math.max(...magiasEq.map(m => m.alcanceQuad || 1)) : 1;
+        const maxAreaMagias = magiasEq.length > 0 ? Math.max(...magiasEq.map(m => m.areaQuad || 0)) : 0;
+
+        alcanceEf = Math.max(maxAlcArmas, maxAlcPoderes, maxAlcMagias);
+        maxArea = Math.max(maxAreaArmas, maxAreaPoderes, maxAreaMagias);
+        foraAlc = dQuad > alcanceEf;
+    }
+
+    return (
+        <div className="def-box" style={{ marginTop: 15, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 15, flexWrap: 'wrap', border: '1px solid #f90' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h4 style={{ color: '#f90', margin: 0, whiteSpace: 'nowrap' }}>🎯 Ação Rápida</h4>
+                <select className="input-neon" value={mapStat} onChange={e => setMapStat(e.target.value)} style={{ padding: '2px 4px', width: 90, height: 26, margin: 0 }}>
+                    <option value="forca">Força</option><option value="destreza">Des</option><option value="inteligencia">Int</option><option value="sabedoria">Sab</option>
+                    <option value="energiaEsp">Aura</option><option value="carisma">Carisma</option><option value="stamina">Stamina</option><option value="constituicao">Const</option>
+                </select>
+                <input className="input-neon" type="number" value={mapQD} onChange={e => setMapQD(e.target.value)} style={{ width: 40, padding: 2, height: 26, margin: 0 }} />
+                <span style={{ color: '#aaa', fontWeight: 'bold' }}>D</span>
+                <input className="input-neon" type="number" value={mapFD} onChange={e => setMapFD(e.target.value)} style={{ width: 45, padding: 2, height: 26, margin: 0 }} />
+                <span style={{ color: '#aaa', fontWeight: 'bold' }}>+</span>
+                <input className="input-neon" type="number" value={mapBonus} onChange={e => setMapBonus(e.target.value)} style={{ width: 45, padding: 2, height: 26, margin: 0 }} />
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderLeft: '1px solid #444', paddingLeft: 15 }}>
+                <span style={{ color: '#0f0', fontWeight: 'bold', fontSize: '0.85em' }}>V:</span>
+                <input className="input-neon" type="number" min="0" value={mapVantagens} onChange={changeVantagem} style={{ width: 40, padding: 2, height: 26, margin: 0, borderColor: '#0f0', color: '#0f0' }} />
+                <span style={{ color: '#f00', fontWeight: 'bold', fontSize: '0.85em' }}>D:</span>
+                <input className="input-neon" type="number" min="0" value={mapDesvantagens} onChange={changeDesvantagem} style={{ width: 40, padding: 2, height: 26, margin: 0, borderColor: '#f00', color: '#f00' }} />
+                <label style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', marginLeft: 5 }}>
+                    <input type="checkbox" checked={mapUsarProf} onChange={e => setMapUsarProf(e.target.checked)} /> Prof
+                </label>
+            </div>
+
+            <div style={{ flex: 1, textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10 }}>
+                {alvoD && (
+                    <span style={{ fontSize: '0.85em', color: foraAlc ? '#ff003c' : '#0f0', fontWeight: 'bold' }}>
+                        Alvo a {dQuad}Q (Alcance: {alcanceEf}Q) {foraAlc ? '❌' : '✅'}
+                    </span>
+                )}
+                {!alvoD && <span style={{ fontSize: '0.85em', color: '#888', fontStyle: 'italic' }}>Livre</span>}
+                <button className="btn-neon btn-gold" onClick={() => !foraAlc && rolarAcertoRapido()} disabled={foraAlc} style={{ margin: 0, padding: '4px 15px', opacity: foraAlc ? 0.5 : 1, borderColor: foraAlc ? '#555' : '#ffcc00' }}>
+                    🎲 ROLAR
+                </button>
+            </div>
+        </div>
+    );
+}
+
+export function MapaVisao() {
+    const ctx = useMapaForm();
+    if (!ctx) return FALLBACK;
+    const { 
+        modo3D, tamanhoCelula, cenaAtual, cells, tokenMap, dummies, 
+        cenaRenderId, tokens3D, handleCellClick, getAvatarInfo, 
+        meuNome, corDoJogador, overridesCompendio, cenario, isMestre 
+    } = ctx;
+
+    const zonasCena = (cenario?.zonas || []).filter(z => (z.cenaId || 'default') === cenaRenderId);
+
+    if (modo3D) {
+        return (
+            <div style={{ height: '60vh', background: '#000', borderRadius: 5, overflow: 'hidden', border: '2px solid #0088ff', boxShadow: '0 0 20px rgba(0, 136, 255, 0.4)' }}>
+                <Tabuleiro3D mapSize={MAP_SIZE} tokens={tokens3D} moverJogador={handleCellClick} mapUrl={cenaAtual.img} />
+            </div>
+        );
+    }
+
+    return (
+        <div id="combat-grid" style={{
+            display: 'grid', gridTemplateColumns: `repeat(${MAP_SIZE}, ${tamanhoCelula}px)`, gap: 1,
+            overflow: 'auto', maxHeight: '60vh', background: 'rgba(0,0,0,0.3)', padding: 5, borderRadius: 5,
+            backgroundImage: urlSeguraParaCss(cenaAtual.img), backgroundSize: 'cover', backgroundPosition: 'center',
+            position: 'relative'
+        }}>
+            {zonasCena.map(z => (
+                <div key={z.id} style={{
+                    position: 'absolute', pointerEvents: 'none', zIndex: 3,
+                    left: (z.x - z.raio) * tamanhoCelula,
+                    top: (z.y - z.raio) * tamanhoCelula,
+                    width: (z.raio * 2 + 1) * tamanhoCelula + (z.raio * 2), 
+                    height: (z.raio * 2 + 1) * tamanhoCelula + (z.raio * 2),
+                    background: `rgba(${z.rgb || '255,0,0'}, 0.2)`,
+                    border: `3px dashed rgba(${z.rgb || '255,0,0'}, 0.9)`,
+                    boxShadow: `inset 0 0 20px rgba(${z.rgb}, 0.5)`,
+                    borderRadius: '8px',
+                    display: 'flex', alignItems: 'flex-start', justifyContent: 'center'
+                }}>
+                    <span style={{ background: 'rgba(0,0,0,0.7)', color: '#fff', fontSize: '0.7em', padding: '2px 8px', borderRadius: '0 0 8px 8px', borderBottom: `1px solid rgba(${z.rgb}, 0.8)`, borderLeft: `1px solid rgba(${z.rgb}, 0.8)`, borderRight: `1px solid rgba(${z.rgb}, 0.8)`, fontWeight: 'bold' }}>
+                        {z.nome}
+                    </span>
+                </div>
+            ))}
+
+            {cells.map((cell) => {
+                const key = `${cell.x},${cell.y}`;
+                
+                const tokensNestaCelula = tokenMap[key] || [];
+                const visivelTokens = tokensNestaCelula.filter(tk => isMestre || !(cenario?.tokensOcultos?.includes(tk.nome)));
+
+                const cellDummies = Object.entries(dummies || {}).filter(([id, d]) => {
+                    const isOculto = cenario?.tokensOcultos?.includes(id);
+                    if (!isMestre && isOculto) return false; 
+                    const dCena = d.cenaId || 'default';
+                    return d.posicao?.x === cell.x && d.posicao?.y === cell.y && dCena === cenaRenderId;
+                });
+
+                return (
+                    <div key={key} className="map-cell" data-x={cell.x} data-y={cell.y} onClick={() => handleCellClick(cell.x, cell.y)} style={{ width: tamanhoCelula, height: tamanhoCelula, border: '1px solid rgba(255,255,255,0.1)', position: 'relative', cursor: 'pointer' }}>
+                        
+                        {cellDummies.map(([id, d]) => (
+                            <div key={id} style={{ opacity: cenario?.tokensOcultos?.includes(id) ? 0.4 : 1 }}>
+                                <DummieToken id={id} dummie={d} />
+                            </div>
+                        ))}
+                        
+                        {visivelTokens.map((tk) => {
+                            const info = getAvatarInfo(tk.ficha);
+                            const isMe = tk.nome === meuNome;
+                            const isOculto = cenario?.tokensOcultos?.includes(tk.nome);
+                            const altitude = tk.ficha?.posicao?.z || 0;
+                            const isFlying = altitude > 0;
+                            const tkMesa = tk.ficha?.bio?.mesa || 'presente';
+                            let tkClass = tk.ficha?.bio?.classe;
+                            if ((tkClass === 'pretender' || tkClass === 'alterego') && tk.ficha?.bio?.subClasse) tkClass = tk.ficha?.bio?.subClasse;
+                            const tkGrand = tkClass && overridesCompendio?.grands?.[`${tkClass}_${tkMesa}`] === tk.nome;
+                            const tkCand = tkClass && !tkGrand && (overridesCompendio?.grands?.[`${tkClass}_${tkMesa}_candidatos`] || []).includes(tk.nome);
+                            
+                            let bordaToken = isFlying ? '3px solid #00ccff' : (isMe ? '2px solid #00ffcc' : '1px solid rgba(255,255,255,0.3)');
+                            let sombraToken = isFlying ? '0 10px 15px rgba(0, 204, 255, 0.5)' : 'none';
+                            if (tkGrand) { bordaToken = '3px solid #ffcc00'; sombraToken = '0 0 15px #ff003c, inset 0 0 10px #ffcc00'; } 
+                            else if (tkCand) { bordaToken = '2px solid #0088ff'; sombraToken = '0 0 10px #00ccff'; }
+
+                            const style = {
+                                position: 'absolute', top: 2, left: 2, width: tamanhoCelula - 4, height: tamanhoCelula - 4,
+                                borderRadius: '50%', backgroundColor: corDoJogador(tk.nome), display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                color: '#fff', fontSize: '0.7em', fontWeight: 'bold', border: bordaToken, boxShadow: sombraToken,
+                                transform: isFlying ? 'translateY(-5px)' : 'none', backgroundImage: urlSeguraParaCss(info.img) || 'none', backgroundSize: 'cover', backgroundPosition: 'center',
+                                zIndex: isFlying ? 10 : (tkGrand ? 5 : 1),
+                                opacity: isOculto ? 0.4 : 1 
+                            };
+                            return (
+                                <div key={tk.nome} className={`player-token${isMe ? ' my-token' : ''}`} title={`${tk.nome} | Altura: ${altitude}m`} style={style}>
+                                    {!info.img && tk.nome.charAt(0).toUpperCase()}
+                                    {isFlying && <div style={{ position: 'absolute', bottom: '-15px', background: '#00ccff', color: '#000', fontSize: '0.8em', padding: '0 4px', borderRadius: '4px', fontWeight: 'bold' }}>{altitude}m</div>}
+                                </div>
+                            );
+                        })}
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
+export function MapaIniciativaTracker() {
+    const ctx = useMapaForm();
+    if (!ctx) return FALLBACK;
+    
+    const { 
+        minhaFicha, iniciativaInput, setIniciativaInput, isMestre, sairDoCombate, encerrarCombate, 
+        setMinhaIniciativa, avancarTurno, ordemIniciativa, turnoAtualIndex, jogadorHistory, 
+        setJogadorHistory, feedCombate, getAvatarInfo, fmt, jogadorDaVez, infoDaVez, meuNome, 
+        jogadores, dummies, cenaRenderId, cenario
+    } = ctx;
+
+    const todasEntidades = useMemo(() => {
+        const js = Object.entries(jogadores).filter(([n, f]) => (f.posicao?.cenaId || 'default') === cenaRenderId).map(([n, f]) => ({ id: n, nome: n, ficha: f, isDummie: false, init: f.iniciativa || 0 }));
+        const ds = Object.entries(dummies || {}).filter(([id, d]) => (d.cenaId || 'default') === cenaRenderId).map(([id, d]) => ({ id, nome: d.nome, ficha: d, isDummie: true, init: d.iniciativa || 0 }));
+        
+        return [...js, ...ds].sort((a, b) => b.init - a.init);
+    }, [jogadores, dummies, cenaRenderId]);
+
+    const toggleVisibilidadeToken = (e, idOuNome) => {
+        e.stopPropagation();
+        const novoCenario = JSON.parse(JSON.stringify(cenario || {}));
+        if (!novoCenario.tokensOcultos) novoCenario.tokensOcultos = [];
+        if (novoCenario.tokensOcultos.includes(idOuNome)) {
+            novoCenario.tokensOcultos = novoCenario.tokensOcultos.filter(t => t !== idOuNome);
+        } else {
+            novoCenario.tokensOcultos.push(idOuNome);
+        }
+        salvarCenarioCompleto(novoCenario);
+    };
+
+    return (
+        <div className="def-box" style={{ marginTop: 15, padding: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
+                    <h3 style={{ color: '#00ffcc', margin: 0, fontSize: '1.1em' }}>⚡ Iniciativa & Entidades</h3>
+                    <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+                        <input className="input-neon" type="number" value={iniciativaInput} onChange={e => setIniciativaInput(e.target.value)} style={{ width: 50, padding: 4, height: 26, margin: 0 }} title="Sua Iniciativa" />
+                        <button className="btn-neon btn-gold" onClick={setMinhaIniciativa} style={{ padding: '2px 8px', fontSize: '0.8em', margin: 0 }}>Rolar</button>
+                    </div>
+                </div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                    <button className="btn-neon" onClick={avancarTurno} style={{ borderColor: '#00ffcc', color: '#00ffcc', padding: '2px 10px', fontSize: '0.8em', margin: 0 }}>Passar Turno</button>
+                    {minhaFicha?.iniciativa > 0 && <button className="btn-neon btn-red" onClick={sairDoCombate} style={{ padding: '2px 10px', fontSize: '0.8em', margin: 0 }}>Sair</button>}
+                    {isMestre && <button className="btn-neon" onClick={encerrarCombate} style={{ borderColor: '#ff003c', color: '#ff003c', padding: '2px 10px', fontSize: '0.8em', margin: 0 }}>Zerar</button>}
+                </div>
+            </div>
+
+            <div id="lista-turnos" style={{ display: 'flex', gap: 8, marginTop: 15, overflowX: 'auto', paddingBottom: 5, minHeight: 50 }}>
+                {todasEntidades.length === 0 ? (
+                    <p style={{ color: '#888', fontSize: '0.8em', margin: 0 }}>Nenhuma entidade encontra-se neste mapa.</p>
+                ) : (
+                    todasEntidades.map((entidade) => {
+                        const isOculto = cenario?.tokensOcultos?.includes(entidade.id);
+                        if (!isMestre && isOculto) return null;
+
+                        const info = getAvatarInfo(entidade.ficha);
+                        const isRolled = entidade.init > 0;
+                        const isActive = isRolled && ordemIniciativa.length > 0 && (ordemIniciativa[turnoAtualIndex % ordemIniciativa.length]?.nome === entidade.nome);
+
+                        return (
+                            <div key={entidade.id} style={{ position: 'relative' }}>
+                                <div title={`Clique para ver o Histórico de ${entidade.nome}`} onClick={() => setJogadorHistory(entidade.nome)} style={{ 
+                                    cursor: 'pointer', minWidth: 40, height: 40, borderRadius: '50%', 
+                                    border: isActive ? '3px solid #00ffcc' : (isRolled ? '2px solid #aaa' : '2px dashed #444'), 
+                                    opacity: isActive ? 1 : (isOculto ? 0.3 : (isRolled ? 0.8 : 0.5)), 
+                                    backgroundImage: urlSeguraParaCss(info.img) || 'none', backgroundSize: 'cover', backgroundPosition: 'top center', 
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.7em', color: 'white', textShadow: '1px 1px 2px black', transition: 'transform 0.2s' 
+                                }}>
+                                    {!info.img && entidade.nome.charAt(0)}
+                                </div>
+                                {isMestre && (
+                                    <button 
+                                        onClick={(e) => toggleVisibilidadeToken(e, entidade.id)}
+                                        title={isOculto ? "Oculto dos Jogadores. Clique para Revelar." : "Visível. Clique para Ocultar."}
+                                        style={{ position: 'absolute', top: -5, right: -5, background: isOculto ? '#ff003c' : '#000', borderRadius: '50%', padding: '2px 4px', fontSize: '10px', cursor: 'pointer', border: '1px solid #fff' }}
+                                    >
+                                        {isOculto ? '👻' : '👁️'}
+                                    </button>
+                                )}
+                            </div>
+                        );
+                    })
+                )}
+            </div>
+
+            {jogadorHistory && (
+                <div style={{ marginTop: 15, padding: 15, background: 'rgba(0, 20, 40, 0.8)', border: '1px solid #0088ff', borderRadius: 8 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                        <h4 style={{ margin: 0, color: '#0088ff' }}>Histórico de Ações: {jogadorHistory}</h4>
+                        <button className="btn-neon btn-red" onClick={() => setJogadorHistory(null)} style={{ padding: '2px 8px', fontSize: '0.8em', margin: 0 }}>X Fechar</button>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 200, overflowY: 'auto', paddingRight: 5 }}>
+                        {feedCombate.filter(f => f.nome === jogadorHistory).slice(-6).reverse().map((h, i) => (
+                            <div key={i} style={{ fontSize: '0.85em', color: '#ccc', background: 'rgba(0,0,0,0.5)', padding: 8, borderRadius: 5, borderLeft: `3px solid ${h.tipo === 'dano' ? '#ff003c' : '#f90'}` }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}><strong style={{ color: h.tipo === 'dano' ? '#ff003c' : h.tipo === 'acerto' ? '#f90' : '#0088ff', textTransform: 'uppercase' }}>[{h.tipo}]</strong>{h.acertoTotal && <strong style={{ color: '#fff' }}>Total: {fmt(h.acertoTotal)}</strong>}{h.dano && <strong style={{ color: '#fff' }}>Dano Bruto: {fmt(h.dano)}</strong>}</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {jogadorDaVez && (
+                <div style={{ marginTop: 15, display: 'flex', gap: 15, alignItems: 'center' }}>
+                    <div id="turno-destaque" style={{ width: 60, height: 60, borderRadius: '50%', border: '3px solid #00ffcc', backgroundImage: urlSeguraParaCss(infoDaVez?.img) || 'none', backgroundSize: 'cover', backgroundPosition: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5em', fontWeight: 'bold', color: '#fff' }}>{(!infoDaVez || !infoDaVez.img) && jogadorDaVez.nome.charAt(0)}</div>
+                    <div>
+                        <div id="turno-nome" style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.1em' }}>{jogadorDaVez.nome}</div>
+                        {infoDaVez && infoDaVez.forma && (<div id="turno-forma" style={{ color: '#00ffcc', fontSize: '0.8em' }}>{infoDaVez.forma}</div>)}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+export function MapaHologramaAcao() {
+    const ctx = useMapaForm();
+    if (!ctx) return FALLBACK;
+    const { dadoAnim, ordemIniciativa, feedCombate, feedIndexTurnoAtual, jogadorDaVez, jogadores, overridesCompendio, getAvatarInfo, fmt, meuNome, minhaFicha } = ctx;
+
+    const emCombate = ordemIniciativa.length > 0;
+    const acaoNovaNoTurno = feedCombate.length > feedIndexTurnoAtual ? feedCombate[feedCombate.length - 1] : null;
+    const acaoGeralForaDeCombate = feedCombate.length > 0 ? feedCombate[feedCombate.length - 1] : null;
+    const acaoExibir = emCombate ? acaoNovaNoTurno : acaoGeralForaDeCombate;
+
+    if (!emCombate && !acaoExibir) {
+        return (
+            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontStyle: 'italic', border: '2px dashed #333', borderRadius: 8 }}>O campo de batalha aguarda o primeiro movimento...</div>
+        );
+    }
+
+    let nomeBase = jogadorDaVez ? jogadorDaVez.nome : (acaoExibir ? acaoExibir.nome : '');
+    let fichaBase = jogadorDaVez ? jogadorDaVez.ficha : (acaoExibir ? jogadores[acaoExibir.nome] : null);
+    let infoBase = getAvatarInfo(fichaBase);
+
+    let classId = fichaBase?.bio?.classe;
+    if ((classId === 'pretender' || classId === 'alterego') && fichaBase?.bio?.subClasse) classId = fichaBase?.bio?.subClasse;
+    let mesaBase = fichaBase?.bio?.mesa || 'presente';
+    const isGrand = classId && overridesCompendio?.grands?.[`${classId}_${mesaBase}`] === nomeBase;
+    const listaCands = overridesCompendio?.grands?.[`${classId}_${mesaBase}_candidatos`] || [];
+    const isCandidato = classId && !isGrand && listaCands.includes(nomeBase);
+    const grandIconUrl = overridesCompendio?.grands?.[`${classId}_${mesaBase}_icone`];
+    const customClassIcon = classId ? overridesCompendio[classId]?.iconeUrl : null;
+    const defaultClassSymbol = getClassIconById(classId);
+
+    let isCritNormal = false, isCritFatal = false, isFalha = false;
+    if (acaoExibir && acaoExibir.rolagem && (acaoExibir.tipo === 'acerto' || acaoExibir.tipo === 'dano')) {
+        let maxDado = 0;
+        let regexStrong = /<strong>(\d+)<\/strong>/g;
+        let match;
+        while ((match = regexStrong.exec(acaoExibir.rolagem)) !== null) {
+            let v = parseInt(match[1]);
+            if (v > maxDado) maxDado = v;
+        }
+        if (maxDado === 0) {
+            let regexArr = /\[(.*?)\]/;
+            let mArr = regexArr.exec(acaoExibir.rolagem);
+            if (mArr) {
+                let clean = mArr[1].replace(/<[^>]*>?/gm, ''); 
+                let nums = clean.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n));
+                if (nums.length > 0) maxDado = Math.max(...nums);
+            }
+        }
+        const acCfg = fichaBase?.ataqueConfig || minhaFicha?.ataqueConfig || {};
+        const cNMin = acCfg.criticoNormalMin || 16, cNMax = acCfg.criticoNormalMax || 18;
+        const cFMin = acCfg.criticoFatalMin || 19, cFMax = acCfg.criticoFatalMax || 20;
+        if (maxDado >= cFMin && maxDado <= cFMax) isCritFatal = true;
+        else if (maxDado >= cNMin && maxDado <= cNMax) isCritNormal = true;
+        else if (maxDado === 1) isFalha = true;
+
+        if (acaoExibir.tipo === 'dano') {
+            if (acaoExibir.armaStr?.includes('FATAL')) { isCritFatal = true; isCritNormal = false; }
+            else if (acaoExibir.armaStr?.includes('CRÍTICO')) { isCritNormal = true; isCritFatal = false; }
+        }
+    }
+
+    const isForaDeCombate = acaoExibir && emCombate && (!ordemIniciativa.find(j => j.nome === acaoExibir.nome));
+    const isForaDeTurno = acaoExibir && emCombate && !isForaDeCombate && acaoExibir.nome !== nomeBase;
+
+    let corImpacto = '#333', corHeader = '#00ffcc', corTextoHeader = '#000', tituloImpacto = 'AÇÃO', valorImpacto = 0;
+    if (acaoExibir) {
+        switch (acaoExibir.tipo) {
+            case 'dano': corImpacto = '#ff003c'; tituloImpacto = 'DANO'; valorImpacto = acaoExibir.dano; break;
+            case 'acerto': corImpacto = '#f90'; tituloImpacto = 'ACERTO'; valorImpacto = acaoExibir.acertoTotal; break;
+            case 'evasiva': corImpacto = '#0088ff'; tituloImpacto = 'ESQUIVA'; valorImpacto = acaoExibir.total; break;
+            case 'resistencia': corImpacto = '#ccc'; tituloImpacto = 'BLOQUEIO'; valorImpacto = acaoExibir.total; break;
+            case 'escudo': corImpacto = '#f0f'; tituloImpacto = 'ESCUDO'; valorImpacto = acaoExibir.escudoReduzido; break;
+            case 'sistema': corImpacto = '#ffcc00'; tituloImpacto = 'AVISO DO SISTEMA'; valorImpacto = 0; break;
+            default: break;
+        }
+    }
+
+    if (isCritFatal) { corImpacto = '#ff003c'; corHeader = '#ff003c'; corTextoHeader = '#fff'; tituloImpacto = '🔥 CRÍTICO FATAL 🔥'; }
+    else if (isCritNormal) { corImpacto = '#ffcc00'; corHeader = '#ffcc00'; corTextoHeader = '#000'; tituloImpacto = '⚡ CRÍTICO NORMAL ⚡'; }
+    else if (isFalha) { corImpacto = '#660000'; corHeader = '#660000'; corTextoHeader = '#ff003c'; tituloImpacto = '☠️ FALHA CRÍTICA ☠️'; }
+    else if (acaoExibir) {
+        corHeader = corImpacto; corTextoHeader = '#000';
+        if (acaoExibir.tipo === 'sistema') tituloImpacto = 'AVISO DO SISTEMA';
+        else if (jogadorDaVez && !isForaDeTurno && !isForaDeCombate) tituloImpacto = `TURNO DE ${nomeBase}`;
+        else tituloImpacto = 'AÇÃO LIVRE';
+    } else {
+        tituloImpacto = `⚡ TURNO DE ${nomeBase} ⚡`;
+    }
+
+    return (
+        <div className="def-box" style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', border: isGrand ? `3px solid #ffcc00` : (isCandidato ? `2px solid #00ccff` : `2px solid ${corImpacto}`), boxShadow: isGrand ? `0 0 30px rgba(255,0,60,0.6), inset 0 0 20px rgba(255,204,0,0.3)` : (isCandidato ? `0 0 20px rgba(0,204,255,0.4)` : `0 0 20px ${corImpacto}40`) }}>
+            <div style={{ background: corHeader, color: corTextoHeader, padding: '10px', textAlign: 'center', fontWeight: '900', letterSpacing: 2, fontSize: '1.2em', textTransform: 'uppercase' }}>{tituloImpacto}</div>
+            {acaoExibir?.tipo === 'sistema' ? (
+                 <div style={{ flex: '1', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 30, textAlign: 'center', background: 'rgba(0,0,0,0.8)' }}>
+                    <h2 style={{ color: '#ffcc00', textShadow: '0 0 20px #ffcc00' }}>{acaoExibir.texto}</h2>
+                 </div>
+            ) : (
+                <>
+                    <div style={{ flex: '1', minHeight: '250px', backgroundImage: urlSeguraParaCss(infoBase.img) || 'none', backgroundSize: 'cover', backgroundPosition: 'top center', position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', boxShadow: 'inset 0 -100px 50px -20px rgba(0,0,0,0.9)' }}>
+                        <div style={{ padding: '20px', zIndex: 2, background: isGrand ? 'linear-gradient(to top, rgba(255,0,60,0.9), transparent)' : (isCandidato ? 'linear-gradient(to top, rgba(0,136,255,0.8), transparent)' : 'none') }}>
+                            {isGrand && <div style={{ color: '#ffcc00', fontSize: '0.85em', fontWeight: 'bold', textShadow: '0 0 5px #ff003c', letterSpacing: 2, marginBottom: '5px' }}>👑 GRAND {classId?.toUpperCase()}</div>}
+                            {isCandidato && <div style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold', textShadow: '0 0 5px #0088ff', letterSpacing: 2, marginBottom: '5px' }}>🌟 CANDIDATO A {classId?.toUpperCase()}</div>}
+                            <h2 style={{ margin: 0, color: '#fff', fontSize: '2em', textShadow: isGrand ? '0 0 15px #ffcc00, 2px 2px 0px #000' : '0 0 10px #000, 2px 2px 0px #000', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                {isGrand && grandIconUrl ? <img src={grandIconUrl} alt="Grand" style={{ height: '1.5em', width: '1.5em', objectFit: 'cover', borderRadius: '50%', border: '2px solid #ffcc00', boxShadow: '0 0 10px #ff003c' }} /> : customClassIcon ? <img src={customClassIcon} alt={classId} style={{ height: '1.2em', width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 0 5px rgba(0,255,204,0.5))' }} /> : defaultClassSymbol ? <span style={{ fontSize: '0.9em', filter: 'drop-shadow(0 0 5px rgba(0,255,204,0.5))' }}>{defaultClassSymbol}</span> : null}
+                                {nomeBase}
+                            </h2>
+                            {infoBase.forma && <div style={{ color: '#00ffcc', fontSize: '1.2em', fontWeight: 'bold', textShadow: '0 0 5px #000' }}>☄️ {infoBase.forma}</div>}
+                        </div>
+                    </div>
+                    {acaoExibir && (
+                        <div style={{ padding: '20px', background: 'rgba(0,0,0,0.85)', textAlign: 'center', borderTop: `1px solid ${corImpacto}` }}>
+                            {isForaDeCombate && <div style={{ background: 'rgba(255,204,0,0.1)', color: '#ffcc00', border: '1px solid #ffcc00', padding: 4, fontSize: '0.8em', marginBottom: 10, borderRadius: 4 }}>⚠️ Rolagem Fora de Combate (Feita por: {acaoExibir.nome})</div>}
+                            {isForaDeTurno && <div style={{ background: 'rgba(255,0,60,0.1)', color: '#ff003c', border: '1px solid #ff003c', padding: 4, fontSize: '0.8em', marginBottom: 10, borderRadius: 4 }}>❌ Ação Fora de Turno (Feita por: {acaoExibir.nome})</div>}
+                            <div style={{ fontSize: '0.9em', color: '#aaa', marginBottom: '-10px', textTransform: 'uppercase' }}>{tituloImpacto} {(!isForaDeCombate && !isForaDeTurno) ? '' : `(${acaoExibir.nome})`}</div>
+                            <h1 style={{ margin: 0, fontSize: '4em', color: corImpacto, textShadow: `0 0 20px ${corImpacto}` }}>{fmt(valorImpacto)}</h1>
+                            {acaoExibir.tipo === 'dano' && acaoExibir.letalidade !== undefined && <div style={{ color: '#ffcc00', fontSize: '1.2em', fontWeight: 'bold', marginTop: '10px', textShadow: '0 0 5px #ffcc00' }}>LETALIDADE: +{acaoExibir.letalidade}</div>}
+                            
+                            {acaoExibir.alvosArea && acaoExibir.alvosArea.length > 0 && (
+                                <div style={{ marginTop: 15, padding: 8, background: 'rgba(0,0,0,0.6)', borderRadius: 4, borderLeft: `3px solid ${acaoExibir.alvosArea.some(a=>a.acertou) ? '#0f0' : '#f00'}`, textAlign: 'left' }}>
+                                    {acaoExibir.areaEf > 0 && <div style={{ color: '#00ccff', fontSize: '0.85em', marginBottom: 6, fontWeight: 'bold', textTransform: 'uppercase' }}>💥 Explosão em Área ({acaoExibir.areaEf} Quadrados) atingiu {acaoExibir.alvosArea.length} alvo(s):</div>}
+                                    {acaoExibir.alvosArea.map((a, i) => (
+                                        <div key={i} style={{ color: a.acertou ? '#0f0' : '#f00', fontWeight: 'bold', fontSize: '0.9em', marginBottom: 2 }}>
+                                            {a.acertou ? `🎯 Superou ${a.nome} (Def: ${a.defesa})!` : `❌ Falhou vs ${a.nome} (Def: ${a.defesa})!`}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    {fichaBase && (
+                        <div style={{ padding: '15px', background: '#050505' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, background: 'rgba(0,0,0,0.7)', padding: 12, borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ff4d4d', fontWeight: 'bold' }}><span style={{ fontSize: '0.8em', alignSelf: 'center' }}>HP</span><span>{fmt(fichaBase.vida?.atual)}</span></div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#4dffff', fontWeight: 'bold' }}><span style={{ fontSize: '0.8em', alignSelf: 'center' }}>MP</span><span>{fmt(fichaBase.mana?.atual)}</span></div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ffff4d', fontWeight: 'bold' }}><span style={{ fontSize: '0.8em', alignSelf: 'center' }}>AU</span><span>{fmt(fichaBase.aura?.atual)}</span></div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#00ffcc', fontWeight: 'bold' }}><span style={{ fontSize: '0.8em', alignSelf: 'center' }}>CK</span><span>{fmt(fichaBase.chakra?.atual)}</span></div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ff66ff', fontWeight: 'bold' }}><span style={{ fontSize: '0.8em', alignSelf: 'center' }}>CP</span><span>{fmt(fichaBase.corpo?.atual)}</span></div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                                    <div style={{ color: '#0088ff', fontWeight: 'bold', fontSize: '0.9em', textShadow: '0 0 5px #0088ff' }}>🛡️ EVA: {calcularCA(fichaBase, 'evasiva')}</div>
+                                    <div style={{ color: '#ccc', fontWeight: 'bold', fontSize: '0.9em', textShadow: '0 0 5px #ccc' }}>🛡️ RES: {calcularCA(fichaBase, 'resistencia')}</div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </>
+            )}
+        </div>
     );
 }
