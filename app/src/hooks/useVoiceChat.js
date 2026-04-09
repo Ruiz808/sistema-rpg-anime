@@ -54,17 +54,17 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
     useEffect(() => { conexoesRef.current = conexoes; }, [conexoes]);
     useEffect(() => { supressorAtivoRef.current = supressorAtivo; }, [supressorAtivo]);
 
-    // 1. INICIALIZA A ANTENA PEERJS
+    // 1. INICIALIZA A ANTENA PEERJS (COM SERVIDORES TURN ANTI-OPERA GX)
     useEffect(() => {
         if (!meuIDTelefone || peerObj) return;
 
+        // 🔥 ESCUDO ANTI-FIREWALL: O Opera GX precisa obrigatoriamente do TURN para funcionar
         const ICE_SERVERS = [
             { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' },
-            { urls: 'stun:stun2.l.google.com:19302' },
-            { urls: 'stun:stun3.l.google.com:19302' },
-            { urls: 'stun:stun4.l.google.com:19302' },
-            { urls: 'stun:global.stun.twilio.com:3478' }
+            { urls: 'stun:global.stun.twilio.com:3478' },
+            { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+            { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+            { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
         ];
 
         console.log(`[VOZ] A ligar à Central de Rádio com ID: anime-rpg-${meuIDTelefone}`);
@@ -92,9 +92,8 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
                         
                         setConexoes(prev => {
                             const exists = prev.find(c => c.id === call.peer);
-                            // 🔥 O ESCUDO ANTI-DUPLICAÇÃO: Se já temos a stream, ignoramos a nova para não quebrar o motor de som!
                             if (exists && exists.stream && exists.stream.active) {
-                                console.log(`[VOZ] 🛡️ Stream duplicada de ${call.peer} bloqueada! O áudio continua a salvo.`);
+                                console.log(`[VOZ] 🛡️ Stream duplicada bloqueada.`);
                                 return prev;
                             }
                             return [...prev.filter(c => c.id !== call.peer), { id: call.peer, stream: remoteStream }];
@@ -135,12 +134,10 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
         if (isPresenteNaTaverna && !rtcLigado.current) {
             rtcLigado.current = true;
             setVoiceStatus('A ligar Equipamentos...');
-            console.log('[VOZ] A pedir permissão para usar o Microfone...');
 
             navigator.mediaDevices.getUserMedia({
                 audio: getAudioConstraints(null, supressorAtivoRef.current)
             }).then(async (stream) => {
-                console.log('[VOZ] Permissão concedida! Stream local capturada.');
                 meuStreamRef.current = stream;
                 setMeuStream(stream);
                 
@@ -165,12 +162,11 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
 
             }).catch((err) => {
                 console.error('[VOZ] Erro ao aceder ao microfone:', err);
-                setVoiceStatus('Microfone Bloqueado! Permita no cadeado do navegador.');
+                setVoiceStatus('Microfone Bloqueado! Verifique o Opera GX.');
                 rtcLigado.current = false;
             });
 
         } else if (!isPresenteNaTaverna && rtcLigado.current) {
-            console.log('[VOZ] A desligar microfone e a sair da Taverna...');
             rtcLigado.current = false;
             if (meuStreamRef.current) meuStreamRef.current.getTracks().forEach(t => t.stop());
             if (streamAnalisador) streamAnalisador.getTracks().forEach(t => t.stop());
@@ -195,7 +191,6 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
         const call = peerObj.call(idFormatado, meuStreamRef.current);
         
         if (!call) { 
-            console.error(`[VOZ] Falha ao iniciar call para ${idFormatado}.`);
             chamadasEmAndamento.current.delete(idFormatado); 
             return; 
         }
@@ -204,9 +199,7 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
             console.log(`[VOZ] Áudio recebido de ${idFormatado} (Chamada Ativa)!`);
             setConexoes(prev => {
                 const exists = prev.find(c => c.id === idFormatado);
-                // 🔥 O ESCUDO ANTI-DUPLICAÇÃO (Cenário de Chamada Ativa) 🔥
                 if (exists && exists.stream && exists.stream.active) {
-                    console.log(`[VOZ] 🛡️ Stream duplicada ativa de ${idFormatado} bloqueada.`);
                     return prev;
                 }
                 return [...prev.filter(c => c.id !== idFormatado), { id: idFormatado, stream: remoteStream }];
@@ -215,13 +208,11 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
         });
         
         call.on('close', () => { 
-            console.log(`[VOZ] Chamada fechada por ${idFormatado}`);
             setConexoes(prev => prev.filter(c => c.id !== idFormatado)); 
             chamadasEmAndamento.current.delete(idFormatado); 
         });
         
         call.on('error', (err) => { 
-            console.error(`[VOZ] Erro na chamada ativa para ${idFormatado}:`, err);
             setConexoes(prev => prev.filter(c => c.id !== idFormatado)); 
             chamadasEmAndamento.current.delete(idFormatado); 
         });
@@ -236,7 +227,6 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
                 const meuId = `anime-rpg-${(meuNome || '').toLowerCase().replace(/[^a-z0-9]/g, '')}`;
                 const amigoId = `anime-rpg-${(nomeAmigo || '').toLowerCase().replace(/[^a-z0-9]/g, '')}`;
 
-                // Apenas a pessoa com o ID alfabético menor liga! Evita colisões frontais!
                 if (meuId < amigoId) {
                     const exists = conexoesRef.current.find(c => c.id === amigoId);
                     if (!exists && !chamadasEmAndamento.current.has(amigoId)) {

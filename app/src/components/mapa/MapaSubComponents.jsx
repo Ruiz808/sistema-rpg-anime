@@ -25,6 +25,9 @@ const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Mapa provider não 
 // ============================================================================
 // 🔥 REPRODUTOR ANCORADO NO DOM (ANTI-GARBAGE COLLECTION DO CHROME) 🔥
 // ============================================================================
+// ============================================================================
+// 🔥 REPRODUTOR ANCORADO NO DOM (COM FIX PARA O OPERA GX) 🔥
+// ============================================================================
 function PlayerDeAudioRemoto({ stream, volume, surdo, nome, sinkId }) {
     const audioRef = useRef(null);
 
@@ -33,23 +36,27 @@ function PlayerDeAudioRemoto({ stream, volume, surdo, nome, sinkId }) {
         if (!audioEl || !stream) return;
 
         if (audioEl.srcObject !== stream) {
-            console.log(`[VOZ-PLAYER] Anexando stream DOM para ${nome}`);
+            console.log(`[VOZ-PLAYER] Anexando stream para ${nome}`);
             audioEl.srcObject = stream;
         }
 
-        // Tenta iniciar a reprodução. O Chrome pode bloquear se não houver interação prévia.
+        // 🔥 FIX OPERA GX: O Opera precisa que o elemento recarregue explicitamente a stream
+        audioEl.load();
+
         const playPromise = audioEl.play();
         if (playPromise !== undefined) {
             playPromise.then(() => {
-                console.log(`[VOZ-PLAYER] Tocando DOM com sucesso para ${nome}!`);
+                console.log(`[VOZ-PLAYER] Áudio de ${nome} está a tocar livremente!`);
             }).catch(e => {
-                console.warn(`[VOZ-PLAYER] Autoplay bloqueado pelo navegador para ${nome}. Clique na tela!`, e);
-                // Armadilha: O próximo clique em qualquer sítio destranca o áudio!
+                console.warn(`[VOZ-PLAYER] Opera GX bloqueou o autoplay para ${nome}. Por favor clique na ecrã!`, e);
+                // Armadilha dupla: Se o Opera bloquear, qualquer toque ou tecla destranca o áudio!
                 const forcePlay = () => {
                     audioEl.play().catch(()=>{});
                     document.removeEventListener('click', forcePlay);
+                    document.removeEventListener('keydown', forcePlay);
                 };
                 document.addEventListener('click', forcePlay);
+                document.addEventListener('keydown', forcePlay);
             });
         }
     }, [stream, nome]);
@@ -66,7 +73,6 @@ function PlayerDeAudioRemoto({ stream, volume, surdo, nome, sinkId }) {
         }
     }, [sinkId]);
 
-    // 🔥 CORREÇÃO ABSOLUTA: O áudio TEM de estar no DOM, mas com 1px invisível para que o browser não o mate!
     return (
         <audio 
             ref={audioRef} 
