@@ -27,7 +27,7 @@ function PlayerDeAudioRemoto({ stream, volume, surdo, nome }) {
 }
 
 // ============================================================================
-// 🔥 CALIBRADOR VISUAL (A BARRINHA VERDE VOLTOU!)
+// 🔥 CALIBRADOR VISUAL (A BARRINHA VERDE)
 // ============================================================================
 function CalibradorDeVoz({ stream, sensibilidade, setSensibilidade }) {
     const barraRef = useRef(null);
@@ -73,10 +73,10 @@ function CalibradorDeVoz({ stream, sensibilidade, setSensibilidade }) {
 }
 
 // ============================================================================
-// 🔥 A CARTA DE AVATAR (PISCA QUANDO ELES FALAM!)
+// 🔥 A CARTA DE AVATAR (PISCA QUANDO ELES FALAM)
 // ============================================================================
-function AvatarCardVoz({ nome, info, ficha, isMe, isConnected, streamParaTocar, euEstouFalandoState, mutado, surdo, fazerChamada, cardSize, fmt }) {
-    const [isSpeakingRemote, setIsSpeakingRemote] = useState(false);
+function AvatarCardVoz({ nome, info, ficha, isMe, isConnected, streamParaTocar, streamAnalisador, meuStream, mutado, surdo, fazerChamada, cardSize, fmt }) {
+    const [isSpeaking, setIsSpeaking] = useState(false);
     const [volume, setVolume] = useState(() => {
         const saved = localStorage.getItem(`rpg_vol_${nome}`);
         return saved !== null ? parseFloat(saved) : 1; 
@@ -86,26 +86,32 @@ function AvatarCardVoz({ nome, info, ficha, isMe, isConnected, streamParaTocar, 
     const rafRef = useRef(null);
     const audioCtxRef = useRef(null);
 
-    // NEON DOS AMIGOS: Lê a stream deles para piscar a carta (Apenas visual!)
+    // O NEON DOS AVATARES: Lê a stream e pisca as bordas (seja sua ou do amigo)
     useEffect(() => {
-        if (isMe || !streamParaTocar) return;
+        const targetStream = isMe ? streamAnalisador : streamParaTocar;
+        if (!targetStream) return;
+
         try {
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
             const actx = audioCtxRef.current;
             if (actx.state === 'suspended') actx.resume();
 
-            const source = actx.createMediaStreamSource(streamParaTocar);
+            const source = actx.createMediaStreamSource(targetStream);
             const analyser = actx.createAnalyser();
             analyser.fftSize = 256;
             analyser.smoothingTimeConstant = 0.4; 
-            source.connect(analyser); // Só analisa, não vai para colunas!
+            source.connect(analyser); 
 
             const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            
+            // Lê o limiar salvo do seu PC para o seu próprio mic, e um limiar baixo fixo para a voz dos amigos
+            const getLimiar = () => isMe ? (parseInt(localStorage.getItem('rpg_sensibilidade_voz')) || 10) : 5;
+
             const checkVolume = () => {
                 analyser.getByteFrequencyData(dataArray);
                 let sum = 0; for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
-                setIsSpeakingRemote((sum / dataArray.length) > 5);
+                setIsSpeaking((sum / dataArray.length) > getLimiar());
                 rafRef.current = requestAnimationFrame(checkVolume);
             };
             checkVolume();
@@ -115,17 +121,16 @@ function AvatarCardVoz({ nome, info, ficha, isMe, isConnected, streamParaTocar, 
             if (rafRef.current) cancelAnimationFrame(rafRef.current);
             if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') audioCtxRef.current.close().catch(()=>{});
         };
-    }, [streamParaTocar, isMe]);
+    }, [streamAnalisador, streamParaTocar, isMe]);
 
     let boxShadowCard = '0 0 15px rgba(0,0,0,0.8)';
     let borderCard = '2px solid #333';
     let iconMic = '⏳';
-    const isSpeakingFinal = isMe ? euEstouFalandoState : isSpeakingRemote;
 
     if (isConnected) {
         if (isMe && mutado) { 
             borderCard = '2px solid #ff003c'; boxShadowCard = '0 0 20px rgba(255,0,60,0.4)'; iconMic = '🔇'; 
-        } else if (isSpeakingFinal) { 
+        } else if (isSpeaking) { 
             borderCard = '2px solid #00ffcc'; boxShadowCard = '0 0 35px #00ffcc, inset 0 0 20px rgba(0,255,204,0.4)'; iconMic = '🔊'; 
         } else if (!isMe && streamParaTocar) { 
             borderCard = '2px solid #00aaff'; boxShadowCard = '0 0 20px rgba(0,170,255,0.4)'; iconMic = '🔊'; 
@@ -149,7 +154,7 @@ function AvatarCardVoz({ nome, info, ficha, isMe, isConnected, streamParaTocar, 
 
             <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', display: 'flex', flexDirection: 'column', background: 'rgba(10,10,15,0.9)', borderTop: '2px solid #222', padding: '6px 10px', backdropFilter: 'blur(3px)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                    <span style={{ color: isConnected ? (isSpeakingFinal ? '#00ffcc' : '#00aaff') : '#fff', fontWeight: 'bold', fontSize: '0.8em', textTransform: 'uppercase', letterSpacing: 1, textShadow: '1px 1px 2px #000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', transition: 'color 0.2s', paddingRight: '5px' }}>{nome}</span>
+                    <span style={{ color: isConnected ? (isSpeaking ? '#00ffcc' : '#00aaff') : '#fff', fontWeight: 'bold', fontSize: '0.8em', textTransform: 'uppercase', letterSpacing: 1, textShadow: '1px 1px 2px #000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', transition: 'color 0.2s', paddingRight: '5px' }}>{nome}</span>
                     {!isMe && isConnected && streamParaTocar && (
                         <div onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '70px', background: 'rgba(0,0,0,0.5)', padding: '2px 5px', borderRadius: '10px', border: '1px solid #333' }}>
                             <span style={{ fontSize: '9px', color: volume === 0 ? '#ff003c' : '#aaa' }}>{volume === 0 ? '🔇' : '🔉'}</span>
@@ -168,12 +173,30 @@ function AvatarCardVoz({ nome, info, ficha, isMe, isConnected, streamParaTocar, 
 }
 
 // ============================================================================
-// 🔥 A TAVERNA
+// 🔥 A TAVERNA (FASE 1: PURA E LIMPA DE BUGS DE RENDER)
 // ============================================================================
-export function MapaSessaoRP({ chatCtx, meuNome, minhaFicha, personagens, cenario, isPresenteNaTaverna, togglePresencaTaverna, getAvatarInfo, fmt }) {
+export function MapaSessaoRP() {
+    const ctx = useMapaForm();
+    
+    // Fallbacks de Segurança para o Hook de Voz nunca crashar
+    const meuNome = ctx?.meuNome || '';
+    const tavernaAtivos = ctx?.cenario?.tavernaAtivos || [];
+    const isPresenteNaTaverna = ctx?.isPresenteNaTaverna || false;
+
+    // O NOSSO MOTOR DE VOZ VIVE AQUI AGORA (Obedece às regras do React!)
+    const chatCtx = useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna);
+
+    const [radioLigado, setRadioLigado] = useState(false);
+    const [sensibilidadeVozLocal, setSensibilidadeVozLocal] = useState(() => {
+        const saved = localStorage.getItem('rpg_sensibilidade_voz');
+        return saved !== null ? parseInt(saved, 10) : 10;
+    });
+
+    if (!ctx) return FALLBACK;
+    const { minhaFicha, personagens, cenario, togglePresencaTaverna, getAvatarInfo, fmt } = ctx;
+    
     const playerCount = cenario?.tavernaAtivos?.length || 0;
     const cardSize = playerCount === 1 ? '400px' : playerCount === 2 ? '350px' : '280px';
-    const [radioLigado, setRadioLigado] = useState(false);
 
     if (!radioLigado) return (
         <div className="fade-in" style={{ minHeight: '60vh', background: 'radial-gradient(circle, rgba(30,10,20,0.9) 0%, rgba(0,0,0,1) 100%)', borderRadius: 5, border: '2px solid #ffcc00', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
@@ -193,15 +216,14 @@ export function MapaSessaoRP({ chatCtx, meuNome, minhaFicha, personagens, cenari
                     <div style={{ color: '#00ffcc', fontSize: '0.85em', fontFamily: 'monospace' }}>📡 {chatCtx.voiceStatus}</div>
                     
                     {chatCtx.mics.length > 0 && (
-                        <select className="input-neon" value={chatCtx.selectedMic} onChange={e => chatCtx.trocarMicrofone(e.target.value)} style={{ padding: '4px', fontSize: '0.8em', background: '#000', color: '#fff', borderColor: '#00ffcc', borderRadius: '5px' }}>
-                            {chatCtx.mics.map(m => <option key={m.deviceId} value={m.deviceId}>{m.label}</option>)}
+                        <select className="input-neon" value={chatCtx.selectedMic} onChange={e => chatCtx.trocarMicrofone(e.target.value)} style={{ padding: '4px', fontSize: '0.8em', background: '#000', color: '#fff', borderColor: '#00ffcc', borderRadius: '5px', maxWidth: '200px' }}>
+                            {chatCtx.mics.map(m => <option key={m.deviceId} value={m.deviceId}>{m.label || `Padrão - Mic ${m.deviceId.substring(0,4)}`}</option>)}
                         </select>
                     )}
                     
                     <label style={{ color: '#00ffcc', fontSize: '0.8em', cursor: 'pointer' }}><input type="checkbox" checked={chatCtx.supressorAtivo} onChange={e => chatCtx.setSupressorAtivo(e.target.checked)} /> 🎧 Supressor Nativo</label>
                     
-                    {/* A BARRINHA VERDE VOLTOU AQUI! */}
-                    {chatCtx.streamAnalisador && <CalibradorDeVoz stream={chatCtx.streamAnalisador} sensibilidade={chatCtx.sensibilidadeVoz} setSensibilidade={chatCtx.setSensibilidadeVoz} />}
+                    {chatCtx.streamAnalisador && <CalibradorDeVoz stream={chatCtx.streamAnalisador} sensibilidade={sensibilidadeVozLocal} setSensibilidade={setSensibilidadeVozLocal} />}
                 </div>
             )}
             
@@ -216,9 +238,9 @@ export function MapaSessaoRP({ chatCtx, meuNome, minhaFicha, personagens, cenari
                     const isMe = nome === meuNome;
                     const f = isMe ? minhaFicha : personagens?.[nome];
                     const info = getAvatarInfo(f);
-                    const con = chatCtx.conexoes.find(c => c.id === `anime-rpg-${nome.toLowerCase().replace(/[^a-z0-9]/g, '')}`);
+                    const con = chatCtx.conexoes.find(c => c.id === `anime-rpg-${(nome||'').toLowerCase().replace(/[^a-z0-9]/g, '')}`);
                     
-                    return <AvatarCardVoz key={nome} nome={nome} info={info} ficha={f} isMe={isMe} isConnected={isMe || !!con} streamParaTocar={con?.stream} euEstouFalandoState={chatCtx.euEstouFalandoState} mutado={chatCtx.mutado} surdo={chatCtx.surdo} fazerChamada={chatCtx.fazerChamada} cardSize={cardSize} fmt={fmt} />;
+                    return <AvatarCardVoz key={nome} nome={nome} info={info} ficha={f} isMe={isMe} isConnected={isMe || !!con} streamParaTocar={con?.stream} streamAnalisador={isMe ? chatCtx.streamAnalisador : null} meuStream={isMe ? chatCtx.meuStream : null} mutado={chatCtx.mutado} surdo={chatCtx.surdo} fazerChamada={chatCtx.fazerChamada} cardSize={cardSize} fmt={fmt} />;
                 })}
             </div>
         </div>
@@ -228,12 +250,10 @@ export function MapaSessaoRP({ chatCtx, meuNome, minhaFicha, personagens, cenari
 export function MapaAreaCentral() {
     const ctx = useMapaForm();
     if (!ctx) return FALLBACK;
-    const { isModoRP, isMestre, mestreVendoRP, meuNome, cenario, isPresenteNaTaverna, minhaFicha, personagens, getAvatarInfo, fmt, togglePresencaTaverna } = ctx;
-    
-    const chatCtx = useVoiceChat(meuNome, cenario?.tavernaAtivos, isPresenteNaTaverna);
+    const { isModoRP, isMestre, mestreVendoRP } = ctx;
     
     if (isModoRP && (!isMestre || mestreVendoRP)) {
-        return <MapaSessaoRP chatCtx={chatCtx} meuNome={meuNome} minhaFicha={minhaFicha} personagens={personagens} cenario={cenario} isPresenteNaTaverna={isPresenteNaTaverna} togglePresencaTaverna={togglePresencaTaverna} getAvatarInfo={getAvatarInfo} fmt={fmt} />;
+        return <MapaSessaoRP />;
     }
     
     return (
@@ -245,7 +265,7 @@ export function MapaAreaCentral() {
 }
 
 // ============================================================================
-// RESTO DOS COMPONENTES VISUAIS DO MAPA
+// RESTO DOS COMPONENTES VISUAIS (INTATOS E SEGUROS!)
 // ============================================================================
 
 export function MapaControlesSuperiores() {
