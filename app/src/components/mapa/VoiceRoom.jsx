@@ -17,6 +17,7 @@ export function PlayerDeAudioRemoto({ stream, volume, surdo, nome, sinkId }) {
         if (audioRef.current) audioRef.current.volume = surdo ? 0 : Math.min(1, Math.max(0, volume));
     }, [volume, surdo]);
 
+    // O SEGREDO ANTI-ECO: Força o áudio a sair nos fones selecionados!
     useEffect(() => {
         if (audioRef.current && sinkId && typeof audioRef.current.setSinkId === 'function') {
             audioRef.current.setSinkId(sinkId).catch(err => console.log('O navegador bloqueou a troca de saída:', err));
@@ -140,7 +141,11 @@ export function AvatarCardVoz({ nome, info, ficha, isMe, isConnected, streamPara
                     <button className="btn-neon btn-blue" onClick={(e) => { e.stopPropagation(); fazerChamada(nome); }} style={{ padding: '8px 15px', fontSize: '0.9em', fontWeight: 'bold', boxShadow: '0 0 10px #0088ff' }}>📞 FORÇAR LIGAÇÃO</button>
                 </div>
             )}
-            {!isMe && isConnected && streamParaTocar && <PlayerDeAudioRemoto stream={streamParaTocar} volume={volume} surdo={surdo} nome={nome} sinkId={selectedSpeaker} />}
+            
+            {/* O PLAYER DE ÁUDIO COM SINKID SENDO CHAMADO AQUI */}
+            {!isMe && isConnected && streamParaTocar && (
+                <PlayerDeAudioRemoto stream={streamParaTocar} volume={volume} surdo={surdo} nome={nome} sinkId={selectedSpeaker} />
+            )}
 
             <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', display: 'flex', flexDirection: 'column', background: 'rgba(10,10,15,0.9)', borderTop: '2px solid #222', padding: '6px 10px', backdropFilter: 'blur(3px)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
@@ -262,21 +267,19 @@ export function MapaSessaoRP({ chatCtx, meuNome, minhaFicha, personagens, cenari
     if (!radioLigado) return (
         <div className="fade-in" style={{ minHeight: '60vh', background: 'radial-gradient(circle, rgba(30,10,20,0.9) 0%, rgba(0,0,0,1) 100%)', borderRadius: 5, border: '2px solid #ffcc00', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
             <h1 style={{ color: '#00ffcc' }}>SALA DE RÁDIO DA PARTY</h1>
-            <p style={{ color: '#aaa' }}>Liguem os vossos fones e entrem no rádio para testarmos a comunicação pura.</p>
+            <p style={{ color: '#aaa' }}>Fechem o vosso Discord e entrem no rádio para comunicarem por aqui.</p>
             <button className="btn-neon btn-green" onClick={() => setRadioLigado(true)}>▶ ENTRAR NO RÁDIO</button>
         </div>
     );
 
     return (
         <div className="fade-in" style={{ minHeight: '60vh', background: 'radial-gradient(circle, rgba(30,10,20,0.9) 0%, rgba(0,0,0,1) 100%)', borderRadius: 5, border: '2px solid #ffcc00', padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <h1 style={{ color: '#ffcc00', margin: 0 }}>SESSÃO RP (FASE 1)</h1>
-            <p style={{ color: '#aaa', fontStyle: 'italic', marginBottom: 10, fontSize: '1.1em' }}>A testar a estabilidade da ligação nativa...</p>
+            <h1 style={{ color: '#ffcc00', margin: 0 }}>SESSÃO RP</h1>
             
             {isPresenteNaTaverna && (
                 <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '20px', background: 'rgba(0,0,0,0.5)', padding: '10px 15px', borderRadius: '5px', border: '1px solid #333', flexWrap: 'wrap', justifyContent: 'center' }}>
                     <div style={{ color: '#00ffcc', fontSize: '0.85em', fontFamily: 'monospace' }}>📡 {chatCtx.voiceStatus}</div>
                     
-                    {/* INPUT: MICROFONE */}
                     {chatCtx.mics.length > 0 && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                             <span style={{ fontSize: '1.2em' }}>🎙️</span>
@@ -286,7 +289,7 @@ export function MapaSessaoRP({ chatCtx, meuNome, minhaFicha, personagens, cenari
                         </div>
                     )}
                     
-                    {/* OUTPUT: FONES / COLUNAS */}
+                    {/* O SELETOR DE SAÍDA (HEADSET/COLUNAS) FICA AQUI */}
                     {chatCtx.speakers.length > 0 && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 5, borderLeft: '1px solid #444', paddingLeft: '15px' }}>
                             <span style={{ fontSize: '1.2em' }}>🎧</span>
@@ -297,7 +300,7 @@ export function MapaSessaoRP({ chatCtx, meuNome, minhaFicha, personagens, cenari
                     )}
                     
                     <label style={{ color: '#00ffcc', fontSize: '0.8em', cursor: 'pointer', borderLeft: '1px solid #444', paddingLeft: '15px' }}>
-                        <input type="checkbox" checked={chatCtx.supressorAtivo} onChange={e => chatCtx.setSupressorAtivo(e.target.checked)} /> Filtro de Eco/Ruído
+                        <input type="checkbox" checked={chatCtx.supressorAtivo} onChange={e => chatCtx.setSupressorAtivo(e.target.checked)} /> Filtro de Eco
                     </label>
 
                     {chatCtx.streamAnalisador && <CalibradorDeVoz stream={chatCtx.streamAnalisador} sensibilidade={chatCtx.sensibilidadeVoz} setSensibilidade={chatCtx.setSensibilidadeVoz} />}
@@ -328,7 +331,6 @@ export function MapaSessaoRP({ chatCtx, meuNome, minhaFicha, personagens, cenari
                 })}
             </div>
             
-            {/* INJETAMOS O OLHO COM AS PROPS */}
             <MapaOlhoSextaFeira meuNome={meuNome} personagens={personagens} minhaFicha={minhaFicha} tavernaAtivos={cenario?.tavernaAtivos} meuStream={chatCtx.meuStream} conexoes={chatCtx.conexoes} />
         </div>
     );
