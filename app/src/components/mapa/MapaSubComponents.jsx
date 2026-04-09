@@ -1,10 +1,9 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom'; 
 import { useMapaForm, urlSeguraParaCss, MAP_SIZE } from './MapaFormContext';
 import { useVoiceChat } from '../../hooks/useVoiceChat'; 
 import Tabuleiro3D from './Tabuleiro3D';
 import DummieToken from '../combat/DummieToken';
-import { salvarDummie, salvarCenarioCompleto } from '../../services/firebase-sync'; 
 import { getClassIconById } from '../../core/classIcons';
 
 const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Mapa provider não encontrado</div>;
@@ -33,9 +32,11 @@ function CalibradorDeVoz({ stream, sensibilidade, setSensibilidade }) {
     const barraRef = useRef(null);
     useEffect(() => {
         if (!stream) return;
+        let actx;
         let raf;
-        const actx = new (window.AudioContext || window.webkitAudioContext)();
         try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            actx = new AudioContext();
             const source = actx.createMediaStreamSource(stream); 
             const analyser = actx.createAnalyser();
             analyser.fftSize = 256;
@@ -56,8 +57,12 @@ function CalibradorDeVoz({ stream, sensibilidade, setSensibilidade }) {
                 raf = requestAnimationFrame(draw);
             };
             draw();
-            return () => { cancelAnimationFrame(raf); actx.close(); };
         } catch(e) {}
+
+        return () => { 
+            if (raf) cancelAnimationFrame(raf); 
+            if (actx && actx.state !== 'closed') actx.close().catch(()=>{}); 
+        };
     }, [stream, sensibilidade]);
 
     return (
@@ -73,28 +78,28 @@ function CalibradorDeVoz({ stream, sensibilidade, setSensibilidade }) {
 }
 
 // ============================================================================
-// 🔥 A CARTA DE AVATAR (PISCA QUANDO ELES FALAM)
+// 🔥 A CARTA DE AVATAR (BLINDADA CONTRA CRASHES)
 // ============================================================================
-function AvatarCardVoz({ nome, info, ficha, isMe, isConnected, streamParaTocar, streamAnalisador, meuStream, mutado, surdo, fazerChamada, cardSize, fmt }) {
+function AvatarCardVoz({ nome, info, ficha, isMe, isConnected, streamParaTocar, streamAnalisador, mutado, surdo, fazerChamada, cardSize, fmt }) {
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [volume, setVolume] = useState(() => {
         const saved = localStorage.getItem(`rpg_vol_${nome}`);
         return saved !== null ? parseFloat(saved) : 1; 
     });
-    useEffect(() => { localStorage.setItem(`rpg_vol_${nome}`, volume); }, [volume, nome]);
     
-    const rafRef = useRef(null);
-    const audioCtxRef = useRef(null);
+    useEffect(() => { localStorage.setItem(`rpg_vol_${nome}`, volume); }, [volume, nome]);
 
-    // O NEON DOS AVATARES: Lê a stream e pisca as bordas (seja sua ou do amigo)
+    // O NEON DOS AVATARES: Protegido com variáveis locais para o Chrome não crashar!
     useEffect(() => {
         const targetStream = isMe ? streamAnalisador : streamParaTocar;
         if (!targetStream) return;
 
+        let actx;
+        let raf;
+
         try {
             const AudioContext = window.AudioContext || window.webkitAudioContext;
-            if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
-            const actx = audioCtxRef.current;
+            actx = new AudioContext();
             if (actx.state === 'suspended') actx.resume();
 
             const source = actx.createMediaStreamSource(targetStream);
@@ -104,22 +109,22 @@ function AvatarCardVoz({ nome, info, ficha, isMe, isConnected, streamParaTocar, 
             source.connect(analyser); 
 
             const dataArray = new Uint8Array(analyser.frequencyBinCount);
-            
-            // Lê o limiar salvo do seu PC para o seu próprio mic, e um limiar baixo fixo para a voz dos amigos
             const getLimiar = () => isMe ? (parseInt(localStorage.getItem('rpg_sensibilidade_voz')) || 10) : 5;
 
             const checkVolume = () => {
                 analyser.getByteFrequencyData(dataArray);
                 let sum = 0; for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
                 setIsSpeaking((sum / dataArray.length) > getLimiar());
-                rafRef.current = requestAnimationFrame(checkVolume);
+                raf = requestAnimationFrame(checkVolume);
             };
             checkVolume();
-        } catch(err) {}
+        } catch(err) {
+            console.warn("Erro no analisador visual do avatar:", err);
+        }
 
         return () => {
-            if (rafRef.current) cancelAnimationFrame(rafRef.current);
-            if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') audioCtxRef.current.close().catch(()=>{});
+            if (raf) cancelAnimationFrame(raf);
+            if (actx && actx.state !== 'closed') actx.close().catch(()=>{});
         };
     }, [streamAnalisador, streamParaTocar, isMe]);
 
@@ -240,7 +245,7 @@ export function MapaSessaoRP() {
                     const info = getAvatarInfo(f);
                     const con = chatCtx.conexoes.find(c => c.id === `anime-rpg-${(nome||'').toLowerCase().replace(/[^a-z0-9]/g, '')}`);
                     
-                    return <AvatarCardVoz key={nome} nome={nome} info={info} ficha={f} isMe={isMe} isConnected={isMe || !!con} streamParaTocar={con?.stream} streamAnalisador={isMe ? chatCtx.streamAnalisador : null} meuStream={isMe ? chatCtx.meuStream : null} mutado={chatCtx.mutado} surdo={chatCtx.surdo} fazerChamada={chatCtx.fazerChamada} cardSize={cardSize} fmt={fmt} />;
+                    return <AvatarCardVoz key={nome} nome={nome} info={info} ficha={f} isMe={isMe} isConnected={isMe || !!con} streamParaTocar={con?.stream} streamAnalisador={isMe ? chatCtx.streamAnalisador : null} mutado={chatCtx.mutado} surdo={chatCtx.surdo} fazerChamada={chatCtx.fazerChamada} cardSize={cardSize} fmt={fmt} />;
                 })}
             </div>
         </div>
@@ -265,7 +270,7 @@ export function MapaAreaCentral() {
 }
 
 // ============================================================================
-// RESTO DOS COMPONENTES VISUAIS (INTATOS E SEGUROS!)
+// RESTO DOS COMPONENTES VISUAIS DO MAPA
 // ============================================================================
 
 export function MapaControlesSuperiores() {
