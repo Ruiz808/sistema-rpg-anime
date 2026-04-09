@@ -1,9 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom'; 
-import { useMapaForm, urlSeguraParaCss, MAP_SIZE } from './MapaFormContext';
+import { useMapaForm, urlSeguraParaCss, calcularCA, MAP_SIZE } from './MapaFormContext';
 import { useVoiceChat } from '../../hooks/useVoiceChat'; 
 import Tabuleiro3D from './Tabuleiro3D';
 import DummieToken from '../combat/DummieToken';
+import { salvarDummie, salvarCenarioCompleto } from '../../services/firebase-sync'; 
 import { getClassIconById } from '../../core/classIcons';
 
 const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Mapa provider não encontrado</div>;
@@ -89,7 +90,7 @@ function AvatarCardVoz({ nome, info, ficha, isMe, isConnected, streamParaTocar, 
     
     useEffect(() => { localStorage.setItem(`rpg_vol_${nome}`, volume); }, [volume, nome]);
 
-    // O NEON DOS AVATARES: Protegido com variáveis locais para o Chrome não crashar!
+    // O NEON DOS AVATARES
     useEffect(() => {
         const targetStream = isMe ? streamAnalisador : streamParaTocar;
         if (!targetStream) return;
@@ -178,17 +179,15 @@ function AvatarCardVoz({ nome, info, ficha, isMe, isConnected, streamParaTocar, 
 }
 
 // ============================================================================
-// 🔥 A TAVERNA (FASE 1: PURA E LIMPA DE BUGS DE RENDER)
+// 🔥 A TAVERNA
 // ============================================================================
 export function MapaSessaoRP() {
     const ctx = useMapaForm();
     
-    // Fallbacks de Segurança para o Hook de Voz nunca crashar
     const meuNome = ctx?.meuNome || '';
     const tavernaAtivos = ctx?.cenario?.tavernaAtivos || [];
     const isPresenteNaTaverna = ctx?.isPresenteNaTaverna || false;
 
-    // O NOSSO MOTOR DE VOZ VIVE AQUI AGORA (Obedece às regras do React!)
     const chatCtx = useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna);
 
     const [radioLigado, setRadioLigado] = useState(false);
@@ -245,7 +244,7 @@ export function MapaSessaoRP() {
                     const info = getAvatarInfo(f);
                     const con = chatCtx.conexoes.find(c => c.id === `anime-rpg-${(nome||'').toLowerCase().replace(/[^a-z0-9]/g, '')}`);
                     
-                    return <AvatarCardVoz key={nome} nome={nome} info={info} ficha={f} isMe={isMe} isConnected={isMe || !!con} streamParaTocar={con?.stream} streamAnalisador={isMe ? chatCtx.streamAnalisador : null} mutado={chatCtx.mutado} surdo={chatCtx.surdo} fazerChamada={chatCtx.fazerChamada} cardSize={cardSize} fmt={fmt} />;
+                    return <AvatarCardVoz key={nome} nome={nome} info={info} ficha={f} isMe={isMe} isConnected={isMe || !!con} streamParaTocar={con?.stream} streamAnalisador={isMe ? chatCtx.streamAnalisador : null} meuStream={isMe ? chatCtx.meuStream : null} mutado={chatCtx.mutado} surdo={chatCtx.surdo} fazerChamada={chatCtx.fazerChamada} cardSize={cardSize} fmt={fmt} />;
                 })}
             </div>
         </div>
@@ -270,7 +269,7 @@ export function MapaAreaCentral() {
 }
 
 // ============================================================================
-// RESTO DOS COMPONENTES VISUAIS DO MAPA
+// RESTO DOS COMPONENTES VISUAIS (SEGUROS)
 // ============================================================================
 
 export function MapaControlesSuperiores() {
