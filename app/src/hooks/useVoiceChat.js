@@ -34,7 +34,6 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
 
     const [voiceStatus, setVoiceStatus] = useState('Fora da Taverna');
     
-    // ESTADOS SEPARADOS PARA ENTRADA E SAÍDA
     const [mics, setMics] = useState([]);
     const [speakers, setSpeakers] = useState([]);
     const [selectedMic, setSelectedMic] = useState('');
@@ -43,12 +42,6 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
     const [mutado, setMutado] = useState(false);
     const [surdo, setSurdo] = useState(false);
     const [supressorAtivo, setSupressorAtivo] = useState(true);
-
-    // Estado da sensibilidade salva na memória
-    const [sensibilidadeVoz, setSensibilidadeVoz] = useState(() => {
-        const saved = localStorage.getItem('rpg_sensibilidade_voz');
-        return saved !== null ? parseInt(saved) : 10;
-    });
 
     const meuStreamRef = useRef(null);
     const conexoesRef = useRef([]);
@@ -60,14 +53,22 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
 
     useEffect(() => { conexoesRef.current = conexoes; }, [conexoes]);
     useEffect(() => { supressorAtivoRef.current = supressorAtivo; }, [supressorAtivo]);
-    useEffect(() => { localStorage.setItem('rpg_sensibilidade_voz', sensibilidadeVoz.toString()); }, [sensibilidadeVoz]);
 
-    // 1. INICIALIZA A ANTENA PEERJS
+    // 1. INICIALIZA A ANTENA PEERJS (COM SERVIDORES TURN GRATUITOS)
     useEffect(() => {
         if (!meuIDTelefone || peerObj) return;
 
+        // 🔥 CORREÇÃO: Adicionados servidores TURN (OpenRelay) para furar NATs estritos e Firewalls.
+        // Sem isto, algumas operadoras de internet impedem os jogadores de se ouvirem.
+        const ICE_SERVERS = [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:global.stun.twilio.com:3478' },
+            { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+            { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
+        ];
+
         const novoPeer = new Peer(`anime-rpg-${meuIDTelefone}`, {
-            config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:global.stun.twilio.com:3478' }] }
+            config: { iceServers: ICE_SERVERS }
         });
 
         novoPeer.on('open', () => setPeerObj(novoPeer));
@@ -87,6 +88,11 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
                 } else { setTimeout(attemptAnswer, 500); }
             };
             attemptAnswer();
+        });
+
+        // Limpeza em caso de disconnect
+        novoPeer.on('disconnected', () => {
+            novoPeer.reconnect();
         });
 
         return () => novoPeer.destroy();
@@ -112,7 +118,6 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
                 
                 setVoiceStatus('Online na Taverna!');
 
-                // MAPEIA ENTRADAS E SAÍDAS
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 const audioInputs = devices.filter(d => d.kind === 'audioinput');
                 const audioOutputs = devices.filter(d => d.kind === 'audiooutput');
@@ -120,7 +125,6 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
                 setMics(audioInputs);
                 setSpeakers(audioOutputs);
 
-                // SELECIONA PADRÕES
                 const bestMicId = encontrarMelhorMic(audioInputs);
                 if (bestMicId) setSelectedMic(bestMicId);
                 if (audioOutputs.length > 0) setSelectedSpeaker(audioOutputs[0].deviceId);
@@ -128,7 +132,6 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
                 const currentDeviceId = stream.getAudioTracks()[0]?.getSettings()?.deviceId;
                 if (currentDeviceId && currentDeviceId === bestMicId) return; 
 
-                // TROCA PARA O MICROFONE CERTO SE NECESSÁRIO
                 if (bestMicId) {
                     try {
                         const correctStream = await navigator.mediaDevices.getUserMedia({
@@ -148,7 +151,7 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
                     }
                 }
             }).catch(() => {
-                setVoiceStatus('Microfone Bloqueado! Permita no cadeado.');
+                setVoiceStatus('Microfone Bloqueado! Permita no cadeado do navegador.');
                 rtcLigado.current = false;
             });
 
@@ -204,7 +207,7 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
         return () => clearInterval(interval);
     }, [tavernaAtivos, peerObj, isPresenteNaTaverna, meuNome, fazerChamada]);
 
-    // 4. TROCA DE EQUIPAMENTOS E CONTROLES
+    // 4. TROCA DE EQUIPAMENTOS
     const trocarMicrofone = useCallback(async (deviceId) => {
         try {
             setSelectedMic(deviceId);
@@ -257,7 +260,6 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
         meuStream, streamAnalisador, conexoes, mutado, surdo, voiceStatus, 
         mics, selectedMic, trocarMicrofone, 
         speakers, selectedSpeaker, trocarSpeaker,
-        supressorAtivo, toggleMute, toggleDeafen, setSupressorAtivo, fazerChamada,
-        sensibilidadeVoz, setSensibilidadeVoz 
+        supressorAtivo, toggleMute, toggleDeafen, setSupressorAtivo, fazerChamada
     };
 }
