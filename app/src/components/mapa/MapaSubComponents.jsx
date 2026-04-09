@@ -19,28 +19,69 @@ const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Mapa provider não 
 // 🔥 1. SISTEMA DE VOZ E AVATARES DA TAVERNA 🔥
 // ============================================================================
 
+// ============================================================================
+// 🔥 REPRODUTOR NATIVO DE MEMÓRIA RAM (EVITA O BLOQUEIO DO CHROME E REACT) 🔥
+// ============================================================================
 function PlayerDeAudioRemoto({ stream, volume, surdo, nome, sinkId }) {
-    const audioRef = useRef(null);
-    
+    const audioElRef = useRef(null);
+
     useEffect(() => {
-        if (audioRef.current && stream && audioRef.current.srcObject !== stream) {
-            audioRef.current.srcObject = stream;
-            audioRef.current.play().catch(e => console.warn(`Clique na tela para ouvir ${nome}`));
+        if (!stream) return;
+
+        console.log(`[VOZ-PLAYER] A tentar reproduzir a voz de ${nome}...`);
+
+        // Cria o elemento de áudio Pura Memória RAM (Ignora o DOM do React)
+        const audio = new Audio();
+        audio.srcObject = stream;
+        audio.autoplay = true;
+        audio.playsInline = true;
+        audio.volume = surdo ? 0 : Math.min(1, Math.max(0, volume));
+
+        // Tenta mudar a saída de som se especificada
+        if (sinkId && typeof audio.setSinkId === 'function') {
+            audio.setSinkId(sinkId).catch(e => console.warn('[VOZ-PLAYER] Erro ao trocar de Fones:', e));
         }
+
+        // Força a reprodução
+        audio.play().then(() => {
+            console.log(`[VOZ-PLAYER] SUCESSO! A voz de ${nome} está a tocar!`);
+        }).catch(e => {
+            console.warn(`[VOZ-PLAYER] Autoplay BLOQUEADO para ${nome}! O Chrome exige interação humana.`);
+            
+            // Cria uma armadilha: No primeiro clique do utilizador EM QUALQUER SÍTIO, o áudio destranca!
+            const forcePlayOnInteraction = () => {
+                audio.play().catch(()=>{});
+                console.log(`[VOZ-PLAYER] Áudio de ${nome} destrancado pelo clique!`);
+                document.removeEventListener('click', forcePlayOnInteraction);
+            };
+            document.addEventListener('click', forcePlayOnInteraction);
+        });
+
+        audioElRef.current = audio;
+
+        return () => {
+            console.log(`[VOZ-PLAYER] A destruir áudio de ${nome}...`);
+            audio.pause();
+            audio.srcObject = null;
+            audioElRef.current = null;
+        };
     }, [stream, nome]);
-    
+
+    // Atualiza o volume reativamente sem recriar a stream!
     useEffect(() => {
-        if (audioRef.current) audioRef.current.volume = surdo ? 0 : Math.min(1, Math.max(0, volume));
+        if (audioElRef.current) {
+            audioElRef.current.volume = surdo ? 0 : Math.min(1, Math.max(0, volume));
+        }
     }, [volume, surdo]);
 
     useEffect(() => {
-        if (audioRef.current && sinkId && typeof audioRef.current.setSinkId === 'function') {
-            audioRef.current.setSinkId(sinkId).catch(err => console.log('O navegador bloqueou a troca de saída:', err));
+        if (audioElRef.current && sinkId && typeof audioElRef.current.setSinkId === 'function') {
+            audioElRef.current.setSinkId(sinkId).catch(()=>{});
         }
     }, [sinkId]);
 
-    // 🔥 FIX CSS: display 'none' bloqueia autoplay em alguns navegadores. Fica invisível e sem pointerEvents!
-    return <audio ref={audioRef} autoPlay playsInline style={{ position: 'absolute', width: 0, height: 0, opacity: 0, pointerEvents: 'none' }} />;
+    // Não devolvemos NADA para o HTML. O áudio flutua livre de restrições!
+    return null; 
 }
 
 function CalibradorDeVoz({ stream, sensibilidade, setSensibilidade }) {

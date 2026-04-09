@@ -54,59 +54,88 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
     useEffect(() => { conexoesRef.current = conexoes; }, [conexoes]);
     useEffect(() => { supressorAtivoRef.current = supressorAtivo; }, [supressorAtivo]);
 
-    // 1. INICIALIZA A ANTENA PEERJS (COM SERVIDORES TURN GRATUITOS)
+    // 1. INICIALIZA A ANTENA PEERJS (COM SERVIDORES STUN/TURN DE ALTA FIABILIDADE)
     useEffect(() => {
         if (!meuIDTelefone || peerObj) return;
 
-        // 🔥 CORREÇÃO: Adicionados servidores TURN (OpenRelay) para furar NATs estritos e Firewalls.
-        // Sem isto, algumas operadoras de internet impedem os jogadores de se ouvirem.
         const ICE_SERVERS = [
             { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:global.stun.twilio.com:3478' },
-            { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-            { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun3.l.google.com:19302' },
+            { urls: 'stun:stun4.l.google.com:19302' },
+            { urls: 'stun:global.stun.twilio.com:3478' }
         ];
 
+        console.log(`[VOZ] A ligar à Central de Rádio com ID: anime-rpg-${meuIDTelefone}`);
+        
         const novoPeer = new Peer(`anime-rpg-${meuIDTelefone}`, {
-            config: { iceServers: ICE_SERVERS }
+            config: { iceServers: ICE_SERVERS },
+            debug: 2 // Mostra erros no F12 para ajudar a diagnosticar
         });
 
-        novoPeer.on('open', () => setPeerObj(novoPeer));
+        novoPeer.on('open', (id) => {
+            console.log(`[VOZ] Ligação estabelecida com sucesso! ID Central: ${id}`);
+            setPeerObj(novoPeer);
+        });
 
         novoPeer.on('call', (call) => {
-            const attemptAnswer = () => {
+            console.log(`[VOZ] A receber chamada de: ${call.peer}`);
+            
+            const attemptAnswer = (tentativas = 0) => {
                 if (meuStreamRef.current) {
+                    console.log(`[VOZ] A atender chamada de ${call.peer} com o meu microfone...`);
                     call.answer(meuStreamRef.current);
+                    
                     call.on('stream', (remoteStream) => {
+                        console.log(`[VOZ] Áudio recebido de ${call.peer}! Track ativada:`, remoteStream.getAudioTracks()[0]?.enabled);
                         setConexoes(prev => {
                             if (prev.find(c => c.id === call.peer)) return prev.map(c => c.id === call.peer ? { ...c, stream: remoteStream } : c);
                             return [...prev, { id: call.peer, stream: remoteStream }];
                         });
                     });
+                    
                     call.on('close', () => setConexoes(prev => prev.filter(c => c.id !== call.peer)));
-                    call.on('error', () => setConexoes(prev => prev.filter(c => c.id !== call.peer)));
-                } else { setTimeout(attemptAnswer, 500); }
+                    call.on('error', (err) => console.error(`[VOZ] Erro na chamada de ${call.peer}:`, err));
+                } else {
+                    if (tentativas < 10) {
+                        console.log(`[VOZ] À espera que o meu microfone ligue para atender ${call.peer}...`);
+                        setTimeout(() => attemptAnswer(tentativas + 1), 500);
+                    } else {
+                        console.error(`[VOZ] Falha ao atender ${call.peer}. O microfone nunca ligou.`);
+                    }
+                }
             };
             attemptAnswer();
         });
 
-        // Limpeza em caso de disconnect
         novoPeer.on('disconnected', () => {
+            console.warn('[VOZ] Desconectado da Central! A tentar religar...');
             novoPeer.reconnect();
         });
 
-        return () => novoPeer.destroy();
+        novoPeer.on('error', (err) => {
+            console.error('[VOZ] Erro fatal no PeerJS:', err.type, err);
+            setVoiceStatus(`Erro de Ligação: ${err.type}`);
+        });
+
+        return () => {
+            console.log('[VOZ] A destruir a ligação WebRTC...');
+            novoPeer.destroy();
+        };
     }, [meuIDTelefone]);
 
-    // 2. LIGAR MICROFONE E LER SAÍDAS DE ÁUDIO
+    // 2. LIGAR MICROFONE
     useEffect(() => {
         if (isPresenteNaTaverna && !rtcLigado.current) {
             rtcLigado.current = true;
             setVoiceStatus('A ligar Equipamentos...');
+            console.log('[VOZ] A pedir permissão para usar o Microfone...');
 
             navigator.mediaDevices.getUserMedia({
                 audio: getAudioConstraints(null, supressorAtivoRef.current)
             }).then(async (stream) => {
+                console.log('[VOZ] Permissão concedida! Stream local capturada.');
                 meuStreamRef.current = stream;
                 setMeuStream(stream);
                 
@@ -129,33 +158,14 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
                 if (bestMicId) setSelectedMic(bestMicId);
                 if (audioOutputs.length > 0) setSelectedSpeaker(audioOutputs[0].deviceId);
 
-                const currentDeviceId = stream.getAudioTracks()[0]?.getSettings()?.deviceId;
-                if (currentDeviceId && currentDeviceId === bestMicId) return; 
-
-                if (bestMicId) {
-                    try {
-                        const correctStream = await navigator.mediaDevices.getUserMedia({
-                            audio: getAudioConstraints(bestMicId, supressorAtivoRef.current)
-                        });
-                        stream.getTracks().forEach(t => t.stop());
-                        meuStreamRef.current = correctStream;
-                        setMeuStream(correctStream);
-                        
-                        const newTrack = correctStream.getAudioTracks()[0];
-                        if (newTrack) {
-                            const newClone = newTrack.clone();
-                            setStreamAnalisador(new MediaStream([newClone]));
-                        }
-                    } catch (err) {
-                        console.warn('Não foi possível forçar o mic preferido:', err);
-                    }
-                }
-            }).catch(() => {
+            }).catch((err) => {
+                console.error('[VOZ] Erro ao aceder ao microfone:', err);
                 setVoiceStatus('Microfone Bloqueado! Permita no cadeado do navegador.');
                 rtcLigado.current = false;
             });
 
         } else if (!isPresenteNaTaverna && rtcLigado.current) {
+            console.log('[VOZ] A desligar microfone e a sair da Taverna...');
             rtcLigado.current = false;
             if (meuStreamRef.current) meuStreamRef.current.getTracks().forEach(t => t.stop());
             if (streamAnalisador) streamAnalisador.getTracks().forEach(t => t.stop());
@@ -168,25 +178,43 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
         }
     }, [isPresenteNaTaverna, supressorAtivo]);
 
-    // 3. AUTO-DIALER
+    // 3. AUTO-DIALER (CHAMADAS ATIVAS)
     const fazerChamada = useCallback((nomeDestino) => {
         if (!peerObj || !meuStreamRef.current || !nomeDestino) return;
         const idFormatado = `anime-rpg-${(nomeDestino || '').toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+        
         if (chamadasEmAndamento.current.has(idFormatado)) return;
         chamadasEmAndamento.current.add(idFormatado);
 
+        console.log(`[VOZ] A tentar ligar ativamente para: ${idFormatado}`);
         const call = peerObj.call(idFormatado, meuStreamRef.current);
-        if (!call) { chamadasEmAndamento.current.delete(idFormatado); return; }
+        
+        if (!call) { 
+            console.error(`[VOZ] Falha ao iniciar call para ${idFormatado}. Peer destruído?`);
+            chamadasEmAndamento.current.delete(idFormatado); 
+            return; 
+        }
 
         call.on('stream', (remoteStream) => {
+            console.log(`[VOZ] Áudio recebido de ${idFormatado} (Chamada Ativa)!`);
             setConexoes(prev => {
                 if (prev.find(c => c.id === idFormatado)) return prev.map(c => c.id === idFormatado ? { ...c, stream: remoteStream } : c);
                 return [...prev, { id: idFormatado, stream: remoteStream }];
             });
             chamadasEmAndamento.current.delete(idFormatado);
         });
-        call.on('close', () => { setConexoes(prev => prev.filter(c => c.id !== idFormatado)); chamadasEmAndamento.current.delete(idFormatado); });
-        call.on('error', () => { setConexoes(prev => prev.filter(c => c.id !== idFormatado)); chamadasEmAndamento.current.delete(idFormatado); });
+        
+        call.on('close', () => { 
+            console.log(`[VOZ] Chamada fechada por ${idFormatado}`);
+            setConexoes(prev => prev.filter(c => c.id !== idFormatado)); 
+            chamadasEmAndamento.current.delete(idFormatado); 
+        });
+        
+        call.on('error', (err) => { 
+            console.error(`[VOZ] Erro na chamada ativa para ${idFormatado}:`, err);
+            setConexoes(prev => prev.filter(c => c.id !== idFormatado)); 
+            chamadasEmAndamento.current.delete(idFormatado); 
+        });
     }, [peerObj]);
 
     useEffect(() => {
@@ -198,16 +226,18 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
                 const meuId = `anime-rpg-${(meuNome || '').toLowerCase().replace(/[^a-z0-9]/g, '')}`;
                 const amigoId = `anime-rpg-${(nomeAmigo || '').toLowerCase().replace(/[^a-z0-9]/g, '')}`;
 
+                // Para evitar chamadas duplas e colisões, quem tem a ordem alfabética "menor" faz a chamada
                 if (meuId < amigoId) {
                     const exists = conexoesRef.current.find(c => c.id === amigoId);
-                    if (!exists && !chamadasEmAndamento.current.has(amigoId)) fazerChamada(nomeAmigo);
+                    if (!exists && !chamadasEmAndamento.current.has(amigoId)) {
+                        fazerChamada(nomeAmigo);
+                    }
                 }
             });
-        }, 3000);
+        }, 4000); // Tenta ligar de 4 em 4 segundos aos que faltam
         return () => clearInterval(interval);
     }, [tavernaAtivos, peerObj, isPresenteNaTaverna, meuNome, fazerChamada]);
 
-    // 4. TROCA DE EQUIPAMENTOS
     const trocarMicrofone = useCallback(async (deviceId) => {
         try {
             setSelectedMic(deviceId);
@@ -240,9 +270,7 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
         } catch (err) { console.error("Erro ao trocar mic:", err); }
     }, [peerObj, streamAnalisador]);
 
-    const trocarSpeaker = useCallback((deviceId) => {
-        setSelectedSpeaker(deviceId);
-    }, []);
+    const trocarSpeaker = useCallback((deviceId) => { setSelectedSpeaker(deviceId); }, []);
 
     const toggleMute = useCallback(() => {
         setMutado(prev => {
