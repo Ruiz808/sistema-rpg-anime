@@ -66,7 +66,10 @@ export function MapaFormProvider({ children }) {
     const [tamanhoCelula, setTamanhoCelula] = useState(35);
     const [iniciativaInput, setIniciativaInput] = useState(() => fichaSegura.iniciativa || 0);
     const [altitudeInput, setAltitudeInput] = useState(() => fichaSegura.posicao?.z || 0);
-    const [turnoAtualIndex, setTurnoAtualIndex] = useState(0);
+    
+    // 🔥 O TURNO AGORA É GLOBAL E SINCRONIZADO NO FIREBASE 🔥
+    const turnoAtualIndex = cenario?.turnoAtualIndex || 0;
+    
     const [feedIndexTurnoAtual, setFeedIndexTurnoAtual] = useState(0);
     const [jogadorHistory, setJogadorHistory] = useState(null);
 
@@ -347,16 +350,15 @@ export function MapaFormProvider({ children }) {
         }).filter(([n, f]) => f != null);
     }, [tavernaAtivos, meuNome, minhaFicha, personagens]);
 
-    // 🔥 FIX: A ORDEM DE INICIATIVA AGORA INCLUI OS DUMMIES 🔥
+    // 🔥 FIX 1: A Ordem de Iniciativa agora lê Dummies E Jogadores da mesma lista central 🔥
     const ordemIniciativa = useMemo(() => {
         const lista = [];
         
-        // 1. Adiciona Jogadores
-        if (personagens) {
-            const nomes = Object.keys(personagens);
+        if (jogadores) {
+            const nomes = Object.keys(jogadores);
             for (let i = 0; i < nomes.length; i++) {
                 const n = nomes[i];
-                const f = personagens[n];
+                const f = jogadores[n];
                 const cenaDoJogador = f?.posicao?.cenaId || 'default';
                 if (f && f.iniciativa !== undefined && f.iniciativa > 0 && cenaDoJogador === cenaRenderId) {
                     lista.push({ id: n, nome: n, ficha: f, iniciativa: f.iniciativa, isDummie: false });
@@ -364,7 +366,6 @@ export function MapaFormProvider({ children }) {
             }
         }
         
-        // 2. Adiciona Dummies
         if (dummies) {
             const dIds = Object.keys(dummies);
             for (let i = 0; i < dIds.length; i++) {
@@ -377,10 +378,9 @@ export function MapaFormProvider({ children }) {
             }
         }
 
-        // Ordena tudo do maior para o menor
         lista.sort((a, b) => b.iniciativa - a.iniciativa);
         return lista;
-    }, [personagens, dummies, cenaRenderId]);
+    }, [jogadores, dummies, cenaRenderId]);
 
     const getDanoDinamicoZona = useCallback((zona) => {
         let baseResult = { dano: zona.danoOriginal || zona.danoAplicado || 0, letalidade: zona.letalidadeOriginal || 0 };
@@ -563,21 +563,48 @@ export function MapaFormProvider({ children }) {
         setFeedIndexTurnoAtual(feedCombate.length); 
     }, [iniciativaInput, cenaRenderId, updateFicha, feedCombate.length]);
 
+    // 🔥 FIX 2: AVANCAR TURNO GLOBAL (MULTI-PLAYER) 🔥
     const avancarTurno = useCallback(() => {
         if (ordemIniciativa.length === 0) return;
         
-        let nextIndex = turnoAtualIndex + 1;
+        let nextIndex = (cenario?.turnoAtualIndex || 0) + 1;
         if (nextIndex >= ordemIniciativa.length) nextIndex = 0;
         
         const nextPlayer = ordemIniciativa[nextIndex];
         
-        setTurnoAtualIndex(nextIndex);
         setFeedIndexTurnoAtual(feedCombate.length);
         setJogadorHistory(null);
 
-        // RECUPERAÇÃO DE AÇÕES AUTOMÁTICA (APENAS PARA DUMMIES QUANDO O MESTRE PASSA O TURNO)
+        // Feedback no Chat para provar que rodou!
+        enviarParaFeed({ 
+            tipo: 'sistema', 
+            nome: 'SISTEMA', 
+            texto: `🔄 É a vez de ${nextPlayer.nome} agir!` 
+        });
+
+        const storeState = useStore.getState();
+        const novoCenario = JSON.parse(JSON.stringify(storeState.cenario || {}));
+        novoCenario.turnoAtualIndex = nextIndex;
+
+        let mudouCenario = true;
+        
+        if (novoCenario.zonas && novoCenario.zonas.length > 0) {
+            novoCenario.zonas = novoCenario.zonas.filter(z => {
+                if (z.conjurador === nextPlayer.nome) {
+                    z.duracao -= 1;
+                    if (z.duracao > 0 && z.danoOriginal) {
+                        dispararEfeitoDaZona(z);
+                    }
+                    return z.duracao > 0;
+                }
+                return true; 
+            });
+        }
+
+        salvarCenarioCompleto(novoCenario);
+
+        // Recupera as ações do Dummie se for a vez dele (Mestre cuida disso)
         if (nextPlayer.isDummie && isMestre) {
-            const storeState = useStore.getState();
             const dData = storeState.dummies[nextPlayer.id];
             if (dData && dData.acoes) {
                 const acoes = JSON.parse(JSON.stringify(dData.acoes));
@@ -588,32 +615,30 @@ export function MapaFormProvider({ children }) {
             }
         }
 
-        const storeState = useStore.getState();
-        const cenarioAtual = storeState.cenario;
+    }, [ordemIniciativa, cenario, feedCombate.length, dispararEfeitoDaZona, isMestre]);
 
-        if (cenarioAtual?.zonas && cenarioAtual.zonas.length > 0) {
-            const novoCenario = JSON.parse(JSON.stringify(cenarioAtual));
-            let mudouCenario = false;
+    // 🔥 FIX 3: SENSOR DE AUTO-RECARGA DE JOGADOR 🔥
+    const prevTurnoIndex = useRef(cenario?.turnoAtualIndex || 0);
+
+    useEffect(() => {
+        const currentIndex = cenario?.turnoAtualIndex || 0;
+        if (currentIndex !== prevTurnoIndex.current && ordemIniciativa.length > 0) {
+            const currentActor = ordemIniciativa[currentIndex];
             
-            novoCenario.zonas = novoCenario.zonas.filter(z => {
-                if (z.conjurador === nextPlayer.nome) {
-                    z.duracao -= 1;
-                    mudouCenario = true;
-                    
-                    if (z.duracao > 0 && z.danoOriginal) {
-                        dispararEfeitoDaZona(z);
-                    }
-                    
-                    return z.duracao > 0;
-                }
-                return true; 
-            });
-            
-            if (mudouCenario) {
-                salvarCenarioCompleto(novoCenario);
+            // Se chegou o turno deste ecrã, recupera as ações automaticamente!
+            if (currentActor && !currentActor.isDummie && currentActor.nome === meuNome) {
+                updateFicha(f => {
+                    if (!f.acoes) f.acoes = { padrao: {max:1, atual:1}, bonus: {max:1, atual:1}, reacao: {max:1, atual:1} };
+                    if (f.acoes.padrao) f.acoes.padrao.atual = f.acoes.padrao.max;
+                    if (f.acoes.bonus) f.acoes.bonus.atual = f.acoes.bonus.max;
+                    if (f.acoes.reacao) f.acoes.reacao.atual = f.acoes.reacao.max;
+                });
+                salvarFichaSilencioso();
             }
+            prevTurnoIndex.current = currentIndex;
         }
-    }, [ordemIniciativa, turnoAtualIndex, feedCombate.length, dispararEfeitoDaZona, isMestre]);
+    }, [cenario?.turnoAtualIndex, ordemIniciativa, meuNome, updateFicha]);
+
 
     const sairDoCombate = useCallback(() => {
         updateFicha(ficha => { ficha.iniciativa = 0; });
@@ -622,7 +647,6 @@ export function MapaFormProvider({ children }) {
         setJogadorHistory(null);
     }, [updateFicha]);
 
-    // 🔥 FIX: ENCERRAR COMBATE AGORA ZERA OS DUMMIES TAMBÉM 🔥
     const encerrarCombate = useCallback(() => {
         if (!window.confirm(`Tem a certeza que deseja ZERAR A INICIATIVA DE TODOS OS JOGADORES E ENTIDADES presentes na cena "${cenaAtual.nome}"?`)) return;
         enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `⚔️ O COMBATE EM ${cenaAtual.nome.toUpperCase()} FOI ENCERRADO PELO MESTRE! ⚔️` });
@@ -642,7 +666,12 @@ export function MapaFormProvider({ children }) {
         setIniciativaInput(0);
         salvarFichaSilencioso();
         setJogadorHistory(null);
-        setTurnoAtualIndex(0);
+        
+        // Zera o turno atual!
+        const novoCenario = JSON.parse(JSON.stringify(storeState.cenario || {}));
+        novoCenario.turnoAtualIndex = 0;
+        salvarCenarioCompleto(novoCenario);
+
     }, [cenaAtual.nome, ordemIniciativa, updateFicha]);
 
     const rolarAcertoRapido = useCallback(() => {
@@ -723,6 +752,7 @@ export function MapaFormProvider({ children }) {
             }));
     }, [jogadores, cenaRenderId, corDoJogador]);
 
+    // Lê sempre o jogador da vez com base no índice sincronizado!
     const jogadorDaVez = ordemIniciativa.length > 0 ? ordemIniciativa[turnoAtualIndex % ordemIniciativa.length] : null;
     const infoDaVez = jogadorDaVez ? getAvatarInfo(jogadorDaVez.ficha) : null;
 
@@ -730,7 +760,7 @@ export function MapaFormProvider({ children }) {
         minhaFicha, meuNome, personagens, feedCombate, isMestre, dummies, alvoSelecionado, cenario, abaAtiva,
         fichaSegura, modo3D, setModo3D, tamanhoCelula, setTamanhoCelula,
         iniciativaInput, setIniciativaInput, altitudeInput, setAltitudeInput,
-        turnoAtualIndex, setTurnoAtualIndex, feedIndexTurnoAtual, setFeedIndexTurnoAtual,
+        turnoAtualIndex, feedIndexTurnoAtual, setFeedIndexTurnoAtual, // setTurnoAtualIndex Removido (Agora é Firebase)
         jogadorHistory, setJogadorHistory, mapQD, setMapQD, mapFD, setMapFD,
         mapBonus, setMapBonus, mapStat, setMapStat, mapUsarProf, setMapUsarProf,
         profGlobal, mapVantagens, setMapVantagens, mapDesvantagens, setMapDesvantagens,
