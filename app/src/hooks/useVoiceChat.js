@@ -1,6 +1,17 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import Peer from 'peerjs';
 
+const BLACKLIST_MIC = ['mixagem', 'stereo mix', 'wave out', 'loopback', 'virtual', 'cable', 'voicemeeter', 'what u hear', 'monitor', 'wasapi'];
+
+function encontrarMelhorMic(audioInputs) {
+    for (let mic of audioInputs) {
+        if (mic.label && !BLACKLIST_MIC.some(bw => mic.label.toLowerCase().includes(bw))) {
+            return mic.deviceId;
+        }
+    }
+    return audioInputs[0]?.deviceId || null;
+}
+
 export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
     const [peerObj, setPeerObj] = useState(null);
     const [meuStream, setMeuStream] = useState(null);
@@ -69,7 +80,7 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
         return () => novoPeer.destroy();
     }, [meuIDTelefone]);
 
-    // 2. LIGAR/DESLIGAR O MICROFONE (SEM AUTO-TROCA DESTRUTIVA)
+    // 2. LIGAR/DESLIGAR O MICROFONE
     useEffect(() => {
         if (isPresenteNaTaverna && !rtcLigado.current) {
             rtcLigado.current = true;
@@ -78,23 +89,36 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
             navigator.mediaDevices.getUserMedia({
                 audio: { noiseSuppression: supressorAtivoRef.current, echoCancellation: true, autoGainControl: true }
             }).then(async (stream) => {
-                // Guarda o Mic Padrão Imediatamente e mantem a rede estável!
                 meuStreamRef.current = stream;
                 setMeuStream(stream);
-                
                 const cloneTrack = stream.getAudioTracks()[0].clone();
                 setStreamAnalisador(new MediaStream([cloneTrack]));
-                
                 setVoiceStatus('Online na Taverna!');
 
-                // Carrega a lista, mas DEIXA a decisão de trocar para o utilizador
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 const audioInputs = devices.filter(d => d.kind === 'audioinput');
                 setMics(audioInputs);
-                
-                const currentDeviceId = stream.getAudioTracks()[0]?.getSettings()?.deviceId;
-                setSelectedMic(currentDeviceId || audioInputs[0]?.deviceId || '');
 
+                const bestMicId = encontrarMelhorMic(audioInputs);
+                if (!bestMicId) return;
+
+                setSelectedMic(bestMicId);
+
+                const currentDeviceId = stream.getAudioTracks()[0]?.getSettings()?.deviceId;
+                if (currentDeviceId && currentDeviceId === bestMicId) return; 
+
+                try {
+                    const correctStream = await navigator.mediaDevices.getUserMedia({
+                        audio: { deviceId: { exact: bestMicId }, noiseSuppression: supressorAtivoRef.current, echoCancellation: true, autoGainControl: true }
+                    });
+                    stream.getTracks().forEach(t => t.stop());
+                    meuStreamRef.current = correctStream;
+                    setMeuStream(correctStream);
+                    const newClone = correctStream.getAudioTracks()[0].clone();
+                    setStreamAnalisador(new MediaStream([newClone]));
+                } catch (err) {
+                    console.warn('Não foi possível trocar para o mic preferido:', err);
+                }
             }).catch(() => {
                 setVoiceStatus('Microfone Bloqueado! Permitir acesso.');
                 rtcLigado.current = false;
@@ -137,7 +161,7 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
                 let sum = 0; for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
                 const avg = sum / dataArray.length;
 
-                // Controla apenas a Borda Neon
+                // Controla APENAS a cor do Avatar (Neon)
                 if (avg > sensibilidadeRef.current) {
                     framesEmSilencio = 0;
                     if (!euEstouFalandoRef.current) {
@@ -154,7 +178,7 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
                     }
                 }
                 
-                // A ÚNICA COISA que corta a voz é o botão Mute físico
+                // O SEU MICROFONE ESTÁ SEMPRE LIGADO PARA A REDE, EXCETO SE VOCÊ APERTAR O MUTE FÍSICO!
                 if (meuStream.getAudioTracks()[0]) {
                     meuStream.getAudioTracks()[0].enabled = !mutadoRef.current;
                 }
@@ -206,7 +230,7 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
         return () => clearInterval(interval);
     }, [tavernaAtivos, peerObj, isPresenteNaTaverna, meuNome, fazerChamada]);
 
-    // 5. TROCA DE MICROFONE MANUAL (Segura e Testada)
+    // 5. FUNÇÕES DE CONTROLO
     const trocarMicrofone = useCallback(async (deviceId) => {
         try {
             setSelectedMic(deviceId);

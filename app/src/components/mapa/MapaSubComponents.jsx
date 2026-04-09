@@ -1,6 +1,6 @@
-import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom'; 
-import { useMapaForm, urlSeguraParaCss, calcularCA, MAP_SIZE } from './MapaFormContext';
+import { useMapaForm, urlSeguraParaCss, MAP_SIZE } from './MapaFormContext';
 import { useVoiceChat } from '../../hooks/useVoiceChat'; 
 import Tabuleiro3D from './Tabuleiro3D';
 import DummieToken from '../combat/DummieToken';
@@ -10,7 +10,7 @@ import { getClassIconById } from '../../core/classIcons';
 const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Mapa provider não encontrado</div>;
 
 // ============================================================================
-// 🔥 REPRODUTOR NATIVO BLINDADO (SEM ECO)
+// 🔥 REPRODUTOR NATIVO BLINDADO
 // ============================================================================
 function PlayerDeAudioRemoto({ stream, volume, surdo, nome }) {
     const audioRef = useRef(null);
@@ -27,24 +27,106 @@ function PlayerDeAudioRemoto({ stream, volume, surdo, nome }) {
 }
 
 // ============================================================================
-// 🔥 A CARTA DE AVATAR (FASE 1 - PURAMENTE VISUAL)
+// 🔥 CALIBRADOR VISUAL (A BARRINHA VERDE VOLTOU!)
 // ============================================================================
-function AvatarCardVoz({ nome, info, ficha, isMe, isConnected, streamParaTocar, mutado, surdo, fazerChamada, cardSize, fmt }) {
+function CalibradorDeVoz({ stream, sensibilidade, setSensibilidade }) {
+    const barraRef = useRef(null);
+    useEffect(() => {
+        if (!stream) return;
+        let raf;
+        const actx = new (window.AudioContext || window.webkitAudioContext)();
+        try {
+            const source = actx.createMediaStreamSource(stream); 
+            const analyser = actx.createAnalyser();
+            analyser.fftSize = 256;
+            analyser.smoothingTimeConstant = 0.5;
+            source.connect(analyser);
+
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            const draw = () => {
+                analyser.getByteFrequencyData(dataArray);
+                let sum = 0; for(let i=0; i<dataArray.length; i++) sum += dataArray[i];
+                const avg = sum / dataArray.length; 
+                const percent = Math.min(100, (avg / 60) * 100); 
+                
+                if (barraRef.current) {
+                    barraRef.current.style.width = `${percent}%`;
+                    barraRef.current.style.backgroundColor = avg > sensibilidade ? '#00ffcc' : '#ffcc00';
+                }
+                raf = requestAnimationFrame(draw);
+            };
+            draw();
+            return () => { cancelAnimationFrame(raf); actx.close(); };
+        } catch(e) {}
+    }, [stream, sensibilidade]);
+
+    return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', borderLeft: '1px solid #444', paddingLeft: '15px' }}>
+            <span style={{ color: '#aaa', fontSize: '0.8em' }}>Limiar:</span>
+            <div style={{ position: 'relative', width: '120px', height: '14px', background: '#000', borderRadius: '7px', border: '1px solid #333', overflow: 'hidden' }}>
+                <div ref={barraRef} style={{ width: '0%', height: '100%', background: '#ffcc00', transition: 'width 0.05s ease-out, background-color 0.1s' }} />
+                <input type="range" min="1" max="50" value={sensibilidade} onChange={e => setSensibilidade(parseInt(e.target.value))} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }} />
+                <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${(sensibilidade / 60) * 100}%`, width: '2px', background: '#fff', boxShadow: '0 0 5px #fff', pointerEvents: 'none' }} />
+            </div>
+        </div>
+    );
+}
+
+// ============================================================================
+// 🔥 A CARTA DE AVATAR (PISCA QUANDO ELES FALAM!)
+// ============================================================================
+function AvatarCardVoz({ nome, info, ficha, isMe, isConnected, streamParaTocar, euEstouFalandoState, mutado, surdo, fazerChamada, cardSize, fmt }) {
+    const [isSpeakingRemote, setIsSpeakingRemote] = useState(false);
     const [volume, setVolume] = useState(() => {
         const saved = localStorage.getItem(`rpg_vol_${nome}`);
         return saved !== null ? parseFloat(saved) : 1; 
     });
     useEffect(() => { localStorage.setItem(`rpg_vol_${nome}`, volume); }, [volume, nome]);
+    
+    const rafRef = useRef(null);
+    const audioCtxRef = useRef(null);
+
+    // NEON DOS AMIGOS: Lê a stream deles para piscar a carta (Apenas visual!)
+    useEffect(() => {
+        if (isMe || !streamParaTocar) return;
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
+            const actx = audioCtxRef.current;
+            if (actx.state === 'suspended') actx.resume();
+
+            const source = actx.createMediaStreamSource(streamParaTocar);
+            const analyser = actx.createAnalyser();
+            analyser.fftSize = 256;
+            analyser.smoothingTimeConstant = 0.4; 
+            source.connect(analyser); // Só analisa, não vai para colunas!
+
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            const checkVolume = () => {
+                analyser.getByteFrequencyData(dataArray);
+                let sum = 0; for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+                setIsSpeakingRemote((sum / dataArray.length) > 5);
+                rafRef.current = requestAnimationFrame(checkVolume);
+            };
+            checkVolume();
+        } catch(err) {}
+
+        return () => {
+            if (rafRef.current) cancelAnimationFrame(rafRef.current);
+            if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') audioCtxRef.current.close().catch(()=>{});
+        };
+    }, [streamParaTocar, isMe]);
 
     let boxShadowCard = '0 0 15px rgba(0,0,0,0.8)';
     let borderCard = '2px solid #333';
     let iconMic = '⏳';
+    const isSpeakingFinal = isMe ? euEstouFalandoState : isSpeakingRemote;
 
     if (isConnected) {
         if (isMe && mutado) { 
             borderCard = '2px solid #ff003c'; boxShadowCard = '0 0 20px rgba(255,0,60,0.4)'; iconMic = '🔇'; 
-        } else if (isMe) { 
-            borderCard = '2px solid #00ffcc'; boxShadowCard = '0 0 10px rgba(0,255,204,0.5)'; iconMic = '🎙️'; 
+        } else if (isSpeakingFinal) { 
+            borderCard = '2px solid #00ffcc'; boxShadowCard = '0 0 35px #00ffcc, inset 0 0 20px rgba(0,255,204,0.4)'; iconMic = '🔊'; 
         } else if (!isMe && streamParaTocar) { 
             borderCard = '2px solid #00aaff'; boxShadowCard = '0 0 20px rgba(0,170,255,0.4)'; iconMic = '🔊'; 
         } else { 
@@ -67,7 +149,7 @@ function AvatarCardVoz({ nome, info, ficha, isMe, isConnected, streamParaTocar, 
 
             <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', display: 'flex', flexDirection: 'column', background: 'rgba(10,10,15,0.9)', borderTop: '2px solid #222', padding: '6px 10px', backdropFilter: 'blur(3px)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                    <span style={{ color: isConnected ? (isMe ? '#00ffcc' : '#00aaff') : '#fff', fontWeight: 'bold', fontSize: '0.8em', textTransform: 'uppercase', letterSpacing: 1, textShadow: '1px 1px 2px #000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', transition: 'color 0.2s', paddingRight: '5px' }}>{nome}</span>
+                    <span style={{ color: isConnected ? (isSpeakingFinal ? '#00ffcc' : '#00aaff') : '#fff', fontWeight: 'bold', fontSize: '0.8em', textTransform: 'uppercase', letterSpacing: 1, textShadow: '1px 1px 2px #000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', transition: 'color 0.2s', paddingRight: '5px' }}>{nome}</span>
                     {!isMe && isConnected && streamParaTocar && (
                         <div onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '70px', background: 'rgba(0,0,0,0.5)', padding: '2px 5px', borderRadius: '10px', border: '1px solid #333' }}>
                             <span style={{ fontSize: '9px', color: volume === 0 ? '#ff003c' : '#aaa' }}>{volume === 0 ? '🔇' : '🔉'}</span>
@@ -86,7 +168,7 @@ function AvatarCardVoz({ nome, info, ficha, isMe, isConnected, streamParaTocar, 
 }
 
 // ============================================================================
-// 🔥 A TAVERNA (O VOSSO DISCORD PRIVADO EM FASE 1)
+// 🔥 A TAVERNA
 // ============================================================================
 export function MapaSessaoRP({ chatCtx, meuNome, minhaFicha, personagens, cenario, isPresenteNaTaverna, togglePresencaTaverna, getAvatarInfo, fmt }) {
     const playerCount = cenario?.tavernaAtivos?.length || 0;
@@ -109,12 +191,17 @@ export function MapaSessaoRP({ chatCtx, meuNome, minhaFicha, personagens, cenari
             {isPresenteNaTaverna && (
                 <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '20px', background: 'rgba(0,0,0,0.5)', padding: '10px', borderRadius: '5px', border: '1px solid #333' }}>
                     <div style={{ color: '#00ffcc', fontSize: '0.85em', fontFamily: 'monospace' }}>📡 {chatCtx.voiceStatus}</div>
+                    
                     {chatCtx.mics.length > 0 && (
                         <select className="input-neon" value={chatCtx.selectedMic} onChange={e => chatCtx.trocarMicrofone(e.target.value)} style={{ padding: '4px', fontSize: '0.8em', background: '#000', color: '#fff', borderColor: '#00ffcc', borderRadius: '5px' }}>
                             {chatCtx.mics.map(m => <option key={m.deviceId} value={m.deviceId}>{m.label}</option>)}
                         </select>
                     )}
+                    
                     <label style={{ color: '#00ffcc', fontSize: '0.8em', cursor: 'pointer' }}><input type="checkbox" checked={chatCtx.supressorAtivo} onChange={e => chatCtx.setSupressorAtivo(e.target.checked)} /> 🎧 Supressor Nativo</label>
+                    
+                    {/* A BARRINHA VERDE VOLTOU AQUI! */}
+                    {chatCtx.streamAnalisador && <CalibradorDeVoz stream={chatCtx.streamAnalisador} sensibilidade={chatCtx.sensibilidadeVoz} setSensibilidade={chatCtx.setSensibilidadeVoz} />}
                 </div>
             )}
             
@@ -131,7 +218,7 @@ export function MapaSessaoRP({ chatCtx, meuNome, minhaFicha, personagens, cenari
                     const info = getAvatarInfo(f);
                     const con = chatCtx.conexoes.find(c => c.id === `anime-rpg-${nome.toLowerCase().replace(/[^a-z0-9]/g, '')}`);
                     
-                    return <AvatarCardVoz key={nome} nome={nome} info={info} ficha={f} isMe={isMe} isConnected={isMe || !!con} streamParaTocar={con?.stream} mutado={chatCtx.mutado} surdo={chatCtx.surdo} fazerChamada={chatCtx.fazerChamada} cardSize={cardSize} fmt={fmt} />;
+                    return <AvatarCardVoz key={nome} nome={nome} info={info} ficha={f} isMe={isMe} isConnected={isMe || !!con} streamParaTocar={con?.stream} euEstouFalandoState={chatCtx.euEstouFalandoState} mutado={chatCtx.mutado} surdo={chatCtx.surdo} fazerChamada={chatCtx.fazerChamada} cardSize={cardSize} fmt={fmt} />;
                 })}
             </div>
         </div>
@@ -158,7 +245,7 @@ export function MapaAreaCentral() {
 }
 
 // ============================================================================
-// RESTO DOS COMPONENTES VISUAIS (INTATOS!)
+// RESTO DOS COMPONENTES VISUAIS DO MAPA
 // ============================================================================
 
 export function MapaControlesSuperiores() {
