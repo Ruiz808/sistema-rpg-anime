@@ -1,87 +1,46 @@
-import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom'; 
 import { useMapaForm, urlSeguraParaCss, calcularCA, MAP_SIZE } from './MapaFormContext';
 import { useVoiceChat } from '../../hooks/useVoiceChat'; 
 import Tabuleiro3D from './Tabuleiro3D';
 import DummieToken from '../combat/DummieToken';
-import { salvarDummie, salvarCenarioCompleto } from '../../services/firebase-sync'; 
+import { salvarDummie, salvarCenarioCompleto, enviarParaFeed, salvarFichaSilencioso } from '../../services/firebase-sync'; 
 import { getClassIconById } from '../../core/classIcons';
+import useStore from '../../stores/useStore';
 
 const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Mapa provider não encontrado</div>;
 
 // ============================================================================
-// 🔥 REPRODUTOR NATIVO BLINDADO
+// 🔥 REPRODUTOR NATIVO (COM SELETOR DE SAÍDA DE FONES) 🔥
 // ============================================================================
-function PlayerDeAudioRemoto({ stream, volume, surdo, nome }) {
+function PlayerDeAudioRemoto({ stream, volume, surdo, nome, sinkId }) {
     const audioRef = useRef(null);
+    
     useEffect(() => {
         if (audioRef.current && stream && audioRef.current.srcObject !== stream) {
             audioRef.current.srcObject = stream;
             audioRef.current.play().catch(e => console.warn(`Clique na tela para ouvir ${nome}`));
         }
     }, [stream, nome]);
+    
     useEffect(() => {
         if (audioRef.current) audioRef.current.volume = surdo ? 0 : Math.min(1, Math.max(0, volume));
     }, [volume, surdo]);
+
+    // O SEGREDO ANTI-ECO: Força o áudio a sair nos fones selecionados!
+    useEffect(() => {
+        if (audioRef.current && sinkId && typeof audioRef.current.setSinkId === 'function') {
+            audioRef.current.setSinkId(sinkId).catch(err => console.log('O navegador bloqueou a troca de saída:', err));
+        }
+    }, [sinkId]);
+
     return <audio ref={audioRef} autoPlay playsInline style={{ display: 'none' }} />;
 }
 
 // ============================================================================
-// 🔥 CALIBRADOR VISUAL (A BARRINHA VERDE)
+// 🔥 A CARTA DE AVATAR (COM NEON SEGURO)
 // ============================================================================
-function CalibradorDeVoz({ stream, sensibilidade, setSensibilidade }) {
-    const barraRef = useRef(null);
-    useEffect(() => {
-        if (!stream) return;
-        let actx;
-        let raf;
-        try {
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            actx = new AudioContext();
-            const source = actx.createMediaStreamSource(stream); 
-            const analyser = actx.createAnalyser();
-            analyser.fftSize = 256;
-            analyser.smoothingTimeConstant = 0.5;
-            source.connect(analyser);
-
-            const dataArray = new Uint8Array(analyser.frequencyBinCount);
-            const draw = () => {
-                analyser.getByteFrequencyData(dataArray);
-                let sum = 0; for(let i=0; i<dataArray.length; i++) sum += dataArray[i];
-                const avg = sum / dataArray.length; 
-                const percent = Math.min(100, (avg / 60) * 100); 
-                
-                if (barraRef.current) {
-                    barraRef.current.style.width = `${percent}%`;
-                    barraRef.current.style.backgroundColor = avg > sensibilidade ? '#00ffcc' : '#ffcc00';
-                }
-                raf = requestAnimationFrame(draw);
-            };
-            draw();
-        } catch(e) {}
-
-        return () => { 
-            if (raf) cancelAnimationFrame(raf); 
-            if (actx && actx.state !== 'closed') actx.close().catch(()=>{}); 
-        };
-    }, [stream, sensibilidade]);
-
-    return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', borderLeft: '1px solid #444', paddingLeft: '15px' }}>
-            <span style={{ color: '#aaa', fontSize: '0.8em' }}>Limiar:</span>
-            <div style={{ position: 'relative', width: '120px', height: '14px', background: '#000', borderRadius: '7px', border: '1px solid #333', overflow: 'hidden' }}>
-                <div ref={barraRef} style={{ width: '0%', height: '100%', background: '#ffcc00', transition: 'width 0.05s ease-out, background-color 0.1s' }} />
-                <input type="range" min="1" max="50" value={sensibilidade} onChange={e => setSensibilidade(parseInt(e.target.value))} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }} />
-                <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${(sensibilidade / 60) * 100}%`, width: '2px', background: '#fff', boxShadow: '0 0 5px #fff', pointerEvents: 'none' }} />
-            </div>
-        </div>
-    );
-}
-
-// ============================================================================
-// 🔥 A CARTA DE AVATAR (BLINDADA CONTRA CRASHES)
-// ============================================================================
-function AvatarCardVoz({ nome, info, ficha, isMe, isConnected, streamParaTocar, streamAnalisador, mutado, surdo, fazerChamada, cardSize, fmt }) {
+function AvatarCardVoz({ nome, info, ficha, isMe, isConnected, streamParaTocar, streamAnalisador, mutado, surdo, fazerChamada, cardSize, fmt, selectedSpeaker }) {
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [volume, setVolume] = useState(() => {
         const saved = localStorage.getItem(`rpg_vol_${nome}`);
@@ -90,7 +49,6 @@ function AvatarCardVoz({ nome, info, ficha, isMe, isConnected, streamParaTocar, 
     
     useEffect(() => { localStorage.setItem(`rpg_vol_${nome}`, volume); }, [volume, nome]);
 
-    // O NEON DOS AVATARES
     useEffect(() => {
         const targetStream = isMe ? streamAnalisador : streamParaTocar;
         if (!targetStream) return;
@@ -156,7 +114,10 @@ function AvatarCardVoz({ nome, info, ficha, isMe, isConnected, streamParaTocar, 
                     <button className="btn-neon btn-blue" onClick={(e) => { e.stopPropagation(); fazerChamada(nome); }} style={{ padding: '8px 15px', fontSize: '0.9em', fontWeight: 'bold', boxShadow: '0 0 10px #0088ff' }}>📞 FORÇAR LIGAÇÃO</button>
                 </div>
             )}
-            {!isMe && isConnected && streamParaTocar && <PlayerDeAudioRemoto stream={streamParaTocar} volume={volume} surdo={surdo} nome={nome} />}
+            
+            {!isMe && isConnected && streamParaTocar && (
+                <PlayerDeAudioRemoto stream={streamParaTocar} volume={volume} surdo={surdo} nome={nome} sinkId={selectedSpeaker} />
+            )}
 
             <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', display: 'flex', flexDirection: 'column', background: 'rgba(10,10,15,0.9)', borderTop: '2px solid #222', padding: '6px 10px', backdropFilter: 'blur(3px)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
@@ -179,7 +140,7 @@ function AvatarCardVoz({ nome, info, ficha, isMe, isConnected, streamParaTocar, 
 }
 
 // ============================================================================
-// 🔥 A TAVERNA
+// 🔥 A TAVERNA (ENTRADA E SAÍDA)
 // ============================================================================
 export function MapaSessaoRP() {
     const ctx = useMapaForm();
@@ -191,10 +152,6 @@ export function MapaSessaoRP() {
     const chatCtx = useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna);
 
     const [radioLigado, setRadioLigado] = useState(false);
-    const [sensibilidadeVozLocal, setSensibilidadeVozLocal] = useState(() => {
-        const saved = localStorage.getItem('rpg_sensibilidade_voz');
-        return saved !== null ? parseInt(saved, 10) : 10;
-    });
 
     if (!ctx) return FALLBACK;
     const { minhaFicha, personagens, cenario, togglePresencaTaverna, getAvatarInfo, fmt } = ctx;
@@ -205,7 +162,7 @@ export function MapaSessaoRP() {
     if (!radioLigado) return (
         <div className="fade-in" style={{ minHeight: '60vh', background: 'radial-gradient(circle, rgba(30,10,20,0.9) 0%, rgba(0,0,0,1) 100%)', borderRadius: 5, border: '2px solid #ffcc00', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
             <h1 style={{ color: '#00ffcc' }}>SALA DE RÁDIO DA PARTY</h1>
-            <p style={{ color: '#aaa' }}>Fechem o vosso Discord e entrem no rádio para testarmos a comunicação pura.</p>
+            <p style={{ color: '#aaa' }}>Liguem os vossos fones e entrem no rádio para testarmos a comunicação pura.</p>
             <button className="btn-neon btn-green" onClick={() => setRadioLigado(true)}>▶ ENTRAR NO RÁDIO</button>
         </div>
     );
@@ -216,23 +173,37 @@ export function MapaSessaoRP() {
             <p style={{ color: '#aaa', fontStyle: 'italic', marginBottom: 10, fontSize: '1.1em' }}>A testar a estabilidade da ligação nativa...</p>
             
             {isPresenteNaTaverna && (
-                <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '20px', background: 'rgba(0,0,0,0.5)', padding: '10px', borderRadius: '5px', border: '1px solid #333' }}>
+                <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '20px', background: 'rgba(0,0,0,0.5)', padding: '10px 15px', borderRadius: '5px', border: '1px solid #333', flexWrap: 'wrap', justifyContent: 'center' }}>
                     <div style={{ color: '#00ffcc', fontSize: '0.85em', fontFamily: 'monospace' }}>📡 {chatCtx.voiceStatus}</div>
                     
+                    {/* INPUT: MICROFONE */}
                     {chatCtx.mics.length > 0 && (
-                        <select className="input-neon" value={chatCtx.selectedMic} onChange={e => chatCtx.trocarMicrofone(e.target.value)} style={{ padding: '4px', fontSize: '0.8em', background: '#000', color: '#fff', borderColor: '#00ffcc', borderRadius: '5px', maxWidth: '200px' }}>
-                            {chatCtx.mics.map(m => <option key={m.deviceId} value={m.deviceId}>{m.label || `Padrão - Mic ${m.deviceId.substring(0,4)}`}</option>)}
-                        </select>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                            <span style={{ fontSize: '1.2em' }}>🎙️</span>
+                            <select className="input-neon" value={chatCtx.selectedMic} onChange={e => chatCtx.trocarMicrofone(e.target.value)} style={{ padding: '4px', fontSize: '0.8em', background: '#000', color: '#fff', borderColor: '#00ffcc', borderRadius: '5px', maxWidth: '200px' }}>
+                                {chatCtx.mics.map(m => <option key={m.deviceId} value={m.deviceId}>{m.label || `Mic ${m.deviceId.substring(0,4)}`}</option>)}
+                            </select>
+                        </div>
                     )}
                     
-                    <label style={{ color: '#00ffcc', fontSize: '0.8em', cursor: 'pointer' }}><input type="checkbox" checked={chatCtx.supressorAtivo} onChange={e => chatCtx.setSupressorAtivo(e.target.checked)} /> 🎧 Supressor Nativo</label>
+                    {/* OUTPUT: FONES / COLUNAS */}
+                    {chatCtx.speakers.length > 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, borderLeft: '1px solid #444', paddingLeft: '15px' }}>
+                            <span style={{ fontSize: '1.2em' }}>🎧</span>
+                            <select className="input-neon" value={chatCtx.selectedSpeaker} onChange={e => chatCtx.trocarSpeaker(e.target.value)} style={{ padding: '4px', fontSize: '0.8em', background: '#000', color: '#fff', borderColor: '#00aaff', borderRadius: '5px', maxWidth: '200px' }}>
+                                {chatCtx.speakers.map(s => <option key={s.deviceId} value={s.deviceId}>{s.label || `Saída ${s.deviceId.substring(0,4)}`}</option>)}
+                            </select>
+                        </div>
+                    )}
                     
-                    {chatCtx.streamAnalisador && <CalibradorDeVoz stream={chatCtx.streamAnalisador} sensibilidade={sensibilidadeVozLocal} setSensibilidade={setSensibilidadeVozLocal} />}
+                    <label style={{ color: '#00ffcc', fontSize: '0.8em', cursor: 'pointer', borderLeft: '1px solid #444', paddingLeft: '15px' }}>
+                        <input type="checkbox" checked={chatCtx.supressorAtivo} onChange={e => chatCtx.setSupressorAtivo(e.target.checked)} /> Filtro de Eco/Ruído
+                    </label>
                 </div>
             )}
             
             <div style={{ display: 'flex', gap: '15px', marginBottom: '30px' }}>
-                <button onClick={chatCtx.toggleMute} disabled={!isPresenteNaTaverna} style={{ opacity: isPresenteNaTaverna ? 1 : 0.3, width: '45px', height: '45px', borderRadius: '50%', background: chatCtx.mutado ? '#ff003c' : '#00ffcc', color: '#000', cursor: 'pointer', border: 'none' }}>{chatCtx.mutado ? '🔇' : '🎙️'}</button>
+                <button onClick={chatCtx.toggleMute} disabled={!isPresenteNaTaverna} style={{ opacity: isPresenteNaTaverna ? 1 : 0.3, width: '45px', height: '45px', borderRadius: '50%', background: chatCtx.mutado ? '#ff003c' : '#00ffcc', color: '#000', cursor: 'pointer', border: 'none', boxShadow: `0 0 10px ${chatCtx.mutado ? '#ff003c' : '#00ffcc'}` }}>{chatCtx.mutado ? '🔇' : '🎙️'}</button>
                 <button onClick={chatCtx.toggleDeafen} disabled={!isPresenteNaTaverna} style={{ opacity: isPresenteNaTaverna ? 1 : 0.3, width: '45px', height: '45px', borderRadius: '50%', background: chatCtx.surdo ? '#ff003c' : 'rgba(255,255,255,0.1)', color: '#fff', cursor: 'pointer', border: 'none' }}>{chatCtx.surdo ? '🔕' : '🎧'}</button>
                 <button className={`btn-neon ${isPresenteNaTaverna ? 'btn-red' : 'btn-green'}`} onClick={togglePresencaTaverna}>{isPresenteNaTaverna ? 'SAIR DA TAVERNA' : 'SENTAR NA MESA'}</button>
             </div>
@@ -244,7 +215,14 @@ export function MapaSessaoRP() {
                     const info = getAvatarInfo(f);
                     const con = chatCtx.conexoes.find(c => c.id === `anime-rpg-${(nome||'').toLowerCase().replace(/[^a-z0-9]/g, '')}`);
                     
-                    return <AvatarCardVoz key={nome} nome={nome} info={info} ficha={f} isMe={isMe} isConnected={isMe || !!con} streamParaTocar={con?.stream} streamAnalisador={isMe ? chatCtx.streamAnalisador : null} meuStream={isMe ? chatCtx.meuStream : null} mutado={chatCtx.mutado} surdo={chatCtx.surdo} fazerChamada={chatCtx.fazerChamada} cardSize={cardSize} fmt={fmt} />;
+                    return (
+                        <AvatarCardVoz 
+                            key={nome} nome={nome} info={info} ficha={f} isMe={isMe} 
+                            isConnected={isMe || !!con} streamParaTocar={con?.stream} streamAnalisador={isMe ? chatCtx.streamAnalisador : null} 
+                            mutado={chatCtx.mutado} surdo={chatCtx.surdo} fazerChamada={chatCtx.fazerChamada} 
+                            cardSize={cardSize} fmt={fmt} selectedSpeaker={chatCtx.selectedSpeaker} 
+                        />
+                    );
                 })}
             </div>
         </div>
@@ -269,7 +247,7 @@ export function MapaAreaCentral() {
 }
 
 // ============================================================================
-// RESTO DOS COMPONENTES VISUAIS (SEGUROS)
+// RESTO DOS COMPONENTES VISUAIS (INTATOS E SEGUROS!)
 // ============================================================================
 
 export function MapaControlesSuperiores() {
