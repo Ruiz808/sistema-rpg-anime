@@ -44,6 +44,12 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
     const [surdo, setSurdo] = useState(false);
     const [supressorAtivo, setSupressorAtivo] = useState(true);
 
+    // 🔥 NOVO: Estado da sensibilidade (salvando no navegador para lembrar sua preferência)
+    const [sensibilidadeVoz, setSensibilidadeVoz] = useState(() => {
+        const saved = localStorage.getItem('rpg_sensibilidade_voz');
+        return saved !== null ? parseInt(saved) : 10;
+    });
+
     const meuStreamRef = useRef(null);
     const conexoesRef = useRef([]);
     const chamadasEmAndamento = useRef(new Set());
@@ -54,6 +60,11 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
 
     useEffect(() => { conexoesRef.current = conexoes; }, [conexoes]);
     useEffect(() => { supressorAtivoRef.current = supressorAtivo; }, [supressorAtivo]);
+
+    // 🔥 NOVO: Toda vez que mudar a barrinha, salva no localStorage
+    useEffect(() => {
+        localStorage.setItem('rpg_sensibilidade_voz', sensibilidadeVoz.toString());
+    }, [sensibilidadeVoz]);
 
     // 1. INICIALIZA A ANTENA PEERJS
     useEffect(() => {
@@ -246,10 +257,12 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
 
     const toggleDeafen = useCallback(() => setSurdo(s => !s), []);
 
+    // 🔥 NOVO: Exportando as funções de sensibilidade para a Taverna usar
     return {
         meuStream, streamAnalisador, conexoes, mutado, surdo, voiceStatus, 
         mics, selectedMic, trocarMicrofone, 
         speakers, selectedSpeaker, trocarSpeaker,
-        supressorAtivo, toggleMute, toggleDeafen, setSupressorAtivo, fazerChamada
+        supressorAtivo, toggleMute, toggleDeafen, setSupressorAtivo, fazerChamada,
+        sensibilidadeVoz, setSensibilidadeVoz 
     };
 }
