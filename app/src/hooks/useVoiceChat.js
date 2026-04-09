@@ -12,6 +12,22 @@ function encontrarMelhorMic(audioInputs) {
     return audioInputs[0]?.deviceId || null;
 }
 
+// AS REGRAS SUPREMAS ANTI-ECO DO GOOGLE CHROME
+const getAudioConstraints = (deviceId, supressor) => ({
+    deviceId: deviceId ? { exact: deviceId } : undefined,
+    echoCancellation: true,
+    noiseSuppression: supressor,
+    autoGainControl: true,
+    // Comandos forçados para o motor WebRTC do Chromium
+    googEchoCancellation: true,
+    googExperimentalEchoCancellation: true,
+    googNoiseSuppression: supressor,
+    googExperimentalNoiseSuppression: supressor,
+    googHighpassFilter: true,
+    googTypingNoiseDetection: true,
+    googAudioMirroring: false // Impede que o Chrome espelhe o som do sistema
+});
+
 export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
     const [peerObj, setPeerObj] = useState(null);
     const [meuStream, setMeuStream] = useState(null);
@@ -66,14 +82,14 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
         return () => novoPeer.destroy();
     }, [meuIDTelefone]);
 
-    // 2. LIGAR/DESLIGAR O MICROFONE FÍSICO
+    // 2. LIGAR O MICROFONE COM OS FILTROS ANTI-ECO
     useEffect(() => {
         if (isPresenteNaTaverna && !rtcLigado.current) {
             rtcLigado.current = true;
             setVoiceStatus('A ligar Microfone...');
 
             navigator.mediaDevices.getUserMedia({
-                audio: { noiseSuppression: supressorAtivoRef.current, echoCancellation: true, autoGainControl: true }
+                audio: getAudioConstraints(null, supressorAtivoRef.current)
             }).then(async (stream) => {
                 meuStreamRef.current = stream;
                 setMeuStream(stream);
@@ -99,7 +115,7 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
 
                 try {
                     const correctStream = await navigator.mediaDevices.getUserMedia({
-                        audio: { deviceId: { exact: bestMicId }, noiseSuppression: supressorAtivoRef.current, echoCancellation: true, autoGainControl: true }
+                        audio: getAudioConstraints(bestMicId, supressorAtivoRef.current)
                     });
                     stream.getTracks().forEach(t => t.stop());
                     meuStreamRef.current = correctStream;
@@ -170,12 +186,12 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
         return () => clearInterval(interval);
     }, [tavernaAtivos, peerObj, isPresenteNaTaverna, meuNome, fazerChamada]);
 
-    // 4. TROCA DE MICROFONE SEM CORTAR A CHAMADA
+    // 4. TROCA DE MICROFONE SEGURA
     const trocarMicrofone = useCallback(async (deviceId) => {
         try {
             setSelectedMic(deviceId);
             const newStream = await navigator.mediaDevices.getUserMedia({
-                audio: { deviceId: { exact: deviceId }, noiseSuppression: supressorAtivoRef.current, echoCancellation: true, autoGainControl: true }
+                audio: getAudioConstraints(deviceId, supressorAtivoRef.current)
             });
 
             if (peerObj) {
@@ -203,7 +219,6 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
         } catch (err) { console.error("Erro ao trocar mic:", err); }
     }, [peerObj, streamAnalisador]);
 
-    // 5. MUTE NATIVO
     const toggleMute = useCallback(() => {
         setMutado(prev => {
             const isMutedNow = !prev;
