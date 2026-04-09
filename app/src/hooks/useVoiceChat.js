@@ -54,7 +54,7 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
     useEffect(() => { conexoesRef.current = conexoes; }, [conexoes]);
     useEffect(() => { supressorAtivoRef.current = supressorAtivo; }, [supressorAtivo]);
 
-    // 1. INICIALIZA A ANTENA PEERJS (COM SERVIDORES STUN/TURN DE ALTA FIABILIDADE)
+    // 1. INICIALIZA A ANTENA PEERJS
     useEffect(() => {
         if (!meuIDTelefone || peerObj) return;
 
@@ -71,7 +71,7 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
         
         const novoPeer = new Peer(`anime-rpg-${meuIDTelefone}`, {
             config: { iceServers: ICE_SERVERS },
-            debug: 2 // Mostra erros no F12 para ajudar a diagnosticar
+            debug: 2 
         });
 
         novoPeer.on('open', (id) => {
@@ -84,14 +84,20 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
             
             const attemptAnswer = (tentativas = 0) => {
                 if (meuStreamRef.current) {
-                    console.log(`[VOZ] A atender chamada de ${call.peer} com o meu microfone...`);
+                    console.log(`[VOZ] A atender chamada de ${call.peer}...`);
                     call.answer(meuStreamRef.current);
                     
                     call.on('stream', (remoteStream) => {
                         console.log(`[VOZ] Áudio recebido de ${call.peer}! Track ativada:`, remoteStream.getAudioTracks()[0]?.enabled);
+                        
                         setConexoes(prev => {
-                            if (prev.find(c => c.id === call.peer)) return prev.map(c => c.id === call.peer ? { ...c, stream: remoteStream } : c);
-                            return [...prev, { id: call.peer, stream: remoteStream }];
+                            const exists = prev.find(c => c.id === call.peer);
+                            // 🔥 O ESCUDO ANTI-DUPLICAÇÃO: Se já temos a stream, ignoramos a nova para não quebrar o motor de som!
+                            if (exists && exists.stream && exists.stream.active) {
+                                console.log(`[VOZ] 🛡️ Stream duplicada de ${call.peer} bloqueada! O áudio continua a salvo.`);
+                                return prev;
+                            }
+                            return [...prev.filter(c => c.id !== call.peer), { id: call.peer, stream: remoteStream }];
                         });
                     });
                     
@@ -99,7 +105,6 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
                     call.on('error', (err) => console.error(`[VOZ] Erro na chamada de ${call.peer}:`, err));
                 } else {
                     if (tentativas < 10) {
-                        console.log(`[VOZ] À espera que o meu microfone ligue para atender ${call.peer}...`);
                         setTimeout(() => attemptAnswer(tentativas + 1), 500);
                     } else {
                         console.error(`[VOZ] Falha ao atender ${call.peer}. O microfone nunca ligou.`);
@@ -190,7 +195,7 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
         const call = peerObj.call(idFormatado, meuStreamRef.current);
         
         if (!call) { 
-            console.error(`[VOZ] Falha ao iniciar call para ${idFormatado}. Peer destruído?`);
+            console.error(`[VOZ] Falha ao iniciar call para ${idFormatado}.`);
             chamadasEmAndamento.current.delete(idFormatado); 
             return; 
         }
@@ -198,8 +203,13 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
         call.on('stream', (remoteStream) => {
             console.log(`[VOZ] Áudio recebido de ${idFormatado} (Chamada Ativa)!`);
             setConexoes(prev => {
-                if (prev.find(c => c.id === idFormatado)) return prev.map(c => c.id === idFormatado ? { ...c, stream: remoteStream } : c);
-                return [...prev, { id: idFormatado, stream: remoteStream }];
+                const exists = prev.find(c => c.id === idFormatado);
+                // 🔥 O ESCUDO ANTI-DUPLICAÇÃO (Cenário de Chamada Ativa) 🔥
+                if (exists && exists.stream && exists.stream.active) {
+                    console.log(`[VOZ] 🛡️ Stream duplicada ativa de ${idFormatado} bloqueada.`);
+                    return prev;
+                }
+                return [...prev.filter(c => c.id !== idFormatado), { id: idFormatado, stream: remoteStream }];
             });
             chamadasEmAndamento.current.delete(idFormatado);
         });
@@ -226,7 +236,7 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
                 const meuId = `anime-rpg-${(meuNome || '').toLowerCase().replace(/[^a-z0-9]/g, '')}`;
                 const amigoId = `anime-rpg-${(nomeAmigo || '').toLowerCase().replace(/[^a-z0-9]/g, '')}`;
 
-                // Para evitar chamadas duplas e colisões, quem tem a ordem alfabética "menor" faz a chamada
+                // Apenas a pessoa com o ID alfabético menor liga! Evita colisões frontais!
                 if (meuId < amigoId) {
                     const exists = conexoesRef.current.find(c => c.id === amigoId);
                     if (!exists && !chamadasEmAndamento.current.has(amigoId)) {
@@ -234,7 +244,7 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
                     }
                 }
             });
-        }, 4000); // Tenta ligar de 4 em 4 segundos aos que faltam
+        }, 4000); 
         return () => clearInterval(interval);
     }, [tavernaAtivos, peerObj, isPresenteNaTaverna, meuNome, fazerChamada]);
 

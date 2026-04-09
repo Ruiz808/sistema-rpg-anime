@@ -22,66 +22,59 @@ const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Mapa provider não 
 // ============================================================================
 // 🔥 REPRODUTOR NATIVO DE MEMÓRIA RAM (EVITA O BLOQUEIO DO CHROME E REACT) 🔥
 // ============================================================================
+// ============================================================================
+// 🔥 REPRODUTOR ANCORADO NO DOM (ANTI-GARBAGE COLLECTION DO CHROME) 🔥
+// ============================================================================
 function PlayerDeAudioRemoto({ stream, volume, surdo, nome, sinkId }) {
-    const audioElRef = useRef(null);
+    const audioRef = useRef(null);
 
     useEffect(() => {
-        if (!stream) return;
+        const audioEl = audioRef.current;
+        if (!audioEl || !stream) return;
 
-        console.log(`[VOZ-PLAYER] A tentar reproduzir a voz de ${nome}...`);
-
-        // Cria o elemento de áudio Pura Memória RAM (Ignora o DOM do React)
-        const audio = new Audio();
-        audio.srcObject = stream;
-        audio.autoplay = true;
-        audio.playsInline = true;
-        audio.volume = surdo ? 0 : Math.min(1, Math.max(0, volume));
-
-        // Tenta mudar a saída de som se especificada
-        if (sinkId && typeof audio.setSinkId === 'function') {
-            audio.setSinkId(sinkId).catch(e => console.warn('[VOZ-PLAYER] Erro ao trocar de Fones:', e));
+        if (audioEl.srcObject !== stream) {
+            console.log(`[VOZ-PLAYER] Anexando stream DOM para ${nome}`);
+            audioEl.srcObject = stream;
         }
 
-        // Força a reprodução
-        audio.play().then(() => {
-            console.log(`[VOZ-PLAYER] SUCESSO! A voz de ${nome} está a tocar!`);
-        }).catch(e => {
-            console.warn(`[VOZ-PLAYER] Autoplay BLOQUEADO para ${nome}! O Chrome exige interação humana.`);
-            
-            // Cria uma armadilha: No primeiro clique do utilizador EM QUALQUER SÍTIO, o áudio destranca!
-            const forcePlayOnInteraction = () => {
-                audio.play().catch(()=>{});
-                console.log(`[VOZ-PLAYER] Áudio de ${nome} destrancado pelo clique!`);
-                document.removeEventListener('click', forcePlayOnInteraction);
-            };
-            document.addEventListener('click', forcePlayOnInteraction);
-        });
-
-        audioElRef.current = audio;
-
-        return () => {
-            console.log(`[VOZ-PLAYER] A destruir áudio de ${nome}...`);
-            audio.pause();
-            audio.srcObject = null;
-            audioElRef.current = null;
-        };
+        // Tenta iniciar a reprodução. O Chrome pode bloquear se não houver interação prévia.
+        const playPromise = audioEl.play();
+        if (playPromise !== undefined) {
+            playPromise.then(() => {
+                console.log(`[VOZ-PLAYER] Tocando DOM com sucesso para ${nome}!`);
+            }).catch(e => {
+                console.warn(`[VOZ-PLAYER] Autoplay bloqueado pelo navegador para ${nome}. Clique na tela!`, e);
+                // Armadilha: O próximo clique em qualquer sítio destranca o áudio!
+                const forcePlay = () => {
+                    audioEl.play().catch(()=>{});
+                    document.removeEventListener('click', forcePlay);
+                };
+                document.addEventListener('click', forcePlay);
+            });
+        }
     }, [stream, nome]);
 
-    // Atualiza o volume reativamente sem recriar a stream!
     useEffect(() => {
-        if (audioElRef.current) {
-            audioElRef.current.volume = surdo ? 0 : Math.min(1, Math.max(0, volume));
+        if (audioRef.current) {
+            audioRef.current.volume = surdo ? 0 : Math.min(1, Math.max(0, volume));
         }
     }, [volume, surdo]);
 
     useEffect(() => {
-        if (audioElRef.current && sinkId && typeof audioElRef.current.setSinkId === 'function') {
-            audioElRef.current.setSinkId(sinkId).catch(()=>{});
+        if (audioRef.current && sinkId && typeof audioRef.current.setSinkId === 'function') {
+            audioRef.current.setSinkId(sinkId).catch(()=>{});
         }
     }, [sinkId]);
 
-    // Não devolvemos NADA para o HTML. O áudio flutua livre de restrições!
-    return null; 
+    // 🔥 CORREÇÃO ABSOLUTA: O áudio TEM de estar no DOM, mas com 1px invisível para que o browser não o mate!
+    return (
+        <audio 
+            ref={audioRef} 
+            autoPlay 
+            playsInline 
+            style={{ position: 'absolute', opacity: 0, width: '1px', height: '1px', pointerEvents: 'none' }} 
+        />
+    );
 }
 
 function CalibradorDeVoz({ stream, sensibilidade, setSensibilidade }) {
