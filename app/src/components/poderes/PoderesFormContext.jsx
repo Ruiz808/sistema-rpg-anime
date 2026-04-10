@@ -430,9 +430,12 @@ export function PoderesFormProvider({ children }) {
     const mPotencial = minhaFicha?.dano?.mPotencial || 1;
     const danoBruto = minhaFicha?.dano?.danoBruto || 0;
 
+    // ========================================================================
+    // 🔥 LÓGICA DO CUSTO ZERO (RESSONÂNCIA ELEMENTAL) APLICADA 🔥
+    // ========================================================================
     const dispararAtaque = useCallback((poder) => {
         let custoFinalPerc = poder.custoPercentual || 0;
-        const isHabilidadeElemental = poder.vertente === 'Elemental'; 
+        const isHabilidadeElemental = poder.vertente === 'elemental'; 
 
         if (isHabilidadeElemental) {
             custoFinalPerc = overchargeAtivo ? (poder.custoPercentual * 2) : 0;

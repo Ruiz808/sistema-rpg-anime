@@ -264,6 +264,9 @@ export function FichaFormProvider({ children }) {
     const sKeyForBuffs = (selAtributo === 'todos_status') ? 'forca' : (selAtributo === 'todas_energias') ? 'mana' : selAtributo;
     const buffsAtuais = minhaFicha ? getBuffs(minhaFicha, sKeyForBuffs) : null;
 
+    // ========================================================================
+    // 🔥 LÓGICA DE CONDICIONAIS CORRIGIDA (AGORA EXIGE ID EXATO) 🔥
+    // ========================================================================
     const hierarquia = minhaFicha?.hierarquia || {};
     const poderesGlobais = minhaFicha?.poderes || [];
     const hPoder = hierarquia.poder || false;
@@ -271,16 +274,13 @@ export function FichaFormProvider({ children }) {
     const hPoderVertente = hierarquia.poderVertente || '';
     const hInfinityVertente = hierarquia.infinityVertente || '';
 
-    const classAcumulativo = (hPoder && hPoderVertente.includes('Acumulativo')) || (hInfinity && hInfinityVertente.includes('Acumulativo'));
-    const classElemental = (hPoder && hPoderVertente.includes('Elemental')) || (hInfinity && hInfinityVertente.includes('Elemental'));
-    const classConceitual = (hPoder && hPoderVertente.includes('Conceitual')) || (hInfinity && hInfinityVertente.includes('Conceitual'));
-    const classUtilitario = (hPoder && hPoderVertente.includes('Utilitario')) || (hInfinity && hInfinityVertente.includes('Utilitario'));
+    const showMarcadoresCena = (hPoder && hPoderVertente === 'acumulativo_combate') || (hInfinity && hInfinityVertente === 'acumulativo_combate') || poderesGlobais.some(p => p.ativa && p.vertente === 'acumulativo_combate');
+    const showForjaCalamidade = (hPoder && hPoderVertente === 'acumulativo_absorcao') || (hInfinity && hInfinityVertente === 'acumulativo_absorcao') || poderesGlobais.some(p => p.ativa && p.vertente === 'acumulativo_absorcao');
+    const showElemental = (hPoder && hPoderVertente === 'elemental') || (hInfinity && hInfinityVertente === 'elemental') || poderesGlobais.some(p => p.ativa && p.vertente === 'elemental');
+    const showConceitual = (hPoder && hPoderVertente === 'conceitual') || (hInfinity && hInfinityVertente === 'conceitual') || poderesGlobais.some(p => p.ativa && p.vertente === 'conceitual');
+    const showUtilitario = (hPoder && hPoderVertente === 'utilitario') || (hInfinity && hInfinityVertente === 'utilitario') || poderesGlobais.some(p => p.ativa && p.vertente === 'utilitario');
 
-    const showMarcadoresCena = classAcumulativo || poderesGlobais.some(p => p.ativa && (p.vertente || '').includes('Acumulativo'));
-    const showForjaCalamidade = classAcumulativo || poderesGlobais.some(p => p.ativa && (p.vertente || '').includes('Acumulativo'));
-    const showElemental = classElemental || poderesGlobais.some(p => p.ativa && (p.vertente || '').includes('Elemental'));
-    const showConceitual = classConceitual || poderesGlobais.some(p => p.ativa && (p.vertente || '').includes('Conceitual'));
-    const showUtilitario = classUtilitario || poderesGlobais.some(p => p.ativa && (p.vertente || '').includes('Utilitario'));
+    // ========================================================================
 
     const trackersCena = minhaFicha?.combate?.trackers || [];
     const [novoTrackerNome, setNovoTrackerNome] = useState('');
@@ -389,7 +389,6 @@ export function FichaFormProvider({ children }) {
         danoBruto, setDanoBruto, salvandoMult, salvarMultiplicadores,
         buffsDano, sKeyForBuffs, buffsAtuais,
         hierarquia, poderesGlobais, hPoder, hInfinity, hPoderVertente, hInfinityVertente,
-        classAcumulativo, classElemental, classConceitual, classUtilitario,
         showMarcadoresCena, showForjaCalamidade, showElemental, showConceitual, showUtilitario,
         trackersCena, novoTrackerNome, setNovoTrackerNome, novoTrackerValor, setNovoTrackerValor,
         addTrackerCena, modTrackerCena, removeTrackerCena, resetarTrackersCena,
@@ -403,7 +402,7 @@ export function FichaFormProvider({ children }) {
         comitarBio, salvarBio, mudarSubClasseDireto, multiplicadorFuriaClasse, rawMaxVida, maxVida, atualVida, percAtualLostFloor, furiaMax, percEfetivoParaDisplay,
         multiplicadorFuriaVisor, furiaAcalmadaMsg, acalmarFuria, toggleMemoriaPretender, descansoLongoPretender, selAtributo, campos, handleCampo, carregarAtributoNaTela, salvarAtributo,
         dmBase, dmPotencial, dmGeral, dmFormas, dmAbsoluto, dmUnico, danoBruto, salvandoMult, salvarMultiplicadores, buffsDano, sKeyForBuffs, buffsAtuais,
-        hierarquia, poderesGlobais, hPoder, hInfinity, hPoderVertente, hInfinityVertente, classAcumulativo, classElemental, classConceitual, classUtilitario,
+        hierarquia, poderesGlobais, hPoder, hInfinity, hPoderVertente, hInfinityVertente,
         showMarcadoresCena, showForjaCalamidade, showElemental, showConceitual, showUtilitario,
         trackersCena, novoTrackerNome, novoTrackerValor, addTrackerCena, modTrackerCena, removeTrackerCena, resetarTrackersCena,
         valorInjecao, alvosInjecao, showAbsorverMsg, toggleAlvo, injetarAnomalia, leisCena, novaLeiNome, addLeiCena, removeLeiCena,

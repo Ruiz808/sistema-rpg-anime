@@ -86,7 +86,7 @@ export function PoderesClassificacao() {
 
                 {vertenteDestaque && (
                     <div style={{ display: 'inline-block', marginTop: '12px', padding: '4px 15px', background: 'rgba(0,0,0,0.5)', border: `1px solid ${corSuprema}`, borderRadius: '20px', color: corSuprema, fontSize: '0.85em', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', position: 'relative', zIndex: 1 }}>
-                        🎯 Vertente: {vertenteDestaque}
+                        🎯 Vertente: {vertenteDestaque.replace('_', ' ')}
                     </div>
                 )}
 
@@ -110,6 +110,8 @@ export function PoderesClassificacao() {
                     {hPoder && (
                         <div className="fade-in" style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px dashed rgba(0, 255, 204, 0.3)' }}>
                             <label style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Vertente do Poder:</label>
+                            
+                            {/* 🔥 DROPDOWN CORRIGIDO (PADRONIZADO) 🔥 */}
                             <select
                                 className="input-neon"
                                 value={hTextos.poderVertente}
@@ -118,11 +120,11 @@ export function PoderesClassificacao() {
                                 style={{ width: '100%', marginBottom: '10px', borderColor: '#00ffcc', color: '#fff', opacity: isMestre ? 1 : 0.7 }}
                             >
                                 <option value="">Selecione a Vertente...</option>
-                                <option value="Acumulativo (Combate)">⚔️ Acumulativo de Combate (Escala na luta e reseta)</option>
-                                <option value="Acumulativo (Absorção)">📈 Acumulativo de Absorção (Armazena permanentemente)</option>
-                                <option value="Elemental">🌪️ Elemental (Força da natureza / Fenômenos)</option>
-                                <option value="Conceitual">🧩 Conceitual (Distorção de ideias e regras)</option>
-                                <option value="Utilitario">🛠️ Utilitário (Manipulação, Suporte, Cópia)</option>
+                                <option value="acumulativo_combate">⚔️ Acumulativo de Combate (Escala na luta e reseta)</option>
+                                <option value="acumulativo_absorcao">📈 Acumulativo de Absorção (Armazena permanentemente)</option>
+                                <option value="elemental">🌪️ Elemental (Domínio absoluto de forças e natureza)</option>
+                                <option value="conceitual">🧩 Conceitual (Quebra de regras absolutas e espaço/tempo)</option>
+                                <option value="utilitario">🛠️ Utilitário (Hackers da realidade, Mimetismo, Anulação)</option>
                             </select>
 
                             <input className="input-neon" type="text" placeholder="Nome do seu Poder (Ex: Chamas do Purgatório)" value={hTextos.poderNome} onChange={e => setHTextos({...hTextos, poderNome: e.target.value})} disabled={!isMestre} style={{ width: '100%', marginBottom: '10px', borderColor: '#00ffcc', color: '#fff', fontWeight: 'bold', opacity: isMestre ? 1 : 0.7 }} />
@@ -145,6 +147,8 @@ export function PoderesClassificacao() {
                     {hInfinity && (
                         <div className="fade-in" style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px dashed rgba(0, 204, 255, 0.3)' }}>
                             <label style={{ color: '#00ccff', fontSize: '0.85em', fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Vertente do Infinity:</label>
+                            
+                            {/* 🔥 DROPDOWN CORRIGIDO (PADRONIZADO) 🔥 */}
                             <select
                                 className="input-neon"
                                 value={hTextos.infinityVertente}
@@ -153,11 +157,11 @@ export function PoderesClassificacao() {
                                 style={{ width: '100%', marginBottom: '10px', borderColor: '#00ccff', color: '#fff', opacity: isMestre ? 1 : 0.7 }}
                             >
                                 <option value="">Selecione a Vertente...</option>
-                                <option value="Acumulativo (Combate)">⚔️ Acumulativo de Combate (Escala na luta e reseta)</option>
-                                <option value="Acumulativo (Absorção)">📈 Acumulativo de Absorção (Armazena permanentemente)</option>
-                                <option value="Elemental">🌪️ Elemental (Domínio absoluto de forças e natureza)</option>
-                                <option value="Conceitual">🧩 Conceitual (Quebra de regras absolutas e espaço/tempo)</option>
-                                <option value="Utilitario">🛠️ Utilitário (Hackers da realidade, Mimetismo, Anulação)</option>
+                                <option value="acumulativo_combate">⚔️ Acumulativo de Combate (Escala na luta e reseta)</option>
+                                <option value="acumulativo_absorcao">📈 Acumulativo de Absorção (Armazena permanentemente)</option>
+                                <option value="elemental">🌪️ Elemental (Domínio absoluto de forças e natureza)</option>
+                                <option value="conceitual">🧩 Conceitual (Quebra de regras absolutas e espaço/tempo)</option>
+                                <option value="utilitario">🛠️ Utilitário (Hackers da realidade, Mimetismo, Anulação)</option>
                             </select>
 
                             <input className="input-neon" type="text" placeholder="Nome do seu Infinity (Ex: Frio Zero Absoluto)" value={hTextos.infinityNome} onChange={e => setHTextos({...hTextos, infinityNome: e.target.value})} disabled={!isMestre} style={{ width: '100%', marginBottom: '10px', borderColor: '#00ccff', color: '#fff', fontWeight: 'bold', opacity: isMestre ? 1 : 0.7 }} />
@@ -248,15 +252,18 @@ export function PoderesFormEditor() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10, marginBottom: 5 }}>
                 <div>
                     <label style={{ color: '#0ff', fontSize: '0.85em', fontWeight: 'bold' }}>Natureza da Habilidade / Poder</label>
+                    
+                    {/* 🔥 DROPDOWN CORRIGIDO (PADRONIZADO) 🔥 */}
                     <select className="input-neon" value={poderVertente} onChange={e => setPoderVertente(e.target.value)} style={{ borderColor: '#0ff', color: '#0ff', margin: 0 }}>
                         <option value="">Padrão (Dano / Efeito Direto)</option>
-                        <option value="Elemental">🌪️ Elemental / Fenomenal (Ressonância Ativa)</option>
-                        <option value="Acumulativo">📈 Acumulativo (Requer Marcadores ou Forja)</option>
-                        <option value="Conceitual">🧩 Conceitual (Distorção de Regras)</option>
-                        <option value="Utilitario">🛠️ Utilitário (Cópia / Suporte / Buff)</option>
+                        <option value="acumulativo_combate">⚔️ Acumulativo de Combate (Escala na luta e reseta)</option>
+                        <option value="acumulativo_absorcao">📈 Acumulativo de Absorção (Armazena permanentemente)</option>
+                        <option value="elemental">🌪️ Elemental (Domínio absoluto de forças e natureza)</option>
+                        <option value="conceitual">🧩 Conceitual (Quebra de regras absolutas e espaço/tempo)</option>
+                        <option value="utilitario">🛠️ Utilitário (Hackers da realidade, Mimetismo, Anulação)</option>
                     </select>
                 </div>
-                {poderVertente === 'Elemental' && (
+                {poderVertente === 'elemental' && (
                     <div className="fade-in">
                         <label style={{ color: '#ff8800', fontSize: '0.85em', fontWeight: 'bold' }}>Elemento / Fenômeno (Ex: Fogo Infinito)</label>
                         <input className="input-neon" type="text" placeholder="Qual o elemento dominado?" value={poderElemento} onChange={e => setPoderElemento(e.target.value)} style={{ borderColor: '#ff8800', color: '#ff8800', margin: 0 }} />
@@ -413,7 +420,7 @@ export function PoderesLista() {
                                         <span style={{fontSize: '0.6em', color: '#fff'}}> (Alcance: {p.alcance || 1}Q)</span>
                                         {p.vertente && (
                                             <span style={{ marginLeft: '10px', fontSize: '0.55em', padding: '2px 8px', borderRadius: '10px', background: 'rgba(255,255,255,0.1)', color: '#0ff', border: '1px solid #0ff' }}>
-                                                {p.vertente === 'Elemental' ? `🌪️ ELEMENTAL: ${p.elemento}` : p.vertente.toUpperCase()}
+                                                {p.vertente === 'elemental' ? `🌪️ ELEMENTAL: ${p.elemento}` : p.vertente.replace('_', ' ').toUpperCase()}
                                             </span>
                                         )}
                                     </h3>
@@ -491,7 +498,7 @@ export function PoderesLista() {
                                 <div className="fade-in" style={{ width: '100%', marginTop: '15px', background: 'rgba(0, 0, 0, 0.7)', border: '1px solid #0ff', borderRadius: '8px', padding: '15px' }}>
                                     <h4 style={{ color: '#0ff', margin: '0 0 10px 0', textTransform: 'uppercase' }}>⚙️ Central de Disparo: {p.nome}</h4>
 
-                                    {p.vertente === 'Elemental' ? (
+                                    {p.vertente === 'elemental' ? (
                                         <div style={{ background: 'rgba(0, 255, 204, 0.1)', borderLeft: '3px solid #00ffcc', padding: '10px', marginBottom: '15px', borderRadius: '4px' }}>
                                             <p style={{ color: '#00ffcc', margin: '0 0 5px 0', fontWeight: 'bold' }}>🌪️ RESSONÂNCIA ELEMENTAL DETETADA</p>
                                             <p style={{ color: '#aaa', fontSize: '0.85em', margin: 0 }}>
@@ -510,7 +517,7 @@ export function PoderesLista() {
                                                 </div>
                                             </label>
                                         </div>
-                                    ) : p.vertente === 'Acumulativo' ? (
+                                    ) : (p.vertente === 'acumulativo_combate' || p.vertente === 'acumulativo_absorcao') ? (
                                         <div style={{ background: 'rgba(255, 136, 0, 0.1)', borderLeft: '3px solid #ff8800', padding: '10px', marginBottom: '15px', borderRadius: '4px' }}>
                                             <p style={{ color: '#ff8800', margin: '0 0 5px 0', fontWeight: 'bold' }}>📈 TÉCNICA ACUMULATIVA DETETADA</p>
                                             <p style={{ color: '#aaa', fontSize: '0.85em', margin: 0 }}>
