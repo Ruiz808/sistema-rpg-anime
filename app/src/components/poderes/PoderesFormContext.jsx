@@ -36,6 +36,7 @@ export function PoderesFormProvider({ children }) {
     const [descricaoPoder, setDescricaoPoder] = useState(''); 
     const [poderVertente, setPoderVertente] = useState('');
     const [poderElemento, setPoderElemento] = useState('');
+    const [elementosAfetados, setElementosAfetados] = useState(''); // 🔥 NOVO CAMPO
     const [imagemUrl, setImagemUrl] = useState('');
     const [dadosQtd, setDadosQtd] = useState(0);
     const [dadosFaces, setDadosFaces] = useState(20);
@@ -118,6 +119,7 @@ export function PoderesFormProvider({ children }) {
         setDescricaoPoder(''); 
         setPoderVertente('');
         setPoderElemento('');
+        setElementosAfetados(''); // 🔥 Limpa o novo campo
         setImagemUrl('');
         setDadosQtd(0);
         setDadosFaces(20);
@@ -148,6 +150,7 @@ export function PoderesFormProvider({ children }) {
                     ficha.poderes[ix].descricao = descricaoPoder; 
                     ficha.poderes[ix].vertente = poderVertente; 
                     ficha.poderes[ix].elemento = poderElemento; 
+                    ficha.poderes[ix].elementosAfetados = elementosAfetados; // 🔥 Atualiza o novo campo
                     ficha.poderes[ix].categoria = abaAtual;
                     ficha.poderes[ix].efeitos = JSON.parse(JSON.stringify(efeitosTemp));
                     ficha.poderes[ix].efeitosPassivos = JSON.parse(JSON.stringify(efeitosTempPassivos));
@@ -166,6 +169,7 @@ export function PoderesFormProvider({ children }) {
                     descricao: descricaoPoder, 
                     vertente: poderVertente, 
                     elemento: poderElemento, 
+                    elementosAfetados: elementosAfetados, // 🔥 Salva o novo campo
                     categoria: abaAtual,
                     ativa: false,
                     efeitos: JSON.parse(JSON.stringify(efeitosTemp)),
@@ -185,7 +189,7 @@ export function PoderesFormProvider({ children }) {
         }).catch(() => {
             alert('Erro ao sincronizar o poder no Firebase!');
         });
-    }, [nomePoder, efeitosTemp, efeitosTempPassivos, dadosQtd, descricaoPoder, updateFicha, poderEditandoId, poderVertente, poderElemento, abaAtual, imagemUrl, dadosFaces, custoPercentual, poderAlcance, poderArea, armaVinculada, cancelarEdicaoPoder]);
+    }, [nomePoder, efeitosTemp, efeitosTempPassivos, dadosQtd, descricaoPoder, updateFicha, poderEditandoId, poderVertente, poderElemento, elementosAfetados, abaAtual, imagemUrl, dadosFaces, custoPercentual, poderAlcance, poderArea, armaVinculada, cancelarEdicaoPoder]);
 
     const togglePoder = useCallback((id) => {
         const vitais = ['vida', 'mana', 'aura', 'chakra', 'corpo'];
@@ -227,6 +231,7 @@ export function PoderesFormProvider({ children }) {
         setDescricaoPoder(p.descricao || ''); 
         setPoderVertente(p.vertente || ''); 
         setPoderElemento(p.elemento || ''); 
+        setElementosAfetados(p.elementosAfetados || ''); // 🔥 Carrega o novo campo
         setImagemUrl(p.imagemUrl || '');
         setDadosQtd(p.dadosQtd || 0);
         setDadosFaces(p.dadosFaces || 20);
@@ -430,7 +435,6 @@ export function PoderesFormProvider({ children }) {
     const mPotencial = minhaFicha?.dano?.mPotencial || 1;
     const danoBruto = minhaFicha?.dano?.danoBruto || 0;
 
-    // 🔥 BLINDAGEM CONDICIONAL ANTI-CASE SENSITIVE NO DISPARO 🔥
     const dispararAtaque = useCallback((poder) => {
         let custoFinalPerc = poder.custoPercentual || 0;
         const vertenteLower = (poder.vertente || '').toLowerCase();
@@ -459,6 +463,7 @@ export function PoderesFormProvider({ children }) {
 
         if (isHabilidadeElemental) {
             msg += `🌪️ Ressonância do Elemento (${poder.elemento}): +${energiaElemental}\n`;
+            if (poder.elementosAfetados) msg += `🌊 Afeta/Consome: ${poder.elementosAfetados}\n`;
             if (overchargeAtivo) {
                 msg += `\n🔥 OVERCHARGE ATIVADO!\n`;
                 msg += `   ↳ Multiplicador Potencial Aplicado: x${mPotencial}\n`;
@@ -485,6 +490,7 @@ export function PoderesFormProvider({ children }) {
         minhaFicha, meuNome, isMestre, abaAtual, setAbaAtual,
         nomePoder, setNomePoder, descricaoPoder, setDescricaoPoder,
         poderVertente, setPoderVertente, poderElemento, setPoderElemento,
+        elementosAfetados, setElementosAfetados, // 🔥 NOVO EXPORT
         imagemUrl, setImagemUrl, dadosQtd, setDadosQtd, dadosFaces, setDadosFaces,
         custoPercentual, setCustoPercentual, poderAlcance, setPoderAlcance,
         poderArea, setPoderArea, armaVinculada, setArmaVinculada,
@@ -506,7 +512,7 @@ export function PoderesFormProvider({ children }) {
         dispararAtaque, efeitosTemp, efeitosTempPassivos, poderEditandoId
     }), [
         minhaFicha, meuNome, isMestre, abaAtual,
-        nomePoder, descricaoPoder, poderVertente, poderElemento,
+        nomePoder, descricaoPoder, poderVertente, poderElemento, elementosAfetados,
         imagemUrl, dadosQtd, dadosFaces, custoPercentual, poderAlcance,
         poderArea, armaVinculada, nomeEfeito, novoAtr, novoProp, novoVal,
         nomeEfeitoPassivo, novoAtrPassivo, novoPropPassivo, novoValPassivo,

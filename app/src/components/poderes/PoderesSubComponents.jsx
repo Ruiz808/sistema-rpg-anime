@@ -111,7 +111,6 @@ export function PoderesClassificacao() {
                         <div className="fade-in" style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px dashed rgba(0, 255, 204, 0.3)' }}>
                             <label style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Vertente do Poder:</label>
                             
-                            {/* 🔥 DROPDOWN UNIFICADO 1 🔥 */}
                             <select
                                 className="input-neon"
                                 value={hTextos.poderVertente}
@@ -147,7 +146,6 @@ export function PoderesClassificacao() {
                         <div className="fade-in" style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px dashed rgba(0, 204, 255, 0.3)' }}>
                             <label style={{ color: '#00ccff', fontSize: '0.85em', fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Vertente do Infinity:</label>
                             
-                            {/* 🔥 DROPDOWN UNIFICADO 2 🔥 */}
                             <select
                                 className="input-neon"
                                 value={hTextos.infinityVertente}
@@ -228,6 +226,7 @@ export function PoderesFormEditor() {
     const { 
         abaAtual, poderEditandoId, nomePoder, setNomePoder,
         poderVertente, setPoderVertente, poderElemento, setPoderElemento,
+        elementosAfetados, setElementosAfetados, // 🔥 ADICIONADO AQUI NO DESTRUCTURING
         imagemUrl, setImagemUrl, uploadingImg, handleImageUpload,
         dadosQtd, setDadosQtd, dadosFaces, setDadosFaces,
         custoPercentual, setCustoPercentual, poderAlcance, setPoderAlcance,
@@ -250,8 +249,6 @@ export function PoderesFormEditor() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10, marginBottom: 5 }}>
                 <div>
                     <label style={{ color: '#0ff', fontSize: '0.85em', fontWeight: 'bold' }}>Natureza da Habilidade / Poder</label>
-                    
-                    {/* 🔥 DROPDOWN UNIFICADO 3 🔥 */}
                     <select className="input-neon" value={poderVertente} onChange={e => setPoderVertente(e.target.value)} style={{ borderColor: '#0ff', color: '#0ff', margin: 0 }}>
                         <option value="">Padrão (Dano / Efeito Direto)</option>
                         <option value="acumulativo">📈 Acumulativo (Requer Marcadores e Forja)</option>
@@ -260,10 +257,18 @@ export function PoderesFormEditor() {
                         <option value="utilitario">🛠️ Utilitário (Cópia / Suporte / Buff)</option>
                     </select>
                 </div>
+
+                {/* 🔥 NOVO BLOCO ELEMENTAL COM OS DOIS CAMPOS 🔥 */}
                 {(poderVertente || '').toLowerCase().includes('elemental') && (
-                    <div className="fade-in">
-                        <label style={{ color: '#ff8800', fontSize: '0.85em', fontWeight: 'bold' }}>Elemento / Fenômeno (Ex: Fogo Infinito)</label>
-                        <input className="input-neon" type="text" placeholder="Qual o elemento dominado?" value={poderElemento} onChange={e => setPoderElemento(e.target.value)} style={{ borderColor: '#ff8800', color: '#ff8800', margin: 0 }} />
+                    <div className="fade-in" style={{ display: 'flex', gap: '10px', gridColumn: 'span 2' }}>
+                        <div style={{ flex: 1 }}>
+                            <label style={{ color: '#ff8800', fontSize: '0.85em', fontWeight: 'bold' }}>Seu Elemento (Ex: Fogo Infinito)</label>
+                            <input className="input-neon" type="text" placeholder="Qual o seu elemento?" value={poderElemento} onChange={e => setPoderElemento(e.target.value)} style={{ borderColor: '#ff8800', color: '#ff8800', margin: 0, width: '100%' }} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                            <label style={{ color: '#00ccff', fontSize: '0.85em', fontWeight: 'bold' }}>Afeta/Consome (Ex: Fogo, Água)</label>
+                            <input className="input-neon" type="text" placeholder="Quais elementos ele engole?" value={elementosAfetados} onChange={e => setElementosAfetados(e.target.value)} style={{ borderColor: '#00ccff', color: '#00ccff', margin: 0, width: '100%' }} />
+                        </div>
                     </div>
                 )}
             </div>
@@ -427,6 +432,13 @@ export function PoderesLista() {
                                     {p.descricao && (
                                         <div style={{ color: '#ccc', fontSize: '0.85em', fontStyle: 'italic', margin: '8px 0', padding: '8px', background: 'rgba(0,0,0,0.3)', borderRadius: '4px', borderLeft: `2px solid ${c}` }}>
                                             "{p.descricao}"
+                                        </div>
+                                    )}
+                                    
+                                    {/* 🔥 MOSTRA NO CARD O QUE ELE AFETA 🔥 */}
+                                    {p.elementosAfetados && (
+                                        <div style={{ color: '#00ccff', fontSize: '0.8em', marginTop: '4px', fontWeight: 'bold' }}>
+                                            🌊 Consome/Afeta: {p.elementosAfetados}
                                         </div>
                                     )}
 

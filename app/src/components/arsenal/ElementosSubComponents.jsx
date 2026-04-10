@@ -64,7 +64,8 @@ export function ElementosFormMagia() {
     const ctx = useElementosForm();
     if (!ctx) return FALLBACK;
     const {
-        elemEditandoId, nomeElem, setNomeElem, tipoMecanica, setTipoMecanica, savingAttr, setSavingAttr,
+        elemEditandoId, nomeElem, setNomeElem, elementosAfetados, setElementosAfetados, // 🔥 NOVO DESTRUCTURING
+        tipoMecanica, setTipoMecanica, savingAttr, setSavingAttr,
         energiaCombustao, setEnergiaCombustao, allowedEnergies, alcanceQuad, setAlcanceQuad, 
         areaQuad, setAreaQuad, alvosAfetados, setAlvosAfetados, duracaoZona, setDuracaoZona,
         bonusTipo, setBonusTipo, bonusValor, setBonusValor, custoValor, setCustoValor, dadosQtd, setDadosQtd,
@@ -76,6 +77,7 @@ export function ElementosFormMagia() {
             <h3 style={{ color: '#0ff', marginBottom: 10 }}>{elemEditandoId ? `Editando: ${nomeElem}` : 'Criar Nova Magia / Técnica'}</h3>
             <input className="input-neon" type="text" placeholder="Nome da Magia/Técnica" value={nomeElem} onChange={e => setNomeElem(e.target.value)} />
             
+            {/* 🔥 NOVO BLOCO: ADICIONANDO O CAMPO ELEMENTOS AFETADOS 🔥 */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginTop: 10, padding: 10, background: 'rgba(0,136,255,0.1)', border: '1px solid #0088ff', borderRadius: 5 }}>
                 <div>
                     <label style={{ color: '#0088ff', fontSize: '0.85em', fontWeight: 'bold' }}>Mecânica de Uso</label>
@@ -106,6 +108,11 @@ export function ElementosFormMagia() {
                 <div>
                     <label style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold' }}>Alcance Máx (Q)</label>
                     <input className="input-neon" type="number" min="0" step="0.5" value={alcanceQuad} onChange={e => setAlcanceQuad(e.target.value)} />
+                </div>
+                {/* O Campo Novo Entra Aqui! */}
+                <div>
+                    <label style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold' }}>Afeta/Consome (Ex: Fogo)</label>
+                    <input className="input-neon" type="text" placeholder="Elementos fracos" value={elementosAfetados} onChange={e => setElementosAfetados(e.target.value)} style={{ borderColor: '#00ccff', color: '#00ccff' }} />
                 </div>
             </div>
 
@@ -202,6 +209,14 @@ export function ElementosMagiaCard({ magia }) {
                             💥 Área: <strong>{magia.areaQuad}Q</strong> | Alvos: <strong>{alvoStr}</strong> | Zona: <strong>{durStr}</strong>
                         </p>
                     )}
+                    
+                    {/* 🔥 EXIBINDO OS ELEMENTOS QUE ESSA MAGIA CONSOME 🔥 */}
+                    {magia.elementosAfetados && (
+                        <p style={{ color: '#00ccff', fontSize: '0.85em', margin: '2px 0 0', fontWeight: 'bold' }}>
+                            🌊 Consome/Afeta: {magia.elementosAfetados}
+                        </p>
+                    )}
+
                     <p style={{ color: '#aaa', fontSize: '0.85em', margin: '2px 0 0' }}>
                         Bônus: {propText}{bValorStr}{dadosStr}{custoStr}
                     </p>
