@@ -111,7 +111,7 @@ export function PoderesClassificacao() {
                         <div className="fade-in" style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px dashed rgba(0, 255, 204, 0.3)' }}>
                             <label style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Vertente do Poder:</label>
                             
-                            {/* 🔥 DROPDOWN CORRIGIDO (PADRONIZADO) 🔥 */}
+                            {/* 🔥 DROPDOWN UNIFICADO 1 🔥 */}
                             <select
                                 className="input-neon"
                                 value={hTextos.poderVertente}
@@ -120,8 +120,7 @@ export function PoderesClassificacao() {
                                 style={{ width: '100%', marginBottom: '10px', borderColor: '#00ffcc', color: '#fff', opacity: isMestre ? 1 : 0.7 }}
                             >
                                 <option value="">Selecione a Vertente...</option>
-                                <option value="acumulativo_combate">⚔️ Acumulativo de Combate (Escala na luta e reseta)</option>
-                                <option value="acumulativo_absorcao">📈 Acumulativo de Absorção (Armazena permanentemente)</option>
+                                <option value="acumulativo">📈 Acumulativo (Escala em combate e armazena permanentemente)</option>
                                 <option value="elemental">🌪️ Elemental (Domínio absoluto de forças e natureza)</option>
                                 <option value="conceitual">🧩 Conceitual (Quebra de regras absolutas e espaço/tempo)</option>
                                 <option value="utilitario">🛠️ Utilitário (Hackers da realidade, Mimetismo, Anulação)</option>
@@ -148,7 +147,7 @@ export function PoderesClassificacao() {
                         <div className="fade-in" style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px dashed rgba(0, 204, 255, 0.3)' }}>
                             <label style={{ color: '#00ccff', fontSize: '0.85em', fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Vertente do Infinity:</label>
                             
-                            {/* 🔥 DROPDOWN CORRIGIDO (PADRONIZADO) 🔥 */}
+                            {/* 🔥 DROPDOWN UNIFICADO 2 🔥 */}
                             <select
                                 className="input-neon"
                                 value={hTextos.infinityVertente}
@@ -157,8 +156,7 @@ export function PoderesClassificacao() {
                                 style={{ width: '100%', marginBottom: '10px', borderColor: '#00ccff', color: '#fff', opacity: isMestre ? 1 : 0.7 }}
                             >
                                 <option value="">Selecione a Vertente...</option>
-                                <option value="acumulativo_combate">⚔️ Acumulativo de Combate (Escala na luta e reseta)</option>
-                                <option value="acumulativo_absorcao">📈 Acumulativo de Absorção (Armazena permanentemente)</option>
+                                <option value="acumulativo">📈 Acumulativo (Escala em combate e armazena permanentemente)</option>
                                 <option value="elemental">🌪️ Elemental (Domínio absoluto de forças e natureza)</option>
                                 <option value="conceitual">🧩 Conceitual (Quebra de regras absolutas e espaço/tempo)</option>
                                 <option value="utilitario">🛠️ Utilitário (Hackers da realidade, Mimetismo, Anulação)</option>
@@ -253,17 +251,16 @@ export function PoderesFormEditor() {
                 <div>
                     <label style={{ color: '#0ff', fontSize: '0.85em', fontWeight: 'bold' }}>Natureza da Habilidade / Poder</label>
                     
-                    {/* 🔥 DROPDOWN CORRIGIDO (PADRONIZADO) 🔥 */}
+                    {/* 🔥 DROPDOWN UNIFICADO 3 🔥 */}
                     <select className="input-neon" value={poderVertente} onChange={e => setPoderVertente(e.target.value)} style={{ borderColor: '#0ff', color: '#0ff', margin: 0 }}>
                         <option value="">Padrão (Dano / Efeito Direto)</option>
-                        <option value="acumulativo_combate">⚔️ Acumulativo de Combate (Escala na luta e reseta)</option>
-                        <option value="acumulativo_absorcao">📈 Acumulativo de Absorção (Armazena permanentemente)</option>
-                        <option value="elemental">🌪️ Elemental (Domínio absoluto de forças e natureza)</option>
-                        <option value="conceitual">🧩 Conceitual (Quebra de regras absolutas e espaço/tempo)</option>
-                        <option value="utilitario">🛠️ Utilitário (Hackers da realidade, Mimetismo, Anulação)</option>
+                        <option value="acumulativo">📈 Acumulativo (Requer Marcadores e Forja)</option>
+                        <option value="elemental">🌪️ Elemental / Fenomenal (Ressonância Ativa)</option>
+                        <option value="conceitual">🧩 Conceitual (Distorção de Regras)</option>
+                        <option value="utilitario">🛠️ Utilitário (Cópia / Suporte / Buff)</option>
                     </select>
                 </div>
-                {poderVertente === 'elemental' && (
+                {(poderVertente || '').toLowerCase().includes('elemental') && (
                     <div className="fade-in">
                         <label style={{ color: '#ff8800', fontSize: '0.85em', fontWeight: 'bold' }}>Elemento / Fenômeno (Ex: Fogo Infinito)</label>
                         <input className="input-neon" type="text" placeholder="Qual o elemento dominado?" value={poderElemento} onChange={e => setPoderElemento(e.target.value)} style={{ borderColor: '#ff8800', color: '#ff8800', margin: 0 }} />
@@ -411,6 +408,8 @@ export function PoderesLista() {
                         return `[${(e.atributo || '').replace('_', ' ').toUpperCase()}] ${(e.propriedade || '').toUpperCase()}: +${e.valor || 0}`;
                     }).filter(Boolean);
                     
+                    const pVertenteLower = (p.vertente || '').toLowerCase();
+                    
                     return (
                         <div key={p.id} className="def-box" style={{ borderLeft: `5px solid ${c}`, background: bg, marginBottom: 10 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 15 }}>
@@ -420,7 +419,7 @@ export function PoderesLista() {
                                         <span style={{fontSize: '0.6em', color: '#fff'}}> (Alcance: {p.alcance || 1}Q)</span>
                                         {p.vertente && (
                                             <span style={{ marginLeft: '10px', fontSize: '0.55em', padding: '2px 8px', borderRadius: '10px', background: 'rgba(255,255,255,0.1)', color: '#0ff', border: '1px solid #0ff' }}>
-                                                {p.vertente === 'elemental' ? `🌪️ ELEMENTAL: ${p.elemento}` : p.vertente.replace('_', ' ').toUpperCase()}
+                                                {pVertenteLower.includes('elemental') ? `🌪️ ELEMENTAL: ${p.elemento}` : p.vertente.toUpperCase()}
                                             </span>
                                         )}
                                     </h3>
@@ -498,7 +497,7 @@ export function PoderesLista() {
                                 <div className="fade-in" style={{ width: '100%', marginTop: '15px', background: 'rgba(0, 0, 0, 0.7)', border: '1px solid #0ff', borderRadius: '8px', padding: '15px' }}>
                                     <h4 style={{ color: '#0ff', margin: '0 0 10px 0', textTransform: 'uppercase' }}>⚙️ Central de Disparo: {p.nome}</h4>
 
-                                    {p.vertente === 'elemental' ? (
+                                    {pVertenteLower.includes('elemental') ? (
                                         <div style={{ background: 'rgba(0, 255, 204, 0.1)', borderLeft: '3px solid #00ffcc', padding: '10px', marginBottom: '15px', borderRadius: '4px' }}>
                                             <p style={{ color: '#00ffcc', margin: '0 0 5px 0', fontWeight: 'bold' }}>🌪️ RESSONÂNCIA ELEMENTAL DETETADA</p>
                                             <p style={{ color: '#aaa', fontSize: '0.85em', margin: 0 }}>
@@ -517,7 +516,7 @@ export function PoderesLista() {
                                                 </div>
                                             </label>
                                         </div>
-                                    ) : (p.vertente === 'acumulativo_combate' || p.vertente === 'acumulativo_absorcao') ? (
+                                    ) : pVertenteLower.includes('acumulativo') ? (
                                         <div style={{ background: 'rgba(255, 136, 0, 0.1)', borderLeft: '3px solid #ff8800', padding: '10px', marginBottom: '15px', borderRadius: '4px' }}>
                                             <p style={{ color: '#ff8800', margin: '0 0 5px 0', fontWeight: 'bold' }}>📈 TÉCNICA ACUMULATIVA DETETADA</p>
                                             <p style={{ color: '#aaa', fontSize: '0.85em', margin: 0 }}>

@@ -430,12 +430,11 @@ export function PoderesFormProvider({ children }) {
     const mPotencial = minhaFicha?.dano?.mPotencial || 1;
     const danoBruto = minhaFicha?.dano?.danoBruto || 0;
 
-    // ========================================================================
-    // 🔥 LÓGICA DO CUSTO ZERO (RESSONÂNCIA ELEMENTAL) APLICADA 🔥
-    // ========================================================================
+    // 🔥 BLINDAGEM CONDICIONAL ANTI-CASE SENSITIVE NO DISPARO 🔥
     const dispararAtaque = useCallback((poder) => {
         let custoFinalPerc = poder.custoPercentual || 0;
-        const isHabilidadeElemental = poder.vertente === 'elemental'; 
+        const vertenteLower = (poder.vertente || '').toLowerCase();
+        const isHabilidadeElemental = vertenteLower.includes('elemental'); 
 
         if (isHabilidadeElemental) {
             custoFinalPerc = overchargeAtivo ? (poder.custoPercentual * 2) : 0;
