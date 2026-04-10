@@ -103,7 +103,8 @@ function formatarRolagem(qtd, faces, rolls, soma) {
     return `${qtd}d${faces}: [${rolls.slice(0, 30).join(', ')}... +${(rolls.length - 30).toLocaleString('pt-BR')} dados] = ${soma}`;
 }
 
-function calcularSubDano({ qtdDados, facesDados, sels, combustaoPorEnergia, minhaFicha, mUnico }) {
+// 🔥 NOVO: Aceita combustoesMultiplas para o Dano Inato 🔥
+function calcularSubDano({ qtdDados, facesDados, sels, combustaoPorEnergia, combustoesMultiplas, minhaFicha, mUnico }) {
     if (qtdDados <= 0) return { dano: 0, rolagem: '', rolagemValor: 0, somaTermos: 0, detalhesTermos: [] };
 
     let { soma, rolls } = rolarDadosSimples(qtdDados, facesDados);
@@ -118,14 +119,29 @@ function calcularSubDano({ qtdDados, facesDados, sels, combustaoPorEnergia, minh
         detalhesTermos.push(`<span style="color:#ff003c">${nomeAttr}(${val.toLocaleString('pt-BR')})</span>×Uni(${mUnico})`);
     }
 
-    let energyKeys = Object.keys(combustaoPorEnergia);
-    for (let i = 0; i < energyKeys.length; i++) {
-        let key = energyKeys[i];
-        let combustao = combustaoPorEnergia[key];
-        if (combustao > 0) {
-            let termo = combustao * mUnico;
-            somaTermos += termo;
-            detalhesTermos.push(`<span style="color:#0ff">${key.toUpperCase()}(${combustao.toLocaleString('pt-BR')})</span>×Uni(${mUnico})`);
+    if (combustaoPorEnergia) {
+        let energyKeys = Object.keys(combustaoPorEnergia);
+        for (let i = 0; i < energyKeys.length; i++) {
+            let key = energyKeys[i];
+            let combustao = combustaoPorEnergia[key];
+            if (combustao > 0) {
+                let termo = combustao * mUnico;
+                somaTermos += termo;
+                detalhesTermos.push(`<span style="color:#0ff">${key.toUpperCase()}(${combustao.toLocaleString('pt-BR')})</span>×Uni(${mUnico})`);
+            }
+        }
+    }
+
+    if (combustoesMultiplas) {
+        let mKeys = Object.keys(combustoesMultiplas);
+        for (let i = 0; i < mKeys.length; i++) {
+            let key = mKeys[i];
+            let combustao = combustoesMultiplas[key];
+            if (combustao > 0) {
+                let termo = combustao * mUnico;
+                somaTermos += termo;
+                detalhesTermos.push(`<span style="color:#0ff">${key.toUpperCase()}(${combustao.toLocaleString('pt-BR')})</span>×Uni(${mUnico})`);
+            }
         }
     }
 
@@ -195,6 +211,7 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
     let drenosPorEnergia = {};
     let drenos = [];
     let custoTxt = [];
+    let innateNames = []; // Guarda as habilidades que custaram Zero
 
     function calcularDreno(energiaKey, custoPerc) {
         if (custoPerc <= 0) return { dreno: 0, combustao: 0 };
@@ -220,15 +237,35 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
         }
     }
 
+    // 🔥 NOVO: LÓGICA DE FUSÃO INATA (Custo Zero e 3 Energias) 🔥
     let skillCombustoes = {};
     for (let i = 0; i < configHabilidades.length; i++) {
         let hab = configHabilidades[i];
+        let isElemental = (hab.vertente || '').toLowerCase().includes('elemental');
+
         if (hab.custoPercentual > 0) {
-            let { dreno, combustao } = calcularDreno(hab.energiaCombustao, hab.custoPercentual);
-            skillCombustoes[hab.id] = { energia: hab.energiaCombustao, combustao };
-            if (dreno > 0) {
-                if (!drenosPorEnergia[hab.energiaCombustao]) drenosPorEnergia[hab.energiaCombustao] = 0;
-                drenosPorEnergia[hab.energiaCombustao] += dreno;
+            if (isElemental) {
+                let pDec = hab.custoPercentual / 100;
+                let mMana = minhaFicha.mana?.atual !== undefined ? minhaFicha.mana.atual : getMaximo(minhaFicha, 'mana');
+                let mAura = minhaFicha.aura?.atual !== undefined ? minhaFicha.aura.atual : getMaximo(minhaFicha, 'aura');
+                let mChakra = minhaFicha.chakra?.atual !== undefined ? minhaFicha.chakra.atual : getMaximo(minhaFicha, 'chakra');
+
+                skillCombustoes[hab.id] = {
+                    isElemental: true,
+                    combustoesMultiplas: {
+                        mana: Math.floor(mMana * pDec),
+                        aura: Math.floor(mAura * pDec),
+                        chakra: Math.floor(mChakra * pDec)
+                    }
+                };
+                innateNames.push(hab.nome);
+            } else {
+                let { dreno, combustao } = calcularDreno(hab.energiaCombustao, hab.custoPercentual);
+                skillCombustoes[hab.id] = { energia: hab.energiaCombustao, combustao };
+                if (dreno > 0) {
+                    if (!drenosPorEnergia[hab.energiaCombustao]) drenosPorEnergia[hab.energiaCombustao] = 0;
+                    drenosPorEnergia[hab.energiaCombustao] += dreno;
+                }
             }
         } else {
             skillCombustoes[hab.id] = { energia: hab.energiaCombustao, combustao: 0 };
@@ -247,6 +284,10 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
         }
     }
 
+    if (innateNames.length > 0) {
+        custoTxt.push(`<span style="color:#0f0; text-shadow: 0 0 5px #0f0;">ZERO (${innateNames.join(', ')} Inato)</span>`);
+    }
+
     let habsVinculadas = armaEquipada
         ? configHabilidades.filter(h => h.armaVinculada && String(h.armaVinculada) === String(armaEquipada.id))
         : [];
@@ -263,12 +304,18 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
         for (let i = 0; i < habsVinculadas.length; i++) {
             let hab = habsVinculadas[i];
             let combData = skillCombustoes[hab.id] || { combustao: 0, energia: 'mana' };
+            
             let combustaoPorEnergia = {};
-            if (combData.combustao > 0) combustaoPorEnergia[combData.energia] = combData.combustao;
+            let combustoesMultiplas = null;
+            if (combData.isElemental) {
+                combustoesMultiplas = combData.combustoesMultiplas;
+            } else if (combData.combustao > 0) {
+                combustaoPorEnergia[combData.energia] = combData.combustao;
+            }
 
             let r = calcularSubDano({
                 qtdDados: hab.dadosQtd || 0, facesDados: hab.dadosFaces || 20,
-                sels: hab.statusUsados || ['forca'], combustaoPorEnergia,
+                sels: hab.statusUsados || ['forca'], combustaoPorEnergia, combustoesMultiplas,
                 minhaFicha, mUnico: uniTotal
             });
             r.nome = hab.nome;
@@ -311,12 +358,18 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
         if ((hab.dadosQtd || 0) <= 0) continue;
 
         let combData = skillCombustoes[hab.id] || { combustao: 0, energia: 'mana' };
+        
         let combustaoPorEnergia = {};
-        if (combData.combustao > 0) combustaoPorEnergia[combData.energia] = combData.combustao;
+        let combustoesMultiplas = null;
+        if (combData.isElemental) {
+            combustoesMultiplas = combData.combustoesMultiplas;
+        } else if (combData.combustao > 0) {
+            combustaoPorEnergia[combData.energia] = combData.combustao;
+        }
 
         let r = calcularSubDano({
             qtdDados: hab.dadosQtd, facesDados: hab.dadosFaces || 20,
-            sels: hab.statusUsados || ['forca'], combustaoPorEnergia,
+            sels: hab.statusUsados || ['forca'], combustaoPorEnergia, combustoesMultiplas,
             minhaFicha, mUnico: uniTotal
         });
         r.nome = hab.nome;
@@ -352,7 +405,8 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
 
     let txtEng = '';
     if (custoTxt.length > 0) {
-        txtEng = `<br>Custo de Combustão: <strong style="color:#f0f;">${custoTxt.join(' e ')}</strong>`;
+        let uniqueCustos = [...new Set(custoTxt)];
+        txtEng = `<br>Custo de Combustão: <strong style="color:#f0f;">${uniqueCustos.join(' e ')}</strong>`;
     }
 
     let multArr = [];
@@ -428,7 +482,6 @@ export function calcularAcerto({ qD, fD, prof, bonus, sels, minhaFicha, itensEqu
         if (item.bonusTipo === 'bonus_acerto') iAcerto += (parseFloat(item.bonusValor) || 0);
         if (item.tipo === 'arma' || item.tipo === 'artefato') {
             nomesArmas.push(item.nome);
-            // 🔥 ENGINE LIMPA E PRECISA (Lê diretamente o armaTipo do inventário)
             let itemStr = String(item.armaTipo || '').toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             tiposArmas.push(itemStr);
         }
@@ -455,7 +508,6 @@ export function calcularAcerto({ qD, fD, prof, bonus, sels, minhaFicha, itensEqu
         if (propNormalizada === 'proficiencia_arma') {
             let armaAlvo = (ef.atributo || '').toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             
-            // Verifica a compatibilidade direta e sem erros
             if (tiposArmas.includes(armaAlvo)) {
                 bonusProfArma += (parseFloat(ef.valor) || 0);
                 if (!nomesProfArma.includes(armaAlvo)) nomesProfArma.push(ef.atributo.trim().toUpperCase());

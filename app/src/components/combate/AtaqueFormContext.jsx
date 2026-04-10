@@ -33,7 +33,7 @@ export function AtaqueFormProvider({ children }) {
 
     const ac = minhaFicha.ataqueConfig || {};
 
-    const [armaStatusUsados, setArmaStatusUsados] = useState(ac.armaStatusUsados || ['forca']);
+    const [armaStatusUsados, setArmStatusUsados] = useState(ac.armaStatusUsados || ['forca']);
     const [armaEnergiaCombustao, setArmaEnergiaCombustao] = useState(ac.armaEnergiaCombustao || 'mana');
     const [armaPercEnergia, setArmaPercEnergia] = useState(ac.armaPercEnergia || 0);
 
@@ -206,19 +206,39 @@ export function AtaqueFormProvider({ children }) {
     const rolarDano = useCallback(() => {
         salvarConfigAtaque();
 
+        // 🔥 CRIAÇÃO DO RADAR DE ELEMENTOS INATOS PARA O CÁLCULO 🔥
+        const elementosInatos = [];
+        (minhaFicha.poderes || []).forEach(p => {
+            if (p.ativa && (p.vertente || '').toLowerCase().includes('elemental') && p.elemento) {
+                elementosInatos.push(p.elemento.toLowerCase().trim());
+            }
+        });
+        const h = minhaFicha.hierarquia || {};
+        if (h.poder && (h.poderVertente || '').toLowerCase().includes('elemental') && h.poderElemento) {
+            elementosInatos.push(h.poderElemento.toLowerCase().trim());
+        }
+        if (h.infinity && (h.infinityVertente || '').toLowerCase().includes('elemental') && h.infinityElemento) {
+            elementosInatos.push(h.infinityElemento.toLowerCase().trim());
+        }
+
         const configHabilidades = poderesAtivos.map(p => ({
             id: p.id, nome: p.nome, dadosQtd: p.dadosQtd || 0, dadosFaces: p.dadosFaces || 20, custoPercentual: p.custoPercentual || 0,
             armaVinculada: p.armaVinculada || '', statusUsados: skillConfigs[p.id]?.statusUsados || p.statusUsados || ['forca'],
-            energiaCombustao: skillConfigs[p.id]?.energiaCombustao || p.energiaCombustao || 'mana', efeitos: p.efeitos || []
+            energiaCombustao: skillConfigs[p.id]?.energiaCombustao || p.energiaCombustao || 'mana', efeitos: p.efeitos || [],
+            vertente: p.vertente || '', elemento: p.elemento || '' // Exportado para a Engine ver!
         }));
 
         const configMagias = magiasOfensivas.map(m => {
             const efs = [];
             if (m.bonusTipo && m.bonusTipo !== 'nenhum') efs.push({ atributo: 'todos_status', propriedade: m.bonusTipo, valor: m.bonusValor });
+            const isInato = elementosInatos.includes((m.elemento || 'Neutro').toLowerCase().trim());
+            
             return {
                 id: m.id, nome: m.nome, dadosQtd: m.dadosExtraQtd || 0, dadosFaces: m.dadosExtraFaces || 20, custoPercentual: m.custoValor || 0,
                 armaVinculada: '', statusUsados: skillConfigs[m.id]?.statusUsados || m.statusUsados || ['inteligencia'],
-                energiaCombustao: skillConfigs[m.id]?.energiaCombustao || m.energiaCombustao || 'mana', efeitos: efs
+                energiaCombustao: skillConfigs[m.id]?.energiaCombustao || m.energiaCombustao || 'mana', efeitos: efs,
+                vertente: isInato ? 'elemental' : 'magia', // Se for inato, a Engine entende como Elemental!
+                elemento: m.elemento || 'Neutro'
             };
         });
 
@@ -261,7 +281,6 @@ export function AtaqueFormProvider({ children }) {
             extraFeed = { alvoNome: dummieAlvo.nome, alvoSobreviveu: novoHp > 0, overkill: result.dano > hpAnterior ? result.dano - hpAnterior : 0 };
         }
 
-        // 🔥 GRAVA AS METRICAS TOTAIS NA ZONA (AGORA INCLUINDO LETALIDADE!) 🔥
         if (meuUltimoAcerto && meuUltimoAcerto.zonaIdGerada) {
             const cenarioAtual = useStore.getState().cenario;
             if (cenarioAtual?.zonas) {
@@ -286,7 +305,6 @@ export function AtaqueFormProvider({ children }) {
                     });
                     zRef.somaStatusOriginal = somaStatusOriginal;
 
-                    // Guarda Dano Bruto e LETALIDADE base do caster no momento do cast
                     let danoBrutoOrig = 0;
                     let letalidadeBuffsOrig = 0;
                     const scanBruto = (efs) => {
@@ -305,7 +323,7 @@ export function AtaqueFormProvider({ children }) {
                     zRef.letalidadeOriginalBuffs = letalidadeBuffsOrig;
 
                     zRef.danoOriginal = result.dano;
-                    zRef.letalidadeOriginal = result.letalidade || 0; // 🔥 Grava a Letalidade Final do Ataque
+                    zRef.letalidadeOriginal = result.letalidade || 0; 
                     zRef.multiplicadorOriginal = multOrig === 0 ? 1 : multOrig;
                     zRef.danoAplicado = result.dano;
                     
