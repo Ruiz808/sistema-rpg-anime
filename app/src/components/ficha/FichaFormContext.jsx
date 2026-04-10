@@ -264,27 +264,32 @@ export function FichaFormProvider({ children }) {
     const sKeyForBuffs = (selAtributo === 'todos_status') ? 'forca' : (selAtributo === 'todas_energias') ? 'mana' : selAtributo;
     const buffsAtuais = minhaFicha ? getBuffs(minhaFicha, sKeyForBuffs) : null;
 
-    // 🔥 BLINDAGEM CONDICIONAL ANTI-CASE SENSITIVE 🔥
+    // =========================================================================================
+    // 🔥 BLINDAGEM CONDICIONAL ESTREITA (Impede que painéis apareçam por engano) 🔥
+    // =========================================================================================
     const hierarquia = minhaFicha?.hierarquia || {};
     const poderesGlobais = minhaFicha?.poderes || [];
     const hPoder = hierarquia.poder || false;
     const hInfinity = hierarquia.infinity || false;
     
-    // Convertemos tudo para minúsculo na hora de comparar
-    const hPoderVertente = (hierarquia.poderVertente || '').toLowerCase();
-    const hInfinityVertente = (hierarquia.infinityVertente || '').toLowerCase();
+    // Função rigorosa para evitar "falsos positivos" de palavras parecidas
+    const checkVertente = (valorSalvo, alvo) => {
+        if (!valorSalvo) return false;
+        const v = String(valorSalvo).toLowerCase().trim();
+        return v === alvo || v.startsWith(alvo);
+    };
 
-    // Se tiver a palavra "acumulativo", ele já liga as Forjas
-    const classAcumulativo = (hPoder && hPoderVertente.includes('acumulativo')) || (hInfinity && hInfinityVertente.includes('acumulativo'));
-    const classElemental = (hPoder && hPoderVertente.includes('elemental')) || (hInfinity && hInfinityVertente.includes('elemental'));
-    const classConceitual = (hPoder && hPoderVertente.includes('conceitual')) || (hInfinity && hInfinityVertente.includes('conceitual'));
-    const classUtilitario = (hPoder && hPoderVertente.includes('utilitario')) || (hInfinity && hInfinityVertente.includes('utilitario'));
+    const classAcumulativo = (hPoder && checkVertente(hierarquia.poderVertente, 'acumulativo')) || (hInfinity && checkVertente(hierarquia.infinityVertente, 'acumulativo'));
+    const classElemental = (hPoder && checkVertente(hierarquia.poderVertente, 'elemental')) || (hInfinity && checkVertente(hierarquia.infinityVertente, 'elemental'));
+    const classConceitual = (hPoder && checkVertente(hierarquia.poderVertente, 'conceitual')) || (hInfinity && checkVertente(hierarquia.infinityVertente, 'conceitual'));
+    const classUtilitario = (hPoder && checkVertente(hierarquia.poderVertente, 'utilitario')) || (hInfinity && checkVertente(hierarquia.infinityVertente, 'utilitario'));
 
-    const showMarcadoresCena = classAcumulativo || poderesGlobais.some(p => p.ativa && (p.vertente || '').toLowerCase().includes('acumulativo'));
-    const showForjaCalamidade = classAcumulativo || poderesGlobais.some(p => p.ativa && (p.vertente || '').toLowerCase().includes('acumulativo'));
-    const showElemental = classElemental || poderesGlobais.some(p => p.ativa && (p.vertente || '').toLowerCase().includes('elemental'));
-    const showConceitual = classConceitual || poderesGlobais.some(p => p.ativa && (p.vertente || '').toLowerCase().includes('conceitual'));
-    const showUtilitario = classUtilitario || poderesGlobais.some(p => p.ativa && (p.vertente || '').toLowerCase().includes('utilitario'));
+    const showMarcadoresCena = classAcumulativo || poderesGlobais.some(p => p.ativa && checkVertente(p.vertente, 'acumulativo'));
+    const showForjaCalamidade = classAcumulativo || poderesGlobais.some(p => p.ativa && checkVertente(p.vertente, 'acumulativo'));
+    const showElemental = classElemental || poderesGlobais.some(p => p.ativa && checkVertente(p.vertente, 'elemental'));
+    const showConceitual = classConceitual || poderesGlobais.some(p => p.ativa && checkVertente(p.vertente, 'conceitual'));
+    const showUtilitario = classUtilitario || poderesGlobais.some(p => p.ativa && checkVertente(p.vertente, 'utilitario'));
+    // =========================================================================================
 
     const trackersCena = minhaFicha?.combate?.trackers || [];
     const [novoTrackerNome, setNovoTrackerNome] = useState('');
