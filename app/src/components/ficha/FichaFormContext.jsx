@@ -75,6 +75,9 @@ export function FichaFormProvider({ children }) {
     const [afiliacao, setAfiliacao] = useState('');
     const [dinheiro, setDinheiro] = useState('');
     const [salvandoBio, setSalvandoBio] = useState(false);
+    
+    // 🔥 NOVO: Estado que controla o menu manual dos painéis 🔥
+    const [painelForcado, setPainelForcado] = useState('auto');
 
     const overridesCompendio = useMemo(() => {
         if (!minhaFicha) return {};
@@ -265,18 +268,15 @@ export function FichaFormProvider({ children }) {
     const buffsAtuais = minhaFicha ? getBuffs(minhaFicha, sKeyForBuffs) : null;
 
     // =========================================================================================
-    // 🔥 BLINDAGEM CONDICIONAL ESTREITA CORRIGIDA 🔥
+    // 🔥 BLINDAGEM CONDICIONAL E CONTROLE MANUAL 🔥
     // =========================================================================================
     const hierarquia = minhaFicha?.hierarquia || {};
     const poderesGlobais = minhaFicha?.poderes || [];
     const hPoder = hierarquia.poder || false;
     const hInfinity = hierarquia.infinity || false;
-    
-    // DEFINIÇÃO DAS VARIÁVEIS QUE ESTAVAM FALTANDO!
     const hPoderVertente = hierarquia.poderVertente || '';
     const hInfinityVertente = hierarquia.infinityVertente || '';
     
-    // Função rigorosa para evitar "falsos positivos" de palavras parecidas
     const checkVertente = (valorSalvo, alvo) => {
         if (!valorSalvo) return false;
         const v = String(valorSalvo).toLowerCase().trim();
@@ -288,11 +288,12 @@ export function FichaFormProvider({ children }) {
     const classConceitual = (hPoder && checkVertente(hPoderVertente, 'conceitual')) || (hInfinity && checkVertente(hInfinityVertente, 'conceitual'));
     const classUtilitario = (hPoder && checkVertente(hPoderVertente, 'utilitario')) || (hInfinity && checkVertente(hInfinityVertente, 'utilitario'));
 
-    const showMarcadoresCena = classAcumulativo || poderesGlobais.some(p => p.ativa && checkVertente(p.vertente, 'acumulativo'));
-    const showForjaCalamidade = classAcumulativo || poderesGlobais.some(p => p.ativa && checkVertente(p.vertente, 'acumulativo'));
-    const showElemental = classElemental || poderesGlobais.some(p => p.ativa && checkVertente(p.vertente, 'elemental'));
-    const showConceitual = classConceitual || poderesGlobais.some(p => p.ativa && checkVertente(p.vertente, 'conceitual'));
-    const showUtilitario = classUtilitario || poderesGlobais.some(p => p.ativa && checkVertente(p.vertente, 'utilitario'));
+    // AGORA O painelForcado MANDA NA EXIBIÇÃO!
+    const showMarcadoresCena = painelForcado === 'acumulativo' || (painelForcado === 'auto' && (classAcumulativo || poderesGlobais.some(p => p.ativa && checkVertente(p.vertente, 'acumulativo'))));
+    const showForjaCalamidade = painelForcado === 'acumulativo' || (painelForcado === 'auto' && (classAcumulativo || poderesGlobais.some(p => p.ativa && checkVertente(p.vertente, 'acumulativo'))));
+    const showElemental = painelForcado === 'elemental' || (painelForcado === 'auto' && (classElemental || poderesGlobais.some(p => p.ativa && checkVertente(p.vertente, 'elemental'))));
+    const showConceitual = painelForcado === 'conceitual' || (painelForcado === 'auto' && (classConceitual || poderesGlobais.some(p => p.ativa && checkVertente(p.vertente, 'conceitual'))));
+    const showUtilitario = painelForcado === 'utilitario' || (painelForcado === 'auto' && (classUtilitario || poderesGlobais.some(p => p.ativa && checkVertente(p.vertente, 'utilitario'))));
     // =========================================================================================
 
     const trackersCena = minhaFicha?.combate?.trackers || [];
@@ -393,6 +394,7 @@ export function FichaFormProvider({ children }) {
         alterEgoSlot1, setAlterEgoSlot1, alterEgoSlot2, setAlterEgoSlot2, classesMemorizadas, setClassesMemorizadas,
         idade, setIdade, fisico, setFisico, sangue, setSangue, alinhamento, setAlinhamento,
         afiliacao, setAfiliacao, dinheiro, setDinheiro, salvandoBio,
+        painelForcado, setPainelForcado, // 🔥 EXPORTANDO O SELETOR AQUI
         overridesCompendio, grands, isGrand, grandIcone, comitarBio, salvarBio, mudarSubClasseDireto,
         multiplicadorFuriaClasse, rawMaxVida, maxVida, atualVida, percAtualLostFloor, furiaMax, percEfetivoParaDisplay,
         multiplicadorFuriaVisor, furiaAcalmadaMsg, acalmarFuria, toggleMemoriaPretender, descansoLongoPretender,
@@ -412,7 +414,7 @@ export function FichaFormProvider({ children }) {
         addCopiaAtiva, removeCopiaAtiva, getAtualVital
     }), [
         minhaFicha, updateFicha, personagens, meuNome, mesa, raca, classe, subClasse, alterEgoSlot1, alterEgoSlot2, classesMemorizadas,
-        idade, fisico, sangue, alinhamento, afiliacao, dinheiro, salvandoBio, overridesCompendio, grands, isGrand, grandIcone,
+        idade, fisico, sangue, alinhamento, afiliacao, dinheiro, salvandoBio, painelForcado, overridesCompendio, grands, isGrand, grandIcone,
         comitarBio, salvarBio, mudarSubClasseDireto, multiplicadorFuriaClasse, rawMaxVida, maxVida, atualVida, percAtualLostFloor, furiaMax, percEfetivoParaDisplay,
         multiplicadorFuriaVisor, furiaAcalmadaMsg, acalmarFuria, toggleMemoriaPretender, descansoLongoPretender, selAtributo, campos, handleCampo, carregarAtributoNaTela, salvarAtributo,
         dmBase, dmPotencial, dmGeral, dmFormas, dmAbsoluto, dmUnico, danoBruto, salvandoMult, salvarMultiplicadores, buffsDano, sKeyForBuffs, buffsAtuais,

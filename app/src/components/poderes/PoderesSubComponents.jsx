@@ -5,7 +5,6 @@ import FormasEditor from '../shared/FormasEditor';
 
 const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Poderes provider não encontrado</div>;
 
-// 🔥 LISTA OFICIAL DE ELEMENTOS PARA O DROPDOWN 🔥
 const ELEMENTOS_OPCOES = [
     { label: 'Elementos Básicos', opcoes: ['Fogo', 'Agua', 'Raio', 'Terra', 'Vento'] },
     { label: 'Básicos Verdadeiros', opcoes: ['Fogo Verdadeiro', 'Agua Verdadeira', 'Raio Verdadeiro', 'Terra Verdadeira', 'Vento Verdadeiro'] },
@@ -121,6 +120,7 @@ export function PoderesClassificacao() {
                     {hPoder && (
                         <div className="fade-in" style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px dashed rgba(0, 255, 204, 0.3)' }}>
                             <label style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Vertente do Poder:</label>
+                            {/* 🔥 DROPDOWN CORRIGIDO: APENAS UM ACUMULATIVO 🔥 */}
                             <select
                                 className="input-neon"
                                 value={hTextos.poderVertente}
@@ -129,11 +129,10 @@ export function PoderesClassificacao() {
                                 style={{ width: '100%', marginBottom: '10px', borderColor: '#00ffcc', color: '#fff', opacity: isMestre ? 1 : 0.7 }}
                             >
                                 <option value="">Selecione a Vertente...</option>
-                                <option value="Acumulativo (Combate)">⚔️ Acumulativo de Combate (Escala na luta e reseta)</option>
-                                <option value="Acumulativo (Absorção)">📈 Acumulativo de Absorção (Armazena permanentemente)</option>
-                                <option value="Elemental">🌪️ Elemental (Força da natureza / Fenômenos)</option>
-                                <option value="Conceitual">🧩 Conceitual (Distorção de ideias e regras)</option>
-                                <option value="Utilitario">🛠️ Utilitário (Manipulação, Suporte, Cópia)</option>
+                                <option value="Acumulativo">📈 Acumulativo (Requer Marcadores e Forja)</option>
+                                <option value="Elemental">🌪️ Elemental (Domínio absoluto de forças e natureza)</option>
+                                <option value="Conceitual">🧩 Conceitual (Quebra de regras absolutas e espaço/tempo)</option>
+                                <option value="Utilitario">🛠️ Utilitário (Hackers da realidade, Mimetismo, Anulação)</option>
                             </select>
 
                             <input className="input-neon" type="text" placeholder="Nome do seu Poder (Ex: Chamas do Purgatório)" value={hTextos.poderNome} onChange={e => setHTextos({...hTextos, poderNome: e.target.value})} disabled={!isMestre} style={{ width: '100%', marginBottom: '10px', borderColor: '#00ffcc', color: '#fff', fontWeight: 'bold', opacity: isMestre ? 1 : 0.7 }} />
@@ -156,6 +155,7 @@ export function PoderesClassificacao() {
                     {hInfinity && (
                         <div className="fade-in" style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px dashed rgba(0, 204, 255, 0.3)' }}>
                             <label style={{ color: '#00ccff', fontSize: '0.85em', fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Vertente do Infinity:</label>
+                            {/* 🔥 DROPDOWN CORRIGIDO: APENAS UM ACUMULATIVO 🔥 */}
                             <select
                                 className="input-neon"
                                 value={hTextos.infinityVertente}
@@ -164,8 +164,7 @@ export function PoderesClassificacao() {
                                 style={{ width: '100%', marginBottom: '10px', borderColor: '#00ccff', color: '#fff', opacity: isMestre ? 1 : 0.7 }}
                             >
                                 <option value="">Selecione a Vertente...</option>
-                                <option value="Acumulativo (Combate)">⚔️ Acumulativo de Combate (Escala na luta e reseta)</option>
-                                <option value="Acumulativo (Absorção)">📈 Acumulativo de Absorção (Armazena permanentemente)</option>
+                                <option value="Acumulativo">📈 Acumulativo (Requer Marcadores e Forja)</option>
                                 <option value="Elemental">🌪️ Elemental (Domínio absoluto de forças e natureza)</option>
                                 <option value="Conceitual">🧩 Conceitual (Quebra de regras absolutas e espaço/tempo)</option>
                                 <option value="Utilitario">🛠️ Utilitário (Hackers da realidade, Mimetismo, Anulação)</option>
@@ -255,25 +254,23 @@ export function PoderesFormEditor() {
         <div className="def-box" ref={formRef} id="form-poder-box">
             <h3 style={{ color: '#0ff', marginBottom: 10 }}>{poderEditandoId ? `Editando: ${nomePoder}` : `Criar ${SINGULAR[abaAtual]}`}</h3>
             
-            {/* O Jogador Digita o Nome do Poder (Ex: Fogo Infinito) aqui */}
             <input className="input-neon" type="text" placeholder={`Nome da ${SINGULAR[abaAtual]} (Ex: Chama Imortal)`} value={nomePoder} onChange={e => setNomePoder(e.target.value)} />
             
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10, marginBottom: 5 }}>
                 <div>
                     <label style={{ color: '#0ff', fontSize: '0.85em', fontWeight: 'bold' }}>Natureza da Habilidade / Poder</label>
+                    {/* 🔥 DROPDOWN CORRIGIDO: APENAS UM ACUMULATIVO 🔥 */}
                     <select className="input-neon" value={poderVertente} onChange={e => setPoderVertente(e.target.value)} style={{ borderColor: '#0ff', color: '#0ff', margin: 0 }}>
                         <option value="">Padrão (Dano / Efeito Direto)</option>
-                        <option value="acumulativo">📈 Acumulativo (Requer Marcadores e Forja)</option>
-                        <option value="elemental">🌪️ Elemental / Fenomenal (Ressonância Ativa)</option>
-                        <option value="conceitual">🧩 Conceitual (Distorção de Regras)</option>
-                        <option value="utilitario">🛠️ Utilitário (Cópia / Suporte / Buff)</option>
+                        <option value="Acumulativo">📈 Acumulativo (Requer Marcadores ou Forja)</option>
+                        <option value="Elemental">🌪️ Elemental / Fenomenal (Ressonância Ativa)</option>
+                        <option value="Conceitual">🧩 Conceitual (Distorção de Regras)</option>
+                        <option value="Utilitario">🛠️ Utilitário (Cópia / Suporte / Buff)</option>
                     </select>
                 </div>
 
                 {(poderVertente || '').toLowerCase().includes('elemental') && (
                     <div className="fade-in" style={{ display: 'flex', gap: '10px', gridColumn: 'span 2' }}>
-                        
-                        {/* 🔥 AGORA O ELEMENTO OFICIAL É UM DROPDOWN BLINDADO 🔥 */}
                         <div style={{ flex: 1 }}>
                             <label style={{ color: '#ff8800', fontSize: '0.85em', fontWeight: 'bold' }}>Seu Elemento Oficial</label>
                             <select className="input-neon" value={poderElemento} onChange={e => setPoderElemento(e.target.value)} style={{ borderColor: '#ff8800', color: '#ff8800', margin: 0, width: '100%' }}>

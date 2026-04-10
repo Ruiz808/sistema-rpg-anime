@@ -377,3 +377,31 @@ export function FichaMultiplicadoresDano() {
         </div>
     );
 }
+
+// 🔥 NOVO COMPONENTE DE CONTROLE MANUAL DOS PAINÉIS 🔥
+export function FichaControlePaineis() {
+    const ctx = useFichaForm();
+    if (!ctx) return null;
+    const { painelForcado, setPainelForcado } = ctx;
+
+    return (
+        <div className="def-box fade-in" style={{ marginTop: 15, background: 'rgba(10, 15, 20, 0.8)', border: '1px solid #444', borderLeft: '3px solid #00ffcc' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                <label style={{ color: '#fff', fontSize: '0.9em', fontWeight: 'bold' }}>
+                    👁️ Forçar Painel de Domínio Místico:
+                    <span style={{ display: 'block', color: '#aaa', fontSize: '0.8em', fontWeight: 'normal', marginTop: '4px' }}>
+                        Use este menu se quiser abrir a Forja, o Reator ou outro painel sem precisar ativar o poder, ou se o automático falhar.
+                    </span>
+                </label>
+                <select className="input-neon" value={painelForcado} onChange={e => setPainelForcado(e.target.value)} style={{ width: 'auto', flex: 1, minWidth: '250px', margin: 0, borderColor: painelForcado !== 'auto' ? '#00ffcc' : '#444', color: painelForcado !== 'auto' ? '#00ffcc' : '#aaa' }}>
+                    <option value="auto">🤖 Automático (Lê Poderes Ativos)</option>
+                    <option value="acumulativo">📈 Acumulativo (Marcadores e Forja)</option>
+                    <option value="elemental">🌪️ Elemental (Reator de Ressonância)</option>
+                    <option value="conceitual">🧩 Conceitual (Leis da Cena)</option>
+                    <option value="utilitario">🛠️ Utilitário (Mimetismo e Suporte)</option>
+                    <option value="nenhum">❌ Ocultar Todos</option>
+                </select>
+            </div>
+        </div>
+    );
+}
