@@ -5,6 +5,7 @@ import FormasEditor from '../shared/FormasEditor';
 
 const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Poderes provider não encontrado</div>;
 
+// 🔥 LISTA OFICIAL EXPANDIDA: Agora tem TODAS as Magias, Aura, Chakra e Corpo! 🔥
 const ELEMENTOS_OPCOES = [
     { label: 'Elementos Básicos', opcoes: ['Fogo', 'Agua', 'Raio', 'Terra', 'Vento'] },
     { label: 'Básicos Verdadeiros', opcoes: ['Fogo Verdadeiro', 'Agua Verdadeira', 'Raio Verdadeiro', 'Terra Verdadeira', 'Vento Verdadeiro'] },
@@ -12,7 +13,11 @@ const ELEMENTOS_OPCOES = [
     { label: 'Avançados Verdadeiros', opcoes: ['Solar Verdadeiro', 'Energia Verdadeira', 'Gelo Verdadeiro', 'Vacuo Verdadeiro', 'Natureza Verdadeira'] },
     { label: 'Elementos Primordiais', opcoes: ['Luz', 'Trevas', 'Ether', 'Celestial', 'Infernal', 'Caos', 'Criacao', 'Destruicao', 'Cosmos'] },
     { label: 'Elementos Astrais', opcoes: ['Vida', 'Morte', 'Vazio'] },
-    { label: 'Kekkei Genkai / Touta', opcoes: ['Elemento Madeira', 'Elemento Mineral', 'Elemento Cinzas', 'Elemento Igneo', 'Elemento Lava', 'Elemento Vapor', 'Elemento Nevoa', 'Elemento Tempestade', 'Elemento Areia', 'Elemento Tufao', 'Elemento Velocidade', 'Elemento Poeira', 'Elemento Calor', 'Elemento Cal', 'Elemento Carbono', 'Elemento Veneno', 'Elemento Magnetismo', 'Elemento Som'] }
+    { label: 'Kekkei Genkai / Touta', opcoes: ['Elemento Madeira', 'Elemento Mineral', 'Elemento Cinzas', 'Elemento Igneo', 'Elemento Lava', 'Elemento Vapor', 'Elemento Nevoa', 'Elemento Tempestade', 'Elemento Areia', 'Elemento Tufao', 'Elemento Velocidade', 'Elemento Poeira', 'Elemento Calor', 'Elemento Cal', 'Elemento Carbono', 'Elemento Veneno', 'Elemento Magnetismo', 'Elemento Som'] },
+    { label: 'Magias Ancestrais', opcoes: ['Truques Ancestrais', 'Magia de Sangue', 'Magia de Osso', 'Magia Draconica', 'Magia de Borracha', 'Magia de Espelho', 'Magia de Sal', 'Magia de Alma', 'Magia de Tremor', 'Magia de Gravidade', 'Magia de Tempo', 'Magia de Equipamento', 'Magia de Explosao', 'Magia Espacial', 'Magia de Metamorfose'] },
+    { label: 'Magias Arcanas/Negras', opcoes: ['Truques Arcanos/Negros', 'Magias Arcanas/Negra de 1º Ciclo', 'Magias Arcanas/Negra de 2º Ciclo', 'Magias Arcanas/Negra de 3º Ciclo', 'Magias Arcanas/Negra de 4º Ciclo', 'Magias Arcanas/Negra de 5º Ciclo', 'Magias Arcanas/Negra de 6º Ciclo', 'Magias Arcanas/Negra de 7º Ciclo', 'Magias Arcanas/Negra de 8º Ciclo', 'Magias Arcanas/Negra de 9º Ciclo', 'Magias Arcanas/Negra de 10º Ciclo'] },
+    { label: 'Magias de Ciclo', opcoes: ['Truques de Ciclo', 'Magias de 1º Ciclo', 'Magias de 2º Ciclo', 'Magias de 3º Ciclo', 'Magias de 4º Ciclo', 'Magias de 5º Ciclo', 'Magias de 6º Ciclo', 'Magias de 7º Ciclo', 'Magias de 8º Ciclo', 'Magias de 9º Ciclo', 'Magias de 10º Ciclo'] },
+    { label: 'Manifestações e Fusões', opcoes: ['Aura Pura', 'Projeção de Aura', 'Artes Marciais', 'Reforço Físico', 'Fusões Básicas', 'Fusões Avançadas'] }
 ];
 
 export function PoderesSidebar() {
@@ -57,8 +62,8 @@ export function PoderesClassificacao() {
     let glowSupremo = 'none';
     let nomeHabilidadeDestaque = '';
     let vertenteDestaque = '';
-    let elementoDestaque = ''; // 🔥 NOVO PARA O BANNER
-    let afetaDestaque = '';    // 🔥 NOVO PARA O BANNER
+    let elementoDestaque = ''; 
+    let afetaDestaque = '';    
 
     if (hSingularidade === '0') {
         tituloSupremo = 'SINGULARIDADE GRAU 0 (MARCADO)'; corSuprema = '#ff00ff'; glowSupremo = '0 0 20px rgba(255, 0, 255, 0.8)'; nomeHabilidadeDestaque = hTextos.singularidadeNome;
@@ -104,7 +109,6 @@ export function PoderesClassificacao() {
                             🎯 Vertente: {vertenteDestaque}
                         </div>
                     )}
-                    {/* 🔥 MOSTRA O ELEMENTO NO BANNER SE TIVER 🔥 */}
                     {elementoDestaque && vertenteDestaque === 'Elemental' && (
                         <div style={{ padding: '4px 15px', background: 'rgba(0,0,0,0.5)', border: `1px solid ${corSuprema}`, borderRadius: '20px', color: corSuprema, fontSize: '0.85em', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>
                             🌪️ Elemento: {elementoDestaque}
@@ -125,7 +129,6 @@ export function PoderesClassificacao() {
             <div className="def-box" style={{ display: 'flex', flexDirection: 'column', gap: '15px', opacity: isMestre ? 1 : 0.8 }}>
                 <h3 style={{ color: '#0ff', margin: 0, borderBottom: '1px solid rgba(0,255,255,0.3)', paddingBottom: '10px' }}>Domínios Místicos</h3>
 
-                {/* ===================== CATEGORIA 1: PODER ===================== */}
                 <div style={{ padding: '15px', background: hPoder ? 'rgba(0, 255, 204, 0.1)' : 'rgba(255,255,255,0.02)', border: `1px solid ${hPoder ? '#00ffcc' : '#333'}`, borderRadius: '8px', transition: 'all 0.3s' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: isMestre ? 'pointer' : 'not-allowed' }}>
                         <input type="checkbox" checked={hPoder} onChange={e => salvarHierarquia(e.target.checked, hInfinity, hSingularidade)} disabled={!isMestre} style={{ transform: 'scale(1.5)', marginLeft: '5px', cursor: isMestre ? 'pointer' : 'not-allowed' }} />
@@ -152,7 +155,6 @@ export function PoderesClassificacao() {
                                 <option value="Utilitario">🛠️ Utilitário (Hackers da realidade, Mimetismo, Anulação)</option>
                             </select>
 
-                            {/* 🔥 NOVO: CAMPOS ELEMENTAIS PARA A ABA CLASSIFICAÇÃO 🔥 */}
                             {hTextos.poderVertente === 'Elemental' && (
                                 <div className="fade-in" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
                                     <div>
@@ -179,7 +181,6 @@ export function PoderesClassificacao() {
                     )}
                 </div>
 
-                {/* ===================== CATEGORIA 2: INFINITY ===================== */}
                 <div style={{ padding: '15px', background: hInfinity ? 'rgba(0, 204, 255, 0.1)' : 'rgba(255,255,255,0.02)', border: `1px solid ${hInfinity ? '#00ccff' : '#333'}`, borderRadius: '8px', transition: 'all 0.3s' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: isMestre ? 'pointer' : 'not-allowed' }}>
                         <input type="checkbox" checked={hInfinity} onChange={e => salvarHierarquia(hPoder, e.target.checked, hSingularidade)} disabled={!isMestre} style={{ transform: 'scale(1.5)', marginLeft: '5px', cursor: isMestre ? 'pointer' : 'not-allowed' }} />
@@ -208,7 +209,6 @@ export function PoderesClassificacao() {
                                 <option value="Utilitario">🛠️ Utilitário (Hackers da realidade, Mimetismo, Anulação)</option>
                             </select>
 
-                            {/* 🔥 NOVO: CAMPOS ELEMENTAIS PARA A ABA CLASSIFICAÇÃO 🔥 */}
                             {hTextos.infinityVertente === 'Elemental' && (
                                 <div className="fade-in" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
                                     <div>
@@ -491,6 +491,16 @@ export function PoderesLista() {
                     
                     const pVertenteLower = (p.vertente || '').toLowerCase();
                     
+                    const percBase = p.custoPercentual || 0;
+                    const percDec = percBase / 100;
+                    const manaUsada = Math.floor(curMana * percDec);
+                    const auraUsada = Math.floor(curAura * percDec);
+                    const chakraUsado = Math.floor(curChakra * percDec);
+                    const energiaExtraida = manaUsada + auraUsada + chakraUsado;
+
+                    const overDec = (percBase * 2) / 100;
+                    const energiaOver = Math.floor(curMana * overDec) + Math.floor(curAura * overDec) + Math.floor(curChakra * overDec);
+                    
                     return (
                         <div key={p.id} className="def-box" style={{ borderLeft: `5px solid ${c}`, background: bg, marginBottom: 10 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 15 }}>
@@ -588,9 +598,10 @@ export function PoderesLista() {
                                         <div style={{ background: 'rgba(0, 255, 204, 0.1)', borderLeft: '3px solid #00ffcc', padding: '10px', marginBottom: '15px', borderRadius: '4px' }}>
                                             <p style={{ color: '#00ffcc', margin: '0 0 5px 0', fontWeight: 'bold' }}>🌪️ RESSONÂNCIA ELEMENTAL DETETADA</p>
                                             <p style={{ color: '#aaa', fontSize: '0.85em', margin: 0 }}>
-                                                A Força da Natureza funde as suas energias Atuais (<span style={{color:'#0cf'}}>Mana: {curMana}</span> + <span style={{color:'#0cf'}}>Aura: {curAura}</span> + <span style={{color:'#0cf'}}>Chakra: {curChakra}</span>).<br/>
-                                                <strong>Poder Bruto Acumulado: +{energiaElemental} de Dano.</strong><br/>
-                                                Custo Base: <strong style={{color:'#0f0'}}>ZERO (Gratuito)</strong>.
+                                                A Força da Natureza funde {p.custoPercentual}% das suas energias.<br/>
+                                                <span style={{color:'#0cf'}}>Mana ({manaUsada})</span> + <span style={{color:'#0cf'}}>Aura ({auraUsada})</span> + <span style={{color:'#0cf'}}>Chakra ({chakraUsado})</span><br/>
+                                                <strong>Poder Bruto Extraído: <span style={{color: '#0f0'}}>+{energiaExtraida}</span> de Dano.</strong><br/>
+                                                Custo Cobrado na Ficha: <strong style={{color:'#0f0'}}>ZERO (Gratuito)</strong>.
                                             </p>
 
                                             <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px', cursor: 'pointer', background: overchargeAtivo ? 'rgba(255,0,60,0.2)' : 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '5px', border: overchargeAtivo ? '1px solid #ff003c' : '1px solid #444', transition: 'all 0.3s' }}>
@@ -598,7 +609,8 @@ export function PoderesLista() {
                                                 <div>
                                                     <div style={{ color: overchargeAtivo ? '#ff003c' : '#fff', fontWeight: 'bold', textShadow: overchargeAtivo ? '0 0 5px #ff003c' : 'none' }}>🔥 MODO OVERCHARGE (Queimar Motor)</div>
                                                     <div style={{ color: '#aaa', fontSize: '0.8em' }}>
-                                                        Dobra o custo da habilidade (pagará <strong>{p.custoPercentual * 2}%</strong> da sua Mana, Aura e Chakra atuais) para aplicar o seu <strong>Multiplicador Potencial (x{mPotencial})</strong> ao Dano Total Estimado!
+                                                        Dobra a energia extraída (<strong style={{color: '#0f0'}}>+{energiaOver}</strong> Dano Bruto) para aplicar o seu <strong>Multiplicador Potencial (x{mPotencial})</strong> ao Dano Total Estimado! <br/>
+                                                        ⚠️ Mas você <strong>pagará {percBase * 2}%</strong> da sua Mana, Aura e Chakra atuais como custo!
                                                     </div>
                                                 </div>
                                             </label>
