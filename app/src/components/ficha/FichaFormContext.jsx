@@ -265,12 +265,16 @@ export function FichaFormProvider({ children }) {
     const buffsAtuais = minhaFicha ? getBuffs(minhaFicha, sKeyForBuffs) : null;
 
     // =========================================================================================
-    // 🔥 BLINDAGEM CONDICIONAL ESTREITA (Impede que painéis apareçam por engano) 🔥
+    // 🔥 BLINDAGEM CONDICIONAL ESTREITA CORRIGIDA 🔥
     // =========================================================================================
     const hierarquia = minhaFicha?.hierarquia || {};
     const poderesGlobais = minhaFicha?.poderes || [];
     const hPoder = hierarquia.poder || false;
     const hInfinity = hierarquia.infinity || false;
+    
+    // DEFINIÇÃO DAS VARIÁVEIS QUE ESTAVAM FALTANDO!
+    const hPoderVertente = hierarquia.poderVertente || '';
+    const hInfinityVertente = hierarquia.infinityVertente || '';
     
     // Função rigorosa para evitar "falsos positivos" de palavras parecidas
     const checkVertente = (valorSalvo, alvo) => {
@@ -279,10 +283,10 @@ export function FichaFormProvider({ children }) {
         return v === alvo || v.startsWith(alvo);
     };
 
-    const classAcumulativo = (hPoder && checkVertente(hierarquia.poderVertente, 'acumulativo')) || (hInfinity && checkVertente(hierarquia.infinityVertente, 'acumulativo'));
-    const classElemental = (hPoder && checkVertente(hierarquia.poderVertente, 'elemental')) || (hInfinity && checkVertente(hierarquia.infinityVertente, 'elemental'));
-    const classConceitual = (hPoder && checkVertente(hierarquia.poderVertente, 'conceitual')) || (hInfinity && checkVertente(hierarquia.infinityVertente, 'conceitual'));
-    const classUtilitario = (hPoder && checkVertente(hierarquia.poderVertente, 'utilitario')) || (hInfinity && checkVertente(hierarquia.infinityVertente, 'utilitario'));
+    const classAcumulativo = (hPoder && checkVertente(hPoderVertente, 'acumulativo')) || (hInfinity && checkVertente(hInfinityVertente, 'acumulativo'));
+    const classElemental = (hPoder && checkVertente(hPoderVertente, 'elemental')) || (hInfinity && checkVertente(hInfinityVertente, 'elemental'));
+    const classConceitual = (hPoder && checkVertente(hPoderVertente, 'conceitual')) || (hInfinity && checkVertente(hInfinityVertente, 'conceitual'));
+    const classUtilitario = (hPoder && checkVertente(hPoderVertente, 'utilitario')) || (hInfinity && checkVertente(hInfinityVertente, 'utilitario'));
 
     const showMarcadoresCena = classAcumulativo || poderesGlobais.some(p => p.ativa && checkVertente(p.vertente, 'acumulativo'));
     const showForjaCalamidade = classAcumulativo || poderesGlobais.some(p => p.ativa && checkVertente(p.vertente, 'acumulativo'));
