@@ -57,6 +57,8 @@ export function PoderesClassificacao() {
     let glowSupremo = 'none';
     let nomeHabilidadeDestaque = '';
     let vertenteDestaque = '';
+    let elementoDestaque = ''; // 🔥 NOVO PARA O BANNER
+    let afetaDestaque = '';    // 🔥 NOVO PARA O BANNER
 
     if (hSingularidade === '0') {
         tituloSupremo = 'SINGULARIDADE GRAU 0 (MARCADO)'; corSuprema = '#ff00ff'; glowSupremo = '0 0 20px rgba(255, 0, 255, 0.8)'; nomeHabilidadeDestaque = hTextos.singularidadeNome;
@@ -68,8 +70,10 @@ export function PoderesClassificacao() {
         tituloSupremo = 'SINGULARIDADE GRAU 3 (HERDADA)'; corSuprema = '#ffcc00'; glowSupremo = '0 0 20px rgba(255, 204, 0, 0.8)'; nomeHabilidadeDestaque = hTextos.singularidadeNome;
     } else if (hInfinity) {
         tituloSupremo = 'INFINITY (MANIPULAÇÃO ABSOLUTA)'; corSuprema = '#00ccff'; glowSupremo = '0 0 20px rgba(0, 204, 255, 0.8)'; nomeHabilidadeDestaque = hTextos.infinityNome; vertenteDestaque = hTextos.infinityVertente;
+        elementoDestaque = hTextos.infinityElemento; afetaDestaque = hTextos.infinityAfeta;
     } else if (hPoder) {
         tituloSupremo = 'PODER (RESSONÂNCIA NATURAL)'; corSuprema = '#00ffcc'; glowSupremo = '0 0 20px rgba(0, 255, 204, 0.8)'; nomeHabilidadeDestaque = hTextos.poderNome; vertenteDestaque = hTextos.poderVertente;
+        elementoDestaque = hTextos.poderElemento; afetaDestaque = hTextos.poderAfeta;
     }
 
     return (
@@ -94,11 +98,24 @@ export function PoderesClassificacao() {
                     </div>
                 )}
 
-                {vertenteDestaque && (
-                    <div style={{ display: 'inline-block', marginTop: '12px', padding: '4px 15px', background: 'rgba(0,0,0,0.5)', border: `1px solid ${corSuprema}`, borderRadius: '20px', color: corSuprema, fontSize: '0.85em', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', position: 'relative', zIndex: 1 }}>
-                        🎯 Vertente: {vertenteDestaque}
-                    </div>
-                )}
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap', marginTop: '12px', position: 'relative', zIndex: 1 }}>
+                    {vertenteDestaque && (
+                        <div style={{ padding: '4px 15px', background: 'rgba(0,0,0,0.5)', border: `1px solid ${corSuprema}`, borderRadius: '20px', color: corSuprema, fontSize: '0.85em', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                            🎯 Vertente: {vertenteDestaque}
+                        </div>
+                    )}
+                    {/* 🔥 MOSTRA O ELEMENTO NO BANNER SE TIVER 🔥 */}
+                    {elementoDestaque && vertenteDestaque === 'Elemental' && (
+                        <div style={{ padding: '4px 15px', background: 'rgba(0,0,0,0.5)', border: `1px solid ${corSuprema}`, borderRadius: '20px', color: corSuprema, fontSize: '0.85em', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                            🌪️ Elemento: {elementoDestaque}
+                        </div>
+                    )}
+                    {afetaDestaque && vertenteDestaque === 'Elemental' && (
+                        <div style={{ padding: '4px 15px', background: 'rgba(0,0,0,0.5)', border: `1px solid ${corSuprema}`, borderRadius: '20px', color: corSuprema, fontSize: '0.85em', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                            🌊 Consome: {afetaDestaque}
+                        </div>
+                    )}
+                </div>
 
                 <p style={{ color: '#aaa', fontSize: '0.9em', marginTop: '15px', fontStyle: 'italic', position: 'relative', zIndex: 1 }}>
                     O sistema rastreia as suas capacidades e irradia a anomalia mais forte que corre nas suas veias.
@@ -108,6 +125,7 @@ export function PoderesClassificacao() {
             <div className="def-box" style={{ display: 'flex', flexDirection: 'column', gap: '15px', opacity: isMestre ? 1 : 0.8 }}>
                 <h3 style={{ color: '#0ff', margin: 0, borderBottom: '1px solid rgba(0,255,255,0.3)', paddingBottom: '10px' }}>Domínios Místicos</h3>
 
+                {/* ===================== CATEGORIA 1: PODER ===================== */}
                 <div style={{ padding: '15px', background: hPoder ? 'rgba(0, 255, 204, 0.1)' : 'rgba(255,255,255,0.02)', border: `1px solid ${hPoder ? '#00ffcc' : '#333'}`, borderRadius: '8px', transition: 'all 0.3s' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: isMestre ? 'pointer' : 'not-allowed' }}>
                         <input type="checkbox" checked={hPoder} onChange={e => salvarHierarquia(e.target.checked, hInfinity, hSingularidade)} disabled={!isMestre} style={{ transform: 'scale(1.5)', marginLeft: '5px', cursor: isMestre ? 'pointer' : 'not-allowed' }} />
@@ -120,7 +138,6 @@ export function PoderesClassificacao() {
                     {hPoder && (
                         <div className="fade-in" style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px dashed rgba(0, 255, 204, 0.3)' }}>
                             <label style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Vertente do Poder:</label>
-                            {/* 🔥 DROPDOWN CORRIGIDO: APENAS UM ACUMULATIVO 🔥 */}
                             <select
                                 className="input-neon"
                                 value={hTextos.poderVertente}
@@ -135,12 +152,34 @@ export function PoderesClassificacao() {
                                 <option value="Utilitario">🛠️ Utilitário (Hackers da realidade, Mimetismo, Anulação)</option>
                             </select>
 
+                            {/* 🔥 NOVO: CAMPOS ELEMENTAIS PARA A ABA CLASSIFICAÇÃO 🔥 */}
+                            {hTextos.poderVertente === 'Elemental' && (
+                                <div className="fade-in" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                                    <div>
+                                        <label style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold' }}>Elemento Oficial:</label>
+                                        <select className="input-neon" value={hTextos.poderElemento} onChange={e => setHTextos({...hTextos, poderElemento: e.target.value})} disabled={!isMestre} style={{ width: '100%', borderColor: '#00ffcc', color: '#00ffcc', margin: 0, opacity: isMestre ? 1 : 0.7 }}>
+                                            <option value="">Selecione a raiz elemental...</option>
+                                            {ELEMENTOS_OPCOES.map(grupo => (
+                                                <optgroup key={grupo.label} label={grupo.label} style={{ background: '#051010', color: '#00ffcc' }}>
+                                                    {grupo.opcoes.map(el => <option key={el} value={el}>{el}</option>)}
+                                                </optgroup>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold' }}>Afeta/Consome:</label>
+                                        <input className="input-neon" type="text" placeholder="Ex: Gelo, Vento" value={hTextos.poderAfeta} onChange={e => setHTextos({...hTextos, poderAfeta: e.target.value})} disabled={!isMestre} style={{ width: '100%', borderColor: '#00ffcc', color: '#00ffcc', margin: 0, opacity: isMestre ? 1 : 0.7 }} />
+                                    </div>
+                                </div>
+                            )}
+
                             <input className="input-neon" type="text" placeholder="Nome do seu Poder (Ex: Chamas do Purgatório)" value={hTextos.poderNome} onChange={e => setHTextos({...hTextos, poderNome: e.target.value})} disabled={!isMestre} style={{ width: '100%', marginBottom: '10px', borderColor: '#00ffcc', color: '#fff', fontWeight: 'bold', opacity: isMestre ? 1 : 0.7 }} />
                             <textarea className="input-neon" placeholder="Descreva como a ressonância da sua habilidade se manifesta na realidade..." value={hTextos.poderDesc} onChange={e => setHTextos({...hTextos, poderDesc: e.target.value})} disabled={!isMestre} style={{ width: '100%', minHeight: '60px', borderColor: '#00ffcc', color: '#ccc', fontStyle: 'italic', opacity: isMestre ? 1 : 0.7 }} />
                         </div>
                     )}
                 </div>
 
+                {/* ===================== CATEGORIA 2: INFINITY ===================== */}
                 <div style={{ padding: '15px', background: hInfinity ? 'rgba(0, 204, 255, 0.1)' : 'rgba(255,255,255,0.02)', border: `1px solid ${hInfinity ? '#00ccff' : '#333'}`, borderRadius: '8px', transition: 'all 0.3s' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: isMestre ? 'pointer' : 'not-allowed' }}>
                         <input type="checkbox" checked={hInfinity} onChange={e => salvarHierarquia(hPoder, e.target.checked, hSingularidade)} disabled={!isMestre} style={{ transform: 'scale(1.5)', marginLeft: '5px', cursor: isMestre ? 'pointer' : 'not-allowed' }} />
@@ -155,7 +194,6 @@ export function PoderesClassificacao() {
                     {hInfinity && (
                         <div className="fade-in" style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px dashed rgba(0, 204, 255, 0.3)' }}>
                             <label style={{ color: '#00ccff', fontSize: '0.85em', fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Vertente do Infinity:</label>
-                            {/* 🔥 DROPDOWN CORRIGIDO: APENAS UM ACUMULATIVO 🔥 */}
                             <select
                                 className="input-neon"
                                 value={hTextos.infinityVertente}
@@ -169,6 +207,27 @@ export function PoderesClassificacao() {
                                 <option value="Conceitual">🧩 Conceitual (Quebra de regras absolutas e espaço/tempo)</option>
                                 <option value="Utilitario">🛠️ Utilitário (Hackers da realidade, Mimetismo, Anulação)</option>
                             </select>
+
+                            {/* 🔥 NOVO: CAMPOS ELEMENTAIS PARA A ABA CLASSIFICAÇÃO 🔥 */}
+                            {hTextos.infinityVertente === 'Elemental' && (
+                                <div className="fade-in" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                                    <div>
+                                        <label style={{ color: '#00ccff', fontSize: '0.85em', fontWeight: 'bold' }}>Elemento Oficial:</label>
+                                        <select className="input-neon" value={hTextos.infinityElemento} onChange={e => setHTextos({...hTextos, infinityElemento: e.target.value})} disabled={!isMestre} style={{ width: '100%', borderColor: '#00ccff', color: '#00ccff', margin: 0, opacity: isMestre ? 1 : 0.7 }}>
+                                            <option value="">Selecione a raiz elemental...</option>
+                                            {ELEMENTOS_OPCOES.map(grupo => (
+                                                <optgroup key={grupo.label} label={grupo.label} style={{ background: '#051010', color: '#00ccff' }}>
+                                                    {grupo.opcoes.map(el => <option key={el} value={el}>{el}</option>)}
+                                                </optgroup>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style={{ color: '#00ccff', fontSize: '0.85em', fontWeight: 'bold' }}>Afeta/Consome:</label>
+                                        <input className="input-neon" type="text" placeholder="Ex: Fogo, Gelo" value={hTextos.infinityAfeta} onChange={e => setHTextos({...hTextos, infinityAfeta: e.target.value})} disabled={!isMestre} style={{ width: '100%', borderColor: '#00ccff', color: '#00ccff', margin: 0, opacity: isMestre ? 1 : 0.7 }} />
+                                    </div>
+                                </div>
+                            )}
 
                             <input className="input-neon" type="text" placeholder="Nome do seu Infinity (Ex: Frio Zero Absoluto)" value={hTextos.infinityNome} onChange={e => setHTextos({...hTextos, infinityNome: e.target.value})} disabled={!isMestre} style={{ width: '100%', marginBottom: '10px', borderColor: '#00ccff', color: '#fff', fontWeight: 'bold', opacity: isMestre ? 1 : 0.7 }} />
                             <textarea className="input-neon" placeholder="Descreva as leis conceituais e limites dessa manipulação infinita..." value={hTextos.infinityDesc} onChange={e => setHTextos({...hTextos, infinityDesc: e.target.value})} disabled={!isMestre} style={{ width: '100%', minHeight: '60px', borderColor: '#00ccff', color: '#ccc', fontStyle: 'italic', opacity: isMestre ? 1 : 0.7 }} />
@@ -259,7 +318,6 @@ export function PoderesFormEditor() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10, marginBottom: 5 }}>
                 <div>
                     <label style={{ color: '#0ff', fontSize: '0.85em', fontWeight: 'bold' }}>Natureza da Habilidade / Poder</label>
-                    {/* 🔥 DROPDOWN CORRIGIDO: APENAS UM ACUMULATIVO 🔥 */}
                     <select className="input-neon" value={poderVertente} onChange={e => setPoderVertente(e.target.value)} style={{ borderColor: '#0ff', color: '#0ff', margin: 0 }}>
                         <option value="">Padrão (Dano / Efeito Direto)</option>
                         <option value="Acumulativo">📈 Acumulativo (Requer Marcadores ou Forja)</option>

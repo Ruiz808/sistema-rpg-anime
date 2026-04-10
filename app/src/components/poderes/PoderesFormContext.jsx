@@ -36,7 +36,7 @@ export function PoderesFormProvider({ children }) {
     const [descricaoPoder, setDescricaoPoder] = useState(''); 
     const [poderVertente, setPoderVertente] = useState('');
     const [poderElemento, setPoderElemento] = useState('');
-    const [elementosAfetados, setElementosAfetados] = useState(''); // 🔥 NOVO CAMPO
+    const [elementosAfetados, setElementosAfetados] = useState(''); 
     const [imagemUrl, setImagemUrl] = useState('');
     const [dadosQtd, setDadosQtd] = useState(0);
     const [dadosFaces, setDadosFaces] = useState(20);
@@ -119,7 +119,7 @@ export function PoderesFormProvider({ children }) {
         setDescricaoPoder(''); 
         setPoderVertente('');
         setPoderElemento('');
-        setElementosAfetados(''); // 🔥 Limpa o novo campo
+        setElementosAfetados(''); 
         setImagemUrl('');
         setDadosQtd(0);
         setDadosFaces(20);
@@ -150,7 +150,7 @@ export function PoderesFormProvider({ children }) {
                     ficha.poderes[ix].descricao = descricaoPoder; 
                     ficha.poderes[ix].vertente = poderVertente; 
                     ficha.poderes[ix].elemento = poderElemento; 
-                    ficha.poderes[ix].elementosAfetados = elementosAfetados; // 🔥 Atualiza o novo campo
+                    ficha.poderes[ix].elementosAfetados = elementosAfetados; 
                     ficha.poderes[ix].categoria = abaAtual;
                     ficha.poderes[ix].efeitos = JSON.parse(JSON.stringify(efeitosTemp));
                     ficha.poderes[ix].efeitosPassivos = JSON.parse(JSON.stringify(efeitosTempPassivos));
@@ -169,7 +169,7 @@ export function PoderesFormProvider({ children }) {
                     descricao: descricaoPoder, 
                     vertente: poderVertente, 
                     elemento: poderElemento, 
-                    elementosAfetados: elementosAfetados, // 🔥 Salva o novo campo
+                    elementosAfetados: elementosAfetados, 
                     categoria: abaAtual,
                     ativa: false,
                     efeitos: JSON.parse(JSON.stringify(efeitosTemp)),
@@ -231,7 +231,7 @@ export function PoderesFormProvider({ children }) {
         setDescricaoPoder(p.descricao || ''); 
         setPoderVertente(p.vertente || ''); 
         setPoderElemento(p.elemento || ''); 
-        setElementosAfetados(p.elementosAfetados || ''); // 🔥 Carrega o novo campo
+        setElementosAfetados(p.elementosAfetados || ''); 
         setImagemUrl(p.imagemUrl || '');
         setDadosQtd(p.dadosQtd || 0);
         setDadosFaces(p.dadosFaces || 20);
@@ -313,9 +313,10 @@ export function PoderesFormProvider({ children }) {
     const hInfinity = hierarquia.infinity || false;
     const hSingularidade = hierarquia.singularidade || '';
 
+    // 🔥 NOVO: Estado HTextos atualizado para suportar os campos da Classificação 🔥
     const [hTextos, setHTextos] = useState({
-        poderNome: '', poderDesc: '', poderVertente: '',
-        infinityNome: '', infinityDesc: '', infinityVertente: '',
+        poderNome: '', poderDesc: '', poderVertente: '', poderElemento: '', poderAfeta: '',
+        infinityNome: '', infinityDesc: '', infinityVertente: '', infinityElemento: '', infinityAfeta: '',
         singularidadeNome: '', singularidadeDesc: ''
     });
     const [salvandoClassificacao, setSalvandoClassificacao] = useState(false);
@@ -324,12 +325,16 @@ export function PoderesFormProvider({ children }) {
         const h = minhaFicha?.hierarquia || {};
         setHTextos({
             poderNome: h.poderNome || '', poderDesc: h.poderDesc || '', poderVertente: h.poderVertente || '',
+            poderElemento: h.poderElemento || '', poderAfeta: h.poderAfeta || '',
             infinityNome: h.infinityNome || '', infinityDesc: h.infinityDesc || '', infinityVertente: h.infinityVertente || '',
+            infinityElemento: h.infinityElemento || '', infinityAfeta: h.infinityAfeta || '',
             singularidadeNome: h.singularidadeNome || '', singularidadeDesc: h.singularidadeDesc || ''
         });
     }, [
         minhaFicha?.hierarquia?.poderNome, minhaFicha?.hierarquia?.poderDesc, minhaFicha?.hierarquia?.poderVertente, 
+        minhaFicha?.hierarquia?.poderElemento, minhaFicha?.hierarquia?.poderAfeta,
         minhaFicha?.hierarquia?.infinityNome, minhaFicha?.hierarquia?.infinityDesc, minhaFicha?.hierarquia?.infinityVertente, 
+        minhaFicha?.hierarquia?.infinityElemento, minhaFicha?.hierarquia?.infinityAfeta,
         minhaFicha?.hierarquia?.singularidadeNome, minhaFicha?.hierarquia?.singularidadeDesc
     ]);
 
@@ -344,6 +349,7 @@ export function PoderesFormProvider({ children }) {
         salvarFichaSilencioso();
     }, [isMestre, updateFicha]);
 
+    // 🔥 NOVO: Salvando todos os textos da aba Classificação 🔥
     const salvarTextosHierarquia = useCallback(() => {
         if (!isMestre) return;
         updateFicha(f => {
@@ -351,9 +357,13 @@ export function PoderesFormProvider({ children }) {
             f.hierarquia.poderNome = hTextos.poderNome;
             f.hierarquia.poderDesc = hTextos.poderDesc;
             f.hierarquia.poderVertente = hTextos.poderVertente;
+            f.hierarquia.poderElemento = hTextos.poderElemento;
+            f.hierarquia.poderAfeta = hTextos.poderAfeta;
             f.hierarquia.infinityNome = hTextos.infinityNome;
             f.hierarquia.infinityDesc = hTextos.infinityDesc;
             f.hierarquia.infinityVertente = hTextos.infinityVertente;
+            f.hierarquia.infinityElemento = hTextos.infinityElemento;
+            f.hierarquia.infinityAfeta = hTextos.infinityAfeta;
             f.hierarquia.singularidadeNome = hTextos.singularidadeNome;
             f.hierarquia.singularidadeDesc = hTextos.singularidadeDesc;
         });
@@ -490,7 +500,7 @@ export function PoderesFormProvider({ children }) {
         minhaFicha, meuNome, isMestre, abaAtual, setAbaAtual,
         nomePoder, setNomePoder, descricaoPoder, setDescricaoPoder,
         poderVertente, setPoderVertente, poderElemento, setPoderElemento,
-        elementosAfetados, setElementosAfetados, // 🔥 NOVO EXPORT
+        elementosAfetados, setElementosAfetados, 
         imagemUrl, setImagemUrl, dadosQtd, setDadosQtd, dadosFaces, setDadosFaces,
         custoPercentual, setCustoPercentual, poderAlcance, setPoderAlcance,
         poderArea, setPoderArea, armaVinculada, setArmaVinculada,

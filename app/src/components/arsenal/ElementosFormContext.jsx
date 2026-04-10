@@ -119,13 +119,31 @@ export function ElementosFormProvider({ children }) {
         return parseInt(strVal.substring(0, 2), 10);
     }, []);
 
-    // 🔥 NOVO RADAR DE PODERES: Lê a aba Poderes para ver quais Elementos Inatos o jogador possui 🔥
+    // 🔥 RADAR ATUALIZADO: Agora lê os poderes individuais E as categorias da aba Classificação 🔥
     const elementosInatos = useMemo(() => {
-        if (!minhaFicha || !minhaFicha.poderes) return [];
-        return minhaFicha.poderes
-            .filter(p => p.ativa && (p.vertente || '').toLowerCase().includes('elemental') && p.elemento)
-            .map(p => p.elemento.toLowerCase().trim());
-    }, [minhaFicha?.poderes]);
+        if (!minhaFicha) return [];
+        const inatos = [];
+
+        // 1. Lê a Aba de Poderes Normais
+        if (minhaFicha.poderes) {
+            minhaFicha.poderes.forEach(p => {
+                if (p.ativa && (p.vertente || '').toLowerCase().includes('elemental') && p.elemento) {
+                    inatos.push(p.elemento.toLowerCase().trim());
+                }
+            });
+        }
+
+        // 2. Lê a Aba de Classificação (O Chefe Supremo)
+        const h = minhaFicha.hierarquia || {};
+        if (h.poder && (h.poderVertente || '').toLowerCase().includes('elemental') && h.poderElemento) {
+            inatos.push(h.poderElemento.toLowerCase().trim());
+        }
+        if (h.infinity && (h.infinityVertente || '').toLowerCase().includes('elemental') && h.infinityElemento) {
+            inatos.push(h.infinityElemento.toLowerCase().trim());
+        }
+
+        return inatos;
+    }, [minhaFicha?.poderes, minhaFicha?.hierarquia]);
 
     const allowedEnergies = useMemo(() => {
         let opts = [];
@@ -276,7 +294,7 @@ export function ElementosFormProvider({ children }) {
         formRef, profGlobal, getModificadorDoisDigitos, allowedEnergies,
         selecionarElemento, salvarNovoElem, editarElem, cancelarEdicaoElem, toggleEquiparElem,
         deletarElem, conjurarMagia, magiasDoGrupo, magiasConjuradasOutros, elemEditandoId, minhaFicha,
-        elementosInatos // 🔥 NOVO EXPORT PARA O VISUAL LER
+        elementosInatos
     }), [
         abaAtual, elemSelecionado, nomeElem, elementosAfetados, bonusTipo, bonusValor, custoValor, dadosQtd, dadosFaces,
         energiaCombustao, tipoMecanica, savingAttr, alcanceQuad, areaQuad, alvosAfetados, duracaoZona, profGlobal, getModificadorDoisDigitos, allowedEnergies,
