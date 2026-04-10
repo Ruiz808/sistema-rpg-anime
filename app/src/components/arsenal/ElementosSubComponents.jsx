@@ -64,7 +64,7 @@ export function ElementosFormMagia() {
     const ctx = useElementosForm();
     if (!ctx) return FALLBACK;
     const {
-        elemEditandoId, nomeElem, setNomeElem, elementosAfetados, setElementosAfetados, // 🔥 NOVO DESTRUCTURING
+        elemEditandoId, nomeElem, setNomeElem, elementosAfetados, setElementosAfetados,
         tipoMecanica, setTipoMecanica, savingAttr, setSavingAttr,
         energiaCombustao, setEnergiaCombustao, allowedEnergies, alcanceQuad, setAlcanceQuad, 
         areaQuad, setAreaQuad, alvosAfetados, setAlvosAfetados, duracaoZona, setDuracaoZona,
@@ -77,7 +77,6 @@ export function ElementosFormMagia() {
             <h3 style={{ color: '#0ff', marginBottom: 10 }}>{elemEditandoId ? `Editando: ${nomeElem}` : 'Criar Nova Magia / Técnica'}</h3>
             <input className="input-neon" type="text" placeholder="Nome da Magia/Técnica" value={nomeElem} onChange={e => setNomeElem(e.target.value)} />
             
-            {/* 🔥 NOVO BLOCO: ADICIONANDO O CAMPO ELEMENTOS AFETADOS 🔥 */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginTop: 10, padding: 10, background: 'rgba(0,136,255,0.1)', border: '1px solid #0088ff', borderRadius: 5 }}>
                 <div>
                     <label style={{ color: '#0088ff', fontSize: '0.85em', fontWeight: 'bold' }}>Mecânica de Uso</label>
@@ -109,7 +108,6 @@ export function ElementosFormMagia() {
                     <label style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold' }}>Alcance Máx (Q)</label>
                     <input className="input-neon" type="number" min="0" step="0.5" value={alcanceQuad} onChange={e => setAlcanceQuad(e.target.value)} />
                 </div>
-                {/* O Campo Novo Entra Aqui! */}
                 <div>
                     <label style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold' }}>Afeta/Consome (Ex: Fogo)</label>
                     <input className="input-neon" type="text" placeholder="Elementos fracos" value={elementosAfetados} onChange={e => setElementosAfetados(e.target.value)} style={{ borderColor: '#00ccff', color: '#00ccff' }} />
@@ -157,22 +155,30 @@ export function ElementosMagiaCard({ magia }) {
     const ctx = useElementosForm();
 
     if (!ctx) return null;
-    const { toggleEquiparElem, editarElem, deletarElem, profGlobal, getModificadorDoisDigitos, minhaFicha } = ctx;
+    const { toggleEquiparElem, editarElem, deletarElem, profGlobal, getModificadorDoisDigitos, minhaFicha, elementosInatos } = ctx;
 
+    const elemText = magia.elemento || 'Neutro';
     const isFlexivel = magia.energiaCombustao === 'flexivel';
     const energiaAtiva = magia.energiaCombustao;
 
+    // 🔥 MAGIA DO DOMÍNIO INATO: Verifica se o elemento da magia bate com algum Poder ativo 🔥
+    const isInato = elementosInatos.includes(elemText.toLowerCase().trim());
+
     const isEquipped = magia.equipado;
-    const corPura = cores[magia.elemento] || '#cccccc';
+    const corPura = cores[elemText] || '#cccccc';
     const c = isEquipped ? corPura : '#888';
     const bg = isEquipped ? `rgba(0,0,0,0.7)` : 'rgba(0,0,0,0.4)'; 
 
-    const elemText = magia.elemento || 'Neutro';
     const bTipo = magia.bonusTipo || 'nenhum';
     const propText = bTipo === 'nenhum' ? 'Sem bônus atrelado' : bTipo.replace('_', ' ').toUpperCase();
     const bValorStr = bTipo === 'nenhum' ? '' : `: ${bTipo.includes('mult_') ? 'x' : '+'}${magia.bonusValor || 0}`;
     const dadosStr = magia.dadosExtraQtd > 0 ? ` | Dados: +${magia.dadosExtraQtd}d${magia.dadosExtraFaces || 20}` : '';
-    const custoStr = magia.custoValor > 0 ? ` | Custo: ${magia.custoValor}% (${energiaAtiva?.toUpperCase()})` : ` | Custo: Livre`;
+    
+    // Se for Inato, ele zera o custo visualmente!
+    const custoFinal = isInato ? 0 : magia.custoValor;
+    const custoStr = isInato 
+        ? ` | Custo: ZERO (Ressonância Inata)` 
+        : (custoFinal > 0 ? ` | Custo: ${custoFinal}% (${energiaAtiva?.toUpperCase()})` : ` | Custo: Livre`);
 
     const mec = magia.tipoMecanica || 'ataque';
     const alvoStr = magia.alvosAfetados === 'inimigos' ? 'Inimigos' : magia.alvosAfetados === 'aliados' ? 'Aliados' : 'Todos';
@@ -210,14 +216,22 @@ export function ElementosMagiaCard({ magia }) {
                         </p>
                     )}
                     
-                    {/* 🔥 EXIBINDO OS ELEMENTOS QUE ESSA MAGIA CONSOME 🔥 */}
                     {magia.elementosAfetados && (
                         <p style={{ color: '#00ccff', fontSize: '0.85em', margin: '2px 0 0', fontWeight: 'bold' }}>
                             🌊 Consome/Afeta: {magia.elementosAfetados}
                         </p>
                     )}
 
-                    <p style={{ color: '#aaa', fontSize: '0.85em', margin: '2px 0 0' }}>
+                    {/* 🔥 ALERTA NEON QUANDO O DOMÍNIO INATO ESTÁ LIGADO 🔥 */}
+                    {isInato && (
+                        <div style={{ background: 'rgba(0, 255, 204, 0.1)', border: '1px solid #00ffcc', padding: '4px 8px', borderRadius: '4px', display: 'inline-block', marginTop: '6px' }}>
+                            <p style={{ color: '#00ffcc', fontSize: '0.85em', margin: '0', fontWeight: 'bold', textShadow: '0 0 5px rgba(0,255,204,0.5)' }}>
+                                🌪️ Domínio Inato: Você possui a Ressonância deste elemento. Custo zerado!
+                            </p>
+                        </div>
+                    )}
+
+                    <p style={{ color: '#aaa', fontSize: '0.85em', margin: '6px 0 0' }}>
                         Bônus: {propText}{bValorStr}{dadosStr}{custoStr}
                     </p>
                 </div>
