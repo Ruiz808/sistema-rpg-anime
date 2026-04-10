@@ -33,7 +33,8 @@ export function AtaqueFormProvider({ children }) {
 
     const ac = minhaFicha.ataqueConfig || {};
 
-    const [armaStatusUsados, setArmStatusUsados] = useState(ac.armaStatusUsados || ['forca']);
+    // 🔥 CORRIGIDO: Nome da variável agora tem o "a" (setArmaStatusUsados) 🔥
+    const [armaStatusUsados, setArmaStatusUsados] = useState(ac.armaStatusUsados || ['forca']);
     const [armaEnergiaCombustao, setArmaEnergiaCombustao] = useState(ac.armaEnergiaCombustao || 'mana');
     const [armaPercEnergia, setArmaPercEnergia] = useState(ac.armaPercEnergia || 0);
 
@@ -129,9 +130,12 @@ export function AtaqueFormProvider({ children }) {
 
     useEffect(() => {
         const ac2 = minhaFicha.ataqueConfig || {};
-        setArmaStatusUsados(ac2.armaStatusUsados || ['forca']); setArmaEnergiaCombustao(ac2.armaEnergiaCombustao || 'mana');
-        setArmaPercEnergia(ac2.armaPercEnergia || 0); setCritNormalMin(ac2.criticoNormalMin || 16);
-        setCritNormalMax(ac2.criticoNormalMax || 18); setCritFatalMin(ac2.criticoFatalMin || 19);
+        setArmaStatusUsados(ac2.armaStatusUsados || ['forca']); 
+        setArmaEnergiaCombustao(ac2.armaEnergiaCombustao || 'mana');
+        setArmaPercEnergia(ac2.armaPercEnergia || 0); 
+        setCritNormalMin(ac2.criticoNormalMin || 16);
+        setCritNormalMax(ac2.criticoNormalMax || 18); 
+        setCritFatalMin(ac2.criticoFatalMin || 19);
         setCritFatalMax(ac2.criticoFatalMax || 20);
     }, [minhaFicha.ataqueConfig]);
 
@@ -174,6 +178,7 @@ export function AtaqueFormProvider({ children }) {
     }, [updateFicha, percAtualLostFloor]);
 
     const updateSkillConfig = useCallback((id, field, value) => { setSkillConfigs(prev => ({ ...prev, [id]: { ...prev[id], [field]: value } })); }, []);
+    
     const toggleSkillStat = useCallback((id, statValue) => {
         setSkillConfigs(prev => {
             const current = prev[id]?.statusUsados || ['forca'];
@@ -192,9 +197,12 @@ export function AtaqueFormProvider({ children }) {
     const salvarConfigAtaque = useCallback(() => {
         updateFicha((ficha) => {
             if (!ficha.ataqueConfig) ficha.ataqueConfig = {};
-            ficha.ataqueConfig.armaStatusUsados = armaStatusUsados; ficha.ataqueConfig.armaEnergiaCombustao = armaEnergiaCombustao;
-            ficha.ataqueConfig.armaPercEnergia = parseFloat(armaPercEnergia) || 0; ficha.ataqueConfig.criticoNormalMin = parseInt(critNormalMin) || 16;
-            ficha.ataqueConfig.criticoNormalMax = parseInt(critNormalMax) || 18; ficha.ataqueConfig.criticoFatalMin = parseInt(critFatalMin) || 19;
+            ficha.ataqueConfig.armaStatusUsados = armaStatusUsados; 
+            ficha.ataqueConfig.armaEnergiaCombustao = armaEnergiaCombustao;
+            ficha.ataqueConfig.armaPercEnergia = parseFloat(armaPercEnergia) || 0; 
+            ficha.ataqueConfig.criticoNormalMin = parseInt(critNormalMin) || 16;
+            ficha.ataqueConfig.criticoNormalMax = parseInt(critNormalMax) || 18; 
+            ficha.ataqueConfig.criticoFatalMin = parseInt(critFatalMin) || 19;
             ficha.ataqueConfig.criticoFatalMax = parseInt(critFatalMax) || 20;
 
             if (ficha.poderes) ficha.poderes.forEach(p => { if (p && skillConfigs[p.id]) { p.statusUsados = skillConfigs[p.id].statusUsados; p.energiaCombustao = skillConfigs[p.id].energiaCombustao; } });
@@ -206,7 +214,6 @@ export function AtaqueFormProvider({ children }) {
     const rolarDano = useCallback(() => {
         salvarConfigAtaque();
 
-        // 🔥 CRIAÇÃO DO RADAR DE ELEMENTOS INATOS PARA O CÁLCULO 🔥
         const elementosInatos = [];
         (minhaFicha.poderes || []).forEach(p => {
             if (p.ativa && (p.vertente || '').toLowerCase().includes('elemental') && p.elemento) {
@@ -225,7 +232,7 @@ export function AtaqueFormProvider({ children }) {
             id: p.id, nome: p.nome, dadosQtd: p.dadosQtd || 0, dadosFaces: p.dadosFaces || 20, custoPercentual: p.custoPercentual || 0,
             armaVinculada: p.armaVinculada || '', statusUsados: skillConfigs[p.id]?.statusUsados || p.statusUsados || ['forca'],
             energiaCombustao: skillConfigs[p.id]?.energiaCombustao || p.energiaCombustao || 'mana', efeitos: p.efeitos || [],
-            vertente: p.vertente || '', elemento: p.elemento || '' // Exportado para a Engine ver!
+            vertente: p.vertente || '', elemento: p.elemento || '' 
         }));
 
         const configMagias = magiasOfensivas.map(m => {
@@ -237,7 +244,7 @@ export function AtaqueFormProvider({ children }) {
                 id: m.id, nome: m.nome, dadosQtd: m.dadosExtraQtd || 0, dadosFaces: m.dadosExtraFaces || 20, custoPercentual: m.custoValor || 0,
                 armaVinculada: '', statusUsados: skillConfigs[m.id]?.statusUsados || m.statusUsados || ['inteligencia'],
                 energiaCombustao: skillConfigs[m.id]?.energiaCombustao || m.energiaCombustao || 'mana', efeitos: efs,
-                vertente: isInato ? 'elemental' : 'magia', // Se for inato, a Engine entende como Elemental!
+                vertente: isInato ? 'elemental' : 'magia', 
                 elemento: m.elemento || 'Neutro'
             };
         });
@@ -351,7 +358,7 @@ export function AtaqueFormProvider({ children }) {
     ]);
 
     const value = useMemo(() => ({
-        armaStatusUsados, setArmStatusUsados: setArmaStatusUsados, armaEnergiaCombustao, setArmaEnergiaCombustao,
+        armaStatusUsados, setArmaStatusUsados, armaEnergiaCombustao, setArmaEnergiaCombustao,
         armaPercEnergia, setArmaPercEnergia, critNormalMin, setCritNormalMin, critNormalMax, setCritNormalMax,
         critFatalMin, setCritFatalMin, critFatalMax, setCritFatalMax, autoCritNormal, autoCritFatal,
         forcarCritNormal, setForcarCritNormal, forcarCritFatal, setForcarCritFatal,
@@ -360,7 +367,7 @@ export function AtaqueFormProvider({ children }) {
         dummieAlvo, armaEquipada, poderesAtivos, magiasOfensivas, minhaFicha,
         acalmarFuria, updateSkillConfig, toggleSkillStat, toggleArmaStat, salvarConfigAtaque, rolarDano,
     }), [
-        armaStatusUsados, armaEnergiaCombustao, armaPercEnergia, critNormalMin, critNormalMax, critFatalMin, critFatalMax,
+        armaStatusUsados, setArmaStatusUsados, armaEnergiaCombustao, armaPercEnergia, critNormalMin, critNormalMax, critFatalMin, critFatalMax,
         autoCritNormal, autoCritFatal, forcarCritNormal, forcarCritFatal, ignorarTravaAcerto, skillConfigs, podeRolarDano, furiaAcalmadaMsg,
         multiplicadorFuriaClasse, multiplicadorFuriaVisor, percAtualLostFloor, percEfetivoParaDisplay,
         dummieAlvo, armaEquipada, poderesAtivos, magiasOfensivas, minhaFicha,
