@@ -3,7 +3,6 @@ import { urlSeguraParaCss } from './MapaFormContext';
 import { ref, uploadBytes } from 'firebase/storage';
 import { httpsCallable } from 'firebase/functions';
 import { storage, functions } from '../../services/firebase-config';
-import useStore from '../../stores/useStore'; 
 
 export function PlayerDeAudioRemoto({ stream, volume, surdo, nome, sinkId }) {
     const audioRef = useRef(null);
@@ -171,7 +170,7 @@ export function MapaOlhoSextaFeira({ meuNome, personagens, minhaFicha, tavernaAt
     const [expandido, setExpandido] = useState(false);
     const [logs, setLogs] = useState(['Sexta-Feira: Olho de Escuta pronto.']);
 
-    // 🔥 MÁSCARAS DO MESTRE (Sem trava de isMestre para garantir que aparece) 🔥
+    // 🔥 MÁSCARAS LIBERADAS PARA TODOS! SEM TRAVAS! 🔥
     const [mascaraMestre, setMascaraMestre] = useState('narrador'); 
     const [nomeNpc, setNomeNpc] = useState('');
 
@@ -220,9 +219,10 @@ export function MapaOlhoSextaFeira({ meuNome, personagens, minhaFicha, tavernaAt
                     const nomeArquivo = `sessao_mapa_${Date.now()}_pt${num}.webm`;
                     await uploadBytes(ref(storage, `audios_mesa/${nomeArquivo}`), audioBlob);
                     
+                    // 🔥 DIRETRIZ DE MÁSCARA ENVIADA PARA A NUVEM 🔥
                     const instrucaoMestre = (mascaraMestre === 'npc' && nomeNpc.trim())
-                            ? `[ATENÇÃO IA: O jogador (${meuNome}) está interpretando o NPC "${nomeNpc.trim()}" nesta gravação. Atribua as falas e emoções a este personagem.]` 
-                            : `[ATENÇÃO IA: O jogador (${meuNome}) está atuando como o Narrador do mundo. Contudo, se ele usar vozes ou mencionar nomes diferentes em diálogos, formate inteligentemente no padrão "[NPC - Nome]: Fala".]`;
+                        ? `[ATENÇÃO IA: O usuário (${meuNome}) está interpretando o NPC/Personagem "${nomeNpc.trim()}" nesta gravação. Atribua as falas e emoções a ele.]` 
+                        : `[ATENÇÃO IA: O usuário (${meuNome}) está atuando como o Narrador do mundo. Contudo, se ele usar vozes ou mencionar nomes diferentes em diálogos, formate inteligentemente no padrão "[NPC - Nome]: Fala".]`;
 
                     const transcrever = httpsCallable(functions, 'transcreverAudioSextaFeira');
                     await transcrever({ 
@@ -263,9 +263,9 @@ export function MapaOlhoSextaFeira({ meuNome, personagens, minhaFicha, tavernaAt
                         <button onClick={() => setExpandido(false)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>✕</button>
                     </div>
 
-                    {/* 🔥 PAINEL EXCLUSIVO DO MESTRE (TRAVA REMOVIDA) 🔥 */}
+                    {/* 🔥 PAINEL DE MÁSCARA SEMPRE VISÍVEL PARA TODOS 🔥 */}
                     <div style={{ marginTop: '10px', padding: '10px', background: 'rgba(0,0,0,0.5)', borderRadius: '8px', border: '1px dashed #ffcc00' }}>
-                        <span style={{ color: '#ffcc00', fontSize: '0.8em', fontWeight: 'bold', display: 'block', marginBottom: '5px', textAlign: 'center' }}>🎭 MÁSCARA DO MESTRE</span>
+                        <span style={{ color: '#ffcc00', fontSize: '0.8em', fontWeight: 'bold', display: 'block', marginBottom: '5px', textAlign: 'center' }}>🎭 MÁSCARA DE GRAVAÇÃO</span>
                         <div style={{ display: 'flex', gap: '5px', marginBottom: mascaraMestre === 'npc' ? '8px' : '0' }}>
                             <button className={`btn-neon ${mascaraMestre === 'narrador' ? 'btn-gold' : ''}`} onClick={() => setMascaraMestre('narrador')} style={{ flex: 1, padding: '5px', fontSize: '0.75em', margin: 0, borderColor: '#ffcc00', color: mascaraMestre === 'narrador' ? '#fff' : '#ffcc00' }}>📖 Narrador</button>
                             <button className={`btn-neon ${mascaraMestre === 'npc' ? 'btn-blue' : ''}`} onClick={() => setMascaraMestre('npc')} style={{ flex: 1, padding: '5px', fontSize: '0.75em', margin: 0, borderColor: '#00aaff', color: mascaraMestre === 'npc' ? '#fff' : '#00aaff' }}>👺 NPC</button>
@@ -294,7 +294,6 @@ export function MapaSessaoRP({ chatCtx, meuNome, minhaFicha, personagens, cenari
 
     return (
         <>
-            {/* 🔥 O OLHO AGORA FICA AQUI FORA! SEMPRE VISÍVEL NA ABA RP 🔥 */}
             <MapaOlhoSextaFeira meuNome={meuNome} personagens={personagens} minhaFicha={minhaFicha} tavernaAtivos={cenario?.tavernaAtivos} meuStream={chatCtx.meuStream} conexoes={chatCtx.conexoes} />
 
             {!radioLigado ? (
