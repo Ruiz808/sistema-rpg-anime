@@ -364,7 +364,11 @@ export function AIFormProvider({ children }) {
             chakra: `${minhaFicha.chakra?.atual || 0}/${minhaFicha.chakra?.base || 0}`,
         };
         
-        const armasEquipadas = (minhaFicha.inventario || []).filter(i => i.equipado && i.tipo === 'arma').map(a => `${a.nome}`);
+        // 🔥 AGORA ELA SEPARA ARMAS EQUIPADAS DAS GUARDADAS 🔥
+        const inventarioDeArmas = (minhaFicha.inventario || []).filter(i => i.tipo === 'arma');
+        const armasEquipadas = inventarioDeArmas.filter(i => i.equipado).map(a => `${a.nome}`);
+        const armasGuardadas = inventarioDeArmas.filter(i => !i.equipado).map(a => `${a.nome}`);
+
         const magiasPreparadas = (minhaFicha.ataquesElementais || []).filter(m => m.equipado).map(m => `${m.nome}`);
         const poderesAtivos = (minhaFicha.poderes || []).filter(p => p.ativa).map(p => `${p.nome}`);
 
@@ -382,7 +386,8 @@ export function AIFormProvider({ children }) {
                 singularidade: hierarquia.singularidade ? `Grau ${hierarquia.singularidade}` : 'N/A'
             },
             combate: {
-                armasEquipadas: armasEquipadas.length > 0 ? armasEquipadas : ['Desarmado'],
+                armasEquipadas: armasEquipadas.length > 0 ? armasEquipadas : ['Nenhuma'],
+                armasGuardadas: armasGuardadas.length > 0 ? armasGuardadas : ['Nenhuma'],
                 magiasPreparadas: magiasPreparadas.length > 0 ? magiasPreparadas : ['Nenhuma'],
                 poderesAtivos: poderesAtivos.length > 0 ? poderesAtivos : ['Nenhum']
             },
@@ -418,7 +423,6 @@ export function AIFormProvider({ children }) {
         finally { e.target.value = ''; }
     }, [extrairTextoPDF]);
 
-    // 🔥 O ROTEADOR DE INTENÇÕES (Dossiê Inteligente e Compacto) 🔥
     const enviarMensagem = useCallback(async () => {
         if ((!mensagem.trim() && !arquivoTexto) || carregando) return;
         const msgUsuario = mensagem.trim();
@@ -434,29 +438,27 @@ export function AIFormProvider({ children }) {
             const chamarIA = httpsCallable(functions, 'falarComSextaFeira');
             const cxt = montarContextoFicha();
             
-            // 1. Roteador: Descobre o que o jogador quer saber
             const msgLower = msgUsuario.toLowerCase();
             const querSaberLore = ['história', 'historia', 'lore', 'resumo', 'aconteceu', 'sessão', 'sessao', 'npc', 'arco', 'capítulo', 'capitulo', 'vilão', 'passado', 'onde'].some(k => msgLower.includes(k));
-            const querSaberFicha = ['arma', 'dano', 'hp', 'vida', 'mana', 'aura', 'chakra', 'magia', 'poder', 'elemento', 'fraqueza', 'bater', 'atacar', 'status', 'ficha', 'inventário', 'inventario'].some(k => msgLower.includes(k));
+            
+            // Adicionado 'guardada', 'mochila' e afins nas keywords da Ficha
+            const querSaberFicha = ['arma', 'dano', 'hp', 'vida', 'mana', 'aura', 'chakra', 'magia', 'poder', 'elemento', 'fraqueza', 'bater', 'atacar', 'status', 'ficha', 'inventário', 'inventario', 'guardada', 'mochila'].some(k => msgLower.includes(k));
 
             let dossieOculto = `[INFO] Nome:${cxt.dadosPersonagem.nome}|Classe:${cxt.dadosPersonagem.classe}`;
 
             if (querSaberLore && !querSaberFicha) {
-                // Foco 100% na História
                 let loreFull = cxt.loreAtiva;
                 if (loreFull.length > 1500) loreFull = "..." + loreFull.slice(-1500); 
                 dossieOculto += `|LORE:${loreFull}`;
             } else if (querSaberFicha && !querSaberLore) {
-                // Foco 100% na Ficha de Combate
-                dossieOculto += `|Vida:${cxt.statusVitais.hp}|Mana:${cxt.statusVitais.mana}|Aura:${cxt.statusVitais.aura}|Arma:${cxt.combate.armasEquipadas.join(', ')}|Magias:${cxt.combate.magiasPreparadas.join(', ')}|Poderes:${cxt.combate.poderesAtivos.join(', ')}`;
+                // 🔥 AQUI MUDOU! AGORA ELA SABE O QUE ESTÁ EQUIPADO E O QUE ESTÁ GUARDADO 🔥
+                dossieOculto += `|Vida:${cxt.statusVitais.hp}|Mana:${cxt.statusVitais.mana}|Aura:${cxt.statusVitais.aura}|Armas(Equipadas):${cxt.combate.armasEquipadas.join(', ')}|Armas(Guardadas):${cxt.combate.armasGuardadas.join(', ')}|Magias:${cxt.combate.magiasPreparadas.join(', ')}|Poderes:${cxt.combate.poderesAtivos.join(', ')}`;
             } else {
-                // Híbrido (Um pouco de cada)
                 let loreMista = cxt.loreAtiva;
                 if (loreMista.length > 700) loreMista = "..." + loreMista.slice(-700);
-                dossieOculto += `|Arma:${cxt.combate.armasEquipadas[0] || 'N/A'}|Magias:${cxt.combate.magiasPreparadas.slice(0,2).join(', ')}|LORE:${loreMista}`;
+                dossieOculto += `|Armas:${cxt.combate.armasEquipadas.join(',')} e no inventario:${cxt.combate.armasGuardadas.join(',')}|Magias:${cxt.combate.magiasPreparadas.slice(0,2).join(', ')}|LORE:${loreMista}`;
             }
 
-            // 2. Monta o payload respeitando o limite de 1900 letras
             let promptFinal = `${dossieOculto}\n\nMENSAGEM: ${msgUsuario || 'Resumo do anexo.'}`;
             if (promptFinal.length > 1900) {
                 promptFinal = promptFinal.substring(0, 1900);
