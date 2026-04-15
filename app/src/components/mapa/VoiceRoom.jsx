@@ -3,6 +3,7 @@ import { urlSeguraParaCss } from './MapaFormContext';
 import { ref, uploadBytes } from 'firebase/storage';
 import { httpsCallable } from 'firebase/functions';
 import { storage, functions } from '../../services/firebase-config';
+import useStore from '../../stores/useStore'; // 🔥 CÉREBRO GLOBAL IMPORTADO
 
 export function PlayerDeAudioRemoto({ stream, volume, surdo, nome, sinkId }) {
     const audioRef = useRef(null);
@@ -17,7 +18,6 @@ export function PlayerDeAudioRemoto({ stream, volume, surdo, nome, sinkId }) {
         if (audioRef.current) audioRef.current.volume = surdo ? 0 : Math.min(1, Math.max(0, volume));
     }, [volume, surdo]);
 
-    // O SEGREDO ANTI-ECO: Força o áudio a sair nos fones selecionados!
     useEffect(() => {
         if (audioRef.current && sinkId && typeof audioRef.current.setSinkId === 'function') {
             audioRef.current.setSinkId(sinkId).catch(err => console.log('O navegador bloqueou a troca de saída:', err));
@@ -142,7 +142,6 @@ export function AvatarCardVoz({ nome, info, ficha, isMe, isConnected, streamPara
                 </div>
             )}
             
-            {/* O PLAYER DE ÁUDIO COM SINKID SENDO CHAMADO AQUI */}
             {!isMe && isConnected && streamParaTocar && (
                 <PlayerDeAudioRemoto stream={streamParaTocar} volume={volume} surdo={surdo} nome={nome} sinkId={selectedSpeaker} />
             )}
@@ -171,6 +170,11 @@ export function MapaOlhoSextaFeira({ meuNome, personagens, minhaFicha, tavernaAt
     const [gravando, setGravando] = useState(false);
     const [expandido, setExpandido] = useState(false);
     const [logs, setLogs] = useState(['Sexta-Feira: Olho de Escuta pronto.']);
+
+    // 🔥 NOVAS MÁSCARAS DO MESTRE 🔥
+    const isMestre = useStore(s => s.isMestre);
+    const [mascaraMestre, setMascaraMestre] = useState('narrador'); // 'narrador' ou 'npc'
+    const [nomeNpc, setNomeNpc] = useState('');
 
     const mediaRecorderRef = useRef(null);
     const timerRef = useRef(null);
@@ -208,6 +212,7 @@ export function MapaOlhoSextaFeira({ meuNome, personagens, minhaFicha, tavernaAt
             pedacoContadorRef.current = 1;
 
             recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+            
             recorder.onstop = async () => {
                 if (chunks.length === 0) return;
                 const audioBlob = new Blob(chunks, { type: 'audio/webm' }); chunks = [];
@@ -215,8 +220,21 @@ export function MapaOlhoSextaFeira({ meuNome, personagens, minhaFicha, tavernaAt
                 try {
                     const nomeArquivo = `sessao_mapa_${Date.now()}_pt${num}.webm`;
                     await uploadBytes(ref(storage, `audios_mesa/${nomeArquivo}`), audioBlob);
+                    
+                    // 🔥 DIRETRIZ DE MÁSCARA DO MESTRE INJETADA NA NUVEM 🔥
+                    const instrucaoMestre = isMestre 
+                        ? (mascaraMestre === 'npc' && nomeNpc.trim() 
+                            ? `[ATENÇÃO IA: O Mestre da mesa (${meuNome}) está interpretando o NPC "${nomeNpc.trim()}" nesta gravação. Atribua as falas e emoções a este personagem.]` 
+                            : `[ATENÇÃO IA: O Mestre da mesa (${meuNome}) está atuando como o Narrador do mundo. Contudo, se ele usar vozes ou mencionar nomes diferentes em diálogos, formate inteligentemente no padrão "[NPC - Nome]: Fala".]`)
+                        : '';
+
                     const transcrever = httpsCallable(functions, 'transcreverAudioSextaFeira');
-                    await transcrever({ fileName: nomeArquivo, nomesParticipantes: perfisJogadores, gravadorPrincipal: meuNome });
+                    await transcrever({ 
+                        fileName: nomeArquivo, 
+                        nomesParticipantes: perfisJogadores, 
+                        gravadorPrincipal: meuNome,
+                        instrucaoMestre: instrucaoMestre // Enviado para a Cloud Function!
+                    });
                     addLog(`✅ P${num} gravada e salva!`);
                 } catch(e) { addLog(`❌ Erro P${num}`); }
             };
@@ -248,13 +266,29 @@ export function MapaOlhoSextaFeira({ meuNome, personagens, minhaFicha, tavernaAt
                         <span style={{ color: gravando ? '#ff003c' : '#0088ff', fontWeight: 'bold' }}>{gravando ? '🔴 Gravando...' : '📡 Sexta-Feira'}</span>
                         <button onClick={() => setExpandido(false)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>✕</button>
                     </div>
+
+                    {/* 🔥 PAINEL EXCLUSIVO DO MESTRE 🔥 */}
+                    {isMestre && (
+                        <div style={{ marginTop: '10px', padding: '10px', background: 'rgba(0,0,0,0.5)', borderRadius: '8px', border: '1px dashed #ffcc00' }}>
+                            <span style={{ color: '#ffcc00', fontSize: '0.8em', fontWeight: 'bold', display: 'block', marginBottom: '5px', textAlign: 'center' }}>🎭 MÁSCARA DO MESTRE</span>
+                            <div style={{ display: 'flex', gap: '5px', marginBottom: mascaraMestre === 'npc' ? '8px' : '0' }}>
+                                <button className={`btn-neon ${mascaraMestre === 'narrador' ? 'btn-gold' : ''}`} onClick={() => setMascaraMestre('narrador')} style={{ flex: 1, padding: '5px', fontSize: '0.75em', margin: 0, borderColor: '#ffcc00', color: mascaraMestre === 'narrador' ? '#fff' : '#ffcc00' }}>📖 Narrador</button>
+                                <button className={`btn-neon ${mascaraMestre === 'npc' ? 'btn-blue' : ''}`} onClick={() => setMascaraMestre('npc')} style={{ flex: 1, padding: '5px', fontSize: '0.75em', margin: 0, borderColor: '#00aaff', color: mascaraMestre === 'npc' ? '#fff' : '#00aaff' }}>👺 NPC</button>
+                            </div>
+                            {mascaraMestre === 'npc' && (
+                                <input className="input-neon fade-in" type="text" placeholder="Qual o nome do NPC agora?" value={nomeNpc} onChange={e => setNomeNpc(e.target.value)} style={{ width: '100%', padding: '6px', fontSize: '0.85em', borderColor: '#00aaff', color: '#00aaff', margin: 0, boxSizing: 'border-box' }} />
+                            )}
+                        </div>
+                    )}
+
                     {!gravando ? <button className="btn-neon btn-green" onClick={iniciarGravacao} style={{ marginTop: 10, width: '100%' }}>▶ INICIAR ESCUTA</button> : <button className="btn-neon btn-red" onClick={pararGravacao} style={{ marginTop: 10, width: '100%', animation: 'pulse 1.5s infinite' }}>⏹ ENCERRAR</button>}
+                    
                     <div style={{ background: '#000', marginTop: 10, borderRadius: '5px', padding: '8px', fontSize: '0.7em', color: '#0f0', fontFamily: 'monospace', height: '80px', overflowY: 'auto', border: '1px solid #222' }}>
                         {logs.map((l, i) => <div key={i}>{l}</div>)}
                     </div>
                 </div>
             )}
-            <div onClick={() => setExpandido(!expandido)} style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(10,10,15,0.9)', border: '2px solid #0088ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', cursor: 'pointer' }}>{gravando ? '🎙️' : '👁️'}</div>
+            <div onClick={() => setExpandido(!expandido)} style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(10,10,15,0.9)', border: '2px solid #0088ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', cursor: 'pointer', boxShadow: gravando ? '0 0 15px #ff003c' : 'none' }}>{gravando ? '🎙️' : '👁️'}</div>
         </div>
     );
 }
@@ -289,7 +323,6 @@ export function MapaSessaoRP({ chatCtx, meuNome, minhaFicha, personagens, cenari
                         </div>
                     )}
                     
-                    {/* O SELETOR DE SAÍDA (HEADSET/COLUNAS) FICA AQUI */}
                     {chatCtx.speakers.length > 0 && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 5, borderLeft: '1px solid #444', paddingLeft: '15px' }}>
                             <span style={{ fontSize: '1.2em' }}>🎧</span>
