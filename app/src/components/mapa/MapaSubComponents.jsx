@@ -110,9 +110,9 @@ function CalibradorDeVoz({ stream, sensibilidade, setSensibilidade }) {
 }
 
 // ============================================================================
-// 🔥 A CARTA DE AVATAR (COM NEON SEGURO)
+// 🔥 A CARTA DE AVATAR
 // ============================================================================
-function AvatarCardVoz({ nome, info, ficha, isMe, isConnected, streamParaTocar, streamAnalisador, mutado, surdo, fazerChamada, cardSize, fmt, selectedSpeaker }) {
+export function AvatarCardVoz({ nome, info, ficha, isMe, isConnected, streamParaTocar, streamAnalisador, mutado, surdo, fazerChamada, cardSize, fmt, selectedSpeaker }) {
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [volume, setVolume] = useState(() => {
         const saved = localStorage.getItem(`rpg_vol_${nome}`);
@@ -211,7 +211,7 @@ function AvatarCardVoz({ nome, info, ficha, isMe, isConnected, streamParaTocar, 
 }
 
 // ============================================================================
-// 🔥 O OLHO DE SAURON (WIDGET FLUTUANTE DA SEXTA-FEIRA NO MAPA) 🔥
+// 🔥 O OLHO DE SAURON (WIDGET FLUTUANTE COM BANCO DE NPCs) 🔥
 // ============================================================================
 export function MapaOlhoSextaFeira() {
     const ctx = useMapaForm();
@@ -224,9 +224,13 @@ export function MapaOlhoSextaFeira() {
     const [destinoLore, setDestinoLore] = useState('novo_capitulo');
     const [arcosCache, setArcosCache] = useState([]);
 
-    // 🔥 MÁSCARAS DO MESTRE 🔥
+    // 🔥 MÁSCARAS DO MESTRE & BANCO DE NPCs 🔥
     const [mascaraMestre, setMascaraMestre] = useState('narrador'); 
     const [nomeNpc, setNomeNpc] = useState('');
+    const [npcSalvos, setNpcSalvos] = useState(() => {
+        try { return JSON.parse(localStorage.getItem('rpg_npcs_mestre')) || []; }
+        catch(e) { return []; }
+    });
 
     const streamRef = useRef(null);
     const mediaRecorderRef = useRef(null);
@@ -261,6 +265,20 @@ export function MapaOlhoSextaFeira() {
             if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
         };
     }, []);
+
+    const handleSalvarNpc = () => {
+        if (!nomeNpc.trim() || npcSalvos.includes(nomeNpc.trim())) return;
+        const novaLista = [...npcSalvos, nomeNpc.trim()];
+        setNpcSalvos(novaLista);
+        localStorage.setItem('rpg_npcs_mestre', JSON.stringify(novaLista));
+    };
+
+    const handleRemoverNpc = (npc) => {
+        const novaLista = npcSalvos.filter(n => n !== npc);
+        setNpcSalvos(novaLista);
+        localStorage.setItem('rpg_npcs_mestre', JSON.stringify(novaLista));
+        if (nomeNpc === npc) setNomeNpc('');
+    };
 
     const addLog = (msg) => {
         const hora = new Date().toLocaleTimeString();
@@ -388,7 +406,6 @@ export function MapaOlhoSextaFeira() {
 
                 if (!functions) return addLog("❌ Erro: Functions offline.");
 
-                // 🔥 DIRETRIZ DE MÁSCARA ENVIADA PARA A NUVEM 🔥
                 const instrucaoMestre = isMestre 
                     ? (mascaraMestre === 'npc' && nomeNpc.trim() 
                         ? `[ATENÇÃO IA: O Mestre da mesa (${meuNome}) está interpretando o NPC "${nomeNpc.trim()}" nesta gravação. Atribua as falas e emoções a este personagem.]` 
@@ -475,7 +492,7 @@ export function MapaOlhoSextaFeira() {
                         </select>
                     </div>
 
-                    {/* 🔥 PAINEL DE MÁSCARA DO MESTRE 🔥 */}
+                    {/* 🔥 PAINEL DE MÁSCARA DO MESTRE COM BANCO DE NPCs 🔥 */}
                     {isMestre && (
                         <div style={{ marginTop: '5px', padding: '10px', background: 'rgba(0,0,0,0.5)', borderRadius: '8px', border: '1px dashed #ffcc00' }}>
                             <span style={{ color: '#ffcc00', fontSize: '0.8em', fontWeight: 'bold', display: 'block', marginBottom: '5px', textAlign: 'center' }}>🎭 MÁSCARA DO MESTRE</span>
@@ -484,7 +501,22 @@ export function MapaOlhoSextaFeira() {
                                 <button className={`btn-neon ${mascaraMestre === 'npc' ? 'btn-blue' : ''}`} onClick={() => setMascaraMestre('npc')} style={{ flex: 1, padding: '5px', fontSize: '0.75em', margin: 0, borderColor: '#00aaff', color: mascaraMestre === 'npc' ? '#fff' : '#00aaff' }}>👺 NPC</button>
                             </div>
                             {mascaraMestre === 'npc' && (
-                                <input className="input-neon fade-in" type="text" placeholder="Qual o nome do NPC agora?" value={nomeNpc} onChange={e => setNomeNpc(e.target.value)} style={{ width: '100%', padding: '6px', fontSize: '0.85em', borderColor: '#00aaff', color: '#00aaff', margin: 0, boxSizing: 'border-box' }} />
+                                <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                    {npcSalvos.length > 0 && (
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', paddingBottom: '4px', borderBottom: '1px solid #333' }}>
+                                            {npcSalvos.map(npc => (
+                                                <div key={npc} style={{ display: 'flex', alignItems: 'center', background: nomeNpc === npc ? '#00aaff' : '#222', borderRadius: '4px', overflow: 'hidden' }}>
+                                                    <button onClick={() => setNomeNpc(npc)} style={{ background: 'none', border: 'none', color: nomeNpc === npc ? '#fff' : '#aaa', padding: '2px 6px', fontSize: '0.75em', cursor: 'pointer' }}>{npc}</button>
+                                                    <button onClick={() => handleRemoverNpc(npc)} style={{ background: 'rgba(255,0,0,0.3)', border: 'none', color: '#ff003c', padding: '2px 5px', fontSize: '0.7em', cursor: 'pointer' }}>✕</button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    <div style={{ display: 'flex', gap: '5px' }}>
+                                        <input className="input-neon" type="text" placeholder="Nome do NPC..." value={nomeNpc} onChange={e => setNomeNpc(e.target.value)} style={{ flex: 1, padding: '6px', fontSize: '0.85em', borderColor: '#00aaff', color: '#00aaff', margin: 0, boxSizing: 'border-box' }} />
+                                        <button className="btn-neon btn-blue" onClick={handleSalvarNpc} style={{ padding: '0 10px', margin: 0, fontSize: '0.8em' }}>💾</button>
+                                    </div>
+                                </div>
                             )}
                         </div>
                     )}
@@ -519,7 +551,7 @@ export function MapaOlhoSextaFeira() {
 }
 
 // ============================================================================
-// 🔥 A TAVERNA RESTAURADA (COM O CONTEXTO INTERNO PARA NÃO CRASHAR) 🔥
+// 🔥 A TAVERNA RESTAURADA 🔥
 // ============================================================================
 export function MapaSessaoRP() {
     const ctx = useMapaForm();
