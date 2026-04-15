@@ -216,13 +216,17 @@ function AvatarCardVoz({ nome, info, ficha, isMe, isConnected, streamParaTocar, 
 export function MapaOlhoSextaFeira() {
     const ctx = useMapaForm();
     if (!ctx) return null;
-    const { meuNome, personagens, minhaFicha, cenario } = ctx;
+    const { meuNome, personagens, minhaFicha, cenario, isMestre } = ctx;
 
     const [gravando, setGravando] = useState(false);
     const [expandido, setExpandido] = useState(false);
     const [logs, setLogs] = useState(['Sexta-Feira: Olho de Escuta pronto.']);
     const [destinoLore, setDestinoLore] = useState('novo_capitulo');
     const [arcosCache, setArcosCache] = useState([]);
+
+    // 🔥 MÁSCARAS DO MESTRE 🔥
+    const [mascaraMestre, setMascaraMestre] = useState('narrador'); 
+    const [nomeNpc, setNomeNpc] = useState('');
 
     const streamRef = useRef(null);
     const mediaRecorderRef = useRef(null);
@@ -384,11 +388,19 @@ export function MapaOlhoSextaFeira() {
 
                 if (!functions) return addLog("❌ Erro: Functions offline.");
 
+                // 🔥 DIRETRIZ DE MÁSCARA ENVIADA PARA A NUVEM 🔥
+                const instrucaoMestre = isMestre 
+                    ? (mascaraMestre === 'npc' && nomeNpc.trim() 
+                        ? `[ATENÇÃO IA: O Mestre da mesa (${meuNome}) está interpretando o NPC "${nomeNpc.trim()}" nesta gravação. Atribua as falas e emoções a este personagem.]` 
+                        : `[ATENÇÃO IA: O Mestre da mesa (${meuNome}) está atuando como o Narrador do mundo. Contudo, se ele usar vozes ou mencionar nomes diferentes em diálogos, formate inteligentemente no padrão "[NPC - Nome]: Fala".]`)
+                    : '';
+
                 const transcrever = httpsCallable(functions, 'transcreverAudioSextaFeira');
                 const resultado = await transcrever({ 
                     fileName: nomeArquivo,
                     nomesParticipantes: perfisJogadores,
-                    gravadorPrincipal: meuNome 
+                    gravadorPrincipal: meuNome,
+                    instrucaoMestre: instrucaoMestre
                 });
 
                 const textoGerado = resultado.data?.texto;
@@ -463,13 +475,27 @@ export function MapaOlhoSextaFeira() {
                         </select>
                     </div>
 
-                    {!gravando ? (
-                        <button className="btn-neon btn-green" onClick={iniciarGravacao} style={{ padding: '8px', fontSize: '0.9em' }}>▶ INICIAR ESCUTA</button>
-                    ) : (
-                        <button className="btn-neon btn-red" onClick={pararGravacao} style={{ padding: '8px', fontSize: '0.9em', animation: 'pulse 1.5s infinite' }}>⏹ ENCERRAR</button>
+                    {/* 🔥 PAINEL DE MÁSCARA DO MESTRE 🔥 */}
+                    {isMestre && (
+                        <div style={{ marginTop: '5px', padding: '10px', background: 'rgba(0,0,0,0.5)', borderRadius: '8px', border: '1px dashed #ffcc00' }}>
+                            <span style={{ color: '#ffcc00', fontSize: '0.8em', fontWeight: 'bold', display: 'block', marginBottom: '5px', textAlign: 'center' }}>🎭 MÁSCARA DO MESTRE</span>
+                            <div style={{ display: 'flex', gap: '5px', marginBottom: mascaraMestre === 'npc' ? '8px' : '0' }}>
+                                <button className={`btn-neon ${mascaraMestre === 'narrador' ? 'btn-gold' : ''}`} onClick={() => setMascaraMestre('narrador')} style={{ flex: 1, padding: '5px', fontSize: '0.75em', margin: 0, borderColor: '#ffcc00', color: mascaraMestre === 'narrador' ? '#fff' : '#ffcc00' }}>📖 Narrador</button>
+                                <button className={`btn-neon ${mascaraMestre === 'npc' ? 'btn-blue' : ''}`} onClick={() => setMascaraMestre('npc')} style={{ flex: 1, padding: '5px', fontSize: '0.75em', margin: 0, borderColor: '#00aaff', color: mascaraMestre === 'npc' ? '#fff' : '#00aaff' }}>👺 NPC</button>
+                            </div>
+                            {mascaraMestre === 'npc' && (
+                                <input className="input-neon fade-in" type="text" placeholder="Qual o nome do NPC agora?" value={nomeNpc} onChange={e => setNomeNpc(e.target.value)} style={{ width: '100%', padding: '6px', fontSize: '0.85em', borderColor: '#00aaff', color: '#00aaff', margin: 0, boxSizing: 'border-box' }} />
+                            )}
+                        </div>
                     )}
 
-                    <div style={{ background: '#000', borderRadius: '5px', padding: '8px', fontSize: '0.7em', color: '#0f0', fontFamily: 'monospace', height: '80px', overflowY: 'auto', display: 'flex', flexDirection: 'column', border: '1px solid #222' }}>
+                    {!gravando ? (
+                        <button className="btn-neon btn-green" onClick={iniciarGravacao} style={{ padding: '8px', fontSize: '0.9em', marginTop: '10px', width: '100%' }}>▶ INICIAR ESCUTA</button>
+                    ) : (
+                        <button className="btn-neon btn-red" onClick={pararGravacao} style={{ padding: '8px', fontSize: '0.9em', animation: 'pulse 1.5s infinite', marginTop: '10px', width: '100%' }}>⏹ ENCERRAR</button>
+                    )}
+
+                    <div style={{ background: '#000', borderRadius: '5px', padding: '8px', fontSize: '0.7em', color: '#0f0', fontFamily: 'monospace', height: '80px', overflowY: 'auto', display: 'flex', flexDirection: 'column', border: '1px solid #222', marginTop: '10px' }}>
                         {logs.map((l, i) => <span key={i} style={{ opacity: i === logs.length -1 ? 1 : 0.6 }}>{l}</span>)}
                     </div>
                 </div>
@@ -858,12 +884,9 @@ export function MapaRolagemRapida() {
         setMapUsarProf, alvoSelecionado, dummies, fichaSegura, cenaAtual, rolarAcertoRapido, isModoRP
     } = ctx;
 
-    // 🔥 REMOVIDO O BLOQUEIO! Agora a barra aparece na Taverna também! 🔥
-
     let dQuad = 0; let alcanceEf = 1; let maxArea = 0; let foraAlc = false;
     const alvoD = alvoSelecionado && dummies?.[alvoSelecionado] ? dummies[alvoSelecionado] : null;
 
-    // Só calcula distâncias físicas se NÃO estivermos na Taverna
     if (alvoD && !isModoRP) {
         const dx = Math.abs((fichaSegura?.posicao?.x || 0) - (alvoD.posicao?.x || 0));
         const dy = Math.abs((fichaSegura?.posicao?.y || 0) - (alvoD.posicao?.y || 0));
@@ -913,7 +936,6 @@ export function MapaRolagemRapida() {
             </div>
 
             <div style={{ flex: 1, textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10 }}>
-                {/* Oculta as distâncias físicas se estiver na Taverna */}
                 {alvoD && !isModoRP && (
                     <span style={{ fontSize: '0.85em', color: foraAlc ? '#ff003c' : '#0f0', fontWeight: 'bold' }}>
                         Alvo a {dQuad}Q (Alcance: {alcanceEf}Q) {foraAlc ? '❌' : '✅'}
