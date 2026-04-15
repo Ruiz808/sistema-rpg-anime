@@ -3,7 +3,7 @@ import { urlSeguraParaCss } from './MapaFormContext';
 import { ref, uploadBytes } from 'firebase/storage';
 import { httpsCallable } from 'firebase/functions';
 import { storage, functions } from '../../services/firebase-config';
-import useStore from '../../stores/useStore'; // 🔥 CÉREBRO GLOBAL IMPORTADO
+import useStore from '../../stores/useStore'; 
 
 export function PlayerDeAudioRemoto({ stream, volume, surdo, nome, sinkId }) {
     const audioRef = useRef(null);
@@ -171,9 +171,9 @@ export function MapaOlhoSextaFeira({ meuNome, personagens, minhaFicha, tavernaAt
     const [expandido, setExpandido] = useState(false);
     const [logs, setLogs] = useState(['Sexta-Feira: Olho de Escuta pronto.']);
 
-    // 🔥 NOVAS MÁSCARAS DO MESTRE 🔥
+    // 🔥 MÁSCARAS DO MESTRE 🔥
     const isMestre = useStore(s => s.isMestre);
-    const [mascaraMestre, setMascaraMestre] = useState('narrador'); // 'narrador' ou 'npc'
+    const [mascaraMestre, setMascaraMestre] = useState('narrador'); 
     const [nomeNpc, setNomeNpc] = useState('');
 
     const mediaRecorderRef = useRef(null);
@@ -221,7 +221,6 @@ export function MapaOlhoSextaFeira({ meuNome, personagens, minhaFicha, tavernaAt
                     const nomeArquivo = `sessao_mapa_${Date.now()}_pt${num}.webm`;
                     await uploadBytes(ref(storage, `audios_mesa/${nomeArquivo}`), audioBlob);
                     
-                    // 🔥 DIRETRIZ DE MÁSCARA DO MESTRE INJETADA NA NUVEM 🔥
                     const instrucaoMestre = isMestre 
                         ? (mascaraMestre === 'npc' && nomeNpc.trim() 
                             ? `[ATENÇÃO IA: O Mestre da mesa (${meuNome}) está interpretando o NPC "${nomeNpc.trim()}" nesta gravação. Atribua as falas e emoções a este personagem.]` 
@@ -233,7 +232,7 @@ export function MapaOlhoSextaFeira({ meuNome, personagens, minhaFicha, tavernaAt
                         fileName: nomeArquivo, 
                         nomesParticipantes: perfisJogadores, 
                         gravadorPrincipal: meuNome,
-                        instrucaoMestre: instrucaoMestre // Enviado para a Cloud Function!
+                        instrucaoMestre: instrucaoMestre 
                     });
                     addLog(`✅ P${num} gravada e salva!`);
                 } catch(e) { addLog(`❌ Erro P${num}`); }
@@ -267,7 +266,6 @@ export function MapaOlhoSextaFeira({ meuNome, personagens, minhaFicha, tavernaAt
                         <button onClick={() => setExpandido(false)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>✕</button>
                     </div>
 
-                    {/* 🔥 PAINEL EXCLUSIVO DO MESTRE 🔥 */}
                     {isMestre && (
                         <div style={{ marginTop: '10px', padding: '10px', background: 'rgba(0,0,0,0.5)', borderRadius: '8px', border: '1px dashed #ffcc00' }}>
                             <span style={{ color: '#ffcc00', fontSize: '0.8em', fontWeight: 'bold', display: 'block', marginBottom: '5px', textAlign: 'center' }}>🎭 MÁSCARA DO MESTRE</span>
@@ -298,73 +296,76 @@ export function MapaSessaoRP({ chatCtx, meuNome, minhaFicha, personagens, cenari
     const cardSize = playerCount === 1 ? '400px' : playerCount === 2 ? '350px' : '280px';
     const [radioLigado, setRadioLigado] = useState(false);
 
-    if (!radioLigado) return (
-        <div className="fade-in" style={{ minHeight: '60vh', background: 'radial-gradient(circle, rgba(30,10,20,0.9) 0%, rgba(0,0,0,1) 100%)', borderRadius: 5, border: '2px solid #ffcc00', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-            <h1 style={{ color: '#00ffcc' }}>SALA DE RÁDIO DA PARTY</h1>
-            <p style={{ color: '#aaa' }}>Fechem o vosso Discord e entrem no rádio para comunicarem por aqui.</p>
-            <button className="btn-neon btn-green" onClick={() => setRadioLigado(true)}>▶ ENTRAR NO RÁDIO</button>
-        </div>
-    );
-
     return (
-        <div className="fade-in" style={{ minHeight: '60vh', background: 'radial-gradient(circle, rgba(30,10,20,0.9) 0%, rgba(0,0,0,1) 100%)', borderRadius: 5, border: '2px solid #ffcc00', padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <h1 style={{ color: '#ffcc00', margin: 0 }}>SESSÃO RP</h1>
-            
-            {isPresenteNaTaverna && (
-                <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '20px', background: 'rgba(0,0,0,0.5)', padding: '10px 15px', borderRadius: '5px', border: '1px solid #333', flexWrap: 'wrap', justifyContent: 'center' }}>
-                    <div style={{ color: '#00ffcc', fontSize: '0.85em', fontFamily: 'monospace' }}>📡 {chatCtx.voiceStatus}</div>
-                    
-                    {chatCtx.mics.length > 0 && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                            <span style={{ fontSize: '1.2em' }}>🎙️</span>
-                            <select className="input-neon" value={chatCtx.selectedMic} onChange={e => chatCtx.trocarMicrofone(e.target.value)} style={{ padding: '4px', fontSize: '0.8em', background: '#000', color: '#fff', borderColor: '#00ffcc', borderRadius: '5px', maxWidth: '200px' }}>
-                                {chatCtx.mics.map(m => <option key={m.deviceId} value={m.deviceId}>{m.label || `Mic ${m.deviceId.substring(0,4)}`}</option>)}
-                            </select>
-                        </div>
-                    )}
-                    
-                    {chatCtx.speakers.length > 0 && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, borderLeft: '1px solid #444', paddingLeft: '15px' }}>
-                            <span style={{ fontSize: '1.2em' }}>🎧</span>
-                            <select className="input-neon" value={chatCtx.selectedSpeaker} onChange={e => chatCtx.trocarSpeaker(e.target.value)} style={{ padding: '4px', fontSize: '0.8em', background: '#000', color: '#fff', borderColor: '#00aaff', borderRadius: '5px', maxWidth: '200px' }}>
-                                {chatCtx.speakers.map(s => <option key={s.deviceId} value={s.deviceId}>{s.label || `Saída ${s.deviceId.substring(0,4)}`}</option>)}
-                            </select>
-                        </div>
-                    )}
-                    
-                    <label style={{ color: '#00ffcc', fontSize: '0.8em', cursor: 'pointer', borderLeft: '1px solid #444', paddingLeft: '15px' }}>
-                        <input type="checkbox" checked={chatCtx.supressorAtivo} onChange={e => chatCtx.setSupressorAtivo(e.target.checked)} /> Filtro de Eco
-                    </label>
+        <>
+            {/* 🔥 O OLHO AGORA FICA AQUI FORA! SEMPRE VISÍVEL NA ABA RP 🔥 */}
+            <MapaOlhoSextaFeira meuNome={meuNome} personagens={personagens} minhaFicha={minhaFicha} tavernaAtivos={cenario?.tavernaAtivos} meuStream={chatCtx.meuStream} conexoes={chatCtx.conexoes} />
 
-                    {chatCtx.streamAnalisador && <CalibradorDeVoz stream={chatCtx.streamAnalisador} sensibilidade={chatCtx.sensibilidadeVoz} setSensibilidade={chatCtx.setSensibilidadeVoz} />}
+            {!radioLigado ? (
+                <div className="fade-in" style={{ minHeight: '60vh', background: 'radial-gradient(circle, rgba(30,10,20,0.9) 0%, rgba(0,0,0,1) 100%)', borderRadius: 5, border: '2px solid #ffcc00', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <h1 style={{ color: '#00ffcc' }}>SALA DE RÁDIO DA PARTY</h1>
+                    <p style={{ color: '#aaa' }}>Fechem o vosso Discord e entrem no rádio para comunicarem por aqui.</p>
+                    <button className="btn-neon btn-green" onClick={() => setRadioLigado(true)}>▶ ENTRAR NO RÁDIO</button>
+                </div>
+            ) : (
+                <div className="fade-in" style={{ minHeight: '60vh', background: 'radial-gradient(circle, rgba(30,10,20,0.9) 0%, rgba(0,0,0,1) 100%)', borderRadius: 5, border: '2px solid #ffcc00', padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <h1 style={{ color: '#ffcc00', margin: 0 }}>SESSÃO RP</h1>
+                    
+                    {isPresenteNaTaverna && (
+                        <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '20px', background: 'rgba(0,0,0,0.5)', padding: '10px 15px', borderRadius: '5px', border: '1px solid #333', flexWrap: 'wrap', justifyContent: 'center' }}>
+                            <div style={{ color: '#00ffcc', fontSize: '0.85em', fontFamily: 'monospace' }}>📡 {chatCtx.voiceStatus}</div>
+                            
+                            {chatCtx.mics.length > 0 && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                                    <span style={{ fontSize: '1.2em' }}>🎙️</span>
+                                    <select className="input-neon" value={chatCtx.selectedMic} onChange={e => chatCtx.trocarMicrofone(e.target.value)} style={{ padding: '4px', fontSize: '0.8em', background: '#000', color: '#fff', borderColor: '#00ffcc', borderRadius: '5px', maxWidth: '200px' }}>
+                                        {chatCtx.mics.map(m => <option key={m.deviceId} value={m.deviceId}>{m.label || `Mic ${m.deviceId.substring(0,4)}`}</option>)}
+                                    </select>
+                                </div>
+                            )}
+                            
+                            {chatCtx.speakers.length > 0 && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 5, borderLeft: '1px solid #444', paddingLeft: '15px' }}>
+                                    <span style={{ fontSize: '1.2em' }}>🎧</span>
+                                    <select className="input-neon" value={chatCtx.selectedSpeaker} onChange={e => chatCtx.trocarSpeaker(e.target.value)} style={{ padding: '4px', fontSize: '0.8em', background: '#000', color: '#fff', borderColor: '#00aaff', borderRadius: '5px', maxWidth: '200px' }}>
+                                        {chatCtx.speakers.map(s => <option key={s.deviceId} value={s.deviceId}>{s.label || `Saída ${s.deviceId.substring(0,4)}`}</option>)}
+                                    </select>
+                                </div>
+                            )}
+                            
+                            <label style={{ color: '#00ffcc', fontSize: '0.8em', cursor: 'pointer', borderLeft: '1px solid #444', paddingLeft: '15px' }}>
+                                <input type="checkbox" checked={chatCtx.supressorAtivo} onChange={e => chatCtx.setSupressorAtivo(e.target.checked)} /> Filtro de Eco
+                            </label>
+
+                            {chatCtx.streamAnalisador && <CalibradorDeVoz stream={chatCtx.streamAnalisador} sensibilidade={chatCtx.sensibilidadeVoz} setSensibilidade={chatCtx.setSensibilidadeVoz} />}
+                        </div>
+                    )}
+                    
+                    <div style={{ display: 'flex', gap: '15px', marginBottom: '30px' }}>
+                        <button onClick={chatCtx.toggleMute} disabled={!isPresenteNaTaverna} style={{ opacity: isPresenteNaTaverna ? 1 : 0.3, width: '45px', height: '45px', borderRadius: '50%', background: chatCtx.mutado ? '#ff003c' : '#00ffcc', color: '#000', cursor: 'pointer', border: 'none', boxShadow: `0 0 10px ${chatCtx.mutado ? '#ff003c' : '#00ffcc'}` }}>{chatCtx.mutado ? '🔇' : '🎙️'}</button>
+                        <button onClick={chatCtx.toggleDeafen} disabled={!isPresenteNaTaverna} style={{ opacity: isPresenteNaTaverna ? 1 : 0.3, width: '45px', height: '45px', borderRadius: '50%', background: chatCtx.surdo ? '#ff003c' : 'rgba(255,255,255,0.1)', color: '#fff', cursor: 'pointer', border: 'none' }}>{chatCtx.surdo ? '🔕' : '🎧'}</button>
+                        <button className={`btn-neon ${isPresenteNaTaverna ? 'btn-red' : 'btn-green'}`} onClick={togglePresencaTaverna}>{isPresenteNaTaverna ? 'SAIR DA TAVERNA' : 'SENTAR NA MESA'}</button>
+                    </div>
+
+                    <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '25px', width: '100%' }}>
+                        {Array.isArray(cenario?.tavernaAtivos) && cenario.tavernaAtivos.map(nome => {
+                            const isMe = nome === meuNome;
+                            const f = isMe ? minhaFicha : personagens?.[nome];
+                            const info = getAvatarInfo(f);
+                            const con = chatCtx.conexoes.find(c => c.id === `anime-rpg-${(nome||'').toLowerCase().replace(/[^a-z0-9]/g, '')}`);
+                            
+                            return (
+                                <AvatarCardVoz 
+                                    key={nome} nome={nome} info={info} ficha={f} isMe={isMe} 
+                                    isConnected={isMe || !!con} streamParaTocar={con?.stream} streamAnalisador={isMe ? chatCtx.streamAnalisador : null} 
+                                    mutado={chatCtx.mutado} surdo={chatCtx.surdo} fazerChamada={chatCtx.fazerChamada} 
+                                    cardSize={cardSize} fmt={fmt} selectedSpeaker={chatCtx.selectedSpeaker} 
+                                />
+                            );
+                        })}
+                    </div>
                 </div>
             )}
-            
-            <div style={{ display: 'flex', gap: '15px', marginBottom: '30px' }}>
-                <button onClick={chatCtx.toggleMute} disabled={!isPresenteNaTaverna} style={{ opacity: isPresenteNaTaverna ? 1 : 0.3, width: '45px', height: '45px', borderRadius: '50%', background: chatCtx.mutado ? '#ff003c' : '#00ffcc', color: '#000', cursor: 'pointer', border: 'none', boxShadow: `0 0 10px ${chatCtx.mutado ? '#ff003c' : '#00ffcc'}` }}>{chatCtx.mutado ? '🔇' : '🎙️'}</button>
-                <button onClick={chatCtx.toggleDeafen} disabled={!isPresenteNaTaverna} style={{ opacity: isPresenteNaTaverna ? 1 : 0.3, width: '45px', height: '45px', borderRadius: '50%', background: chatCtx.surdo ? '#ff003c' : 'rgba(255,255,255,0.1)', color: '#fff', cursor: 'pointer', border: 'none' }}>{chatCtx.surdo ? '🔕' : '🎧'}</button>
-                <button className={`btn-neon ${isPresenteNaTaverna ? 'btn-red' : 'btn-green'}`} onClick={togglePresencaTaverna}>{isPresenteNaTaverna ? 'SAIR DA TAVERNA' : 'SENTAR NA MESA'}</button>
-            </div>
-
-            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '25px', width: '100%' }}>
-                {Array.isArray(cenario?.tavernaAtivos) && cenario.tavernaAtivos.map(nome => {
-                    const isMe = nome === meuNome;
-                    const f = isMe ? minhaFicha : personagens?.[nome];
-                    const info = getAvatarInfo(f);
-                    const con = chatCtx.conexoes.find(c => c.id === `anime-rpg-${(nome||'').toLowerCase().replace(/[^a-z0-9]/g, '')}`);
-                    
-                    return (
-                        <AvatarCardVoz 
-                            key={nome} nome={nome} info={info} ficha={f} isMe={isMe} 
-                            isConnected={isMe || !!con} streamParaTocar={con?.stream} streamAnalisador={isMe ? chatCtx.streamAnalisador : null} 
-                            mutado={chatCtx.mutado} surdo={chatCtx.surdo} fazerChamada={chatCtx.fazerChamada} 
-                            cardSize={cardSize} fmt={fmt} selectedSpeaker={chatCtx.selectedSpeaker} 
-                        />
-                    );
-                })}
-            </div>
-            
-            <MapaOlhoSextaFeira meuNome={meuNome} personagens={personagens} minhaFicha={minhaFicha} tavernaAtivos={cenario?.tavernaAtivos} meuStream={chatCtx.meuStream} conexoes={chatCtx.conexoes} />
-        </div>
+        </>
     );
 }
