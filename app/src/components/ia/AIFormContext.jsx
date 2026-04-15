@@ -351,7 +351,6 @@ export function AIFormProvider({ children }) {
 
     useEffect(() => { if (subAba === 'chat' && chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight; }, [historico, subAba]);
 
-    // 🔥 O CÉREBRO DA ONISCIÊNCIA DA SEXTA-FEIRA 🔥
     const montarContextoFicha = useCallback(() => {
         if (!minhaFicha) return { nome: meuNome };
         
@@ -365,25 +364,22 @@ export function AIFormProvider({ children }) {
             chakra: `${minhaFicha.chakra?.atual || 0}/${minhaFicha.chakra?.base || 0}`,
         };
         
-        const armasEquipadas = (minhaFicha.inventario || []).filter(i => i.equipado && i.tipo === 'arma').map(a => `${a.nome} (${a.dadosQtd}d${a.dadosFaces})`);
-        const magiasPreparadas = (minhaFicha.ataquesElementais || []).filter(m => m.equipado).map(m => `${m.nome} [${m.elemento}]`);
-        const poderesAtivos = (minhaFicha.poderes || []).filter(p => p.ativa).map(p => `${p.nome} [${p.vertente}]`);
+        const armasEquipadas = (minhaFicha.inventario || []).filter(i => i.equipado && i.tipo === 'arma').map(a => `${a.nome}`);
+        const magiasPreparadas = (minhaFicha.ataquesElementais || []).filter(m => m.equipado).map(m => `${m.nome}`);
+        const poderesAtivos = (minhaFicha.poderes || []).filter(p => p.ativa).map(p => `${p.nome}`);
 
-        // Extrai a Lore ativa do momento (limitado para não estourar a memória do Firebase)
-        let loreAtual = "Nenhum registro selecionado na Aba Lore.";
+        let loreAtual = "Vazio.";
         if (capituloAtivoObj && arcoAtivoObj) {
-            loreAtual = `Capítulo: ${capituloAtivoObj.titulo} | Arco: ${arcoAtivoObj.titulo}\nTexto: ${arcoAtivoObj.texto.substring(0, 3000)}`; 
+            loreAtual = `Capítulo: ${capituloAtivoObj.titulo} | Arco: ${arcoAtivoObj.titulo}\nTexto: ${arcoAtivoObj.texto}`; 
         }
 
         return {
-            dadosPersonagem: {
-                nome: meuNome, raca: bio.raca || 'Desconhecida', classe: bio.classe || 'Mundano',
-            },
+            dadosPersonagem: { nome: meuNome, raca: bio.raca || 'N/A', classe: bio.classe || 'N/A' },
             statusVitais: vitais,
             dominiosMisticos: {
-                poder: hierarquia.poder ? `${hierarquia.poderNome} (${hierarquia.poderVertente || 'Padrão'})` : 'Nenhum',
-                infinity: hierarquia.infinity ? `${hierarquia.infinityNome} (${hierarquia.infinityVertente || 'Padrão'})` : 'Nenhum',
-                singularidade: hierarquia.singularidade ? `Grau ${hierarquia.singularidade} - ${hierarquia.singularidadeNome}` : 'Nenhuma'
+                poder: hierarquia.poder ? `${hierarquia.poderNome}` : 'N/A',
+                infinity: hierarquia.infinity ? `${hierarquia.infinityNome}` : 'N/A',
+                singularidade: hierarquia.singularidade ? `Grau ${hierarquia.singularidade}` : 'N/A'
             },
             combate: {
                 armasEquipadas: armasEquipadas.length > 0 ? armasEquipadas : ['Desarmado'],
@@ -422,7 +418,7 @@ export function AIFormProvider({ children }) {
         finally { e.target.value = ''; }
     }, [extrairTextoPDF]);
 
-    // 🔥 INJETOR DE DOSSIÊ NA MENSAGEM 🔥
+    // 🔥 O ROTEADOR DE INTENÇÕES (Dossiê Inteligente e Compacto) 🔥
     const enviarMensagem = useCallback(async () => {
         if ((!mensagem.trim() && !arquivoTexto) || carregando) return;
         const msgUsuario = mensagem.trim();
@@ -438,19 +434,36 @@ export function AIFormProvider({ children }) {
             const chamarIA = httpsCallable(functions, 'falarComSextaFeira');
             const cxt = montarContextoFicha();
             
-            // Aqui envelopamos o conhecimento dela antes de mandar pra nuvem
-            const dossieOculto = `[DOSSIÊ DE SISTEMA - STATUS DO JOGADOR]
-Nome: ${cxt.dadosPersonagem.nome} | Classe: ${cxt.dadosPersonagem.classe}
-HP: ${cxt.statusVitais.hp} | Mana: ${cxt.statusVitais.mana} | Aura: ${cxt.statusVitais.aura} | Chakra: ${cxt.statusVitais.chakra}
-Armas: ${cxt.combate.armasEquipadas.join(', ')}
-Magias: ${cxt.combate.magiasPreparadas.join(', ')}
-Poderes Ligados: ${cxt.combate.poderesAtivos.join(', ')}
-Hierarquia: Poder [${cxt.dominiosMisticos.poder}], Infinity [${cxt.dominiosMisticos.infinity}], Singularidade [${cxt.dominiosMisticos.singularidade}]
-Lore Registrada (Arco Atual): ${cxt.loreAtiva}
-[DIRETRIZ DE SISTEMA: Você é a IA 'Sexta-Feira'. Responda à pergunta do jogador usando o dossiê acima para saber exatamente as mecânicas, magias, armas, e elementos dele, além da Lore. É ESTRITAMENTE PROIBIDO inventar histórias fora dos Registros.]`;
+            // 1. Roteador: Descobre o que o jogador quer saber
+            const msgLower = msgUsuario.toLowerCase();
+            const querSaberLore = ['história', 'historia', 'lore', 'resumo', 'aconteceu', 'sessão', 'sessao', 'npc', 'arco', 'capítulo', 'capitulo', 'vilão', 'passado', 'onde'].some(k => msgLower.includes(k));
+            const querSaberFicha = ['arma', 'dano', 'hp', 'vida', 'mana', 'aura', 'chakra', 'magia', 'poder', 'elemento', 'fraqueza', 'bater', 'atacar', 'status', 'ficha', 'inventário', 'inventario'].some(k => msgLower.includes(k));
+
+            let dossieOculto = `[INFO] Nome:${cxt.dadosPersonagem.nome}|Classe:${cxt.dadosPersonagem.classe}`;
+
+            if (querSaberLore && !querSaberFicha) {
+                // Foco 100% na História
+                let loreFull = cxt.loreAtiva;
+                if (loreFull.length > 1500) loreFull = "..." + loreFull.slice(-1500); 
+                dossieOculto += `|LORE:${loreFull}`;
+            } else if (querSaberFicha && !querSaberLore) {
+                // Foco 100% na Ficha de Combate
+                dossieOculto += `|Vida:${cxt.statusVitais.hp}|Mana:${cxt.statusVitais.mana}|Aura:${cxt.statusVitais.aura}|Arma:${cxt.combate.armasEquipadas.join(', ')}|Magias:${cxt.combate.magiasPreparadas.join(', ')}|Poderes:${cxt.combate.poderesAtivos.join(', ')}`;
+            } else {
+                // Híbrido (Um pouco de cada)
+                let loreMista = cxt.loreAtiva;
+                if (loreMista.length > 700) loreMista = "..." + loreMista.slice(-700);
+                dossieOculto += `|Arma:${cxt.combate.armasEquipadas[0] || 'N/A'}|Magias:${cxt.combate.magiasPreparadas.slice(0,2).join(', ')}|LORE:${loreMista}`;
+            }
+
+            // 2. Monta o payload respeitando o limite de 1900 letras
+            let promptFinal = `${dossieOculto}\n\nMENSAGEM: ${msgUsuario || 'Resumo do anexo.'}`;
+            if (promptFinal.length > 1900) {
+                promptFinal = promptFinal.substring(0, 1900);
+            }
 
             const payload = { 
-                mensagem: `${dossieOculto}\n\nMENSAGEM DO JOGADOR: ${msgUsuario || 'Resuma o documento anexado.'}`, 
+                mensagem: promptFinal, 
                 contextoFicha: cxt 
             };
             if (textoAnexo) payload.conteudoArquivo = textoAnexo;
@@ -459,7 +472,7 @@ Lore Registrada (Arco Atual): ${cxt.loreAtiva}
             setHistorico(prev => [...prev, { role: 'ai', texto: resultado.data?.resposta || 'Sem resposta.' }]);
         } catch (err) { 
             console.error(err);
-            setHistorico(prev => [...prev, { role: 'erro', texto: 'Erro ao contactar a IA.' }]); 
+            setHistorico(prev => [...prev, { role: 'erro', texto: 'Erro ao contactar a IA. Limite excedido ou falha de rede.' }]); 
         }
         finally { setCarregando(false); }
     }, [mensagem, arquivoTexto, nomeArquivo, carregando, montarContextoFicha]);
