@@ -351,50 +351,6 @@ export function AIFormProvider({ children }) {
 
     useEffect(() => { if (subAba === 'chat' && chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight; }, [historico, subAba]);
 
-    const montarContextoFicha = useCallback(() => {
-        if (!minhaFicha) return { nome: meuNome };
-        
-        const bio = minhaFicha.bio || {};
-        const hierarquia = minhaFicha.hierarquia || {};
-        
-        const vitais = {
-            hp: `${minhaFicha.vida?.atual || 0}/${minhaFicha.vida?.base || 0}`,
-            mana: `${minhaFicha.mana?.atual || 0}/${minhaFicha.mana?.base || 0}`,
-            aura: `${minhaFicha.aura?.atual || 0}/${minhaFicha.aura?.base || 0}`,
-            chakra: `${minhaFicha.chakra?.atual || 0}/${minhaFicha.chakra?.base || 0}`,
-        };
-        
-        // 🔥 AGORA ELA SEPARA ARMAS EQUIPADAS DAS GUARDADAS 🔥
-        const inventarioDeArmas = (minhaFicha.inventario || []).filter(i => i.tipo === 'arma');
-        const armasEquipadas = inventarioDeArmas.filter(i => i.equipado).map(a => `${a.nome}`);
-        const armasGuardadas = inventarioDeArmas.filter(i => !i.equipado).map(a => `${a.nome}`);
-
-        const magiasPreparadas = (minhaFicha.ataquesElementais || []).filter(m => m.equipado).map(m => `${m.nome}`);
-        const poderesAtivos = (minhaFicha.poderes || []).filter(p => p.ativa).map(p => `${p.nome}`);
-
-        let loreAtual = "Vazio.";
-        if (capituloAtivoObj && arcoAtivoObj) {
-            loreAtual = `Capítulo: ${capituloAtivoObj.titulo} | Arco: ${arcoAtivoObj.titulo}\nTexto: ${arcoAtivoObj.texto}`; 
-        }
-
-        return {
-            dadosPersonagem: { nome: meuNome, raca: bio.raca || 'N/A', classe: bio.classe || 'N/A' },
-            statusVitais: vitais,
-            dominiosMisticos: {
-                poder: hierarquia.poder ? `${hierarquia.poderNome}` : 'N/A',
-                infinity: hierarquia.infinity ? `${hierarquia.infinityNome}` : 'N/A',
-                singularidade: hierarquia.singularidade ? `Grau ${hierarquia.singularidade}` : 'N/A'
-            },
-            combate: {
-                armasEquipadas: armasEquipadas.length > 0 ? armasEquipadas : ['Nenhuma'],
-                armasGuardadas: armasGuardadas.length > 0 ? armasGuardadas : ['Nenhuma'],
-                magiasPreparadas: magiasPreparadas.length > 0 ? magiasPreparadas : ['Nenhuma'],
-                poderesAtivos: poderesAtivos.length > 0 ? poderesAtivos : ['Nenhum']
-            },
-            loreAtiva: loreAtual
-        };
-    }, [minhaFicha, meuNome, capituloAtivoObj, arcoAtivoObj]);
-
     const extrairTextoPDF = useCallback(async (file) => {
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -423,6 +379,38 @@ export function AIFormProvider({ children }) {
         finally { e.target.value = ''; }
     }, [extrairTextoPDF]);
 
+    const montarContextoFicha = useCallback(() => {
+        if (!minhaFicha) return { nome: meuNome };
+        const bio = minhaFicha.bio || {};
+        
+        // 🔥 O WINRAR DE ITENS: Comprime os dados para caber tudo sem estourar o limite 🔥
+        const formatarItem = (i) => {
+            const raridade = i.raridade || 'Comum';
+            const tipo = i.armaTipo || i.tipo || 'Item';
+            const dano = (i.dadosQtd && i.dadosQtd > 0) ? `${i.dadosQtd}d${i.dadosFaces||20}` : 'SemDados';
+            return `${i.nome}[${raridade}/${tipo}/Dano:${dano}]`;
+        };
+
+        const inventarioDeArmas = (minhaFicha.inventario || []).filter(i => i.tipo === 'arma');
+        const armasEquipadas = inventarioDeArmas.filter(i => i.equipado).map(formatarItem);
+        const armasGuardadas = inventarioDeArmas.filter(i => !i.equipado).map(formatarItem);
+
+        const magiasPreparadas = (minhaFicha.ataquesElementais || []).filter(m => m.equipado).map(m => `${m.nome}[${m.elemento||'Neutro'}]`);
+        const poderesAtivos = (minhaFicha.poderes || []).filter(p => p.ativa).map(p => `${p.nome}[${p.vertente||'Padrão'}]`);
+
+        return {
+            dadosPersonagem: { nome: meuNome, raca: bio.raca || 'N/A', classe: bio.classe || 'N/A' },
+            statusVitais: { hp: minhaFicha.vida?.atual||0, mana: minhaFicha.mana?.atual||0, aura: minhaFicha.aura?.atual||0 },
+            combate: {
+                armasEquipadas: armasEquipadas.length > 0 ? armasEquipadas : ['Desarmado'],
+                armasGuardadas: armasGuardadas.length > 0 ? armasGuardadas : ['Vazio'],
+                magiasPreparadas: magiasPreparadas.length > 0 ? magiasPreparadas : ['Nenhuma'],
+                poderesAtivos: poderesAtivos.length > 0 ? poderesAtivos : ['Nenhum']
+            }
+        };
+    }, [minhaFicha, meuNome]);
+
+    // 🔥 O RAG (RECUPERAÇÃO INTELIGENTE DE LORE E FICHA) 🔥
     const enviarMensagem = useCallback(async () => {
         if ((!mensagem.trim() && !arquivoTexto) || carregando) return;
         const msgUsuario = mensagem.trim();
@@ -437,31 +425,46 @@ export function AIFormProvider({ children }) {
         try {
             const chamarIA = httpsCallable(functions, 'falarComSextaFeira');
             const cxt = montarContextoFicha();
-            
             const msgLower = msgUsuario.toLowerCase();
-            const querSaberLore = ['história', 'historia', 'lore', 'resumo', 'aconteceu', 'sessão', 'sessao', 'npc', 'arco', 'capítulo', 'capitulo', 'vilão', 'passado', 'onde'].some(k => msgLower.includes(k));
             
-            // Adicionado 'guardada', 'mochila' e afins nas keywords da Ficha
-            const querSaberFicha = ['arma', 'dano', 'hp', 'vida', 'mana', 'aura', 'chakra', 'magia', 'poder', 'elemento', 'fraqueza', 'bater', 'atacar', 'status', 'ficha', 'inventário', 'inventario', 'guardada', 'mochila'].some(k => msgLower.includes(k));
+            // 1. DETECTOR DE INTENÇÃO (Ficha ou História?)
+            const querSaberLore = ['história', 'historia', 'lore', 'resumo', 'aconteceu', 'sessão', 'sessao', 'npc', 'arco', 'capítulo', 'capitulo', 'vilão', 'passado', 'onde', 'quem'].some(k => msgLower.includes(k));
+            const querSaberFicha = ['arma', 'dano', 'hp', 'vida', 'mana', 'aura', 'chakra', 'magia', 'poder', 'elemento', 'fraqueza', 'bater', 'atacar', 'status', 'ficha', 'inventário', 'inventario', 'guardada', 'mochila', 'raridade'].some(k => msgLower.includes(k));
 
+            // 2. MOTOR RAG DE LORE: Vasculha TODOS os arcos atrás de palavras-chave
+            let todaLore = "";
+            capitulosPresente.forEach(c => c.arcos.forEach(a => { todaLore += a.texto + "\n"; }));
+            capitulosFuturo.forEach(c => c.arcos.forEach(a => { todaLore += a.texto + "\n"; }));
+
+            let loreFiltrada = "";
+            // Extrai palavras úteis da pergunta do usuário (ignorando artigos e palavras curtas)
+            const keywords = msgLower.replace(/[?!.,]/g, '').split(/\s+/).filter(w => w.length > 4 && !['sobre', 'minha', 'nossa', 'quais'].includes(w));
+            
+            if (keywords.length > 0) {
+                const paragrafos = todaLore.split('\n').filter(p => p.trim().length > 10);
+                const paragrafosRelevantes = paragrafos.filter(p => keywords.some(kw => p.toLowerCase().includes(kw)));
+                if (paragrafosRelevantes.length > 0) {
+                    loreFiltrada = paragrafosRelevantes.join(' [...] ').substring(0, 600); // Corta em 600 chars pra não estourar o Firebase
+                }
+            }
+            if (!loreFiltrada) {
+                loreFiltrada = (arcoAtivoObj?.texto || '').slice(-600); // Se não achou nada, manda o final do arco atual
+            }
+
+            // 3. MONTAGEM DO DOSSIÊ DINÂMICO
             let dossieOculto = `[INFO] Nome:${cxt.dadosPersonagem.nome}|Classe:${cxt.dadosPersonagem.classe}`;
 
             if (querSaberLore && !querSaberFicha) {
-                let loreFull = cxt.loreAtiva;
-                if (loreFull.length > 1500) loreFull = "..." + loreFull.slice(-1500); 
-                dossieOculto += `|LORE:${loreFull}`;
+                dossieOculto += `|LORE RELEVANTE:${loreFiltrada}`;
             } else if (querSaberFicha && !querSaberLore) {
-                // 🔥 AQUI MUDOU! AGORA ELA SABE O QUE ESTÁ EQUIPADO E O QUE ESTÁ GUARDADO 🔥
-                dossieOculto += `|Vida:${cxt.statusVitais.hp}|Mana:${cxt.statusVitais.mana}|Aura:${cxt.statusVitais.aura}|Armas(Equipadas):${cxt.combate.armasEquipadas.join(', ')}|Armas(Guardadas):${cxt.combate.armasGuardadas.join(', ')}|Magias:${cxt.combate.magiasPreparadas.join(', ')}|Poderes:${cxt.combate.poderesAtivos.join(', ')}`;
+                dossieOculto += `|Vida:${cxt.statusVitais.hp}|Mana:${cxt.statusVitais.mana}|Armas(Equipadas):${cxt.combate.armasEquipadas.join('; ')}|Armas(Guardadas):${cxt.combate.armasGuardadas.join('; ')}|Magias:${cxt.combate.magiasPreparadas.join(', ')}|Poderes:${cxt.combate.poderesAtivos.join(', ')}`;
             } else {
-                let loreMista = cxt.loreAtiva;
-                if (loreMista.length > 700) loreMista = "..." + loreMista.slice(-700);
-                dossieOculto += `|Armas:${cxt.combate.armasEquipadas.join(',')} e no inventario:${cxt.combate.armasGuardadas.join(',')}|Magias:${cxt.combate.magiasPreparadas.slice(0,2).join(', ')}|LORE:${loreMista}`;
+                dossieOculto += `|Armas(Eqp/Grd):${cxt.combate.armasEquipadas[0]||'ND'} / ${cxt.combate.armasGuardadas[0]||'ND'}|Magias:${cxt.combate.magiasPreparadas.slice(0,2).join(', ')}|LORE:${loreFiltrada}`;
             }
 
             let promptFinal = `${dossieOculto}\n\nMENSAGEM: ${msgUsuario || 'Resumo do anexo.'}`;
             if (promptFinal.length > 1900) {
-                promptFinal = promptFinal.substring(0, 1900);
+                promptFinal = promptFinal.substring(0, 1900); // Segurança final contra o limite de 2000
             }
 
             const payload = { 
@@ -477,7 +480,7 @@ export function AIFormProvider({ children }) {
             setHistorico(prev => [...prev, { role: 'erro', texto: 'Erro ao contactar a IA. Limite excedido ou falha de rede.' }]); 
         }
         finally { setCarregando(false); }
-    }, [mensagem, arquivoTexto, nomeArquivo, carregando, montarContextoFicha]);
+    }, [mensagem, arquivoTexto, nomeArquivo, carregando, montarContextoFicha, capitulosPresente, capitulosFuturo, arcoAtivoObj]);
 
     const handleKeyDown = useCallback((e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviarMensagem(); } }, [enviarMensagem]);
 
