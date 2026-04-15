@@ -37,7 +37,6 @@ export function useAIForm() {
     return ctx;
 }
 
-// 🔥 SCRIPT DE MIGRAÇÃO: Transforma capítulos antigos (texto simples) em Capítulos com Arcos 🔥
 const migrarParaArcos = (salvoStr) => {
     try {
         if (!salvoStr) return null;
@@ -75,7 +74,6 @@ export function AIFormProvider({ children }) {
     const [novoPersonagem, setNovoPersonagem] = useState('');
     const [novoAvatar, setNovoAvatar] = useState('');
     
-    // ESTADOS PRESENTES
     const [capitulosPresente, setCapitulosPresente] = useState(() => {
         return migrarParaArcos(localStorage.getItem('rpgSextaFeira_capitulos')) || 
                [{ id: 1, titulo: 'Capítulo 1 - Reino de Faku', arcos: [{ id: 11, titulo: 'Arco 1 - O Início', texto: 'A jornada começa...' }], tierList: [] }];
@@ -83,7 +81,6 @@ export function AIFormProvider({ children }) {
     const [capituloAtivoId, setCapituloAtivoId] = useState(() => Number(localStorage.getItem('rpgSextaFeira_capituloAtivo')) || 1);
     const [arcoAtivoIdPresente, setArcoAtivoIdPresente] = useState(() => Number(localStorage.getItem('rpgSextaFeira_arcoAtivoPresente')) || 11);
 
-    // ESTADOS FUTUROS
     const [capitulosFuturo, setCapitulosFuturo] = useState(() => {
         return migrarParaArcos(localStorage.getItem('rpgSextaFeira_capitulosFuturo')) || 
                [{ id: 100, titulo: 'Ecos do Futuro - Parte 1', arcos: [{ id: 101, titulo: 'Arco Principal', texto: 'Crônicas do Amanhã...' }], tierList: [] }];
@@ -91,7 +88,6 @@ export function AIFormProvider({ children }) {
     const [capFuturoAtivoId, setCapFuturoAtivoId] = useState(() => Number(localStorage.getItem('rpgSextaFeira_capFuturoAtivo')) || 100);
     const [arcoAtivoIdFuturo, setArcoAtivoIdFuturo] = useState(() => Number(localStorage.getItem('rpgSextaFeira_arcoAtivoFuturo')) || 101);
 
-    // SEGURANÇA DE SINCRONIZAÇÃO DE ARCOS
     useEffect(() => {
         const cap = capitulosPresente.find(c => c.id === capituloAtivoId);
         if (cap && cap.arcos.length > 0 && !cap.arcos.some(a => a.id === arcoAtivoIdPresente)) setArcoAtivoIdPresente(cap.arcos[0].id);
@@ -217,7 +213,6 @@ export function AIFormProvider({ children }) {
         setNovoPersonagem(''); setNovoAvatar('');
     }, [novoPersonagem, novoAvatar, moverPersonagem]);
 
-    // 🔥 GESTÃO DE CAPÍTULOS E ARCOS 🔥
     const adicionarCapitulo = useCallback(() => {
         const tituloCap = window.prompt(`Nome do novo Capítulo para o ${loreFoco}:`);
         if (!tituloCap || tituloCap.trim() === '') return;
@@ -308,7 +303,6 @@ export function AIFormProvider({ children }) {
         }));
     }, [loreFoco, capituloAtivoId, capFuturoAtivoId, arcoAtivoIdPresente, arcoAtivoIdFuturo]);
 
-    // 🔥 NOVO MOTOR: Injeta texto na Hierarquia Correta (Chat e Gravador) 🔥
     const salvarNoRegistro = useCallback((texto, tituloRegistro, destinoVal, foco = 'presente') => {
         const timestamp = new Date().toLocaleTimeString('pt-BR');
         const separador = `\n\n================================\n[${tituloRegistro} - ${timestamp}]\n================================\n\n`;
@@ -337,7 +331,6 @@ export function AIFormProvider({ children }) {
             }));
             setCapAtivo(capId); setArcAtivo(newArcId); setLoreFoco(foco);
         } else {
-            // Formato existente: capId_arcoId
             const [capIdStr, arcIdStr] = destinoVal.split('_');
             const capId = Number(capIdStr); const arcId = Number(arcIdStr);
             setCaps(prev => prev.map(c => {
@@ -358,17 +351,48 @@ export function AIFormProvider({ children }) {
 
     useEffect(() => { if (subAba === 'chat' && chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight; }, [historico, subAba]);
 
+    // 🔥 O CÉREBRO DA ONISCIÊNCIA DA SEXTA-FEIRA 🔥
     const montarContextoFicha = useCallback(() => {
-        const bio = minhaFicha?.bio || {};
-        const hierarquia = minhaFicha?.hierarquia || {};
-        return {
-            nome: meuNome, raca: bio.raca || 'Desconhecida', classe: bio.classe || 'Desconhecida', nivel: minhaFicha?.ascensaoBase || 1,
-            hp: minhaFicha?.vida?.atual ?? 0, hpMax: minhaFicha?.vida?.base ?? 0, mana: minhaFicha?.mana?.atual ?? 0, manaMax: minhaFicha?.mana?.base ?? 0,
-            forca: minhaFicha?.forca?.base ?? 0, destreza: minhaFicha?.destreza?.base ?? 0, inteligencia: minhaFicha?.inteligencia?.base ?? 0, sabedoria: minhaFicha?.sabedoria?.base ?? 0, carisma: minhaFicha?.carisma?.base ?? 0, constituicao: minhaFicha?.constituicao?.base ?? 0,
-            hierarquia: { poder: hierarquia.poder || false, poderNome: hierarquia.poderNome || '', infinity: hierarquia.infinity || false, infinityNome: hierarquia.infinityNome || '', singularidade: hierarquia.singularidade || '', singularidadeNome: hierarquia.singularidadeNome || '' },
-            poderes: (minhaFicha?.poderes || []).map(p => p.nome).slice(0, 10), inventario: (minhaFicha?.inventario || []).map(i => i.nome).slice(0, 10)
+        if (!minhaFicha) return { nome: meuNome };
+        
+        const bio = minhaFicha.bio || {};
+        const hierarquia = minhaFicha.hierarquia || {};
+        
+        const vitais = {
+            hp: `${minhaFicha.vida?.atual || 0}/${minhaFicha.vida?.base || 0}`,
+            mana: `${minhaFicha.mana?.atual || 0}/${minhaFicha.mana?.base || 0}`,
+            aura: `${minhaFicha.aura?.atual || 0}/${minhaFicha.aura?.base || 0}`,
+            chakra: `${minhaFicha.chakra?.atual || 0}/${minhaFicha.chakra?.base || 0}`,
         };
-    }, [minhaFicha, meuNome]);
+        
+        const armasEquipadas = (minhaFicha.inventario || []).filter(i => i.equipado && i.tipo === 'arma').map(a => `${a.nome} (${a.dadosQtd}d${a.dadosFaces})`);
+        const magiasPreparadas = (minhaFicha.ataquesElementais || []).filter(m => m.equipado).map(m => `${m.nome} [${m.elemento}]`);
+        const poderesAtivos = (minhaFicha.poderes || []).filter(p => p.ativa).map(p => `${p.nome} [${p.vertente}]`);
+
+        // Extrai a Lore ativa do momento (limitado para não estourar a memória do Firebase)
+        let loreAtual = "Nenhum registro selecionado na Aba Lore.";
+        if (capituloAtivoObj && arcoAtivoObj) {
+            loreAtual = `Capítulo: ${capituloAtivoObj.titulo} | Arco: ${arcoAtivoObj.titulo}\nTexto: ${arcoAtivoObj.texto.substring(0, 3000)}`; 
+        }
+
+        return {
+            dadosPersonagem: {
+                nome: meuNome, raca: bio.raca || 'Desconhecida', classe: bio.classe || 'Mundano',
+            },
+            statusVitais: vitais,
+            dominiosMisticos: {
+                poder: hierarquia.poder ? `${hierarquia.poderNome} (${hierarquia.poderVertente || 'Padrão'})` : 'Nenhum',
+                infinity: hierarquia.infinity ? `${hierarquia.infinityNome} (${hierarquia.infinityVertente || 'Padrão'})` : 'Nenhum',
+                singularidade: hierarquia.singularidade ? `Grau ${hierarquia.singularidade} - ${hierarquia.singularidadeNome}` : 'Nenhuma'
+            },
+            combate: {
+                armasEquipadas: armasEquipadas.length > 0 ? armasEquipadas : ['Desarmado'],
+                magiasPreparadas: magiasPreparadas.length > 0 ? magiasPreparadas : ['Nenhuma'],
+                poderesAtivos: poderesAtivos.length > 0 ? poderesAtivos : ['Nenhum']
+            },
+            loreAtiva: loreAtual
+        };
+    }, [minhaFicha, meuNome, capituloAtivoObj, arcoAtivoObj]);
 
     const extrairTextoPDF = useCallback(async (file) => {
         const arrayBuffer = await file.arrayBuffer();
@@ -398,6 +422,7 @@ export function AIFormProvider({ children }) {
         finally { e.target.value = ''; }
     }, [extrairTextoPDF]);
 
+    // 🔥 INJETOR DE DOSSIÊ NA MENSAGEM 🔥
     const enviarMensagem = useCallback(async () => {
         if ((!mensagem.trim() && !arquivoTexto) || carregando) return;
         const msgUsuario = mensagem.trim();
@@ -406,18 +431,36 @@ export function AIFormProvider({ children }) {
         setMensagem(''); setArquivoTexto(''); setNomeArquivo('');
         
         const displayMsg = nomeAnexo ? `${msgUsuario || 'Analise o documento anexado.'}\n📄 [Arquivo: ${nomeAnexo}]` : msgUsuario;
-        setHistorico(prev => [...prev, { role: 'user', texto: displayMsg }]); setCarregando(true);
+        setHistorico(prev => [...prev, { role: 'user', texto: displayMsg }]); 
+        setCarregando(true);
         
         try {
             const chamarIA = httpsCallable(functions, 'falarComSextaFeira');
-            const instrucaoRestrita = "\n\n[DIRETRIZ DE SISTEMA: Aja de forma cirúrgica e objetiva. Baseie-se EXCLUSIVAMENTE nas informações fornecidas nesta mensagem ou no arquivo anexado. É ESTRITAMENTE PROIBIDO inventar histórias, adicionar 'lore', ou preencher lacunas de forma criativa. Atenha-se aos factos enviados.]";
+            const cxt = montarContextoFicha();
             
-            const payload = { mensagem: (msgUsuario || 'Resuma o documento anexado.') + instrucaoRestrita, contextoFicha: montarContextoFicha() };
+            // Aqui envelopamos o conhecimento dela antes de mandar pra nuvem
+            const dossieOculto = `[DOSSIÊ DE SISTEMA - STATUS DO JOGADOR]
+Nome: ${cxt.dadosPersonagem.nome} | Classe: ${cxt.dadosPersonagem.classe}
+HP: ${cxt.statusVitais.hp} | Mana: ${cxt.statusVitais.mana} | Aura: ${cxt.statusVitais.aura} | Chakra: ${cxt.statusVitais.chakra}
+Armas: ${cxt.combate.armasEquipadas.join(', ')}
+Magias: ${cxt.combate.magiasPreparadas.join(', ')}
+Poderes Ligados: ${cxt.combate.poderesAtivos.join(', ')}
+Hierarquia: Poder [${cxt.dominiosMisticos.poder}], Infinity [${cxt.dominiosMisticos.infinity}], Singularidade [${cxt.dominiosMisticos.singularidade}]
+Lore Registrada (Arco Atual): ${cxt.loreAtiva}
+[DIRETRIZ DE SISTEMA: Você é a IA 'Sexta-Feira'. Responda à pergunta do jogador usando o dossiê acima para saber exatamente as mecânicas, magias, armas, e elementos dele, além da Lore. É ESTRITAMENTE PROIBIDO inventar histórias fora dos Registros.]`;
+
+            const payload = { 
+                mensagem: `${dossieOculto}\n\nMENSAGEM DO JOGADOR: ${msgUsuario || 'Resuma o documento anexado.'}`, 
+                contextoFicha: cxt 
+            };
             if (textoAnexo) payload.conteudoArquivo = textoAnexo;
             
             const resultado = await chamarIA(payload);
             setHistorico(prev => [...prev, { role: 'ai', texto: resultado.data?.resposta || 'Sem resposta.' }]);
-        } catch (err) { setHistorico(prev => [...prev, { role: 'erro', texto: 'Erro ao contactar a IA.' }]); }
+        } catch (err) { 
+            console.error(err);
+            setHistorico(prev => [...prev, { role: 'erro', texto: 'Erro ao contactar a IA.' }]); 
+        }
         finally { setCarregando(false); }
     }, [mensagem, arquivoTexto, nomeArquivo, carregando, montarContextoFicha]);
 
@@ -434,7 +477,7 @@ export function AIFormProvider({ children }) {
         capituloAtivoObj, arcoAtivoObj, textoAtivo, tierListAtiva, poolPersonagens,
         moverPersonagem, handleDragStart, handleDragOver, handleDrop, adicionarCustomizado,
         adicionarCapitulo, editarTituloCapitulo, apagarCapitulo,
-        adicionarArco, editarTituloArco, apagarArco, // 🔥 Novas funções exportadas
+        adicionarArco, editarTituloArco, apagarArco, 
         atualizarTexto, salvarNoRegistro, 
         montarContextoFicha, enviarMensagem, handleKeyDown,
         arquivoTexto, nomeArquivo, setArquivoTexto, setNomeArquivo,
