@@ -850,19 +850,21 @@ export function MapaMestreGerenciadorZonas() {
 
 export function MapaRolagemRapida() {
     const ctx = useMapaForm();
-    if (!ctx) return FALLBACK;
+    if (!ctx) return <div style={{ color: '#888', padding: 10 }}>Mapa provider não encontrado</div>;
+    
     const { 
         mapStat, setMapStat, mapQD, setMapQD, mapFD, setMapFD, mapBonus, setMapBonus, 
         mapVantagens, changeVantagem, mapDesvantagens, changeDesvantagem, mapUsarProf, 
         setMapUsarProf, alvoSelecionado, dummies, fichaSegura, cenaAtual, rolarAcertoRapido, isModoRP
     } = ctx;
 
-    if (isModoRP) return null;
+    // 🔥 REMOVIDO O BLOQUEIO! Agora a barra aparece na Taverna também! 🔥
 
     let dQuad = 0; let alcanceEf = 1; let maxArea = 0; let foraAlc = false;
     const alvoD = alvoSelecionado && dummies?.[alvoSelecionado] ? dummies[alvoSelecionado] : null;
 
-    if (alvoD) {
+    // Só calcula distâncias físicas se NÃO estivermos na Taverna
+    if (alvoD && !isModoRP) {
         const dx = Math.abs((fichaSegura?.posicao?.x || 0) - (alvoD.posicao?.x || 0));
         const dy = Math.abs((fichaSegura?.posicao?.y || 0) - (alvoD.posicao?.y || 0));
         const dz = Math.abs((fichaSegura?.posicao?.z || 0) - (alvoD.posicao?.z || 0)) / (cenaAtual.escala || 1.5);
@@ -911,13 +913,20 @@ export function MapaRolagemRapida() {
             </div>
 
             <div style={{ flex: 1, textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10 }}>
-                {alvoD && (
+                {/* Oculta as distâncias físicas se estiver na Taverna */}
+                {alvoD && !isModoRP && (
                     <span style={{ fontSize: '0.85em', color: foraAlc ? '#ff003c' : '#0f0', fontWeight: 'bold' }}>
                         Alvo a {dQuad}Q (Alcance: {alcanceEf}Q) {foraAlc ? '❌' : '✅'}
                     </span>
                 )}
-                {!alvoD && <span style={{ fontSize: '0.85em', color: '#888', fontStyle: 'italic' }}>Livre</span>}
-                <button className="btn-neon btn-gold" onClick={() => !foraAlc && rolarAcertoRapido()} disabled={foraAlc} style={{ margin: 0, padding: '4px 15px', opacity: foraAlc ? 0.5 : 1, borderColor: foraAlc ? '#555' : '#ffcc00' }}>
+                {(!alvoD || isModoRP) && <span style={{ fontSize: '0.85em', color: '#888', fontStyle: 'italic' }}>Livre</span>}
+                
+                <button 
+                    className="btn-neon btn-gold" 
+                    onClick={() => (!foraAlc || isModoRP) && rolarAcertoRapido()} 
+                    disabled={foraAlc && !isModoRP} 
+                    style={{ margin: 0, padding: '4px 15px', opacity: (foraAlc && !isModoRP) ? 0.5 : 1, borderColor: (foraAlc && !isModoRP) ? '#555' : '#ffcc00' }}
+                >
                     🎲 ROLAR
                 </button>
             </div>
