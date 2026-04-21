@@ -6,12 +6,13 @@ import {
     AtaqueArmaEquipada,
     AtaqueArmaVazia,
     AtaqueHabilidadesAtivas,
-    AtaqueMagiasPreparadas, // 🔥 NOVO IMPORT!
+    AtaqueMagiasPreparadas,
+    AtaqueDanoCustomizado, // 🔥 IMPORTADO AQUI
     AtaqueBotoesAcao
 } from './AtaqueSubComponents';
 
 export default function AtaquePanel({ className, children }) {
-    const hasChildren = React.Children.count(children) > 0
+    const hasChildren = React.Children.count(children) > 0;
     return (
         <AtaqueFormProvider>
             <div className={['ataque-panel', className].filter(Boolean).join(' ')}>
@@ -23,6 +24,10 @@ export default function AtaquePanel({ className, children }) {
                         <AtaqueArmaVazia />
                         <AtaqueHabilidadesAtivas />
                         <AtaqueMagiasPreparadas />
+                        
+                        {/* 🔥 MODO DEUS INJETADO ANTES DOS BOTÕES 🔥 */}
+                        <AtaqueDanoCustomizado />
+                        
                         <AtaqueBotoesAcao />
                     </>
                 )}

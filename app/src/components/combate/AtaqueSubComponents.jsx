@@ -16,10 +16,8 @@ export function AtaqueFuriaDisplay() {
     return (
         <div className="def-box fade-in" style={{ marginBottom: 15, background: 'rgba(255, 0, 0, 0.1)', border: '1px solid rgba(255,0,0,0.5)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ color: '#ff0000', margin: 0, textShadow: '0 0 5px #ff0000' }}>&#x1fa78; Furia Berserker (Mad Enhancement)</h3>
-                <button className="btn-neon btn-small" onClick={acalmarFuria} style={{ margin: 0, borderColor: furiaAcalmadaMsg ? '#0f0' : '#fff', color: furiaAcalmadaMsg ? '#0f0' : '#fff' }}>
-                    {furiaAcalmadaMsg ? '\u2728 FURIA RESETADA!' : 'Acalmar Furia'}
-                </button>
+                <h3 style={{ color: '#ff0000', margin: 0, textShadow: '0 0 5px #ff0000' }}>🩸 Furia Berserker (Mad Enhancement)</h3>
+                <button className="btn-neon btn-small" onClick={acalmarFuria} style={{ margin: 0, borderColor: furiaAcalmadaMsg ? '#0f0' : '#fff', color: furiaAcalmadaMsg ? '#0f0' : '#fff' }}>{furiaAcalmadaMsg ? '✨ FÚRIA RESETADA!' : 'Acalmar Fúria'}</button>
             </div>
             <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div style={{ background: 'rgba(0,0,0,0.5)', padding: '10px', borderRadius: '5px' }}>
@@ -27,16 +25,11 @@ export function AtaqueFuriaDisplay() {
                     <span style={{ color: '#ffcc00', fontSize: '1.2em', fontWeight: 'bold' }}>{percAtualLostFloor}%</span>
                 </div>
                 <div style={{ background: 'rgba(255,0,0,0.2)', padding: '10px', borderRadius: '5px', borderLeft: '3px solid #ff0000' }}>
-                    <span style={{ color: '#aaa', fontSize: '0.8em', display: 'block' }}>Maximo Atingido (Mantido apos Cura):</span>
+                    <span style={{ color: '#aaa', fontSize: '0.8em', display: 'block' }}>Máximo Atingido (Mantido após Cura):</span>
                     <span style={{ color: '#ff0000', fontSize: '1.2em', fontWeight: 'bold' }}>{percEfetivoParaDisplay}%</span>
                 </div>
             </div>
-            <p style={{ color: '#0f0', fontSize: '0.9em', marginTop: 10, marginBottom: 0 }}>
-                &#8627; Bonus no Multiplicador Geral: <strong style={{ color: '#fff' }}>+{multiplicadorFuriaVisor}x</strong>
-            </p>
-            <p style={{ color: '#aaa', fontSize: '0.75em', marginTop: 5, marginBottom: 0 }}>
-                <i className="fas fa-info-circle"></i> Lembre-se: O botao de Acalmar Furia so fara efeito verdadeiro se voce <strong>curar a sua vida primeiro</strong>. Se a Vida Atual estiver baixa, a furia volta de imediato!
-            </p>
+            <p style={{ color: '#0f0', fontSize: '0.9em', marginTop: 10, marginBottom: 0 }}>↳ Bônus no Multiplicador Geral: <strong style={{ color: '#fff' }}>+{multiplicadorFuriaVisor}x</strong></p>
         </div>
     );
 }
@@ -44,33 +37,47 @@ export function AtaqueFuriaDisplay() {
 export function AtaqueCriticoConfig() {
     const ctx = useAtaqueForm();
     if (!ctx) return PROVIDER_FALLBACK;
-
-    const { critNormalMin, setCritNormalMin, critNormalMax, setCritNormalMax, critFatalMin, setCritFatalMin, critFatalMax, setCritFatalMax, autoCritNormal, autoCritFatal, forcarCritNormal, setForcarCritNormal, forcarCritFatal, setForcarCritFatal } = ctx;
+    const {
+        critNormalMin, setCritNormalMin, critNormalMax, setCritNormalMax,
+        critFatalMin, setCritFatalMin, critFatalMax, setCritFatalMax,
+        autoCritNormal, autoCritFatal, forcarCritNormal, setForcarCritNormal,
+        forcarCritFatal, setForcarCritFatal
+    } = ctx;
 
     return (
-        <div className="def-box" style={{ marginBottom: 15, border: (autoCritFatal ? '2px solid #ff003c' : autoCritNormal ? '2px solid #ffcc00' : 'none') }}>
-            <h3 style={{ color: '#ffcc00', marginBottom: 10 }}>Configuracoes de Critico</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15, marginBottom: 10 }}>
-                <div style={{ background: 'rgba(255,204,0,0.1)', padding: 8, borderRadius: 5 }}>
-                    <span style={{ color: '#ffcc00', fontSize: '0.85em', fontWeight: 'bold' }}>Critico Normal (x2)</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 5 }}>
-                        <span style={{ color: '#aaa', fontSize: '0.8em' }}>Min:</span><input className="input-neon" type="number" value={critNormalMin} onChange={e => setCritNormalMin(e.target.value)} style={{ width: 45, padding: 2 }} />
-                        <span style={{ color: '#aaa', fontSize: '0.8em' }}>Max:</span><input className="input-neon" type="number" value={critNormalMax} onChange={e => setCritNormalMax(e.target.value)} style={{ width: 45, padding: 2 }} />
+        <div className="def-box" style={{ marginBottom: 15 }}>
+            <h3 style={{ color: '#0ff', margin: '0 0 10px 0' }}>Configuração de Crítico</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 }}>
+                <div style={{ background: 'rgba(0,0,0,0.3)', padding: 10, borderRadius: 5, borderLeft: '3px solid #ffcc00' }}>
+                    <div style={{ color: '#ffcc00', fontSize: '0.85em', fontWeight: 'bold', marginBottom: 5 }}>⚡ CRÍTICO NORMAL</div>
+                    <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+                        <input className="input-neon" type="number" min="1" max="20" value={critNormalMin} onChange={e => setCritNormalMin(e.target.value)} style={{ width: 50, padding: 4 }} />
+                        <span style={{ color: '#aaa' }}>a</span>
+                        <input className="input-neon" type="number" min="1" max="20" value={critNormalMax} onChange={e => setCritNormalMax(e.target.value)} style={{ width: 50, padding: 4 }} />
+                    </div>
+                    <div style={{ marginTop: 8, display: 'flex', gap: 10 }}>
+                        {autoCritNormal && <span style={{ background: '#ffcc00', color: '#000', padding: '2px 6px', borderRadius: 4, fontSize: '0.75em', fontWeight: 'bold' }}>AUTO ATIVADO</span>}
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#aaa', fontSize: '0.8em', cursor: 'pointer' }}>
+                            <input type="checkbox" checked={forcarCritNormal} onChange={e => setForcarCritNormal(e.target.checked)} /> Forçar Ativação
+                        </label>
                     </div>
                 </div>
-                <div style={{ background: 'rgba(255,0,60,0.1)', padding: 8, borderRadius: 5 }}>
-                    <span style={{ color: '#ff003c', fontSize: '0.85em', fontWeight: 'bold' }}>Critico Fatal (x4)</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 5 }}>
-                        <span style={{ color: '#aaa', fontSize: '0.8em' }}>Min:</span><input className="input-neon" type="number" value={critFatalMin} onChange={e => setCritFatalMin(e.target.value)} style={{ width: 45, padding: 2 }} />
-                        <span style={{ color: '#aaa', fontSize: '0.8em' }}>Max:</span><input className="input-neon" type="number" value={critFatalMax} onChange={e => setCritFatalMax(e.target.value)} style={{ width: 45, padding: 2 }} />
+
+                <div style={{ background: 'rgba(0,0,0,0.3)', padding: 10, borderRadius: 5, borderLeft: '3px solid #ff003c' }}>
+                    <div style={{ color: '#ff003c', fontSize: '0.85em', fontWeight: 'bold', marginBottom: 5 }}>🔥 CRÍTICO FATAL</div>
+                    <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+                        <input className="input-neon" type="number" min="1" max="20" value={critFatalMin} onChange={e => setCritFatalMin(e.target.value)} style={{ width: 50, padding: 4 }} />
+                        <span style={{ color: '#aaa' }}>a</span>
+                        <input className="input-neon" type="number" min="1" max="20" value={critFatalMax} onChange={e => setCritFatalMax(e.target.value)} style={{ width: 50, padding: 4 }} />
+                    </div>
+                    <div style={{ marginTop: 8, display: 'flex', gap: 10 }}>
+                        {autoCritFatal && <span style={{ background: '#ff003c', color: '#fff', padding: '2px 6px', borderRadius: 4, fontSize: '0.75em', fontWeight: 'bold' }}>AUTO ATIVADO</span>}
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#aaa', fontSize: '0.8em', cursor: 'pointer' }}>
+                            <input type="checkbox" checked={forcarCritFatal} onChange={e => setForcarCritFatal(e.target.checked)} /> Forçar Ativação
+                        </label>
                     </div>
                 </div>
             </div>
-            <div style={{ display: 'flex', gap: 15, padding: 10, background: '#111', borderRadius: 5 }}>
-                <label style={{ color: (autoCritNormal || forcarCritNormal) ? '#ffcc00' : '#888', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 5 }}><input type="checkbox" checked={autoCritNormal || forcarCritNormal} onChange={e => setForcarCritNormal(e.target.checked)} /> Ativar Critico (x2)</label>
-                <label style={{ color: (autoCritFatal || forcarCritFatal) ? '#ff003c' : '#888', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 5 }}><input type="checkbox" checked={autoCritFatal || forcarCritFatal} onChange={e => setForcarCritFatal(e.target.checked)} /> Ativar Critico Fatal (x4)</label>
-            </div>
-            {(autoCritNormal || autoCritFatal) && <p style={{ color: autoCritFatal ? '#ff003c' : '#ffcc00', fontSize: '0.85em', marginTop: 5, fontWeight: 'bold' }}>&#x26A1; O Sensor Tatico detectou que o seu ultimo ataque foi um Critico!</p>}
         </div>
     );
 }
@@ -78,33 +85,36 @@ export function AtaqueCriticoConfig() {
 export function AtaqueArmaEquipada() {
     const ctx = useAtaqueForm();
     if (!ctx) return PROVIDER_FALLBACK;
-
-    const { armaEquipada, armaStatusUsados, armaEnergiaCombustao, setArmaEnergiaCombustao, armaPercEnergia, setArmaPercEnergia, toggleArmaStat } = ctx;
+    const { armaEquipada, armaStatusUsados, toggleArmaStat, armaEnergiaCombustao, setArmaEnergiaCombustao, armaPercEnergia, setArmaPercEnergia } = ctx;
 
     if (!armaEquipada) return null;
 
     return (
-        <div className="def-box" style={{ marginBottom: 15 }}>
-            <h3 style={{ color: '#0f0', marginBottom: 10 }}>Arma: {armaEquipada.nome} ({armaEquipada.dadosQtd || 0}d{armaEquipada.dadosFaces || 20})</h3>
-            <div style={{ marginBottom: 10 }}>
-                <label style={{ color: '#aaa', fontSize: '0.85em' }}>Status usados pela arma:</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 5 }}>
-                    {STATS_LIST.map(st => (
-                        <label key={st.value} style={{ color: armaStatusUsados.includes(st.value) ? '#0f0' : '#888', fontSize: '0.9em', display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <input type="checkbox" value={st.value} checked={armaStatusUsados.includes(st.value)} onChange={() => toggleArmaStat(st.value)} />
-                            {st.label}
-                        </label>
-                    ))}
+        <div className="def-box" style={{ marginBottom: 15, borderLeft: '3px solid #0f0' }}>
+            <h3 style={{ color: '#0f0', margin: '0 0 10px 0' }}>⚔️ Arma Equipada: {armaEquipada.nome}</h3>
+            <div style={{ display: 'flex', gap: 15, flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: '200px' }}>
+                    <label style={{ color: '#aaa', fontSize: '0.85em' }}>Status Somados ao Multiplicador</label>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 5 }}>
+                        {STATS_LIST.map(st => (
+                            <button key={st.value} className={`btn-neon ${armaStatusUsados.includes(st.value) ? 'btn-gold' : ''}`} onClick={() => toggleArmaStat(st.value)} style={{ padding: '4px 8px', fontSize: '0.75em', margin: 0 }}>
+                                {st.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div>
-                    <label style={{ color: '#aaa', fontSize: '0.85em' }}>Energia de Combustao</label>
-                    <select className="input-neon" value={armaEnergiaCombustao} onChange={e => setArmaEnergiaCombustao(e.target.value)}>
-                        {ENERGIA_LIST.map(en => <option key={en.value} value={en.value}>{en.label}</option>)}
-                    </select>
+                <div style={{ flex: 1, minWidth: '200px', background: 'rgba(0,255,255,0.05)', padding: 10, borderRadius: 5 }}>
+                    <label style={{ color: '#0ff', fontSize: '0.85em', fontWeight: 'bold' }}>Energia de Combustão da Arma</label>
+                    <div style={{ display: 'flex', gap: 10, marginTop: 5 }}>
+                        <select className="input-neon" value={armaEnergiaCombustao} onChange={e => setArmaEnergiaCombustao(e.target.value)} style={{ flex: 1, padding: 5 }}>
+                            {ENERGIA_LIST.map(en => <option key={en.value} value={en.value}>{en.label}</option>)}
+                        </select>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                            <input className="input-neon" type="number" min="0" max="100" value={armaPercEnergia} onChange={e => setArmaPercEnergia(e.target.value)} style={{ width: 60, padding: 5 }} />
+                            <span style={{ color: '#aaa' }}>%</span>
+                        </div>
+                    </div>
                 </div>
-                <div><label style={{ color: '#aaa', fontSize: '0.85em' }}>% Energia</label><input className="input-neon" type="number" min="0" value={armaPercEnergia} onChange={e => setArmaPercEnergia(e.target.value)} /></div>
             </div>
         </div>
     );
@@ -116,8 +126,8 @@ export function AtaqueArmaVazia() {
     if (ctx.armaEquipada) return null;
 
     return (
-        <div className="def-box" style={{ marginBottom: 15 }}>
-            <p style={{ color: '#888', margin: 0 }}>Nenhuma arma equipada. Equipe uma arma no Arsenal ou use habilidades com dados de dano.</p>
+        <div style={{ color: '#888', fontStyle: 'italic', marginBottom: 15, textAlign: 'center' }}>
+            Nenhuma arma principal equipada no Inventário.
         </div>
     );
 }
@@ -125,106 +135,107 @@ export function AtaqueArmaVazia() {
 export function AtaqueHabilidadesAtivas() {
     const ctx = useAtaqueForm();
     if (!ctx) return PROVIDER_FALLBACK;
-    const { poderesAtivos, skillConfigs, minhaFicha, updateSkillConfig, toggleSkillStat } = ctx;
+    const { poderesAtivos, skillConfigs, updateSkillConfig, toggleSkillStat, armaEquipada } = ctx;
+
+    if (!poderesAtivos || poderesAtivos.length === 0) return null;
 
     return (
-        <div className="def-box" style={{ marginBottom: 15 }}>
-            <h3 style={{ color: '#f0f', marginBottom: 10 }}>Habilidades Ativas</h3>
-            {poderesAtivos.length === 0 ? (
-                <p style={{ color: '#888', margin: 0 }}>Nenhuma habilidade ativa. Ative habilidades na aba Poderes.</p>
-            ) : (
-                poderesAtivos.map(p => {
-                    const cfg = skillConfigs[p.id] || { statusUsados: ['forca'], energiaCombustao: 'mana' };
-                    const dadosTxt = (p.dadosQtd > 0) ? `${p.dadosQtd}d${p.dadosFaces || 20}` : 'Sem dados';
-                    const custoTxt = (p.custoPercentual > 0) ? `${p.custoPercentual}%` : '0%';
-                    const armaVinc = p.armaVinculada ? (minhaFicha.inventario || []).find(i => String(i.id) === String(p.armaVinculada)) : null;
-
+        <div className="def-box" style={{ marginBottom: 15, borderLeft: '3px solid #ffcc00' }}>
+            <h3 style={{ color: '#ffcc00', margin: '0 0 10px 0' }}>✨ Habilidades Ativadas</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {poderesAtivos.map(hab => {
+                    const cfg = skillConfigs[hab.id] || { statusUsados: ['forca'], energiaCombustao: 'mana' };
+                    const vincStr = hab.armaVinculada && armaEquipada && String(hab.armaVinculada) === String(armaEquipada.id) ? ' (Vinculada à Arma)' : '';
                     return (
-                        <div key={p.id} style={{ marginBottom: 12, padding: '10px', background: 'rgba(255,0,255,0.08)', borderLeft: '3px solid #f0f', borderRadius: 4 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                                <div>
-                                    <strong style={{ color: '#f0f' }}>{p.nome}</strong>
-                                    <span style={{ color: '#aaa', fontSize: '0.85em', marginLeft: 10 }}>{dadosTxt} | Custo: {custoTxt} {armaVinc && <span style={{ color: '#0f0' }}> | Vinculada: {armaVinc.nome}</span>}</span>
-                                </div>
-                                <span style={{ color: '#0f0', fontSize: '0.8em', fontWeight: 'bold' }}>ATIVA</span>
+                        <div key={hab.id} style={{ background: 'rgba(0,0,0,0.4)', padding: 10, borderRadius: 5, border: '1px solid #444' }}>
+                            <div style={{ color: '#fff', fontWeight: 'bold', marginBottom: 8 }}>{hab.nome} <span style={{ color: '#0f0', fontSize: '0.8em' }}>{vincStr}</span></div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                                {STATS_LIST.map(st => (
+                                    <button key={st.value} className={`btn-neon ${cfg.statusUsados.includes(st.value) ? 'btn-gold' : ''}`} onClick={() => toggleSkillStat(hab.id, st.value)} style={{ padding: '2px 6px', fontSize: '0.7em', margin: 0 }}>
+                                        {st.label}
+                                    </button>
+                                ))}
                             </div>
-                            <div style={{ marginBottom: 6 }}>
-                                <label style={{ color: '#aaa', fontSize: '0.8em' }}>Status usados:</label>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 3 }}>
-                                    {STATS_LIST.map(st => (
-                                        <label key={st.value} style={{ color: (cfg.statusUsados || []).includes(st.value) ? '#f0f' : '#555', fontSize: '0.85em', display: 'flex', alignItems: 'center', gap: 3 }}>
-                                            <input type="checkbox" value={st.value} checked={(cfg.statusUsados || []).includes(st.value)} onChange={() => toggleSkillStat(p.id, st.value)} />
-                                            {st.label}
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
-                            <div>
-                                <label style={{ color: '#aaa', fontSize: '0.8em' }}>Energia de Combustao:</label>
-                                <select className="input-neon" value={cfg.energiaCombustao || 'mana'} onChange={e => updateSkillConfig(p.id, 'energiaCombustao', e.target.value)} style={{ marginTop: 3 }}>
+                            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                                <span style={{ color: '#aaa', fontSize: '0.8em' }}>Combustão Extra ({hab.custoPercentual || 0}%):</span>
+                                <select className="input-neon" value={cfg.energiaCombustao} onChange={e => updateSkillConfig(hab.id, 'energiaCombustao', e.target.value)} style={{ width: 120, padding: 2, fontSize: '0.8em' }}>
                                     {ENERGIA_LIST.map(en => <option key={en.value} value={en.value}>{en.label}</option>)}
                                 </select>
                             </div>
                         </div>
                     );
-                })
-            )}
+                })}
+            </div>
         </div>
     );
 }
 
-// 🔥 NOVO: RENDERIZAR O GRIMÓRIO NA ABA DE DANO 🔥
 export function AtaqueMagiasPreparadas() {
     const ctx = useAtaqueForm();
     if (!ctx) return PROVIDER_FALLBACK;
     const { magiasOfensivas, skillConfigs, updateSkillConfig, toggleSkillStat } = ctx;
 
+    if (!magiasOfensivas || magiasOfensivas.length === 0) return null;
+
     return (
-        <div className="def-box" style={{ marginBottom: 15 }}>
-            <h3 style={{ color: '#00ccff', marginBottom: 10 }}>Magias Preparadas (Ofensivas)</h3>
-            {magiasOfensivas.length === 0 ? (
-                <p style={{ color: '#888', margin: 0 }}>Nenhuma magia de ataque preparada na aba Grimório.</p>
-            ) : (
-                magiasOfensivas.map(m => {
-                    const cfg = skillConfigs[m.id] || { statusUsados: ['inteligencia'], energiaCombustao: 'mana' };
-                    const dadosTxt = (m.dadosExtraQtd > 0) ? `${m.dadosExtraQtd}d${m.dadosExtraFaces || 20}` : 'Sem dados';
-                    const custoTxt = (m.custoValor > 0) ? `${m.custoValor}%` : 'Livre';
-
+        <div className="def-box" style={{ marginBottom: 15, borderLeft: '3px solid #ff00ff' }}>
+            <h3 style={{ color: '#ff00ff', margin: '0 0 10px 0' }}>🔮 Magias Preparadas</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {magiasOfensivas.map(mag => {
+                    const cfg = skillConfigs[mag.id] || { statusUsados: ['inteligencia'], energiaCombustao: 'mana' };
                     return (
-                        <div key={m.id} style={{ marginBottom: 12, padding: '10px', background: 'rgba(0,204,255,0.08)', borderLeft: '3px solid #00ccff', borderRadius: 4 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                                <div>
-                                    <strong style={{ color: '#00ccff' }}>{m.nome}</strong>
-                                    <span style={{ color: '#aaa', fontSize: '0.85em', marginLeft: 10 }}>{dadosTxt} | Custo: {custoTxt}</span>
-                                </div>
-                                <span style={{ color: '#00ccff', fontSize: '0.8em', fontWeight: 'bold' }}>PREPARADA</span>
+                        <div key={mag.id} style={{ background: 'rgba(0,0,0,0.4)', padding: 10, borderRadius: 5, border: '1px solid #444' }}>
+                            <div style={{ color: '#fff', fontWeight: 'bold', marginBottom: 8 }}>{mag.nome} <span style={{ color: '#ff00ff', fontSize: '0.8em' }}>({mag.elemento || 'Neutro'})</span></div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                                {STATS_LIST.map(st => (
+                                    <button key={st.value} className={`btn-neon ${cfg.statusUsados.includes(st.value) ? 'btn-gold' : ''}`} onClick={() => toggleSkillStat(mag.id, st.value)} style={{ padding: '2px 6px', fontSize: '0.7em', margin: 0 }}>
+                                        {st.label}
+                                    </button>
+                                ))}
                             </div>
-
-                            <div style={{ marginBottom: 6 }}>
-                                <label style={{ color: '#aaa', fontSize: '0.8em' }}>Status usados para o Dano:</label>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 3 }}>
-                                    {STATS_LIST.map(st => (
-                                        <label key={st.value} style={{ color: (cfg.statusUsados || []).includes(st.value) ? '#00ccff' : '#555', fontSize: '0.85em', display: 'flex', alignItems: 'center', gap: 3 }}>
-                                            <input type="checkbox" value={st.value} checked={(cfg.statusUsados || []).includes(st.value)} onChange={() => toggleSkillStat(m.id, st.value)} />
-                                            {st.label}
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div>
-                                <label style={{ color: '#aaa', fontSize: '0.8em' }}>Energia de Combustão:</label>
-                                <select className="input-neon" value={cfg.energiaCombustao || 'mana'} onChange={e => updateSkillConfig(m.id, 'energiaCombustao', e.target.value)} style={{ marginTop: 3 }}>
-                                    <option value="mana">Mana</option>
-                                    <option value="aura">Aura</option>
-                                    <option value="chakra">Chakra</option>
-                                    <option value="livre">Livre</option>
+                            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                                <span style={{ color: '#aaa', fontSize: '0.8em' }}>Combustão Base ({mag.custoValor || 0}%):</span>
+                                <select className="input-neon" value={cfg.energiaCombustao} onChange={e => updateSkillConfig(mag.id, 'energiaCombustao', e.target.value)} style={{ width: 120, padding: 2, fontSize: '0.8em' }}>
+                                    {ENERGIA_LIST.map(en => <option key={en.value} value={en.value}>{en.label}</option>)}
                                 </select>
                             </div>
                         </div>
                     );
-                })
-            )}
+                })}
+            </div>
+        </div>
+    );
+}
+
+// 🔥 NOVO: COMPONENTE PARA DIGITAR E ROLAR A FÓRMULA MANUAL 🔥
+export function AtaqueDanoCustomizado() {
+    const ctx = useAtaqueForm();
+    if (!ctx) return PROVIDER_FALLBACK;
+    
+    const { customFormula, setCustomFormula, rolarDanoCustomizado } = ctx;
+
+    return (
+        <div className="def-box fade-in" style={{ marginBottom: 15, background: 'rgba(255, 0, 255, 0.05)', border: '1px solid #ff00ff' }}>
+            <h3 style={{ color: '#ff00ff', margin: '0 0 5px 0' }}>🧩 Modo Deus (Fórmula Customizada)</h3>
+            <p style={{ color: '#aaa', fontSize: '0.8em', margin: '0 0 10px 0' }}>Enquanto o sistema não automatiza sua ficha inteira, digite a matemática maluca aqui e deixe a engine rolar.</p>
+            
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <input 
+                    className="input-neon" 
+                    type="text" 
+                    placeholder="Ex: ((5d10 x 61000) x 2) x 20" 
+                    value={customFormula} 
+                    onChange={e => setCustomFormula(e.target.value)} 
+                    style={{ flex: '1 1 300px', fontSize: '1.1em', borderColor: '#ff00ff', color: '#fff', margin: 0 }}
+                />
+                <button 
+                    className="btn-neon" 
+                    onClick={rolarDanoCustomizado}
+                    style={{ flex: '0 1 150px', background: 'rgba(255,0,255,0.2)', borderColor: '#ff00ff', color: '#ff00ff', fontWeight: 'bold', margin: 0 }}
+                >
+                    🎲 ROLAR FÓRMULA
+                </button>
+            </div>
         </div>
     );
 }
@@ -232,12 +243,10 @@ export function AtaqueMagiasPreparadas() {
 export function AtaqueBotoesAcao() {
     const ctx = useAtaqueForm();
     if (!ctx) return PROVIDER_FALLBACK;
-
     const { podeRolarDano, dummieAlvo, ignorarTravaAcerto, setIgnorarTravaAcerto, salvarConfigAtaque, rolarDano } = ctx;
 
     return (
         <>
-            {/* 🔥 NOVO: OVERRIDE PARA MAGIAS DE ÁREA / SAVES 🔥 */}
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10, marginBottom: 5 }}>
                 <label style={{ color: '#aaa', fontSize: '0.85em', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
                     <input type="checkbox" checked={ignorarTravaAcerto} onChange={e => setIgnorarTravaAcerto(e.target.checked)} style={{ transform: 'scale(1.2)' }}/>
@@ -253,7 +262,7 @@ export function AtaqueBotoesAcao() {
                     style={{ flex: 1, opacity: (podeRolarDano || ignorarTravaAcerto) ? 1 : 0.5 }}
                     disabled={!podeRolarDano && !ignorarTravaAcerto}
                 >
-                    {dummieAlvo ? ((podeRolarDano || ignorarTravaAcerto) ? `ATACAR ${dummieAlvo.nome.toUpperCase()}` : 'ACERTO NECESSARIO') : 'ROLAR DANO'}
+                    {(!podeRolarDano && !ignorarTravaAcerto && dummieAlvo) ? '🔒 ACERTE PRIMEIRO' : '💥 ROLAR DANO'}
                 </button>
             </div>
         </>
