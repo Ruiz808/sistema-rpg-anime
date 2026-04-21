@@ -196,7 +196,10 @@ export function AtaqueMagiasPreparadas() {
                             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                                 <span style={{ color: '#aaa', fontSize: '0.8em' }}>Combustão Base ({mag.custoValor || 0}%):</span>
                                 <select className="input-neon" value={cfg.energiaCombustao} onChange={e => updateSkillConfig(mag.id, 'energiaCombustao', e.target.value)} style={{ width: 120, padding: 2, fontSize: '0.8em' }}>
-                                    {ENERGIA_LIST.map(en => <option key={en.value} value={en.value}>{en.label}</option>)}
+                                    <option value="mana">Mana</option>
+                                    <option value="aura">Aura</option>
+                                    <option value="chakra">Chakra</option>
+                                    <option value="livre">Livre</option>
                                 </select>
                             </div>
                         </div>
@@ -207,35 +210,93 @@ export function AtaqueMagiasPreparadas() {
     );
 }
 
-// 🔥 NOVO: COMPONENTE PARA DIGITAR E ROLAR A FÓRMULA MANUAL 🔥
 export function AtaqueDanoCustomizado() {
     const ctx = useAtaqueForm();
     if (!ctx) return PROVIDER_FALLBACK;
     
-    const { customFormula, setCustomFormula, rolarDanoCustomizado } = ctx;
+    const { 
+        customFormula, setCustomFormula, 
+        customLetalidade, setCustomLetalidade, 
+        rolarDanoCustomizado, salvarFormula, deletarFormula, minhaFicha 
+    } = ctx;
+
+    const formulasSalvas = minhaFicha?.ataqueConfig?.formulasSalvas || [];
 
     return (
         <div className="def-box fade-in" style={{ marginBottom: 15, background: 'rgba(255, 0, 255, 0.05)', border: '1px solid #ff00ff' }}>
             <h3 style={{ color: '#ff00ff', margin: '0 0 5px 0' }}>🧩 Modo Deus (Fórmula Customizada)</h3>
             <p style={{ color: '#aaa', fontSize: '0.8em', margin: '0 0 10px 0' }}>Enquanto o sistema não automatiza sua ficha inteira, digite a matemática maluca aqui e deixe a engine rolar.</p>
             
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
                 <input 
                     className="input-neon" 
                     type="text" 
                     placeholder="Ex: ((5d10 x 61000) x 2) x 20" 
                     value={customFormula} 
                     onChange={e => setCustomFormula(e.target.value)} 
-                    style={{ flex: '1 1 300px', fontSize: '1.1em', borderColor: '#ff00ff', color: '#fff', margin: 0 }}
+                    style={{ flex: '1 1 250px', fontSize: '1.1em', borderColor: '#ff00ff', color: '#fff', margin: 0 }}
                 />
+                
+                {/* 🔥 O CAMPO DE LETALIDADE ENTRA AQUI 🔥 */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#111', padding: '5px', borderRadius: 5, border: '1px solid #ff00ff' }}>
+                    <span style={{ color: '#ffcc00', fontSize: '0.8em', fontWeight: 'bold' }}>+Letalidade:</span>
+                    <input 
+                        className="input-neon" 
+                        type="number" 
+                        value={customLetalidade} 
+                        onChange={e => setCustomLetalidade(e.target.value)} 
+                        style={{ width: 60, margin: 0, padding: 4 }} 
+                    />
+                </div>
+
+                <button 
+                    className="btn-neon btn-blue" 
+                    onClick={salvarFormula}
+                    title="Salvar esta fórmula na memória"
+                    style={{ padding: '0 15px', fontSize: '1.2em', margin: 0, height: '42px', borderColor: '#00aaff', color: '#00aaff' }}
+                >
+                    💾
+                </button>
+
                 <button 
                     className="btn-neon" 
-                    onClick={rolarDanoCustomizado}
-                    style={{ flex: '0 1 150px', background: 'rgba(255,0,255,0.2)', borderColor: '#ff00ff', color: '#ff00ff', fontWeight: 'bold', margin: 0 }}
+                    onClick={() => rolarDanoCustomizado()}
+                    style={{ flex: '0 1 150px', height: '42px', background: 'rgba(255,0,255,0.2)', borderColor: '#ff00ff', color: '#ff00ff', fontWeight: 'bold', margin: 0 }}
                 >
-                    🎲 ROLAR FÓRMULA
+                    🎲 ROLAR
                 </button>
             </div>
+
+            {/* 🔥 O BANCO DE MEMÓRIA (BOTÕES RÁPIDOS) 🔥 */}
+            {formulasSalvas.length > 0 && (
+                <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px dashed rgba(255,0,255,0.3)', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {formulasSalvas.map(f => (
+                        <div key={f.id} style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.5)', border: '1px solid #ff00ff', borderRadius: '20px', overflow: 'hidden' }}>
+                            <button 
+                                onClick={() => rolarDanoCustomizado(f.formula, f.letalidade)}
+                                style={{ background: 'none', border: 'none', color: '#fff', padding: '4px 10px', fontSize: '0.85em', cursor: 'pointer', fontWeight: 'bold' }}
+                                title={`Fórmula: ${f.formula} | Letalidade: +${f.letalidade || 0}`}
+                            >
+                                ▶ {f.nome}
+                            </button>
+                            <button 
+                                onClick={() => { setCustomFormula(f.formula); setCustomLetalidade(f.letalidade || 0); }}
+                                style={{ background: 'none', border: 'none', borderLeft: '1px solid #444', color: '#ffcc00', padding: '4px 8px', fontSize: '0.85em', cursor: 'pointer' }}
+                                title="Editar"
+                            >
+                                ✏️
+                            </button>
+                            <button 
+                                onClick={() => deletarFormula(f.id)}
+                                style={{ background: 'rgba(255,0,0,0.2)', border: 'none', borderLeft: '1px solid #444', color: '#ff003c', padding: '4px 8px', fontSize: '0.85em', cursor: 'pointer' }}
+                                title="Apagar"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
@@ -243,6 +304,7 @@ export function AtaqueDanoCustomizado() {
 export function AtaqueBotoesAcao() {
     const ctx = useAtaqueForm();
     if (!ctx) return PROVIDER_FALLBACK;
+
     const { podeRolarDano, dummieAlvo, ignorarTravaAcerto, setIgnorarTravaAcerto, salvarConfigAtaque, rolarDano } = ctx;
 
     return (
@@ -262,7 +324,7 @@ export function AtaqueBotoesAcao() {
                     style={{ flex: 1, opacity: (podeRolarDano || ignorarTravaAcerto) ? 1 : 0.5 }}
                     disabled={!podeRolarDano && !ignorarTravaAcerto}
                 >
-                    {(!podeRolarDano && !ignorarTravaAcerto && dummieAlvo) ? '🔒 ACERTE PRIMEIRO' : '💥 ROLAR DANO'}
+                    {dummieAlvo ? ((podeRolarDano || ignorarTravaAcerto) ? `ATACAR ${dummieAlvo.nome.toUpperCase()}` : 'ACERTO NECESSARIO') : 'ROLAR DANO'}
                 </button>
             </div>
         </>

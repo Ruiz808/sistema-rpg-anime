@@ -52,8 +52,9 @@ export function AtaqueFormProvider({ children }) {
     const [podeRolarDano, setPodeRolarDano] = useState(true);
     const [furiaAcalmadaMsg, setFuriaAcalmadaMsg] = useState(false);
 
-    // 🔥 NOVO ESTADO: FÓRMULA MANUAL DE DANO 🔥
+    // 🔥 NOVOS ESTADOS: FÓRMULA MANUAL E LETALIDADE 🔥
     const [customFormula, setCustomFormula] = useState('');
+    const [customLetalidade, setCustomLetalidade] = useState(0);
 
     const multiplicadorFuriaClasse = useMemo(() => {
         let maxFuria = 0;
@@ -206,12 +207,42 @@ export function AtaqueFormProvider({ children }) {
         salvarFichaSilencioso();
     }, [updateFicha, armaStatusUsados, armaEnergiaCombustao, armaPercEnergia, critNormalMin, critNormalMax, critFatalMin, critFatalMax, skillConfigs]);
 
-    // 🔥 O AVALIADOR DE DANO MANUAL (MATH ENGINE) 🔥
-    const rolarDanoCustomizado = useCallback(() => {
-        if (!customFormula.trim()) return;
+
+    // 🔥 FUNÇÕES DO AVALIADOR DE DANO MANUAL (MATH ENGINE) 🔥
+    const salvarFormula = useCallback(() => {
+        const nomeForm = window.prompt("Como deseja nomear esta fórmula de ataque?");
+        if (!nomeForm || !nomeForm.trim()) return;
+
+        updateFicha(ficha => {
+            if (!ficha.ataqueConfig) ficha.ataqueConfig = {};
+            if (!ficha.ataqueConfig.formulasSalvas) ficha.ataqueConfig.formulasSalvas = [];
+            ficha.ataqueConfig.formulasSalvas.push({
+                id: Date.now(),
+                nome: nomeForm.trim(),
+                formula: customFormula,
+                letalidade: parseInt(customLetalidade) || 0
+            });
+        });
+        salvarFichaSilencioso();
+    }, [customFormula, customLetalidade, updateFicha]);
+
+    const deletarFormula = useCallback((id) => {
+        updateFicha(ficha => {
+            if (ficha.ataqueConfig && ficha.ataqueConfig.formulasSalvas) {
+                ficha.ataqueConfig.formulasSalvas = ficha.ataqueConfig.formulasSalvas.filter(f => f.id !== id);
+            }
+        });
+        salvarFichaSilencioso();
+    }, [updateFicha]);
+
+    const rolarDanoCustomizado = useCallback((formulaOverride, letalidadeOverride) => {
+        const formAtiva = formulaOverride !== undefined ? formulaOverride : customFormula;
+        const letalAtiva = letalidadeOverride !== undefined ? letalidadeOverride : customLetalidade;
+
+        if (!formAtiva.trim()) return;
 
         // Sanitiza a fórmula e troca 'x' por '*' para a conta matemática
-        let expressao = customFormula.toLowerCase().replace(/\s+/g, '').replace(/x/g, '*');
+        let expressao = formAtiva.toLowerCase().replace(/\s+/g, '').replace(/x/g, '*');
         
         // Regex de segurança para evitar injeção de código na função
         if (/[^0-9d\*\+\-\/\(\)\.]/.test(expressao)) {
@@ -229,7 +260,6 @@ export function AtaqueFormProvider({ children }) {
             let soma = 0;
             let resultados = [];
             
-            // Trava de segurança contra o maluco colocar 10000d20 e travar o PC
             const qtdSegura = Math.min(qtd, 1000); 
             
             for (let i = 0; i < qtdSegura; i++) {
@@ -253,14 +283,21 @@ export function AtaqueFormProvider({ children }) {
             
             if (isNaN(resultadoFinal) || !isFinite(resultadoFinal)) throw new Error("Cálculo infinito");
 
+            // CÁLCULO DE LETALIDADE (Pega a base automática + bônus do usuário)
+            const letalExtra = parseInt(letalAtiva) || 0;
+            const digitosGerais = String(Math.floor(Math.abs(resultadoFinal))).length;
+            const letalidadeCalculada = Math.max(0, digitosGerais - 8) + letalExtra;
+            const danoReduzido = letalidadeCalculada > 0 ? Math.floor(resultadoFinal / Math.pow(10, letalidadeCalculada)) : Math.floor(resultadoFinal);
+
             let detalheConta = `<div style="margin-top: 15px; padding: 10px; background: rgba(0,0,0,0.4); border-radius: 5px; border-left: 4px solid #ff00ff; font-family: monospace; font-size: 0.95em; color: #ccc;">`;
             detalheConta += `<strong style="color:#ff00ff; font-size:1.1em; letter-spacing:1px;">[ CÁLCULO MANUAL LIVRE ]</strong><br/><br/>`;
-            detalheConta += `<strong>Fórmula Original:</strong> <span style="color:#fff">${customFormula}</span><br/><br/>`;
+            detalheConta += `<strong>Fórmula Original:</strong> <span style="color:#fff">${formAtiva}</span><br/><br/>`;
             
             if (rollsLog.length > 0) {
                 detalheConta += `<strong>🎲 Dados Rolados:</strong><br/>${rollsLog.join('<br/>')}<br/><br/>`;
             }
             
+            detalheConta += `<strong>Dano Bruto Calculado:</strong> ${resultadoFinal.toLocaleString('pt-BR')}<br/>`;
             detalheConta += `<strong>Cálculo:</strong> ${stringCalculo} = <strong style="color:#ff003c; font-size:1.2em;">${resultadoFinal.toLocaleString('pt-BR')}</strong>`;
             detalheConta += `</div>`;
 
@@ -268,16 +305,16 @@ export function AtaqueFormProvider({ children }) {
             let extraFeed = {};
             if (dummieAlvo && alvoSelecionado) {
                 const hpAnterior = dummieAlvo.hpAtual;
-                const novoHp = Math.max(0, hpAnterior - resultadoFinal);
+                const novoHp = Math.max(0, hpAnterior - danoReduzido);
                 salvarDummie(alvoSelecionado, { ...dummieAlvo, hpAtual: novoHp });
-                extraFeed = { alvoNome: dummieAlvo.nome, alvoSobreviveu: novoHp > 0, overkill: resultadoFinal > hpAnterior ? resultadoFinal - hpAnterior : 0 };
+                extraFeed = { alvoNome: dummieAlvo.nome, alvoSobreviveu: novoHp > 0, overkill: danoReduzido > hpAnterior ? danoReduzido - hpAnterior : 0 };
             }
 
             const feedData = {
                 tipo: 'dano', 
                 nome: meuNome, 
-                dano: Math.floor(resultadoFinal), 
-                letalidade: 0,
+                dano: Math.floor(danoReduzido), 
+                letalidade: letalidadeCalculada, // A LETALIDADE ENTRA AQUI!
                 rolagem: `${rollsLog.length > 0 ? rollsLog.length + ' rolagem(ns)' : 'Cálculo Direto'}`, 
                 rolagemMagica: "",
                 atributosUsados: 'Manual', 
@@ -289,11 +326,14 @@ export function AtaqueFormProvider({ children }) {
 
             enviarParaFeed(feedData);
             setAbaAtiva('aba-log');
-            setCustomFormula(''); // Limpa o campo depois de rolar
+            if(formulaOverride === undefined) {
+                setCustomFormula(''); // Limpa o campo depois de rolar se não for por botão salvo
+            }
         } catch (e) {
             alert('Erro ao calcular a fórmula matemática. Verifique se os parênteses fecham corretamente.');
         }
-    }, [customFormula, meuNome, dummieAlvo, alvoSelecionado, setAbaAtiva]);
+    }, [customFormula, customLetalidade, meuNome, dummieAlvo, alvoSelecionado, setAbaAtiva]);
+
 
     const rolarDano = useCallback(() => {
         salvarConfigAtaque();
@@ -449,14 +489,14 @@ export function AtaqueFormProvider({ children }) {
         ignorarTravaAcerto, setIgnorarTravaAcerto, skillConfigs, podeRolarDano, furiaAcalmadaMsg,
         multiplicadorFuriaClasse, multiplicadorFuriaVisor, percAtualLostFloor, percEfetivoParaDisplay,
         dummieAlvo, armaEquipada, poderesAtivos, magiasOfensivas, minhaFicha,
-        customFormula, setCustomFormula, rolarDanoCustomizado, // 🔥 FUNÇÕES INJETADAS
+        customFormula, setCustomFormula, customLetalidade, setCustomLetalidade, rolarDanoCustomizado, salvarFormula, deletarFormula, // 🔥 FUNÇÕES EXPORTADAS
         acalmarFuria, updateSkillConfig, toggleSkillStat, toggleArmaStat, salvarConfigAtaque, rolarDano,
     }), [
         armaStatusUsados, armaEnergiaCombustao, armaPercEnergia, critNormalMin, critNormalMax, critFatalMin, critFatalMax,
         autoCritNormal, autoCritFatal, forcarCritNormal, forcarCritFatal, ignorarTravaAcerto, skillConfigs, podeRolarDano, furiaAcalmadaMsg,
         multiplicadorFuriaClasse, multiplicadorFuriaVisor, percAtualLostFloor, percEfetivoParaDisplay,
         dummieAlvo, armaEquipada, poderesAtivos, magiasOfensivas, minhaFicha,
-        customFormula, rolarDanoCustomizado,
+        customFormula, customLetalidade, rolarDanoCustomizado, salvarFormula, deletarFormula,
         acalmarFuria, updateSkillConfig, toggleSkillStat, toggleArmaStat, salvarConfigAtaque, rolarDano,
     ]);
 
