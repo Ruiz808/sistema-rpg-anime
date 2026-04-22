@@ -57,7 +57,7 @@ export default function useFirebase() {
             unsubPersonagens();
             unsubFeed();
         };
-    }, [meuNome, mesaId, carregarDadosFicha, setPersonagens, addFeedEntry]); // 🔥 MESA_ID COMO DEPENDÊNCIA
+    }, [meuNome, mesaId, carregarDadosFicha, setPersonagens, addFeedEntry]);
 
     return { loading };
 }

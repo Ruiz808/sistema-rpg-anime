@@ -28,7 +28,6 @@ export function salvarFirebaseImediato() {
     const { minhaFicha, meuNome, mesaId } = useStore.getState();
     const nomeSanitizado = sanitizarNome(meuNome);
 
-    // Bloqueia o salvamento se não houver mesa ou nome
     if (!nomeSanitizado || !mesaId) {
         return Promise.resolve();
     }
@@ -133,9 +132,6 @@ export async function deletarPersonagem(nome) {
 }
 export const apagarFicha = deletarPersonagem;
 
-// ==========================================
-// 🔥 O JUKEBOX VOLTOU À VIDA! 🔥
-// ==========================================
 export function enviarParaJukebox(estado) {
     if (isInPlasmicCanvas()) return Promise.resolve();
     const { mesaId } = useStore.getState();
@@ -161,9 +157,6 @@ export function iniciarListenerJukebox(callback) {
     });
 }
 
-// ==========================================
-// 🔥 IMAGENS E DUMMIES 🔥
-// ==========================================
 export async function uploadImagem(file, pasta = 'imagens') {
     if (isInPlasmicCanvas()) return '';
     const { mesaId } = useStore.getState();
@@ -214,9 +207,6 @@ export function deletarDummie(id) {
     });
 }
 
-// ==========================================
-// 🔥 CENÁRIOS E MAPAS 🔥
-// ==========================================
 export function iniciarListenerCenario(callback) {
     if (isInPlasmicCanvas()) return () => {};
     const { mesaId } = useStore.getState();
@@ -252,9 +242,6 @@ export function zerarIniciativaGlobal(nomesArray) {
     });
 }
 
-// ==========================================
-// 🔥 TEMAS CUSTOMIZADOS 🔥
-// ==========================================
 export function iniciarListenerTemasCustom(callback) {
     if (isInPlasmicCanvas()) return () => {};
     const { mesaId } = useStore.getState();
