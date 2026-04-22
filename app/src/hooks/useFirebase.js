@@ -7,19 +7,11 @@ import {
     iniciarListenerFeed
 } from '../services/firebase-sync';
 
-/**
- * Hook que gerencia a conexão com Firebase:
- * - Carrega a ficha do personagem ao montar
- * - Escuta mudanças em /personagens
- * - Escuta novas entradas no feed de combate
- * - Limpa listeners ao desmontar
- *
- * @returns {{ loading: boolean }}
- */
 export default function useFirebase() {
     const [loading, setLoading] = useState(true);
 
     const meuNome = useStore((s) => s.meuNome);
+    const mesaId = useStore((s) => s.mesaId); // 🔥 LER A MESA AQUI
     const carregarDadosFicha = useStore((s) => s.carregarDadosFicha);
     const setPersonagens = useStore((s) => s.setPersonagens);
     const addFeedEntry = useStore((s) => s.addFeedEntry);
@@ -30,7 +22,12 @@ export default function useFirebase() {
         let cancelled = false;
 
         async function init() {
-            // Load character sheet from Firebase if available
+            // Só avança se a pessoa já estiver conectada a uma mesa!
+            if (!mesaId) {
+                setLoading(false);
+                return;
+            }
+
             if (meuNome && db) {
                 try {
                     const dados = await carregarFichaDoFirebase(meuNome);
@@ -42,22 +39,14 @@ export default function useFirebase() {
                 }
             }
 
-            if (!cancelled) {
-                setLoading(false);
-            }
+            if (!cancelled) setLoading(false);
 
-            // Set up personagens listener
             unsubPersonagens = iniciarListenerPersonagens((personagens) => {
-                if (!cancelled) {
-                    setPersonagens(personagens);
-                }
+                if (!cancelled) setPersonagens(personagens);
             });
 
-            // Set up feed listener
             unsubFeed = iniciarListenerFeed((entry) => {
-                if (!cancelled) {
-                    addFeedEntry(entry);
-                }
+                if (!cancelled) addFeedEntry(entry);
             });
         }
 
@@ -68,7 +57,7 @@ export default function useFirebase() {
             unsubPersonagens();
             unsubFeed();
         };
-    }, [meuNome, carregarDadosFicha, setPersonagens, addFeedEntry]);
+    }, [meuNome, mesaId, carregarDadosFicha, setPersonagens, addFeedEntry]); // 🔥 MESA_ID COMO DEPENDÊNCIA
 
     return { loading };
 }
