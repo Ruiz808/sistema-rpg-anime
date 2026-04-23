@@ -57,11 +57,7 @@ export function PerfilPersonagensSalvos() {
 }
 
 export function PerfilMestreToggle() {
-    const ctx = usePerfilForm();
-    if (!ctx) return FALLBACK;
-    return (
-        <div className="def-box" style={{ marginTop: 15 }}>
-            <label style={{ color: '#aaa', display: 'flex', alignItems: 'center', gap: 8 }}><input type="checkbox" id="chk-mestre" checked={ctx.isMestre} onChange={ctx.toggleMestre} />Modo Mestre</label>
-        </div>
-    );
+    // Retorna null para não renderizar nada na tela.
+    // Assim o botão some, mas o código não quebra por falta de importação!
+    return null;
 }

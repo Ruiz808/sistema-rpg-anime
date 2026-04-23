@@ -59,7 +59,6 @@ export async function registrarNovaMesa(id, nomeMestre, senha = '') {
     if (!db) return;
     const mesaRef = ref(db, `index_mesas/${id}`);
     const nickSanitizado = sanitizarNome(nomeMestre);
-    // Salva a mesa e já define o criador como o Mestre supremo na lista de mestres
     await set(mesaRef, { 
         id: id, mestre: nomeMestre, senha: senha, criadaEm: Date.now(), ativa: true, 
         mestres: { [nickSanitizado]: true } 
@@ -76,15 +75,15 @@ export async function verificarMesaExistente(id, senhaTentativa = '') {
     return { existe: true, senhaCorreta: true };
 }
 
-// Ouve em tempo real quem tem poder de Mestre na mesa
+// 🔥 ATUALIZADO: Agora ele puxa o Criador e a Lista de Mestres 🔥
 export function iniciarListenerMestres(mesaId, callback) {
     if (!db || !mesaId) return () => {};
-    return onValue(ref(db, `index_mesas/${mesaId}/mestres`), (snapshot) => {
-        callback(snapshot.val() || {});
+    return onValue(ref(db, `index_mesas/${mesaId}`), (snapshot) => {
+        const dados = snapshot.val() || {};
+        callback(dados.mestre || '', dados.mestres || {});
     });
 }
 
-// Promove um jogador a Mestre
 export async function promoverAMestreFirebase(mesaId, nickAcesso) {
     if (!db || !mesaId || !nickAcesso) return;
     const nickSanitizado = sanitizarNome(nickAcesso);

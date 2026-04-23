@@ -112,8 +112,6 @@ function MestrePanel() {
     const setPersonagemParaDeletar = useStore(s => s.setPersonagemParaDeletar)
     const isMestre = useStore(s => s.isMestre)
     const mesaId = useStore(s => s.mesaId)
-    
-    // 🔥 Puxamos os jogadores online para o Menu Suspenso
     const jogadoresOnline = useStore(s => s.jogadoresOnline);
 
     const setMeuNome = useStore(s => s.setMeuNome)
@@ -340,7 +338,6 @@ function MestrePanel() {
                         <button className="btn-neon btn-gold" onClick={enviarAviso} style={{ width: '100%', marginTop: '10px' }}>📢 ENVIAR AVISO GLOBAL</button>
                     </div>
 
-                    {/* 🔥 CAIXA DO PROMOVER CO-MESTRE COM MENU SUSPENSO INTELIGENTE 🔥 */}
                     <div className="def-box" style={{ borderLeft: '4px solid #aa00ff' }}>
                         <h3 style={{ color: '#aa00ff', margin: '0 0 10px 0' }}>👑 Promover Co-Mestre</h3>
                         <p style={{ color: '#aaa', fontSize: '0.8em', marginBottom: '15px' }}>Selecione a conta de um jogador online ou digite manualmente o Nickname para dar-lhe os poderes da mesa:</p>
@@ -356,7 +353,6 @@ function MestrePanel() {
                                 style={{ flex: 1, minWidth: '150px', padding: '10px', fontSize: '1em', borderColor: '#aa00ff', color: '#aa00ff' }} 
                             />
                             
-                            {/* O Datalist cria o menu suspenso mágico no Input! */}
                             <datalist id="online-players">
                                 {jogadoresOnline.map(nick => (
                                     <option key={nick} value={nick} />
@@ -536,8 +532,13 @@ export default function App() {
     const setUserLogado = useStore(s => s.setUserLogado);
     const [authVerificada, setAuthVerificada] = useState(false);
 
+    // 🔥 Variáveis para o Sistema de Online Detalhado 🔥
     const jogadoresOnline = useStore(s => s.jogadoresOnline);
     const setJogadoresOnline = useStore(s => s.setJogadoresOnline);
+    
+    const mesaCriador = useStore(s => s.mesaCriador);
+    const mesaMestres = useStore(s => s.mesaMestres);
+    const setMesaInfo = useStore(s => s.setMesaInfo);
 
     const meuNome = useStore(s => s.meuNome);
     const setMeuNome = useStore(s => s.setMeuNome);
@@ -573,10 +574,11 @@ export default function App() {
         return () => unsub();
     }, [setUserLogado]);
 
-    // 🔥 Listener Dinâmico de Mestres 🔥
+    // 🔥 Listener de Mestres com Info da Mesa 🔥
     useEffect(() => {
         if (!mesaId || !userLogado) return;
-        const unsub = iniciarListenerMestres(mesaId, (mestresDict) => {
+        const unsub = iniciarListenerMestres(mesaId, (criador, mestresDict) => {
+            setMesaInfo(criador, mestresDict);
             const nickSanitizado = sanitizarNome(userLogado);
             if (mestresDict[nickSanitizado]) {
                 setIsMestre(true);
@@ -585,7 +587,7 @@ export default function App() {
             }
         });
         return () => unsub();
-    }, [mesaId, userLogado, setIsMestre]);
+    }, [mesaId, userLogado, setIsMestre, setMesaInfo]);
 
     useEffect(() => {
         let nomeLocal = localStorage.getItem('rpgNome') || localStorage.getItem('rpg_nome');
@@ -606,7 +608,6 @@ export default function App() {
         return () => { if (unsubDummies) unsubDummies(); if (unsubCenario) unsubCenario(); };
     }, [setDummies, setCenario]);
 
-    // 🔥 O Sistema de Presença rastreia Contas em vez de Fichas 🔥
     useEffect(() => {
         if (!mesaId || !userLogado || !pronto) return;
         const unsubConnected = iniciarSistemaDePresenca(mesaId, userLogado);
@@ -641,6 +642,17 @@ export default function App() {
         setMeusPersonagens(novaLista);
         localStorage.setItem('rpg_historico_personagens', JSON.stringify(novaLista));
     };
+
+    // 🔥 DIVISÃO DOS JOGADORES ONLINE PARA O TOOLTIP 🔥
+    const criadorOn = jogadoresOnline.filter(j => j === mesaCriador);
+    const coMestresOn = jogadoresOnline.filter(j => j !== mesaCriador && mesaMestres[j]);
+    const playersOn = jogadoresOnline.filter(j => !mesaMestres[j]);
+
+    let tooltipOnline = "🌟 CONTAS ONLINE NA SALA:\n\n";
+    if (criadorOn.length > 0) tooltipOnline += `👑 MESTRE SUPREMO:\n- ${criadorOn.join(', ')}\n\n`;
+    if (coMestresOn.length > 0) tooltipOnline += `🛡️ CO-MESTRES:\n- ${coMestresOn.join(', ')}\n\n`;
+    if (playersOn.length > 0) tooltipOnline += `⚔️ AVENTUREIROS:\n- ${playersOn.join(', ')}`;
+    if (jogadoresOnline.length === 0) tooltipOnline += "Ninguém online no momento.";
 
     if (!authVerificada) return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#050505', color: '#00ffcc', fontFamily: 'monospace' }}>Verificando as chaves do Multiverso...</div>;
     if (!userLogado) return <AuthScreen />;
@@ -685,7 +697,8 @@ export default function App() {
         <div className="app-layout">
             <div style={{ position: 'absolute', top: '10px', right: '15px', zIndex: 9999, display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(0,0,0,0.8)', padding: '5px 15px', borderRadius: '20px', border: '1px solid #333', boxShadow: '0 0 10px rgba(0,0,0,0.5)' }}>
                 
-                <div title={`Jogadores Online (Contas): ${jogadoresOnline.join(', ')}`} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0, 255, 170, 0.1)', border: '1px solid #00ffaa', padding: '2px 8px', borderRadius: '15px', cursor: 'help' }}>
+                {/* 🔥 O SEU NOVO RADAR DE ONLINE ÉPICO E DETALHADO 🔥 */}
+                <div title={tooltipOnline} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0, 255, 170, 0.1)', border: '1px solid #00ffaa', padding: '2px 8px', borderRadius: '15px', cursor: 'help', whiteSpace: 'pre-wrap' }}>
                     <span style={{ width: '8px', height: '8px', background: '#00ffaa', borderRadius: '50%', boxShadow: '0 0 8px #00ffaa' }}></span>
                     <span style={{ color: '#00ffaa', fontSize: '0.75em', fontWeight: 'bold' }}>{jogadoresOnline.length} ON</span>
                 </div>

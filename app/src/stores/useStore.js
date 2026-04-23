@@ -37,9 +37,16 @@ const useStore = create(
         userLogado: null,
         setUserLogado: (nome) => set(state => { state.userLogado = nome; }),
 
-        // 🔥 NOVO: Lista de jogadores online 🔥
         jogadoresOnline: [],
         setJogadoresOnline: (lista) => set(state => { state.jogadoresOnline = lista; }),
+
+        // 🔥 NOVO: Variáveis para a Hierarquia da Mesa 🔥
+        mesaCriador: '',
+        mesaMestres: {},
+        setMesaInfo: (criador, mestresMap) => set(state => {
+            state.mesaCriador = criador || '';
+            state.mesaMestres = mestresMap || {};
+        }),
 
         mesaId: storedMesaId,
         setMesaId: (id) => set(state => {
