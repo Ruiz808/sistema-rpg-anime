@@ -112,6 +112,9 @@ function MestrePanel() {
     const setPersonagemParaDeletar = useStore(s => s.setPersonagemParaDeletar)
     const isMestre = useStore(s => s.isMestre)
     const mesaId = useStore(s => s.mesaId)
+    
+    // 🔥 Puxamos os jogadores online para o Menu Suspenso
+    const jogadoresOnline = useStore(s => s.jogadoresOnline);
 
     const setMeuNome = useStore(s => s.setMeuNome)
     const carregarDadosFicha = useStore(s => s.carregarDadosFicha)
@@ -337,20 +340,29 @@ function MestrePanel() {
                         <button className="btn-neon btn-gold" onClick={enviarAviso} style={{ width: '100%', marginTop: '10px' }}>📢 ENVIAR AVISO GLOBAL</button>
                     </div>
 
-                    {/* 🔥 CAIXA DO PROMOVER CO-MESTRE CORRIGIDA 🔥 */}
+                    {/* 🔥 CAIXA DO PROMOVER CO-MESTRE COM MENU SUSPENSO INTELIGENTE 🔥 */}
                     <div className="def-box" style={{ borderLeft: '4px solid #aa00ff' }}>
                         <h3 style={{ color: '#aa00ff', margin: '0 0 10px 0' }}>👑 Promover Co-Mestre</h3>
-                        <p style={{ color: '#aaa', fontSize: '0.8em', marginBottom: '15px' }}>Digite o Nickname (Conta) do jogador que deseja promover a Mestre nesta mesa:</p>
+                        <p style={{ color: '#aaa', fontSize: '0.8em', marginBottom: '15px' }}>Selecione a conta de um jogador online ou digite manualmente o Nickname para dar-lhe os poderes da mesa:</p>
                         
                         <div style={{ display: 'flex', gap: '10px', alignItems: 'stretch' }}>
                             <input 
                                 className="input-neon" 
                                 type="text" 
-                                placeholder="Nickname (Ex: MagoSombrio)" 
+                                list="online-players"
+                                placeholder="Selecione/Digite o Nickname..." 
                                 value={novoMestreNick} 
                                 onChange={e => setNovoMestreNick(e.target.value)} 
                                 style={{ flex: 1, minWidth: '150px', padding: '10px', fontSize: '1em', borderColor: '#aa00ff', color: '#aa00ff' }} 
                             />
+                            
+                            {/* O Datalist cria o menu suspenso mágico no Input! */}
+                            <datalist id="online-players">
+                                {jogadoresOnline.map(nick => (
+                                    <option key={nick} value={nick} />
+                                ))}
+                            </datalist>
+
                             <button 
                                 className="btn-neon btn-blue" 
                                 onClick={handlePromover} 
@@ -465,7 +477,7 @@ function LobbyNeon() {
         try {
             await registrarNovaMesa(novoCodigo, userLogado, senha);
             salvarNoHistorico(novoCodigo);
-            setMesaId(novoCodigo); // O listener de mestres ativará isMestre = true automaticamente
+            setMesaId(novoCodigo); 
         } catch (e) { alert("Erro ao criar mesa no servidor!"); }
     };
 
@@ -594,18 +606,19 @@ export default function App() {
         return () => { if (unsubDummies) unsubDummies(); if (unsubCenario) unsubCenario(); };
     }, [setDummies, setCenario]);
 
+    // 🔥 O Sistema de Presença rastreia Contas em vez de Fichas 🔥
     useEffect(() => {
-        if (!mesaId || !meuNome || !pronto) return;
-        const unsubConnected = iniciarSistemaDePresenca(mesaId, meuNome);
+        if (!mesaId || !userLogado || !pronto) return;
+        const unsubConnected = iniciarSistemaDePresenca(mesaId, userLogado);
         const unsubPresenca = iniciarListenerPresenca(mesaId, (dados) => {
             setJogadoresOnline(Object.keys(dados || {}));
         });
         return () => {
             if (unsubConnected) unsubConnected();
             if (unsubPresenca) unsubPresenca();
-            removerPresencaImediata(mesaId, meuNome);
+            removerPresencaImediata(mesaId, userLogado);
         };
-    }, [mesaId, meuNome, pronto, setJogadoresOnline]);
+    }, [mesaId, userLogado, pronto, setJogadoresOnline]);
 
     const entrarComPersonagem = async (nome) => {
         if (!nome) return;
@@ -672,7 +685,7 @@ export default function App() {
         <div className="app-layout">
             <div style={{ position: 'absolute', top: '10px', right: '15px', zIndex: 9999, display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(0,0,0,0.8)', padding: '5px 15px', borderRadius: '20px', border: '1px solid #333', boxShadow: '0 0 10px rgba(0,0,0,0.5)' }}>
                 
-                <div title={`Jogadores Online: ${jogadoresOnline.join(', ')}`} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0, 255, 170, 0.1)', border: '1px solid #00ffaa', padding: '2px 8px', borderRadius: '15px', cursor: 'help' }}>
+                <div title={`Jogadores Online (Contas): ${jogadoresOnline.join(', ')}`} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0, 255, 170, 0.1)', border: '1px solid #00ffaa', padding: '2px 8px', borderRadius: '15px', cursor: 'help' }}>
                     <span style={{ width: '8px', height: '8px', background: '#00ffaa', borderRadius: '50%', boxShadow: '0 0 8px #00ffaa' }}></span>
                     <span style={{ color: '#00ffaa', fontSize: '0.75em', fontWeight: 'bold' }}>{jogadoresOnline.length} ON</span>
                 </div>
