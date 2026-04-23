@@ -7,19 +7,33 @@ let _modoPlasmic = false;
 export function setModoPlasmic(ativo) { _modoPlasmic = ativo; }
 function isInPlasmicCanvas() { return _modoPlasmic; }
 
-// 🔥 SISTEMA DE MESAS 🔥
-export async function registrarNovaMesa(id, nomeMestre) {
+// ==========================================
+// 🔥 SISTEMA DE MESAS (AGORA COM SENHA) 🔥
+// ==========================================
+export async function registrarNovaMesa(id, nomeMestre, senha = '') {
     if (!db) return;
     const mesaRef = ref(db, `index_mesas/${id}`);
-    await set(mesaRef, { id: id, mestre: nomeMestre, criadaEm: Date.now(), ativa: true });
-}
-export async function verificarMesaExistente(id) {
-    if (!db || !id) return false;
-    const mesaRef = ref(db, `index_mesas/${id}`);
-    const snap = await get(mesaRef);
-    return snap.exists();
+    await set(mesaRef, { id: id, mestre: nomeMestre, senha: senha, criadaEm: Date.now(), ativa: true });
 }
 
+export async function verificarMesaExistente(id, senhaTentativa = '') {
+    if (!db || !id) return { existe: false };
+    const mesaRef = ref(db, `index_mesas/${id}`);
+    const snap = await get(mesaRef);
+    if (!snap.exists()) return { existe: false };
+    
+    const dados = snap.val();
+    // Se a mesa tem senha e a senha enviada for diferente, bloqueia!
+    if (dados.senha && String(dados.senha) !== String(senhaTentativa)) {
+        return { existe: true, senhaCorreta: false };
+    }
+    
+    return { existe: true, senhaCorreta: true };
+}
+
+// ==========================================
+// 🔥 SINCRONIZAÇÃO DE FICHAS 🔥
+// ==========================================
 let debounceTimer = null;
 export function salvarFichaSilencioso() {
     if (isInPlasmicCanvas()) return;
@@ -61,6 +75,9 @@ export function iniciarListenerPersonagens(callback) {
     });
 }
 
+// ==========================================
+// 🔥 FEED DE COMBATE 🔥
+// ==========================================
 export function iniciarListenerFeed(callback) {
     if (isInPlasmicCanvas()) return () => {};
     const { mesaId } = useStore.getState();
@@ -79,6 +96,9 @@ export function enviarParaFeed(d) {
     push(ref(db, `mesas/${mesaId}/feed_combate`), d).catch(() => {});
 }
 
+// ==========================================
+// 🔥 GESTÃO DE DADOS EXTRAS 🔥
+// ==========================================
 export async function deletarPersonagem(nome) {
     if (isInPlasmicCanvas()) return;
     const nomeSanitizado = sanitizarNome(nome);
