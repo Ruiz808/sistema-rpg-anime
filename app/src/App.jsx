@@ -549,20 +549,37 @@ export default function App() {
             <div style={{ position: 'absolute', top: '10px', right: '15px', zIndex: 9999, display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(0,0,0,0.8)', padding: '5px 15px', borderRadius: '20px', border: '1px solid #333' }}>
                 <span style={{ color: '#00ffcc', fontSize: '0.8em', fontWeight: 'bold', letterSpacing: '1px' }}>SALA: {mesaId}</span>
                 
-                {/* 🔥 BOTÃO MÁGICO DE RESGATE PARA O MESTRE 🔥 */}
+               {/* 🔥 BOTÃO MÁGICO DE RESGATE PARA O MESTRE (Fura-Escudo) 🔥 */}
                 {isMestre && (
                     <button 
                         onClick={async () => {
                             if(!window.confirm('⚠️ MESTRE: Deseja copiar TODOS os dados antigos do limbo para esta sala nova?')) return;
                             try {
+                                // 1. Personagens (Copiando um por um para respeitar a segurança)
                                 const oldPers = await get(ref(db, 'personagens'));
-                                const oldCen = await get(ref(db, 'cenario'));
-                                const oldDum = await get(ref(db, 'dummies'));
+                                if (oldPers.exists()) {
+                                    const data = oldPers.val();
+                                    for (const key in data) {
+                                        await set(ref(db, `mesas/${mesaId}/personagens/${key}`), data[key]);
+                                    }
+                                }
+                                
+                                // 2. Feed de Combate (Um por um)
                                 const oldFeed = await get(ref(db, 'feed_combate'));
-                                if (oldPers.exists()) await set(ref(db, `mesas/${mesaId}/personagens`), oldPers.val());
+                                if (oldFeed.exists()) {
+                                    const data = oldFeed.val();
+                                    for (const key in data) {
+                                        await set(ref(db, `mesas/${mesaId}/feed_combate/${key}`), data[key]);
+                                    }
+                                }
+
+                                // 3. Cenário e Dummies (Estes têm permissão de pasta inteira)
+                                const oldCen = await get(ref(db, 'cenario'));
                                 if (oldCen.exists()) await set(ref(db, `mesas/${mesaId}/cenario`), oldCen.val());
+                                
+                                const oldDum = await get(ref(db, 'dummies'));
                                 if (oldDum.exists()) await set(ref(db, `mesas/${mesaId}/dummies`), oldDum.val());
-                                if (oldFeed.exists()) await set(ref(db, `mesas/${mesaId}/feed_combate`), oldFeed.val());
+                                
                                 alert('✅ Dados teletransportados com sucesso! Atualize a página (F5) para ver os resultados.');
                             } catch (err) { alert('❌ Erro: ' + err.message); }
                         }} 
