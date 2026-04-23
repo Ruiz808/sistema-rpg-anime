@@ -99,7 +99,7 @@ function getEnergiasSupremas(ficha) {
 }
 
 // ============================================================================
-// 🔥 PAINEL DO MESTRE AVANÇADO (Cores, Efeitos e Barras Restaurados) 🔥
+// 🔥 PAINEL DO MESTRE (DESIGN ÉPICO 100% INTACTO) 🔥
 // ============================================================================
 function MestrePanel() {
     const personagens = useStore(s => s.personagens)
@@ -176,7 +176,7 @@ function MestrePanel() {
 
     const handleAssumirFicha = (nome, ficha) => {
         if (nome === meuNome) return;
-        if (window.confirm(`🎭 ASSUMIR O CONTROLE DE ${nome.toUpperCase()}?\n\nVocê vai "entrar" na ficha desta entidade. Tudo o que editar nas abas será salvo nela.`)) {
+        if (window.confirm(`🎭 ASSUMIR O CONTROLE DE ${nome.toUpperCase()}?\n\nVocê vai "entrar" na ficha desta entidade.`)) {
             setMeuNome(nome);
             carregarDadosFicha(ficha);
             localStorage.setItem('rpgNome', nome); 
@@ -191,22 +191,17 @@ function MestrePanel() {
         
         const nomeSanitizado = sanitizarNome(novoNome);
         if (personagens[nomeSanitizado]) {
-            alert('❌ Já existe uma entidade com esse nome! Escolha outro nome para o clone.');
+            alert('❌ Já existe uma entidade com esse nome!');
             return;
         }
 
-        if (window.confirm(`Deseja criar a entidade duplicada "${nomeSanitizado}" e assumir o controle dela agora?`)) {
+        if (window.confirm(`Deseja criar a entidade "${nomeSanitizado}" e assumir o controle dela agora?`)) {
             setMeuNome(nomeSanitizado);
             localStorage.setItem('rpgNome', nomeSanitizado);
-            
             const fichaClone = JSON.parse(JSON.stringify(fichaOriginal));
-            
             carregarDadosFicha(fichaClone);
             setAbaAtiva('aba-ficha'); 
-            
-            setTimeout(() => {
-                alert(`✨ O CLONE FOI CRIADO E CARREGADO: ${nomeSanitizado} ✨\n\n⚠️ IMPORTANTE: A ficha ainda só existe no seu ecrã! Vá até a "Ficha Narrativa" ou "Editor" e clique em "SALVAR" para forjá-lo na Base de Dados!`);
-            }, 600);
+            setTimeout(() => { alert(`✨ CLONE CRIADO! Vá em "SALVAR" para forjá-lo na Base de Dados!`); }, 600);
         }
     };
 
@@ -290,31 +285,16 @@ function MestrePanel() {
                             }
 
                             return (
-                                <div key={nome} style={{ 
-                                    background: 'rgba(0,0,0,0.6)', 
-                                    border: boxBorder, 
-                                    padding: '15px', borderRadius: '5px', position: 'relative', overflow: 'hidden', 
-                                    boxShadow: boxShadow 
-                                }}>
+                                <div key={nome} style={{ background: 'rgba(0,0,0,0.6)', border: boxBorder, padding: '15px', borderRadius: '5px', position: 'relative', overflow: 'hidden', boxShadow: boxShadow }}>
                                     
-                                    {gradOverlay && (
-                                        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: gradOverlay, pointerEvents: 'none', zIndex: 1 }} />
-                                    )}
-
+                                    {gradOverlay && (<div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: gradOverlay, pointerEvents: 'none', zIndex: 1 }} />)}
                                     <div style={{ position: 'absolute', top: 0, left: 0, height: '4px', width: `${percHp}%`, background: percHp > 50 ? '#0f0' : percHp > 20 ? '#ffcc00' : '#f00', transition: 'width 0.3s', zIndex: 2 }} />
 
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', marginTop: '5px', position: 'relative', zIndex: 2 }}>
                                         <strong style={{ color: titleColor, fontSize: '1.2em', textShadow: isGrand ? '0 0 10px #ff003c' : (isCandidato ? '0 0 10px #0088ff' : 'none') }}>
                                             {nome} {nome === meuNome && <span style={{color: '#0f0', fontSize: '0.6em', textShadow: 'none'}}>(VOCÊ)</span>}
                                         </strong>
-                                        <span style={{ 
-                                            color: subColor, 
-                                            fontSize: (isGrand || isCandidato) ? '0.85em' : '0.8em', 
-                                            fontStyle: 'italic',
-                                            fontWeight: (isGrand || isCandidato) ? 'bold' : 'normal',
-                                            textShadow: isGrand ? '0 0 5px #ff003c' : (isCandidato ? '0 0 5px #0088ff' : 'none'),
-                                            letterSpacing: (isGrand || isCandidato) ? '1px' : 'normal'
-                                        }}>
+                                        <span style={{ color: subColor, fontSize: (isGrand || isCandidato) ? '0.85em' : '0.8em', fontStyle: 'italic', fontWeight: (isGrand || isCandidato) ? 'bold' : 'normal', textShadow: isGrand ? '0 0 5px #ff003c' : (isCandidato ? '0 0 5px #0088ff' : 'none'), letterSpacing: (isGrand || isCandidato) ? '1px' : 'normal' }}>
                                             {subText}
                                         </span>
                                     </div>
@@ -354,29 +334,11 @@ function MestrePanel() {
 
                                     {/* 🔥 BOTÕES DE CONTROLO E CLONAGEM 🔥 */}
                                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', position: 'relative', zIndex: 2 }}>
-                                        <button
-                                            className={`btn-neon ${nome === meuNome ? 'btn-green' : 'btn-gold'}`}
-                                            style={{ flex: 1, padding: '4px', fontSize: '0.8em', margin: 0, opacity: nome === meuNome ? 0.6 : 1 }}
-                                            onClick={() => handleAssumirFicha(nome, ficha)}
-                                            disabled={nome === meuNome}
-                                        >
+                                        <button className={`btn-neon ${nome === meuNome ? 'btn-green' : 'btn-gold'}`} style={{ flex: 1, padding: '4px', fontSize: '0.8em', margin: 0, opacity: nome === meuNome ? 0.6 : 1 }} onClick={() => handleAssumirFicha(nome, ficha)} disabled={nome === meuNome}>
                                             {nome === meuNome ? '👁️ CONTROLANDO' : '✏️ EDITAR'}
                                         </button>
-                                        <button
-                                            className="btn-neon btn-blue"
-                                            style={{ flex: 1, padding: '4px', fontSize: '0.8em', margin: 0 }}
-                                            onClick={() => handleClonarFicha(nome, ficha)}
-                                        >
-                                            🖨️ CLONAR
-                                        </button>
-                                        <button
-                                            className="btn-neon btn-red"
-                                            style={{ flex: 1, padding: '4px', fontSize: '0.8em', margin: 0, opacity: nome === meuNome ? 0.3 : 1 }}
-                                            onClick={() => handleApagarJogador(nome)}
-                                            disabled={nome === meuNome}
-                                        >
-                                            ❌ APAGAR
-                                        </button>
+                                        <button className="btn-neon btn-blue" style={{ flex: 1, padding: '4px', fontSize: '0.8em', margin: 0 }} onClick={() => handleClonarFicha(nome, ficha)}>🖨️ CLONAR</button>
+                                        <button className="btn-neon btn-red" style={{ flex: 1, padding: '4px', fontSize: '0.8em', margin: 0, opacity: nome === meuNome ? 0.3 : 1 }} onClick={() => handleApagarJogador(nome)} disabled={nome === meuNome}>❌ APAGAR</button>
                                     </div>
                                 </div>
                             );
@@ -416,6 +378,7 @@ function MestrePanel() {
                 </div>
             </div>
 
+            {/* 🔥 A NOSSA FORJA DE VILÕES ENTRA AQUI! 🔥 */}
             <MestreForjaNPC />
 
         </div>
@@ -423,25 +386,44 @@ function MestrePanel() {
 }
 
 // ============================================================================
-// 🏰 LOBBY DE MESAS (COM DESIGN POLIDO, SENHA E HISTÓRICO)
+// 🏰 LOBBY DE MESAS (COM DESIGN POLIDO, SENHA E EDIÇÃO DE NOME)
 // ============================================================================
 function LobbyNeon() {
     const { setMesaId, setIsMestre } = useStore();
     const [codigoSala, setCodigoSala] = useState('');
+    
+    // Atualizado para suportar o formato { id: 'MESA-XXX', nome: 'Campanha do Dragão' }
     const [minhasMesas, setMinhasMesas] = useState(() => {
-        try { return JSON.parse(localStorage.getItem('rpg_historico_mesas')) || []; }
-        catch(e) { return []; }
+        try { 
+            const stored = JSON.parse(localStorage.getItem('rpg_historico_mesas')) || []; 
+            return stored.map(m => typeof m === 'string' ? { id: m, nome: m } : m);
+        } catch(e) { return []; }
     });
 
-    const salvarNoHistorico = (id) => {
-        const novaLista = [id, ...minhasMesas.filter(m => m !== id)].slice(0, 5);
+    const salvarNoHistorico = (id, nomePersonalizado = id) => {
+        let existing = minhasMesas.find(m => m.id === id);
+        let finalName = existing ? existing.nome : nomePersonalizado;
+
+        const filtrado = minhasMesas.filter(m => m.id !== id);
+        const novaLista = [{ id, nome: finalName }, ...filtrado].slice(0, 5);
+        setMinhasMesas(novaLista);
+        localStorage.setItem('rpg_historico_mesas', JSON.stringify(novaLista));
+    };
+
+    const editarNomeMesa = (id, e) => {
+        e.stopPropagation();
+        const mesa = minhasMesas.find(m => m.id === id);
+        const novoNome = window.prompt("Como deseja apelidar esta mesa no seu histórico pessoal?", mesa?.nome || id);
+        if (!novoNome || !novoNome.trim()) return;
+        
+        const novaLista = minhasMesas.map(m => m.id === id ? { ...m, nome: novoNome.trim() } : m);
         setMinhasMesas(novaLista);
         localStorage.setItem('rpg_historico_mesas', JSON.stringify(novaLista));
     };
 
     const removerDoHistorico = (idParaRemover, e) => {
         e.stopPropagation();
-        const novaLista = minhasMesas.filter(m => m !== idParaRemover);
+        const novaLista = minhasMesas.filter(m => m.id !== idParaRemover);
         setMinhasMesas(novaLista);
         localStorage.setItem('rpg_historico_mesas', JSON.stringify(novaLista));
     };
@@ -471,12 +453,8 @@ function LobbyNeon() {
         if (!id) return alert('Digite o código da mesa para entrar!');
         
         const resultado = await verificarMesaExistente(id);
-        
-        if (!resultado.existe) {
-            return alert('Mesa não encontrada! Verifique se o código está correto.');
-        }
+        if (!resultado.existe) return alert('Mesa não encontrada! Verifique se o código está correto.');
 
-        // Usando reCheck correto!
         if (!resultado.senhaCorreta) {
             const senhaDigitada = window.prompt(`A sala ${id} é protegida!\nDigite a senha de acesso:`);
             if (!senhaDigitada) return;
@@ -503,11 +481,14 @@ function LobbyNeon() {
                         <span style={{ color: '#aaa', fontSize: '0.8em', fontWeight: 'bold' }}>SUAS MESAS RECENTES:</span>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
                             {minhasMesas.map(m => (
-                                <div key={m} style={{ display: 'flex', gap: '5px' }}>
-                                    <button onClick={() => entrarMesa(m)} className="btn-neon btn-blue" style={{ flex: 1, margin: 0, padding: '10px', fontWeight: 'bold' }}>
-                                        {m}
+                                <div key={m.id} style={{ display: 'flex', gap: '5px' }}>
+                                    <button onClick={() => entrarMesa(m.id)} className="btn-neon btn-blue" style={{ flex: 1, margin: 0, padding: '10px', fontWeight: 'bold', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {m.nome}
                                     </button>
-                                    <button onClick={(e) => removerDoHistorico(m, e)} style={{ background: 'rgba(255,0,60,0.2)', border: '1px solid #ff003c', color: '#ff003c', borderRadius: '5px', padding: '0 15px', cursor: 'pointer' }} title="Apagar do Histórico">
+                                    <button onClick={(e) => editarNomeMesa(m.id, e)} style={{ background: 'rgba(255, 204, 0, 0.2)', border: '1px solid #ffcc00', color: '#ffcc00', borderRadius: '5px', padding: '0 15px', cursor: 'pointer' }} title="Editar Apelido da Mesa">
+                                        ✏️
+                                    </button>
+                                    <button onClick={(e) => removerDoHistorico(m.id, e)} style={{ background: 'rgba(255,0,60,0.2)', border: '1px solid #ff003c', color: '#ff003c', borderRadius: '5px', padding: '0 15px', cursor: 'pointer' }} title="Apagar do Histórico">
                                         🗑️
                                     </button>
                                 </div>
@@ -547,6 +528,12 @@ export default function App() {
     const [modalAberto, setModalAberto] = useState(false);
     const [themeReady, setThemeReady] = useState(false);
 
+    // 🔥 NOVO: Histórico de Personagens da Tela de Entrada 🔥
+    const [meusPersonagens, setMeusPersonagens] = useState(() => {
+        try { return JSON.parse(localStorage.getItem('rpg_historico_personagens')) || []; }
+        catch(e) { return []; }
+    });
+
     useEffect(() => { setTimeout(() => setThemeReady(true), 50); }, []);
 
     useEffect(() => {
@@ -568,11 +555,15 @@ export default function App() {
         return () => { if (unsubDummies) unsubDummies(); if (unsubCenario) unsubCenario(); };
     }, [setDummies, setCenario]);
 
-    const handleNameSubmit = async (e) => {
-        e.preventDefault();
-        const input = e.target.elements.nomeInput.value.trim();
-        if (!input) return;
-        const nomeSanitizado = sanitizarNome(input);
+    // 🔥 Função atualizada para salvar o nome no Histórico ao Entrar 🔥
+    const entrarComPersonagem = async (nome) => {
+        if (!nome) return;
+        const nomeSanitizado = sanitizarNome(nome);
+
+        const novaLista = [nomeSanitizado, ...meusPersonagens.filter(n => n !== nomeSanitizado)].slice(0, 5);
+        setMeusPersonagens(novaLista);
+        localStorage.setItem('rpg_historico_personagens', JSON.stringify(novaLista));
+
         localStorage.setItem('rpgNome', nomeSanitizado);
         setMeuNome(nomeSanitizado);
         setPronto(true);
@@ -580,6 +571,13 @@ export default function App() {
             const dados = await carregarFichaDoFirebase(nomeSanitizado);
             if (dados && Object.keys(dados).length > 2) carregarDadosFicha(dados);
         } catch (e) { console.warn('Falha Firebase:', e); }
+    };
+
+    const removerPersonagemDoHistorico = (nomeParaRemover, e) => {
+        e.stopPropagation();
+        const novaLista = meusPersonagens.filter(n => n !== nomeParaRemover);
+        setMeusPersonagens(novaLista);
+        localStorage.setItem('rpg_historico_personagens', JSON.stringify(novaLista));
     };
 
     if (!mesaId) return <LobbyNeon />;
@@ -592,19 +590,42 @@ export default function App() {
         );
     }
 
+    // 🔥 NOVA TELA DE ENTRADA DO PERSONAGEM (Design Polido) 🔥
     if (!pronto && !meuNome) {
         return (
-            <div className="modal-overlay" style={{ display: 'flex' }}>
-                <form className="modal-box" onSubmit={handleNameSubmit}>
-                    <h2 style={{ color: '#0ff', marginTop: 0 }}>Bem-vindo à Sala {mesaId}</h2>
-                    <p style={{ color: '#fff', marginBottom: '20px' }}>Digita o nome do teu personagem para entrar:</p>
-                    <input className="input-neon" name="nomeInput" type="text" autoFocus placeholder="Nome do personagem (Ex: Natsu)" maxLength={50} style={{ width: '100%', boxSizing: 'border-box', padding: '15px', fontSize: '1.2em', textAlign: 'center' }}/>
-                    
-                    <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                        <button type="button" className="btn-neon btn-red" onClick={() => { limparFeedStore(); setMesaId(''); }} style={{ flex: 1, padding: '10px' }}>Voltar</button>
-                        <button type="submit" className="btn-neon btn-green" style={{ flex: 2, padding: '10px', fontSize: '1.1em', fontWeight: 'bold' }}>Entrar na Mesa</button>
-                    </div>
-                </form>
+            <div style={{ height: '100vh', width: '100vw', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#050505', backgroundImage: 'radial-gradient(circle, #1a0b2e 0%, #000 100%)', fontFamily: 'sans-serif' }}>
+                <div className="def-box fade-in" style={{ padding: '40px', maxWidth: '450px', width: '100%', textAlign: 'center', background: 'rgba(10, 10, 15, 0.95)', border: '2px solid #00ffcc', boxShadow: '0 0 30px rgba(0, 255, 204, 0.2)', borderRadius: '15px' }}>
+                    <h2 style={{ color: '#00ffcc', textShadow: '0 0 10px #00ffcc', marginTop: 0, textTransform: 'uppercase', letterSpacing: '2px' }}>SALA: {mesaId}</h2>
+                    <p style={{ color: '#aaa', marginBottom: '30px' }}>Escolha ou crie o seu personagem para esta sessão.</p>
+
+                    {meusPersonagens.length > 0 && (
+                        <div style={{ marginBottom: '20px', textAlign: 'left' }}>
+                            <span style={{ color: '#aaa', fontSize: '0.8em', fontWeight: 'bold' }}>SEUS PERSONAGENS RECENTES:</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+                                {meusPersonagens.map(p => (
+                                    <div key={p} style={{ display: 'flex', gap: '5px' }}>
+                                        <button type="button" onClick={() => entrarComPersonagem(p)} className="btn-neon btn-blue" style={{ flex: 1, margin: 0, padding: '10px', fontWeight: 'bold' }}>
+                                            👤 {p}
+                                        </button>
+                                        <button type="button" onClick={(e) => removerPersonagemDoHistorico(p, e)} style={{ background: 'rgba(255,0,60,0.2)', border: '1px solid #ff003c', color: '#ff003c', borderRadius: '5px', padding: '0 15px', cursor: 'pointer' }} title="Apagar do Histórico">
+                                            🗑️
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                            <div style={{ position: 'relative', marginBottom: '20px', marginTop: '30px' }}><hr style={{ borderColor: '#333' }} /><span style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#0a0a0f', padding: '0 10px', color: '#666', fontSize: '0.8em' }}>OU NOVO PERSONAGEM</span></div>
+                        </div>
+                    )}
+
+                    <form onSubmit={(e) => { e.preventDefault(); entrarComPersonagem(e.target.elements.nomeInput.value.trim()); }}>
+                        <input className="input-neon" name="nomeInput" type="text" autoFocus placeholder="Nome (Ex: Natsu)" maxLength={50} style={{ width: '100%', boxSizing: 'border-box', padding: '15px', fontSize: '1.2em', textAlign: 'center' }}/>
+
+                        <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                            <button type="button" className="btn-neon btn-red" onClick={() => { limparFeedStore(); setMesaId(''); }} style={{ flex: 1, padding: '10px' }}>🚪 Voltar</button>
+                            <button type="submit" className="btn-neon btn-green" style={{ flex: 2, padding: '10px', fontSize: '1.1em', fontWeight: 'bold' }}>Entrar na Mesa</button>
+                        </div>
+                    </form>
+                </div>
             </div>
         );
     }
