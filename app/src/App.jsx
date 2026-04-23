@@ -291,13 +291,13 @@ function LobbyNeon() {
             return alert('Mesa não encontrada! Verifique se o código está correto.');
         }
 
-        // Se a mesa for protegida por senha, o verificador acusa senhaCorreta = false logo de cara
+        // CORREÇÃO: Variável renomeada para reCheck
         if (!resultado.senhaCorreta) {
             const senhaDigitada = window.prompt(`A sala ${id} é protegida!\nDigite a senha de acesso:`);
             if (!senhaDigitada) return;
             
-            const re-check = await verificarMesaExistente(id, senhaDigitada);
-            if (!re-check.senhaCorreta) return alert('Senha Incorreta! Acesso negado.');
+            const reCheck = await verificarMesaExistente(id, senhaDigitada);
+            if (!reCheck.senhaCorreta) return alert('Senha Incorreta! Acesso negado.');
         }
 
         // Passou nas verificações!
