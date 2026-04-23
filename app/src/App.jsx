@@ -425,12 +425,12 @@ function AuthScreen() {
     );
 }
 
-// 🏰 LOBBY DE MESAS
+// 🏰 LOBBY DE MESAS (DESIGN TOTALMENTE NOVO E ROBUSTO)
 function LobbyNeon() {
     const { setMesaId, userLogado } = useStore();
     const [codigoSala, setCodigoSala] = useState('');
-    
-    // 🔥 O LocalStorage agora salva se você é Mestre ou Jogador na mesa
+    const [abaMesas, setAbaMesas] = useState('jogador'); // 'mestre' ou 'jogador'
+
     const [minhasMesas, setMinhasMesas] = useState(() => {
         try { 
             const stored = JSON.parse(localStorage.getItem('rpg_historico_mesas')) || []; 
@@ -475,7 +475,7 @@ function LobbyNeon() {
         const novoCodigo = 'MESA-' + Math.random().toString(36).substring(2, 7).toUpperCase();
         try {
             await registrarNovaMesa(novoCodigo, userLogado, senha);
-            salvarNoHistorico(novoCodigo, novoCodigo, true); // 🔥 Salva como Mestre!
+            salvarNoHistorico(novoCodigo, novoCodigo, true); 
             setMesaId(novoCodigo); 
         } catch (e) { alert("Erro ao criar mesa no servidor!"); }
     };
@@ -497,7 +497,6 @@ function LobbyNeon() {
             checkFinal = reCheck;
         }
 
-        // 🔥 Verifica se o cara que tá entrando tem o cargo de Mestre na mesa
         const nickSanitizado = sanitizarNome(userLogado);
         const souMestre = !!(checkFinal.mestres && checkFinal.mestres[nickSanitizado]);
 
@@ -505,60 +504,103 @@ function LobbyNeon() {
         setMesaId(id);
     };
 
-    // 🔥 DIVIDE AS MESAS EM DUAS LISTAS PARA O VISUAL 🔥
     const mesasMestre = minhasMesas.filter(m => m.isMestre);
     const mesasJogador = minhasMesas.filter(m => !m.isMestre);
 
-    const renderTableButton = (m, colorClass, icon) => (
-        <div key={m.id} style={{ display: 'flex', gap: '5px' }}>
-            <button onClick={() => entrarMesa(m.id)} className={`btn-neon ${colorClass}`} style={{ flex: 1, margin: 0, padding: '10px', fontWeight: 'bold', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {icon} {m.nome}
+    const renderTableButton = (m, colorClass, icon, borderColor) => (
+        <div key={m.id} style={{ display: 'flex', gap: '8px', background: 'rgba(0,0,0,0.5)', border: `1px solid ${borderColor}`, padding: '6px', borderRadius: '8px', alignItems: 'stretch' }}>
+            <button onClick={() => entrarMesa(m.id)} className={`btn-neon ${colorClass}`} style={{ flex: 1, margin: 0, padding: '10px 15px', fontWeight: 'bold', fontSize: '1.1em', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '1.3em' }}>{icon}</span> 
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.nome}</span>
             </button>
-            <button onClick={(e) => editarNomeMesa(m.id, e)} style={{ background: 'rgba(255, 204, 0, 0.2)', border: '1px solid #ffcc00', color: '#ffcc00', borderRadius: '5px', padding: '0 15px', cursor: 'pointer' }} title="Editar Apelido da Mesa">✏️</button>
-            <button onClick={(e) => removerDoHistorico(m.id, e)} style={{ background: 'rgba(255,0,60,0.2)', border: '1px solid #ff003c', color: '#ff003c', borderRadius: '5px', padding: '0 15px', cursor: 'pointer' }} title="Apagar do Histórico">🗑️</button>
+            <button onClick={(e) => editarNomeMesa(m.id, e)} style={{ width: '45px', background: 'rgba(255, 204, 0, 0.1)', border: '1px solid #ffcc00', color: '#ffcc00', borderRadius: '5px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2em', transition: '0.2s' }} title="Editar Apelido">✏️</button>
+            <button onClick={(e) => removerDoHistorico(m.id, e)} style={{ width: '45px', background: 'rgba(255,0,60,0.1)', border: '1px solid #ff003c', color: '#ff003c', borderRadius: '5px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2em', transition: '0.2s' }} title="Apagar do Histórico">🗑️</button>
         </div>
     );
 
     return (
         <div style={{ height: '100vh', width: '100vw', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#050505', backgroundImage: 'radial-gradient(circle, #1a0b2e 0%, #000 100%)', fontFamily: 'sans-serif' }}>
-            <div style={{ position: 'absolute', top: 15, right: 15 }}>
-                <span style={{ color: '#aaa', fontSize: '0.9em', marginRight: 10 }}>Logado como: <strong style={{ color: '#00ffcc' }}>{userLogado}</strong></span>
-                <button onClick={() => { if(window.confirm('Sair da sua conta?')) sairConta(); }} style={{ background: '#ff003c', border: 'none', color: '#fff', padding: '5px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>Sair</button>
-            </div>
-            <div className="def-box fade-in" style={{ padding: '40px', maxWidth: '450px', width: '100%', textAlign: 'center', background: 'rgba(10, 10, 15, 0.95)', border: '2px solid #00ffcc', boxShadow: '0 0 30px rgba(0, 255, 204, 0.2)', borderRadius: '15px' }}>
-                <h1 style={{ color: '#00ffcc', textShadow: '0 0 10px #00ffcc', margin: '0 0 10px 0', textTransform: 'uppercase', letterSpacing: '3px' }}>Multiverso RPG</h1>
-                <p style={{ color: '#aaa', fontSize: '0.9em', marginBottom: '30px' }}>Bem-vindo à Taverna Central, {userLogado}.</p>
-                <button className="btn-neon btn-green" onClick={criarMesa} style={{ width: '100%', padding: '15px', fontSize: '1.2em', fontWeight: 'bold', marginBottom: '20px' }}>🌌 CRIAR NOVA MESA (Mestre)</button>
+            
+            <div className="def-box fade-in" style={{ padding: '30px', maxWidth: '500px', width: '100%', textAlign: 'center', background: 'rgba(10, 10, 15, 0.95)', border: '2px solid #00ffcc', boxShadow: '0 0 30px rgba(0, 255, 204, 0.2)', borderRadius: '15px' }}>
                 
-                {minhasMesas.length > 0 && (
-                    <div style={{ marginBottom: '20px', textAlign: 'left' }}>
-                        
-                        {/* 🔥 SESSÃO DO MESTRE 🔥 */}
-                        {mesasMestre.length > 0 && (
-                            <div style={{ marginBottom: '15px' }}>
-                                <span style={{ color: '#ffcc00', fontSize: '0.8em', fontWeight: 'bold' }}>👑 CAMPANHAS QUE MESTRO:</span>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
-                                    {mesasMestre.map(m => renderTableButton(m, 'btn-gold', '👑'))}
-                                </div>
-                            </div>
-                        )}
+                {/* 🔥 O NOVO MENU ENCORPADO COM NICK 🔥 */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0, 0, 0, 0.6)', padding: '12px 20px', borderRadius: '12px', border: '1px solid #00ffcc', marginBottom: '25px', boxShadow: 'inset 0 0 15px rgba(0,255,204,0.1)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ background: 'linear-gradient(135deg, #00ffcc, #0088ff)', color: '#000', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '1.2em', boxShadow: '0 0 10px rgba(0,255,204,0.5)' }}>
+                            {userLogado.charAt(0).toUpperCase()}
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                            <span style={{ color: '#aaa', fontSize: '0.7em', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 'bold' }}>Identificação</span>
+                            <strong style={{ color: '#fff', fontSize: '1.1em', letterSpacing: '1px' }}>{userLogado}</strong>
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        <button title="Configurações (Em breve)" style={{ width: '35px', height: '35px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid #444', color: '#aaa', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1em', transition: '0.2s' }}>⚙️</button>
+                        <button title="Sair da Conta" onClick={() => { if(window.confirm('Sair da conta?')) sairConta(); }} style={{ width: '35px', height: '35px', borderRadius: '8px', background: 'rgba(255,0,60,0.1)', border: '1px solid #ff003c', color: '#ff003c', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1em', transition: '0.2s' }}>🚪</button>
+                    </div>
+                </div>
 
-                        {/* 🔥 SESSÃO DOS JOGADORES 🔥 */}
-                        {mesasJogador.length > 0 && (
-                            <div>
-                                <span style={{ color: '#00ccff', fontSize: '0.8em', fontWeight: 'bold' }}>⚔️ AVENTURAS QUE JOGO:</span>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
-                                    {mesasJogador.map(m => renderTableButton(m, 'btn-blue', '⚔️'))}
-                                </div>
-                            </div>
-                        )}
-                        
+                <h1 style={{ color: '#00ffcc', textShadow: '0 0 10px #00ffcc', margin: '0 0 20px 0', textTransform: 'uppercase', letterSpacing: '3px' }}>Multiverso RPG</h1>
+                
+                <button className="btn-neon btn-green" onClick={criarMesa} style={{ width: '100%', padding: '15px', fontSize: '1.2em', fontWeight: 'bold', marginBottom: '25px', borderRadius: '10px' }}>🌌 CRIAR NOVA MESA (Mestre)</button>
+                
+                {/* 🔥 SISTEMA DE ABAS (MESTRE / JOGADOR) 🔥 */}
+                {minhasMesas.length > 0 && (
+                    <div style={{ marginBottom: '25px' }}>
+                        <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+                            <button
+                                className={`btn-neon ${abaMesas === 'mestre' ? 'btn-gold' : ''}`}
+                                onClick={() => setAbaMesas('mestre')}
+                                style={{ flex: 1, padding: '12px', fontWeight: 'bold', margin: 0, opacity: abaMesas === 'mestre' ? 1 : 0.5, transition: '0.3s' }}
+                            >
+                                👑 MESTRANDO ({mesasMestre.length})
+                            </button>
+                            <button
+                                className={`btn-neon ${abaMesas === 'jogador' ? 'btn-blue' : ''}`}
+                                onClick={() => setAbaMesas('jogador')}
+                                style={{ flex: 1, padding: '12px', fontWeight: 'bold', margin: 0, opacity: abaMesas === 'jogador' ? 1 : 0.5, transition: '0.3s' }}
+                            >
+                                ⚔️ JOGANDO ({mesasJogador.length})
+                            </button>
+                        </div>
+
+                        {/* CAIXA DE CONTEÚDO DA ABA */}
+                        <div style={{ background: 'rgba(0,0,0,0.3)', padding: '15px', borderRadius: '10px', border: '1px solid #222', minHeight: '180px' }}>
+                            
+                            {abaMesas === 'mestre' && (
+                                mesasMestre.length > 0 ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                        {mesasMestre.map(m => renderTableButton(m, 'btn-gold', '👑', '#ffcc00'))}
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '150px', color: '#666', fontStyle: 'italic' }}>
+                                        <span style={{ fontSize: '2em', marginBottom: '10px' }}>📜</span>
+                                        Você não mestra nenhuma mesa.
+                                    </div>
+                                )
+                            )}
+
+                            {abaMesas === 'jogador' && (
+                                mesasJogador.length > 0 ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                        {mesasJogador.map(m => renderTableButton(m, 'btn-blue', '⚔️', '#0088ff'))}
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '150px', color: '#666', fontStyle: 'italic' }}>
+                                        <span style={{ fontSize: '2em', marginBottom: '10px' }}>🏕️</span>
+                                        Você não participa de nenhuma aventura.
+                                    </div>
+                                )
+                            )}
+                        </div>
                     </div>
                 )}
-                <div style={{ position: 'relative', marginBottom: '20px', marginTop: '30px' }}><hr style={{ borderColor: '#333' }} /><span style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#0a0a0f', padding: '0 10px', color: '#666', fontSize: '0.8em' }}>OU ENTRAR COM CONVITE</span></div>
+                
+                <div style={{ position: 'relative', marginBottom: '20px', marginTop: '10px' }}><hr style={{ borderColor: '#333' }} /><span style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#0a0a0f', padding: '0 10px', color: '#666', fontSize: '0.8em' }}>OU ENTRAR COM CONVITE</span></div>
+                
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                     <input className="input-neon" type="text" placeholder="Cole o Código (Ex: MESA-A8X9P)" value={codigoSala} onChange={e => setCodigoSala(e.target.value)} style={{ width: '100%', padding: '15px', fontSize: '1.1em', textAlign: 'center', textTransform: 'uppercase', boxSizing: 'border-box' }} />
-                    <button className="btn-neon btn-blue" onClick={() => entrarMesa()} style={{ width: '100%', padding: '15px', fontSize: '1.2em', fontWeight: 'bold' }}>🚪 ENTRAR NA SALA</button>
+                    <button className="btn-neon btn-blue" onClick={() => entrarMesa()} style={{ width: '100%', padding: '15px', fontSize: '1.2em', fontWeight: 'bold', borderRadius: '10px' }}>🚪 ENTRAR NA SALA</button>
                 </div>
             </div>
         </div>
