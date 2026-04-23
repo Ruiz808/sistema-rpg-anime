@@ -31,7 +31,8 @@ import {
     carregarFichaDoFirebase, iniciarListenerDummies, enviarParaFeed, salvarDummie, 
     iniciarListenerCenario, registrarNovaMesa, verificarMesaExistente, 
     registrarUsuario, entrarUsuario, sairConta, monitorarAuth,
-    iniciarSistemaDePresenca, iniciarListenerPresenca, removerPresencaImediata // 🔥 IMPORTAÇÕES DE PRESENÇA
+    iniciarSistemaDePresenca, iniciarListenerPresenca, removerPresencaImediata,
+    iniciarListenerMestres, promoverAMestreFirebase // 🔥 IMPORTAÇÕES DE MESTRES 🔥
 } from './services/firebase-sync'
 
 import { getMaximo } from './core/attributes'
@@ -110,6 +111,7 @@ function MestrePanel() {
     const meuNome = useStore(s => s.meuNome)
     const setPersonagemParaDeletar = useStore(s => s.setPersonagemParaDeletar)
     const isMestre = useStore(s => s.isMestre)
+    const mesaId = useStore(s => s.mesaId)
 
     const setMeuNome = useStore(s => s.setMeuNome)
     const carregarDadosFicha = useStore(s => s.carregarDadosFicha)
@@ -124,6 +126,8 @@ function MestrePanel() {
     const [dVisivelHp, setDVisivelHp] = useState('todos')
     const [dOculto, setDOculto] = useState(false)
     const [mesaVisor, setMesaVisor] = useState('presente')
+    
+    const [novoMestreNick, setNovoMestreNick] = useState('')
 
     const grandsGlobais = useMemo(() => {
         let g = {};
@@ -176,6 +180,15 @@ function MestrePanel() {
             carregarDadosFicha(fichaClone);
             setAbaAtiva('aba-ficha'); 
             setTimeout(() => alert(`✨ CLONE CRIADO! Clique em "SALVAR" na ficha para forjá-lo na Base de Dados!`), 600);
+        }
+    };
+
+    const handlePromover = async () => {
+        if (!novoMestreNick.trim()) return;
+        if (window.confirm(`Tem a certeza que deseja dar os poderes de Mestre da mesa para a conta de ${novoMestreNick}?`)) {
+            await promoverAMestreFirebase(mesaId, novoMestreNick);
+            alert(`✨ Sucesso! ${novoMestreNick} agora é um Mestre desta mesa!`);
+            setNovoMestreNick('');
         }
     };
 
@@ -323,6 +336,16 @@ function MestrePanel() {
                         <textarea className="input-neon" placeholder="Escreva uma mensagem global para o ecrã de todos..." value={msgSistema} onChange={e => setMsgSistema(e.target.value)} style={{ width: '100%', minHeight: '80px', borderColor: '#ffcc00', color: '#ffcc00' }} />
                         <button className="btn-neon btn-gold" onClick={enviarAviso} style={{ width: '100%', marginTop: '10px' }}>📢 ENVIAR AVISO GLOBAL</button>
                     </div>
+
+                    {/* 🔥 NOVO: PROMOVER CO-MESTRE 🔥 */}
+                    <div className="def-box" style={{ borderLeft: '4px solid #aa00ff' }}>
+                        <h3 style={{ color: '#aa00ff', margin: '0 0 10px 0' }}>👑 Promover Co-Mestre</h3>
+                        <p style={{ color: '#aaa', fontSize: '0.8em', marginBottom: '15px' }}>Digite o Nickname (Conta) do jogador que deseja promover a Mestre nesta mesa:</p>
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            <input className="input-neon" type="text" placeholder="Nickname da Conta" value={novoMestreNick} onChange={e => setNovoMestreNick(e.target.value)} style={{ flex: 1, borderColor: '#aa00ff', color: '#aa00ff' }} />
+                            <button className="btn-neon btn-blue" onClick={handlePromover} style={{ borderColor: '#aa00ff', color: '#aa00ff', fontWeight: 'bold', padding: '0 15px' }}>PROMOVER</button>
+                        </div>
+                    </div>
                 </div>
             </div>
             <MestreForjaNPC />
@@ -382,7 +405,7 @@ function AuthScreen() {
 
 // 🏰 LOBBY DE MESAS
 function LobbyNeon() {
-    const { setMesaId, setIsMestre, userLogado } = useStore();
+    const { setMesaId, userLogado } = useStore();
     const [codigoSala, setCodigoSala] = useState('');
     const [minhasMesas, setMinhasMesas] = useState(() => {
         try { 
@@ -428,8 +451,7 @@ function LobbyNeon() {
         try {
             await registrarNovaMesa(novoCodigo, userLogado, senha);
             salvarNoHistorico(novoCodigo);
-            setIsMestre(true); 
-            setMesaId(novoCodigo);
+            setMesaId(novoCodigo); // O listener de mestres ativará isMestre = true automaticamente
         } catch (e) { alert("Erro ao criar mesa no servidor!"); }
     };
 
@@ -445,7 +467,6 @@ function LobbyNeon() {
             if (!reCheck.senhaCorreta) return alert('Senha Incorreta! Acesso negado.');
         }
         salvarNoHistorico(id);
-        setIsMestre(false);
         setMesaId(id);
     };
 
@@ -489,7 +510,6 @@ export default function App() {
     const setUserLogado = useStore(s => s.setUserLogado);
     const [authVerificada, setAuthVerificada] = useState(false);
 
-    // 🔥 NOVO: Puxando o State dos Jogadores Online 🔥
     const jogadoresOnline = useStore(s => s.jogadoresOnline);
     const setJogadoresOnline = useStore(s => s.setJogadoresOnline);
 
@@ -503,7 +523,9 @@ export default function App() {
     const mesaId = useStore(s => s.mesaId);
     const setMesaId = useStore(s => s.setMesaId);
     const limparFeedStore = useStore(s => s.limparFeedStore);
+    
     const isMestre = useStore(s => s.isMestre);
+    const setIsMestre = useStore(s => s.setIsMestre);
 
     const { loading } = useFirebase();
     const [pronto, setPronto] = useState(false);
@@ -525,6 +547,21 @@ export default function App() {
         return () => unsub();
     }, [setUserLogado]);
 
+    // 🔥 NOVO: Listener Dinâmico de Mestres 🔥
+    // Se a mesa for carregada, este script avisa se o seu userLogado é mestre ou não
+    useEffect(() => {
+        if (!mesaId || !userLogado) return;
+        const unsub = iniciarListenerMestres(mesaId, (mestresDict) => {
+            const nickSanitizado = sanitizarNome(userLogado);
+            if (mestresDict[nickSanitizado]) {
+                setIsMestre(true);
+            } else {
+                setIsMestre(false);
+            }
+        });
+        return () => unsub();
+    }, [mesaId, userLogado, setIsMestre]);
+
     useEffect(() => {
         let nomeLocal = localStorage.getItem('rpgNome') || localStorage.getItem('rpg_nome');
         if (nomeLocal) {
@@ -544,7 +581,6 @@ export default function App() {
         return () => { if (unsubDummies) unsubDummies(); if (unsubCenario) unsubCenario(); };
     }, [setDummies, setCenario]);
 
-    // 🔥 NOVO: Hook do Sistema de Presença 🔥
     useEffect(() => {
         if (!mesaId || !meuNome || !pronto) return;
         const unsubConnected = iniciarSistemaDePresenca(mesaId, meuNome);
@@ -621,11 +657,8 @@ export default function App() {
 
     return (
         <div className="app-layout">
-            
-            {/* 🔥 BARRA DE TOPO DA SALA COM BOLINHA ONLINE 🔥 */}
             <div style={{ position: 'absolute', top: '10px', right: '15px', zIndex: 9999, display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(0,0,0,0.8)', padding: '5px 15px', borderRadius: '20px', border: '1px solid #333', boxShadow: '0 0 10px rgba(0,0,0,0.5)' }}>
                 
-                {/* 🟢 O Indicador de Online */}
                 <div title={`Jogadores Online: ${jogadoresOnline.join(', ')}`} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0, 255, 170, 0.1)', border: '1px solid #00ffaa', padding: '2px 8px', borderRadius: '15px', cursor: 'help' }}>
                     <span style={{ width: '8px', height: '8px', background: '#00ffaa', borderRadius: '50%', boxShadow: '0 0 8px #00ffaa' }}></span>
                     <span style={{ color: '#00ffaa', fontSize: '0.75em', fontWeight: 'bold' }}>{jogadoresOnline.length} ON</span>

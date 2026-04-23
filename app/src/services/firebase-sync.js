@@ -1,4 +1,3 @@
-// 🔥 ATENÇÃO: Adicionado o 'onDisconnect' na importação abaixo!
 import { ref, set, get, push, remove, onValue, onChildAdded, limitToLast, query, onDisconnect } from 'firebase/database';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { auth, db, storage } from './firebase-config';
@@ -20,27 +19,18 @@ export function iniciarSistemaDePresenca(mesaId, meuNome) {
 
     const unsub = onValue(connectedRef, (snap) => {
         if (snap.val() === true) {
-            // Se a conexão cair, o Firebase deleta este nó automaticamente:
-            onDisconnect(myConnectionsRef).remove().then(() => {
-                // Conexão estabelecida: avisa que estou online!
-                set(myConnectionsRef, true);
-            });
+            onDisconnect(myConnectionsRef).remove().then(() => { set(myConnectionsRef, true); });
         }
     });
     return unsub;
 }
-
 export function iniciarListenerPresenca(mesaId, callback) {
     if (!db || !mesaId) return () => {};
-    return onValue(ref(db, `mesas/${mesaId}/presenca`), (snapshot) => {
-        callback(snapshot.val() || {});
-    });
+    return onValue(ref(db, `mesas/${mesaId}/presenca`), (snapshot) => { callback(snapshot.val() || {}); });
 }
-
 export function removerPresencaImediata(mesaId, meuNome) {
     if (!db || !mesaId || !meuNome) return;
-    const nomeSanitizado = sanitizarNome(meuNome);
-    remove(ref(db, `mesas/${mesaId}/presenca/${nomeSanitizado}`)).catch(()=>{});
+    remove(ref(db, `mesas/${mesaId}/presenca/${sanitizarNome(meuNome)}`)).catch(()=>{});
 }
 
 // ==========================================
@@ -54,27 +44,26 @@ export function entrarUsuario(nickname, senha) {
     const fakeEmail = `${sanitizarNome(nickname)}@multiverso.rpg`;
     return signInWithEmailAndPassword(auth, fakeEmail, senha);
 }
-export function sairConta() {
-    return signOut(auth);
-}
+export function sairConta() { return signOut(auth); }
 export function monitorarAuth(callback) {
     return onAuthStateChanged(auth, (user) => {
-        if (user && user.email) {
-            const nickname = user.email.split('@')[0];
-            callback(nickname);
-        } else {
-            callback(null);
-        }
+        if (user && user.email) callback(user.email.split('@')[0]);
+        else callback(null);
     });
 }
 
 // ==========================================
-// 🔥 SISTEMA DE MESAS 🔥
+// 🔥 SISTEMA DE MESAS E MESTRES 🔥
 // ==========================================
 export async function registrarNovaMesa(id, nomeMestre, senha = '') {
     if (!db) return;
     const mesaRef = ref(db, `index_mesas/${id}`);
-    await set(mesaRef, { id: id, mestre: nomeMestre, senha: senha, criadaEm: Date.now(), ativa: true });
+    const nickSanitizado = sanitizarNome(nomeMestre);
+    // Salva a mesa e já define o criador como o Mestre supremo na lista de mestres
+    await set(mesaRef, { 
+        id: id, mestre: nomeMestre, senha: senha, criadaEm: Date.now(), ativa: true, 
+        mestres: { [nickSanitizado]: true } 
+    });
 }
 
 export async function verificarMesaExistente(id, senhaTentativa = '') {
@@ -83,10 +72,23 @@ export async function verificarMesaExistente(id, senhaTentativa = '') {
     const snap = await get(mesaRef);
     if (!snap.exists()) return { existe: false };
     const dados = snap.val();
-    if (dados.senha && String(dados.senha) !== String(senhaTentativa)) {
-        return { existe: true, senhaCorreta: false };
-    }
+    if (dados.senha && String(dados.senha) !== String(senhaTentativa)) return { existe: true, senhaCorreta: false };
     return { existe: true, senhaCorreta: true };
+}
+
+// Ouve em tempo real quem tem poder de Mestre na mesa
+export function iniciarListenerMestres(mesaId, callback) {
+    if (!db || !mesaId) return () => {};
+    return onValue(ref(db, `index_mesas/${mesaId}/mestres`), (snapshot) => {
+        callback(snapshot.val() || {});
+    });
+}
+
+// Promove um jogador a Mestre
+export async function promoverAMestreFirebase(mesaId, nickAcesso) {
+    if (!db || !mesaId || !nickAcesso) return;
+    const nickSanitizado = sanitizarNome(nickAcesso);
+    await set(ref(db, `index_mesas/${mesaId}/mestres/${nickSanitizado}`), true);
 }
 
 // ==========================================
@@ -98,7 +100,6 @@ export function salvarFichaSilencioso() {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => { salvarFirebaseImediato().catch(() => {}); }, 500);
 }
-
 export function salvarFirebaseImediato() {
     if (isInPlasmicCanvas()) return Promise.resolve();
     const { minhaFicha, meuNome, mesaId } = useStore.getState();
@@ -112,7 +113,6 @@ export function salvarFirebaseImediato() {
     if (!db) return Promise.resolve();
     return set(ref(db, `mesas/${mesaId}/personagens/${nomeSanitizado}`), fichaParaSalvar).catch((err) => { throw err; });
 }
-
 export async function carregarFichaDoFirebase(nome) {
     if (isInPlasmicCanvas()) return null;
     const nomeSanitizado = sanitizarNome(nome);
@@ -123,14 +123,11 @@ export async function carregarFichaDoFirebase(nome) {
         return snapshot.exists() ? snapshot.val() : null;
     } catch (err) { return null; }
 }
-
 export function iniciarListenerPersonagens(callback) {
     if (isInPlasmicCanvas()) return () => {};
     const { mesaId } = useStore.getState();
     if (!db || !mesaId) return () => {};
-    return onValue(ref(db, `mesas/${mesaId}/personagens`), (snapshot) => {
-        if (callback) callback(snapshot.val() || {});
-    });
+    return onValue(ref(db, `mesas/${mesaId}/personagens`), (snapshot) => { callback(snapshot.val() || {}); });
 }
 
 // ==========================================
@@ -146,14 +143,12 @@ export function iniciarListenerFeed(callback) {
         if (entry && callback) callback(entry);
     });
 }
-
 export function enviarParaFeed(d) {
     if (isInPlasmicCanvas()) return;
     const { mesaId } = useStore.getState();
     if (!db || !mesaId) return;
     push(ref(db, `mesas/${mesaId}/feed_combate`), d).catch(() => {});
 }
-
 export async function deletarPersonagem(nome) {
     if (isInPlasmicCanvas()) return;
     const nomeSanitizado = sanitizarNome(nome);
@@ -171,16 +166,12 @@ export function enviarParaJukebox(estado) {
     if (!db || !mesaId) return Promise.resolve();
     return set(ref(db, `mesas/${mesaId}/jukebox`), estado).catch(() => {});
 }
-
 export function iniciarListenerJukebox(callback) {
     if (isInPlasmicCanvas()) return () => {};
     const { mesaId } = useStore.getState();
     if (!db || !mesaId) return () => {};
-    return onValue(ref(db, `mesas/${mesaId}/jukebox`), (snapshot) => {
-        if (callback) callback(snapshot.val() || null);
-    });
+    return onValue(ref(db, `mesas/${mesaId}/jukebox`), (snapshot) => { callback(snapshot.val() || null); });
 }
-
 export async function uploadImagem(file, pasta = 'imagens') {
     if (isInPlasmicCanvas()) return '';
     const { mesaId } = useStore.getState();
@@ -191,30 +182,24 @@ export async function uploadImagem(file, pasta = 'imagens') {
     await uploadBytes(caminhoRef, file);
     return await getDownloadURL(caminhoRef);
 }
-
 export function iniciarListenerDummies(callback) {
     if (isInPlasmicCanvas()) return () => {};
     const { mesaId } = useStore.getState();
     if (!db || !mesaId) return () => {};
-    return onValue(ref(db, `mesas/${mesaId}/dummies`), (snapshot) => {
-        if (callback) callback(snapshot.val() || {});
-    });
+    return onValue(ref(db, `mesas/${mesaId}/dummies`), (snapshot) => { callback(snapshot.val() || {}); });
 }
-
 export function salvarDummie(id, dadosDummie) {
     if (isInPlasmicCanvas()) return;
     const { mesaId } = useStore.getState();
     if (!db || !mesaId) return;
     set(ref(db, `mesas/${mesaId}/dummies/${id}`), dadosDummie).catch(() => {});
 }
-
 export function deletarDummie(id) {
     if (isInPlasmicCanvas()) return;
     const { mesaId } = useStore.getState();
     if (!db || !mesaId) return;
     remove(ref(db, `mesas/${mesaId}/dummies/${id}`)).catch(() => {});
 }
-
 export function iniciarListenerCenario(callback) {
     if (isInPlasmicCanvas()) return () => {};
     const { mesaId } = useStore.getState();
@@ -224,14 +209,12 @@ export function iniciarListenerCenario(callback) {
         if (callback) callback(dados);
     });
 }
-
 export function salvarCenarioCompleto(dadosCenario) {
     if (isInPlasmicCanvas()) return;
     const { mesaId } = useStore.getState();
     if (!db || !mesaId) return;
     set(ref(db, `mesas/${mesaId}/cenario`), dadosCenario).catch(() => {});
 }
-
 export function zerarIniciativaGlobal(nomesArray) {
     if (isInPlasmicCanvas()) return;
     const { mesaId } = useStore.getState();
@@ -241,23 +224,18 @@ export function zerarIniciativaGlobal(nomesArray) {
         set(ref(db, `mesas/${mesaId}/personagens/${nomeSanitizado}/iniciativa`), 0).catch(() => {});
     });
 }
-
 export function iniciarListenerTemasCustom(callback) {
     if (isInPlasmicCanvas()) return () => {};
     const { mesaId } = useStore.getState();
     if (!db || !mesaId) return () => {};
-    return onValue(ref(db, `mesas/${mesaId}/temas`), (snapshot) => {
-        if (callback) callback(snapshot.val() || {});
-    });
+    return onValue(ref(db, `mesas/${mesaId}/temas`), (snapshot) => { callback(snapshot.val() || {}); });
 }
-
 export function salvarTemaFirebase(id, dadosTema) {
     if (isInPlasmicCanvas()) return Promise.resolve();
     const { mesaId } = useStore.getState();
     if (!db || !mesaId) return Promise.resolve();
     return set(ref(db, `mesas/${mesaId}/temas/${id}`), dadosTema).catch((err) => { throw err; });
 }
-
 export function deletarTemaFirebase(id) {
     if (isInPlasmicCanvas()) return;
     const { mesaId } = useStore.getState();
