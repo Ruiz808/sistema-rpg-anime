@@ -2,19 +2,11 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 
 export const fichaPadrao = {
-    ascensaoBase: 1, poderes: [], inventario: [], ataquesElementais: [],
-    passivas: [],
+    ascensaoBase: 1, poderes: [], inventario: [], ataquesElementais: [], passivas: [],
     hierarquia: { poder: false, infinity: false, singularidade: '', poderNome: '', poderDesc: '', infinityNome: '', infinityDesc: '', singularidadeNome: '', singularidadeDesc: '' },
-
-    // 🔥 NOVO: SISTEMA DE PROFICIÊNCIA
-    proficienciaBase: 2,
-    proficiencias: {},
-
-    avatar: { base: "" },
+    proficienciaBase: 2, proficiencias: {}, avatar: { base: "" },
     bio: { raca: "", classe: "", idade: "", fisico: "", sangue: "", alinhamento: "", afiliacao: "", dinheiro: "" },
-    notas: { base: "", geral: "", abs: "" },
-    posicao: { x: 0, y: 0, z: 0 },
-    iniciativa: 0,
+    notas: { base: "", geral: "", abs: "" }, posicao: { x: 0, y: 0, z: 0 }, iniciativa: 0,
     acoes: { padrao: { max: 1, atual: 1 }, bonus: { max: 1, atual: 1 }, reacao: { max: 1, atual: 1 } },
     ataqueConfig: { armaStatusUsados: ['forca'], armaEnergiaCombustao: 'mana', armaPercEnergia: 0, criticoNormalMin: 16, criticoNormalMax: 18, criticoFatalMin: 19, criticoFatalMax: 20, vantagens: 0, desvantagens: 0 },
     dano: { base: 0, mBase: 1.0, mGeral: 1.0, mFormas: 1.0, mUnico: "1.0", mAbsoluto: 1.0, mPotencial: 1.0, reducaoCusto: 0, regeneracao: 0 },
@@ -32,54 +24,27 @@ export const fichaPadrao = {
     aura: { base: 100000000, mBase: 1.0, mGeral: 1.0, mFormas: 1.0, mUnico: "1.0", mAbsoluto: 1.0, reducaoCusto: 0, regeneracao: 0, atual: 100000000 },
     chakra: { base: 100000000, mBase: 1.0, mGeral: 1.0, mFormas: 1.0, mUnico: "1.0", mAbsoluto: 1.0, reducaoCusto: 0, regeneracao: 0, atual: 100000000 },
     corpo: { base: 100000000, mBase: 1.0, mGeral: 1.0, mFormas: 1.0, mUnico: "1.0", mAbsoluto: 1.0, reducaoCusto: 0, regeneracao: 0, atual: 100000000 },
-    compendioOverrides: {},
-    cores: {}
+    compendioOverrides: {}, cores: {}
 };
 
-export function sanitizarNome(n) {
-    if (!n) return '';
-    return n.replace(/[.#$\[\]\/]/g, '_').trim();
-}
-
-function deepClone(obj) {
-    return JSON.parse(JSON.stringify(obj));
-}
+export function sanitizarNome(n) { return !n ? '' : n.replace(/[.#$\[\]\/]/g, '_').trim(); }
+function deepClone(obj) { return JSON.parse(JSON.stringify(obj)); }
 
 const storedMesaId = localStorage.getItem('rpg_mesaId') || '';
 
 const useStore = create(
     immer((set, get) => ({
-        // 🔥 MEMÓRIA DA SALA ATUAL 🔥
         mesaId: storedMesaId,
         setMesaId: (id) => set(state => {
             state.mesaId = id;
             if (id) localStorage.setItem('rpg_mesaId', id);
             else localStorage.removeItem('rpg_mesaId');
         }),
-
         minhaFicha: deepClone(fichaPadrao),
-        meuNome: '',
-        isMestre: false,
-        efeitosTemp: [],
-        efeitosTempPassivos: [],
-        efeitosTempArsenal: [],
-        efeitosTempPassivosArsenal: [],
-        efeitosTempForma: [],
-        efeitosTempPassivosForma: [],
-        formaEditandoId: null,
-        poderEditandoId: null,
-        itemEditandoId: null,
-        elemEditandoId: null,
-        personagemParaDeletar: '',
-        abaAtiva: 'aba-status',
-        personagens: {},
-        feedCombate: [],
-        
-        // 🔥 SISTEMA DE COMBATE E ALVOS
-        dummies: {},
-        alvoSelecionado: null,
-        
-        // 🔥 SISTEMA DE CENAS
+        meuNome: '', isMestre: false, abaAtiva: 'aba-status', personagens: {}, feedCombate: [],
+        efeitosTemp: [], efeitosTempPassivos: [], efeitosTempArsenal: [], efeitosTempPassivosArsenal: [], efeitosTempForma: [], efeitosTempPassivosForma: [],
+        formaEditandoId: null, poderEditandoId: null, itemEditandoId: null, elemEditandoId: null, personagemParaDeletar: '',
+        dummies: {}, alvoSelecionado: null,
         cenario: { ativa: 'default', lista: { default: { nome: 'Cenário Inicial', img: '', escala: 1.5, unidade: 'm' } } },
 
         setMinhaFicha: (ficha) => set((state) => { state.minhaFicha = ficha; }),
@@ -100,28 +65,18 @@ const useStore = create(
         setPersonagens: (personagens) => set((state) => { state.personagens = personagens; }),
         addFeedEntry: (entry) => set((state) => { state.feedCombate.push(entry); }),
         limparFeedStore: () => set(state => { state.feedCombate = []; }),
-    
-        // 🔥 AÇÕES DE COMBATE E CENAS
         setDummies: (dummies) => set((state) => { state.dummies = dummies || {}; }),
         setAlvoSelecionado: (id) => set((state) => { state.alvoSelecionado = id; }),
         setCenario: (dados) => set((state) => { state.cenario = dados; }),
-
-        updateFicha: (callback) => set((state) => {
-            callback(state.minhaFicha);
-        }),
+        updateFicha: (callback) => set((state) => { callback(state.minhaFicha); }),
 
         carregarDadosFicha: (dados) => set((state) => {
             if (!dados) return;
-
             const chaves = Object.keys(fichaPadrao);
-
             if (dados.ascensaoBase !== undefined) state.minhaFicha.ascensaoBase = parseInt(dados.ascensaoBase) || 1;
             if (dados.iniciativa !== undefined) state.minhaFicha.iniciativa = parseInt(dados.iniciativa) || 0;
-            
-            // 🔥 LEITURA DA PROFICIÊNCIA
             if (dados.proficienciaBase !== undefined) state.minhaFicha.proficienciaBase = parseInt(dados.proficienciaBase) || 0;
             if (dados.proficiencias !== undefined) state.minhaFicha.proficiencias = dados.proficiencias || {};
-            
             if (dados.divisores) state.minhaFicha.divisores = Object.assign({}, fichaPadrao.divisores, dados.divisores);
             if (dados.ataqueConfig) state.minhaFicha.ataqueConfig = Object.assign({}, fichaPadrao.ataqueConfig, dados.ataqueConfig);
             if (dados.avatar) state.minhaFicha.avatar = Object.assign({}, fichaPadrao.avatar, dados.avatar);
@@ -129,54 +84,32 @@ const useStore = create(
             if (dados.bio) state.minhaFicha.bio = Object.assign({}, fichaPadrao.bio, dados.bio);
             if (dados.notas) state.minhaFicha.notas = Object.assign({}, fichaPadrao.notas, dados.notas);
             if (dados.posicao) state.minhaFicha.posicao = Object.assign({}, fichaPadrao.posicao, dados.posicao);
-            
             state.minhaFicha.inventario = dados.inventario || [];
             state.minhaFicha.poderes = dados.poderes || [];
             state.minhaFicha.ataquesElementais = dados.ataquesElementais || [];
             state.minhaFicha.passivas = dados.passivas || [];
             if (dados.hierarquia != null) state.minhaFicha.hierarquia = Object.assign({}, fichaPadrao.hierarquia, dados.hierarquia);
             if (dados.cores !== undefined) state.minhaFicha.cores = Object.assign({}, fichaPadrao.cores, dados.cores || {});
-
             if (dados.acoes) {
                 state.minhaFicha.acoes = {
                     padrao: Object.assign({}, fichaPadrao.acoes.padrao, dados.acoes.padrao),
                     bonus: Object.assign({}, fichaPadrao.acoes.bonus, dados.acoes.bonus),
                     reacao: Object.assign({}, fichaPadrao.acoes.reacao, dados.acoes.reacao)
                 };
-            } else {
-                state.minhaFicha.acoes = JSON.parse(JSON.stringify(fichaPadrao.acoes));
-            }
+            } else { state.minhaFicha.acoes = JSON.parse(JSON.stringify(fichaPadrao.acoes)); }
 
             for (let i = 0; i < chaves.length; i++) {
                 const ch = chaves[i];
-                if (
-                    dados[ch] !== undefined &&
-                    ch !== 'ascensaoBase' && ch !== 'poderes' && ch !== 'divisores' &&
-                    ch !== 'inventario' && ch !== 'ataquesElementais' && ch !== 'ataqueConfig' &&
-                    ch !== 'avatar' && ch !== 'bio' && ch !== 'notas' && ch !== 'passivas' &&
-                    ch !== 'posicao' && ch !== 'iniciativa' && ch !== 'acoes' &&
-                    ch !== 'proficienciaBase' && ch !== 'proficiencias' &&
-                    ch !== 'cores' && ch !== 'hierarquia'
-                ) {
+                if (dados[ch] !== undefined && ch !== 'ascensaoBase' && ch !== 'poderes' && ch !== 'divisores' && ch !== 'inventario' && ch !== 'ataquesElementais' && ch !== 'ataqueConfig' && ch !== 'avatar' && ch !== 'bio' && ch !== 'notas' && ch !== 'passivas' && ch !== 'posicao' && ch !== 'iniciativa' && ch !== 'acoes' && ch !== 'proficienciaBase' && ch !== 'proficiencias' && ch !== 'cores' && ch !== 'hierarquia') {
                     if (typeof fichaPadrao[ch] === 'object' && !Array.isArray(fichaPadrao[ch])) {
                         state.minhaFicha[ch] = Object.assign({}, fichaPadrao[ch], dados[ch]);
                         const numF = ['base', 'mBase', 'mGeral', 'mFormas', 'mAbsoluto', 'reducaoCusto', 'regeneracao', 'atual'];
-                        for (let j = 0; j < numF.length; j++) {
-                            if (state.minhaFicha[ch][numF[j]] == null || isNaN(state.minhaFicha[ch][numF[j]])) {
-                                state.minhaFicha[ch][numF[j]] = fichaPadrao[ch][numF[j]];
-                            }
-                        }
-                    } else {
-                        state.minhaFicha[ch] = dados[ch];
-                    }
+                        for (let j = 0; j < numF.length; j++) { if (state.minhaFicha[ch][numF[j]] == null || isNaN(state.minhaFicha[ch][numF[j]])) { state.minhaFicha[ch][numF[j]] = fichaPadrao[ch][numF[j]]; } }
+                    } else { state.minhaFicha[ch] = dados[ch]; }
                 }
             }
         }),
-
-        resetFicha: () => set((state) => {
-            state.minhaFicha = deepClone(fichaPadrao);
-        }),
+        resetFicha: () => set((state) => { state.minhaFicha = deepClone(fichaPadrao); }),
     }))
 );
-
 export default useStore;

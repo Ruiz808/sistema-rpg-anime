@@ -4,96 +4,71 @@ import { db, storage } from './firebase-config';
 import useStore, { sanitizarNome } from '../stores/useStore';
 
 let _modoPlasmic = false;
+export function setModoPlasmic(ativo) { _modoPlasmic = ativo; }
+function isInPlasmicCanvas() { return _modoPlasmic; }
 
-export function setModoPlasmic(ativo) {
-    _modoPlasmic = ativo;
+// 🔥 SISTEMA DE MESAS 🔥
+export async function registrarNovaMesa(id, nomeMestre) {
+    if (!db) return;
+    const mesaRef = ref(db, `index_mesas/${id}`);
+    await set(mesaRef, { id: id, mestre: nomeMestre, criadaEm: Date.now(), ativa: true });
 }
-
-function isInPlasmicCanvas() {
-    return _modoPlasmic;
+export async function verificarMesaExistente(id) {
+    if (!db || !id) return false;
+    const mesaRef = ref(db, `index_mesas/${id}`);
+    const snap = await get(mesaRef);
+    return snap.exists();
 }
 
 let debounceTimer = null;
-
 export function salvarFichaSilencioso() {
     if (isInPlasmicCanvas()) return;
     clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => {
-        salvarFirebaseImediato().catch(() => { /* erro ja logado em salvarFirebaseImediato */ });
-    }, 500);
+    debounceTimer = setTimeout(() => { salvarFirebaseImediato().catch(() => {}); }, 500);
 }
 
 export function salvarFirebaseImediato() {
     if (isInPlasmicCanvas()) return Promise.resolve();
     const { minhaFicha, meuNome, mesaId } = useStore.getState();
     const nomeSanitizado = sanitizarNome(meuNome);
-
-    if (!nomeSanitizado || !mesaId) {
-        return Promise.resolve();
-    }
-
+    if (!nomeSanitizado || !mesaId) return Promise.resolve();
     const fichaParaSalvar = JSON.parse(JSON.stringify(minhaFicha));
-
     try {
         localStorage.setItem('rpgFicha_' + nomeSanitizado, JSON.stringify(fichaParaSalvar));
         localStorage.setItem('rpgNome', nomeSanitizado);
-    } catch (err) {
-        console.error('[Sync] Erro ao salvar no localStorage:', err);
-    }
-
+    } catch (err) {}
     if (!db) return Promise.resolve();
-
-    const fichaRef = ref(db, `mesas/${mesaId}/personagens/${nomeSanitizado}`);
-    return set(fichaRef, fichaParaSalvar).catch((err) => {
-        console.error('[Sync] Erro ao salvar no Firebase:', err);
-        throw err;
-    });
+    return set(ref(db, `mesas/${mesaId}/personagens/${nomeSanitizado}`), fichaParaSalvar).catch((err) => { throw err; });
 }
 
 export async function carregarFichaDoFirebase(nome) {
     if (isInPlasmicCanvas()) return null;
     const nomeSanitizado = sanitizarNome(nome);
     const { mesaId } = useStore.getState();
-    
     if (!nomeSanitizado || !db || !mesaId) return null;
-
     try {
-        const fichaRef = ref(db, `mesas/${mesaId}/personagens/${nomeSanitizado}`);
-        const snapshot = await get(fichaRef);
+        const snapshot = await get(ref(db, `mesas/${mesaId}/personagens/${nomeSanitizado}`));
         return snapshot.exists() ? snapshot.val() : null;
-    } catch (err) {
-        console.error('[Sync] Erro ao carregar do Firebase:', err);
-        return null;
-    }
+    } catch (err) { return null; }
 }
 
 export function iniciarListenerPersonagens(callback) {
     if (isInPlasmicCanvas()) return () => {};
     const { mesaId } = useStore.getState();
-    
     if (!db || !mesaId) return () => {};
-
-    const personagensRef = ref(db, `mesas/${mesaId}/personagens`);
-    return onValue(personagensRef, (snapshot) => {
-        const dados = snapshot.val() || {};
-        if (callback) callback(dados);
-    }, (err) => {
-        console.error('[Sync] Erro no listener de personagens:', err);
+    return onValue(ref(db, `mesas/${mesaId}/personagens`), (snapshot) => {
+        if (callback) callback(snapshot.val() || {});
     });
 }
 
 export function iniciarListenerFeed(callback) {
     if (isInPlasmicCanvas()) return () => {};
     const { mesaId } = useStore.getState();
-    
     if (!db || !mesaId) return () => {};
-
     const feedRef = query(ref(db, `mesas/${mesaId}/feed_combate`), limitToLast(50));
     return onChildAdded(feedRef, (snapshot) => {
         const entry = snapshot.val();
         if (entry && callback) callback(entry);
-    }, (err) => {
-        console.error('[Sync] Erro no listener de feed:', err);
     });
 }
 
@@ -101,34 +76,17 @@ export function enviarParaFeed(d) {
     if (isInPlasmicCanvas()) return;
     const { mesaId } = useStore.getState();
     if (!db || !mesaId) return;
-
-    const feedRef = ref(db, `mesas/${mesaId}/feed_combate`);
-    push(feedRef, d).catch((err) => {
-        console.error('[Sync] Erro ao enviar para feed:', err);
-    });
+    push(ref(db, `mesas/${mesaId}/feed_combate`), d).catch(() => {});
 }
 
 export async function deletarPersonagem(nome) {
     if (isInPlasmicCanvas()) return;
     const nomeSanitizado = sanitizarNome(nome);
     const { mesaId } = useStore.getState();
-    
     if (!nomeSanitizado || !mesaId) return;
-
-    try {
-        localStorage.removeItem('rpgFicha_' + nomeSanitizado);
-    } catch (err) {
-        console.error('[Sync] Erro ao remover do localStorage:', err);
-    }
-
+    try { localStorage.removeItem('rpgFicha_' + nomeSanitizado); } catch (err) {}
     if (!db) return;
-
-    try {
-        const personagemRef = ref(db, `mesas/${mesaId}/personagens/${nomeSanitizado}`);
-        await remove(personagemRef);
-    } catch (err) {
-        console.error('[Sync] Erro ao deletar do Firebase:', err);
-    }
+    await remove(ref(db, `mesas/${mesaId}/personagens/${nomeSanitizado}`));
 }
 export const apagarFicha = deletarPersonagem;
 
@@ -136,52 +94,35 @@ export function enviarParaJukebox(estado) {
     if (isInPlasmicCanvas()) return Promise.resolve();
     const { mesaId } = useStore.getState();
     if (!db || !mesaId) return Promise.resolve();
-    
-    const jukeboxRef = ref(db, `mesas/${mesaId}/jukebox`);
-    return set(jukeboxRef, estado).catch((err) => {
-        console.error('[Sync] Erro ao enviar para jukebox:', err);
-    });
+    return set(ref(db, `mesas/${mesaId}/jukebox`), estado).catch(() => {});
 }
 
 export function iniciarListenerJukebox(callback) {
     if (isInPlasmicCanvas()) return () => {};
     const { mesaId } = useStore.getState();
     if (!db || !mesaId) return () => {};
-    
-    const jukeboxRef = ref(db, `mesas/${mesaId}/jukebox`);
-    return onValue(jukeboxRef, (snapshot) => {
-        const dados = snapshot.val() || null;
-        if (callback) callback(dados);
-    }, (err) => {
-        console.error('[Sync] Erro no listener da jukebox:', err);
+    return onValue(ref(db, `mesas/${mesaId}/jukebox`), (snapshot) => {
+        if (callback) callback(snapshot.val() || null);
     });
 }
 
 export async function uploadImagem(file, pasta = 'imagens') {
     if (isInPlasmicCanvas()) return '';
     const { mesaId } = useStore.getState();
-    
-    if (!storage || !mesaId) throw new Error("Firebase Storage não está inicializado ou Mesa indefinida.");
+    if (!storage || !mesaId) throw new Error("Storage não inicializado.");
     const extensao = file.name.split('.').pop();
     const nomeUnico = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${extensao}`;
     const caminhoRef = storageRef(storage, `mesas/${mesaId}/${pasta}/${nomeUnico}`);
-    
     await uploadBytes(caminhoRef, file);
-    const downloadUrl = await getDownloadURL(caminhoRef);
-    return downloadUrl;
+    return await getDownloadURL(caminhoRef);
 }
 
 export function iniciarListenerDummies(callback) {
     if (isInPlasmicCanvas()) return () => {};
     const { mesaId } = useStore.getState();
     if (!db || !mesaId) return () => {};
-    
-    const dummiesRef = ref(db, `mesas/${mesaId}/dummies`);
-    return onValue(dummiesRef, (snapshot) => {
-        const dados = snapshot.val() || {};
-        if (callback) callback(dados);
-    }, (err) => {
-        console.error('[Sync] Erro no listener de dummies:', err);
+    return onValue(ref(db, `mesas/${mesaId}/dummies`), (snapshot) => {
+        if (callback) callback(snapshot.val() || {});
     });
 }
 
@@ -189,35 +130,23 @@ export function salvarDummie(id, dadosDummie) {
     if (isInPlasmicCanvas()) return;
     const { mesaId } = useStore.getState();
     if (!db || !mesaId) return;
-    
-    const dummieRef = ref(db, `mesas/${mesaId}/dummies/${id}`);
-    set(dummieRef, dadosDummie).catch((err) => {
-        console.error('[Sync] Erro ao salvar Dummie:', err);
-    });
+    set(ref(db, `mesas/${mesaId}/dummies/${id}`), dadosDummie).catch(() => {});
 }
 
 export function deletarDummie(id) {
     if (isInPlasmicCanvas()) return;
     const { mesaId } = useStore.getState();
     if (!db || !mesaId) return;
-    
-    const dummieRef = ref(db, `mesas/${mesaId}/dummies/${id}`);
-    remove(dummieRef).catch((err) => {
-        console.error('[Sync] Erro ao deletar Dummie:', err);
-    });
+    remove(ref(db, `mesas/${mesaId}/dummies/${id}`)).catch(() => {});
 }
 
 export function iniciarListenerCenario(callback) {
     if (isInPlasmicCanvas()) return () => {};
     const { mesaId } = useStore.getState();
     if (!db || !mesaId) return () => {};
-    
-    const cenarioRef = ref(db, `mesas/${mesaId}/cenario`);
-    return onValue(cenarioRef, (snapshot) => {
+    return onValue(ref(db, `mesas/${mesaId}/cenario`), (snapshot) => {
         const dados = snapshot.val() || { ativa: 'default', lista: { default: { nome: 'Cenário Inicial', img: '', escala: 1.5, unidade: 'm' } } };
         if (callback) callback(dados);
-    }, (err) => {
-        console.error('[Sync] Erro no listener de cenario:', err);
     });
 }
 
@@ -225,20 +154,16 @@ export function salvarCenarioCompleto(dadosCenario) {
     if (isInPlasmicCanvas()) return;
     const { mesaId } = useStore.getState();
     if (!db || !mesaId) return;
-    
-    const cenarioRef = ref(db, `mesas/${mesaId}/cenario`);
-    set(cenarioRef, dadosCenario).catch(err => console.error('[Sync] Erro ao salvar Cenario:', err));
+    set(ref(db, `mesas/${mesaId}/cenario`), dadosCenario).catch(() => {});
 }
 
 export function zerarIniciativaGlobal(nomesArray) {
     if (isInPlasmicCanvas()) return;
     const { mesaId } = useStore.getState();
     if (!db || !mesaId) return;
-    
     nomesArray.forEach(nome => {
         const nomeSanitizado = sanitizarNome(nome);
-        const refIni = ref(db, `mesas/${mesaId}/personagens/${nomeSanitizado}/iniciativa`);
-        set(refIni, 0).catch(err => console.error('[Sync] Erro ao zerar iniciativa:', err));
+        set(ref(db, `mesas/${mesaId}/personagens/${nomeSanitizado}/iniciativa`), 0).catch(() => {});
     });
 }
 
@@ -246,13 +171,8 @@ export function iniciarListenerTemasCustom(callback) {
     if (isInPlasmicCanvas()) return () => {};
     const { mesaId } = useStore.getState();
     if (!db || !mesaId) return () => {};
-
-    const temasRef = ref(db, `mesas/${mesaId}/temas`);
-    return onValue(temasRef, (snapshot) => {
-        const dados = snapshot.val() || {};
-        if (callback) callback(dados);
-    }, (err) => {
-        console.error('[Sync] Erro no listener de temas:', err);
+    return onValue(ref(db, `mesas/${mesaId}/temas`), (snapshot) => {
+        if (callback) callback(snapshot.val() || {});
     });
 }
 
@@ -260,21 +180,12 @@ export function salvarTemaFirebase(id, dadosTema) {
     if (isInPlasmicCanvas()) return Promise.resolve();
     const { mesaId } = useStore.getState();
     if (!db || !mesaId) return Promise.resolve();
-
-    const temaRef = ref(db, `mesas/${mesaId}/temas/${id}`);
-    return set(temaRef, dadosTema).catch((err) => {
-        console.error('[Sync] Erro ao salvar tema no Firebase:', err);
-        throw err;
-    });
+    return set(ref(db, `mesas/${mesaId}/temas/${id}`), dadosTema).catch((err) => { throw err; });
 }
 
 export function deletarTemaFirebase(id) {
     if (isInPlasmicCanvas()) return;
     const { mesaId } = useStore.getState();
     if (!db || !mesaId) return;
-
-    const temaRef = ref(db, `mesas/${mesaId}/temas/${id}`);
-    remove(temaRef).catch((err) => {
-        console.error('[Sync] Erro ao deletar tema do Firebase:', err);
-    });
+    remove(ref(db, `mesas/${mesaId}/temas/${id}`)).catch(() => {});
 }

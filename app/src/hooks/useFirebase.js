@@ -1,17 +1,12 @@
 import { useState, useEffect } from 'react';
 import useStore from '../stores/useStore';
 import { db } from '../services/firebase-config';
-import {
-    carregarFichaDoFirebase,
-    iniciarListenerPersonagens,
-    iniciarListenerFeed
-} from '../services/firebase-sync';
+import { carregarFichaDoFirebase, iniciarListenerPersonagens, iniciarListenerFeed } from '../services/firebase-sync';
 
 export default function useFirebase() {
     const [loading, setLoading] = useState(true);
-
     const meuNome = useStore((s) => s.meuNome);
-    const mesaId = useStore((s) => s.mesaId); // 🔥 LER A MESA AQUI
+    const mesaId = useStore((s) => s.mesaId);
     const carregarDadosFicha = useStore((s) => s.carregarDadosFicha);
     const setPersonagens = useStore((s) => s.setPersonagens);
     const addFeedEntry = useStore((s) => s.addFeedEntry);
@@ -22,7 +17,6 @@ export default function useFirebase() {
         let cancelled = false;
 
         async function init() {
-            // Só avança se a pessoa já estiver conectada a uma mesa!
             if (!mesaId) {
                 setLoading(false);
                 return;
@@ -31,12 +25,8 @@ export default function useFirebase() {
             if (meuNome && db) {
                 try {
                     const dados = await carregarFichaDoFirebase(meuNome);
-                    if (!cancelled && dados) {
-                        carregarDadosFicha(dados);
-                    }
-                } catch (err) {
-                    console.error('[useFirebase] Erro ao carregar ficha:', err);
-                }
+                    if (!cancelled && dados) carregarDadosFicha(dados);
+                } catch (err) { console.error('[useFirebase] Erro:', err); }
             }
 
             if (!cancelled) setLoading(false);
