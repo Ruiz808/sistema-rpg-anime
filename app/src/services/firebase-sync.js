@@ -65,15 +65,19 @@ export async function registrarNovaMesa(id, nomeMestre, senha = '') {
     });
 }
 
-// 🔥 ATUALIZADO: Agora ele retorna quem são os Mestres junto com a resposta!
 export async function verificarMesaExistente(id, senhaTentativa = '') {
     if (!db || !id) return { existe: false };
     const mesaRef = ref(db, `index_mesas/${id}`);
     const snap = await get(mesaRef);
     if (!snap.exists()) return { existe: false };
     const dados = snap.val();
-    const mestresDaMesa = dados.mestres || {};
     
+    // 🔥 CORREÇÃO DE RETROCOMPATIBILIDADE (Mesas Antigas) 🔥
+    const mestresDaMesa = dados.mestres || {};
+    if (dados.mestre) {
+        mestresDaMesa[sanitizarNome(dados.mestre)] = true;
+    }
+
     if (dados.senha && String(dados.senha) !== String(senhaTentativa)) {
         return { existe: true, senhaCorreta: false, mestres: mestresDaMesa };
     }
@@ -84,7 +88,14 @@ export function iniciarListenerMestres(mesaId, callback) {
     if (!db || !mesaId) return () => {};
     return onValue(ref(db, `index_mesas/${mesaId}`), (snapshot) => {
         const dados = snapshot.val() || {};
-        callback(dados.mestre || '', dados.mestres || {});
+        
+        // 🔥 CORREÇÃO DE RETROCOMPATIBILIDADE 🔥
+        const mestresDict = dados.mestres || {};
+        if (dados.mestre) {
+            mestresDict[sanitizarNome(dados.mestre)] = true;
+        }
+        
+        callback(dados.mestre || '', mestresDict);
     });
 }
 
