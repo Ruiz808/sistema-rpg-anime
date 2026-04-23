@@ -438,6 +438,36 @@ function LobbyNeon() {
         } catch(e) { return []; }
     });
 
+    // 🔥 O SCANNER AUTOMÁTICO: Lê as mesas invisivelmente e arruma a lista
+    useEffect(() => {
+        if (!userLogado || minhasMesas.length === 0) return;
+        let mounted = true;
+
+        const checkMesas = async () => {
+            let updated = false;
+            const novasMesas = await Promise.all(minhasMesas.map(async (m) => {
+                const res = await verificarMesaExistente(m.id, ''); // Sem senha só pra ler os dados
+                if (res.existe) {
+                    const nickSanitizado = sanitizarNome(userLogado);
+                    const isMestreReal = !!(res.mestres && res.mestres[nickSanitizado]);
+                    if (m.isMestre !== isMestreReal) {
+                        updated = true;
+                        return { ...m, isMestre: isMestreReal };
+                    }
+                }
+                return m;
+            }));
+            
+            if (mounted && updated) {
+                setMinhasMesas(novasMesas);
+                localStorage.setItem('rpg_historico_mesas', JSON.stringify(novasMesas));
+            }
+        };
+
+        checkMesas();
+        return () => { mounted = false; };
+    }, [userLogado]); // eslint-disable-line
+
     const salvarNoHistorico = (id, nomePersonalizado = id, isMestreTable = false) => {
         let existing = minhasMesas.find(m => m.id === id);
         let finalName = existing ? existing.nome : nomePersonalizado;
@@ -523,7 +553,6 @@ function LobbyNeon() {
             
             <div className="def-box fade-in" style={{ padding: '30px', maxWidth: '500px', width: '100%', textAlign: 'center', background: 'rgba(10, 10, 15, 0.95)', border: '2px solid #00ffcc', boxShadow: '0 0 30px rgba(0, 255, 204, 0.2)', borderRadius: '15px' }}>
                 
-                {/* 🔥 O NOVO MENU ENCORPADO COM NICK 🔥 */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0, 0, 0, 0.6)', padding: '12px 20px', borderRadius: '12px', border: '1px solid #00ffcc', marginBottom: '25px', boxShadow: 'inset 0 0 15px rgba(0,255,204,0.1)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <div style={{ background: 'linear-gradient(135deg, #00ffcc, #0088ff)', color: '#000', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '1.2em', boxShadow: '0 0 10px rgba(0,255,204,0.5)' }}>
@@ -544,7 +573,6 @@ function LobbyNeon() {
                 
                 <button className="btn-neon btn-green" onClick={criarMesa} style={{ width: '100%', padding: '15px', fontSize: '1.2em', fontWeight: 'bold', marginBottom: '25px', borderRadius: '10px' }}>🌌 CRIAR NOVA MESA (Mestre)</button>
                 
-                {/* 🔥 SISTEMA DE ABAS (MESTRE / JOGADOR) 🔥 */}
                 {minhasMesas.length > 0 && (
                     <div style={{ marginBottom: '25px' }}>
                         <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
@@ -564,9 +592,7 @@ function LobbyNeon() {
                             </button>
                         </div>
 
-                        {/* CAIXA DE CONTEÚDO DA ABA */}
                         <div style={{ background: 'rgba(0,0,0,0.3)', padding: '15px', borderRadius: '10px', border: '1px solid #222', minHeight: '180px' }}>
-                            
                             {abaMesas === 'mestre' && (
                                 mesasMestre.length > 0 ? (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
