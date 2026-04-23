@@ -1,6 +1,6 @@
-import { ref, set, get, push, remove, onValue, onChildAdded, limitToLast, query } from 'firebase/database';
+// 🔥 ATENÇÃO: Adicionado o 'onDisconnect' na importação abaixo!
+import { ref, set, get, push, remove, onValue, onChildAdded, limitToLast, query, onDisconnect } from 'firebase/database';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
-// 🔥 Importamos o Auth e as ferramentas dele:
 import { auth, db, storage } from './firebase-config';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 import useStore, { sanitizarNome } from '../stores/useStore';
@@ -10,26 +10,56 @@ export function setModoPlasmic(ativo) { _modoPlasmic = ativo; }
 function isInPlasmicCanvas() { return _modoPlasmic; }
 
 // ==========================================
-// 🔥 NOVO: MÁGICA DA AUTENTICAÇÃO 🔥
+// 🔥 SISTEMA DE PRESENÇA (ONLINE/OFFLINE) 🔥
+// ==========================================
+export function iniciarSistemaDePresenca(mesaId, meuNome) {
+    if (!db || !mesaId || !meuNome) return () => {};
+    const nomeSanitizado = sanitizarNome(meuNome);
+    const myConnectionsRef = ref(db, `mesas/${mesaId}/presenca/${nomeSanitizado}`);
+    const connectedRef = ref(db, '.info/connected');
+
+    const unsub = onValue(connectedRef, (snap) => {
+        if (snap.val() === true) {
+            // Se a conexão cair, o Firebase deleta este nó automaticamente:
+            onDisconnect(myConnectionsRef).remove().then(() => {
+                // Conexão estabelecida: avisa que estou online!
+                set(myConnectionsRef, true);
+            });
+        }
+    });
+    return unsub;
+}
+
+export function iniciarListenerPresenca(mesaId, callback) {
+    if (!db || !mesaId) return () => {};
+    return onValue(ref(db, `mesas/${mesaId}/presenca`), (snapshot) => {
+        callback(snapshot.val() || {});
+    });
+}
+
+export function removerPresencaImediata(mesaId, meuNome) {
+    if (!db || !mesaId || !meuNome) return;
+    const nomeSanitizado = sanitizarNome(meuNome);
+    remove(ref(db, `mesas/${mesaId}/presenca/${nomeSanitizado}`)).catch(()=>{});
+}
+
+// ==========================================
+// 🔥 MÁGICA DA AUTENTICAÇÃO 🔥
 // ==========================================
 export function registrarUsuario(nickname, senha) {
     const fakeEmail = `${sanitizarNome(nickname)}@multiverso.rpg`;
     return createUserWithEmailAndPassword(auth, fakeEmail, senha);
 }
-
 export function entrarUsuario(nickname, senha) {
     const fakeEmail = `${sanitizarNome(nickname)}@multiverso.rpg`;
     return signInWithEmailAndPassword(auth, fakeEmail, senha);
 }
-
 export function sairConta() {
     return signOut(auth);
 }
-
 export function monitorarAuth(callback) {
     return onAuthStateChanged(auth, (user) => {
         if (user && user.email) {
-            // Remove o "@multiverso.rpg" e devolve só o Nickname
             const nickname = user.email.split('@')[0];
             callback(nickname);
         } else {

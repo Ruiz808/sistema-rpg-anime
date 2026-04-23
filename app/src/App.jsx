@@ -30,7 +30,8 @@ import { MestreForjaNPC } from './components/mestre/MestreSubComponents'
 import { 
     carregarFichaDoFirebase, iniciarListenerDummies, enviarParaFeed, salvarDummie, 
     iniciarListenerCenario, registrarNovaMesa, verificarMesaExistente, 
-    registrarUsuario, entrarUsuario, sairConta, monitorarAuth 
+    registrarUsuario, entrarUsuario, sairConta, monitorarAuth,
+    iniciarSistemaDePresenca, iniciarListenerPresenca, removerPresencaImediata // 🔥 IMPORTAÇÕES DE PRESENÇA
 } from './services/firebase-sync'
 
 import { getMaximo } from './core/attributes'
@@ -103,7 +104,7 @@ function getEnergiasSupremas(ficha) {
     return { vitais: { max: maxVitais, atual: atualVitais }, mortais: { max: maxMortais, atual: atualMortais } };
 }
 
-// 🔥 PAINEL DO MESTRE (COM TUDO INTACTO) 🔥
+// 🔥 PAINEL DO MESTRE 🔥
 function MestrePanel() {
     const personagens = useStore(s => s.personagens)
     const meuNome = useStore(s => s.meuNome)
@@ -295,20 +296,32 @@ function MestrePanel() {
 
                 <div style={{ flex: '1 1 35%', minWidth: '300px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     <div className="def-box" style={{ borderLeft: '4px solid #ff003c' }}>
-                        <h3 style={{ color: '#ff003c', margin: '0 0 15px 0' }}>👹 Injetor no Mapa</h3>
+                        <h3 style={{ color: '#ff003c', margin: '0 0 15px 0' }}>👹 Injetor de Entidades (Mapa)</h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            <input className="input-neon" type="text" placeholder="Nome" value={dNome} onChange={e => setDNome(e.target.value)} />
+                            <input className="input-neon" type="text" placeholder="Nome (Ex: Dragão Ancião)" value={dNome} onChange={e => setDNome(e.target.value)} />
                             <div style={{ display: 'flex', gap: '10px' }}>
-                                <input className="input-neon" type="number" placeholder="HP" value={dHp} onChange={e => setDHp(e.target.value)} style={{ flex: 1 }} />
-                                <input className="input-neon" type="number" placeholder="CA" value={dDef} onChange={e => setDDef(e.target.value)} style={{ flex: 1 }} />
+                                <div style={{ flex: 1 }}><label style={{ color: '#aaa', fontSize: '0.8em' }}>HP Base</label><input className="input-neon" type="number" value={dHp} onChange={e => setDHp(e.target.value)} style={{ width: '100%' }} /></div>
+                                <div style={{ flex: 1 }}><label style={{ color: '#0f0', fontSize: '0.8em' }}>+ Vitalidade (Zeros)</label><input className="input-neon" type="number" value={dVit} onChange={e => setDVit(e.target.value)} style={{ width: '100%', borderColor: '#0f0', color: '#0f0' }} /></div>
                             </div>
-                            <button className="btn-neon btn-red" onClick={injetarDummie}>☄️ INVOCAR NO MAPA</button>
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <div style={{ flex: 1 }}><label style={{ color: '#aaa', fontSize: '0.8em' }}>Defesa Alvo</label><select className="input-neon" value={dDefTipo} onChange={e => setDDefTipo(e.target.value)} style={{ width: '100%' }}><option value="evasiva">Evasiva</option><option value="resistencia">Resistência</option></select></div>
+                                <div style={{ flex: 1 }}><label style={{ color: '#0088ff', fontSize: '0.8em' }}>Valor (CA)</label><input className="input-neon" type="number" value={dDef} onChange={e => setDDef(e.target.value)} style={{ width: '100%' }} /></div>
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '5px' }}>
+                                <select className="input-neon" value={dVisivelHp} onChange={e => setDVisivelHp(e.target.value)} style={{ flex: 1 }}><option value="todos">HP Visível para Todos</option><option value="mestre">HP Oculto</option></select>
+                            </div>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', background: dOculto ? 'rgba(255,0,60,0.1)' : 'rgba(0,0,0,0.5)', padding: '10px', borderRadius: '5px', border: `1px solid ${dOculto ? '#ff003c' : '#444'}`, cursor: 'pointer', transition: 'all 0.3s' }}>
+                                <input type="checkbox" checked={dOculto} onChange={e => setDOculto(e.target.checked)} style={{ transform: 'scale(1.2)' }} />
+                                <span style={{ color: dOculto ? '#ff003c' : '#aaa', fontWeight: dOculto ? 'bold' : 'normal' }}>{dOculto ? '👻 TOKEN INVISÍVEL NO MAPA' : '👁️ Token Visível no Mapa'}</span>
+                            </label>
+                            <button className="btn-neon btn-red" onClick={injetarDummie} style={{ marginTop: '10px', padding: '10px', fontSize: '1.1em', fontWeight: 'bold' }}>☄️ INVOCAR NO MAPA [0,0]</button>
                         </div>
                     </div>
+
                     <div className="def-box" style={{ borderLeft: '4px solid #ffcc00' }}>
                         <h3 style={{ color: '#ffcc00', margin: '0 0 15px 0' }}>⚡ A Voz do Sistema</h3>
-                        <textarea className="input-neon" value={msgSistema} onChange={e => setMsgSistema(e.target.value)} style={{ width: '100%', minHeight: '80px', borderColor: '#ffcc00', color: '#ffcc00' }} />
-                        <button className="btn-neon btn-gold" onClick={enviarAviso} style={{ width: '100%', marginTop: '10px' }}>📢 ENVIAR AVISO</button>
+                        <textarea className="input-neon" placeholder="Escreva uma mensagem global para o ecrã de todos..." value={msgSistema} onChange={e => setMsgSistema(e.target.value)} style={{ width: '100%', minHeight: '80px', borderColor: '#ffcc00', color: '#ffcc00' }} />
+                        <button className="btn-neon btn-gold" onClick={enviarAviso} style={{ width: '100%', marginTop: '10px' }}>📢 ENVIAR AVISO GLOBAL</button>
                     </div>
                 </div>
             </div>
@@ -317,9 +330,7 @@ function MestrePanel() {
     );
 }
 
-// ============================================================================
-// 🔐 TELA DE LOGIN (O TRUQUE DO FALSO E-MAIL)
-// ============================================================================
+// 🔐 TELA DE LOGIN (FALSO E-MAIL)
 function AuthScreen() {
     const [isRegister, setIsRegister] = useState(false);
     const [nick, setNick] = useState('');
@@ -352,16 +363,13 @@ function AuthScreen() {
             <div className="def-box fade-in" style={{ padding: '40px', maxWidth: '400px', width: '100%', textAlign: 'center', background: 'rgba(10, 10, 15, 0.95)', border: '2px solid #00ffcc', boxShadow: '0 0 30px rgba(0, 255, 204, 0.2)', borderRadius: '15px' }}>
                 <h1 style={{ color: '#00ffcc', textShadow: '0 0 10px #00ffcc', margin: '0 0 10px 0', textTransform: 'uppercase', letterSpacing: '3px' }}>Multiverso RPG</h1>
                 <p style={{ color: '#aaa', fontSize: '0.9em', marginBottom: '30px' }}>{isRegister ? 'Forje o seu destino no sistema.' : 'Identifique-se para acessar as mesas.'}</p>
-                
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                     <input className="input-neon" type="text" placeholder="Seu Nickname Único" value={nick} onChange={e => setNick(e.target.value)} style={{ padding: '15px', fontSize: '1.1em', textAlign: 'center', textTransform: 'uppercase' }} />
                     <input className="input-neon" type="password" placeholder="Sua Senha Mestra" value={senha} onChange={e => setSenha(e.target.value)} style={{ padding: '15px', fontSize: '1.1em', textAlign: 'center' }} />
-                    
                     <button type="submit" disabled={loadingAuth} className="btn-neon btn-green" style={{ width: '100%', padding: '15px', fontSize: '1.2em', fontWeight: 'bold', marginTop: '10px' }}>
                         {loadingAuth ? 'Aguarde...' : (isRegister ? '📝 REGISTRAR CONTA' : '🚪 ENTRAR')}
                     </button>
                 </form>
-
                 <div style={{ marginTop: '25px' }}>
                     <button onClick={() => setIsRegister(!isRegister)} style={{ background: 'none', border: 'none', color: '#00aaff', cursor: 'pointer', textDecoration: 'underline' }}>
                         {isRegister ? 'Já tem uma conta? Faça Login.' : 'Não tem conta? Registre-se aqui.'}
@@ -372,13 +380,10 @@ function AuthScreen() {
     );
 }
 
-// ============================================================================
 // 🏰 LOBBY DE MESAS
-// ============================================================================
 function LobbyNeon() {
     const { setMesaId, setIsMestre, userLogado } = useStore();
     const [codigoSala, setCodigoSala] = useState('');
-    
     const [minhasMesas, setMinhasMesas] = useState(() => {
         try { 
             const stored = JSON.parse(localStorage.getItem('rpg_historico_mesas')) || []; 
@@ -389,7 +394,6 @@ function LobbyNeon() {
     const salvarNoHistorico = (id, nomePersonalizado = id) => {
         let existing = minhasMesas.find(m => m.id === id);
         let finalName = existing ? existing.nome : nomePersonalizado;
-
         const filtrado = minhasMesas.filter(m => m.id !== id);
         const novaLista = [{ id, nome: finalName }, ...filtrado].slice(0, 5);
         setMinhasMesas(novaLista);
@@ -401,7 +405,6 @@ function LobbyNeon() {
         const mesa = minhasMesas.find(m => m.id === id);
         const novoNome = window.prompt("Como deseja apelidar esta mesa no seu histórico pessoal?", mesa?.nome || id);
         if (!novoNome || !novoNome.trim()) return;
-        
         const novaLista = minhasMesas.map(m => m.id === id ? { ...m, nome: novoNome.trim() } : m);
         setMinhasMesas(novaLista);
         localStorage.setItem('rpg_historico_mesas', JSON.stringify(novaLista));
@@ -421,7 +424,6 @@ function LobbyNeon() {
             senha = window.prompt("Digite a senha para a sua mesa:");
             if (!senha) return alert("Criação cancelada porque a senha estava vazia.");
         }
-
         const novoCodigo = 'MESA-' + Math.random().toString(36).substring(2, 7).toUpperCase();
         try {
             await registrarNovaMesa(novoCodigo, userLogado, senha);
@@ -434,18 +436,14 @@ function LobbyNeon() {
     const entrarMesa = async (idForcado = null) => {
         const id = (idForcado || codigoSala).trim().toUpperCase();
         if (!id) return alert('Digite o código da mesa para entrar!');
-        
         const resultado = await verificarMesaExistente(id);
         if (!resultado.existe) return alert('Mesa não encontrada! Verifique se o código está correto.');
-
         if (!resultado.senhaCorreta) {
             const senhaDigitada = window.prompt(`A sala ${id} é protegida!\nDigite a senha de acesso:`);
             if (!senhaDigitada) return;
-            
             const reCheck = await verificarMesaExistente(id, senhaDigitada);
             if (!reCheck.senhaCorreta) return alert('Senha Incorreta! Acesso negado.');
         }
-
         salvarNoHistorico(id);
         setIsMestre(false);
         setMesaId(id);
@@ -453,41 +451,29 @@ function LobbyNeon() {
 
     return (
         <div style={{ height: '100vh', width: '100vw', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#050505', backgroundImage: 'radial-gradient(circle, #1a0b2e 0%, #000 100%)', fontFamily: 'sans-serif' }}>
-            
-            {/* BOTÃO DE SAIR DA CONTA */}
             <div style={{ position: 'absolute', top: 15, right: 15 }}>
                 <span style={{ color: '#aaa', fontSize: '0.9em', marginRight: 10 }}>Logado como: <strong style={{ color: '#00ffcc' }}>{userLogado}</strong></span>
                 <button onClick={() => { if(window.confirm('Sair da sua conta?')) sairConta(); }} style={{ background: '#ff003c', border: 'none', color: '#fff', padding: '5px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>Sair</button>
             </div>
-
             <div className="def-box fade-in" style={{ padding: '40px', maxWidth: '450px', width: '100%', textAlign: 'center', background: 'rgba(10, 10, 15, 0.95)', border: '2px solid #00ffcc', boxShadow: '0 0 30px rgba(0, 255, 204, 0.2)', borderRadius: '15px' }}>
                 <h1 style={{ color: '#00ffcc', textShadow: '0 0 10px #00ffcc', margin: '0 0 10px 0', textTransform: 'uppercase', letterSpacing: '3px' }}>Multiverso RPG</h1>
                 <p style={{ color: '#aaa', fontSize: '0.9em', marginBottom: '30px' }}>Bem-vindo à Taverna Central, Mestre {userLogado}.</p>
-                
                 <button className="btn-neon btn-green" onClick={criarMesa} style={{ width: '100%', padding: '15px', fontSize: '1.2em', fontWeight: 'bold', marginBottom: '20px' }}>🌌 CRIAR NOVA MESA (Mestre)</button>
-                
                 {minhasMesas.length > 0 && (
                     <div style={{ marginBottom: '20px', textAlign: 'left' }}>
                         <span style={{ color: '#aaa', fontSize: '0.8em', fontWeight: 'bold' }}>SUAS MESAS RECENTES:</span>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
                             {minhasMesas.map(m => (
                                 <div key={m.id} style={{ display: 'flex', gap: '5px' }}>
-                                    <button onClick={() => entrarMesa(m.id)} className="btn-neon btn-blue" style={{ flex: 1, margin: 0, padding: '10px', fontWeight: 'bold', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                        {m.nome}
-                                    </button>
-                                    <button onClick={(e) => editarNomeMesa(m.id, e)} style={{ background: 'rgba(255, 204, 0, 0.2)', border: '1px solid #ffcc00', color: '#ffcc00', borderRadius: '5px', padding: '0 15px', cursor: 'pointer' }} title="Editar Apelido da Mesa">
-                                        ✏️
-                                    </button>
-                                    <button onClick={(e) => removerDoHistorico(m.id, e)} style={{ background: 'rgba(255,0,60,0.2)', border: '1px solid #ff003c', color: '#ff003c', borderRadius: '5px', padding: '0 15px', cursor: 'pointer' }} title="Apagar do Histórico">
-                                        🗑️
-                                    </button>
+                                    <button onClick={() => entrarMesa(m.id)} className="btn-neon btn-blue" style={{ flex: 1, margin: 0, padding: '10px', fontWeight: 'bold', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.nome}</button>
+                                    <button onClick={(e) => editarNomeMesa(m.id, e)} style={{ background: 'rgba(255, 204, 0, 0.2)', border: '1px solid #ffcc00', color: '#ffcc00', borderRadius: '5px', padding: '0 15px', cursor: 'pointer' }} title="Editar Apelido da Mesa">✏️</button>
+                                    <button onClick={(e) => removerDoHistorico(m.id, e)} style={{ background: 'rgba(255,0,60,0.2)', border: '1px solid #ff003c', color: '#ff003c', borderRadius: '5px', padding: '0 15px', cursor: 'pointer' }} title="Apagar do Histórico">🗑️</button>
                                 </div>
                             ))}
                         </div>
                     </div>
                 )}
                 <div style={{ position: 'relative', marginBottom: '20px', marginTop: '30px' }}><hr style={{ borderColor: '#333' }} /><span style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#0a0a0f', padding: '0 10px', color: '#666', fontSize: '0.8em' }}>OU ENTRAR COM CONVITE</span></div>
-                
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                     <input className="input-neon" type="text" placeholder="Cole o Código (Ex: MESA-A8X9P)" value={codigoSala} onChange={e => setCodigoSala(e.target.value)} style={{ width: '100%', padding: '15px', fontSize: '1.1em', textAlign: 'center', textTransform: 'uppercase', boxSizing: 'border-box' }} />
                     <button className="btn-neon btn-blue" onClick={() => entrarMesa()} style={{ width: '100%', padding: '15px', fontSize: '1.2em', fontWeight: 'bold' }}>🚪 ENTRAR NA SALA</button>
@@ -497,13 +483,15 @@ function LobbyNeon() {
     );
 }
 
-// ============================================================================
 // 👑 APLICAÇÃO PRINCIPAL (APP)
-// ============================================================================
 export default function App() {
     const userLogado = useStore(s => s.userLogado);
     const setUserLogado = useStore(s => s.setUserLogado);
     const [authVerificada, setAuthVerificada] = useState(false);
+
+    // 🔥 NOVO: Puxando o State dos Jogadores Online 🔥
+    const jogadoresOnline = useStore(s => s.jogadoresOnline);
+    const setJogadoresOnline = useStore(s => s.setJogadoresOnline);
 
     const meuNome = useStore(s => s.meuNome);
     const setMeuNome = useStore(s => s.setMeuNome);
@@ -529,7 +517,6 @@ export default function App() {
 
     useEffect(() => { setTimeout(() => setThemeReady(true), 50); }, []);
 
-    // 🔥 NOVO: Verifica se o jogador já está logado no PC dele 🔥
     useEffect(() => {
         const unsub = monitorarAuth((nick) => {
             setUserLogado(nick);
@@ -557,14 +544,26 @@ export default function App() {
         return () => { if (unsubDummies) unsubDummies(); if (unsubCenario) unsubCenario(); };
     }, [setDummies, setCenario]);
 
+    // 🔥 NOVO: Hook do Sistema de Presença 🔥
+    useEffect(() => {
+        if (!mesaId || !meuNome || !pronto) return;
+        const unsubConnected = iniciarSistemaDePresenca(mesaId, meuNome);
+        const unsubPresenca = iniciarListenerPresenca(mesaId, (dados) => {
+            setJogadoresOnline(Object.keys(dados || {}));
+        });
+        return () => {
+            if (unsubConnected) unsubConnected();
+            if (unsubPresenca) unsubPresenca();
+            removerPresencaImediata(mesaId, meuNome);
+        };
+    }, [mesaId, meuNome, pronto, setJogadoresOnline]);
+
     const entrarComPersonagem = async (nome) => {
         if (!nome) return;
         const nomeSanitizado = sanitizarNome(nome);
-
         const novaLista = [nomeSanitizado, ...meusPersonagens.filter(n => n !== nomeSanitizado)].slice(0, 5);
         setMeusPersonagens(novaLista);
         localStorage.setItem('rpg_historico_personagens', JSON.stringify(novaLista));
-
         localStorage.setItem('rpgNome', nomeSanitizado);
         setMeuNome(nomeSanitizado);
         setPronto(true);
@@ -581,17 +580,10 @@ export default function App() {
         localStorage.setItem('rpg_historico_personagens', JSON.stringify(novaLista));
     };
 
-    // 🔥 AS PORTAS DE SEGURANÇA 🔥
-    if (!authVerificada) {
-        return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#050505', color: '#00ffcc', fontFamily: 'monospace' }}>Verificando as chaves do Multiverso...</div>;
-    }
-
+    if (!authVerificada) return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#050505', color: '#00ffcc', fontFamily: 'monospace' }}>Verificando as chaves do Multiverso...</div>;
     if (!userLogado) return <AuthScreen />;
     if (!mesaId) return <LobbyNeon />;
-    
-    if (loading || !themeReady) {
-        return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#050505', color: '#00ffcc', fontFamily: 'monospace' }}>Carregando a sala {mesaId}...</div>;
-    }
+    if (loading || !themeReady) return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#050505', color: '#00ffcc', fontFamily: 'monospace' }}>Carregando a sala {mesaId}...</div>;
 
     if (!pronto && !meuNome) {
         return (
@@ -599,7 +591,6 @@ export default function App() {
                 <div className="def-box fade-in" style={{ padding: '40px', maxWidth: '450px', width: '100%', textAlign: 'center', background: 'rgba(10, 10, 15, 0.95)', border: '2px solid #00ffcc', boxShadow: '0 0 30px rgba(0, 255, 204, 0.2)', borderRadius: '15px' }}>
                     <h2 style={{ color: '#00ffcc', textShadow: '0 0 10px #00ffcc', marginTop: 0, textTransform: 'uppercase', letterSpacing: '2px' }}>SALA: {mesaId}</h2>
                     <p style={{ color: '#aaa', marginBottom: '30px' }}>Escolha ou crie o seu personagem para esta sessão.</p>
-
                     {meusPersonagens.length > 0 && (
                         <div style={{ marginBottom: '20px', textAlign: 'left' }}>
                             <span style={{ color: '#aaa', fontSize: '0.8em', fontWeight: 'bold' }}>SEUS PERSONAGENS RECENTES:</span>
@@ -614,7 +605,6 @@ export default function App() {
                             <div style={{ position: 'relative', marginBottom: '20px', marginTop: '30px' }}><hr style={{ borderColor: '#333' }} /><span style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#0a0a0f', padding: '0 10px', color: '#666', fontSize: '0.8em' }}>OU NOVO PERSONAGEM</span></div>
                         </div>
                     )}
-
                     <form onSubmit={(e) => { e.preventDefault(); entrarComPersonagem(e.target.elements.nomeInput.value.trim()); }}>
                         <input className="input-neon" name="nomeInput" type="text" autoFocus placeholder="Nome (Ex: Natsu)" maxLength={50} style={{ width: '100%', boxSizing: 'border-box', padding: '15px', fontSize: '1.2em', textAlign: 'center' }}/>
                         <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
@@ -631,7 +621,18 @@ export default function App() {
 
     return (
         <div className="app-layout">
+            
+            {/* 🔥 BARRA DE TOPO DA SALA COM BOLINHA ONLINE 🔥 */}
             <div style={{ position: 'absolute', top: '10px', right: '15px', zIndex: 9999, display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(0,0,0,0.8)', padding: '5px 15px', borderRadius: '20px', border: '1px solid #333', boxShadow: '0 0 10px rgba(0,0,0,0.5)' }}>
+                
+                {/* 🟢 O Indicador de Online */}
+                <div title={`Jogadores Online: ${jogadoresOnline.join(', ')}`} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0, 255, 170, 0.1)', border: '1px solid #00ffaa', padding: '2px 8px', borderRadius: '15px', cursor: 'help' }}>
+                    <span style={{ width: '8px', height: '8px', background: '#00ffaa', borderRadius: '50%', boxShadow: '0 0 8px #00ffaa' }}></span>
+                    <span style={{ color: '#00ffaa', fontSize: '0.75em', fontWeight: 'bold' }}>{jogadoresOnline.length} ON</span>
+                </div>
+
+                <div style={{ borderLeft: '1px solid #444', height: '15px' }}></div>
+
                 <span style={{ color: '#00ffcc', fontSize: '0.8em', fontWeight: 'bold', letterSpacing: '1px' }}>SALA: {mesaId}</span>
                 
                 <div style={{ borderLeft: '1px solid #444', paddingLeft: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
