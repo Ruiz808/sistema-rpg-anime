@@ -32,7 +32,7 @@ import {
     iniciarListenerCenario, registrarNovaMesa, verificarMesaExistente, 
     registrarUsuario, entrarUsuario, sairConta, monitorarAuth,
     iniciarSistemaDePresenca, iniciarListenerPresenca, removerPresencaImediata,
-    iniciarListenerMestres, promoverAMestreFirebase // 🔥 IMPORTAÇÕES DE MESTRES 🔥
+    iniciarListenerMestres, promoverAMestreFirebase
 } from './services/firebase-sync'
 
 import { getMaximo } from './core/attributes'
@@ -337,13 +337,27 @@ function MestrePanel() {
                         <button className="btn-neon btn-gold" onClick={enviarAviso} style={{ width: '100%', marginTop: '10px' }}>📢 ENVIAR AVISO GLOBAL</button>
                     </div>
 
-                    {/* 🔥 NOVO: PROMOVER CO-MESTRE 🔥 */}
+                    {/* 🔥 CAIXA DO PROMOVER CO-MESTRE CORRIGIDA 🔥 */}
                     <div className="def-box" style={{ borderLeft: '4px solid #aa00ff' }}>
                         <h3 style={{ color: '#aa00ff', margin: '0 0 10px 0' }}>👑 Promover Co-Mestre</h3>
                         <p style={{ color: '#aaa', fontSize: '0.8em', marginBottom: '15px' }}>Digite o Nickname (Conta) do jogador que deseja promover a Mestre nesta mesa:</p>
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                            <input className="input-neon" type="text" placeholder="Nickname da Conta" value={novoMestreNick} onChange={e => setNovoMestreNick(e.target.value)} style={{ flex: 1, borderColor: '#aa00ff', color: '#aa00ff' }} />
-                            <button className="btn-neon btn-blue" onClick={handlePromover} style={{ borderColor: '#aa00ff', color: '#aa00ff', fontWeight: 'bold', padding: '0 15px' }}>PROMOVER</button>
+                        
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'stretch' }}>
+                            <input 
+                                className="input-neon" 
+                                type="text" 
+                                placeholder="Nickname (Ex: MagoSombrio)" 
+                                value={novoMestreNick} 
+                                onChange={e => setNovoMestreNick(e.target.value)} 
+                                style={{ flex: 1, minWidth: '150px', padding: '10px', fontSize: '1em', borderColor: '#aa00ff', color: '#aa00ff' }} 
+                            />
+                            <button 
+                                className="btn-neon btn-blue" 
+                                onClick={handlePromover} 
+                                style={{ borderColor: '#aa00ff', color: '#aa00ff', fontWeight: 'bold', padding: '10px 25px' }}
+                            >
+                                PROMOVER
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -547,8 +561,7 @@ export default function App() {
         return () => unsub();
     }, [setUserLogado]);
 
-    // 🔥 NOVO: Listener Dinâmico de Mestres 🔥
-    // Se a mesa for carregada, este script avisa se o seu userLogado é mestre ou não
+    // 🔥 Listener Dinâmico de Mestres 🔥
     useEffect(() => {
         if (!mesaId || !userLogado) return;
         const unsub = iniciarListenerMestres(mesaId, (mestresDict) => {
