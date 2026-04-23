@@ -34,6 +34,10 @@ const storedMesaId = localStorage.getItem('rpg_mesaId') || '';
 
 const useStore = create(
     immer((set, get) => ({
+        // 🔥 NOVO: Controle de Conta 🔥
+        userLogado: null,
+        setUserLogado: (nome) => set(state => { state.userLogado = nome; }),
+
         mesaId: storedMesaId,
         setMesaId: (id) => set(state => {
             state.mesaId = id;

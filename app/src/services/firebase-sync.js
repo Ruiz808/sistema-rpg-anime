@@ -1,6 +1,8 @@
 import { ref, set, get, push, remove, onValue, onChildAdded, limitToLast, query } from 'firebase/database';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from './firebase-config';
+// 🔥 Importamos o Auth e as ferramentas dele:
+import { auth, db, storage } from './firebase-config';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 import useStore, { sanitizarNome } from '../stores/useStore';
 
 let _modoPlasmic = false;
@@ -8,7 +10,36 @@ export function setModoPlasmic(ativo) { _modoPlasmic = ativo; }
 function isInPlasmicCanvas() { return _modoPlasmic; }
 
 // ==========================================
-// 🔥 SISTEMA DE MESAS (AGORA COM SENHA) 🔥
+// 🔥 NOVO: MÁGICA DA AUTENTICAÇÃO 🔥
+// ==========================================
+export function registrarUsuario(nickname, senha) {
+    const fakeEmail = `${sanitizarNome(nickname)}@multiverso.rpg`;
+    return createUserWithEmailAndPassword(auth, fakeEmail, senha);
+}
+
+export function entrarUsuario(nickname, senha) {
+    const fakeEmail = `${sanitizarNome(nickname)}@multiverso.rpg`;
+    return signInWithEmailAndPassword(auth, fakeEmail, senha);
+}
+
+export function sairConta() {
+    return signOut(auth);
+}
+
+export function monitorarAuth(callback) {
+    return onAuthStateChanged(auth, (user) => {
+        if (user && user.email) {
+            // Remove o "@multiverso.rpg" e devolve só o Nickname
+            const nickname = user.email.split('@')[0];
+            callback(nickname);
+        } else {
+            callback(null);
+        }
+    });
+}
+
+// ==========================================
+// 🔥 SISTEMA DE MESAS 🔥
 // ==========================================
 export async function registrarNovaMesa(id, nomeMestre, senha = '') {
     if (!db) return;
@@ -21,13 +52,10 @@ export async function verificarMesaExistente(id, senhaTentativa = '') {
     const mesaRef = ref(db, `index_mesas/${id}`);
     const snap = await get(mesaRef);
     if (!snap.exists()) return { existe: false };
-    
     const dados = snap.val();
-    // Se a mesa tem senha e a senha enviada for diferente, bloqueia!
     if (dados.senha && String(dados.senha) !== String(senhaTentativa)) {
         return { existe: true, senhaCorreta: false };
     }
-    
     return { existe: true, senhaCorreta: true };
 }
 
@@ -76,7 +104,7 @@ export function iniciarListenerPersonagens(callback) {
 }
 
 // ==========================================
-// 🔥 FEED DE COMBATE 🔥
+// 🔥 OUTROS SISTEMAS DE MESA 🔥
 // ==========================================
 export function iniciarListenerFeed(callback) {
     if (isInPlasmicCanvas()) return () => {};
@@ -96,9 +124,6 @@ export function enviarParaFeed(d) {
     push(ref(db, `mesas/${mesaId}/feed_combate`), d).catch(() => {});
 }
 
-// ==========================================
-// 🔥 GESTÃO DE DADOS EXTRAS 🔥
-// ==========================================
 export async function deletarPersonagem(nome) {
     if (isInPlasmicCanvas()) return;
     const nomeSanitizado = sanitizarNome(nome);
