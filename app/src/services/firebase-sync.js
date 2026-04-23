@@ -65,17 +65,21 @@ export async function registrarNovaMesa(id, nomeMestre, senha = '') {
     });
 }
 
+// 🔥 ATUALIZADO: Agora ele retorna quem são os Mestres junto com a resposta!
 export async function verificarMesaExistente(id, senhaTentativa = '') {
     if (!db || !id) return { existe: false };
     const mesaRef = ref(db, `index_mesas/${id}`);
     const snap = await get(mesaRef);
     if (!snap.exists()) return { existe: false };
     const dados = snap.val();
-    if (dados.senha && String(dados.senha) !== String(senhaTentativa)) return { existe: true, senhaCorreta: false };
-    return { existe: true, senhaCorreta: true };
+    const mestresDaMesa = dados.mestres || {};
+    
+    if (dados.senha && String(dados.senha) !== String(senhaTentativa)) {
+        return { existe: true, senhaCorreta: false, mestres: mestresDaMesa };
+    }
+    return { existe: true, senhaCorreta: true, mestres: mestresDaMesa };
 }
 
-// 🔥 ATUALIZADO: Agora ele puxa o Criador e a Lista de Mestres 🔥
 export function iniciarListenerMestres(mesaId, callback) {
     if (!db || !mesaId) return () => {};
     return onValue(ref(db, `index_mesas/${mesaId}`), (snapshot) => {

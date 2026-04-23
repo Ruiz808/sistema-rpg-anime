@@ -429,18 +429,21 @@ function AuthScreen() {
 function LobbyNeon() {
     const { setMesaId, userLogado } = useStore();
     const [codigoSala, setCodigoSala] = useState('');
+    
+    // 🔥 O LocalStorage agora salva se você é Mestre ou Jogador na mesa
     const [minhasMesas, setMinhasMesas] = useState(() => {
         try { 
             const stored = JSON.parse(localStorage.getItem('rpg_historico_mesas')) || []; 
-            return stored.map(m => typeof m === 'string' ? { id: m, nome: m } : m);
+            return stored.map(m => typeof m === 'string' ? { id: m, nome: m, isMestre: false } : { ...m, isMestre: m.isMestre || false });
         } catch(e) { return []; }
     });
 
-    const salvarNoHistorico = (id, nomePersonalizado = id) => {
+    const salvarNoHistorico = (id, nomePersonalizado = id, isMestreTable = false) => {
         let existing = minhasMesas.find(m => m.id === id);
         let finalName = existing ? existing.nome : nomePersonalizado;
+        
         const filtrado = minhasMesas.filter(m => m.id !== id);
-        const novaLista = [{ id, nome: finalName }, ...filtrado].slice(0, 5);
+        const novaLista = [{ id, nome: finalName, isMestre: isMestreTable }, ...filtrado].slice(0, 5);
         setMinhasMesas(novaLista);
         localStorage.setItem('rpg_historico_mesas', JSON.stringify(novaLista));
     };
@@ -472,7 +475,7 @@ function LobbyNeon() {
         const novoCodigo = 'MESA-' + Math.random().toString(36).substring(2, 7).toUpperCase();
         try {
             await registrarNovaMesa(novoCodigo, userLogado, senha);
-            salvarNoHistorico(novoCodigo);
+            salvarNoHistorico(novoCodigo, novoCodigo, true); // 🔥 Salva como Mestre!
             setMesaId(novoCodigo); 
         } catch (e) { alert("Erro ao criar mesa no servidor!"); }
     };
@@ -480,17 +483,41 @@ function LobbyNeon() {
     const entrarMesa = async (idForcado = null) => {
         const id = (idForcado || codigoSala).trim().toUpperCase();
         if (!id) return alert('Digite o código da mesa para entrar!');
+        
         const resultado = await verificarMesaExistente(id);
         if (!resultado.existe) return alert('Mesa não encontrada! Verifique se o código está correto.');
+        
+        let checkFinal = resultado;
+
         if (!resultado.senhaCorreta) {
             const senhaDigitada = window.prompt(`A sala ${id} é protegida!\nDigite a senha de acesso:`);
             if (!senhaDigitada) return;
             const reCheck = await verificarMesaExistente(id, senhaDigitada);
             if (!reCheck.senhaCorreta) return alert('Senha Incorreta! Acesso negado.');
+            checkFinal = reCheck;
         }
-        salvarNoHistorico(id);
+
+        // 🔥 Verifica se o cara que tá entrando tem o cargo de Mestre na mesa
+        const nickSanitizado = sanitizarNome(userLogado);
+        const souMestre = !!(checkFinal.mestres && checkFinal.mestres[nickSanitizado]);
+
+        salvarNoHistorico(id, id, souMestre);
         setMesaId(id);
     };
+
+    // 🔥 DIVIDE AS MESAS EM DUAS LISTAS PARA O VISUAL 🔥
+    const mesasMestre = minhasMesas.filter(m => m.isMestre);
+    const mesasJogador = minhasMesas.filter(m => !m.isMestre);
+
+    const renderTableButton = (m, colorClass, icon) => (
+        <div key={m.id} style={{ display: 'flex', gap: '5px' }}>
+            <button onClick={() => entrarMesa(m.id)} className={`btn-neon ${colorClass}`} style={{ flex: 1, margin: 0, padding: '10px', fontWeight: 'bold', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {icon} {m.nome}
+            </button>
+            <button onClick={(e) => editarNomeMesa(m.id, e)} style={{ background: 'rgba(255, 204, 0, 0.2)', border: '1px solid #ffcc00', color: '#ffcc00', borderRadius: '5px', padding: '0 15px', cursor: 'pointer' }} title="Editar Apelido da Mesa">✏️</button>
+            <button onClick={(e) => removerDoHistorico(m.id, e)} style={{ background: 'rgba(255,0,60,0.2)', border: '1px solid #ff003c', color: '#ff003c', borderRadius: '5px', padding: '0 15px', cursor: 'pointer' }} title="Apagar do Histórico">🗑️</button>
+        </div>
+    );
 
     return (
         <div style={{ height: '100vh', width: '100vw', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#050505', backgroundImage: 'radial-gradient(circle, #1a0b2e 0%, #000 100%)', fontFamily: 'sans-serif' }}>
@@ -500,20 +527,32 @@ function LobbyNeon() {
             </div>
             <div className="def-box fade-in" style={{ padding: '40px', maxWidth: '450px', width: '100%', textAlign: 'center', background: 'rgba(10, 10, 15, 0.95)', border: '2px solid #00ffcc', boxShadow: '0 0 30px rgba(0, 255, 204, 0.2)', borderRadius: '15px' }}>
                 <h1 style={{ color: '#00ffcc', textShadow: '0 0 10px #00ffcc', margin: '0 0 10px 0', textTransform: 'uppercase', letterSpacing: '3px' }}>Multiverso RPG</h1>
-                <p style={{ color: '#aaa', fontSize: '0.9em', marginBottom: '30px' }}>Bem-vindo à Taverna Central, Mestre {userLogado}.</p>
+                <p style={{ color: '#aaa', fontSize: '0.9em', marginBottom: '30px' }}>Bem-vindo à Taverna Central, {userLogado}.</p>
                 <button className="btn-neon btn-green" onClick={criarMesa} style={{ width: '100%', padding: '15px', fontSize: '1.2em', fontWeight: 'bold', marginBottom: '20px' }}>🌌 CRIAR NOVA MESA (Mestre)</button>
+                
                 {minhasMesas.length > 0 && (
                     <div style={{ marginBottom: '20px', textAlign: 'left' }}>
-                        <span style={{ color: '#aaa', fontSize: '0.8em', fontWeight: 'bold' }}>SUAS MESAS RECENTES:</span>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
-                            {minhasMesas.map(m => (
-                                <div key={m.id} style={{ display: 'flex', gap: '5px' }}>
-                                    <button onClick={() => entrarMesa(m.id)} className="btn-neon btn-blue" style={{ flex: 1, margin: 0, padding: '10px', fontWeight: 'bold', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.nome}</button>
-                                    <button onClick={(e) => editarNomeMesa(m.id, e)} style={{ background: 'rgba(255, 204, 0, 0.2)', border: '1px solid #ffcc00', color: '#ffcc00', borderRadius: '5px', padding: '0 15px', cursor: 'pointer' }} title="Editar Apelido da Mesa">✏️</button>
-                                    <button onClick={(e) => removerDoHistorico(m.id, e)} style={{ background: 'rgba(255,0,60,0.2)', border: '1px solid #ff003c', color: '#ff003c', borderRadius: '5px', padding: '0 15px', cursor: 'pointer' }} title="Apagar do Histórico">🗑️</button>
+                        
+                        {/* 🔥 SESSÃO DO MESTRE 🔥 */}
+                        {mesasMestre.length > 0 && (
+                            <div style={{ marginBottom: '15px' }}>
+                                <span style={{ color: '#ffcc00', fontSize: '0.8em', fontWeight: 'bold' }}>👑 CAMPANHAS QUE MESTRO:</span>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+                                    {mesasMestre.map(m => renderTableButton(m, 'btn-gold', '👑'))}
                                 </div>
-                            ))}
-                        </div>
+                            </div>
+                        )}
+
+                        {/* 🔥 SESSÃO DOS JOGADORES 🔥 */}
+                        {mesasJogador.length > 0 && (
+                            <div>
+                                <span style={{ color: '#00ccff', fontSize: '0.8em', fontWeight: 'bold' }}>⚔️ AVENTURAS QUE JOGO:</span>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+                                    {mesasJogador.map(m => renderTableButton(m, 'btn-blue', '⚔️'))}
+                                </div>
+                            </div>
+                        )}
+                        
                     </div>
                 )}
                 <div style={{ position: 'relative', marginBottom: '20px', marginTop: '30px' }}><hr style={{ borderColor: '#333' }} /><span style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#0a0a0f', padding: '0 10px', color: '#666', fontSize: '0.8em' }}>OU ENTRAR COM CONVITE</span></div>
@@ -532,7 +571,6 @@ export default function App() {
     const setUserLogado = useStore(s => s.setUserLogado);
     const [authVerificada, setAuthVerificada] = useState(false);
 
-    // 🔥 Variáveis para o Sistema de Online Detalhado 🔥
     const jogadoresOnline = useStore(s => s.jogadoresOnline);
     const setJogadoresOnline = useStore(s => s.setJogadoresOnline);
     
@@ -574,7 +612,6 @@ export default function App() {
         return () => unsub();
     }, [setUserLogado]);
 
-    // 🔥 Listener de Mestres com Info da Mesa 🔥
     useEffect(() => {
         if (!mesaId || !userLogado) return;
         const unsub = iniciarListenerMestres(mesaId, (criador, mestresDict) => {
@@ -643,7 +680,6 @@ export default function App() {
         localStorage.setItem('rpg_historico_personagens', JSON.stringify(novaLista));
     };
 
-    // 🔥 DIVISÃO DOS JOGADORES ONLINE PARA O TOOLTIP 🔥
     const criadorOn = jogadoresOnline.filter(j => j === mesaCriador);
     const coMestresOn = jogadoresOnline.filter(j => j !== mesaCriador && mesaMestres[j]);
     const playersOn = jogadoresOnline.filter(j => !mesaMestres[j]);
@@ -697,7 +733,6 @@ export default function App() {
         <div className="app-layout">
             <div style={{ position: 'absolute', top: '10px', right: '15px', zIndex: 9999, display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(0,0,0,0.8)', padding: '5px 15px', borderRadius: '20px', border: '1px solid #333', boxShadow: '0 0 10px rgba(0,0,0,0.5)' }}>
                 
-                {/* 🔥 O SEU NOVO RADAR DE ONLINE ÉPICO E DETALHADO 🔥 */}
                 <div title={tooltipOnline} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0, 255, 170, 0.1)', border: '1px solid #00ffaa', padding: '2px 8px', borderRadius: '15px', cursor: 'help', whiteSpace: 'pre-wrap' }}>
                     <span style={{ width: '8px', height: '8px', background: '#00ffaa', borderRadius: '50%', boxShadow: '0 0 8px #00ffaa' }}></span>
                     <span style={{ color: '#00ffaa', fontSize: '0.75em', fontWeight: 'bold' }}>{jogadoresOnline.length} ON</span>
