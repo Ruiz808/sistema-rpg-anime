@@ -4,21 +4,18 @@ export default function MapaMundi({ children }) {
     const [nivelVisao, setNivelVisao] = useState('globo'); 
     const [localAtual, setLocalAtual] = useState({ continente: null, reino: null, mapaId: null });
 
-    // Estado para gerenciar os mapas de cada região
     const [mapasSalvos, setMapasSalvos] = useState({
         'Freljord': ['Acampamento Glacinata', 'Passe da Montanha'],
         'Demacia': ['Grande Praça', 'Posto Avançado'],
         'Noxus': ['Arena de Carnificina', 'Bastião Imortal']
     });
 
-    // Estado para gerenciar os links das imagens de fundo de cada mapa
     const [mapasImagens, setMapasImagens] = useState({});
 
     const [reinoSelecionado, setReinoSelecionado] = useState(null);
     const [modoEdicaoMapa, setModoEdicaoMapa] = useState(false);
     const [urlInput, setUrlInput] = useState('');
 
-    // 🔥 NOVO CONTROLE DO GLOBO (EIXO X e Y) 🔥
     const [rotacaoGlobo, setRotacaoGlobo] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
     const dragStart = useRef({ x: 0, y: 0 });
@@ -39,7 +36,6 @@ export default function MapaMundi({ children }) {
         const diffX = currentX - dragStart.current.x;
         const diffY = currentY - dragStart.current.y;
         
-        // Trava para o globo não dar cambalhotas estranhas (limite de 70 graus para cima/baixo)
         let novoY = rotacaoGlobo.y - diffY * 0.4;
         if (novoY > 70) novoY = 70;
         if (novoY < -70) novoY = -70;
@@ -54,7 +50,6 @@ export default function MapaMundi({ children }) {
 
     const handleDragEnd = () => setIsDragging(false);
 
-    // --- FUNÇÕES DE GERENCIAMENTO DE MAPA ---
     const criarNovoMapa = () => {
         const nome = prompt("Digite o nome do novo mapa para " + reinoSelecionado + ":");
         if (nome && nome.trim() !== "") {
@@ -89,7 +84,7 @@ export default function MapaMundi({ children }) {
     };
 
     // ==========================================
-    // 🌍 CAMADA 1: O GLOBO (ESFERA 3D REAL)
+    // 🌍 CAMADA 1: O GLOBO (WIRE-FRAME DE ALTA PRECISÃO)
     // ==========================================
     if (nivelVisao === 'globo') {
         return (
@@ -104,13 +99,10 @@ export default function MapaMundi({ children }) {
                     <p style={{ color: '#aaa', fontSize: '0.85em', margin: '5px 0 0 0' }}>Arraste em qualquer direção para inspecionar o planeta.</p>
                 </div>
 
-                {/* CONTAINER COM PERSPECTIVA 3D */}
                 <div style={{ position: 'relative', width: '350px', height: '350px', perspective: '1000px' }}>
                     
-                    {/* 1. O Oceano Escuro de Fundo */}
                     <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', backgroundColor: '#000814', border: '2px solid #0088ff', pointerEvents: 'none' }}></div>
 
-                    {/* 2. O Motor do Eixo 3D (Onde a mágica acontece) */}
                     <div 
                         onMouseDown={handleDragStart} onTouchStart={handleDragStart}
                         style={{
@@ -120,23 +112,69 @@ export default function MapaMundi({ children }) {
                             cursor: isDragging ? 'grabbing' : 'grab'
                         }}
                     >
-                        {/* Linhas de Grade Holográficas presas ao núcleo */}
                         <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(0,255,204,0.1)', transform: 'rotateX(90deg)' }}></div>
                         <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(0,255,204,0.1)', transform: 'rotateY(90deg)' }}></div>
+                        <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(0,255,204,0.1)', transform: 'rotateZ(45deg) rotateX(90deg)' }}></div>
 
-                        {/* --- LADO DA FRENTE: RUNETERRA --- */}
+                        {/* --- RUNETERRA: O MAPA DE ALTA FIDELIDADE --- */}
                         <div style={{
                             position: 'absolute', inset: 0,
-                            transform: 'translateZ(175px)', // Empurra o continente para a casca do planeta (175px = metade de 350)
-                            backfaceVisibility: 'hidden', // A mágica que esconde o continente quando ele vai paras as costas do globo!
+                            transform: 'translateZ(175px)',
+                            backfaceVisibility: 'hidden',
                             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                             pointerEvents: 'none'
                         }}>
-                            {/* O Wireframe do Continente travado junto do botão */}
-                            <svg viewBox="0 0 200 200" style={{ position: 'absolute', width: '250px', height: '250px' }}>
-                                <path d="M 20 60 Q 40 20 90 25 Q 130 30 140 50 Q 150 70 120 75 Q 100 80 80 75 Q 40 80 20 60 Z" fill="rgba(0,255,204,0.05)" stroke="#00ffcc" strokeWidth="1.5" />
-                                <path d="M 60 95 Q 90 85 130 90 Q 140 120 130 150 Q 100 170 70 150 Q 50 120 60 95 Z" fill="rgba(0,255,204,0.05)" stroke="#00ffcc" strokeWidth="1.5" />
-                                <path d="M 155 30 Q 175 20 185 50 Q 165 80 145 60 Z" fill="rgba(0,255,204,0.05)" stroke="#00ffcc" strokeWidth="1.5" />
+                            <svg viewBox="0 0 200 200" style={{ position: 'absolute', width: '270px', height: '270px', filter: 'drop-shadow(0 0 3px rgba(0,255,204,0.8))' }}>
+                                
+                                {/* 1. Valoran (Norte) - Freljord, Demacia, Noxus */}
+                                <path 
+                                    d="M 12 55 L 18 45 L 30 38 L 42 35 L 55 30 L 70 28 L 85 25 L 100 28 L 115 32 L 125 30 L 135 38 L 142 42 L 140 52 L 132 58 L 122 56 L 115 65 L 105 72 L 95 68 L 82 72 L 68 80 L 52 75 L 40 82 L 25 72 L 15 75 Z" 
+                                    fill="rgba(0,255,204,0.08)" stroke="#00ffcc" strokeWidth="1" strokeLinejoin="round" 
+                                />
+                                
+                                {/* 2. Shurima, Targon, Ixtal (Sul) */}
+                                <path 
+                                    d="M 45 92 L 58 85 L 75 82 L 95 84 L 110 88 L 118 82 L 128 92 L 138 105 L 132 120 L 142 135 L 135 148 L 125 152 L 115 168 L 105 160 L 92 168 L 75 162 L 62 152 L 48 142 L 38 125 L 42 108 L 40 98 Z" 
+                                    fill="rgba(0,255,204,0.08)" stroke="#00ffcc" strokeWidth="1" strokeLinejoin="round" 
+                                />
+
+                                {/* 3. Ionia (Leste) */}
+                                <path 
+                                    d="M 152 28 L 162 20 L 175 18 L 182 25 L 185 38 L 178 50 L 182 62 L 172 72 L 160 75 L 150 65 L 148 50 L 145 38 Z" 
+                                    fill="rgba(0,255,204,0.08)" stroke="#00ffcc" strokeWidth="1" strokeLinejoin="round" 
+                                />
+
+                                {/* 4. Ilha das Sombras (Sudeste) */}
+                                <path 
+                                    d="M 165 115 L 175 112 L 185 118 L 188 128 L 182 138 L 170 140 L 160 130 L 162 120 Z" 
+                                    fill="rgba(0,255,204,0.08)" stroke="#00ffcc" strokeWidth="1" strokeLinejoin="round" 
+                                />
+
+                                {/* 5. Águas de Sentina (Ilhas Centrais Leste) */}
+                                <path d="M 145 88 L 152 82 L 158 88 L 152 95 Z" fill="rgba(0,255,204,0.15)" stroke="#00ffcc" strokeWidth="0.8" />
+                                <circle cx="162" cy="85" r="2" fill="#00ffcc" />
+                                
+                                {/* 6. A Ponte de Piltover/Zaun (Ligando Norte e Sul) */}
+                                <line x1="105" y1="72" x2="110" y2="88" stroke="#ffcc00" strokeWidth="1.5" />
+                                <circle cx="107.5" cy="80" r="2.5" fill="#ffcc00" /> {/* Ponto brilhante de Piltover */}
+
+                                {/* --- LINHAS TOPOGRÁFICAS E FRONTEIRAS INTERNAS --- */}
+                                {/* Freljord / Demacia / Noxus */}
+                                <path d="M 42 35 L 45 50 L 52 60 L 68 80" fill="none" stroke="rgba(0,255,204,0.4)" strokeWidth="0.5" strokeDasharray="2 3" />
+                                {/* Noxus Interior */}
+                                <path d="M 85 25 L 90 45 L 105 72" fill="none" stroke="rgba(0,255,204,0.4)" strokeWidth="0.5" strokeDasharray="2 3" />
+                                {/* Shurima / Ixtal */}
+                                <path d="M 95 84 L 102 110 L 92 168" fill="none" stroke="rgba(0,255,204,0.4)" strokeWidth="0.5" strokeDasharray="2 3" />
+                                {/* Targon */}
+                                <path d="M 58 85 L 65 110 L 48 142" fill="none" stroke="rgba(0,255,204,0.4)" strokeWidth="0.5" strokeDasharray="2 3" />
+                                {/* Ionia fragmentação interna */}
+                                <path d="M 162 20 L 165 45 L 160 75" fill="none" stroke="rgba(0,255,204,0.4)" strokeWidth="0.5" strokeDasharray="2 3" />
+
+                                {/* Pontos de Capitais (Pings Minúsculos) */}
+                                <circle cx="35" cy="55" r="1.5" fill="#fff" /> {/* Demacia */}
+                                <circle cx="95" cy="45" r="1.5" fill="#fff" /> {/* Noxus */}
+                                <circle cx="75" cy="120" r="1.5" fill="#fff" /> {/* Shurima */}
+
                             </svg>
 
                             <button 
@@ -147,22 +185,21 @@ export default function MapaMundi({ children }) {
                             </button>
                         </div>
 
-                        {/* --- LADO DE TRÁS: TERRAS SOMBRIAS (SÓ EXEMPLO) --- */}
+                        {/* --- LADO DE TRÁS: O OUTRO LADO DO PLANETA --- */}
                         <div style={{
                             position: 'absolute', inset: 0,
-                            transform: 'rotateY(180deg) translateZ(175px)', // Coloca exatamente do outro lado do mundo!
+                            transform: 'rotateY(180deg) translateZ(175px)',
                             backfaceVisibility: 'hidden',
                             display: 'flex', alignItems: 'center', justifyContent: 'center'
                         }}>
                             <button 
                                 style={{ pointerEvents: 'auto', background: 'rgba(255,0,60,0.15)', border: '1px solid #ff003c', color: '#ff003c', padding: '8px 15px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 0 15px rgba(255,0,60,0.4)', backdropFilter: 'blur(5px)' }}
                             >
-                                🌋 TERRAS SOMBRIAS
+                                🌋 TERRAS DESCONHECIDAS
                             </button>
                         </div>
                     </div>
 
-                    {/* 3. A Sombra do Mundo (Fica por cima de tudo pra dar o efeito redondo de bola) */}
                     <div style={{
                         position: 'absolute', inset: 0, borderRadius: '50%',
                         boxShadow: 'inset -40px -40px 60px rgba(0,0,0,0.9), inset 10px 10px 30px rgba(0,136,255,0.1)',
@@ -281,7 +318,7 @@ export default function MapaMundi({ children }) {
                     <span style={{ color: '#ffcc00', fontWeight: 'bold', fontSize: '1.1em', letterSpacing: '1px' }}>{localAtual.reino} : {localAtual.mapaId}</span>
                 </div>
                 
-                {/* ÁREA DO MAPA - Sem "Display Flex" para não empurrar o children! */}
+                {/* ÁREA DO MAPA */}
                 <div className="fade-in" style={{ 
                     flex: 1, 
                     position: 'relative', 
@@ -296,7 +333,6 @@ export default function MapaMundi({ children }) {
                     overflow: 'hidden'
                 }}>
                     
-                    {/* Placeholder Flutuante */}
                     {!backgroundUrl && (
                         <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center', color: '#444', border: '2px dashed #333', padding: '40px', borderRadius: '15px', pointerEvents: 'none', zIndex: 1 }}>
                             <h3 style={{ margin: '0 0 10px 0', color: '#666' }}>Cenário Vazio</h3>
@@ -304,12 +340,10 @@ export default function MapaMundi({ children }) {
                         </div>
                     )}
 
-                    {/* O GRID DO VTT */}
                     <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 5 }}>
                         {children}
                     </div>
 
-                    {/* MODAL DE EDIÇÃO DO FUNDO */}
                     {modoEdicaoMapa && (
                         <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.8)', zIndex: 20, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(3px)' }}>
                             <div style={{ background: '#111', border: '2px solid #0088ff', borderRadius: '15px', padding: '25px', width: '400px', textAlign: 'center', boxShadow: '0 0 30px #0088ff', position: 'relative' }}>
