@@ -1,13 +1,9 @@
 import React, { useState } from 'react';
 
 export default function MapaMundi({ children }) {
-    // Controla a "altura" da câmera: 'globo' -> 'continente' -> 'reino'
     const [nivelVisao, setNivelVisao] = useState('globo'); 
-    
-    // Guarda o que o jogador clicou para sabermos o que renderizar
     const [localAtual, setLocalAtual] = useState({ continente: null, reino: null });
 
-    // Funções de Navegação
     const entrarNoContinente = (nomeContinente) => {
         setLocalAtual({ continente: nomeContinente, reino: null });
         setNivelVisao('continente');
@@ -73,17 +69,18 @@ export default function MapaMundi({ children }) {
     // ==========================================
     if (nivelVisao === 'continente') {
         
-        // 🔥 COORDENADAS DOS ÍCONES DA IMAGEM 🔥
+        // 🔥 COORDENADAS MILIMÉTRICAS PARA O MAPA EM 4K QUE VOCÊ ENVIOU 🔥
         const reinosRuneterra = [
-            { nome: 'Freljord', top: '15%', left: '23%', cor: '#00ccff' },
-            { nome: 'Demacia', top: '34%', left: '18%', cor: '#eedd82' },
-            { nome: 'Noxus', top: '22%', left: '46%', cor: '#ff003c' },
-            { nome: 'Ionia', top: '19%', left: '81%', cor: '#ff66ff' },
-            { nome: 'Piltover & Zaun', top: '45%', left: '56%', cor: '#00ffcc' },
-            { nome: 'Bilgewater', top: '56%', left: '82%', cor: '#ff8800' },
-            { nome: 'Shurima', top: '72%', left: '51%', cor: '#ffcc00' },
-            { nome: 'Targon', top: '75%', left: '33%', cor: '#4d4dff' },
-            { nome: 'Ilhas das Sombras', top: '78%', left: '87%', cor: '#00ff88' }
+            { nome: 'Freljord', top: '15%', left: '22%', cor: '#00ccff' },
+            { nome: 'Demacia', top: '34%', left: '17%', cor: '#eedd82' },
+            { nome: 'Noxus', top: '23%', left: '44%', cor: '#ff003c' },
+            { nome: 'Ionia', top: '20%', left: '74%', cor: '#ff66ff' },
+            { nome: 'Piltover e Zaun', top: '45.5%', left: '55%', cor: '#00ffcc' },
+            { nome: 'Águas de Sentina', top: '58%', left: '75%', cor: '#ff8800' },
+            { nome: 'Shurima', top: '75%', left: '47%', cor: '#ffcc00' },
+            { nome: 'Targon', top: '77%', left: '27%', cor: '#4d4dff' },
+            { nome: 'Ixtal', top: '73%', left: '60%', cor: '#00ff00' }, 
+            { nome: 'Ilha das Sombras', top: '81%', left: '85%', cor: '#00ff88' }
         ];
 
         return (
@@ -94,36 +91,42 @@ export default function MapaMundi({ children }) {
                     <button onClick={voltarCamera} className="btn-neon btn-red" style={{ margin: 0, padding: '6px 12px', fontSize: '0.85em' }}>⬅ Voltar ao Globo</button>
                     <div style={{ textAlign: 'center' }}>
                         <h2 style={{ color: '#0088ff', margin: 0, textShadow: '0 0 10px #0088ff', textTransform: 'uppercase', letterSpacing: '2px' }}>{localAtual.continente}</h2>
-                        <span style={{ color: '#aaa', fontSize: '0.8em' }}>Selecione uma região para entrar no mapa de batalha</span>
+                        <span style={{ color: '#aaa', fontSize: '0.8em' }}>Selecione um ícone de região para focar no Mapa Tático</span>
                     </div>
                     <div style={{ width: '120px' }}></div>
                 </div>
 
-                {/* 🔥 A IMAGEM DO MAPA PUXANDO DA PASTA PUBLIC 🔥 */}
+                {/* 🔥 IMAGEM DE FUNDO 100% PARA NÃO PERDER O ALINHAMENTO 🔥 */}
                 <div style={{ 
                     flex: 1, position: 'relative', width: '100%', height: '100%',
                     backgroundImage: 'url("/runeterra.jpg")', 
-                    backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat'
+                    backgroundSize: '100% 100%', // <-- O Truque Mágico
+                    backgroundPosition: 'center', backgroundRepeat: 'no-repeat'
                 }}>
                     
+                    {/* Estilos para o Radar Invisível que revela uma Mira Holográfica ao passar o mouse */}
                     <style dangerouslySetInnerHTML={{__html: `
-                        .radar-reino {
+                        .radar-mira {
                             position: absolute;
-                            width: 50px; height: 50px;
+                            width: 60px; height: 60px;
                             border-radius: 50%;
                             transform: translate(-50%, -50%);
                             cursor: pointer;
                             display: flex; justify-content: center; align-items: center;
                             transition: all 0.3s ease;
-                            border: 2px solid transparent;
+                            background: transparent;
+                            border: 2px dashed transparent;
                         }
-                        .radar-reino:hover {
+                        .radar-mira:hover {
                             background: rgba(0,0,0,0.4);
-                            transform: translate(-50%, -50%) scale(1.2);
+                            transform: translate(-50%, -50%) scale(1.1);
+                            animation: spin-mira 4s linear infinite;
                         }
-                        .radar-label {
+                        @keyframes spin-mira { 100% { transform: translate(-50%, -50%) scale(1.1) rotate(360deg); } }
+                        
+                        .radar-nome {
                             position: absolute;
-                            bottom: 110%;
+                            top: -35px;
                             background: rgba(0,0,0,0.9);
                             padding: 6px 12px;
                             border-radius: 8px;
@@ -137,16 +140,17 @@ export default function MapaMundi({ children }) {
                             text-transform: uppercase;
                             letter-spacing: 1px;
                         }
-                        .radar-reino:hover .radar-label {
+                        .radar-mira:hover .radar-nome {
                             opacity: 1;
-                            bottom: 120%;
+                            animation: reverse-spin 4s linear infinite;
                         }
+                        @keyframes reverse-spin { 100% { transform: rotate(-360deg); } }
                     `}} />
 
                     {reinosRuneterra.map((reino) => (
                         <div 
                             key={reino.nome}
-                            className="radar-reino"
+                            className="radar-mira"
                             onClick={() => entrarNoReino(reino.nome)}
                             style={{ top: reino.top, left: reino.left }}
                             onMouseEnter={(e) => {
@@ -158,7 +162,7 @@ export default function MapaMundi({ children }) {
                                 e.currentTarget.style.boxShadow = 'none';
                             }}
                         >
-                            <div className="radar-label" style={{ border: `1px solid ${reino.cor}`, textShadow: `0 0 5px ${reino.cor}` }}>
+                            <div className="radar-nome" style={{ border: `1px solid ${reino.cor}`, textShadow: `0 0 5px ${reino.cor}` }}>
                                 ⚔️ {reino.nome}
                             </div>
                         </div>
@@ -169,13 +173,13 @@ export default function MapaMundi({ children }) {
     }
 
     // ==========================================
-    // ⚔️ CAMADA 3: O REINO
+    // ⚔️ CAMADA 3: O REINO (GRID TÁTICO)
     // ==========================================
     if (nivelVisao === 'reino') {
         return (
             <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.8)', padding: '10px 15px', borderRadius: '8px', border: '1px solid #333' }}>
-                    <button onClick={voltarCamera} className="btn-neon btn-red" style={{ margin: 0, padding: '4px 12px', fontSize: '0.85em' }}>⬅ Mapa Continental</button>
+                    <button onClick={voltarCamera} className="btn-neon btn-red" style={{ margin: 0, padding: '4px 12px', fontSize: '0.85em' }}>⬅ Voltar a Runeterra</button>
                     <div style={{ textAlign: 'center' }}>
                         <h3 style={{ color: '#ffcc00', margin: 0, textShadow: '0 0 10px #ffcc00', textTransform: 'uppercase', letterSpacing: '1px' }}>{localAtual.reino}</h3>
                         <span style={{ color: '#aaa', fontSize: '0.75em' }}>Região de {localAtual.continente}</span>
@@ -183,6 +187,7 @@ export default function MapaMundi({ children }) {
                     <div style={{ width: '120px' }}></div>
                 </div>
                 
+                {/* Aqui entra o seu Componente de Mapa de Batalha (Os Tokens, O Grid, A Câmera 3D, etc) */}
                 <div className="fade-in" style={{ position: 'relative' }}>
                     {children}
                 </div>
