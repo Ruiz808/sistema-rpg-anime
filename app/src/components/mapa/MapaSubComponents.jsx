@@ -12,6 +12,9 @@ import { ref, uploadBytes } from 'firebase/storage';
 import { httpsCallable } from 'firebase/functions';
 import { storage, functions } from '../../services/firebase-config';
 
+// 🔥 IMPORTAMOS A NOSSA NOVA CAIXA MÁGICA AQUI 🔥
+import MapaMundi from './MapaMundi'; 
+
 const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Mapa provider não encontrado</div>;
 
 // ============================================================================
@@ -937,7 +940,7 @@ export function MapaRolagemRapida() {
         const maxAlcMagias = magiasEq.length > 0 ? Math.max(...magiasEq.map(m => m.alcanceQuad || 1)) : 1;
         const maxAreaMagias = magiasEq.length > 0 ? Math.max(...magiasEq.map(m => m.areaQuad || 0)) : 0;
 
-        alcanceEf = Math.max(maxAlcArmas, maxAlcPoderes, maxAlcMagias);
+        alcanceEf = Math.max(maxAlcArmas, maxAlcPoderes, maxMagias);
         maxArea = Math.max(maxAreaArmas, maxAreaPoderes, maxAreaMagias);
         foraAlc = dQuad > alcanceEf;
     }
@@ -988,6 +991,7 @@ export function MapaRolagemRapida() {
     );
 }
 
+// 🔥 A NOSSA CAIXA MÁGICA FOI INJETADA AQUI! 🔥
 export function MapaAreaCentral() {
     const ctx = useMapaForm();
     if (!ctx) return FALLBACK;
@@ -998,10 +1002,10 @@ export function MapaAreaCentral() {
     }
     
     return (
-        <>
+        <MapaMundi>
             <MapaControlesSuperiores />
             <MapaVisao />
-        </>
+        </MapaMundi>
     );
 }
 
