@@ -69,7 +69,7 @@ export default function MapaMundi({ children }) {
     // ==========================================
     if (nivelVisao === 'continente') {
         
-        // 🔥 COORDENADAS (Sem emojis, tudo no padrão Ping) 🔥
+        // 🔥 COORDENADAS 🔥
         const reinosRuneterra = [
             { nome: 'Freljord', top: '15%', left: '22%' },
             { nome: 'Demacia', top: '34%', left: '17%' },
@@ -95,10 +95,10 @@ export default function MapaMundi({ children }) {
                     <div style={{ width: '120px' }}></div>
                 </div>
 
-                {/* IMAGEM LIMPA PUXANDO DA PASTA PUBLIC */}
+                {/* 🔥 FIX APLICADO AQUI: O ?v=2 força todos os navegadores a atualizar a imagem! 🔥 */}
                 <div style={{ 
                     flex: 1, position: 'relative', width: '100%', height: '100%',
-                    backgroundImage: 'url("/runeterra-clean.jpg")', 
+                    backgroundImage: 'url("/runeterra-clean.jpg?v=2")', 
                     backgroundSize: '100% 100%',
                     backgroundPosition: 'center', backgroundRepeat: 'no-repeat'
                 }}>
