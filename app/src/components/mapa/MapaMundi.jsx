@@ -13,7 +13,7 @@ export default function MapaMundi({ children }) {
     const [mapasImagens, setMapasImagens] = useState({});
 
     const [reinoSelecionado, setReinoSelecionado] = useState(null);
-    const [reinoHover, setReinoHover] = useState(null); // Estado para o brilho orgânico!
+    const [reinoHover, setReinoHover] = useState(null); 
     
     const [modoEdicaoMapa, setModoEdicaoMapa] = useState(false);
     const [urlInput, setUrlInput] = useState('');
@@ -22,7 +22,6 @@ export default function MapaMundi({ children }) {
     const [isDragging, setIsDragging] = useState(false);
     const dragStart = useRef({ x: 0, y: 0 });
 
-    // --- CONTROLE DO GLOBO ---
     const handleDragStart = (e) => {
         setIsDragging(true);
         dragStart.current = {
@@ -49,7 +48,6 @@ export default function MapaMundi({ children }) {
 
     const handleDragEnd = () => setIsDragging(false);
 
-    // --- NAVEGAÇÃO ---
     const criarNovoMapa = () => {
         const nome = prompt("Digite o nome do novo mapa para " + reinoSelecionado + ":");
         if (nome && nome.trim() !== "") {
@@ -137,23 +135,21 @@ export default function MapaMundi({ children }) {
     }
 
     // ==========================================
-    // 🗺️ CAMADA 2: O CONTINENTE COM FRONTEIRAS ORGÂNICAS!
+    // 🗺️ CAMADA 2: O CONTINENTE (Alta Fidelidade)
     // ==========================================
     if (nivelVisao === 'continente') {
         const reinosRuneterra = [
-            // Note que agora usamos "path" em vez de "poligono". O "C" e "Q" criam curvas perfeitas e arredondadas!
-            { nome: 'Freljord', top: '20%', left: '26%', cor: '#5dbcd2', path: 'M 2 30 C 5 20, 15 10, 25 15 C 35 20, 45 10, 48 5 L 45 25 C 40 30, 30 35, 15 35 C 10 35, 2 35, 2 30 Z' },
-            { nome: 'Demacia', top: '42%', left: '22%', cor: '#eedd82', path: 'M 15 35 C 25 35, 30 35, 35 45 C 32 55, 20 58, 10 52 C 5 48, 10 40, 15 35 Z' },
-            { nome: 'Noxus', top: '28%', left: '55%', cor: '#cc3333', path: 'M 48 5 C 60 5, 75 10, 80 25 C 75 35, 65 45, 55 45 C 45 45, 35 45, 35 45 C 35 35, 45 30, 48 25 Z' },
-            
-            // As demais deixei sem "path" por enquanto, elas vão ter só o Ping. (Você pode traçá-las depois!)
-            { nome: 'Ionia', top: '25%', left: '85%', cor: '#33cc99' },
-            { nome: 'Piltover e Zaun', top: '50%', left: '55%', cor: '#ffcc00' },
-            { nome: 'Águas de Sentina', top: '58%', left: '78%', cor: '#d28c2e' },
-            { nome: 'Shurima', top: '75%', left: '48%', cor: '#e6b800' },
-            { nome: 'Targon', top: '73%', left: '26%', cor: '#663399' },
-            { nome: 'Ixtal', top: '70%', left: '68%', cor: '#339933' },
-            { nome: 'Ilha das Sombras', top: '82%', left: '90%', cor: '#00e6b8' }
+            // CURVAS DE BÉZIER ULTRA DETALHADAS (Q = Curva) baseadas na sua última imagem!
+            { nome: 'Freljord', top: '20%', left: '26%', cor: '#5dbcd2', path: 'M 5 28 Q 15 5 40 10 Q 48 18 40 38 Q 25 40 10 40 Q 2 35 5 28 Z' },
+            { nome: 'Demacia', top: '42%', left: '22%', cor: '#eedd82', path: 'M 10 40 Q 25 40 40 38 Q 45 48 35 52 Q 20 58 8 50 Q 5 45 10 40 Z' },
+            { nome: 'Noxus', top: '28%', left: '55%', cor: '#cc3333', path: 'M 40 38 Q 45 15 70 12 Q 90 15 85 35 Q 80 48 65 48 Q 50 48 40 38 Z' }, // O arco perfeito da imagem!
+            { nome: 'Ionia', top: '25%', left: '85%', cor: '#33cc99', path: 'M 75 10 Q 90 5 95 20 Q 98 40 85 45 Q 75 40 75 10 Z' },
+            { nome: 'Piltover e Zaun', top: '50%', left: '55%', cor: '#ffcc00', path: 'M 50 48 L 65 48 L 65 52 L 50 52 Z' },
+            { nome: 'Águas de Sentina', top: '58%', left: '78%', cor: '#d28c2e', path: 'M 75 52 Q 85 50 85 60 Q 75 62 75 52 Z' },
+            { nome: 'Shurima', top: '75%', left: '48%', cor: '#e6b800', path: 'M 32 60 Q 50 55 65 60 Q 70 75 60 90 Q 45 95 35 90 Q 25 80 32 60 Z' },
+            { nome: 'Targon', top: '73%', left: '26%', cor: '#663399', path: 'M 20 65 Q 32 60 32 80 Q 25 90 15 80 Q 15 70 20 65 Z' },
+            { nome: 'Ixtal', top: '70%', left: '68%', cor: '#339933', path: 'M 65 60 Q 75 55 80 75 Q 75 85 60 90 Q 60 75 65 60 Z' },
+            { nome: 'Ilha das Sombras', top: '82%', left: '90%', cor: '#00e6b8', path: 'M 85 70 Q 95 70 95 85 Q 85 85 85 70 Z' }
         ];
 
         return (
@@ -167,17 +163,15 @@ export default function MapaMundi({ children }) {
 
                 <div style={{ flex: 1, position: 'relative', backgroundImage: 'url("/runeterra-clean.jpg?v=2")', backgroundSize: '100% 100%' }}>
                     
-                    {/* AS FRONTEIRAS MÁGICAS DE SVG COM CURVAS */}
                     <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 2 }}>
                         {reinosRuneterra.map(reino => reino.path && (
                             <path 
                                 key={`path-${reino.nome}`}
                                 d={reino.path} 
                                 fill={reino.cor} 
-                                // O brilho acende lindamente e de forma suave ao passar o mouse!
-                                opacity={reinoHover === reino.nome ? 0.35 : 0} 
+                                opacity={reinoHover === reino.nome ? 0.3 : 0} 
                                 stroke={reinoHover === reino.nome ? '#fff' : reino.cor}
-                                strokeWidth={reinoHover === reino.nome ? "0.5" : "0"}
+                                strokeWidth={reinoHover === reino.nome ? "0.4" : "0"}
                                 style={{ transition: 'all 0.3s ease', cursor: 'pointer', pointerEvents: 'auto' }}
                                 onMouseEnter={() => setReinoHover(reino.nome)}
                                 onMouseLeave={() => setReinoHover(null)}
@@ -186,28 +180,54 @@ export default function MapaMundi({ children }) {
                         ))}
                     </svg>
 
+                    {/* CSS DOS NOVOS PINGS (Estilo UI Cyberpunk da Imagem) */}
                     <style dangerouslySetInnerHTML={{__html: `
-                        @keyframes ping-radar { 0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4); } 70% { box-shadow: 0 0 0 15px rgba(255, 255, 255, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); } }
-                        .ping-container { position: absolute; width: 22px; height: 22px; border-radius: 50%; transform: translate(-50%, -50%); cursor: pointer; display: flex; justify-content: center; align-items: center; transition: all 0.2s ease-out; z-index: 5; background: #000; border: 2px solid #fff; animation: ping-radar 2s infinite; }
-                        .ping-container:hover { width: 28px; height: 28px; border-color: #fff; z-index: 10; animation: none; }
-                        .ping-nucleo { width: 10px; height: 10px; border-radius: 50%; transition: 0.2s; }
-                        .ping-container:hover .ping-nucleo { width: 14px; height: 14px; background: #fff !important; box-shadow: 0 0 10px #fff !important; }
-                        .ping-nome { position: absolute; bottom: -32px; background: rgba(0,0,0,0.85); padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; white-space: nowrap; pointer-events: none; opacity: 0.8; transition: 0.2s; text-transform: uppercase; letter-spacing: 1px; border: 1px solid #333; color: #fff; }
-                        .ping-container:hover .ping-nome { opacity: 1; bottom: -36px; color: #fff; text-shadow: 0 0 5px #fff; border-color: #fff; }
+                        .ping-wrapper {
+                            position: absolute; transform: translate(-50%, -50%); cursor: pointer; display: flex; flex-direction: column; align-items: center; z-index: 5;
+                        }
+                        .ping-wrapper:hover { z-index: 10; }
+                        
+                        .ping-anel-externo {
+                            width: 24px; height: 24px; border-radius: 50%; background: #000;
+                            display: flex; justify-content: center; align-items: center;
+                            transition: all 0.2s ease-out;
+                            box-shadow: 0 0 10px rgba(0,0,0,0.8);
+                        }
+                        
+                        .ping-nucleo {
+                            width: 10px; height: 10px; border-radius: 50%; transition: 0.2s;
+                        }
+                        
+                        .ping-wrapper:hover .ping-anel-externo {
+                            width: 28px; height: 28px; border-color: #fff !important;
+                        }
+
+                        .ping-wrapper:hover .ping-nucleo {
+                            width: 14px; height: 14px; background: #fff !important; box-shadow: 0 0 15px #fff !important;
+                        }
+
+                        .ping-legenda {
+                            margin-top: 4px; background: rgba(0,0,0,0.85); padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; white-space: nowrap; pointer-events: none; opacity: 0.8; transition: 0.2s; text-transform: uppercase; letter-spacing: 1px; color: #fff;
+                        }
+                        
+                        .ping-wrapper:hover .ping-legenda {
+                            opacity: 1; color: #fff; text-shadow: 0 0 5px #fff; border-color: #fff !important;
+                        }
                     `}} />
 
-                    {/* OS PINGS DE RADAR CONTINUAM LÁ FIRMES E FORTES */}
                     {reinosRuneterra.map((reino) => (
                         <div 
                             key={reino.nome}
-                            className="ping-container"
+                            className="ping-wrapper"
                             onMouseEnter={() => setReinoHover(reino.nome)}
                             onMouseLeave={() => setReinoHover(null)}
                             onClick={() => abrirMenuReino(reino.nome)}
-                            style={{ top: reino.top, left: reino.left, borderColor: reino.cor }}
+                            style={{ top: reino.top, left: reino.left }}
                         >
-                            <div className="ping-nucleo" style={{ background: reino.cor, boxShadow: `0 0 8px ${reino.cor}` }}></div>
-                            <div className="ping-nome" style={{ borderColor: reino.cor, color: reino.cor }}>{reino.nome}</div>
+                            <div className="ping-anel-externo" style={{ border: `2px solid ${reino.cor}` }}>
+                                <div className="ping-nucleo" style={{ background: reino.cor, boxShadow: `0 0 8px ${reino.cor}` }}></div>
+                            </div>
+                            <div className="ping-legenda" style={{ border: `1px solid ${reino.cor}` }}>{reino.nome}</div>
                         </div>
                     ))}
                 </div>
