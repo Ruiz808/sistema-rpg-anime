@@ -135,20 +135,51 @@ export default function MapaMundi({ children }) {
     }
 
     // ==========================================
-    // 🗺️ CAMADA 2: O CONTINENTE (PROPORÇÃO PERFEITA)
+    // 🗺️ CAMADA 2: O CONTINENTE
     // ==========================================
     if (nivelVisao === 'continente') {
         const reinosRuneterra = [
-            { nome: 'Freljord', top: '18%', left: '30%', cor: '#00b5e2', path: 'M 22 15 C 30 10, 40 12, 48 18 C 55 25, 52 38, 46 42 C 38 45, 28 40, 22 35 C 15 28, 15 20, 22 15 Z' },
-            { nome: 'Demacia', top: '42%', left: '22%', cor: '#d3c29e', path: 'M 15 35 C 22 32, 30 35, 34 42 C 38 48, 32 55, 24 56 C 15 58, 8 50, 10 42 C 12 38, 13 36, 15 35 Z' },
-            { nome: 'Noxus', top: '30%', left: '55%', cor: '#c62828', path: 'M 48 18 C 58 12, 68 15, 72 25 C 76 38, 70 50, 60 52 C 50 54, 45 48, 46 42 C 52 38, 55 25, 48 18 Z' },
-            { nome: 'Piltover e Zaun', top: '55%', left: '56%', cor: '#d4a017', path: 'M 52 48 Q 58 46 62 50 T 60 56 Q 54 58 50 54 T 52 48 Z' },
-            { nome: 'Ixtal', top: '65%', left: '42%', cor: '#2e7d32', path: 'M 35 45 C 42 42, 48 46, 52 54 C 48 58, 42 56, 35 45 Z' },
-            { nome: 'Shurima', top: '75%', left: '42%', cor: '#c59b0d', path: 'M 32 58 C 38 55, 48 58, 55 62 C 60 65, 65 72, 62 80 C 58 88, 48 95, 40 92 C 32 88, 25 82, 28 72 C 30 65, 26 60, 32 58 Z' },
-            { nome: 'Targon', top: '70%', left: '22%', cor: '#5e35b1', path: 'M 20 58 Q 26 56 28 64 T 26 76 Q 20 82 15 78 T 14 66 Q 16 60 20 58 Z' },
-            { nome: 'Águas de Sentina', top: '58%', left: '72%', cor: '#d84315', path: 'M 68 52 C 74 48, 78 54, 75 64 C 68 66, 65 60, 68 52 Z' },
-            { nome: 'Ilha das Sombras', top: '85%', left: '72%', cor: '#00838f', path: 'M 78 78 Q 85 75 92 80 T 94 92 Q 88 98 80 96 T 74 86 Q 74 80 78 78 Z' },
-            { nome: 'Ionia', top: '45%', left: '85%', cor: '#43a047', path: 'M 68 15 C 72 8, 85 10, 90 18 C 95 28, 93 40, 90 48 C 88 55, 96 65, 93 78 C 90 88, 80 92, 74 86 C 68 80, 75 72, 76 64 C 78 55, 72 48, 68 40 C 64 32, 65 20, 68 15 Z' }
+            { 
+                nome: 'Freljord', top: '18%', left: '30%', cor: '#00b5e2', 
+                path: 'M 22 15 C 30 10, 40 12, 48 18 C 55 25, 52 38, 46 42 C 38 45, 28 40, 22 35 C 15 28, 15 20, 22 15 Z' 
+            },
+            { 
+                nome: 'Demacia', top: '42%', left: '22%', cor: '#d3c29e', 
+                path: 'M 15 35 C 22 32, 30 35, 34 42 C 38 48, 32 55, 24 56 C 15 58, 8 50, 10 42 C 12 38, 13 36, 15 35 Z' 
+            },
+            { 
+                nome: 'Noxus', top: '30%', left: '55%', cor: '#c62828', 
+                path: 'M 48 18 C 58 12, 68 15, 72 25 C 76 38, 70 50, 60 52 C 50 54, 45 48, 46 42 C 52 38, 55 25, 48 18 Z' 
+            },
+            { 
+                nome: 'Piltover e Zaun', top: '55%', left: '56%', cor: '#d4a017', 
+                path: 'M 52 48 Q 58 46 62 50 T 60 56 Q 54 58 50 54 T 52 48 Z' 
+            },
+            { 
+                nome: 'Shurima', top: '75%', left: '42%', cor: '#c59b0d', 
+                path: 'M 32 58 C 38 55, 48 58, 55 62 C 60 65, 65 72, 62 80 C 58 88, 48 95, 40 92 C 32 88, 25 82, 28 72 C 30 65, 26 60, 32 58 Z' 
+            },
+            { 
+                nome: 'Targon', top: '70%', left: '22%', cor: '#5e35b1', 
+                path: 'M 20 58 Q 26 56 28 64 T 26 76 Q 20 82 15 78 T 14 66 Q 16 60 20 58 Z' 
+            },
+            { 
+                nome: 'Águas de Sentina', top: '58%', left: '72%', cor: '#d84315', 
+                path: 'M 68 52 C 74 48, 78 54, 75 64 C 68 66, 65 60, 68 52 Z' 
+            },
+            { 
+                nome: 'Ilha das Sombras', top: '85%', left: '72%', cor: '#00838f', 
+                path: 'M 78 78 Q 85 75 92 80 T 94 92 Q 88 98 80 96 T 74 86 Q 74 80 78 78 Z' 
+            },
+            { 
+                nome: 'Ionia', top: '45%', left: '85%', cor: '#43a047', 
+                path: 'M 68 15 C 72 8, 85 10, 90 18 C 95 28, 93 40, 90 48 C 88 55, 96 65, 93 78 C 90 88, 80 92, 74 86 C 68 80, 75 72, 76 64 C 78 55, 72 48, 68 40 C 64 32, 65 20, 68 15 Z' 
+            },
+            // 🔥 IXTAL CORRIGIDO: Agora na selva no leste de Shurima 🔥
+            { 
+                nome: 'Ixtal', top: '72%', left: '65%', cor: '#2e7d32', 
+                path: 'M 60 60 C 68 58, 75 60, 78 68 C 76 78, 68 85, 60 82 C 55 75, 56 68, 60 60 Z' 
+            }
         ];
 
         return (
@@ -160,10 +191,8 @@ export default function MapaMundi({ children }) {
                     <div style={{ width: '120px' }}></div>
                 </div>
 
-                {/* 🔥 A MÁGICA ANTI-ESTICAMENTO AQUI 🔥 */}
                 <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', position: 'relative' }}>
                     
-                    {/* Este container 'abraça' a imagem e mantém a proporção exata dela */}
                     <div style={{ position: 'relative', display: 'inline-block', maxWidth: '100%', maxHeight: '100%' }}>
                         
                         <img 
