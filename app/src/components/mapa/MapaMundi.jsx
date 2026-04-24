@@ -65,22 +65,22 @@ export default function MapaMundi({ children }) {
     }
 
     // ==========================================
-    // 🗺️ CAMADA 2: O CONTINENTE INTERATIVO (MAPA DA RUNETERRA)
+    // 🗺️ CAMADA 2: O CONTINENTE COM SÍMBOLOS DINÂMICOS
     // ==========================================
     if (nivelVisao === 'continente') {
         
-        // 🔥 COORDENADAS MILIMÉTRICAS PARA O MAPA EM 4K QUE VOCÊ ENVIOU 🔥
+        // 🔥 DADOS DOS REINOS E SUAS COORDENADAS EXATAS 🔥
         const reinosRuneterra = [
-            { nome: 'Freljord', top: '15%', left: '22%', cor: '#00ccff' },
-            { nome: 'Demacia', top: '34%', left: '17%', cor: '#eedd82' },
-            { nome: 'Noxus', top: '23%', left: '44%', cor: '#ff003c' },
-            { nome: 'Ionia', top: '20%', left: '74%', cor: '#ff66ff' },
-            { nome: 'Piltover e Zaun', top: '45.5%', left: '55%', cor: '#00ffcc' },
-            { nome: 'Águas de Sentina', top: '58%', left: '75%', cor: '#ff8800' },
-            { nome: 'Shurima', top: '75%', left: '47%', cor: '#ffcc00' },
-            { nome: 'Targon', top: '77%', left: '27%', cor: '#4d4dff' },
-            { nome: 'Ixtal', top: '73%', left: '60%', cor: '#00ff00' }, 
-            { nome: 'Ilha das Sombras', top: '81%', left: '85%', cor: '#00ff88' }
+            { nome: 'Freljord', top: '15%', left: '22%', cor: '#00ccff', simbolo: '❄️' },
+            { nome: 'Demacia', top: '34%', left: '17%', cor: '#eedd82', simbolo: '🦅' },
+            { nome: 'Noxus', top: '23%', left: '44%', cor: '#ff003c', simbolo: '🪓' },
+            { nome: 'Ionia', top: '20%', left: '74%', cor: '#ff66ff', simbolo: '🌸' },
+            { nome: 'Piltover e Zaun', top: '45.5%', left: '55%', cor: '#00ffcc', simbolo: '⚙️' },
+            { nome: 'Águas de Sentina', top: '58%', left: '75%', cor: '#ff8800', simbolo: '⚓' },
+            { nome: 'Shurima', top: '75%', left: '47%', cor: '#ffcc00', simbolo: '☀️' },
+            { nome: 'Targon', top: '77%', left: '27%', cor: '#4d4dff', simbolo: '⛰️' },
+            { nome: 'Ixtal', top: '73%', left: '60%', cor: '#00ff00', simbolo: '🌿' }, 
+            { nome: 'Ilha das Sombras', top: '81%', left: '85%', cor: '#00ff88', simbolo: '👻' }
         ];
 
         return (
@@ -91,78 +91,116 @@ export default function MapaMundi({ children }) {
                     <button onClick={voltarCamera} className="btn-neon btn-red" style={{ margin: 0, padding: '6px 12px', fontSize: '0.85em' }}>⬅ Voltar ao Globo</button>
                     <div style={{ textAlign: 'center' }}>
                         <h2 style={{ color: '#0088ff', margin: 0, textShadow: '0 0 10px #0088ff', textTransform: 'uppercase', letterSpacing: '2px' }}>{localAtual.continente}</h2>
-                        <span style={{ color: '#aaa', fontSize: '0.8em' }}>Selecione um ícone de região para focar no Mapa Tático</span>
+                        <span style={{ color: '#aaa', fontSize: '0.8em' }}>Símbolos Hextech ativos. Selecione uma região para focar o Mapa Tático</span>
                     </div>
                     <div style={{ width: '120px' }}></div>
                 </div>
 
-                {/* 🔥 AQUI FORÇAMOS O NOME NOVO (mapa-runeterra-hd.jpg) PARA DRIBLAR O CACHE 🔥 */}
+                {/* 🔥 IMAGEM LIMPA PUXANDO DA PASTA PUBLIC 🔥 */}
                 <div style={{ 
                     flex: 1, position: 'relative', width: '100%', height: '100%',
-                    backgroundImage: 'url("/mapa-runeterra-hd.jpg")', 
+                    backgroundImage: 'url("/runeterra-clean.jpg")', 
                     backgroundSize: '100% 100%',
                     backgroundPosition: 'center', backgroundRepeat: 'no-repeat'
                 }}>
                     
+                    {/* Estilos para o Símbolo/Token Dinâmico */}
                     <style dangerouslySetInnerHTML={{__html: `
-                        .radar-mira {
+                        @keyframes pulse-border {
+                            0% { box-shadow: 0 0 10px rgba(255,255,255,0.3); }
+                            50% { box-shadow: 0 0 20px var(--reino-cor), inset 0 0 10px rgba(255,255,255,0.2); }
+                            100% { box-shadow: 0 0 10px rgba(255,255,255,0.3); }
+                        }
+                        @keyframes spin-hex { 100% { transform: rotate(360deg); } }
+
+                        .token-reino {
                             position: absolute;
-                            width: 60px; height: 60px;
+                            width: 50px; height: 50px; 
                             border-radius: 50%;
                             transform: translate(-50%, -50%);
                             cursor: pointer;
                             display: flex; justify-content: center; align-items: center;
-                            transition: all 0.3s ease;
-                            background: transparent;
-                            border: 2px dashed transparent;
+                            transition: all 0.3s ease-out;
+                            z-index: 5;
+                            
+                            /* Design do Símbolo Metálico */
+                            background: radial-gradient(circle at 30% 30%, #444, #111);
+                            border: 3px solid #666; 
+                            box-shadow: 0 4px 10px rgba(0,0,0,0.8), inset 0 2px 3px rgba(255,255,255,0.1);
                         }
-                        .radar-mira:hover {
-                            background: rgba(0,0,0,0.4);
-                            transform: translate(-50%, -50%) scale(1.1);
-                            animation: spin-mira 4s linear infinite;
+
+                        /* Estado Ativo/Hover */
+                        .token-reino:hover {
+                            width: 60px; height: 60px; 
+                            border-color: #fff; 
+                            animation: pulse-border 1.5s infinite ease-in-out;
+                            z-index: 10; 
                         }
-                        @keyframes spin-mira { 100% { transform: translate(-50%, -50%) scale(1.1) rotate(360deg); } }
+
+                        /* O "Brilho Mágico" Hextech atrás do token no hover */
+                        .token-reino::before {
+                            content: '';
+                            position: absolute; top: -10px; left: -10px; right: -10px; bottom: -10px;
+                            border-radius: 50%;
+                            border: 2px dashed var(--reino-cor);
+                            opacity: 0;
+                            transition: 0.3s;
+                            pointer-events: none;
+                        }
+                        .token-reino:hover::before {
+                            opacity: 0.8;
+                            animation: spin-hex 10s linear infinite;
+                        }
                         
-                        .radar-nome {
+                        .token-simbolo {
+                            font-size: 24px;
+                            filter: drop-shadow(0 0 5px rgba(0,0,0,0.8));
+                            transition: 0.3s;
+                        }
+                        .token-reino:hover .token-simbolo {
+                            font-size: 30px;
+                        }
+
+                        .token-nome {
                             position: absolute;
-                            top: -35px;
+                            bottom: -30px; 
                             background: rgba(0,0,0,0.9);
-                            padding: 6px 12px;
-                            border-radius: 8px;
+                            padding: 4px 10px;
+                            border-radius: 6px;
                             color: #fff;
-                            font-size: 14px;
+                            font-size: 12px;
                             font-weight: bold;
                             white-space: nowrap;
                             pointer-events: none;
-                            opacity: 0;
+                            opacity: 0.7; 
                             transition: 0.3s;
                             text-transform: uppercase;
                             letter-spacing: 1px;
+                            border: 1px solid #333;
                         }
-                        .radar-mira:hover .radar-nome {
+                        .token-reino:hover .token-nome {
                             opacity: 1;
-                            animation: reverse-spin 4s linear infinite;
+                            bottom: -35px;
+                            border-color: var(--reino-cor);
+                            text-shadow: 0 0 5px var(--reino-cor);
                         }
-                        @keyframes reverse-spin { 100% { transform: rotate(-360deg); } }
                     `}} />
 
+                    {/* Renderiza os Símbolos Dinâmicos */}
                     {reinosRuneterra.map((reino) => (
                         <div 
                             key={reino.nome}
-                            className="radar-mira"
+                            className="token-reino"
                             onClick={() => entrarNoReino(reino.nome)}
-                            style={{ top: reino.top, left: reino.left }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.borderColor = reino.cor;
-                                e.currentTarget.style.boxShadow = `0 0 20px ${reino.cor}, inset 0 0 15px ${reino.cor}`;
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.borderColor = 'transparent';
-                                e.currentTarget.style.boxShadow = 'none';
+                            style={{ 
+                                top: reino.top, left: reino.left,
+                                '--reino-cor': reino.cor 
                             }}
                         >
-                            <div className="radar-nome" style={{ border: `1px solid ${reino.cor}`, textShadow: `0 0 5px ${reino.cor}` }}>
-                                ⚔️ {reino.nome}
+                            <span className="token-simbolo">{reino.simbolo}</span>
+                            
+                            <div className="token-nome">
+                                {reino.nome}
                             </div>
                         </div>
                     ))}
@@ -181,7 +219,7 @@ export default function MapaMundi({ children }) {
                     <button onClick={voltarCamera} className="btn-neon btn-red" style={{ margin: 0, padding: '4px 12px', fontSize: '0.85em' }}>⬅ Voltar a Runeterra</button>
                     <div style={{ textAlign: 'center' }}>
                         <h3 style={{ color: '#ffcc00', margin: 0, textShadow: '0 0 10px #ffcc00', textTransform: 'uppercase', letterSpacing: '1px' }}>{localAtual.reino}</h3>
-                        <span style={{ color: '#aaa', fontSize: '0.75em' }}>Região de {localAtual.continente}</span>
+                        <span style={{ color: '#aaa', fontSize: '0.75em' }}>Mergulho Tático Ativo</span>
                     </div>
                     <div style={{ width: '120px' }}></div>
                 </div>
