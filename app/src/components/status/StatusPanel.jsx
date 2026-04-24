@@ -1,6 +1,7 @@
 import React from 'react';
 import { StatusFormProvider } from './StatusFormContext';
 import {
+    StatusImportador, // 🔥 NOVO: Importamos o Importador
     StatusPaletaCores,
     StatusVitalsGrid,
     StatusEnergiasPrimordiais,
@@ -17,6 +18,8 @@ export default function StatusPanel({ className, children }) {
             <div className={['status-panel-container', className].filter(Boolean).join(' ')}>
                 {hasChildren ? children : (
                     <>
+                        <StatusImportador /> {/* 🔥 NOVO: O botão de importação aparece aqui no topo! */}
+                        
                         <StatusPaletaCores />
                         <StatusVitalsGrid />
                         <h3 className="section-title-mint-spaced" style={{ marginTop: 0, color: '#fff', fontSize: '1.2em' }}>&gt; ENERGIAS PRIMORDIAIS</h3>

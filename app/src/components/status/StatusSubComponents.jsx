@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
+import useStore from '../../stores/useStore';
 import {
     useStatusForm,
     VITALS_RADAR, VITALS_LABELS, ATRIBUTOS_PRINCIPAIS, COLOR_CONFIGS,
@@ -212,11 +213,11 @@ export function StatusMultiplicadores() {
         <div style={{ display: 'flex', gap: '15px', marginBottom: '30px' }}>
             <div className="input-group" style={{ flex: 1, background: 'rgba(0, 255, 136, 0.05)', padding: '10px', borderRadius: '8px', border: '1px solid #00ff88', margin: 0 }}>
                 <label style={{ color: '#00ff88', fontSize: '0.8em', marginBottom: '5px', display: 'block' }}>MULT. DE VIDA (PV)</label>
-                <input type="number" step="0.1" value={ficha.multiplicadorVida || 1} onChange={(e) => { updateFicha(f => f.multiplicadorVida = parseFloat(e.target.value) || 1); salvarFichaSilencioso(); }} style={{ borderColor: '#00ff88', color: '#fff', width: '100%' }} />
+                <input type="number" step="0.1" value={ficha.multiplicadorVida || 1} onChange={(e) => { updateFicha(f => f.multiplicadorVida = parseFloat(e.target.value) || 1); }} style={{ borderColor: '#00ff88', color: '#fff', width: '100%' }} />
             </div>
             <div className="input-group" style={{ flex: 1, background: 'rgba(255, 0, 255, 0.05)', padding: '10px', borderRadius: '8px', border: '1px solid #ff00ff', margin: 0 }}>
                 <label style={{ color: '#ff00ff', fontSize: '0.8em', marginBottom: '5px', display: 'block' }}>MULT. DE MORTE (PM)</label>
-                <input type="number" step="0.1" value={ficha.multiplicadorMorte || 1} onChange={(e) => { updateFicha(f => f.multiplicadorMorte = parseFloat(e.target.value) || 1); salvarFichaSilencioso(); }} style={{ borderColor: '#ff00ff', color: '#fff', width: '100%' }} />
+                <input type="number" step="0.1" value={ficha.multiplicadorMorte || 1} onChange={(e) => { updateFicha(f => f.multiplicadorMorte = parseFloat(e.target.value) || 1); }} style={{ borderColor: '#ff00ff', color: '#fff', width: '100%' }} />
             </div>
         </div>
     );
@@ -321,7 +322,7 @@ export function StatusEconomiaAcoes() {
                 </div>
             </div>
         );
-    };
+    }
 
     return (
         <div style={{ background: 'rgba(10, 10, 20, 0.6)', border: '1px solid #333', borderRadius: '8px', padding: '15px', marginBottom: '30px' }}>
@@ -407,6 +408,86 @@ export function StatusAnalisePoder() {
                 <StatusRadarChart isAtual={true} />
                 <StatusAtributosLista isAtual={true} />
             </div>
+        </div>
+    );
+}
+
+// ============================================================================
+// 🔥 NOVO: COMPONENTE DE IMPORTAÇÃO (COPIAR DO GOOGLE DOCS) 🔥
+// ============================================================================
+export function StatusImportador() {
+    const [texto, setTexto] = useState('');
+    const [aberto, setAberto] = useState(false);
+    const importarDaAbaStatus = useStore(s => s.importarDaAbaStatus);
+
+    const handleImportar = () => {
+        if (!texto.trim()) return alert("Cole o texto da aba de Status do Google Docs aqui!");
+        importarDaAbaStatus(texto);
+        setAberto(false);
+        setTexto('');
+        alert("Status e Energias sincronizados com sucesso!");
+    };
+
+    return (
+        <div style={{ marginBottom: '20px' }}>
+            <button 
+                className="btn-neon btn-small" 
+                onClick={() => setAberto(!aberto)}
+                style={{ 
+                    margin: 0, 
+                    padding: '8px 15px', 
+                    fontSize: '0.85em', 
+                    borderColor: '#00ffcc', 
+                    color: '#00ffcc',
+                    boxShadow: aberto ? '0 0 15px rgba(0,255,204,0.4)' : 'none',
+                    transition: 'all 0.2s'
+                }}
+            >
+                {aberto ? '❌ CANCELAR SINCRONIZAÇÃO' : '📥 IMPORTAR DO GOOGLE DOCS'}
+            </button>
+
+            {aberto && (
+                <div className="fade-in" style={{ 
+                    marginTop: '15px', 
+                    background: 'rgba(0,255,204,0.05)', 
+                    padding: '20px', 
+                    borderRadius: '8px', 
+                    border: '1px dashed #00ffcc',
+                    boxShadow: 'inset 0 0 20px rgba(0,255,204,0.1)' 
+                }}>
+                    <h4 style={{ color: '#00ffcc', margin: '0 0 10px 0' }}>📂 Importador Mágico (Aba de Status)</h4>
+                    <p style={{ color: '#aaa', fontSize: '0.85em', marginBottom: '15px' }}>
+                        Copie tudo da sua aba <b>STATUS</b> no Google Docs e cole na caixa abaixo. 
+                        O sistema irá ler e atualizar a Vida, Mana, Aura, Chakra, Corpo e os seus Atributos Base automaticamente.
+                    </p>
+                    <textarea 
+                        value={texto}
+                        onChange={e => setTexto(e.target.value)}
+                        placeholder="Cole aqui o seu texto... (Ex: Vida: 34000000 | Força = (+30000))"
+                        style={{ 
+                            width: '100%', 
+                            height: '150px', 
+                            background: 'rgba(0,0,0,0.8)', 
+                            color: '#0f0', 
+                            fontFamily: 'monospace',
+                            border: '1px solid #333', 
+                            borderRadius: '5px', 
+                            padding: '12px', 
+                            marginBottom: '15px', 
+                            fontSize: '0.9em',
+                            resize: 'vertical',
+                            boxSizing: 'border-box'
+                        }}
+                    />
+                    <button 
+                        className="btn-neon btn-green" 
+                        onClick={handleImportar} 
+                        style={{ width: '100%', padding: '12px', fontWeight: 'bold', fontSize: '1em' }}
+                    >
+                        ⚡ SINCRONIZAR A MINHA FICHA
+                    </button>
+                </div>
+            )}
         </div>
     );
 }
