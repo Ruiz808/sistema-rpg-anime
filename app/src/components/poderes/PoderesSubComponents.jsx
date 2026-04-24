@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { usePoderesForm, SINGULAR } from './PoderesFormContext';
 import { ATRIBUTOS_AGRUPADOS, PROPRIEDADE_OPTIONS } from '../../core/efeitos-constants';
 import FormasEditor from '../shared/FormasEditor';
@@ -19,6 +19,104 @@ const ELEMENTOS_OPCOES = [
     { label: 'Magias de Ciclo', opcoes: ['Truques de Ciclo', 'Magias de 1º Ciclo', 'Magias de 2º Ciclo', 'Magias de 3º Ciclo', 'Magias de 4º Ciclo', 'Magias de 5º Ciclo', 'Magias de 6º Ciclo', 'Magias de 7º Ciclo', 'Magias de 8º Ciclo', 'Magias de 9º Ciclo', 'Magias de 10º Ciclo'] },
     { label: 'Manifestações e Fusões', opcoes: ['Aura Pura', 'Projeção de Aura', 'Artes Marciais', 'Reforço Físico', 'Fusões Básicas', 'Fusões Avançadas'] }
 ];
+
+// ============================================================================
+// 🔥 O IMPORTADOR HÍBRIDO COM INTELIGÊNCIA ARTIFICIAL 🔥
+// ============================================================================
+export function PoderesImportadorIA() {
+    const ctx = usePoderesForm();
+    if (!ctx) return null;
+
+    const { injetarJsonDaIA } = ctx;
+    const [aberto, setAberto] = useState(false);
+    const [textoDocs, setTextoDocs] = useState('');
+    const [jsonResposta, setJsonResposta] = useState('');
+    const [fase, setFase] = useState(1); 
+
+    const gerarPrompt = () => {
+        if (!textoDocs.trim()) return alert("Cole primeiro os seus poderes na caixa de texto!");
+        
+        const prompt = `Atue como um extrator de dados de sistemas de RPG. Leia as habilidades abaixo e classifique-as em 3 categorias: "poderes" (ataques físicos ou habilidades de classe), "ataquesElementais" (magias que invocam fogo, água, relâmpago, luz, etc) ou "passivas" (efeitos constantes).
+Extraia o dano se houver (ex: "causa 15d6 de dano" vira danoQtd: 15 e danoFaces: 6).
+Se houver efeitos complexos (ex: "paralisa por 2 turnos", "invoca criaturas", "dano de fogo e cortante misturado"), coloque a explicação dessa mecânica no campo "notasIA", pois o sistema precisará que o mestre aplique isso manualmente no mapa. Para elementais, tente adivinhar o "elementoAlvo" (ex: "Relâmpago", "Fogo", "Vazio").
+
+TEXTO DA FICHA:
+${textoDocs}
+
+Retorne EXATAMENTE UM JSON VÁLIDO e puro (sem markdown de formatação como \`\`\`), neste formato exato:
+{
+  "poderes": [{ "nome": "Nome do Poder", "descricao": "Sua descricao limpa", "danoQtd": 0, "danoFaces": 0, "notasIA": "Efeitos paralelos complexos aqui" }],
+  "ataquesElementais": [{ "nome": "Nome Magia", "descricao": "Desc", "danoQtd": 5, "danoFaces": 6, "elementoAlvo": "Raio", "notasIA": "Paralisa oponente" }],
+  "passivas": [{ "nome": "Alerta", "descricao": "Voce recebe +5 na iniciativa e nao é surpreendido", "notasIA": "Iniciativa ganha +5 de bonus base" }]
+}`;
+
+        navigator.clipboard.writeText(prompt);
+        alert("✨ O Prompt Perfeito foi copiado para a sua Área de Transferência!\n\nCole no ChatGPT, Gemini ou na sua Sexta-Feira, e traga o código de volta para o Passo 2!");
+        setFase(2);
+    };
+
+    const processarResposta = () => {
+        if (!jsonResposta.trim()) return alert("Cole o código que a IA gerou!");
+        const sucesso = injetarJsonDaIA(jsonResposta);
+        if (sucesso) {
+            setAberto(false);
+            setFase(1);
+            setTextoDocs('');
+            setJsonResposta('');
+        }
+    };
+
+    return (
+        <div style={{ marginBottom: '20px' }}>
+            <button 
+                className="btn-neon btn-blue" 
+                onClick={() => setAberto(!aberto)}
+                style={{ margin: 0, padding: '8px 15px', fontSize: '0.85em', fontWeight: 'bold', width: '100%', boxShadow: aberto ? '0 0 15px rgba(0,136,255,0.4)' : 'none' }}
+            >
+                {aberto ? '❌ ESCONDER IMPORTADOR DE IA' : '🤖 IMPORTAR PODERES VIA IA'}
+            </button>
+
+            {aberto && (
+                <div className="fade-in" style={{ marginTop: '15px', background: 'rgba(0,136,255,0.05)', padding: '20px', borderRadius: '8px', border: '1px dashed #00aaff' }}>
+                    <h3 style={{ color: '#00aaff', margin: '0 0 15px 0' }}>🤖 Motor de Triagem da Sexta-Feira</h3>
+                    
+                    {fase === 1 && (
+                        <div className="fade-in">
+                            <p style={{ color: '#aaa', fontSize: '0.85em', marginBottom: '10px' }}><b>PASSO 1:</b> Cole abaixo todos os seus Poderes, Passivas e Magias exatamente como estão no Google Docs.</p>
+                            <textarea 
+                                value={textoDocs} onChange={e => setTextoDocs(e.target.value)}
+                                placeholder="Cole aqui os textos longos e confusos... Ex: Relâmpago: Causa 5d6+Atributo..."
+                                style={{ width: '100%', height: '150px', background: '#050505', color: '#fff', border: '1px solid #333', borderRadius: '5px', padding: '10px', fontSize: '0.9em', resize: 'vertical' }}
+                            />
+                            <button className="btn-neon btn-gold" onClick={gerarPrompt} style={{ width: '100%', padding: '12px', marginTop: '10px', fontWeight: 'bold' }}>
+                                ✨ GERAR INSTRUÇÃO E COPIAR PARA ÁREA DE TRANSFERÊNCIA
+                            </button>
+                        </div>
+                    )}
+
+                    {fase === 2 && (
+                        <div className="fade-in">
+                            <p style={{ color: '#ffcc00', fontSize: '0.85em', marginBottom: '10px' }}><b>PASSO 2:</b> Peça à IA para ler o texto que acabou de copiar. Ela vai devolver um código (JSON). Cole-o aqui:</p>
+                            <textarea 
+                                value={jsonResposta} onChange={e => setJsonResposta(e.target.value)}
+                                placeholder='{ "poderes": [...], "ataquesElementais": [...] }'
+                                style={{ width: '100%', height: '150px', background: '#000', color: '#0f0', fontFamily: 'monospace', border: '1px solid #00aaff', borderRadius: '5px', padding: '10px', fontSize: '0.9em', resize: 'vertical' }}
+                            />
+                            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                                <button className="btn-neon btn-red" onClick={() => setFase(1)} style={{ flex: 1, padding: '12px', margin: 0 }}>⬅ VOLTAR</button>
+                                <button className="btn-neon btn-green" onClick={processarResposta} style={{ flex: 2, padding: '12px', margin: 0, fontWeight: 'bold' }}>⚡ APLICAR CÓDIGO NA FICHA</button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ============================================================================
+// O RESTO DOS SUBCOMPONENTES ORIGINAIS (Preservados Intactos!)
+// ============================================================================
 
 export function PoderesSidebar() {
     const ctx = usePoderesForm();
@@ -503,6 +601,14 @@ export function PoderesLista() {
                     
                     return (
                         <div key={p.id} className="def-box" style={{ borderLeft: `5px solid ${c}`, background: bg, marginBottom: 10 }}>
+                            
+                            {/* 🔥 AVISO DA SEXTA-FEIRA INJETADO AQUI! 🔥 */}
+                            {p.notasIA && (
+                                <div style={{ background: '#ffcc00', color: '#000', padding: '4px 10px', fontSize: '0.8em', fontWeight: 'bold', borderRadius: '4px', marginBottom: '10px' }}>
+                                    ⚠️ AVISO DA SEXTA-FEIRA: {p.notasIA}
+                                </div>
+                            )}
+
                             <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 15 }}>
                                 <div style={{ flex: 1 }}>
                                     <h3 style={{ margin: 0, color: c, textShadow: `0 0 10px ${c}` }}>

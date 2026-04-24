@@ -313,7 +313,6 @@ export function PoderesFormProvider({ children }) {
     const hInfinity = hierarquia.infinity || false;
     const hSingularidade = hierarquia.singularidade || '';
 
-    // 🔥 NOVO: Estado HTextos atualizado para suportar os campos da Classificação 🔥
     const [hTextos, setHTextos] = useState({
         poderNome: '', poderDesc: '', poderVertente: '', poderElemento: '', poderAfeta: '',
         infinityNome: '', infinityDesc: '', infinityVertente: '', infinityElemento: '', infinityAfeta: '',
@@ -349,7 +348,6 @@ export function PoderesFormProvider({ children }) {
         salvarFichaSilencioso();
     }, [isMestre, updateFicha]);
 
-    // 🔥 NOVO: Salvando todos os textos da aba Classificação 🔥
     const salvarTextosHierarquia = useCallback(() => {
         if (!isMestre) return;
         updateFicha(f => {
@@ -496,6 +494,69 @@ export function PoderesFormProvider({ children }) {
         setOverchargeAtivo(false);
     }, [overchargeAtivo, updateFicha, danoBruto, energiaElemental, mPotencial]);
 
+    // 🔥 O MOTOR DE INJEÇÃO DO JSON DA IA (ADICIONADO AQUI) 🔥
+    const injetarJsonDaIA = useCallback((jsonString) => {
+        try {
+            const dados = JSON.parse(jsonString);
+            updateFicha(f => {
+                const time = Date.now();
+                if (dados.poderes && Array.isArray(dados.poderes)) {
+                    if (!f.poderes) f.poderes = [];
+                    dados.poderes.forEach((p, i) => {
+                        f.poderes.push({
+                            id: 'pw_ia_' + time + i,
+                            nome: p.nome || 'Habilidade Desconhecida',
+                            descricao: p.descricao || '',
+                            dadosQtd: p.danoQtd || 0,
+                            dadosFaces: p.danoFaces || 0,
+                            vertente: 'Físico',
+                            categoria: 'habilidade',
+                            ativa: false,
+                            isForma: false,
+                            notasIA: p.notasIA || '' // Guarda os efeitos complexos!
+                        });
+                    });
+                }
+
+                if (dados.ataquesElementais && Array.isArray(dados.ataquesElementais)) {
+                    if (!f.ataquesElementais) f.ataquesElementais = [];
+                    dados.ataquesElementais.forEach((el, i) => {
+                        f.ataquesElementais.push({
+                            id: 'el_ia_' + time + i,
+                            nomeElem: el.nome || 'Magia Desconhecida',
+                            descElem: el.descricao || '',
+                            elemSelecionado: el.elementoAlvo || 'Fogo',
+                            dadosQtd: el.danoQtd || 0,
+                            dadosFaces: el.danoFaces || 0,
+                            equipado: false,
+                            notasIA: el.notasIA || ''
+                        });
+                    });
+                }
+
+                if (dados.passivas && Array.isArray(dados.passivas)) {
+                    if (!f.passivas) f.passivas = [];
+                    dados.passivas.forEach((pa, i) => {
+                        f.passivas.push({
+                            id: 'pa_ia_' + time + i,
+                            nomePassiva: pa.nome || 'Passiva Desconhecida',
+                            descPassiva: pa.descricao || '',
+                            ativa: true,
+                            notasIA: pa.notasIA || ''
+                        });
+                    });
+                }
+            });
+            salvarFichaSilencioso();
+            alert("A magia aconteceu! As suas habilidades foram categorizadas e injetadas na Ficha!");
+            return true;
+        } catch (e) {
+            console.error(e);
+            alert("Erro ao ler o código da IA. Confirme se copiou o JSON corretamente.");
+            return false;
+        }
+    }, [updateFicha]);
+
     const value = useMemo(() => ({
         minhaFicha, meuNome, isMestre, abaAtual, setAbaAtual,
         nomePoder, setNomePoder, descricaoPoder, setDescricaoPoder,
@@ -519,7 +580,8 @@ export function PoderesFormProvider({ children }) {
         salvarHierarquia, salvarTextosHierarquia,
         armasEquipadas, itensFiltrados, relatorioAuditoria,
         curMana, curAura, curChakra, energiaElemental, mPotencial, danoBruto,
-        dispararAtaque, efeitosTemp, efeitosTempPassivos, poderEditandoId
+        dispararAtaque, efeitosTemp, efeitosTempPassivos, poderEditandoId,
+        injetarJsonDaIA // Passando a nova função para os subcomponentes
     }), [
         minhaFicha, meuNome, isMestre, abaAtual,
         nomePoder, descricaoPoder, poderVertente, poderElemento, elementosAfetados,
@@ -536,7 +598,7 @@ export function PoderesFormProvider({ children }) {
         salvarHierarquia, salvarTextosHierarquia,
         armasEquipadas, itensFiltrados, relatorioAuditoria,
         curMana, curAura, curChakra, energiaElemental, mPotencial, danoBruto,
-        dispararAtaque, efeitosTemp, efeitosTempPassivos, poderEditandoId
+        dispararAtaque, efeitosTemp, efeitosTempPassivos, poderEditandoId, injetarJsonDaIA
     ]);
 
     return (
