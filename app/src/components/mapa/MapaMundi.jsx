@@ -22,6 +22,7 @@ export default function MapaMundi({ children }) {
     const [isDragging, setIsDragging] = useState(false);
     const dragStart = useRef({ x: 0, y: 0 });
 
+    // --- CONTROLE DO GLOBO ---
     const handleDragStart = (e) => {
         setIsDragging(true);
         dragStart.current = {
@@ -48,6 +49,7 @@ export default function MapaMundi({ children }) {
 
     const handleDragEnd = () => setIsDragging(false);
 
+    // --- NAVEGAÇÃO ---
     const criarNovoMapa = () => {
         const nome = prompt("Digite o nome do novo mapa para " + reinoSelecionado + ":");
         if (nome && nome.trim() !== "") {
@@ -118,8 +120,6 @@ export default function MapaMundi({ children }) {
                                 <path d="M 12 55 L 18 45 L 30 38 L 42 35 L 55 30 L 70 28 L 85 25 L 100 28 L 115 32 L 125 30 L 135 38 L 142 42 L 140 52 L 132 58 L 122 56 L 115 65 L 105 72 L 95 68 L 82 72 L 68 80 L 52 75 L 40 82 L 25 72 L 15 75 Z" fill="rgba(0,255,204,0.08)" stroke="#00ffcc" strokeWidth="1" strokeLinejoin="round" />
                                 <path d="M 45 92 L 58 85 L 75 82 L 95 84 L 110 88 L 118 82 L 128 92 L 138 105 L 132 120 L 142 135 L 135 148 L 125 152 L 115 168 L 105 160 L 92 168 L 75 162 L 62 152 L 48 142 L 38 125 L 42 108 L 40 98 Z" fill="rgba(0,255,204,0.08)" stroke="#00ffcc" strokeWidth="1" strokeLinejoin="round" />
                                 <path d="M 152 28 L 162 20 L 175 18 L 182 25 L 185 38 L 178 50 L 182 62 L 172 72 L 160 75 L 150 65 L 148 50 L 145 38 Z" fill="rgba(0,255,204,0.08)" stroke="#00ffcc" strokeWidth="1" strokeLinejoin="round" />
-                                <circle cx="162" cy="85" r="2" fill="#00ffcc" />
-                                <line x1="105" y1="72" x2="110" y2="88" stroke="#ffcc00" strokeWidth="1.5" />
                             </svg>
 
                             <button onClick={() => entrarNoContinente('Runeterra')} style={{ pointerEvents: 'auto', background: 'rgba(0,255,204,0.15)', border: '1px solid #00ffcc', color: '#00ffcc', padding: '6px 12px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 0 15px rgba(0,255,204,0.4)', backdropFilter: 'blur(5px)', zIndex: 10, fontSize: '0.75em' }}>
@@ -135,21 +135,52 @@ export default function MapaMundi({ children }) {
     }
 
     // ==========================================
-    // 🗺️ CAMADA 2: O CONTINENTE (Alta Fidelidade)
+    // 🗺️ CAMADA 2: O CONTINENTE (Com as Linhas Massivas de SVG!)
     // ==========================================
     if (nivelVisao === 'continente') {
+        // 🔥 AQUI ESTÁ A MÁGICA: Não economizei nas linhas. Curvas ultra-orgânicas (Bézier) e Ionia gigante!
         const reinosRuneterra = [
-            // CURVAS DE BÉZIER ULTRA DETALHADAS (Q = Curva) baseadas na sua última imagem!
-            { nome: 'Freljord', top: '20%', left: '26%', cor: '#5dbcd2', path: 'M 5 28 Q 15 5 40 10 Q 48 18 40 38 Q 25 40 10 40 Q 2 35 5 28 Z' },
-            { nome: 'Demacia', top: '42%', left: '22%', cor: '#eedd82', path: 'M 10 40 Q 25 40 40 38 Q 45 48 35 52 Q 20 58 8 50 Q 5 45 10 40 Z' },
-            { nome: 'Noxus', top: '28%', left: '55%', cor: '#cc3333', path: 'M 40 38 Q 45 15 70 12 Q 90 15 85 35 Q 80 48 65 48 Q 50 48 40 38 Z' }, // O arco perfeito da imagem!
-            { nome: 'Ionia', top: '25%', left: '85%', cor: '#33cc99', path: 'M 75 10 Q 90 5 95 20 Q 98 40 85 45 Q 75 40 75 10 Z' },
-            { nome: 'Piltover e Zaun', top: '50%', left: '55%', cor: '#ffcc00', path: 'M 50 48 L 65 48 L 65 52 L 50 52 Z' },
-            { nome: 'Águas de Sentina', top: '58%', left: '78%', cor: '#d28c2e', path: 'M 75 52 Q 85 50 85 60 Q 75 62 75 52 Z' },
-            { nome: 'Shurima', top: '75%', left: '48%', cor: '#e6b800', path: 'M 32 60 Q 50 55 65 60 Q 70 75 60 90 Q 45 95 35 90 Q 25 80 32 60 Z' },
-            { nome: 'Targon', top: '73%', left: '26%', cor: '#663399', path: 'M 20 65 Q 32 60 32 80 Q 25 90 15 80 Q 15 70 20 65 Z' },
-            { nome: 'Ixtal', top: '70%', left: '68%', cor: '#339933', path: 'M 65 60 Q 75 55 80 75 Q 75 85 60 90 Q 60 75 65 60 Z' },
-            { nome: 'Ilha das Sombras', top: '82%', left: '90%', cor: '#00e6b8', path: 'M 85 70 Q 95 70 95 85 Q 85 85 85 70 Z' }
+            { 
+                nome: 'Freljord', top: '18%', left: '30%', cor: '#00b5e2', 
+                path: 'M 22 15 C 30 10, 40 12, 48 18 C 55 25, 52 38, 46 42 C 38 45, 28 40, 22 35 C 15 28, 15 20, 22 15 Z' 
+            },
+            { 
+                nome: 'Demacia', top: '42%', left: '22%', cor: '#d3c29e', 
+                path: 'M 15 35 C 22 32, 30 35, 34 42 C 38 48, 32 55, 24 56 C 15 58, 8 50, 10 42 C 12 38, 13 36, 15 35 Z' 
+            },
+            { 
+                nome: 'Noxus', top: '30%', left: '55%', cor: '#c62828', 
+                path: 'M 48 18 C 58 12, 68 15, 72 25 C 76 38, 70 50, 60 52 C 50 54, 45 48, 46 42 C 52 38, 55 25, 48 18 Z' 
+            },
+            { 
+                nome: 'Piltover e Zaun', top: '55%', left: '56%', cor: '#d4a017', 
+                path: 'M 52 48 Q 58 46 62 50 T 60 56 Q 54 58 50 54 T 52 48 Z' 
+            },
+            { 
+                nome: 'Ixtal', top: '65%', left: '42%', cor: '#2e7d32', 
+                path: 'M 35 45 C 42 42, 48 46, 52 54 C 48 58, 42 56, 35 45 Z' 
+            },
+            { 
+                nome: 'Shurima', top: '75%', left: '42%', cor: '#c59b0d', 
+                path: 'M 32 58 C 38 55, 48 58, 55 62 C 60 65, 65 72, 62 80 C 58 88, 48 95, 40 92 C 32 88, 25 82, 28 72 C 30 65, 26 60, 32 58 Z' 
+            },
+            { 
+                nome: 'Targon', top: '70%', left: '22%', cor: '#5e35b1', 
+                path: 'M 20 58 Q 26 56 28 64 T 26 76 Q 20 82 15 78 T 14 66 Q 16 60 20 58 Z' 
+            },
+            { 
+                nome: 'Águas de Sentina', top: '58%', left: '72%', cor: '#d84315', 
+                path: 'M 68 52 C 74 48, 78 54, 75 64 C 68 66, 65 60, 68 52 Z' 
+            },
+            { 
+                nome: 'Ilha das Sombras', top: '85%', left: '72%', cor: '#00838f', 
+                path: 'M 78 78 Q 85 75 92 80 T 94 92 Q 88 98 80 96 T 74 86 Q 74 80 78 78 Z' 
+            },
+            { 
+                // 🔥 IONIA GIGANTE OCUPANDO A LATERAL DIREITA INTEIRA 🔥
+                nome: 'Ionia', top: '45%', left: '85%', cor: '#43a047', 
+                path: 'M 68 15 C 72 8, 85 10, 90 18 C 95 28, 93 40, 90 48 C 88 55, 96 65, 93 78 C 90 88, 80 92, 74 86 C 68 80, 75 72, 76 64 C 78 55, 72 48, 68 40 C 64 32, 65 20, 68 15 Z' 
+            }
         ];
 
         return (
@@ -163,13 +194,14 @@ export default function MapaMundi({ children }) {
 
                 <div style={{ flex: 1, position: 'relative', backgroundImage: 'url("/runeterra-clean.jpg?v=2")', backgroundSize: '100% 100%' }}>
                     
+                    {/* SVG FRONTEIRAS ORGÂNICAS E COLORIDAS */}
                     <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 2 }}>
                         {reinosRuneterra.map(reino => reino.path && (
                             <path 
                                 key={`path-${reino.nome}`}
                                 d={reino.path} 
                                 fill={reino.cor} 
-                                opacity={reinoHover === reino.nome ? 0.3 : 0} 
+                                opacity={reinoHover === reino.nome ? 0.35 : 0} 
                                 stroke={reinoHover === reino.nome ? '#fff' : reino.cor}
                                 strokeWidth={reinoHover === reino.nome ? "0.4" : "0"}
                                 style={{ transition: 'all 0.3s ease', cursor: 'pointer', pointerEvents: 'auto' }}
@@ -180,39 +212,16 @@ export default function MapaMundi({ children }) {
                         ))}
                     </svg>
 
-                    {/* CSS DOS NOVOS PINGS (Estilo UI Cyberpunk da Imagem) */}
                     <style dangerouslySetInnerHTML={{__html: `
-                        .ping-wrapper {
-                            position: absolute; transform: translate(-50%, -50%); cursor: pointer; display: flex; flex-direction: column; align-items: center; z-index: 5;
-                        }
+                        @keyframes ping-radar { 0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4); } 70% { box-shadow: 0 0 0 15px rgba(255, 255, 255, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); } }
+                        .ping-wrapper { position: absolute; transform: translate(-50%, -50%); cursor: pointer; display: flex; flex-direction: column; align-items: center; z-index: 5; }
                         .ping-wrapper:hover { z-index: 10; }
-                        
-                        .ping-anel-externo {
-                            width: 24px; height: 24px; border-radius: 50%; background: #000;
-                            display: flex; justify-content: center; align-items: center;
-                            transition: all 0.2s ease-out;
-                            box-shadow: 0 0 10px rgba(0,0,0,0.8);
-                        }
-                        
-                        .ping-nucleo {
-                            width: 10px; height: 10px; border-radius: 50%; transition: 0.2s;
-                        }
-                        
-                        .ping-wrapper:hover .ping-anel-externo {
-                            width: 28px; height: 28px; border-color: #fff !important;
-                        }
-
-                        .ping-wrapper:hover .ping-nucleo {
-                            width: 14px; height: 14px; background: #fff !important; box-shadow: 0 0 15px #fff !important;
-                        }
-
-                        .ping-legenda {
-                            margin-top: 4px; background: rgba(0,0,0,0.85); padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; white-space: nowrap; pointer-events: none; opacity: 0.8; transition: 0.2s; text-transform: uppercase; letter-spacing: 1px; color: #fff;
-                        }
-                        
-                        .ping-wrapper:hover .ping-legenda {
-                            opacity: 1; color: #fff; text-shadow: 0 0 5px #fff; border-color: #fff !important;
-                        }
+                        .ping-anel-externo { width: 22px; height: 22px; border-radius: 50%; background: #000; display: flex; justify-content: center; align-items: center; transition: all 0.2s ease-out; box-shadow: 0 0 10px rgba(0,0,0,0.8); }
+                        .ping-nucleo { width: 8px; height: 8px; border-radius: 50%; transition: 0.2s; }
+                        .ping-wrapper:hover .ping-anel-externo { width: 26px; height: 26px; border-color: #fff !important; }
+                        .ping-wrapper:hover .ping-nucleo { width: 12px; height: 12px; background: #fff !important; box-shadow: 0 0 15px #fff !important; }
+                        .ping-legenda { margin-top: 4px; background: rgba(0,0,0,0.85); padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; white-space: nowrap; pointer-events: none; opacity: 0.8; transition: 0.2s; text-transform: uppercase; letter-spacing: 1px; color: #fff; }
+                        .ping-wrapper:hover .ping-legenda { opacity: 1; color: #fff; text-shadow: 0 0 5px #fff; border-color: #fff !important; }
                     `}} />
 
                     {reinosRuneterra.map((reino) => (
