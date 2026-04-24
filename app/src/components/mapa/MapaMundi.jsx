@@ -14,27 +14,44 @@ export default function MapaMundi({ children }) {
     // Estado para gerenciar os links das imagens de fundo de cada mapa
     const [mapasImagens, setMapasImagens] = useState({});
 
-    // Controles de Menus
     const [reinoSelecionado, setReinoSelecionado] = useState(null);
     const [modoEdicaoMapa, setModoEdicaoMapa] = useState(false);
     const [urlInput, setUrlInput] = useState('');
 
-    // Controle do Globo Giratório
-    const [rotacaoGlobo, setRotacaoGlobo] = useState(0);
+    // 🔥 NOVO CONTROLE DO GLOBO (EIXO X e Y) 🔥
+    const [rotacaoGlobo, setRotacaoGlobo] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
-    const dragStartX = useRef(0);
+    const dragStart = useRef({ x: 0, y: 0 });
 
     const handleDragStart = (e) => {
         setIsDragging(true);
-        dragStartX.current = e.clientX || e.touches?.[0].clientX;
+        dragStart.current = {
+            x: e.clientX || e.touches?.[0].clientX,
+            y: e.clientY || e.touches?.[0].clientY
+        };
     };
+
     const handleDragMove = (e) => {
         if (!isDragging) return;
         const currentX = e.clientX || e.touches?.[0].clientX;
-        const diferenca = currentX - dragStartX.current;
-        setRotacaoGlobo((prev) => prev + diferenca * 0.5);
-        dragStartX.current = currentX;
+        const currentY = e.clientY || e.touches?.[0].clientY;
+        
+        const diffX = currentX - dragStart.current.x;
+        const diffY = currentY - dragStart.current.y;
+        
+        // Trava para o globo não dar cambalhotas estranhas (limite de 70 graus para cima/baixo)
+        let novoY = rotacaoGlobo.y - diffY * 0.4;
+        if (novoY > 70) novoY = 70;
+        if (novoY < -70) novoY = -70;
+
+        setRotacaoGlobo({
+            x: rotacaoGlobo.x + diffX * 0.4,
+            y: novoY
+        });
+        
+        dragStart.current = { x: currentX, y: currentY };
     };
+
     const handleDragEnd = () => setIsDragging(false);
 
     // --- FUNÇÕES DE GERENCIAMENTO DE MAPA ---
@@ -72,7 +89,7 @@ export default function MapaMundi({ children }) {
     };
 
     // ==========================================
-    // 🌍 CAMADA 1: O GLOBO
+    // 🌍 CAMADA 1: O GLOBO (ESFERA 3D REAL)
     // ==========================================
     if (nivelVisao === 'globo') {
         return (
@@ -80,38 +97,78 @@ export default function MapaMundi({ children }) {
                 className="fade-in" 
                 style={{ width: '100%', height: '65vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#050508', borderRadius: '10px', border: '1px solid #0088ff', position: 'relative', overflow: 'hidden' }}
                 onMouseMove={handleDragMove} onMouseUp={handleDragEnd} onMouseLeave={handleDragEnd}
+                onTouchMove={handleDragMove} onTouchEnd={handleDragEnd}
             >
-                <div style={{ position: 'absolute', top: '20px', textAlign: 'center', zIndex: 10 }}>
+                <div style={{ position: 'absolute', top: '20px', textAlign: 'center', zIndex: 10, pointerEvents: 'none' }}>
                     <h2 style={{ color: '#00ffcc', margin: 0, textTransform: 'uppercase', letterSpacing: '3px' }}>Visão Orbital</h2>
-                    <p style={{ color: '#aaa', fontSize: '0.85em', margin: '5px 0 0 0' }}>Arraste para girar o planeta.</p>
+                    <p style={{ color: '#aaa', fontSize: '0.85em', margin: '5px 0 0 0' }}>Arraste em qualquer direção para inspecionar o planeta.</p>
                 </div>
 
-                <div 
-                    onMouseDown={handleDragStart}
-                    style={{
-                        width: '350px', height: '350px', borderRadius: '50%',
-                        backgroundColor: '#000814', border: '2px solid #0088ff',
-                        boxShadow: '0 0 50px rgba(0,136,255,0.3), inset -40px -40px 60px #000',
-                        cursor: isDragging ? 'grabbing' : 'grab',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        position: 'relative', overflow: 'hidden'
-                    }}
-                >
-                    <div style={{ position: 'absolute', width: '100%', height: '100%', borderRadius: '50%', border: '1px solid rgba(0,255,204,0.1)', transform: 'rotateX(75deg)' }}></div>
-                    <div style={{ position: 'absolute', width: '100%', height: '100%', borderRadius: '50%', border: '1px solid rgba(0,255,204,0.1)', transform: 'rotateY(75deg)' }}></div>
+                {/* CONTAINER COM PERSPECTIVA 3D */}
+                <div style={{ position: 'relative', width: '350px', height: '350px', perspective: '1000px' }}>
+                    
+                    {/* 1. O Oceano Escuro de Fundo */}
+                    <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', backgroundColor: '#000814', border: '2px solid #0088ff', pointerEvents: 'none' }}></div>
 
-                    <svg viewBox="0 0 200 200" style={{ position: 'absolute', width: '200%', height: '100%', transform: `translateX(${(rotacaoGlobo % 400) - 100}px)`, opacity: 0.5, pointerEvents: 'none' }}>
-                        <path d="M 10 50 Q 30 30 70 35 L 120 40 Q 140 50 130 65 L 110 75 L 80 70 L 40 75 Z" fill="rgba(0,255,204,0.05)" stroke="#00ffcc" strokeWidth="1" />
-                        <path d="M 50 90 L 80 85 L 110 88 Q 130 110 120 140 L 90 160 Q 60 145 40 120 Z" fill="rgba(0,255,204,0.05)" stroke="#00ffcc" strokeWidth="1" />
-                        <path d="M 140 35 Q 160 25 170 50 L 160 75 Q 145 65 135 55 Z" fill="rgba(0,255,204,0.05)" stroke="#00ffcc" strokeWidth="1" />
-                    </svg>
-
-                    <button 
-                        onClick={() => entrarNoContinente('Runeterra')} 
-                        style={{ position: 'absolute', background: 'rgba(0,255,204,0.15)', border: '1px solid #00ffcc', color: '#00ffcc', padding: '8px 15px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold' }}
+                    {/* 2. O Motor do Eixo 3D (Onde a mágica acontece) */}
+                    <div 
+                        onMouseDown={handleDragStart} onTouchStart={handleDragStart}
+                        style={{
+                            position: 'absolute', inset: 0,
+                            transformStyle: 'preserve-3d',
+                            transform: `rotateX(${rotacaoGlobo.y}deg) rotateY(${rotacaoGlobo.x}deg)`,
+                            cursor: isDragging ? 'grabbing' : 'grab'
+                        }}
                     >
-                        🌍 RUNETERRA
-                    </button>
+                        {/* Linhas de Grade Holográficas presas ao núcleo */}
+                        <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(0,255,204,0.1)', transform: 'rotateX(90deg)' }}></div>
+                        <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(0,255,204,0.1)', transform: 'rotateY(90deg)' }}></div>
+
+                        {/* --- LADO DA FRENTE: RUNETERRA --- */}
+                        <div style={{
+                            position: 'absolute', inset: 0,
+                            transform: 'translateZ(175px)', // Empurra o continente para a casca do planeta (175px = metade de 350)
+                            backfaceVisibility: 'hidden', // A mágica que esconde o continente quando ele vai paras as costas do globo!
+                            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                            pointerEvents: 'none'
+                        }}>
+                            {/* O Wireframe do Continente travado junto do botão */}
+                            <svg viewBox="0 0 200 200" style={{ position: 'absolute', width: '250px', height: '250px' }}>
+                                <path d="M 20 60 Q 40 20 90 25 Q 130 30 140 50 Q 150 70 120 75 Q 100 80 80 75 Q 40 80 20 60 Z" fill="rgba(0,255,204,0.05)" stroke="#00ffcc" strokeWidth="1.5" />
+                                <path d="M 60 95 Q 90 85 130 90 Q 140 120 130 150 Q 100 170 70 150 Q 50 120 60 95 Z" fill="rgba(0,255,204,0.05)" stroke="#00ffcc" strokeWidth="1.5" />
+                                <path d="M 155 30 Q 175 20 185 50 Q 165 80 145 60 Z" fill="rgba(0,255,204,0.05)" stroke="#00ffcc" strokeWidth="1.5" />
+                            </svg>
+
+                            <button 
+                                onClick={() => entrarNoContinente('Runeterra')} 
+                                style={{ pointerEvents: 'auto', background: 'rgba(0,255,204,0.15)', border: '1px solid #00ffcc', color: '#00ffcc', padding: '8px 15px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 0 15px rgba(0,255,204,0.4)', backdropFilter: 'blur(5px)', zIndex: 10 }}
+                            >
+                                🌍 RUNETERRA
+                            </button>
+                        </div>
+
+                        {/* --- LADO DE TRÁS: TERRAS SOMBRIAS (SÓ EXEMPLO) --- */}
+                        <div style={{
+                            position: 'absolute', inset: 0,
+                            transform: 'rotateY(180deg) translateZ(175px)', // Coloca exatamente do outro lado do mundo!
+                            backfaceVisibility: 'hidden',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}>
+                            <button 
+                                style={{ pointerEvents: 'auto', background: 'rgba(255,0,60,0.15)', border: '1px solid #ff003c', color: '#ff003c', padding: '8px 15px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 0 15px rgba(255,0,60,0.4)', backdropFilter: 'blur(5px)' }}
+                            >
+                                🌋 TERRAS SOMBRIAS
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* 3. A Sombra do Mundo (Fica por cima de tudo pra dar o efeito redondo de bola) */}
+                    <div style={{
+                        position: 'absolute', inset: 0, borderRadius: '50%',
+                        boxShadow: 'inset -40px -40px 60px rgba(0,0,0,0.9), inset 10px 10px 30px rgba(0,136,255,0.1)',
+                        pointerEvents: 'none', zIndex: 20
+                    }}></div>
+
                 </div>
             </div>
         );
@@ -239,7 +296,7 @@ export default function MapaMundi({ children }) {
                     overflow: 'hidden'
                 }}>
                     
-                    {/* Placeholder Flutuante (Fica no fundo se não tiver imagem, mas não ocupa espaço do grid) */}
+                    {/* Placeholder Flutuante */}
                     {!backgroundUrl && (
                         <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center', color: '#444', border: '2px dashed #333', padding: '40px', borderRadius: '15px', pointerEvents: 'none', zIndex: 1 }}>
                             <h3 style={{ margin: '0 0 10px 0', color: '#666' }}>Cenário Vazio</h3>
@@ -247,12 +304,12 @@ export default function MapaMundi({ children }) {
                         </div>
                     )}
 
-                    {/* O GRID DO VTT: Absoluto, por cima de tudo, ocupando a tela inteira! */}
+                    {/* O GRID DO VTT */}
                     <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 5 }}>
                         {children}
                     </div>
 
-                    {/* MODAL DE EDIÇÃO DO FUNDO (Aparece ao clicar em Editar Fundo) */}
+                    {/* MODAL DE EDIÇÃO DO FUNDO */}
                     {modoEdicaoMapa && (
                         <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.8)', zIndex: 20, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(3px)' }}>
                             <div style={{ background: '#111', border: '2px solid #0088ff', borderRadius: '15px', padding: '25px', width: '400px', textAlign: 'center', boxShadow: '0 0 30px #0088ff', position: 'relative' }}>
