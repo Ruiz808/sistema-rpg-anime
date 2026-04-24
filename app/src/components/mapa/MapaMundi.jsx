@@ -96,15 +96,14 @@ export default function MapaMundi({ children }) {
                     <div style={{ width: '120px' }}></div>
                 </div>
 
-                {/* 🔥 IMAGEM DE FUNDO 100% PARA NÃO PERDER O ALINHAMENTO 🔥 */}
+                {/* 🔥 AQUI FORÇAMOS O NOME NOVO (mapa-runeterra-hd.jpg) PARA DRIBLAR O CACHE 🔥 */}
                 <div style={{ 
                     flex: 1, position: 'relative', width: '100%', height: '100%',
-                    backgroundImage: 'url("/runeterra.jpg")', 
-                    backgroundSize: '100% 100%', // <-- O Truque Mágico
+                    backgroundImage: 'url("/mapa-runeterra-hd.jpg")', 
+                    backgroundSize: '100% 100%',
                     backgroundPosition: 'center', backgroundRepeat: 'no-repeat'
                 }}>
                     
-                    {/* Estilos para o Radar Invisível que revela uma Mira Holográfica ao passar o mouse */}
                     <style dangerouslySetInnerHTML={{__html: `
                         .radar-mira {
                             position: absolute;
@@ -187,7 +186,6 @@ export default function MapaMundi({ children }) {
                     <div style={{ width: '120px' }}></div>
                 </div>
                 
-                {/* Aqui entra o seu Componente de Mapa de Batalha (Os Tokens, O Grid, A Câmera 3D, etc) */}
                 <div className="fade-in" style={{ position: 'relative' }}>
                     {children}
                 </div>
