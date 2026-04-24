@@ -58,7 +58,7 @@ export default function MapaMundi({ children }) {
     };
 
     const entrarNoContinente = (nomeContinente) => {
-        setLocalAtual({ continente: nomeContinente, reino: null, mapaId: null });
+        setLocalAtual({ continente: null, reino: null, mapaId: null });
         setNivelVisao('continente');
     };
 
@@ -142,21 +142,21 @@ export default function MapaMundi({ children }) {
             { nome: 'Freljord', top: '18%', left: '30%', cor: '#00b5e2', path: 'M 22 15 C 30 10, 40 12, 48 18 C 55 25, 52 38, 46 42 C 38 45, 28 40, 22 35 C 15 28, 15 20, 22 15 Z' },
             { nome: 'Demacia', top: '42%', left: '22%', cor: '#d3c29e', path: 'M 15 35 C 22 32, 30 35, 34 42 C 38 48, 32 55, 24 56 C 15 58, 8 50, 10 42 C 12 38, 13 36, 15 35 Z' },
             
-            // 🔥 NOXUS GIGANTE COM ILHAS E PRAIAS DETALHADAS 🔥
-            // Repare na quantidade de linhas e nos M e Z usados para desenhar as ilhotas na costa leste!
+            // 🔥 NOXUS: O POLÍGONO RETO E ESTILHAÇADO COM 6 ILHAS SEPARADAS 🔥
             { 
                 nome: 'Noxus', top: '30%', left: '55%', cor: '#c62828', 
                 path: `
-                M 42 35 L 43 32 L 42 29 L 45 26 L 47 22 L 49 19 L 52 17 L 55 18 L 57 15 L 60 16
-                L 63 14 L 66 16 L 69 14 L 72 18 L 75 16 L 77 20 L 80 18 L 82 22 L 85 20 L 87 25
-                L 84 28 L 86 32 L 82 35 L 85 38 L 81 42 L 84 46 L 78 48 L 75 45 L 72 50 L 68 47
-                L 64 52 L 58 50 L 54 52 L 50 48 L 47 50 L 45 45 L 47 40 L 44 38 Z
+                M 32 40 L 34 38 L 36 39 L 38 34 L 40 35 L 42 30 L 45 32 L 48 26 L 50 28 
+                L 54 22 L 56 24 L 60 18 L 62 20 L 66 16 L 68 18 L 70 14 L 74 18 L 72 22 
+                L 76 26 L 74 30 L 78 34 L 76 38 L 80 42 L 78 46 L 76 44 L 74 50 L 70 48 
+                L 68 54 L 64 50 L 60 54 L 56 50 L 52 52 L 48 48 L 44 50 L 40 46 L 36 48 L 34 44 Z
                 
-                M 88 18 L 90 16 L 92 19 L 91 22 L 87 20 Z
-                M 92 25 L 94 24 L 95 28 L 91 29 Z
-                M 88 38 L 91 37 L 93 41 L 89 44 L 86 42 Z
-                M 85 50 L 87 49 L 88 52 L 84 53 Z
-                M 78 12 L 81 10 L 83 14 L 80 15 Z
+                M 72 10 L 75 8 L 78 11 L 74 13 Z
+                M 80 14 L 84 12 L 86 16 L 82 18 Z
+                M 86 22 L 90 20 L 92 24 L 88 26 Z
+                M 82 30 L 85 28 L 88 32 L 84 35 Z
+                M 86 40 L 90 38 L 92 44 L 88 46 Z
+                M 78 58 L 82 56 L 86 62 L 80 64 Z
                 `
             },
 
@@ -174,7 +174,7 @@ export default function MapaMundi({ children }) {
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.8)', padding: '10px 20px', borderBottom: '1px solid #222', zIndex: 10 }}>
                     <button onClick={voltarCamera} className="btn-neon btn-red" style={{ margin: 0, padding: '5px 15px', fontSize: '0.85em', cursor: 'pointer' }}>⬅ VOLTAR AO GLOBO</button>
-                    <h2 style={{ color: '#0088ff', margin: 0, textShadow: '0 0 10px #0088ff', textTransform: 'uppercase', letterSpacing: '2px' }}>{localAtual.continente}</h2>
+                    <h2 style={{ color: '#0088ff', margin: 0, textShadow: '0 0 10px #0088ff', textTransform: 'uppercase', letterSpacing: '2px' }}>RUNETERRA</h2>
                     <div style={{ width: '120px' }}></div>
                 </div>
 
