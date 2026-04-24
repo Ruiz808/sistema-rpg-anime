@@ -84,7 +84,7 @@ export default function MapaMundi({ children }) {
     };
 
     // ==========================================
-    // 🌍 CAMADA 1: O GLOBO (WIRE-FRAME DE ALTA PRECISÃO)
+    // 🌍 CAMADA 1: O GLOBO (ESCALA CORRETA E GRUDADO)
     // ==========================================
     if (nivelVisao === 'globo') {
         return (
@@ -116,84 +116,54 @@ export default function MapaMundi({ children }) {
                         <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(0,255,204,0.1)', transform: 'rotateY(90deg)' }}></div>
                         <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(0,255,204,0.1)', transform: 'rotateZ(45deg) rotateX(90deg)' }}></div>
 
-                        {/* --- RUNETERRA: O MAPA DE ALTA FIDELIDADE --- */}
+                        {/* --- RUNETERRA --- */}
                         <div style={{
                             position: 'absolute', inset: 0,
-                            transform: 'translateZ(175px)',
+                            // 🔥 O SEGREDO ESTÁ AQUI: Recuado para 160px para não furar a esfera de 175px de raio!
+                            transform: 'translateZ(160px)',
                             backfaceVisibility: 'hidden',
                             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                             pointerEvents: 'none'
                         }}>
-                            <svg viewBox="0 0 200 200" style={{ position: 'absolute', width: '270px', height: '270px', filter: 'drop-shadow(0 0 3px rgba(0,255,204,0.8))' }}>
+                            {/* 🔥 TAMANHO REDUZIDO (140px) para caber na escala da lore! */}
+                            <svg viewBox="0 0 200 200" style={{ position: 'absolute', width: '140px', height: '140px', filter: 'drop-shadow(0 0 3px rgba(0,255,204,0.8))' }}>
                                 
-                                {/* 1. Valoran (Norte) - Freljord, Demacia, Noxus */}
-                                <path 
-                                    d="M 12 55 L 18 45 L 30 38 L 42 35 L 55 30 L 70 28 L 85 25 L 100 28 L 115 32 L 125 30 L 135 38 L 142 42 L 140 52 L 132 58 L 122 56 L 115 65 L 105 72 L 95 68 L 82 72 L 68 80 L 52 75 L 40 82 L 25 72 L 15 75 Z" 
-                                    fill="rgba(0,255,204,0.08)" stroke="#00ffcc" strokeWidth="1" strokeLinejoin="round" 
-                                />
-                                
-                                {/* 2. Shurima, Targon, Ixtal (Sul) */}
-                                <path 
-                                    d="M 45 92 L 58 85 L 75 82 L 95 84 L 110 88 L 118 82 L 128 92 L 138 105 L 132 120 L 142 135 L 135 148 L 125 152 L 115 168 L 105 160 L 92 168 L 75 162 L 62 152 L 48 142 L 38 125 L 42 108 L 40 98 Z" 
-                                    fill="rgba(0,255,204,0.08)" stroke="#00ffcc" strokeWidth="1" strokeLinejoin="round" 
-                                />
-
-                                {/* 3. Ionia (Leste) */}
-                                <path 
-                                    d="M 152 28 L 162 20 L 175 18 L 182 25 L 185 38 L 178 50 L 182 62 L 172 72 L 160 75 L 150 65 L 148 50 L 145 38 Z" 
-                                    fill="rgba(0,255,204,0.08)" stroke="#00ffcc" strokeWidth="1" strokeLinejoin="round" 
-                                />
-
-                                {/* 4. Ilha das Sombras (Sudeste) */}
-                                <path 
-                                    d="M 165 115 L 175 112 L 185 118 L 188 128 L 182 138 L 170 140 L 160 130 L 162 120 Z" 
-                                    fill="rgba(0,255,204,0.08)" stroke="#00ffcc" strokeWidth="1" strokeLinejoin="round" 
-                                />
-
-                                {/* 5. Águas de Sentina (Ilhas Centrais Leste) */}
+                                <path d="M 12 55 L 18 45 L 30 38 L 42 35 L 55 30 L 70 28 L 85 25 L 100 28 L 115 32 L 125 30 L 135 38 L 142 42 L 140 52 L 132 58 L 122 56 L 115 65 L 105 72 L 95 68 L 82 72 L 68 80 L 52 75 L 40 82 L 25 72 L 15 75 Z" fill="rgba(0,255,204,0.08)" stroke="#00ffcc" strokeWidth="1" strokeLinejoin="round" />
+                                <path d="M 45 92 L 58 85 L 75 82 L 95 84 L 110 88 L 118 82 L 128 92 L 138 105 L 132 120 L 142 135 L 135 148 L 125 152 L 115 168 L 105 160 L 92 168 L 75 162 L 62 152 L 48 142 L 38 125 L 42 108 L 40 98 Z" fill="rgba(0,255,204,0.08)" stroke="#00ffcc" strokeWidth="1" strokeLinejoin="round" />
+                                <path d="M 152 28 L 162 20 L 175 18 L 182 25 L 185 38 L 178 50 L 182 62 L 172 72 L 160 75 L 150 65 L 148 50 L 145 38 Z" fill="rgba(0,255,204,0.08)" stroke="#00ffcc" strokeWidth="1" strokeLinejoin="round" />
+                                <path d="M 165 115 L 175 112 L 185 118 L 188 128 L 182 138 L 170 140 L 160 130 L 162 120 Z" fill="rgba(0,255,204,0.08)" stroke="#00ffcc" strokeWidth="1" strokeLinejoin="round" />
                                 <path d="M 145 88 L 152 82 L 158 88 L 152 95 Z" fill="rgba(0,255,204,0.15)" stroke="#00ffcc" strokeWidth="0.8" />
-                                <circle cx="162" cy="85" r="2" fill="#00ffcc" />
                                 
-                                {/* 6. A Ponte de Piltover/Zaun (Ligando Norte e Sul) */}
+                                <circle cx="162" cy="85" r="2" fill="#00ffcc" />
                                 <line x1="105" y1="72" x2="110" y2="88" stroke="#ffcc00" strokeWidth="1.5" />
-                                <circle cx="107.5" cy="80" r="2.5" fill="#ffcc00" /> {/* Ponto brilhante de Piltover */}
-
-                                {/* --- LINHAS TOPOGRÁFICAS E FRONTEIRAS INTERNAS --- */}
-                                {/* Freljord / Demacia / Noxus */}
+                                <circle cx="107.5" cy="80" r="2.5" fill="#ffcc00" /> 
                                 <path d="M 42 35 L 45 50 L 52 60 L 68 80" fill="none" stroke="rgba(0,255,204,0.4)" strokeWidth="0.5" strokeDasharray="2 3" />
-                                {/* Noxus Interior */}
                                 <path d="M 85 25 L 90 45 L 105 72" fill="none" stroke="rgba(0,255,204,0.4)" strokeWidth="0.5" strokeDasharray="2 3" />
-                                {/* Shurima / Ixtal */}
                                 <path d="M 95 84 L 102 110 L 92 168" fill="none" stroke="rgba(0,255,204,0.4)" strokeWidth="0.5" strokeDasharray="2 3" />
-                                {/* Targon */}
                                 <path d="M 58 85 L 65 110 L 48 142" fill="none" stroke="rgba(0,255,204,0.4)" strokeWidth="0.5" strokeDasharray="2 3" />
-                                {/* Ionia fragmentação interna */}
                                 <path d="M 162 20 L 165 45 L 160 75" fill="none" stroke="rgba(0,255,204,0.4)" strokeWidth="0.5" strokeDasharray="2 3" />
-
-                                {/* Pontos de Capitais (Pings Minúsculos) */}
-                                <circle cx="35" cy="55" r="1.5" fill="#fff" /> {/* Demacia */}
-                                <circle cx="95" cy="45" r="1.5" fill="#fff" /> {/* Noxus */}
-                                <circle cx="75" cy="120" r="1.5" fill="#fff" /> {/* Shurima */}
-
+                                <circle cx="35" cy="55" r="1.5" fill="#fff" />
+                                <circle cx="95" cy="45" r="1.5" fill="#fff" />
+                                <circle cx="75" cy="120" r="1.5" fill="#fff" />
                             </svg>
 
                             <button 
                                 onClick={() => entrarNoContinente('Runeterra')} 
-                                style={{ pointerEvents: 'auto', background: 'rgba(0,255,204,0.15)', border: '1px solid #00ffcc', color: '#00ffcc', padding: '8px 15px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 0 15px rgba(0,255,204,0.4)', backdropFilter: 'blur(5px)', zIndex: 10 }}
+                                style={{ pointerEvents: 'auto', background: 'rgba(0,255,204,0.15)', border: '1px solid #00ffcc', color: '#00ffcc', padding: '6px 12px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 0 15px rgba(0,255,204,0.4)', backdropFilter: 'blur(5px)', zIndex: 10, fontSize: '0.75em' }}
                             >
                                 🌍 RUNETERRA
                             </button>
                         </div>
 
-                        {/* --- LADO DE TRÁS: O OUTRO LADO DO PLANETA --- */}
+                        {/* --- LADO DE TRÁS: TERRAS DESCONHECIDAS --- */}
                         <div style={{
                             position: 'absolute', inset: 0,
-                            transform: 'rotateY(180deg) translateZ(175px)',
+                            transform: 'rotateY(180deg) translateZ(160px)',
                             backfaceVisibility: 'hidden',
                             display: 'flex', alignItems: 'center', justifyContent: 'center'
                         }}>
                             <button 
-                                style={{ pointerEvents: 'auto', background: 'rgba(255,0,60,0.15)', border: '1px solid #ff003c', color: '#ff003c', padding: '8px 15px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 0 15px rgba(255,0,60,0.4)', backdropFilter: 'blur(5px)' }}
+                                style={{ pointerEvents: 'auto', background: 'rgba(255,0,60,0.15)', border: '1px solid #ff003c', color: '#ff003c', padding: '6px 12px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 0 15px rgba(255,0,60,0.4)', backdropFilter: 'blur(5px)', fontSize: '0.75em' }}
                             >
                                 🌋 TERRAS DESCONHECIDAS
                             </button>
