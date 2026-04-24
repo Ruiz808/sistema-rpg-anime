@@ -57,7 +57,6 @@ export default function MapaMundi({ children }) {
                 `}} />
 
                 <div className="globo-esfera">
-                    {/* Alterei de Pangea para Runeterra para combinar com a sua imagem! */}
                     <button onClick={() => entrarNoContinente('Runeterra')} className="btn-continente" style={{ top: '35%', left: '15%' }}>
                         🌍 Runeterra
                     </button>
@@ -74,8 +73,7 @@ export default function MapaMundi({ children }) {
     // ==========================================
     if (nivelVisao === 'continente') {
         
-        // 🔥 AQUI ESTÃO AS COORDENADAS EXATAS DOS ÍCONES DA SUA IMAGEM 🔥
-        // Se quiser adicionar mais, é só copiar uma linha e mudar o "top" (Cima pra Baixo) e o "left" (Esquerda pra Direita)
+        // 🔥 COORDENADAS DOS ÍCONES DA IMAGEM 🔥
         const reinosRuneterra = [
             { nome: 'Freljord', top: '15%', left: '23%', cor: '#00ccff' },
             { nome: 'Demacia', top: '34%', left: '18%', cor: '#eedd82' },
@@ -101,15 +99,13 @@ export default function MapaMundi({ children }) {
                     <div style={{ width: '120px' }}></div>
                 </div>
 
-                {/* 🔥 A IMAGEM DO MAPA COM OS PINOS INTERATIVOS 🔥 */}
+                {/* 🔥 A IMAGEM DO MAPA PUXANDO DA PASTA PUBLIC 🔥 */}
                 <div style={{ 
                     flex: 1, position: 'relative', width: '100%', height: '100%',
-                    // Coloquei a imagem original do mapa de Runeterra que você enviou como fundo!
-                    backgroundImage: 'url("https://i.imgur.com/uGzW6J6.jpeg")', 
+                    backgroundImage: 'url("/runeterra.jpg")', 
                     backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat'
                 }}>
                     
-                    {/* Estilos para o Radar/Pino Brilhante */}
                     <style dangerouslySetInnerHTML={{__html: `
                         .radar-reino {
                             position: absolute;
@@ -147,16 +143,12 @@ export default function MapaMundi({ children }) {
                         }
                     `}} />
 
-                    {/* Renderiza todos os pontos no mapa dinamicamente */}
                     {reinosRuneterra.map((reino) => (
                         <div 
                             key={reino.nome}
                             className="radar-reino"
                             onClick={() => entrarNoReino(reino.nome)}
-                            style={{ 
-                                top: reino.top, left: reino.left,
-                                // O hover dinâmico que puxa a cor de cada reino
-                            }}
+                            style={{ top: reino.top, left: reino.left }}
                             onMouseEnter={(e) => {
                                 e.currentTarget.style.borderColor = reino.cor;
                                 e.currentTarget.style.boxShadow = `0 0 20px ${reino.cor}, inset 0 0 15px ${reino.cor}`;
@@ -177,7 +169,7 @@ export default function MapaMundi({ children }) {
     }
 
     // ==========================================
-    // ⚔️ CAMADA 3: O REINO (Onde entra o seu mapa tático!)
+    // ⚔️ CAMADA 3: O REINO
     // ==========================================
     if (nivelVisao === 'reino') {
         return (
@@ -191,7 +183,6 @@ export default function MapaMundi({ children }) {
                     <div style={{ width: '120px' }}></div>
                 </div>
                 
-                {/* O seu Grid de Combate intacto é "injetado" aqui! */}
                 <div className="fade-in" style={{ position: 'relative' }}>
                     {children}
                 </div>
