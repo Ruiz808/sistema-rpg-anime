@@ -12,12 +12,12 @@ export default function MapaMundi({ children }) {
     });
 
     // Estado para gerenciar os links das imagens de fundo de cada mapa
-    const [mapasImagens, setMapasImagens] = useState({
-        // Exemplo de como a memória guarda:
-        // 'Acampamento Glacinata': 'https://link-da-imagem.jpg'
-    });
+    const [mapasImagens, setMapasImagens] = useState({});
 
+    // Controles de Menus
     const [reinoSelecionado, setReinoSelecionado] = useState(null);
+    const [modoEdicaoMapa, setModoEdicaoMapa] = useState(false);
+    const [urlInput, setUrlInput] = useState('');
 
     // Controle do Globo Giratório
     const [rotacaoGlobo, setRotacaoGlobo] = useState(0);
@@ -44,18 +44,6 @@ export default function MapaMundi({ children }) {
             setMapasSalvos(prev => ({
                 ...prev,
                 [reinoSelecionado]: [...(prev[reinoSelecionado] || []), nome]
-            }));
-        }
-    };
-
-    const editarFundoMapa = () => {
-        const urlAtual = mapasImagens[localAtual.mapaId] || '';
-        const novaUrl = prompt(`Cole o Link (URL) da imagem para o cenário "${localAtual.mapaId}":\n(Dica: Use links terminados em .png ou .jpg)`, urlAtual);
-        
-        if (novaUrl !== null) { // Se não cancelou o prompt
-            setMapasImagens(prev => ({
-                ...prev,
-                [localAtual.mapaId]: novaUrl
             }));
         }
     };
@@ -183,7 +171,7 @@ export default function MapaMundi({ children }) {
                 {/* MODAL DE SELEÇÃO E CRIAÇÃO */}
                 {reinoSelecionado && (
                     <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 20, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(5px)' }}>
-                        <div style={{ background: '#111', border: '2px solid #0088ff', borderRadius: '15px', padding: '25px', width: '350px', textAlign: 'center', position: 'relative' }}>
+                        <div style={{ background: '#111', border: '2px solid #0088ff', borderRadius: '15px', padding: '25px', width: '350px', textAlign: 'center', position: 'relative', boxShadow: '0 0 30px #0088ff' }}>
                             <button onClick={() => setReinoSelecionado(null)} style={{ position: 'absolute', top: '10px', right: '15px', background: 'transparent', border: 'none', color: '#ff4444', fontSize: '18px', cursor: 'pointer', fontWeight: 'bold' }}>X</button>
                             
                             <h2 style={{ color: '#ffcc00', margin: '0 0 5px 0' }}>{reinoSelecionado}</h2>
@@ -215,7 +203,7 @@ export default function MapaMundi({ children }) {
     }
 
     // ==========================================
-    // ⚔️ CAMADA 3: MAPA TÁTICO (FUNDO INTELIGENTE E EDITÁVEL)
+    // ⚔️ CAMADA 3: MAPA TÁTICO
     // ==========================================
     if (nivelVisao === 'reino') {
         const backgroundUrl = mapasImagens[localAtual.mapaId];
@@ -224,16 +212,19 @@ export default function MapaMundi({ children }) {
             <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', height: '65vh' }}>
                 
                 {/* Cabeçalho da Camada 3 */}
-                <div style={{ background: '#111', padding: '10px 15px', borderRadius: '10px 10px 0 0', border: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ background: '#111', padding: '10px 15px', borderRadius: '10px 10px 0 0', border: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
                     <div style={{ display: 'flex', gap: '15px' }}>
                         <button onClick={voltarCamera} style={{ background: '#ff4444', color: '#fff', border: 'none', padding: '8px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>⬅ SAIR DO MAPA</button>
-                        {/* NOVO BOTÃO DE EDIÇÃO */}
-                        <button onClick={editarFundoMapa} style={{ background: 'transparent', color: '#0088ff', border: '1px solid #0088ff', padding: '8px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>⚙️ EDITAR FUNDO</button>
+                        
+                        <button onClick={() => {
+                            setUrlInput(backgroundUrl || '');
+                            setModoEdicaoMapa(true);
+                        }} style={{ background: 'transparent', color: '#0088ff', border: '1px solid #0088ff', padding: '8px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>⚙️ EDITAR FUNDO</button>
                     </div>
                     <span style={{ color: '#ffcc00', fontWeight: 'bold', fontSize: '1.1em', letterSpacing: '1px' }}>{localAtual.reino} : {localAtual.mapaId}</span>
                 </div>
                 
-                {/* O Cenário Real do Mapa (Substitui o mapa teste fixo) */}
+                {/* ÁREA DO MAPA - Sem "Display Flex" para não empurrar o children! */}
                 <div className="fade-in" style={{ 
                     flex: 1, 
                     position: 'relative', 
@@ -245,22 +236,48 @@ export default function MapaMundi({ children }) {
                     border: '1px solid #333',
                     borderTop: 'none',
                     borderRadius: '0 0 10px 10px',
-                    overflow: 'hidden',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
+                    overflow: 'hidden'
                 }}>
                     
-                    {/* Se não tiver imagem, mostra esse aviso bonitinho */}
+                    {/* Placeholder Flutuante (Fica no fundo se não tiver imagem, mas não ocupa espaço do grid) */}
                     {!backgroundUrl && (
-                        <div style={{ textAlign: 'center', color: '#444', border: '2px dashed #333', padding: '40px', borderRadius: '15px' }}>
+                        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center', color: '#444', border: '2px dashed #333', padding: '40px', borderRadius: '15px', pointerEvents: 'none', zIndex: 1 }}>
                             <h3 style={{ margin: '0 0 10px 0', color: '#666' }}>Cenário Vazio</h3>
-                            <p style={{ margin: 0 }}>Clique em <b>"⚙️ EDITAR FUNDO"</b> ali em cima e cole o link de uma imagem para este mapa!</p>
+                            <p style={{ margin: 0 }}>Clique em <b>"⚙️ EDITAR FUNDO"</b> ali em cima para adicionar a imagem.</p>
                         </div>
                     )}
 
-                    {/* O Grid Transparente ou Pins que vêm do seu sistema pai (se houver) continuam funcionando por cima de tudo! */}
-                    {children}
+                    {/* O GRID DO VTT: Absoluto, por cima de tudo, ocupando a tela inteira! */}
+                    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 5 }}>
+                        {children}
+                    </div>
+
+                    {/* MODAL DE EDIÇÃO DO FUNDO (Aparece ao clicar em Editar Fundo) */}
+                    {modoEdicaoMapa && (
+                        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.8)', zIndex: 20, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(3px)' }}>
+                            <div style={{ background: '#111', border: '2px solid #0088ff', borderRadius: '15px', padding: '25px', width: '400px', textAlign: 'center', boxShadow: '0 0 30px #0088ff', position: 'relative' }}>
+                                <button onClick={() => setModoEdicaoMapa(false)} style={{ position: 'absolute', top: '10px', right: '15px', background: 'transparent', border: 'none', color: '#ff4444', fontSize: '18px', cursor: 'pointer', fontWeight: 'bold' }}>X</button>
+                                
+                                <h3 style={{ color: '#0088ff', marginTop: '0', textTransform: 'uppercase' }}>Configurar Cenário</h3>
+                                <p style={{ color: '#888', fontSize: '0.9em', marginBottom: '20px' }}>Cole o Link (URL) de uma imagem na internet para servir de fundo para a batalha.</p>
+                                
+                                <input 
+                                    type="text" 
+                                    value={urlInput}
+                                    onChange={(e) => setUrlInput(e.target.value)}
+                                    placeholder="Ex: https://i.imgur.com/mapa.jpg"
+                                    style={{ width: '90%', padding: '12px', borderRadius: '5px', border: '1px solid #444', background: '#222', color: '#fff', marginBottom: '20px', fontSize: '14px' }}
+                                />
+                                
+                                <button onClick={() => {
+                                    setMapasImagens(prev => ({ ...prev, [localAtual.mapaId]: urlInput }));
+                                    setModoEdicaoMapa(false);
+                                }} style={{ width: '100%', background: 'linear-gradient(to right, #0088ff, #00ffcc)', color: '#000', padding: '12px', borderRadius: '8px', fontWeight: 'bold', border: 'none', cursor: 'pointer', boxShadow: '0 0 15px rgba(0,255,204,0.3)' }}>
+                                    💾 SALVAR IMAGEM
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         );
