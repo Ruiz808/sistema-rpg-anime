@@ -123,6 +123,50 @@ const useStore = create(
                 }
             }
         }),
+
+        // 🔥 NOVA AÇÃO: IMPORTAR TEXTO DO GOOGLE DOCS 🔥
+        importarDaAbaStatus: (textoBruto) => set((state) => {
+            const extrairNumero = (regex) => {
+                const match = textoBruto.match(regex);
+                return match ? parseInt(match[1].replace(/\D/g, ''), 10) : null;
+            };
+
+            const mapaAtributos = {
+                'Força': 'forca',
+                'Destreza': 'destreza',
+                'Stamina': 'stamina',
+                'Constituição': 'constituicao',
+                'Energia Espiritual': 'energiaEsp',
+                'Presença': 'carisma',
+                'Sabedoria': 'sabedoria',
+                'Poder mágico': 'inteligencia'
+            };
+
+            // 1. Atualizar Energias (Vida, Mana, Aura, Chakra, Corpo)
+            ['Vida', 'Mana', 'Aura', 'Chakra', 'Corpo'].forEach(campo => {
+                const regex = new RegExp(`${campo}:\\s*([\\d\\.]+)`, 'i');
+                const valor = extrairNumero(regex);
+                if (valor !== null) {
+                    const key = campo.toLowerCase();
+                    if (!state.minhaFicha[key]) state.minhaFicha[key] = {};
+                    state.minhaFicha[key].base = valor;
+                    state.minhaFicha[key].atual = valor;
+                }
+            });
+
+            // 2. Atualizar Atributos (os valores com + no Docs)
+            Object.entries(mapaAtributos).forEach(([textoDoc, chaveStore]) => {
+                const regex = new RegExp(`${textoDoc}\\s*=\\s*\\(\\+?([\\d\\.]+)\\)`, 'i');
+                const valor = extrairNumero(regex);
+                if (valor !== null) {
+                    if (!state.minhaFicha[chaveStore]) state.minhaFicha[chaveStore] = {};
+                    state.minhaFicha[chaveStore].base = valor;
+                }
+            });
+
+            console.log("✅ Importação de Status concluída com sucesso!");
+        }),
+
         resetFicha: () => set((state) => { state.minhaFicha = deepClone(fichaPadrao); }),
     }))
 );
