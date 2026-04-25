@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 // 🔥 AS IMAGENS IMPORTADAS COMO CÓDIGO 🔥
 import mapaClean from '../../assets/runeterra-clean.jpg';
 import mapaGabarito from '../../assets/runeterra-gabarito.png';
@@ -24,22 +24,37 @@ export default function MapaMundi({ children }) {
     const [isDragging, setIsDragging] = useState(false);
     const dragStart = useRef({ x: 0, y: 0 });
 
-    const canvasRef = useRef(null);           
-    const highlightCanvasRef = useRef(null);  
-    const imgIdMapRef = useRef(null);
-
-    // 🔥 A FUSÃO SUPREMA: Holofotes Gigantes com Filtro de Cor (Chroma Key) Perfeito 🔥
+    // 🔥 O NOVO SCRIPT GEOMÉTRICO (clipPath isola perfeitamente cada região!) 🔥
     const posicoesPings = [
-        { nome: 'Freljord', top: '15%', left: '28%', cor: '#00b5e2', maskRadius: 0.30, filtroCor: [50, 180, 255], tol: 160 },
-        { nome: 'Demacia', top: '40%', left: '21%', cor: '#d3c29e', maskRadius: 0.25, filtroCor: [80, 80, 255], tol: 160 },
-        { nome: 'Noxus', top: '28%', left: '48%', cor: '#c62828', maskRadius: 0.35, maskTop: '35%', filtroCor: [255, 40, 40], tol: 160 }, // Empurramos a lanterna para baixo (35%) para pegar o traço de Shurima!
-        { nome: 'Piltover e Zaun', top: '54%', left: '51%', cor: '#d4a017', maskRadius: 0.15, filtroCor: [255, 200, 50], tol: 160 },
-        { nome: 'Shurima', top: '75%', left: '43%', cor: '#c59b0d', maskTop: '70%', maskRadius: 0.40, filtroCor: [255, 120, 50], tol: 180 }, // Tolerância alta para pegar a linha vermelha e as amarelas!
-        { nome: 'Targon', top: '78%', left: '26%', cor: '#5e35b1', maskRadius: 0.20, filtroCor: [150, 50, 255], tol: 160 },
-        { nome: 'Ixtal', top: '67%', left: '63%', cor: '#2e7d32', maskRadius: 0.20, filtroCor: [50, 255, 50], tol: 160 },
-        { nome: 'Águas de Sentina', top: '57%', left: '72%', cor: '#d84315', maskRadius: 0.15, filtroCor: [255, 80, 50], tol: 160 },
-        { nome: 'Ilha das Sombras', top: '86%', left: '85%', cor: '#00838f', maskRadius: 0.15, filtroCor: [50, 200, 150], tol: 160 }, // Totalmente cravado na ilha!
-        { nome: 'Ionia', top: '30%', left: '82%', cor: '#43a047', maskRadius: 0.25, filtroCor: [50, 255, 255], tol: 160 }
+        { nome: 'Freljord', top: '15%', left: '28%', cor: '#00b5e2', 
+          clip: 'polygon(0% 0%, 44% 0%, 44% 33%, 0% 33%)' },
+          
+        { nome: 'Demacia', top: '40%', left: '21%', cor: '#d3c29e', 
+          clip: 'polygon(0% 33%, 42% 33%, 42% 51%, 0% 51%)' },
+          
+        { nome: 'Noxus', top: '28%', left: '48%', cor: '#c62828', 
+          clip: 'polygon(44% 0%, 72% 0%, 72% 51%, 42% 51%, 42% 33%, 44% 33%)' }, 
+          
+        { nome: 'Ionia', top: '30%', left: '82%', cor: '#43a047', 
+          clip: 'polygon(72% 0%, 100% 0%, 100% 49%, 72% 49%)' },
+          
+        { nome: 'Piltover e Zaun', top: '54%', left: '51%', cor: '#d4a017', 
+          clip: 'polygon(47% 51%, 56% 51%, 56% 58%, 47% 58%)' },
+          
+        { nome: 'Shurima', top: '75%', left: '43%', cor: '#c59b0d', 
+          clip: 'polygon(27% 51%, 47% 51%, 47% 58%, 56% 58%, 56% 65%, 65% 65%, 65% 100%, 27% 100%)' },
+          
+        { nome: 'Targon', top: '78%', left: '26%', cor: '#5e35b1', 
+          clip: 'polygon(0% 51%, 27% 51%, 27% 100%, 0% 100%)' },
+          
+        { nome: 'Ixtal', top: '67%', left: '63%', cor: '#2e7d32', 
+          clip: 'polygon(56% 58%, 73% 58%, 73% 80%, 65% 80%, 65% 65%, 56% 65%)' },
+          
+        { nome: 'Águas de Sentina', top: '57%', left: '72%', cor: '#d84315', 
+          clip: 'polygon(65% 49%, 83% 49%, 83% 63%, 65% 63%)' },
+          
+        { nome: 'Ilha das Sombras', top: '86%', left: '85%', cor: '#00838f', 
+          clip: 'polygon(73% 63%, 100% 63%, 100% 100%, 73% 100%)' } 
     ];
 
     const handleDragStart = (e) => {
@@ -97,7 +112,7 @@ export default function MapaMundi({ children }) {
         }
     };
 
-    // Ferramenta de Admin (Shift + Clique para ver Coordenadas!)
+    // O Admin Click continua aqui se precisar afinar posições
     const handleMapClickAdmin = (e) => {
         if (e.shiftKey) {
             const rect = e.currentTarget.getBoundingClientRect();
@@ -106,92 +121,6 @@ export default function MapaMundi({ children }) {
             alert(`Coordenadas exatas:\ntop: '${top.toFixed(0)}%', left: '${left.toFixed(0)}%'`);
         }
     };
-
-    useEffect(() => {
-        const img = imgIdMapRef.current;
-        const canvas = canvasRef.current;
-        if (!img || !canvas) return;
-
-        const desenhar = () => {
-            if (img.naturalWidth === 0) return;
-            canvas.width = img.naturalWidth;
-            canvas.height = img.naturalHeight;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0);
-        };
-
-        if (nivelVisao === 'continente') {
-            if (img.complete) desenhar();
-            else img.onload = desenhar;
-        }
-    }, [nivelVisao]);
-
-    // 🔥 O MOTOR DE LUZ HOLOGRÁFICA (AGORA COM COR 100% VIBRANTE) 🔥
-    useEffect(() => {
-        const iCanvas = canvasRef.current;
-        const hCanvas = highlightCanvasRef.current;
-        if (!iCanvas || !hCanvas) return;
-        
-        const hCtx = hCanvas.getContext('2d');
-        
-        if (!reinoHover) {
-            hCanvas.style.opacity = '0';
-            return;
-        }
-
-        hCanvas.width = iCanvas.width;
-        hCanvas.height = iCanvas.height;
-        hCanvas.style.opacity = '1';
-
-        const reinoObj = posicoesPings.find(p => p.nome === reinoHover);
-        if (!reinoObj) return;
-
-        const iCtx = iCanvas.getContext('2d', { willReadFrequently: true });
-        const imgData = iCtx.getImageData(0, 0, iCanvas.width, iCanvas.height);
-        const data = imgData.data;
-
-        const targetColor = reinoObj.filtroCor || [255, 255, 255];
-        const tolerance = reinoObj.tol || 150;
-
-        // Processamento de Pixels com Chroma Key Absoluto
-        for (let i = 0; i < data.length; i += 4) {
-            let r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
-            if (a === 0) continue;
-
-            // 1. Limpa a fumaça cinza escuro do oceano sem afetar o brilho (Preto Absoluto = Transparente)
-            if (r < 50 && g < 50 && b < 50) {
-                data[i+3] = 0;
-                continue;
-            }
-
-            // 2. Filtro de Cor (Chroma Key): Extermina cores que não pertencem ao reino
-            const dist = Math.sqrt(Math.pow(r - targetColor[0], 2) + Math.pow(g - targetColor[1], 2) + Math.pow(b - targetColor[2], 2));
-            if (dist > tolerance) {
-                data[i+3] = 0; 
-            }
-        }
-
-        hCtx.putImageData(imgData, 0, 0);
-
-        // 3. Aplica o Holofote (A luz base que revela a imagem)
-        hCtx.globalCompositeOperation = 'destination-in';
-        const projX = (parseFloat(reinoObj.maskLeft || reinoObj.left) / 100) * hCanvas.width;
-        const projY = (parseFloat(reinoObj.maskTop || reinoObj.top) / 100) * hCanvas.height;
-        const radius = hCanvas.width * (reinoObj.maskRadius || 0.25); 
-
-        const gradient = hCtx.createRadialGradient(projX, projY, 0, projX, projY, radius);
-        gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');     
-        // 🔥 O GRANDE SEGREDO: 80% do raio do holofote não perde 1% sequer de cor! A cor fica vivíssima! 🔥
-        gradient.addColorStop(0.8, 'rgba(255, 255, 255, 1)'); 
-        gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');     
-
-        hCtx.fillStyle = gradient;
-        hCtx.beginPath();
-        hCtx.arc(projX, projY, radius, 0, Math.PI * 2);
-        hCtx.fill();
-        
-        hCtx.globalCompositeOperation = 'source-over'; 
-    }, [reinoHover]);
 
     // ==========================================
     // 🌍 CAMADA 1: O GLOBO ORBITAL
@@ -242,9 +171,11 @@ export default function MapaMundi({ children }) {
     }
 
     // ==========================================
-    // 🗺️ CAMADA 2: O CONTINENTE
+    // 🗺️ CAMADA 2: O CONTINENTE COM CLIP-PATH!
     // ==========================================
     if (nivelVisao === 'continente') {
+        const reinoAtivo = posicoesPings.find(p => p.nome === reinoHover);
+
         return (
             <div className="fade-in" style={{ width: '100%', height: '65vh', background: '#050508', borderRadius: '10px', border: '1px solid #0088ff', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.85)', padding: '12px 25px', borderBottom: '1px solid #222', zIndex: 10 }}>
@@ -258,16 +189,22 @@ export default function MapaMundi({ children }) {
                         style={{ position: 'relative', display: 'inline-block', height: '100%', maxHeight: 'calc(65vh - 70px)' }}
                         onClick={handleMapClickAdmin} 
                     >
+                        {/* MAPA BASE LIMPO */}
                         <img src={mapaClean} alt="Mapa Base" style={{ display: 'block', height: '100%', width: 'auto', objectFit: 'contain' }} />
-                        <img ref={imgIdMapRef} src={mapaGabarito} style={{ display: 'none' }} alt="Gabarito" />
-                        <canvas ref={canvasRef} style={{ display: 'none' }} />
 
-                        <canvas 
-                            ref={highlightCanvasRef} 
+                        {/* 🔥 A MÁGICA ACONTECE AQUI: A IMAGEM ORIGINAL SENDO RECORTADA PELO CSS 🔥 */}
+                        <img 
+                            src={mapaGabarito} 
                             style={{ 
                                 position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', 
-                                pointerEvents: 'none', zIndex: 2, mixBlendMode: 'screen', transition: 'opacity 0.3s ease-out'
+                                pointerEvents: 'none', zIndex: 2, 
+                                mixBlendMode: 'screen', 
+                                opacity: reinoHover ? 1 : 0, 
+                                transition: 'opacity 0.3s ease-out',
+                                // O Clip-path desenha uma tesoura geométrica em volta do reino!
+                                clipPath: reinoAtivo ? reinoAtivo.clip : 'none'
                             }} 
+                            alt="Gabarito Perfeito" 
                         />
 
                         <style dangerouslySetInnerHTML={{__html: `
