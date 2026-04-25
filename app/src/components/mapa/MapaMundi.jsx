@@ -24,22 +24,22 @@ export default function MapaMundi({ children }) {
     const [isDragging, setIsDragging] = useState(false);
     const dragStart = useRef({ x: 0, y: 0 });
 
-    const canvasRef = useRef(null);           // Guarda a imagem da máscara
-    const highlightCanvasRef = useRef(null);  // Projeta o "Holofote"
+    const canvasRef = useRef(null);           
+    const highlightCanvasRef = useRef(null);  
     const imgIdMapRef = useRef(null);
 
-    // 🔥 PINGS AJUSTADOS + HOLOFOTES INTELIGENTES (maskTop, maskLeft, maskRadius) 🔥
+    // 🔥 PINGS CORRIGIDOS + FILTRO DE COR (Isola a cor de cada região) 🔥
     const posicoesPings = [
-        { nome: 'Freljord', top: '15%', left: '28%', cor: '#00b5e2', maskTop: '20%', maskLeft: '30%', maskRadius: 0.35 },
-        { nome: 'Demacia', top: '40%', left: '21%', cor: '#d3c29e', maskTop: '38%', maskLeft: '22%', maskRadius: 0.25 },
-        { nome: 'Noxus', top: '27%', left: '53%', cor: '#c62828', maskTop: '35%', maskLeft: '48%', maskRadius: 0.35 },
-        { nome: 'Piltover e Zaun', top: '54%', left: '55%', cor: '#d4a017', maskTop: '54%', maskLeft: '55%', maskRadius: 0.15 },
-        { nome: 'Shurima', top: '75%', left: '42%', cor: '#c59b0d', maskTop: '65%', maskLeft: '45%', maskRadius: 0.45 }, // Holofote gigante pra Shurima!
-        { nome: 'Targon', top: '71%', left: '21%', cor: '#5e35b1', maskTop: '75%', maskLeft: '25%', maskRadius: 0.20 },
-        { nome: 'Águas de Sentina', top: '56%', left: '71%', cor: '#d84315', maskTop: '56%', maskLeft: '71%', maskRadius: 0.15 },
-        { nome: 'Ilha das Sombras', top: '85%', left: '72%', cor: '#00838f', maskTop: '85%', maskLeft: '75%', maskRadius: 0.15 },
-        { nome: 'Ionia', top: '42%', left: '84%', cor: '#43a047', maskTop: '35%', maskLeft: '80%', maskRadius: 0.25 },
-        { nome: 'Ixtal', top: '71%', left: '65%', cor: '#2e7d32', maskTop: '65%', maskLeft: '65%', maskRadius: 0.20 }
+        { nome: 'Freljord', top: '15%', left: '28%', cor: '#00b5e2', filtroCor: [100, 200, 255] },
+        { nome: 'Demacia', top: '40%', left: '21%', cor: '#d3c29e', filtroCor: [80, 80, 200] },
+        { nome: 'Noxus', top: '35%', left: '45%', cor: '#c62828', filtroCor: [220, 50, 50], maskRadius: 0.35 }, 
+        { nome: 'Piltover e Zaun', top: '54%', left: '51%', cor: '#d4a017', filtroCor: [255, 200, 0] },
+        { nome: 'Shurima', top: '72%', left: '43%', cor: '#c59b0d', filtroCor: [220, 180, 50], maskRadius: 0.40 }, 
+        { nome: 'Targon', top: '79%', left: '26%', cor: '#5e35b1', filtroCor: [150, 50, 200] },
+        { nome: 'Águas de Sentina', top: '57%', left: '72%', cor: '#d84315', filtroCor: [50, 50, 200] },
+        { nome: 'Ilha das Sombras', top: '86%', left: '83%', cor: '#00838f', filtroCor: [50, 150, 100] },
+        { nome: 'Ionia', top: '36%', left: '78%', cor: '#43a047', filtroCor: [50, 220, 180], maskRadius: 0.30 },
+        { nome: 'Ixtal', top: '67%', left: '63%', cor: '#2e7d32', filtroCor: [50, 180, 50] }
     ];
 
     const handleDragStart = (e) => {
@@ -97,6 +97,16 @@ export default function MapaMundi({ children }) {
         }
     };
 
+    // 🔥 FERRAMENTA DE ADMIN PARA ACHAR COORDENADAS (SEGURE SHIFT E CLIQUE NO MAPA) 🔥
+    const handleMapClickAdmin = (e) => {
+        if (e.shiftKey) {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const top = ((e.clientY - rect.top) / rect.height) * 100;
+            const left = ((e.clientX - rect.left) / rect.width) * 100;
+            alert(`Novas Coordenadas geradas:\ntop: '${top.toFixed(0)}%', left: '${left.toFixed(0)}%'`);
+        }
+    };
+
     // --- CARREGA O MAPA NÉON PARA A MEMÓRIA ---
     useEffect(() => {
         const img = imgIdMapRef.current;
@@ -117,7 +127,7 @@ export default function MapaMundi({ children }) {
         }
     }, [nivelVisao]);
 
-    // 🔥 O EFEITO DE HOLOFOTE HOLOGRÁFICO 🔥
+    // 🔥 O EFEITO DE HOLOFOTE + FILTRO DE COR (ISOLAMENTO PERFEITO) 🔥
     useEffect(() => {
         const iCanvas = canvasRef.current;
         const hCanvas = highlightCanvasRef.current;
@@ -125,39 +135,62 @@ export default function MapaMundi({ children }) {
         
         const hCtx = hCanvas.getContext('2d');
         
-        // Limpa a tela (apaga o mapa quando você tira o mouse)
-        hCtx.clearRect(0, 0, hCanvas.width, hCanvas.height);
-        
-        if (!reinoHover) return;
+        if (!reinoHover) {
+            hCanvas.style.opacity = '0'; // Apaga suavemente
+            return;
+        }
 
         hCanvas.width = iCanvas.width;
         hCanvas.height = iCanvas.height;
+        hCanvas.style.opacity = '1'; // Acende
 
         const reinoObj = posicoesPings.find(p => p.nome === reinoHover);
         if (!reinoObj) return;
 
-        // Usa as coordenadas exclusivas do holofote (maskTop, maskLeft)
+        // 1. Extrai a imagem crua da memória
+        const iCtx = iCanvas.getContext('2d', { willReadFrequently: true });
+        const imgData = iCtx.getImageData(0, 0, iCanvas.width, iCanvas.height);
+        const data = imgData.data;
+
+        const targetColor = reinoObj.filtroCor || [255, 255, 255];
+
+        // 2. Varre pixel por pixel: Se a cor for muito diferente do reino, apaga o pixel!
+        for (let i = 0; i < data.length; i += 4) {
+            const r = data[i]; const g = data[i+1]; const b = data[i+2];
+
+            // Pula pixels muito escuros (oceano vazio) para não pesar
+            if (r < 40 && g < 40 && b < 40) {
+                data[i+3] = 0;
+                continue;
+            }
+
+            // Distância matemática de cor (Se for > 150, é de outro reino)
+            const dist = Math.sqrt(Math.pow(r - targetColor[0], 2) + Math.pow(g - targetColor[1], 2) + Math.pow(b - targetColor[2], 2));
+            if (dist > 150) { 
+                data[i+3] = 0; // Deixa transparente
+            }
+        }
+
+        // 3. Pinta a imagem limpa e filtrada na tela visível
+        hCtx.putImageData(imgData, 0, 0);
+
+        // 4. Aplica o Holofote para não pegar borrões em cantos distantes
+        hCtx.globalCompositeOperation = 'destination-in';
         const px = (parseFloat(reinoObj.maskLeft || reinoObj.left) / 100) * hCanvas.width;
         const py = (parseFloat(reinoObj.maskTop || reinoObj.top) / 100) * hCanvas.height;
-        const radius = hCanvas.width * (reinoObj.maskRadius || 0.20); // Raio personalizado
+        const radius = hCanvas.width * (reinoObj.maskRadius || 0.25); 
 
-        // 1. Desenha a máscara inteira no canvas visível
-        hCtx.globalCompositeOperation = 'source-over';
-        hCtx.drawImage(iCanvas, 0, 0);
-
-        // 2. Recorta tudo em volta, deixando apenas o holofote
-        hCtx.globalCompositeOperation = 'destination-in';
-        
-        const gradient = hCtx.createRadialGradient(px, py, radius * 0.1, px, py, radius);
-        gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');     // Centro muito forte
-        gradient.addColorStop(0.6, 'rgba(255, 255, 255, 0.8)'); // Borda suave
-        gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');     // Fica invisível no final
+        const gradient = hCtx.createRadialGradient(px, py, radius * 0.2, px, py, radius);
+        gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');     
+        gradient.addColorStop(0.7, 'rgba(255, 255, 255, 0.8)'); 
+        gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');     
 
         hCtx.fillStyle = gradient;
         hCtx.beginPath();
         hCtx.arc(px, py, radius, 0, Math.PI * 2);
         hCtx.fill();
         
+        hCtx.globalCompositeOperation = 'source-over'; // Reseta
     }, [reinoHover]);
 
     // ==========================================
@@ -228,7 +261,12 @@ export default function MapaMundi({ children }) {
                 </div>
 
                 <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', position: 'relative', width: '100%' }}>
-                    <div style={{ position: 'relative', display: 'inline-block', height: '100%', maxHeight: 'calc(65vh - 70px)' }}>
+                    
+                    {/* ENVOLTÓRIO DA IMAGEM COM O CLIQUE DE ADMIN */}
+                    <div 
+                        style={{ position: 'relative', display: 'inline-block', height: '100%', maxHeight: 'calc(65vh - 70px)' }}
+                        onClick={handleMapClickAdmin} 
+                    >
                         
                         {/* MAPA BASE LIMPO */}
                         <img 
@@ -237,17 +275,17 @@ export default function MapaMundi({ children }) {
                             style={{ display: 'block', height: '100%', width: 'auto', objectFit: 'contain' }} 
                         />
                         
-                        {/* IMAGEM INVISÍVEL APENAS PARA CARREGAR PARA O CANVAS */}
+                        {/* IMAGEM INVISÍVEL (MEMÓRIA DO CANVAS) */}
                         <img ref={imgIdMapRef} src={mapaGabarito} style={{ display: 'none' }} alt="Gabarito Memória" />
                         <canvas ref={canvasRef} style={{ display: 'none' }} />
 
-                        {/* 🔥 O HOLOFOTE (CANVAS VISÍVEL) 🔥 */}
+                        {/* 🔥 MÁSCARA ISOLADA E FILTRADA 🔥 */}
                         <canvas 
                             ref={highlightCanvasRef} 
                             style={{ 
                                 position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', 
                                 pointerEvents: 'none', zIndex: 2, mixBlendMode: 'screen',
-                                opacity: reinoHover ? 1 : 0, transition: 'opacity 0.3s ease-out'
+                                transition: 'opacity 0.3s ease-out'
                             }} 
                         />
 
@@ -280,7 +318,7 @@ export default function MapaMundi({ children }) {
                     </div>
                 </div>
 
-                {/* MODAL DE SELEÇÃO */}
+                {/* MODAL DE SELEÇÃO DE MAPAS */}
                 {reinoSelecionado && (
                     <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 30, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(6px)' }}>
                         <div style={{ background: '#111', border: '2px solid #0088ff', borderRadius: '20px', padding: '30px', width: '380px', textAlign: 'center', position: 'relative', boxShadow: '0 0 40px #0088ff' }}>
@@ -324,7 +362,7 @@ export default function MapaMundi({ children }) {
             <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', height: '65vh' }}>
                 <div style={{ background: '#111', padding: '12px 20px', borderRadius: '10px 10px 0 0', border: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
                     <div style={{ display: 'flex', gap: '15px' }}>
-                        <button onClick={voltarCamera} style={{ background: '#ff4444', color: '#fff', border: 'none', padding: '7px 18px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85em' }}>⬅ SAIR DO MAPA</button>
+                        <button onClick={voltarCamera} className="btn-neon btn-red" style={{ margin: 0, padding: '7px 18px', fontSize: '0.85em', cursor: 'pointer' }}>⬅ SAIR DO MAPA</button>
                         <button onClick={() => { setUrlInput(backgroundUrl || ''); setModoEdicaoMapa(true); }} style={{ background: 'transparent', color: '#0088ff', border: '1px solid #0088ff', padding: '7px 18px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85em' }}>⚙️ EDITAR CENÁRIO</button>
                     </div>
                     <span style={{ color: '#ffcc00', fontWeight: 'bold', fontSize: '1.1em', letterSpacing: '1px', textTransform: 'uppercase' }}>{localAtual.reino} : {localAtual.mapaId}</span>
