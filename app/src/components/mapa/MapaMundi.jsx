@@ -28,18 +28,18 @@ export default function MapaMundi({ children }) {
     const highlightCanvasRef = useRef(null);  
     const imgIdMapRef = useRef(null);
 
-    // 🔥 A FUSÃO PERFEITA: Filtro de Cores Rígido + Limites de Névoa Suave 🔥
+    // 🔥 A FUSÃO SUPREMA: Holofotes Gigantes com Filtro de Cor (Chroma Key) Perfeito 🔥
     const posicoesPings = [
-        { nome: 'Freljord', top: '15%', left: '28%', cor: '#00b5e2', maskRadius: 0.35, filtroCor: [50, 180, 255], limits: { bottom: 31, bottomFade: 4 } },
-        { nome: 'Demacia', top: '40%', left: '21%', cor: '#d3c29e', maskRadius: 0.25, filtroCor: [80, 80, 255], limits: { top: 32, topFade: 3, right: 33, rightFade: 3 } },
-        { nome: 'Noxus', top: '28%', left: '48%', cor: '#c62828', maskRadius: 0.40, filtroCor: [255, 50, 50], limits: { bottom: 49, bottomFade: 3, right: 65, rightFade: 5, left: 34, leftFade: 4 } }, 
-        { nome: 'Piltover e Zaun', top: '54%', left: '51%', cor: '#d4a017', maskRadius: 0.12, filtroCor: [255, 200, 50] },
-        { nome: 'Shurima', top: '75%', left: '43%', cor: '#c59b0d', maskTop: '72%', maskRadius: 0.40, filtroCor: [255, 80, 50], limits: { top: 54, topFade: 3, right: 60, rightFade: 4 } },
-        { nome: 'Targon', top: '78%', left: '26%', cor: '#5e35b1', maskRadius: 0.20, filtroCor: [150, 50, 255], limits: { top: 60, topFade: 4, right: 35, rightFade: 4 } },
-        { nome: 'Ixtal', top: '67%', left: '63%', cor: '#2e7d32', maskRadius: 0.20, filtroCor: [50, 255, 50], limits: { top: 56, topFade: 4, left: 56, leftFade: 4 } },
-        { nome: 'Águas de Sentina', top: '57%', left: '72%', cor: '#d84315', maskRadius: 0.15, filtroCor: [50, 50, 255] },
-        { nome: 'Ilha das Sombras', top: '86%', left: '85%', cor: '#00838f', maskRadius: 0.15, filtroCor: [50, 200, 150] }, // Cravado na ilha!
-        { nome: 'Ionia', top: '30%', left: '82%', cor: '#43a047', maskRadius: 0.25, filtroCor: [50, 255, 255] }
+        { nome: 'Freljord', top: '15%', left: '28%', cor: '#00b5e2', maskRadius: 0.30, filtroCor: [50, 180, 255], tol: 160 },
+        { nome: 'Demacia', top: '40%', left: '21%', cor: '#d3c29e', maskRadius: 0.25, filtroCor: [80, 80, 255], tol: 160 },
+        { nome: 'Noxus', top: '28%', left: '48%', cor: '#c62828', maskRadius: 0.35, maskTop: '35%', filtroCor: [255, 40, 40], tol: 160 }, // Empurramos a lanterna para baixo (35%) para pegar o traço de Shurima!
+        { nome: 'Piltover e Zaun', top: '54%', left: '51%', cor: '#d4a017', maskRadius: 0.15, filtroCor: [255, 200, 50], tol: 160 },
+        { nome: 'Shurima', top: '75%', left: '43%', cor: '#c59b0d', maskTop: '70%', maskRadius: 0.40, filtroCor: [255, 120, 50], tol: 180 }, // Tolerância alta para pegar a linha vermelha e as amarelas!
+        { nome: 'Targon', top: '78%', left: '26%', cor: '#5e35b1', maskRadius: 0.20, filtroCor: [150, 50, 255], tol: 160 },
+        { nome: 'Ixtal', top: '67%', left: '63%', cor: '#2e7d32', maskRadius: 0.20, filtroCor: [50, 255, 50], tol: 160 },
+        { nome: 'Águas de Sentina', top: '57%', left: '72%', cor: '#d84315', maskRadius: 0.15, filtroCor: [255, 80, 50], tol: 160 },
+        { nome: 'Ilha das Sombras', top: '86%', left: '85%', cor: '#00838f', maskRadius: 0.15, filtroCor: [50, 200, 150], tol: 160 }, // Totalmente cravado na ilha!
+        { nome: 'Ionia', top: '30%', left: '82%', cor: '#43a047', maskRadius: 0.25, filtroCor: [50, 255, 255], tol: 160 }
     ];
 
     const handleDragStart = (e) => {
@@ -97,7 +97,7 @@ export default function MapaMundi({ children }) {
         }
     };
 
-    // Ferramenta de precisão: Segure Shift + Clique no mapa para ver a posição!
+    // Ferramenta de Admin (Shift + Clique para ver Coordenadas!)
     const handleMapClickAdmin = (e) => {
         if (e.shiftKey) {
             const rect = e.currentTarget.getBoundingClientRect();
@@ -126,7 +126,7 @@ export default function MapaMundi({ children }) {
         }
     }, [nivelVisao]);
 
-    // 🔥 O MOTOR DE LUZ HOLOGRÁFICA 🔥
+    // 🔥 O MOTOR DE LUZ HOLOGRÁFICA (AGORA COM COR 100% VIBRANTE) 🔥
     useEffect(() => {
         const iCanvas = canvasRef.current;
         const hCanvas = highlightCanvasRef.current;
@@ -150,65 +150,39 @@ export default function MapaMundi({ children }) {
         const imgData = iCtx.getImageData(0, 0, iCanvas.width, iCanvas.height);
         const data = imgData.data;
 
-        // Processamento de Pixels
-        for (let i = 0; i < data.length; i += 4) {
-            let r = data[i], g = data[i+1], b = data[i+2];
+        const targetColor = reinoObj.filtroCor || [255, 255, 255];
+        const tolerance = reinoObj.tol || 150;
 
-            // 1. Limpa a fumaça cinza do fundo (mata o brilho fantasma no oceano)
+        // Processamento de Pixels com Chroma Key Absoluto
+        for (let i = 0; i < data.length; i += 4) {
+            let r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
+            if (a === 0) continue;
+
+            // 1. Limpa a fumaça cinza escuro do oceano sem afetar o brilho (Preto Absoluto = Transparente)
             if (r < 50 && g < 50 && b < 50) {
-                data[i+3] = 0; // Transparente!
+                data[i+3] = 0;
                 continue;
             }
 
-            // 2. Filtro de Cor Extremo (Chroma Key)
-            if (reinoObj.filtroCor) {
-                const [tr, tg, tb] = reinoObj.filtroCor;
-                const dist = Math.sqrt(Math.pow(r - tr, 2) + Math.pow(g - tg, 2) + Math.pow(b - tb, 2));
-                if (dist > 150) {
-                    data[i+3] = 0; // Se a cor for diferente (ex: Ionia vs Noxus), apaga!
-                    continue;
-                }
-            }
-
-            // 3. Névoa Geográfica (Fade Out) para separar vizinhos da mesma cor (Noxus/Shurima)
-            const px = (i / 4) % iCanvas.width;
-            const py = Math.floor((i / 4) / iCanvas.width);
-            const percentX = (px / iCanvas.width) * 100;
-            const percentY = (py / iCanvas.height) * 100;
-
-            let multiplicador = 1;
-            if (reinoObj.limits) {
-                const lim = reinoObj.limits;
-                if (lim.bottom && percentY > lim.bottom) {
-                    multiplicador *= Math.max(0, 1 - ((percentY - lim.bottom) / lim.bottomFade));
-                }
-                if (lim.top && percentY < lim.top) {
-                    multiplicador *= Math.max(0, 1 - ((lim.top - percentY) / lim.topFade));
-                }
-                if (lim.left && percentX < lim.left) {
-                    multiplicador *= Math.max(0, 1 - ((lim.left - percentX) / lim.leftFade));
-                }
-                if (lim.right && percentX > lim.right) {
-                    multiplicador *= Math.max(0, 1 - ((percentX - lim.right) / lim.rightFade));
-                }
-            }
-
-            if (multiplicador < 1) {
-                data[i+3] = Math.floor(data[i+3] * multiplicador);
+            // 2. Filtro de Cor (Chroma Key): Extermina cores que não pertencem ao reino
+            const dist = Math.sqrt(Math.pow(r - targetColor[0], 2) + Math.pow(g - targetColor[1], 2) + Math.pow(b - targetColor[2], 2));
+            if (dist > tolerance) {
+                data[i+3] = 0; 
             }
         }
 
         hCtx.putImageData(imgData, 0, 0);
 
-        // Aplica o Holofote (A luz base)
+        // 3. Aplica o Holofote (A luz base que revela a imagem)
         hCtx.globalCompositeOperation = 'destination-in';
         const projX = (parseFloat(reinoObj.maskLeft || reinoObj.left) / 100) * hCanvas.width;
         const projY = (parseFloat(reinoObj.maskTop || reinoObj.top) / 100) * hCanvas.height;
         const radius = hCanvas.width * (reinoObj.maskRadius || 0.25); 
 
-        const gradient = hCtx.createRadialGradient(projX, projY, radius * 0.1, projX, projY, radius);
+        const gradient = hCtx.createRadialGradient(projX, projY, 0, projX, projY, radius);
         gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');     
-        gradient.addColorStop(0.7, 'rgba(255, 255, 255, 0.8)'); 
+        // 🔥 O GRANDE SEGREDO: 80% do raio do holofote não perde 1% sequer de cor! A cor fica vivíssima! 🔥
+        gradient.addColorStop(0.8, 'rgba(255, 255, 255, 1)'); 
         gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');     
 
         hCtx.fillStyle = gradient;
@@ -347,9 +321,6 @@ export default function MapaMundi({ children }) {
         );
     }
 
-    // ==========================================
-    // ⚔️ CAMADA 3: MAPA TÁTICO
-    // ==========================================
     if (nivelVisao === 'reino') {
         const backgroundUrl = mapasImagens[localAtual.mapaId];
         return (
