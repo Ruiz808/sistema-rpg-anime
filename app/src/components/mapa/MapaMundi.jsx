@@ -58,7 +58,7 @@ export default function MapaMundi({ children }) {
     };
 
     const entrarNoContinente = (nomeContinente) => {
-        setLocalAtual({ continente: null, reino: null, mapaId: null });
+        setLocalAtual({ continente: nomeContinente, reino: null, mapaId: null });
         setNivelVisao('continente');
     };
 
@@ -139,34 +139,37 @@ export default function MapaMundi({ children }) {
     // ==========================================
     if (nivelVisao === 'continente') {
         const reinosRuneterra = [
-            { nome: 'Freljord', top: '18%', left: '30%', cor: '#00b5e2', path: 'M 22 15 C 30 10, 40 12, 48 18 C 55 25, 52 38, 46 42 C 38 45, 28 40, 22 35 C 15 28, 15 20, 22 15 Z' },
-            { nome: 'Demacia', top: '42%', left: '22%', cor: '#d3c29e', path: 'M 15 35 C 22 32, 30 35, 34 42 C 38 48, 32 55, 24 56 C 15 58, 8 50, 10 42 C 12 38, 13 36, 15 35 Z' },
+            // Outras regiões com polígonos simplificados para não roubarem o clique
+            { nome: 'Freljord', top: '18%', left: '30%', cor: '#00b5e2', path: 'M 20 15 L 35 12 L 45 16 L 50 25 L 45 35 L 30 40 L 15 30 Z' },
+            { nome: 'Demacia', top: '42%', left: '22%', cor: '#d3c29e', path: 'M 10 40 L 25 35 L 35 45 L 25 55 L 10 50 Z' },
             
-            // 🔥 NOXUS: O POLÍGONO RETO E ESTILHAÇADO COM 6 ILHAS SEPARADAS 🔥
+            // 🔥 O IMPÉRIO EXPANSIONISTA DE NOXUS 🔥
+            // Repare: Polígonos de linhas retas, cruzando continentes e com ilhas na costa de Ionia!
             { 
                 nome: 'Noxus', top: '30%', left: '55%', cor: '#c62828', 
                 path: `
-                M 32 40 L 34 38 L 36 39 L 38 34 L 40 35 L 42 30 L 45 32 L 48 26 L 50 28 
-                L 54 22 L 56 24 L 60 18 L 62 20 L 66 16 L 68 18 L 70 14 L 74 18 L 72 22 
-                L 76 26 L 74 30 L 78 34 L 76 38 L 80 42 L 78 46 L 76 44 L 74 50 L 70 48 
-                L 68 54 L 64 50 L 60 54 L 56 50 L 52 52 L 48 48 L 44 50 L 40 46 L 36 48 L 34 44 Z
-                
-                M 72 10 L 75 8 L 78 11 L 74 13 Z
-                M 80 14 L 84 12 L 86 16 L 82 18 Z
-                M 86 22 L 90 20 L 92 24 L 88 26 Z
-                M 82 30 L 85 28 L 88 32 L 84 35 Z
-                M 86 40 L 90 38 L 92 44 L 88 46 Z
-                M 78 58 L 82 56 L 86 62 L 80 64 Z
+                M 35 38 L 38 32 L 45 28 L 48 24 L 55 22 L 62 25 L 66 22 L 70 26 L 73 28 L 68 35 
+                L 75 40 L 72 45 L 68 48 L 65 52 L 58 48 L 54 50 L 50 48 L 46 52 L 42 50 L 38 45 Z
+
+                M 78 12 L 82 10 L 85 15 L 80 18 Z
+                M 85 22 L 88 18 L 92 22 L 88 26 Z
+                M 80 28 L 84 25 L 88 30 L 82 34 Z
+                M 88 35 L 92 32 L 95 38 L 90 42 Z
+                M 82 44 L 86 40 L 90 46 L 85 50 Z
+                M 75 52 L 78 48 L 84 54 L 80 58 Z
+
+                M 38 60 L 42 56 L 46 62 L 40 65 Z
+                M 48 64 L 52 60 L 56 66 L 50 68 Z
                 `
             },
 
-            { nome: 'Piltover e Zaun', top: '55%', left: '56%', cor: '#d4a017', path: 'M 52 48 Q 58 46 62 50 T 60 56 Q 54 58 50 54 T 52 48 Z' },
-            { nome: 'Shurima', top: '75%', left: '42%', cor: '#c59b0d', path: 'M 32 58 C 38 55, 48 58, 55 62 C 60 65, 65 72, 62 80 C 58 88, 48 95, 40 92 C 32 88, 25 82, 28 72 C 30 65, 26 60, 32 58 Z' },
-            { nome: 'Targon', top: '70%', left: '22%', cor: '#5e35b1', path: 'M 20 58 Q 26 56 28 64 T 26 76 Q 20 82 15 78 T 14 66 Q 16 60 20 58 Z' },
-            { nome: 'Águas de Sentina', top: '58%', left: '72%', cor: '#d84315', path: 'M 68 52 C 74 48, 78 54, 75 64 C 68 66, 65 60, 68 52 Z' },
-            { nome: 'Ilha das Sombras', top: '85%', left: '72%', cor: '#00838f', path: 'M 78 78 Q 85 75 92 80 T 94 92 Q 88 98 80 96 T 74 86 Q 74 80 78 78 Z' },
-            { nome: 'Ionia', top: '45%', left: '85%', cor: '#43a047', path: 'M 68 15 C 72 8, 85 10, 90 18 C 95 28, 93 40, 90 48 C 88 55, 96 65, 93 78 C 90 88, 80 92, 74 86 C 68 80, 75 72, 76 64 C 78 55, 72 48, 68 40 C 64 32, 65 20, 68 15 Z' },
-            { nome: 'Ixtal', top: '72%', left: '65%', cor: '#2e7d32', path: 'M 60 60 C 68 58, 75 60, 78 68 C 76 78, 68 85, 60 82 C 55 75, 56 68, 60 60 Z' }
+            { nome: 'Piltover e Zaun', top: '55%', left: '56%', cor: '#d4a017', path: 'M 50 48 L 60 45 L 62 55 L 50 52 Z' },
+            { nome: 'Shurima', top: '75%', left: '42%', cor: '#c59b0d', path: 'M 25 70 L 35 60 L 55 62 L 65 75 L 55 90 L 35 95 L 25 85 Z' },
+            { nome: 'Targon', top: '70%', left: '22%', cor: '#5e35b1', path: 'M 15 65 L 25 60 L 30 70 L 20 85 L 12 75 Z' },
+            { nome: 'Águas de Sentina', top: '58%', left: '72%', cor: '#d84315', path: 'M 65 55 L 75 52 L 78 62 L 68 65 Z' },
+            { nome: 'Ilha das Sombras', top: '85%', left: '72%', cor: '#00838f', path: 'M 75 75 L 85 72 L 90 85 L 80 90 Z' },
+            { nome: 'Ionia', top: '45%', left: '85%', cor: '#43a047', path: 'M 65 15 L 75 8 L 85 12 L 90 20 L 88 35 L 92 45 L 85 55 L 78 65 L 70 55 L 68 35 Z' },
+            { nome: 'Ixtal', top: '72%', left: '65%', cor: '#2e7d32', path: 'M 58 62 L 68 58 L 78 65 L 72 80 L 60 85 L 55 75 Z' }
         ];
 
         return (
@@ -174,7 +177,7 @@ export default function MapaMundi({ children }) {
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.8)', padding: '10px 20px', borderBottom: '1px solid #222', zIndex: 10 }}>
                     <button onClick={voltarCamera} className="btn-neon btn-red" style={{ margin: 0, padding: '5px 15px', fontSize: '0.85em', cursor: 'pointer' }}>⬅ VOLTAR AO GLOBO</button>
-                    <h2 style={{ color: '#0088ff', margin: 0, textShadow: '0 0 10px #0088ff', textTransform: 'uppercase', letterSpacing: '2px' }}>RUNETERRA</h2>
+                    <h2 style={{ color: '#0088ff', margin: 0, textShadow: '0 0 10px #0088ff', textTransform: 'uppercase', letterSpacing: '2px' }}>{localAtual.continente}</h2>
                     <div style={{ width: '120px' }}></div>
                 </div>
 
@@ -188,7 +191,7 @@ export default function MapaMundi({ children }) {
                             style={{ display: 'block', maxWidth: '100%', maxHeight: 'calc(65vh - 60px)', width: 'auto', height: 'auto', objectFit: 'contain' }} 
                         />
                         
-                        <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 2 }}>
+                        <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 2, pointerEvents: 'none' }}>
                             {reinosRuneterra.map(reino => reino.path && (
                                 <path 
                                     key={`path-${reino.nome}`}
@@ -197,7 +200,7 @@ export default function MapaMundi({ children }) {
                                     opacity={reinoHover === reino.nome ? 0.35 : 0} 
                                     stroke={reinoHover === reino.nome ? '#fff' : reino.cor}
                                     strokeWidth={reinoHover === reino.nome ? "0.4" : "0"}
-                                    style={{ transition: 'all 0.3s ease', cursor: 'pointer', pointerEvents: 'auto' }}
+                                    style={{ transition: 'all 0.3s ease', cursor: 'pointer', pointerEvents: 'visiblePainted' }}
                                     onMouseEnter={() => setReinoHover(reino.nome)}
                                     onMouseLeave={() => setReinoHover(null)}
                                     onClick={() => abrirMenuReino(reino.nome)}
