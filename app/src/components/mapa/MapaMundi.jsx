@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 export default function MapaMundi({ children }) {
     const [nivelVisao, setNivelVisao] = useState('globo'); 
@@ -22,6 +22,40 @@ export default function MapaMundi({ children }) {
     const [isDragging, setIsDragging] = useState(false);
     const dragStart = useRef({ x: 0, y: 0 });
 
+    // --- REFS DO LEITOR DE PIXEL ---
+    const canvasRef = useRef(null);
+    const imgIdMapRef = useRef(null);
+
+    // --- DICIONÁRIO DE CORES DO SEU MAPA GABARITO ---
+    // Coloque aqui a cor exata em RGB que você usou para pintar cada área no Paint!
+    const dicionarioCores = {
+        'rgb(255,0,0)': 'Noxus',      
+        'rgb(0,255,0)': 'Ixtal',      
+        'rgb(0,0,255)': 'Freljord',   
+        'rgb(255,255,0)': 'Shurima',  
+        'rgb(0,255,255)': 'Ionia',    
+        'rgb(255,0,255)': 'Targon',   
+        'rgb(255,128,0)': 'Águas de Sentina',
+        'rgb(128,0,128)': 'Demacia',
+        'rgb(0,128,128)': 'Ilha das Sombras',
+        'rgb(128,128,0)': 'Piltover e Zaun'
+    };
+
+    // --- POSIÇÕES DOS PINGS (UI) ---
+    const posicoesPings = [
+        { nome: 'Freljord', top: '18%', left: '30%', cor: '#00b5e2' },
+        { nome: 'Demacia', top: '42%', left: '22%', cor: '#d3c29e' },
+        { nome: 'Noxus', top: '30%', left: '55%', cor: '#c62828' },
+        { nome: 'Piltover e Zaun', top: '55%', left: '56%', cor: '#d4a017' },
+        { nome: 'Shurima', top: '75%', left: '42%', cor: '#c59b0d' },
+        { nome: 'Targon', top: '70%', left: '22%', cor: '#5e35b1' },
+        { nome: 'Águas de Sentina', top: '58%', left: '72%', cor: '#d84315' },
+        { nome: 'Ilha das Sombras', top: '85%', left: '72%', cor: '#00838f' },
+        { nome: 'Ionia', top: '45%', left: '85%', cor: '#43a047' },
+        { nome: 'Ixtal', top: '72%', left: '65%', cor: '#2e7d32' }
+    ];
+
+    // --- CONTROLES DE ARRASTE DO GLOBO ---
     const handleDragStart = (e) => {
         setIsDragging(true);
         dragStart.current = {
@@ -48,6 +82,7 @@ export default function MapaMundi({ children }) {
 
     const handleDragEnd = () => setIsDragging(false);
 
+    // --- CONTROLES DE NAVEGAÇÃO ---
     const criarNovoMapa = () => {
         const nome = prompt("Digite o nome do novo mapa para " + reinoSelecionado + ":");
         if (nome && nome.trim() !== "") {
@@ -77,6 +112,38 @@ export default function MapaMundi({ children }) {
             setLocalAtual({ continente: null, reino: null });
         }
     };
+
+    // --- DETECÇÃO DO HOVER POR PIXEL ---
+    const detectarReino = (e) => {
+        if (nivelVisao !== 'continente' || !canvasRef.current) return;
+
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        const rect = e.currentTarget.getBoundingClientRect();
+
+        const x = ((e.clientX - rect.left) / rect.width) * canvas.width;
+        const y = ((e.clientY - rect.top) / rect.height) * canvas.height;
+
+        const pixel = ctx.getImageData(x, y, 1, 1).data;
+        const corRGB = `rgb(${pixel[0]},${pixel[1]},${pixel[2]})`;
+
+        const reinoEncontrado = dicionarioCores[corRGB] || null;
+        setReinoHover(reinoEncontrado);
+    };
+
+    // Transfere o mapa de gabarito (cores sólidas) para o Canvas invisível
+    useEffect(() => {
+        if (nivelVisao === 'continente' && imgIdMapRef.current) {
+            const img = imgIdMapRef.current;
+            img.onload = () => {
+                const canvas = canvasRef.current;
+                canvas.width = img.naturalWidth;
+                canvas.height = img.naturalHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+            };
+        }
+    }, [nivelVisao]);
 
     // ==========================================
     // 🌍 CAMADA 1: O GLOBO
@@ -138,79 +205,56 @@ export default function MapaMundi({ children }) {
     // 🗺️ CAMADA 2: O CONTINENTE
     // ==========================================
     if (nivelVisao === 'continente') {
-const reinosRuneterra = [
-            { nome: 'Freljord', top: '18%', left: '30%', cor: '#00b5e2', path: 'M 20 15 L 35 12 L 45 16 L 50 25 L 45 35 L 30 40 L 15 30 Z' },
-            { nome: 'Demacia', top: '42%', left: '22%', cor: '#d3c29e', path: 'M 10 40 L 25 35 L 35 45 L 25 55 L 10 50 Z' },
-            
-            // 🔥 NOXUS: Retraído e com os 8 losangos táticos perfeitos (SEM COMENTÁRIOS DENTRO!) 🔥
-            { 
-                nome: 'Noxus', top: '30%', left: '55%', cor: '#c62828', 
-                path: 'M 48 20 L 56 22 L 60 35 L 68 44 L 52 52 L 46 45 L 36 46 L 30 40 L 35 30 L 42 25 Z M 72 5 L 77 5 L 75 10 L 70 10 Z M 82 10 L 88 10 L 85 16 L 79 16 Z M 75 18 L 81 18 L 78 24 L 72 24 Z M 85 22 L 92 22 L 89 28 L 82 28 Z M 80 32 L 86 32 L 83 38 L 77 38 Z M 65 62 L 72 62 L 69 68 L 62 68 Z M 22 68 L 28 68 L 25 74 L 19 74 Z M 32 78 L 38 78 L 35 84 L 29 84 Z'
-            },
-
-            { nome: 'Piltover e Zaun', top: '55%', left: '56%', cor: '#d4a017', path: 'M 50 48 L 60 45 L 62 55 L 50 52 Z' },
-            { nome: 'Shurima', top: '75%', left: '42%', cor: '#c59b0d', path: 'M 25 70 L 35 60 L 55 62 L 65 75 L 55 90 L 35 95 L 25 85 Z' },
-            { nome: 'Targon', top: '70%', left: '22%', cor: '#5e35b1', path: 'M 15 65 L 25 60 L 30 70 L 20 85 L 12 75 Z' },
-            { nome: 'Águas de Sentina', top: '58%', left: '72%', cor: '#d84315', path: 'M 65 55 L 75 52 L 78 62 L 68 65 Z' },
-            { nome: 'Ilha das Sombras', top: '85%', left: '72%', cor: '#00838f', path: 'M 75 75 L 85 72 L 90 85 L 80 90 Z' },
-            { nome: 'Ionia', top: '45%', left: '85%', cor: '#43a047', path: 'M 65 15 L 75 8 L 85 12 L 90 20 L 88 35 L 92 45 L 85 55 L 78 65 L 70 55 L 68 35 Z' },
-            { nome: 'Ixtal', top: '72%', left: '65%', cor: '#2e7d32', path: 'M 58 62 L 68 58 L 78 65 L 72 80 L 60 85 L 55 75 Z' }
-        ];
-
         return (
             <div className="fade-in" style={{ width: '100%', height: '65vh', background: '#050508', borderRadius: '10px', border: '1px solid #0088ff', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
                 
+                {/* CABEÇALHO */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.8)', padding: '10px 20px', borderBottom: '1px solid #222', zIndex: 10 }}>
                     <button onClick={voltarCamera} className="btn-neon btn-red" style={{ margin: 0, padding: '5px 15px', fontSize: '0.85em', cursor: 'pointer' }}>⬅ VOLTAR AO GLOBO</button>
-                    <h2 style={{ color: '#0088ff', margin: 0, textShadow: '0 0 10px #0088ff', textTransform: 'uppercase', letterSpacing: '2px' }}>{localAtual.continente}</h2>
+                    <h2 style={{ color: '#0088ff', margin: 0, textShadow: '0 0 10px #0088ff', textTransform: 'uppercase', letterSpacing: '2px' }}>
+                        {reinoHover || localAtual.continente}
+                    </h2>
                     <div style={{ width: '120px' }}></div>
                 </div>
 
                 <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', position: 'relative' }}>
-                    
-                    <div style={{ position: 'relative', display: 'inline-block', maxWidth: '100%', maxHeight: '100%' }}>
+                    <div 
+                        style={{ position: 'relative', display: 'inline-block', maxWidth: '100%', maxHeight: '100%', cursor: reinoHover ? 'pointer' : 'default' }}
+                        onMouseMove={detectarReino}
+                        onClick={() => reinoHover && abrirMenuReino(reinoHover)}
+                    >
                         
+                        {/* 1. O MAPA BASE BONITO */}
                         <img 
-                            src="/runeterra-clean.jpg?v=3" 
+                            src="/runeterra-clean.jpg" 
                             alt="Mapa de Runeterra" 
                             style={{ display: 'block', maxWidth: '100%', maxHeight: 'calc(65vh - 60px)', width: 'auto', height: 'auto', objectFit: 'contain' }} 
                         />
                         
-                        <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 2, pointerEvents: 'none' }}>
-                            {reinosRuneterra.map(reino => reino.path && (
-                                <path 
-                                    key={`path-${reino.nome}`}
-                                    d={reino.path} 
-                                    fill={reino.cor} 
-                                    opacity={reinoHover === reino.nome ? 0.35 : 0} 
-                                    stroke={reinoHover === reino.nome ? '#fff' : reino.cor}
-                                    strokeWidth={reinoHover === reino.nome ? "0.4" : "0"}
-                                    style={{ transition: 'all 0.3s ease', cursor: 'pointer', pointerEvents: 'visiblePainted' }}
-                                    onMouseEnter={() => setReinoHover(reino.nome)}
-                                    onMouseLeave={() => setReinoHover(null)}
-                                    onClick={() => abrirMenuReino(reino.nome)}
-                                />
-                            ))}
-                        </svg>
+                        {/* 2. A IMAGEM FEIA DE GABARITO (FICA ESCONDIDA PRA LER AS CORES) */}
+                        <img 
+                            ref={imgIdMapRef}
+                            src="/runeterra-gabarito.png" 
+                            style={{ display: 'none' }} 
+                            alt="Mapa ID"
+                        />
+                        <canvas ref={canvasRef} style={{ display: 'none' }} />
 
+                        {/* 3. CSS DOS PINGS DE UI (Para continuar bonito visualmente) */}
                         <style dangerouslySetInnerHTML={{__html: `
-                            .ping-wrapper { position: absolute; transform: translate(-50%, -50%); cursor: pointer; display: flex; flex-direction: column; align-items: center; z-index: 5; }
-                            .ping-wrapper:hover { z-index: 10; }
+                            .ping-wrapper { position: absolute; transform: translate(-50%, -50%); pointer-events: none; display: flex; flex-direction: column; align-items: center; z-index: 5; }
                             .ping-anel-externo { width: 22px; height: 22px; border-radius: 50%; background: #000; display: flex; justify-content: center; align-items: center; transition: all 0.2s ease-out; box-shadow: 0 0 10px rgba(0,0,0,0.8); }
                             .ping-nucleo { width: 8px; height: 8px; border-radius: 50%; transition: 0.2s; }
-                            .ping-wrapper:hover .ping-anel-externo { width: 26px; height: 26px; border-color: #fff !important; }
-                            .ping-wrapper:hover .ping-nucleo { width: 12px; height: 12px; background: #fff !important; box-shadow: 0 0 15px #fff !important; }
-                            .ping-legenda { margin-top: 4px; background: rgba(0,0,0,0.85); padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; white-space: nowrap; pointer-events: none; opacity: 0.8; transition: 0.2s; text-transform: uppercase; letter-spacing: 1px; color: #fff; }
-                            .ping-wrapper:hover .ping-legenda { opacity: 1; color: #fff; text-shadow: 0 0 5px #fff; border-color: #fff !important; }
+                            .ping-wrapper.active .ping-anel-externo { width: 26px; height: 26px; border-color: #fff !important; }
+                            .ping-wrapper.active .ping-nucleo { width: 12px; height: 12px; background: #fff !important; box-shadow: 0 0 15px #fff !important; }
+                            .ping-legenda { margin-top: 4px; background: rgba(0,0,0,0.85); padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; white-space: nowrap; opacity: 0.8; transition: 0.2s; text-transform: uppercase; letter-spacing: 1px; color: #fff; }
+                            .ping-wrapper.active .ping-legenda { opacity: 1; color: #fff; text-shadow: 0 0 5px #fff; border-color: #fff !important; }
                         `}} />
 
-                        {reinosRuneterra.map((reino) => (
+                        {posicoesPings.map((reino) => (
                             <div 
                                 key={reino.nome}
-                                className="ping-wrapper"
-                                onMouseEnter={() => setReinoHover(reino.nome)}
-                                onMouseLeave={() => setReinoHover(null)}
-                                onClick={() => abrirMenuReino(reino.nome)}
+                                className={`ping-wrapper ${reinoHover === reino.nome ? 'active' : ''}`}
                                 style={{ top: reino.top, left: reino.left }}
                             >
                                 <div className="ping-anel-externo" style={{ border: `2px solid ${reino.cor}` }}>
@@ -222,7 +266,7 @@ const reinosRuneterra = [
                     </div>
                 </div>
 
-                {/* MODAL DE SELEÇÃO E CRIAÇÃO */}
+                {/* MODAL DE SELEÇÃO E CRIAÇÃO (MANTIDO 100%) */}
                 {reinoSelecionado && (
                     <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 20, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(5px)' }}>
                         <div style={{ background: '#111', border: '2px solid #0088ff', borderRadius: '15px', padding: '25px', width: '350px', textAlign: 'center', position: 'relative', boxShadow: '0 0 30px #0088ff' }}>
@@ -257,7 +301,7 @@ const reinosRuneterra = [
     }
 
     // ==========================================
-    // ⚔️ CAMADA 3: MAPA TÁTICO
+    // ⚔️ CAMADA 3: MAPA TÁTICO (MANTIDA 100%)
     // ==========================================
     if (nivelVisao === 'reino') {
         const backgroundUrl = mapasImagens[localAtual.mapaId];
