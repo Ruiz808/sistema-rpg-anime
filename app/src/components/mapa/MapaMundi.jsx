@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react';
-// 🔥 AS IMAGENS IMPORTADAS COMO CÓDIGO 🔥
 import mapaClean from '../../assets/runeterra-clean.jpg';
 import mapaGabarito from '../../assets/runeterra-gabarito.png';
 
@@ -28,18 +27,18 @@ export default function MapaMundi({ children }) {
     const highlightCanvasRef = useRef(null);  
     const imgIdMapRef = useRef(null);
 
-    // 🔥 PINGS CORRIGIDOS + FILTRO DE COR (Isola a cor de cada região) 🔥
+    // 🔥 PINGS REPOSICIONADOS E HOLOFOTES CIRÚRGICOS 🔥
     const posicoesPings = [
-        { nome: 'Freljord', top: '15%', left: '28%', cor: '#00b5e2', filtroCor: [100, 200, 255] },
-        { nome: 'Demacia', top: '40%', left: '21%', cor: '#d3c29e', filtroCor: [80, 80, 200] },
-        { nome: 'Noxus', top: '35%', left: '45%', cor: '#c62828', filtroCor: [220, 50, 50], maskRadius: 0.35 }, 
-        { nome: 'Piltover e Zaun', top: '54%', left: '51%', cor: '#d4a017', filtroCor: [255, 200, 0] },
-        { nome: 'Shurima', top: '72%', left: '43%', cor: '#c59b0d', filtroCor: [220, 180, 50], maskRadius: 0.40 }, 
-        { nome: 'Targon', top: '79%', left: '26%', cor: '#5e35b1', filtroCor: [150, 50, 200] },
-        { nome: 'Águas de Sentina', top: '57%', left: '72%', cor: '#d84315', filtroCor: [50, 50, 200] },
-        { nome: 'Ilha das Sombras', top: '86%', left: '83%', cor: '#00838f', filtroCor: [50, 150, 100] },
-        { nome: 'Ionia', top: '36%', left: '78%', cor: '#43a047', filtroCor: [50, 220, 180], maskRadius: 0.30 },
-        { nome: 'Ixtal', top: '67%', left: '63%', cor: '#2e7d32', filtroCor: [50, 180, 50] }
+        { nome: 'Freljord', top: '15%', left: '28%', cor: '#00b5e2', filtroCor: [50, 200, 255], maskRadius: 0.22 },
+        { nome: 'Demacia', top: '40%', left: '21%', cor: '#d3c29e', filtroCor: [50, 50, 200], maskRadius: 0.18 },
+        { nome: 'Noxus', top: '28%', left: '48%', cor: '#c62828', filtroCor: [255, 50, 50], maskTop: '28%', maskLeft: '48%', maskRadius: 0.20 }, // Raio reduzido para não bater em Shurima!
+        { nome: 'Piltover e Zaun', top: '54%', left: '51%', cor: '#d4a017', filtroCor: [255, 200, 50], maskRadius: 0.10 },
+        { nome: 'Shurima', top: '75%', left: '43%', cor: '#c59b0d', filtroCor: [255, 100, 50], maskTop: '72%', maskLeft: '43%', maskRadius: 0.25 },
+        { nome: 'Targon', top: '78%', left: '26%', cor: '#5e35b1', filtroCor: [150, 50, 255], maskRadius: 0.15 },
+        { nome: 'Águas de Sentina', top: '57%', left: '72%', cor: '#d84315', filtroCor: [50, 50, 255], maskRadius: 0.10 },
+        { nome: 'Ilha das Sombras', top: '88%', left: '86%', cor: '#00838f', filtroCor: [50, 255, 150], maskRadius: 0.12 }, // Ping lá na ilha!
+        { nome: 'Ionia', top: '30%', left: '82%', cor: '#43a047', filtroCor: [50, 255, 200], maskRadius: 0.18 }, // Ping no centro do arquipélago
+        { nome: 'Ixtal', top: '67%', left: '63%', cor: '#2e7d32', filtroCor: [50, 255, 50], maskRadius: 0.15 }
     ];
 
     const handleDragStart = (e) => {
@@ -97,17 +96,16 @@ export default function MapaMundi({ children }) {
         }
     };
 
-    // 🔥 FERRAMENTA DE ADMIN PARA ACHAR COORDENADAS (SEGURE SHIFT E CLIQUE NO MAPA) 🔥
+    // 🔥 FERRAMENTA DE ADMIN PARA AJUSTE FINO (SHIFT + CLIQUE) 🔥
     const handleMapClickAdmin = (e) => {
         if (e.shiftKey) {
             const rect = e.currentTarget.getBoundingClientRect();
             const top = ((e.clientY - rect.top) / rect.height) * 100;
             const left = ((e.clientX - rect.left) / rect.width) * 100;
-            alert(`Novas Coordenadas geradas:\ntop: '${top.toFixed(0)}%', left: '${left.toFixed(0)}%'`);
+            alert(`Coordenadas exatas deste clique:\ntop: '${top.toFixed(0)}%', left: '${left.toFixed(0)}%'`);
         }
     };
 
-    // --- CARREGA O MAPA NÉON PARA A MEMÓRIA ---
     useEffect(() => {
         const img = imgIdMapRef.current;
         const canvas = canvasRef.current;
@@ -127,7 +125,7 @@ export default function MapaMundi({ children }) {
         }
     }, [nivelVisao]);
 
-    // 🔥 O EFEITO DE HOLOFOTE + FILTRO DE COR (ISOLAMENTO PERFEITO) 🔥
+    // 🔥 HOLOFOTE COM FILTRO RÍGIDO 🔥
     useEffect(() => {
         const iCanvas = canvasRef.current;
         const hCanvas = highlightCanvasRef.current;
@@ -136,51 +134,47 @@ export default function MapaMundi({ children }) {
         const hCtx = hCanvas.getContext('2d');
         
         if (!reinoHover) {
-            hCanvas.style.opacity = '0'; // Apaga suavemente
+            hCanvas.style.opacity = '0';
             return;
         }
 
         hCanvas.width = iCanvas.width;
         hCanvas.height = iCanvas.height;
-        hCanvas.style.opacity = '1'; // Acende
+        hCanvas.style.opacity = '1';
 
         const reinoObj = posicoesPings.find(p => p.nome === reinoHover);
         if (!reinoObj) return;
 
-        // 1. Extrai a imagem crua da memória
         const iCtx = iCanvas.getContext('2d', { willReadFrequently: true });
         const imgData = iCtx.getImageData(0, 0, iCanvas.width, iCanvas.height);
         const data = imgData.data;
 
         const targetColor = reinoObj.filtroCor || [255, 255, 255];
 
-        // 2. Varre pixel por pixel: Se a cor for muito diferente do reino, apaga o pixel!
+        // Varredura para apagar cores erradas
         for (let i = 0; i < data.length; i += 4) {
             const r = data[i]; const g = data[i+1]; const b = data[i+2];
 
-            // Pula pixels muito escuros (oceano vazio) para não pesar
-            if (r < 40 && g < 40 && b < 40) {
+            if (r < 30 && g < 30 && b < 30) {
                 data[i+3] = 0;
                 continue;
             }
 
-            // Distância matemática de cor (Se for > 150, é de outro reino)
+            // Reduzi a tolerância de 150 para 110! Mais estrito!
             const dist = Math.sqrt(Math.pow(r - targetColor[0], 2) + Math.pow(g - targetColor[1], 2) + Math.pow(b - targetColor[2], 2));
-            if (dist > 150) { 
-                data[i+3] = 0; // Deixa transparente
+            if (dist > 110) { 
+                data[i+3] = 0; 
             }
         }
 
-        // 3. Pinta a imagem limpa e filtrada na tela visível
         hCtx.putImageData(imgData, 0, 0);
 
-        // 4. Aplica o Holofote para não pegar borrões em cantos distantes
         hCtx.globalCompositeOperation = 'destination-in';
         const px = (parseFloat(reinoObj.maskLeft || reinoObj.left) / 100) * hCanvas.width;
         const py = (parseFloat(reinoObj.maskTop || reinoObj.top) / 100) * hCanvas.height;
-        const radius = hCanvas.width * (reinoObj.maskRadius || 0.25); 
+        const radius = hCanvas.width * (reinoObj.maskRadius || 0.20); 
 
-        const gradient = hCtx.createRadialGradient(px, py, radius * 0.2, px, py, radius);
+        const gradient = hCtx.createRadialGradient(px, py, radius * 0.1, px, py, radius);
         gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');     
         gradient.addColorStop(0.7, 'rgba(255, 255, 255, 0.8)'); 
         gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');     
@@ -190,12 +184,9 @@ export default function MapaMundi({ children }) {
         hCtx.arc(px, py, radius, 0, Math.PI * 2);
         hCtx.fill();
         
-        hCtx.globalCompositeOperation = 'source-over'; // Reseta
+        hCtx.globalCompositeOperation = 'source-over'; 
     }, [reinoHover]);
 
-    // ==========================================
-    // 🌍 CAMADA 1: O GLOBO ORBITAL
-    // ==========================================
     if (nivelVisao === 'globo') {
         return (
             <div 
@@ -232,60 +223,38 @@ export default function MapaMundi({ children }) {
                                 <circle cx="162" cy="85" r="2" fill="#00ffcc" />
                                 <line x1="105" y1="72" x2="110" y2="88" stroke="#ffcc00" strokeWidth="1.5" />
                             </svg>
-
-                            <button onClick={() => entrarNoContinente('Runeterra')} style={{ pointerEvents: 'auto', background: 'rgba(0,255,204,0.1)', border: '2px solid #00ffcc', color: '#00ffcc', padding: '12px 24px', borderRadius: '30px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9em', letterSpacing: '2px', backdropFilter: 'blur(5px)', boxShadow: '0 0 20px rgba(0,255,204,0.4)', zIndex: 10 }}>
-                                🌍 ENTRAR EM RUNETERRA
-                            </button>
+                            <button onClick={() => entrarNoContinente('Runeterra')} style={{ pointerEvents: 'auto', background: 'rgba(0,255,204,0.1)', border: '2px solid #00ffcc', color: '#00ffcc', padding: '12px 24px', borderRadius: '30px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9em', letterSpacing: '2px', backdropFilter: 'blur(5px)', boxShadow: '0 0 20px rgba(0,255,204,0.4)', zIndex: 10 }}>🌍 ENTRAR EM RUNETERRA</button>
                         </div>
                     </div>
-
                     <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', boxShadow: 'inset -50px -50px 100px rgba(0,0,0,0.9), inset 20px 20px 50px rgba(0,136,255,0.1)', pointerEvents: 'none', zIndex: 20 }}></div>
                 </div>
             </div>
         );
     }
 
-    // ==========================================
-    // 🗺️ CAMADA 2: O CONTINENTE
-    // ==========================================
     if (nivelVisao === 'continente') {
         return (
             <div className="fade-in" style={{ width: '100%', height: '65vh', background: '#050508', borderRadius: '10px', border: '1px solid #0088ff', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
-                
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.85)', padding: '12px 25px', borderBottom: '1px solid #222', zIndex: 10 }}>
                     <button onClick={voltarCamera} style={{ background: '#ff4444', color: '#fff', border: 'none', padding: '6px 18px', borderRadius: '5px', fontSize: '0.85em', cursor: 'pointer', fontWeight: 'bold' }}>⬅ VOLTAR AO GLOBO</button>
-                    <h2 style={{ color: '#0088ff', margin: 0, textTransform: 'uppercase', letterSpacing: '3px', textShadow: '0 0 10px #0088ff' }}>
-                        {reinoHover || localAtual.continente}
-                    </h2>
+                    <h2 style={{ color: '#0088ff', margin: 0, textTransform: 'uppercase', letterSpacing: '3px', textShadow: '0 0 10px #0088ff' }}>{reinoHover || localAtual.continente}</h2>
                     <div style={{ width: '120px' }}></div>
                 </div>
 
                 <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', position: 'relative', width: '100%' }}>
-                    
-                    {/* ENVOLTÓRIO DA IMAGEM COM O CLIQUE DE ADMIN */}
                     <div 
                         style={{ position: 'relative', display: 'inline-block', height: '100%', maxHeight: 'calc(65vh - 70px)' }}
                         onClick={handleMapClickAdmin} 
                     >
-                        
-                        {/* MAPA BASE LIMPO */}
-                        <img 
-                            src={mapaClean} 
-                            alt="Mapa Base" 
-                            style={{ display: 'block', height: '100%', width: 'auto', objectFit: 'contain' }} 
-                        />
-                        
-                        {/* IMAGEM INVISÍVEL (MEMÓRIA DO CANVAS) */}
-                        <img ref={imgIdMapRef} src={mapaGabarito} style={{ display: 'none' }} alt="Gabarito Memória" />
+                        <img src={mapaClean} alt="Mapa Base" style={{ display: 'block', height: '100%', width: 'auto', objectFit: 'contain' }} />
+                        <img ref={imgIdMapRef} src={mapaGabarito} style={{ display: 'none' }} alt="Gabarito" />
                         <canvas ref={canvasRef} style={{ display: 'none' }} />
 
-                        {/* 🔥 MÁSCARA ISOLADA E FILTRADA 🔥 */}
                         <canvas 
                             ref={highlightCanvasRef} 
                             style={{ 
                                 position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', 
-                                pointerEvents: 'none', zIndex: 2, mixBlendMode: 'screen',
-                                transition: 'opacity 0.3s ease-out'
+                                pointerEvents: 'none', zIndex: 2, mixBlendMode: 'screen', transition: 'opacity 0.3s ease-out'
                             }} 
                         />
 
@@ -299,7 +268,6 @@ export default function MapaMundi({ children }) {
                             .ping-wrapper.active .ping-legenda { border-color: #fff; background: #fff; color: #000; }
                         `}} />
 
-                        {/* PINGS INTERATIVOS */}
                         {posicoesPings.map((reino) => (
                             <div 
                                 key={reino.nome}
@@ -309,42 +277,31 @@ export default function MapaMundi({ children }) {
                                 onMouseLeave={() => setReinoHover(null)}
                                 onClick={(e) => { e.stopPropagation(); abrirMenuReino(reino.nome); }}
                             >
-                                <div className="ping-anel-externo" style={{ borderColor: reino.cor }}>
-                                    <div className="ping-nucleo" style={{ background: reino.cor, boxShadow: `0 0 10px ${reino.cor}` }}></div>
-                                </div>
+                                <div className="ping-anel-externo" style={{ borderColor: reino.cor }}><div className="ping-nucleo" style={{ background: reino.cor, boxShadow: `0 0 10px ${reino.cor}` }}></div></div>
                                 <div className="ping-legenda">{reino.nome}</div>
                             </div>
                         ))}
                     </div>
                 </div>
 
-                {/* MODAL DE SELEÇÃO DE MAPAS */}
                 {reinoSelecionado && (
                     <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 30, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(6px)' }}>
                         <div style={{ background: '#111', border: '2px solid #0088ff', borderRadius: '20px', padding: '30px', width: '380px', textAlign: 'center', position: 'relative', boxShadow: '0 0 40px #0088ff' }}>
                             <button onClick={() => setReinoSelecionado(null)} style={{ position: 'absolute', top: '15px', right: '20px', background: 'none', border: 'none', color: '#ff4444', fontSize: '22px', cursor: 'pointer', fontWeight: 'bold' }}>X</button>
-                            
                             <h2 style={{ color: '#ffcc00', margin: '0 0 10px 0', textTransform: 'uppercase', letterSpacing: '2px' }}>{reinoSelecionado}</h2>
                             <p style={{ color: '#888', fontSize: '0.9em', marginBottom: '20px' }}>Selecione o cenário para esta região:</p>
-                            
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '25px', maxHeight: '200px', overflowY: 'auto', paddingRight: '5px' }}>
                                 {(mapasSalvos[reinoSelecionado] || []).map(mapa => (
                                     <button 
-                                        key={mapa} 
-                                        onClick={() => entrarNoMapaDeBatalha(mapa)} 
+                                        key={mapa} onClick={() => entrarNoMapaDeBatalha(mapa)} 
                                         style={{ background: '#1a1a1a', border: '1px solid #333', color: '#fff', padding: '14px', borderRadius: '10px', cursor: 'pointer', transition: '0.2s', textAlign: 'left', fontSize: '0.95em' }}
                                         onMouseEnter={(e) => { e.target.style.borderColor='#0088ff'; e.target.style.background='#222'; }} 
                                         onMouseLeave={(e) => { e.target.style.borderColor='#333'; e.target.style.background='#1a1a1a'; }}
-                                    >
-                                        🗺️ {mapa}
-                                    </button>
+                                    >🗺️ {mapa}</button>
                                 ))}
                                 {!(mapasSalvos[reinoSelecionado]?.length) && <p style={{color: '#555', fontStyle: 'italic'}}>Nenhum mapa salvo nesta região.</p>}
                             </div>
-                            
-                            <button onClick={criarNovoMapa} style={{ width: '100%', background: 'linear-gradient(to right, #0088ff, #00ffcc)', color: '#000', padding: '14px', borderRadius: '10px', fontWeight: 'bold', border: 'none', cursor: 'pointer', fontSize: '0.9em', boxShadow: '0 0 15px rgba(0,255,204,0.3)' }}>
-                                ➕ CRIAR NOVO MAPA
-                            </button>
+                            <button onClick={criarNovoMapa} style={{ width: '100%', background: 'linear-gradient(to right, #0088ff, #00ffcc)', color: '#000', padding: '14px', borderRadius: '10px', fontWeight: 'bold', border: 'none', cursor: 'pointer', fontSize: '0.9em', boxShadow: '0 0 15px rgba(0,255,204,0.3)' }}>➕ CRIAR NOVO MAPA</button>
                         </div>
                     </div>
                 )}
@@ -352,33 +309,24 @@ export default function MapaMundi({ children }) {
         );
     }
 
-    // ==========================================
-    // ⚔️ CAMADA 3: MAPA TÁTICO
-    // ==========================================
     if (nivelVisao === 'reino') {
         const backgroundUrl = mapasImagens[localAtual.mapaId];
-
         return (
             <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', height: '65vh' }}>
                 <div style={{ background: '#111', padding: '12px 20px', borderRadius: '10px 10px 0 0', border: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
                     <div style={{ display: 'flex', gap: '15px' }}>
-                        <button onClick={voltarCamera} className="btn-neon btn-red" style={{ margin: 0, padding: '7px 18px', fontSize: '0.85em', cursor: 'pointer' }}>⬅ SAIR DO MAPA</button>
+                        <button onClick={voltarCamera} style={{ background: '#ff4444', color: '#fff', border: 'none', padding: '7px 18px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85em' }}>⬅ SAIR DO MAPA</button>
                         <button onClick={() => { setUrlInput(backgroundUrl || ''); setModoEdicaoMapa(true); }} style={{ background: 'transparent', color: '#0088ff', border: '1px solid #0088ff', padding: '7px 18px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85em' }}>⚙️ EDITAR CENÁRIO</button>
                     </div>
                     <span style={{ color: '#ffcc00', fontWeight: 'bold', fontSize: '1.1em', letterSpacing: '1px', textTransform: 'uppercase' }}>{localAtual.reino} : {localAtual.mapaId}</span>
                 </div>
-                
                 <div className="fade-in" style={{ flex: 1, position: 'relative', backgroundColor: '#050508', backgroundImage: backgroundUrl ? `url("${backgroundUrl}")` : 'none', backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat', border: '1px solid #333', borderTop: 'none', borderRadius: '0 0 10px 10px', overflow: 'hidden' }}>
                     {!backgroundUrl && (
                         <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center', color: '#444', border: '2px dashed #333', padding: '50px', borderRadius: '20px', pointerEvents: 'none' }}>
-                            <h3 style={{ margin: '0 0 10px 0', color: '#666', textTransform: 'uppercase' }}>Campo de Batalha Vazio</h3>
-                            <p style={{ margin: 0 }}>Clica em <b>"⚙️ EDITAR CENÁRIO"</b> para adicionar uma imagem de fundo.</p>
+                            <h3 style={{ margin: '0 0 10px 0', color: '#666', textTransform: 'uppercase' }}>Campo de Batalha Vazio</h3><p style={{ margin: 0 }}>Clica em <b>"⚙️ EDITAR CENÁRIO"</b> para adicionar uma imagem de fundo.</p>
                         </div>
                     )}
-                    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 5 }}>
-                        {children}
-                    </div>
-
+                    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 5 }}>{children}</div>
                     {modoEdicaoMapa && (
                         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 25, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(4px)' }}>
                             <div style={{ background: '#111', border: '2px solid #0088ff', borderRadius: '20px', padding: '30px', width: '420px', textAlign: 'center', boxShadow: '0 0 35px #0088ff', position: 'relative' }}>
@@ -394,6 +342,5 @@ export default function MapaMundi({ children }) {
             </div>
         );
     }
-
     return null;
 }
