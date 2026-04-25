@@ -715,7 +715,7 @@ export function PoderesLista() {
                                                 <div>
                                                     <div style={{ color: overchargeAtivo ? '#ff003c' : '#fff', fontWeight: 'bold', textShadow: overchargeAtivo ? '0 0 5px #ff003c' : 'none' }}>🔥 MODO OVERCHARGE (Queimar Motor)</div>
                                                     <div style={{ color: '#aaa', fontSize: '0.8em' }}>
-                                                        Dobra a energia extraída (<strong style={{color: '#0f0'}}>+{energiaOver}</strong> Dano Bruto) para aplicar o seu <strong>Multiplicador Potencial (x{mPotencial})</strong> ao Dano Total Estimado! <br/>
+                                                        Dobra a energia extraída (<strong style={{color: '#0f0'}}>+{energiaOver}</strong> Dano Bruto) para aplicar o seu <strong>Multiplicador Potencial (x{mPotencial})</strong> al Dano Total Estimado! <br/>
                                                         ⚠️ Mas você <strong>pagará {percBase * 2}%</strong> da sua Mana, Aura e Chakra atuais como custo!
                                                     </div>
                                                 </div>
@@ -790,6 +790,7 @@ export function PoderesAreaCentral() {
 
     return (
         <>
+            <PoderesImportadorIA />
             <PoderesFormEditor />
             <PoderesLista />
             <PoderesAuditoria />
