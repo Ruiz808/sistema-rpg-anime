@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+// 🔥 AS IMAGENS IMPORTADAS COMO CÓDIGO 🔥
 import mapaClean from '../../assets/runeterra-clean.jpg';
 import mapaGabarito from '../../assets/runeterra-gabarito.png';
 
@@ -27,18 +28,18 @@ export default function MapaMundi({ children }) {
     const highlightCanvasRef = useRef(null);  
     const imgIdMapRef = useRef(null);
 
-    // 🔥 PINGS REPOSICIONADOS E HOLOFOTES CIRÚRGICOS 🔥
+    // 🔥 PINGS COM RAIO GIGANTE DE NOVO (O limite agora é geográfico) 🔥
     const posicoesPings = [
-        { nome: 'Freljord', top: '15%', left: '28%', cor: '#00b5e2', filtroCor: [50, 200, 255], maskRadius: 0.22 },
-        { nome: 'Demacia', top: '40%', left: '21%', cor: '#d3c29e', filtroCor: [50, 50, 200], maskRadius: 0.18 },
-        { nome: 'Noxus', top: '28%', left: '48%', cor: '#c62828', filtroCor: [255, 50, 50], maskTop: '28%', maskLeft: '48%', maskRadius: 0.20 }, // Raio reduzido para não bater em Shurima!
-        { nome: 'Piltover e Zaun', top: '54%', left: '51%', cor: '#d4a017', filtroCor: [255, 200, 50], maskRadius: 0.10 },
-        { nome: 'Shurima', top: '75%', left: '43%', cor: '#c59b0d', filtroCor: [255, 100, 50], maskTop: '72%', maskLeft: '43%', maskRadius: 0.25 },
-        { nome: 'Targon', top: '78%', left: '26%', cor: '#5e35b1', filtroCor: [150, 50, 255], maskRadius: 0.15 },
-        { nome: 'Águas de Sentina', top: '57%', left: '72%', cor: '#d84315', filtroCor: [50, 50, 255], maskRadius: 0.10 },
-        { nome: 'Ilha das Sombras', top: '88%', left: '86%', cor: '#00838f', filtroCor: [50, 255, 150], maskRadius: 0.12 }, // Ping lá na ilha!
-        { nome: 'Ionia', top: '30%', left: '82%', cor: '#43a047', filtroCor: [50, 255, 200], maskRadius: 0.18 }, // Ping no centro do arquipélago
-        { nome: 'Ixtal', top: '67%', left: '63%', cor: '#2e7d32', filtroCor: [50, 255, 50], maskRadius: 0.15 }
+        { nome: 'Freljord', top: '15%', left: '28%', cor: '#00b5e2', filtroCor: [50, 200, 255], maskRadius: 0.35 },
+        { nome: 'Demacia', top: '40%', left: '21%', cor: '#d3c29e', filtroCor: [50, 50, 200], maskRadius: 0.25 },
+        { nome: 'Noxus', top: '28%', left: '48%', cor: '#c62828', filtroCor: [255, 50, 50], maskRadius: 0.40 }, // Raio Gigante de novo!
+        { nome: 'Piltover e Zaun', top: '54%', left: '51%', cor: '#d4a017', filtroCor: [255, 200, 50], maskRadius: 0.15 },
+        { nome: 'Shurima', top: '75%', left: '43%', cor: '#c59b0d', filtroCor: [255, 100, 50], maskTop: '72%', maskRadius: 0.40 },
+        { nome: 'Targon', top: '78%', left: '26%', cor: '#5e35b1', filtroCor: [150, 50, 255], maskRadius: 0.20 },
+        { nome: 'Águas de Sentina', top: '57%', left: '72%', cor: '#d84315', filtroCor: [50, 50, 255], maskRadius: 0.15 },
+        { nome: 'Ilha das Sombras', top: '88%', left: '86%', cor: '#00838f', filtroCor: [50, 255, 150], maskRadius: 0.15 }, 
+        { nome: 'Ionia', top: '30%', left: '82%', cor: '#43a047', filtroCor: [50, 255, 200], maskRadius: 0.25 }, 
+        { nome: 'Ixtal', top: '67%', left: '63%', cor: '#2e7d32', filtroCor: [50, 255, 50], maskRadius: 0.20 }
     ];
 
     const handleDragStart = (e) => {
@@ -96,7 +97,6 @@ export default function MapaMundi({ children }) {
         }
     };
 
-    // 🔥 FERRAMENTA DE ADMIN PARA AJUSTE FINO (SHIFT + CLIQUE) 🔥
     const handleMapClickAdmin = (e) => {
         if (e.shiftKey) {
             const rect = e.currentTarget.getBoundingClientRect();
@@ -125,7 +125,7 @@ export default function MapaMundi({ children }) {
         }
     }, [nivelVisao]);
 
-    // 🔥 HOLOFOTE COM FILTRO RÍGIDO 🔥
+    // 🔥 HOLOFOTE COM BARREIRA GEOGRÁFICA 🔥
     useEffect(() => {
         const iCanvas = canvasRef.current;
         const hCanvas = highlightCanvasRef.current;
@@ -151,37 +151,55 @@ export default function MapaMundi({ children }) {
 
         const targetColor = reinoObj.filtroCor || [255, 255, 255];
 
-        // Varredura para apagar cores erradas
         for (let i = 0; i < data.length; i += 4) {
             const r = data[i]; const g = data[i+1]; const b = data[i+2];
+            
+            // Acha a linha X e Y real do pixel na imagem
+            const pixelIndex = i / 4;
+            const py = Math.floor(pixelIndex / iCanvas.width);
+            const px = pixelIndex % iCanvas.width;
+            
+            // Converte a posição Y para porcentagem (0 a 100 no mapa)
+            const percentY = (py / iCanvas.height) * 100;
+            const percentX = (px / iCanvas.width) * 100;
 
+            // 🛑 A MÁGICA: AS FRONTEIRAS PROIBIDAS 🛑
+            // Noxus não pode descer do meio do mapa (50%)
+            if (reinoHover === 'Noxus' && percentY > 49) { data[i+3] = 0; continue; }
+            // Shurima não pode subir do meio do mapa (49%)
+            if (reinoHover === 'Shurima' && percentY < 49) { data[i+3] = 0; continue; }
+            // Freljord não pode descer muito
+            if (reinoHover === 'Freljord' && percentY > 32) { data[i+3] = 0; continue; }
+
+            // Pula o oceano vazio
             if (r < 30 && g < 30 && b < 30) {
                 data[i+3] = 0;
                 continue;
             }
 
-            // Reduzi a tolerância de 150 para 110! Mais estrito!
+            // Distância de cor suavizada para pegar mais o brilho neon inteiro
             const dist = Math.sqrt(Math.pow(r - targetColor[0], 2) + Math.pow(g - targetColor[1], 2) + Math.pow(b - targetColor[2], 2));
-            if (dist > 110) { 
+            if (dist > 140) { 
                 data[i+3] = 0; 
             }
         }
 
         hCtx.putImageData(imgData, 0, 0);
 
+        // Holofote Gigante!
         hCtx.globalCompositeOperation = 'destination-in';
-        const px = (parseFloat(reinoObj.maskLeft || reinoObj.left) / 100) * hCanvas.width;
-        const py = (parseFloat(reinoObj.maskTop || reinoObj.top) / 100) * hCanvas.height;
-        const radius = hCanvas.width * (reinoObj.maskRadius || 0.20); 
+        const projX = (parseFloat(reinoObj.maskLeft || reinoObj.left) / 100) * hCanvas.width;
+        const projY = (parseFloat(reinoObj.maskTop || reinoObj.top) / 100) * hCanvas.height;
+        const radius = hCanvas.width * (reinoObj.maskRadius || 0.25); 
 
-        const gradient = hCtx.createRadialGradient(px, py, radius * 0.1, px, py, radius);
+        const gradient = hCtx.createRadialGradient(projX, projY, radius * 0.1, projX, projY, radius);
         gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');     
         gradient.addColorStop(0.7, 'rgba(255, 255, 255, 0.8)'); 
         gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');     
 
         hCtx.fillStyle = gradient;
         hCtx.beginPath();
-        hCtx.arc(px, py, radius, 0, Math.PI * 2);
+        hCtx.arc(projX, projY, radius, 0, Math.PI * 2);
         hCtx.fill();
         
         hCtx.globalCompositeOperation = 'source-over'; 
