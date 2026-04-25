@@ -1,8 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react';
-// 🔥 IMPORTAÇÃO BLINDADA: Traz as imagens diretamente para o código 🔥
-// Se der erro de caminho, ajuste os "../" de acordo com a localização deste ficheiro!
-import mapaClean from '../../public/runeterra-clean.jpg';
-import mapaGabarito from '../../public/runeterra-gabarito.png';
 
 export default function MapaMundi({ children }) {
     const [nivelVisao, setNivelVisao] = useState('globo'); 
@@ -31,7 +27,6 @@ export default function MapaMundi({ children }) {
     const imgIdMapRef = useRef(null);
 
     // --- DICIONÁRIO DE CORES DO SEU MAPA GABARITO ---
-    // Coloque aqui a cor exata em RGB que você usou para pintar cada área no Paint!
     const dicionarioCores = {
         'rgb(255,0,0)': 'Noxus',      
         'rgb(0,255,0)': 'Ixtal',      
@@ -135,7 +130,6 @@ export default function MapaMundi({ children }) {
         setReinoHover(reinoEncontrado);
     };
 
-    // Transfere o mapa de gabarito (cores sólidas) para o Canvas invisível
     useEffect(() => {
         if (nivelVisao === 'continente' && imgIdMapRef.current) {
             const img = imgIdMapRef.current;
@@ -228,17 +222,17 @@ export default function MapaMundi({ children }) {
                         onClick={() => reinoHover && abrirMenuReino(reinoHover)}
                     >
                         
-                        {/* 1. O MAPA BASE (USANDO AS VARIÁVEIS DO IMPORT) */}
+                        {/* 1. O MAPA BASE ORIGINAL */}
                         <img 
-                            src={mapaClean} 
+                            src="/runeterra-clean.jpg" 
                             alt="Mapa de Runeterra" 
                             style={{ display: 'block', maxWidth: '100%', maxHeight: 'calc(65vh - 60px)', width: 'auto', height: 'auto', objectFit: 'contain' }} 
                         />
                         
-                        {/* 2. A IMAGEM FEIA DE GABARITO (USANDO AS VARIÁVEIS DO IMPORT) */}
+                        {/* 2. A IMAGEM DE GABARITO ORIGINAL */}
                         <img 
                             ref={imgIdMapRef}
-                            src={mapaGabarito} 
+                            src="/runeterra-gabarito.png" 
                             style={{ display: 'none' }} 
                             alt="Mapa ID"
                         />
