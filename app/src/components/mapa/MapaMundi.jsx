@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 // 🔥 AS IMAGENS IMPORTADAS COMO CÓDIGO 🔥
 import mapaClean from '../../assets/runeterra-clean.jpg';
 import mapaGabarito from '../../assets/runeterra-gabarito.png';
@@ -15,8 +15,6 @@ export default function MapaMundi({ children }) {
 
     const [mapasImagens, setMapasImagens] = useState({});
     const [reinoSelecionado, setReinoSelecionado] = useState(null);
-    
-    // Agora só os botões vão mexer nesse estado!
     const [reinoHover, setReinoHover] = useState(null); 
     
     const [modoEdicaoMapa, setModoEdicaoMapa] = useState(false);
@@ -26,17 +24,21 @@ export default function MapaMundi({ children }) {
     const [isDragging, setIsDragging] = useState(false);
     const dragStart = useRef({ x: 0, y: 0 });
 
-    // Pings Sincronizados com a sua arte!
+    const canvasRef = useRef(null);           // Guarda a imagem da máscara
+    const highlightCanvasRef = useRef(null);  // Projeta o "Holofote"
+    const imgIdMapRef = useRef(null);
+
+    // 🔥 PINGS AJUSTADOS COM AS NOVAS POSIÇÕES 🔥
     const posicoesPings = [
         { nome: 'Freljord', top: '16%', left: '27%', cor: '#00b5e2' },
         { nome: 'Demacia', top: '40%', left: '21%', cor: '#d3c29e' },
-        { nome: 'Noxus', top: '31%', left: '49%', cor: '#c62828' },
+        { nome: 'Noxus', top: '26%', left: '52%', cor: '#c62828' }, // Ajustado
         { nome: 'Piltover e Zaun', top: '54%', left: '51%', cor: '#d4a017' },
         { nome: 'Shurima', top: '72%', left: '43%', cor: '#c59b0d' },
-        { nome: 'Targon', top: '74%', left: '23%', cor: '#5e35b1' },
+        { nome: 'Targon', top: '78%', left: '22%', cor: '#5e35b1' }, // Ajustado
         { nome: 'Águas de Sentina', top: '57%', left: '72%', cor: '#d84315' },
-        { nome: 'Ilha das Sombras', top: '83%', left: '77%', cor: '#00838f' },
-        { nome: 'Ionia', top: '41%', left: '86%', cor: '#43a047' },
+        { nome: 'Ilha das Sombras', top: '88%', left: '73%', cor: '#00838f' }, // Ajustado
+        { nome: 'Ionia', top: '38%', left: '83%', cor: '#43a047' }, // Ajustado
         { nome: 'Ixtal', top: '67%', left: '63%', cor: '#2e7d32' }
     ];
 
@@ -66,7 +68,7 @@ export default function MapaMundi({ children }) {
     const handleDragEnd = () => setIsDragging(false);
 
     const criarNovoMapa = () => {
-        const nome = prompt("Digite o nome do novo mapa para " + reinoSelecionado + ":");
+        const nome = prompt("Escreve o nome do novo mapa para " + reinoSelecionado + ":");
         if (nome && nome.trim() !== "") {
             setMapasSalvos(prev => ({
                 ...prev, [reinoSelecionado]: [...(prev[reinoSelecionado] || []), nome]
@@ -95,8 +97,74 @@ export default function MapaMundi({ children }) {
         }
     };
 
+    // --- CARREGA O MAPA NÉON PARA MEMÓRIA ---
+    useEffect(() => {
+        const img = imgIdMapRef.current;
+        const canvas = canvasRef.current;
+        if (!img || !canvas) return;
+
+        const desenhar = () => {
+            if (img.naturalWidth === 0) return;
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+        };
+
+        if (nivelVisao === 'continente') {
+            if (img.complete) desenhar();
+            else img.onload = desenhar;
+        }
+    }, [nivelVisao]);
+
+    // 🔥 O EFEITO DE HOLOFOTE HOLOGRÁFICO 🔥
+    useEffect(() => {
+        const iCanvas = canvasRef.current;
+        const hCanvas = highlightCanvasRef.current;
+        if (!iCanvas || !hCanvas) return;
+        
+        const hCtx = hCanvas.getContext('2d');
+        
+        // Limpa a frame anterior (apaga o mapa quando tiras o rato)
+        hCtx.clearRect(0, 0, hCanvas.width, hCanvas.height);
+        
+        if (!reinoHover) return;
+
+        // Iguala o tamanho da máscara ao tamanho real da imagem HD
+        hCanvas.width = iCanvas.width;
+        hCanvas.height = iCanvas.height;
+
+        const reinoObj = posicoesPings.find(p => p.nome === reinoHover);
+        if (!reinoObj) return;
+
+        // Converte a percentagem do botão para píxeis exatos na imagem
+        const px = (parseFloat(reinoObj.left) / 100) * hCanvas.width;
+        const py = (parseFloat(reinoObj.top) / 100) * hCanvas.height;
+
+        // 1. Desenha a máscara inteira no canvas visível
+        hCtx.globalCompositeOperation = 'source-over';
+        hCtx.drawImage(iCanvas, 0, 0);
+
+        // 2. Aplica o recorte (destination-in) com um gradiente radial (o Holofote)
+        hCtx.globalCompositeOperation = 'destination-in';
+        
+        // O tamanho do holofote é 20% da largura do mapa (ilumina a área em volta do ping)
+        const radius = hCanvas.width * 0.20; 
+        const gradient = hCtx.createRadialGradient(px, py, radius * 0.1, px, py, radius);
+        
+        gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');   // Centro forte
+        gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.8)'); // Meio suave
+        gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');   // Borda invisível
+
+        hCtx.fillStyle = gradient;
+        hCtx.beginPath();
+        hCtx.arc(px, py, radius, 0, Math.PI * 2);
+        hCtx.fill();
+        
+    }, [reinoHover]);
+
     // ==========================================
-    // 🌍 CAMADA 1: O GLOBO ORBITAL (RESTAURADO!)
+    // 🌍 CAMADA 1: O GLOBO ORBITAL
     // ==========================================
     if (nivelVisao === 'globo') {
         return (
@@ -112,10 +180,8 @@ export default function MapaMundi({ children }) {
                 </div>
 
                 <div style={{ position: 'relative', width: '350px', height: '350px', perspective: '1000px' }}>
-                    {/* Fundo escuro do Globo */}
                     <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', backgroundColor: '#000814', border: '2px solid #0088ff', pointerEvents: 'none', boxShadow: '0 0 50px rgba(0, 136, 255, 0.2)' }}></div>
 
-                    {/* Globo que Gira */}
                     <div 
                         onMouseDown={handleDragStart} onTouchStart={handleDragStart}
                         style={{
@@ -124,12 +190,10 @@ export default function MapaMundi({ children }) {
                             cursor: isDragging ? 'grabbing' : 'grab', transition: isDragging ? 'none' : 'transform 0.5s ease-out'
                         }}
                     >
-                        {/* Linhas esféricas */}
                         <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(0,255,204,0.15)', transform: 'rotateX(90deg)' }}></div>
                         <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(0,255,204,0.15)', transform: 'rotateY(90deg)' }}></div>
                         <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(0,255,204,0.15)', transform: 'rotateZ(45deg) rotateX(90deg)' }}></div>
 
-                        {/* DESENHOS DOS CONTINENTES RESTAURADOS */}
                         <div style={{ position: 'absolute', inset: 0, transform: 'translateZ(160px)', backfaceVisibility: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
                             <svg viewBox="0 0 200 200" style={{ position: 'absolute', width: '140px', height: '140px', filter: 'drop-shadow(0 0 3px rgba(0,255,204,0.8))' }}>
                                 <path d="M 12 55 L 18 45 L 30 38 L 42 35 L 55 30 L 70 28 L 85 25 L 100 28 L 115 32 L 125 30 L 135 38 L 142 42 L 140 52 L 132 58 L 122 56 L 115 65 L 105 72 L 95 68 L 82 72 L 68 80 L 52 75 L 40 82 L 25 72 L 15 75 Z" fill="rgba(0,255,204,0.08)" stroke="#00ffcc" strokeWidth="1" strokeLinejoin="round" />
@@ -145,7 +209,6 @@ export default function MapaMundi({ children }) {
                         </div>
                     </div>
 
-                    {/* Sombra Esférica para dar volume (estava faltando!) */}
                     <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', boxShadow: 'inset -50px -50px 100px rgba(0,0,0,0.9), inset 20px 20px 50px rgba(0,136,255,0.1)', pointerEvents: 'none', zIndex: 20 }}></div>
                 </div>
             </div>
@@ -168,7 +231,6 @@ export default function MapaMundi({ children }) {
                 </div>
 
                 <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', position: 'relative', width: '100%' }}>
-                    {/* Sem onMouseMove aqui para não bugar os Pings! */}
                     <div style={{ position: 'relative', display: 'inline-block', height: '100%', maxHeight: 'calc(65vh - 70px)' }}>
                         
                         {/* MAPA BASE LIMPO */}
@@ -178,20 +240,18 @@ export default function MapaMundi({ children }) {
                             style={{ display: 'block', height: '100%', width: 'auto', objectFit: 'contain' }} 
                         />
                         
-                        {/* 🔥 MÁSCARA HOLOGRÁFICA (AGORA FUNCIONA LIVREMENTE!) 🔥 */}
-                        <img 
-                            src={mapaGabarito} 
+                        {/* IMAGEM INVISÍVEL APENAS PARA CARREGAR PARA O CANVAS */}
+                        <img ref={imgIdMapRef} src={mapaGabarito} style={{ display: 'none' }} alt="Gabarito Memória" />
+                        <canvas ref={canvasRef} style={{ display: 'none' }} />
+
+                        {/* 🔥 O HOLOFOTE (CANVAS VISÍVEL) 🔥 */}
+                        <canvas 
+                            ref={highlightCanvasRef} 
                             style={{ 
-                                position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
-                                objectFit: 'contain', // Mantém perfeitamente alinhado com o mapa original
-                                display: 'block', 
-                                opacity: reinoHover ? 1 : 0,  // Liga a máscara APENAS se o botão estiver em hover
-                                transition: 'opacity 0.4s ease-in-out', 
-                                zIndex: 2, 
-                                mixBlendMode: 'screen', 
-                                pointerEvents: 'none' 
+                                position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', 
+                                pointerEvents: 'none', zIndex: 2, mixBlendMode: 'screen',
+                                opacity: reinoHover ? 1 : 0, transition: 'opacity 0.3s ease-out'
                             }} 
-                            alt="Visão Tática" 
                         />
 
                         <style dangerouslySetInnerHTML={{__html: `
@@ -204,14 +264,14 @@ export default function MapaMundi({ children }) {
                             .ping-wrapper.active .ping-legenda { border-color: #fff; background: #fff; color: #000; }
                         `}} />
 
-                        {/* OS PINGS QUE COMANDAM TUDO */}
+                        {/* PINGS INTERATIVOS */}
                         {posicoesPings.map((reino) => (
                             <div 
                                 key={reino.nome}
                                 className={`ping-wrapper ${reinoHover === reino.nome ? 'active' : ''}`}
                                 style={{ top: reino.top, left: reino.left, pointerEvents: 'auto', cursor: 'pointer' }}
-                                onMouseEnter={() => setReinoHover(reino.nome)} // <-- Mágica acontece aqui
-                                onMouseLeave={() => setReinoHover(null)}       // <-- Mágica desliga aqui
+                                onMouseEnter={() => setReinoHover(reino.nome)}
+                                onMouseLeave={() => setReinoHover(null)}
                                 onClick={(e) => { e.stopPropagation(); abrirMenuReino(reino.nome); }}
                             >
                                 <div className="ping-anel-externo" style={{ borderColor: reino.cor }}>
@@ -223,7 +283,7 @@ export default function MapaMundi({ children }) {
                     </div>
                 </div>
 
-                {/* MODAL DE SELEÇÃO DE MAPAS */}
+                {/* MODAL DE SELEÇÃO */}
                 {reinoSelecionado && (
                     <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 30, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(6px)' }}>
                         <div style={{ background: '#111', border: '2px solid #0088ff', borderRadius: '20px', padding: '30px', width: '380px', textAlign: 'center', position: 'relative', boxShadow: '0 0 40px #0088ff' }}>
