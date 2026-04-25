@@ -28,17 +28,18 @@ export default function MapaMundi({ children }) {
     const highlightCanvasRef = useRef(null);  
     const imgIdMapRef = useRef(null);
 
-    // 🔥 PINGS COM GEOMETRIA: 'cutouts' diz ao sistema quais áreas da tela APAGAR quando este reino brilhar 🔥
+    // 🔥 PINGS COM LIMITES SUAVES (FADE OUT GEOGRÁFICO) 🔥
+    // O 'limits' faz a cor sumir suavemente como uma sombra antes de invadir o vizinho!
     const posicoesPings = [
-        { nome: 'Freljord', top: '15%', left: '28%', cor: '#00b5e2', maskRadius: 0.35, cutouts: [{x:0, y:30, w:100, h:70}] },
-        { nome: 'Demacia', top: '40%', left: '21%', cor: '#d3c29e', maskRadius: 0.25, cutouts: [{x:0, y:0, w:100, h:30}, {x:35, y:0, w:65, h:100}] },
-        { nome: 'Noxus', top: '28%', left: '48%', cor: '#c62828', maskRadius: 0.40, cutouts: [{x:0, y:48, w:100, h:52}, {x:0, y:25, w:33, h:75}] }, 
-        { nome: 'Piltover e Zaun', top: '54%', left: '51%', cor: '#d4a017', maskRadius: 0.10, cutouts: [{x:0, y:58, w:100, h:42}, {x:0, y:0, w:100, h:49}] },
-        { nome: 'Shurima', top: '75%', left: '43%', cor: '#c59b0d', maskTop: '72%', maskRadius: 0.40, cutouts: [{x:0, y:0, w:100, h:52}, {x:56, y:0, w:44, h:100}] },
-        { nome: 'Targon', top: '78%', left: '26%', cor: '#5e35b1', maskRadius: 0.20, cutouts: [{x:35, y:0, w:65, h:100}, {x:0, y:0, w:100, h:65}] },
-        { nome: 'Ixtal', top: '67%', left: '63%', cor: '#2e7d32', maskRadius: 0.20, cutouts: [{x:0, y:0, w:56, h:100}] },
-        { nome: 'Águas de Sentina', top: '57%', left: '72%', cor: '#d84315', maskRadius: 0.15 }, // Ilhas isoladas não precisam de cortes
-        { nome: 'Ilha das Sombras', top: '88%', left: '86%', cor: '#00838f', maskRadius: 0.15 }, 
+        { nome: 'Freljord', top: '15%', left: '28%', cor: '#00b5e2', maskRadius: 0.35, limits: { bottom: 31, bottomFade: 4 } },
+        { nome: 'Demacia', top: '40%', left: '21%', cor: '#d3c29e', maskRadius: 0.25, limits: { top: 32, topFade: 3, right: 33, rightFade: 3 } },
+        { nome: 'Noxus', top: '28%', left: '48%', cor: '#c62828', maskRadius: 0.45, limits: { bottom: 48, bottomFade: 4, left: 34, leftFade: 4 } }, 
+        { nome: 'Piltover e Zaun', top: '54%', left: '51%', cor: '#d4a017', maskRadius: 0.12 }, // Raio pequeno, não precisa de limite
+        { nome: 'Shurima', top: '75%', left: '43%', cor: '#c59b0d', maskTop: '72%', maskRadius: 0.40, limits: { top: 58, topFade: 4, right: 60, rightFade: 4 } },
+        { nome: 'Targon', top: '78%', left: '26%', cor: '#5e35b1', maskRadius: 0.20, limits: { top: 60, topFade: 4, right: 35, rightFade: 4 } },
+        { nome: 'Ixtal', top: '67%', left: '63%', cor: '#2e7d32', maskRadius: 0.20, limits: { top: 56, topFade: 4, left: 56, leftFade: 4 } },
+        { nome: 'Águas de Sentina', top: '57%', left: '72%', cor: '#d84315', maskRadius: 0.15 }, 
+        { nome: 'Ilha das Sombras', top: '85%', left: '88%', cor: '#00838f', maskRadius: 0.15 }, // Movidinho para a ilha!
         { nome: 'Ionia', top: '30%', left: '82%', cor: '#43a047', maskRadius: 0.25 }
     ];
 
@@ -97,6 +98,7 @@ export default function MapaMundi({ children }) {
         }
     };
 
+    // Ferramenta de Admin para pegar as coordenadas perfeitas
     const handleMapClickAdmin = (e) => {
         if (e.shiftKey) {
             const rect = e.currentTarget.getBoundingClientRect();
@@ -106,6 +108,7 @@ export default function MapaMundi({ children }) {
         }
     };
 
+    // Carrega o Gabarito na memória
     useEffect(() => {
         const img = imgIdMapRef.current;
         const canvas = canvasRef.current;
@@ -125,7 +128,7 @@ export default function MapaMundi({ children }) {
         }
     }, [nivelVisao]);
 
-    // 🔥 HOLOFOTE COM RECORTES GEOMÉTRICOS (QUALIDADE 100%) 🔥
+    // 🔥 HOLOFOTE COM FADE ORGÂNICO (ZERO QUADRADOS, CORES VIVAS) 🔥
     useEffect(() => {
         const iCanvas = canvasRef.current;
         const hCanvas = highlightCanvasRef.current;
@@ -145,11 +148,53 @@ export default function MapaMundi({ children }) {
         const reinoObj = posicoesPings.find(p => p.nome === reinoHover);
         if (!reinoObj) return;
 
-        // 1. Pinta a imagem original e perfeita na tela
-        hCtx.globalCompositeOperation = 'source-over';
-        hCtx.drawImage(iCanvas, 0, 0);
+        const iCtx = iCanvas.getContext('2d', { willReadFrequently: true });
+        const imgData = iCtx.getImageData(0, 0, iCanvas.width, iCanvas.height);
+        const data = imgData.data;
 
-        // 2. Aplica a máscara do Holofote
+        // Varredura para criar o fade-out invisível nas bordas geográficas
+        for (let i = 0; i < data.length; i += 4) {
+            const px = (i / 4) % iCanvas.width;
+            const py = Math.floor((i / 4) / iCanvas.width);
+            const percentX = (px / iCanvas.width) * 100;
+            const percentY = (py / iCanvas.height) * 100;
+
+            let multiplicador = 1;
+
+            // Aplica os limites esfumaçados
+            if (reinoObj.limits) {
+                const lim = reinoObj.limits;
+                if (lim.bottom && percentY > lim.bottom) {
+                    multiplicador *= Math.max(0, 1 - ((percentY - lim.bottom) / lim.bottomFade));
+                }
+                if (lim.top && percentY < lim.top) {
+                    multiplicador *= Math.max(0, 1 - ((lim.top - percentY) / lim.topFade));
+                }
+                if (lim.left && percentX < lim.left) {
+                    multiplicador *= Math.max(0, 1 - ((lim.left - percentX) / lim.leftFade));
+                }
+                if (lim.right && percentX > lim.right) {
+                    multiplicador *= Math.max(0, 1 - ((percentX - lim.right) / lim.rightFade));
+                }
+            }
+
+            // Tratamento de cor pura: Transforma cinza escuro em preto absoluto
+            // Isso impede que o 'mix-blend-mode: screen' clareie o mapa onde não deve!
+            let r = data[i], g = data[i+1], b = data[i+2];
+            let luminosidade = (r * 0.299 + g * 0.587 + b * 0.114);
+            if (luminosidade < 40) {
+                data[i] = 0; data[i+1] = 0; data[i+2] = 0;
+            }
+
+            // Aplica o fade de transparência no alpha
+            if (multiplicador < 1) {
+                data[i+3] = data[i+3] * multiplicador;
+            }
+        }
+
+        hCtx.putImageData(imgData, 0, 0);
+
+        // Aplica o Holofote Redondo Principal
         hCtx.globalCompositeOperation = 'destination-in';
         const projX = (parseFloat(reinoObj.maskLeft || reinoObj.left) / 100) * hCanvas.width;
         const projY = (parseFloat(reinoObj.maskTop || reinoObj.top) / 100) * hCanvas.height;
@@ -164,22 +209,13 @@ export default function MapaMundi({ children }) {
         hCtx.beginPath();
         hCtx.arc(projX, projY, radius, 0, Math.PI * 2);
         hCtx.fill();
-
-        // 3. Aplica as "Fronteiras Geométricas" para apagar os reinos vizinhos!
-        hCtx.globalCompositeOperation = 'destination-out';
-        if (reinoObj.cutouts) {
-            reinoObj.cutouts.forEach(cut => {
-                const cx = (cut.x / 100) * hCanvas.width;
-                const cy = (cut.y / 100) * hCanvas.height;
-                const cw = (cut.w / 100) * hCanvas.width;
-                const ch = (cut.h / 100) * hCanvas.height;
-                hCtx.fillRect(cx, cy, cw, ch);
-            });
-        }
         
         hCtx.globalCompositeOperation = 'source-over'; 
     }, [reinoHover]);
 
+    // ==========================================
+    // 🌍 CAMADA 1: O GLOBO ORBITAL (COMPLETO)
+    // ==========================================
     if (nivelVisao === 'globo') {
         return (
             <div 
@@ -225,6 +261,9 @@ export default function MapaMundi({ children }) {
         );
     }
 
+    // ==========================================
+    // 🗺️ CAMADA 2: O CONTINENTE
+    // ==========================================
     if (nivelVisao === 'continente') {
         return (
             <div className="fade-in" style={{ width: '100%', height: '65vh', background: '#050508', borderRadius: '10px', border: '1px solid #0088ff', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
@@ -243,6 +282,7 @@ export default function MapaMundi({ children }) {
                         <img ref={imgIdMapRef} src={mapaGabarito} style={{ display: 'none' }} alt="Gabarito" />
                         <canvas ref={canvasRef} style={{ display: 'none' }} />
 
+                        {/* O CANVAS HOLOGRÁFICO */}
                         <canvas 
                             ref={highlightCanvasRef} 
                             style={{ 
@@ -302,6 +342,9 @@ export default function MapaMundi({ children }) {
         );
     }
 
+    // ==========================================
+    // ⚔️ CAMADA 3: MAPA TÁTICO
+    // ==========================================
     if (nivelVisao === 'reino') {
         const backgroundUrl = mapasImagens[localAtual.mapaId];
         return (
