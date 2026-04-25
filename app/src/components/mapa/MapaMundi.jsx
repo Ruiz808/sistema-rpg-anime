@@ -28,18 +28,18 @@ export default function MapaMundi({ children }) {
     const highlightCanvasRef = useRef(null);  // Projeta o "Holofote"
     const imgIdMapRef = useRef(null);
 
-    // 🔥 PINGS AJUSTADOS COM AS NOVAS POSIÇÕES 🔥
+    // 🔥 PINGS AJUSTADOS + HOLOFOTES INTELIGENTES (maskTop, maskLeft, maskRadius) 🔥
     const posicoesPings = [
-        { nome: 'Freljord', top: '16%', left: '27%', cor: '#00b5e2' },
-        { nome: 'Demacia', top: '40%', left: '21%', cor: '#d3c29e' },
-        { nome: 'Noxus', top: '26%', left: '52%', cor: '#c62828' }, // Ajustado
-        { nome: 'Piltover e Zaun', top: '54%', left: '51%', cor: '#d4a017' },
-        { nome: 'Shurima', top: '72%', left: '43%', cor: '#c59b0d' },
-        { nome: 'Targon', top: '78%', left: '22%', cor: '#5e35b1' }, // Ajustado
-        { nome: 'Águas de Sentina', top: '57%', left: '72%', cor: '#d84315' },
-        { nome: 'Ilha das Sombras', top: '88%', left: '73%', cor: '#00838f' }, // Ajustado
-        { nome: 'Ionia', top: '38%', left: '83%', cor: '#43a047' }, // Ajustado
-        { nome: 'Ixtal', top: '67%', left: '63%', cor: '#2e7d32' }
+        { nome: 'Freljord', top: '15%', left: '28%', cor: '#00b5e2', maskTop: '20%', maskLeft: '30%', maskRadius: 0.35 },
+        { nome: 'Demacia', top: '40%', left: '21%', cor: '#d3c29e', maskTop: '38%', maskLeft: '22%', maskRadius: 0.25 },
+        { nome: 'Noxus', top: '27%', left: '53%', cor: '#c62828', maskTop: '35%', maskLeft: '48%', maskRadius: 0.35 },
+        { nome: 'Piltover e Zaun', top: '54%', left: '55%', cor: '#d4a017', maskTop: '54%', maskLeft: '55%', maskRadius: 0.15 },
+        { nome: 'Shurima', top: '75%', left: '42%', cor: '#c59b0d', maskTop: '65%', maskLeft: '45%', maskRadius: 0.45 }, // Holofote gigante pra Shurima!
+        { nome: 'Targon', top: '71%', left: '21%', cor: '#5e35b1', maskTop: '75%', maskLeft: '25%', maskRadius: 0.20 },
+        { nome: 'Águas de Sentina', top: '56%', left: '71%', cor: '#d84315', maskTop: '56%', maskLeft: '71%', maskRadius: 0.15 },
+        { nome: 'Ilha das Sombras', top: '85%', left: '72%', cor: '#00838f', maskTop: '85%', maskLeft: '75%', maskRadius: 0.15 },
+        { nome: 'Ionia', top: '42%', left: '84%', cor: '#43a047', maskTop: '35%', maskLeft: '80%', maskRadius: 0.25 },
+        { nome: 'Ixtal', top: '71%', left: '65%', cor: '#2e7d32', maskTop: '65%', maskLeft: '65%', maskRadius: 0.20 }
     ];
 
     const handleDragStart = (e) => {
@@ -68,7 +68,7 @@ export default function MapaMundi({ children }) {
     const handleDragEnd = () => setIsDragging(false);
 
     const criarNovoMapa = () => {
-        const nome = prompt("Escreve o nome do novo mapa para " + reinoSelecionado + ":");
+        const nome = prompt("Escreva o nome do novo mapa para " + reinoSelecionado + ":");
         if (nome && nome.trim() !== "") {
             setMapasSalvos(prev => ({
                 ...prev, [reinoSelecionado]: [...(prev[reinoSelecionado] || []), nome]
@@ -97,7 +97,7 @@ export default function MapaMundi({ children }) {
         }
     };
 
-    // --- CARREGA O MAPA NÉON PARA MEMÓRIA ---
+    // --- CARREGA O MAPA NÉON PARA A MEMÓRIA ---
     useEffect(() => {
         const img = imgIdMapRef.current;
         const canvas = canvasRef.current;
@@ -125,36 +125,33 @@ export default function MapaMundi({ children }) {
         
         const hCtx = hCanvas.getContext('2d');
         
-        // Limpa a frame anterior (apaga o mapa quando tiras o rato)
+        // Limpa a tela (apaga o mapa quando você tira o mouse)
         hCtx.clearRect(0, 0, hCanvas.width, hCanvas.height);
         
         if (!reinoHover) return;
 
-        // Iguala o tamanho da máscara ao tamanho real da imagem HD
         hCanvas.width = iCanvas.width;
         hCanvas.height = iCanvas.height;
 
         const reinoObj = posicoesPings.find(p => p.nome === reinoHover);
         if (!reinoObj) return;
 
-        // Converte a percentagem do botão para píxeis exatos na imagem
-        const px = (parseFloat(reinoObj.left) / 100) * hCanvas.width;
-        const py = (parseFloat(reinoObj.top) / 100) * hCanvas.height;
+        // Usa as coordenadas exclusivas do holofote (maskTop, maskLeft)
+        const px = (parseFloat(reinoObj.maskLeft || reinoObj.left) / 100) * hCanvas.width;
+        const py = (parseFloat(reinoObj.maskTop || reinoObj.top) / 100) * hCanvas.height;
+        const radius = hCanvas.width * (reinoObj.maskRadius || 0.20); // Raio personalizado
 
         // 1. Desenha a máscara inteira no canvas visível
         hCtx.globalCompositeOperation = 'source-over';
         hCtx.drawImage(iCanvas, 0, 0);
 
-        // 2. Aplica o recorte (destination-in) com um gradiente radial (o Holofote)
+        // 2. Recorta tudo em volta, deixando apenas o holofote
         hCtx.globalCompositeOperation = 'destination-in';
         
-        // O tamanho do holofote é 20% da largura do mapa (ilumina a área em volta do ping)
-        const radius = hCanvas.width * 0.20; 
         const gradient = hCtx.createRadialGradient(px, py, radius * 0.1, px, py, radius);
-        
-        gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');   // Centro forte
-        gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.8)'); // Meio suave
-        gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');   // Borda invisível
+        gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');     // Centro muito forte
+        gradient.addColorStop(0.6, 'rgba(255, 255, 255, 0.8)'); // Borda suave
+        gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');     // Fica invisível no final
 
         hCtx.fillStyle = gradient;
         hCtx.beginPath();
