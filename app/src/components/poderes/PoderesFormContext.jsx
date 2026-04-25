@@ -494,7 +494,7 @@ export function PoderesFormProvider({ children }) {
         setOverchargeAtivo(false);
     }, [overchargeAtivo, updateFicha, danoBruto, energiaElemental, mPotencial]);
 
-    // 🔥 O MOTOR DE INJEÇÃO DO JSON DA IA (ADICIONADO AQUI) 🔥
+// 🔥 O MOTOR DE INJEÇÃO DO JSON DA IA (CORRIGIDO PARA A ABA ATUAL) 🔥
     const injetarJsonDaIA = useCallback((jsonString) => {
         try {
             const dados = JSON.parse(jsonString);
@@ -510,10 +510,10 @@ export function PoderesFormProvider({ children }) {
                             dadosQtd: p.danoQtd || 0,
                             dadosFaces: p.danoFaces || 0,
                             vertente: 'Físico',
-                            categoria: 'habilidade',
+                            categoria: abaAtual, // 🔥 AGORA VAI PARA A ABA QUE ESTIVER ABERTA 🔥
                             ativa: false,
                             isForma: false,
-                            notasIA: p.notasIA || '' // Guarda os efeitos complexos!
+                            notasIA: p.notasIA || '' 
                         });
                     });
                 }
@@ -555,8 +555,8 @@ export function PoderesFormProvider({ children }) {
             alert("Erro ao ler o código da IA. Confirme se copiou o JSON corretamente.");
             return false;
         }
-    }, [updateFicha]);
-
+    }, [updateFicha, abaAtual]); // 🔥 DEPENDÊNCIA ATUALIZADA AQUI 🔥
+    
     const value = useMemo(() => ({
         minhaFicha, meuNome, isMestre, abaAtual, setAbaAtual,
         nomePoder, setNomePoder, descricaoPoder, setDescricaoPoder,
