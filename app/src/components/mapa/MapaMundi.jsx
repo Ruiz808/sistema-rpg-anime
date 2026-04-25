@@ -142,27 +142,10 @@ const reinosRuneterra = [
             { nome: 'Freljord', top: '18%', left: '30%', cor: '#00b5e2', path: 'M 20 15 L 35 12 L 45 16 L 50 25 L 45 35 L 30 40 L 15 30 Z' },
             { nome: 'Demacia', top: '42%', left: '22%', cor: '#d3c29e', path: 'M 10 40 L 25 35 L 35 45 L 25 55 L 10 50 Z' },
             
-            // 🔥 NOXUS: Retraído e com os 8 losangos táticos perfeitos! 🔥
+            // 🔥 NOXUS: Retraído e com os 8 losangos táticos perfeitos (SEM COMENTÁRIOS DENTRO!) 🔥
             { 
                 nome: 'Noxus', top: '30%', left: '55%', cor: '#c62828', 
-                path: `
-                /* Continente Principal - Bem menor, contido e pontiagudo */
-                M 48 20 L 56 22 L 60 35 L 68 44 L 52 52 L 46 45 L 36 46 L 30 40 L 35 30 L 42 25 Z
-                
-                /* Esquadrões de Invasão em Ionia (Losangos Flutuantes) */
-                M 72 5 L 77 5 L 75 10 L 70 10 Z
-                M 82 10 L 88 10 L 85 16 L 79 16 Z
-                M 75 18 L 81 18 L 78 24 L 72 24 Z
-                M 85 22 L 92 22 L 89 28 L 82 28 Z
-                M 80 32 L 86 32 L 83 38 L 77 38 Z
-                
-                /* Invasão Águas de Sentina / Mar Central */
-                M 65 62 L 72 62 L 69 68 L 62 68 Z
-                
-                /* Colônias no Norte de Shurima */
-                M 22 68 L 28 68 L 25 74 L 19 74 Z
-                M 32 78 L 38 78 L 35 84 L 29 84 Z
-                `
+                path: 'M 48 20 L 56 22 L 60 35 L 68 44 L 52 52 L 46 45 L 36 46 L 30 40 L 35 30 L 42 25 Z M 72 5 L 77 5 L 75 10 L 70 10 Z M 82 10 L 88 10 L 85 16 L 79 16 Z M 75 18 L 81 18 L 78 24 L 72 24 Z M 85 22 L 92 22 L 89 28 L 82 28 Z M 80 32 L 86 32 L 83 38 L 77 38 Z M 65 62 L 72 62 L 69 68 L 62 68 Z M 22 68 L 28 68 L 25 74 L 19 74 Z M 32 78 L 38 78 L 35 84 L 29 84 Z'
             },
 
             { nome: 'Piltover e Zaun', top: '55%', left: '56%', cor: '#d4a017', path: 'M 50 48 L 60 45 L 62 55 L 50 52 Z' },
