@@ -28,18 +28,18 @@ export default function MapaMundi({ children }) {
     const highlightCanvasRef = useRef(null);  
     const imgIdMapRef = useRef(null);
 
-    // 🔥 PINGS COM RAIO GIGANTE DE NOVO (O limite agora é geográfico) 🔥
+    // 🔥 PINGS COM GEOMETRIA: 'cutouts' diz ao sistema quais áreas da tela APAGAR quando este reino brilhar 🔥
     const posicoesPings = [
-        { nome: 'Freljord', top: '15%', left: '28%', cor: '#00b5e2', filtroCor: [50, 200, 255], maskRadius: 0.35 },
-        { nome: 'Demacia', top: '40%', left: '21%', cor: '#d3c29e', filtroCor: [50, 50, 200], maskRadius: 0.25 },
-        { nome: 'Noxus', top: '28%', left: '48%', cor: '#c62828', filtroCor: [255, 50, 50], maskRadius: 0.40 }, // Raio Gigante de novo!
-        { nome: 'Piltover e Zaun', top: '54%', left: '51%', cor: '#d4a017', filtroCor: [255, 200, 50], maskRadius: 0.15 },
-        { nome: 'Shurima', top: '75%', left: '43%', cor: '#c59b0d', filtroCor: [255, 100, 50], maskTop: '72%', maskRadius: 0.40 },
-        { nome: 'Targon', top: '78%', left: '26%', cor: '#5e35b1', filtroCor: [150, 50, 255], maskRadius: 0.20 },
-        { nome: 'Águas de Sentina', top: '57%', left: '72%', cor: '#d84315', filtroCor: [50, 50, 255], maskRadius: 0.15 },
-        { nome: 'Ilha das Sombras', top: '88%', left: '86%', cor: '#00838f', filtroCor: [50, 255, 150], maskRadius: 0.15 }, 
-        { nome: 'Ionia', top: '30%', left: '82%', cor: '#43a047', filtroCor: [50, 255, 200], maskRadius: 0.25 }, 
-        { nome: 'Ixtal', top: '67%', left: '63%', cor: '#2e7d32', filtroCor: [50, 255, 50], maskRadius: 0.20 }
+        { nome: 'Freljord', top: '15%', left: '28%', cor: '#00b5e2', maskRadius: 0.35, cutouts: [{x:0, y:30, w:100, h:70}] },
+        { nome: 'Demacia', top: '40%', left: '21%', cor: '#d3c29e', maskRadius: 0.25, cutouts: [{x:0, y:0, w:100, h:30}, {x:35, y:0, w:65, h:100}] },
+        { nome: 'Noxus', top: '28%', left: '48%', cor: '#c62828', maskRadius: 0.40, cutouts: [{x:0, y:48, w:100, h:52}, {x:0, y:25, w:33, h:75}] }, 
+        { nome: 'Piltover e Zaun', top: '54%', left: '51%', cor: '#d4a017', maskRadius: 0.10, cutouts: [{x:0, y:58, w:100, h:42}, {x:0, y:0, w:100, h:49}] },
+        { nome: 'Shurima', top: '75%', left: '43%', cor: '#c59b0d', maskTop: '72%', maskRadius: 0.40, cutouts: [{x:0, y:0, w:100, h:52}, {x:56, y:0, w:44, h:100}] },
+        { nome: 'Targon', top: '78%', left: '26%', cor: '#5e35b1', maskRadius: 0.20, cutouts: [{x:35, y:0, w:65, h:100}, {x:0, y:0, w:100, h:65}] },
+        { nome: 'Ixtal', top: '67%', left: '63%', cor: '#2e7d32', maskRadius: 0.20, cutouts: [{x:0, y:0, w:56, h:100}] },
+        { nome: 'Águas de Sentina', top: '57%', left: '72%', cor: '#d84315', maskRadius: 0.15 }, // Ilhas isoladas não precisam de cortes
+        { nome: 'Ilha das Sombras', top: '88%', left: '86%', cor: '#00838f', maskRadius: 0.15 }, 
+        { nome: 'Ionia', top: '30%', left: '82%', cor: '#43a047', maskRadius: 0.25 }
     ];
 
     const handleDragStart = (e) => {
@@ -125,7 +125,7 @@ export default function MapaMundi({ children }) {
         }
     }, [nivelVisao]);
 
-    // 🔥 HOLOFOTE COM BARREIRA GEOGRÁFICA 🔥
+    // 🔥 HOLOFOTE COM RECORTES GEOMÉTRICOS (QUALIDADE 100%) 🔥
     useEffect(() => {
         const iCanvas = canvasRef.current;
         const hCanvas = highlightCanvasRef.current;
@@ -145,48 +145,11 @@ export default function MapaMundi({ children }) {
         const reinoObj = posicoesPings.find(p => p.nome === reinoHover);
         if (!reinoObj) return;
 
-        const iCtx = iCanvas.getContext('2d', { willReadFrequently: true });
-        const imgData = iCtx.getImageData(0, 0, iCanvas.width, iCanvas.height);
-        const data = imgData.data;
+        // 1. Pinta a imagem original e perfeita na tela
+        hCtx.globalCompositeOperation = 'source-over';
+        hCtx.drawImage(iCanvas, 0, 0);
 
-        const targetColor = reinoObj.filtroCor || [255, 255, 255];
-
-        for (let i = 0; i < data.length; i += 4) {
-            const r = data[i]; const g = data[i+1]; const b = data[i+2];
-            
-            // Acha a linha X e Y real do pixel na imagem
-            const pixelIndex = i / 4;
-            const py = Math.floor(pixelIndex / iCanvas.width);
-            const px = pixelIndex % iCanvas.width;
-            
-            // Converte a posição Y para porcentagem (0 a 100 no mapa)
-            const percentY = (py / iCanvas.height) * 100;
-            const percentX = (px / iCanvas.width) * 100;
-
-            // 🛑 A MÁGICA: AS FRONTEIRAS PROIBIDAS 🛑
-            // Noxus não pode descer do meio do mapa (50%)
-            if (reinoHover === 'Noxus' && percentY > 49) { data[i+3] = 0; continue; }
-            // Shurima não pode subir do meio do mapa (49%)
-            if (reinoHover === 'Shurima' && percentY < 49) { data[i+3] = 0; continue; }
-            // Freljord não pode descer muito
-            if (reinoHover === 'Freljord' && percentY > 32) { data[i+3] = 0; continue; }
-
-            // Pula o oceano vazio
-            if (r < 30 && g < 30 && b < 30) {
-                data[i+3] = 0;
-                continue;
-            }
-
-            // Distância de cor suavizada para pegar mais o brilho neon inteiro
-            const dist = Math.sqrt(Math.pow(r - targetColor[0], 2) + Math.pow(g - targetColor[1], 2) + Math.pow(b - targetColor[2], 2));
-            if (dist > 140) { 
-                data[i+3] = 0; 
-            }
-        }
-
-        hCtx.putImageData(imgData, 0, 0);
-
-        // Holofote Gigante!
+        // 2. Aplica a máscara do Holofote
         hCtx.globalCompositeOperation = 'destination-in';
         const projX = (parseFloat(reinoObj.maskLeft || reinoObj.left) / 100) * hCanvas.width;
         const projY = (parseFloat(reinoObj.maskTop || reinoObj.top) / 100) * hCanvas.height;
@@ -201,6 +164,18 @@ export default function MapaMundi({ children }) {
         hCtx.beginPath();
         hCtx.arc(projX, projY, radius, 0, Math.PI * 2);
         hCtx.fill();
+
+        // 3. Aplica as "Fronteiras Geométricas" para apagar os reinos vizinhos!
+        hCtx.globalCompositeOperation = 'destination-out';
+        if (reinoObj.cutouts) {
+            reinoObj.cutouts.forEach(cut => {
+                const cx = (cut.x / 100) * hCanvas.width;
+                const cy = (cut.y / 100) * hCanvas.height;
+                const cw = (cut.w / 100) * hCanvas.width;
+                const ch = (cut.h / 100) * hCanvas.height;
+                hCtx.fillRect(cx, cy, cw, ch);
+            });
+        }
         
         hCtx.globalCompositeOperation = 'source-over'; 
     }, [reinoHover]);
