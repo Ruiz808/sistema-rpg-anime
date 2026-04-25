@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 // 🔥 AS IMAGENS IMPORTADAS COMO CÓDIGO 🔥
 import mapaClean from '../../assets/runeterra-clean.jpg';
 import mapaGabarito from '../../assets/runeterra-gabarito.png';
@@ -24,37 +24,22 @@ export default function MapaMundi({ children }) {
     const [isDragging, setIsDragging] = useState(false);
     const dragStart = useRef({ x: 0, y: 0 });
 
-    // 🔥 O NOVO SCRIPT GEOMÉTRICO (clipPath isola perfeitamente cada região!) 🔥
+    const imgIdMapRef = useRef(null);
+    const highlightCanvasRef = useRef(null);  
+    const maskMemoryRef = useRef(null); // Guarda a imagem neon pura na memória!
+
+    // 🔥 O NOVO SISTEMA: maskRadius (Holofote) e eraserRadius (O Vizinho que empurra a luz) 🔥
     const posicoesPings = [
-        { nome: 'Freljord', top: '15%', left: '28%', cor: '#00b5e2', 
-          clip: 'polygon(0% 0%, 44% 0%, 44% 33%, 0% 33%)' },
-          
-        { nome: 'Demacia', top: '40%', left: '21%', cor: '#d3c29e', 
-          clip: 'polygon(0% 33%, 42% 33%, 42% 51%, 0% 51%)' },
-          
-        { nome: 'Noxus', top: '28%', left: '48%', cor: '#c62828', 
-          clip: 'polygon(44% 0%, 72% 0%, 72% 51%, 42% 51%, 42% 33%, 44% 33%)' }, 
-          
-        { nome: 'Ionia', top: '30%', left: '82%', cor: '#43a047', 
-          clip: 'polygon(72% 0%, 100% 0%, 100% 49%, 72% 49%)' },
-          
-        { nome: 'Piltover e Zaun', top: '54%', left: '51%', cor: '#d4a017', 
-          clip: 'polygon(47% 51%, 56% 51%, 56% 58%, 47% 58%)' },
-          
-        { nome: 'Shurima', top: '75%', left: '43%', cor: '#c59b0d', 
-          clip: 'polygon(27% 51%, 47% 51%, 47% 58%, 56% 58%, 56% 65%, 65% 65%, 65% 100%, 27% 100%)' },
-          
-        { nome: 'Targon', top: '78%', left: '26%', cor: '#5e35b1', 
-          clip: 'polygon(0% 51%, 27% 51%, 27% 100%, 0% 100%)' },
-          
-        { nome: 'Ixtal', top: '67%', left: '63%', cor: '#2e7d32', 
-          clip: 'polygon(56% 58%, 73% 58%, 73% 80%, 65% 80%, 65% 65%, 56% 65%)' },
-          
-        { nome: 'Águas de Sentina', top: '57%', left: '72%', cor: '#d84315', 
-          clip: 'polygon(65% 49%, 83% 49%, 83% 63%, 65% 63%)' },
-          
-        { nome: 'Ilha das Sombras', top: '86%', left: '85%', cor: '#00838f', 
-          clip: 'polygon(73% 63%, 100% 63%, 100% 100%, 73% 100%)' } 
+        { nome: 'Freljord', top: '15%', left: '28%', cor: '#00b5e2', maskRadius: 0.35, eraserRadius: 0.28 },
+        { nome: 'Demacia', top: '40%', left: '21%', cor: '#d3c29e', maskRadius: 0.30, eraserRadius: 0.25 },
+        { nome: 'Noxus', top: '28%', left: '48%', cor: '#c62828', maskRadius: 0.40, eraserRadius: 0.30 },
+        { nome: 'Piltover e Zaun', top: '54%', left: '51%', cor: '#d4a017', maskRadius: 0.15, eraserRadius: 0.15 },
+        { nome: 'Shurima', top: '75%', left: '43%', cor: '#c59b0d', maskRadius: 0.40, eraserRadius: 0.35 },
+        { nome: 'Targon', top: '78%', left: '26%', cor: '#5e35b1', maskRadius: 0.25, eraserRadius: 0.20 },
+        { nome: 'Ixtal', top: '67%', left: '63%', cor: '#2e7d32', maskRadius: 0.25, eraserRadius: 0.20 },
+        { nome: 'Águas de Sentina', top: '57%', left: '72%', cor: '#d84315', maskRadius: 0.20, eraserRadius: 0.18 },
+        { nome: 'Ilha das Sombras', top: '86%', left: '85%', cor: '#00838f', maskRadius: 0.20, eraserRadius: 0.18 },
+        { nome: 'Ionia', top: '30%', left: '82%', cor: '#43a047', maskRadius: 0.30, eraserRadius: 0.25 }
     ];
 
     const handleDragStart = (e) => {
@@ -112,15 +97,110 @@ export default function MapaMundi({ children }) {
         }
     };
 
-    // O Admin Click continua aqui se precisar afinar posições
     const handleMapClickAdmin = (e) => {
         if (e.shiftKey) {
             const rect = e.currentTarget.getBoundingClientRect();
             const top = ((e.clientY - rect.top) / rect.height) * 100;
             const left = ((e.clientX - rect.left) / rect.width) * 100;
-            alert(`Coordenadas exatas:\ntop: '${top.toFixed(0)}%', left: '${left.toFixed(0)}%'`);
+            alert(`Coordenadas:\ntop: '${top.toFixed(0)}%', left: '${left.toFixed(0)}%'`);
         }
     };
+
+    // 🔥 PASSO 1: EXTRATOR DE NEON (Roda 1x só e apaga o oceano da memória) 🔥
+    useEffect(() => {
+        const img = imgIdMapRef.current;
+        if (!img) return;
+
+        const processarGabarito = () => {
+            if (img.naturalWidth === 0) return;
+            const memCanvas = document.createElement('canvas');
+            memCanvas.width = img.naturalWidth;
+            memCanvas.height = img.naturalHeight;
+            const mCtx = memCanvas.getContext('2d');
+            mCtx.drawImage(img, 0, 0);
+
+            const imgData = mCtx.getImageData(0, 0, memCanvas.width, memCanvas.height);
+            const data = imgData.data;
+            
+            for(let i=0; i<data.length; i+=4) {
+                let r = data[i], g = data[i+1], b = data[i+2];
+                let max = Math.max(r, g, b); // Pega a força do brilho
+                
+                if(max < 40) {
+                    data[i+3] = 0; // Transforma o cinza do oceano em Vazio Absoluto!
+                } else {
+                    // Mantém a cor original intacta e suaviza as bordas
+                    let alpha = ((max - 40) / 215) * 255;
+                    data[i+3] = Math.min(255, alpha * 1.5); 
+                }
+            }
+            mCtx.putImageData(imgData, 0, 0);
+            maskMemoryRef.current = memCanvas; // Salva na memória
+        };
+
+        if (img.complete) processarGabarito();
+        else img.onload = processarGabarito;
+    }, [nivelVisao]);
+
+    // 🔥 PASSO 2: O ANTI-HOLOFOTE (O Jogo de Luzes e Sombras) 🔥
+    useEffect(() => {
+        const hCanvas = highlightCanvasRef.current;
+        const memCanvas = maskMemoryRef.current;
+        if (!hCanvas || !memCanvas) return;
+        
+        const hCtx = hCanvas.getContext('2d');
+        hCtx.clearRect(0, 0, hCanvas.width, hCanvas.height);
+        
+        if (!reinoHover) return;
+
+        hCanvas.width = memCanvas.width;
+        hCanvas.height = memCanvas.height;
+
+        const reinoObj = posicoesPings.find(p => p.nome === reinoHover);
+        if (!reinoObj) return;
+
+        // 1. Desenha a sua máscara original perfeita na tela inteira
+        hCtx.globalCompositeOperation = 'source-over';
+        hCtx.drawImage(memCanvas, 0, 0);
+
+        // 2. Acende a luz central na região que o mouse passou
+        hCtx.globalCompositeOperation = 'destination-in';
+        let projX = (parseFloat(reinoObj.left) / 100) * hCanvas.width;
+        let projY = (parseFloat(reinoObj.top) / 100) * hCanvas.height;
+        let radius = hCanvas.width * reinoObj.maskRadius;
+
+        let grad = hCtx.createRadialGradient(projX, projY, 0, projX, projY, radius);
+        grad.addColorStop(0, 'rgba(0,0,0,1)');
+        grad.addColorStop(0.5, 'rgba(0,0,0,1)'); // Luz intensa no centro
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+
+        hCtx.fillStyle = grad;
+        hCtx.beginPath();
+        hCtx.arc(projX, projY, radius, 0, Math.PI * 2);
+        hCtx.fill();
+
+        // 3. A MÁGICA: Os vizinhos "empurram" a luz pra criar a fronteira invisível!
+        hCtx.globalCompositeOperation = 'destination-out';
+        posicoesPings.forEach(enemy => {
+            if (enemy.nome !== reinoHover) {
+                let eX = (parseFloat(enemy.left) / 100) * hCanvas.width;
+                let eY = (parseFloat(enemy.top) / 100) * hCanvas.height;
+                let eR = hCanvas.width * enemy.eraserRadius;
+
+                let eGrad = hCtx.createRadialGradient(eX, eY, 0, eX, eY, eR);
+                eGrad.addColorStop(0, 'rgba(0,0,0,1)');     // Escuridão total no vizinho
+                eGrad.addColorStop(0.5, 'rgba(0,0,0,0.8)'); // Sombra suave
+                eGrad.addColorStop(1, 'rgba(0,0,0,0)');
+
+                hCtx.fillStyle = eGrad;
+                hCtx.beginPath();
+                hCtx.arc(eX, eY, eR, 0, Math.PI * 2);
+                hCtx.fill();
+            }
+        });
+        
+        hCtx.globalCompositeOperation = 'source-over'; // Reseta o canvas
+    }, [reinoHover]);
 
     // ==========================================
     // 🌍 CAMADA 1: O GLOBO ORBITAL
@@ -171,11 +251,9 @@ export default function MapaMundi({ children }) {
     }
 
     // ==========================================
-    // 🗺️ CAMADA 2: O CONTINENTE COM CLIP-PATH!
+    // 🗺️ CAMADA 2: O CONTINENTE COM LUZ INTELIGENTE
     // ==========================================
     if (nivelVisao === 'continente') {
-        const reinoAtivo = posicoesPings.find(p => p.nome === reinoHover);
-
         return (
             <div className="fade-in" style={{ width: '100%', height: '65vh', background: '#050508', borderRadius: '10px', border: '1px solid #0088ff', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.85)', padding: '12px 25px', borderBottom: '1px solid #222', zIndex: 10 }}>
@@ -189,22 +267,22 @@ export default function MapaMundi({ children }) {
                         style={{ position: 'relative', display: 'inline-block', height: '100%', maxHeight: 'calc(65vh - 70px)' }}
                         onClick={handleMapClickAdmin} 
                     >
-                        {/* MAPA BASE LIMPO */}
+                        {/* MAPA BASE */}
                         <img src={mapaClean} alt="Mapa Base" style={{ display: 'block', height: '100%', width: 'auto', objectFit: 'contain' }} />
+                        
+                        {/* GABARITO (Oculto, só pro script ler) */}
+                        <img ref={imgIdMapRef} src={mapaGabarito} style={{ display: 'none' }} alt="Gabarito" />
 
-                        {/* 🔥 A MÁGICA ACONTECE AQUI: A IMAGEM ORIGINAL SENDO RECORTADA PELO CSS 🔥 */}
-                        <img 
-                            src={mapaGabarito} 
+                        {/* O CANVAS HOLOGRÁFICO (Onde a mágica visual acontece!) */}
+                        <canvas 
+                            ref={highlightCanvasRef} 
                             style={{ 
                                 position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', 
                                 pointerEvents: 'none', zIndex: 2, 
-                                mixBlendMode: 'screen', 
-                                opacity: reinoHover ? 1 : 0, 
+                                mixBlendMode: 'screen', // Faz o neon brilhar e limpa resíduos escuros
                                 transition: 'opacity 0.3s ease-out',
-                                // O Clip-path desenha uma tesoura geométrica em volta do reino!
-                                clipPath: reinoAtivo ? reinoAtivo.clip : 'none'
+                                opacity: reinoHover ? 1 : 0
                             }} 
-                            alt="Gabarito Perfeito" 
                         />
 
                         <style dangerouslySetInnerHTML={{__html: `
