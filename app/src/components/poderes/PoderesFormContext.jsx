@@ -494,7 +494,7 @@ export function PoderesFormProvider({ children }) {
         setOverchargeAtivo(false);
     }, [overchargeAtivo, updateFicha, danoBruto, energiaElemental, mPotencial]);
 
-// 🔥 O MOTOR DE INJEÇÃO DO JSON DA IA (CORRIGIDO PARA A ABA ATUAL) 🔥
+    // 🔥 O MOTOR DE INJEÇÃO DO JSON DA IA (SINCRONIZADO COM A ABA ATIVA) 🔥
     const injetarJsonDaIA = useCallback((jsonString) => {
         try {
             const dados = JSON.parse(jsonString);
@@ -507,10 +507,10 @@ export function PoderesFormProvider({ children }) {
                             id: 'pw_ia_' + time + i,
                             nome: p.nome || 'Habilidade Desconhecida',
                             descricao: p.descricao || '',
-                            dadosQtd: p.danoQtd || 0,
-                            dadosFaces: p.danoFaces || 0,
+                            dadosQtd: parseInt(p.danoQtd) || 0,
+                            dadosFaces: parseInt(p.danoFaces) || 0,
                             vertente: 'Físico',
-                            categoria: abaAtual, // 🔥 AGORA VAI PARA A ABA QUE ESTIVER ABERTA 🔥
+                            categoria: abaAtual, // 🎯 AGORA INJETA NA ABA ONDE VOCÊ ESTÁ!
                             ativa: false,
                             isForma: false,
                             notasIA: p.notasIA || '' 
@@ -526,8 +526,8 @@ export function PoderesFormProvider({ children }) {
                             nomeElem: el.nome || 'Magia Desconhecida',
                             descElem: el.descricao || '',
                             elemSelecionado: el.elementoAlvo || 'Fogo',
-                            dadosQtd: el.danoQtd || 0,
-                            dadosFaces: el.danoFaces || 0,
+                            dadosQtd: parseInt(el.danoQtd) || 0,
+                            dadosFaces: parseInt(el.danoFaces) || 0,
                             equipado: false,
                             notasIA: el.notasIA || ''
                         });
@@ -555,7 +555,7 @@ export function PoderesFormProvider({ children }) {
             alert("Erro ao ler o código da IA. Confirme se copiou o JSON corretamente.");
             return false;
         }
-    }, [updateFicha, abaAtual]); // 🔥 DEPENDÊNCIA ATUALIZADA AQUI 🔥
+    }, [updateFicha, abaAtual]);
     
     const value = useMemo(() => ({
         minhaFicha, meuNome, isMestre, abaAtual, setAbaAtual,
@@ -581,7 +581,7 @@ export function PoderesFormProvider({ children }) {
         armasEquipadas, itensFiltrados, relatorioAuditoria,
         curMana, curAura, curChakra, energiaElemental, mPotencial, danoBruto,
         dispararAtaque, efeitosTemp, efeitosTempPassivos, poderEditandoId,
-        injetarJsonDaIA // Passando a nova função para os subcomponentes
+        injetarJsonDaIA 
     }), [
         minhaFicha, meuNome, isMestre, abaAtual,
         nomePoder, descricaoPoder, poderVertente, poderElemento, elementosAfetados,

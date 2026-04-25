@@ -5,7 +5,6 @@ import FormasEditor from '../shared/FormasEditor';
 
 const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Poderes provider não encontrado</div>;
 
-// 🔥 LISTA OFICIAL EXPANDIDA: Agora tem TODAS as Magias, Aura, Chakra e Corpo! 🔥
 const ELEMENTOS_OPCOES = [
     { label: 'Elementos Básicos', opcoes: ['Fogo', 'Agua', 'Raio', 'Terra', 'Vento'] },
     { label: 'Básicos Verdadeiros', opcoes: ['Fogo Verdadeiro', 'Agua Verdadeira', 'Raio Verdadeiro', 'Terra Verdadeira', 'Vento Verdadeiro'] },
@@ -20,9 +19,6 @@ const ELEMENTOS_OPCOES = [
     { label: 'Manifestações e Fusões', opcoes: ['Aura Pura', 'Projeção de Aura', 'Artes Marciais', 'Reforço Físico', 'Fusões Básicas', 'Fusões Avançadas'] }
 ];
 
-// ============================================================================
-// 🔥 O IMPORTADOR HÍBRIDO COM INTELIGÊNCIA ARTIFICIAL 🔥
-// ============================================================================
 export function PoderesImportadorIA() {
     const ctx = usePoderesForm();
     if (!ctx) return null;
@@ -113,10 +109,6 @@ Retorne EXATAMENTE UM JSON VÁLIDO e puro (sem markdown de formatação como \`\
         </div>
     );
 }
-
-// ============================================================================
-// O RESTO DOS SUBCOMPONENTES ORIGINAIS (Preservados Intactos!)
-// ============================================================================
 
 export function PoderesSidebar() {
     const ctx = usePoderesForm();
@@ -407,11 +399,14 @@ export function PoderesFormEditor() {
         salvarNovoPoder, cancelarEdicaoPoder, formRef
     } = ctx;
 
+    // 🔥 FIX: Impede que falhe caso abaAtual seja desconhecida
+    const sing = SINGULAR[abaAtual] || 'Poder/Habilidade';
+
     return (
         <div className="def-box" ref={formRef} id="form-poder-box">
-            <h3 style={{ color: '#0ff', marginBottom: 10 }}>{poderEditandoId ? `Editando: ${nomePoder}` : `Criar ${SINGULAR[abaAtual]}`}</h3>
+            <h3 style={{ color: '#0ff', marginBottom: 10 }}>{poderEditandoId ? `Editando: ${nomePoder}` : `Criar ${sing}`}</h3>
             
-            <input className="input-neon" type="text" placeholder={`Nome da ${SINGULAR[abaAtual]} (Ex: Chama Imortal)`} value={nomePoder} onChange={e => setNomePoder(e.target.value)} />
+            <input className="input-neon" type="text" placeholder={`Nome da ${sing} (Ex: Chama Imortal)`} value={nomePoder} onChange={e => setNomePoder(e.target.value)} />
             
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10, marginBottom: 5 }}>
                 <div>
@@ -554,7 +549,7 @@ export function PoderesFormEditor() {
             </div>
 
             <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
-                <button className="btn-neon btn-gold" onClick={salvarNovoPoder} style={{ flex: 1 }}>{poderEditandoId ? 'Salvar Edição' : `Salvar ${SINGULAR[abaAtual]}`}</button>
+                <button className="btn-neon btn-gold" onClick={salvarNovoPoder} style={{ flex: 1 }}>{poderEditandoId ? 'Salvar Edição' : `Salvar ${sing}`}</button>
                 {poderEditandoId && <button className="btn-neon btn-red" onClick={cancelarEdicaoPoder} style={{ flex: 1 }}>Cancelar</button>}
             </div>
         </div>
@@ -573,10 +568,13 @@ export function PoderesLista() {
         salvarFormaPoder, deletarFormaPoder, ativarFormaPoder
     } = ctx;
 
+    // 🔥 FIX: Impede que falhe caso abaAtual seja desconhecida
+    const sing = SINGULAR[abaAtual] || 'Poder/Habilidade';
+
     return (
         <div id="lista-poderes-salvos">
             {itensFiltrados.length === 0 ? (
-                <p style={{ color: '#888' }}>Nenhuma {SINGULAR[abaAtual].toLowerCase()} gravada.</p>
+                <p style={{ color: '#888' }}>Nenhuma {sing.toLowerCase()} gravada.</p>
             ) : (
                 itensFiltrados.map((p) => {
                     if (!p) return null;
@@ -790,6 +788,7 @@ export function PoderesAreaCentral() {
 
     return (
         <>
+            <PoderesImportadorIA />
             <PoderesFormEditor />
             <PoderesLista />
             <PoderesAuditoria />
