@@ -3,6 +3,72 @@ import { useElementosForm, emogis, cores, ABAS_GRIMORIO, BONUS_OPTIONS } from '.
 
 const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Elementos provider nao encontrado</div>;
 
+// ============================================================================
+// 🔥 O IMPORTADOR INTELIGENTE DO GRIMÓRIO 🔥
+// ============================================================================
+export function ElementosImportadorIA() {
+    const ctx = useElementosForm();
+    const [aberto, setAberto] = useState(false);
+    const [textoDocs, setTextoDocs] = useState('');
+    const [jsonResposta, setJsonResposta] = useState('');
+    const [fase, setFase] = useState(1); 
+
+    if (!ctx) return null;
+    const { injetarJsonDaIA } = ctx;
+
+    const gerarPrompt = () => {
+        if (!textoDocs.trim()) return alert("Cole o texto dos pergaminhos primeiro!");
+        const prompt = `Atue como extrator de dados de RPG.
+Transforme TODAS as magias, técnicas e feitiços descritos no texto abaixo em itens dentro do array "ataquesElementais".
+Tente deduzir o "elemento" a que pertencem (Ex: Fogo, Agua, Magia de Osso, Magias de 1º Ciclo, Aura Pura). Se não souber, use "Neutro".
+Extraia o dano (ex: "15d6" vira danoQtd: 15 e danoFaces: 6).
+Extraia o custo de energia se houver (ex: "Custa 10%" vira custoPercentual: 10).
+Tente deduzir a "energiaCombustao" (mana, aura, chakra, corpo, livre). Se for indeciso, use "flexivel".
+Se houver efeitos de status, paralisia, condições ou buffs complexos, coloque TUDO no campo "notasIA".
+
+TEXTO:
+${textoDocs}
+
+RETORNE EXATAMENTE UM JSON PURO:
+{
+  "ataquesElementais": [{ "nome": "X", "descricao": "Y", "elemento": "Fogo", "energiaCombustao": "mana", "danoQtd": 0, "danoFaces": 0, "custoPercentual": 0, "alcance": 1, "area": 0, "notasIA": "" }]
+}`;
+        navigator.clipboard.writeText(prompt);
+        alert("Instrução mágica copiada! Envie para a sua IA e traga o código resultante.");
+        setFase(2);
+    };
+
+    return (
+        <div style={{ marginBottom: '20px' }}>
+            <button className="btn-neon btn-blue" onClick={() => setAberto(!aberto)} style={{ width: '100%', margin: 0, fontWeight: 'bold' }}>
+                {aberto ? '❌ FECHAR TRADUTOR ARCANO' : '🤖 IMPORTAR MAGIAS DO GOOGLE DOCS'}
+            </button>
+            {aberto && (
+                <div className="def-box" style={{ marginTop: '10px', border: '1px dashed #00aaff', background: 'rgba(0,170,255,0.05)' }}>
+                    {fase === 1 ? (
+                        <>
+                            <textarea value={textoDocs} onChange={e => setTextoDocs(e.target.value)} placeholder="Cole aqui os textos longos das magias e elementos..." style={{ width: '100%', height: '120px', background: '#000', color: '#fff', padding: '10px', resize: 'vertical' }} />
+                            <button className="btn-neon btn-gold" onClick={gerarPrompt} style={{ width: '100%', marginTop: '10px' }}>1. COPIAR PROMPT DE INJEÇÃO</button>
+                        </>
+                    ) : (
+                        <>
+                            <textarea value={jsonResposta} onChange={e => setJsonResposta(e.target.value)} placeholder="Cole o JSON que a IA devolveu..." style={{ width: '100%', height: '120px', background: '#000', color: '#0f0', fontFamily: 'monospace', padding: '10px', resize: 'vertical' }} />
+                            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                                <button className="btn-neon btn-red" onClick={() => setFase(1)}>VOLTAR</button>
+                                <button className="btn-neon btn-green" onClick={() => { if(injetarJsonDaIA(jsonResposta)) setAberto(false); }}>2. TRANSCREVER PARA O GRIMÓRIO</button>
+                            </div>
+                        </>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ============================================================================
+// O RESTO DOS COMPONENTES
+// ============================================================================
+
 export function ElementosSidebar() {
     const ctx = useElementosForm();
     if (!ctx) return FALLBACK;
@@ -64,7 +130,7 @@ export function ElementosFormMagia() {
     const ctx = useElementosForm();
     if (!ctx) return FALLBACK;
     const {
-        elemEditandoId, nomeElem, setNomeElem, elementosAfetados, setElementosAfetados,
+        elemEditandoId, nomeElem, setNomeElem, descricaoElem, setDescricaoElem, elementosAfetados, setElementosAfetados,
         tipoMecanica, setTipoMecanica, savingAttr, setSavingAttr,
         energiaCombustao, setEnergiaCombustao, allowedEnergies, alcanceQuad, setAlcanceQuad, 
         areaQuad, setAreaQuad, alvosAfetados, setAlvosAfetados, duracaoZona, setDuracaoZona,
@@ -77,6 +143,9 @@ export function ElementosFormMagia() {
             <h3 style={{ color: '#0ff', marginBottom: 10 }}>{elemEditandoId ? `Editando: ${nomeElem}` : 'Criar Nova Magia / Técnica'}</h3>
             <input className="input-neon" type="text" placeholder="Nome da Magia/Técnica" value={nomeElem} onChange={e => setNomeElem(e.target.value)} />
             
+            {/* 🔥 NOVO: Caixa de descrição injetada! 🔥 */}
+            <textarea className="input-neon" placeholder="Descrição e Efeitos Narrativos (Como a magia atua na realidade?)" value={descricaoElem} onChange={e => setDescricaoElem(e.target.value)} style={{ width: '100%', minHeight: '60px', marginTop: 10, borderColor: '#555', color: '#ccc', fontStyle: 'italic', resize: 'vertical' }} />
+
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginTop: 10, padding: 10, background: 'rgba(0,136,255,0.1)', border: '1px solid #0088ff', borderRadius: 5 }}>
                 <div>
                     <label style={{ color: '#0088ff', fontSize: '0.85em', fontWeight: 'bold' }}>Mecânica de Uso</label>
@@ -161,7 +230,6 @@ export function ElementosMagiaCard({ magia }) {
     const isFlexivel = magia.energiaCombustao === 'flexivel';
     const energiaAtiva = magia.energiaCombustao;
 
-    // 🔥 MAGIA DO DOMÍNIO INATO: Verifica se o elemento da magia bate com algum Poder ativo 🔥
     const isInato = elementosInatos.includes(elemText.toLowerCase().trim());
 
     const isEquipped = magia.equipado;
@@ -174,7 +242,6 @@ export function ElementosMagiaCard({ magia }) {
     const bValorStr = bTipo === 'nenhum' ? '' : `: ${bTipo.includes('mult_') ? 'x' : '+'}${magia.bonusValor || 0}`;
     const dadosStr = magia.dadosExtraQtd > 0 ? ` | Dados: +${magia.dadosExtraQtd}d${magia.dadosExtraFaces || 20}` : '';
     
-    // Se for Inato, ele zera o custo visualmente!
     const custoFinal = isInato ? 0 : magia.custoValor;
     const custoStr = isInato 
         ? ` | Custo: ZERO (Ressonância Inata)` 
@@ -202,11 +269,27 @@ export function ElementosMagiaCard({ magia }) {
 
     return (
         <div className="def-box" style={{ borderLeft: `5px solid ${c}`, background: bg, marginTop: 15, padding: 15, position: 'relative' }}>
+            
+            {/* 🔥 ALERTA NEON QUANDO NOTAS IA EXISTIREM 🔥 */}
+            {magia.notasIA && (
+                <div style={{ background: '#ffcc00', color: '#000', padding: '4px 10px', fontSize: '0.8em', fontWeight: 'bold', borderRadius: '4px', marginBottom: '10px' }}>
+                    ⚠️ NOTA DA SEXTA-FEIRA: {magia.notasIA}
+                </div>
+            )}
+
             <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 15 }}>
                 <div>
                     <h3 style={{ margin: 0, color: c, textShadow: `0 0 10px ${c}` }}>
                         {emogis[elemText] || '\u2728'} {magia.nome || 'Magia'} <span style={{fontSize: '0.6em', color: '#fff'}}>(Alc: {magia.alcanceQuad || 1}Q)</span>
                     </h3>
+                    
+                    {/* 🔥 DESCRIÇÃO MÁGICA RENDERIZADA AQUI 🔥 */}
+                    {magia.descricao && (
+                        <p style={{ color: '#ccc', fontSize: '0.85em', fontStyle: 'italic', margin: '8px 0', padding: '8px', background: 'rgba(0,0,0,0.3)', borderRadius: '4px', borderLeft: `2px solid ${c}` }}>
+                            "{magia.descricao}"
+                        </p>
+                    )}
+
                     <p style={{ color: '#0ff', fontSize: '0.9em', margin: '5px 0 0' }}>
                         Mecânica: <strong>{mec.toUpperCase()}</strong> {mec === 'saving' ? `(CD ${cd} - ${magia.savingAttr?.toUpperCase()})` : mec === 'ataque' ? `(+${bonusAcerto} Acerto)` : ''}
                     </p>
@@ -222,7 +305,6 @@ export function ElementosMagiaCard({ magia }) {
                         </p>
                     )}
 
-                    {/* 🔥 ALERTA NEON QUANDO O DOMÍNIO INATO ESTÁ LIGADO 🔥 */}
                     {isInato && (
                         <div style={{ background: 'rgba(0, 255, 204, 0.1)', border: '1px solid #00ffcc', padding: '4px 8px', borderRadius: '4px', display: 'inline-block', marginTop: '6px' }}>
                             <p style={{ color: '#00ffcc', fontSize: '0.85em', margin: '0', fontWeight: 'bold', textShadow: '0 0 5px rgba(0,255,204,0.5)' }}>

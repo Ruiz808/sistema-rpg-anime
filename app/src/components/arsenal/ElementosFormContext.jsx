@@ -93,6 +93,7 @@ export function ElementosFormProvider({ children }) {
     const [abaAtual, setAbaAtual] = useState('elementos');
     const [elemSelecionado, setElemSelecionado] = useState('Neutro');
     const [nomeElem, setNomeElem] = useState('');
+    const [descricaoElem, setDescricaoElem] = useState(''); // 🔥 NOVO: Descrição para magias
     const [elementosAfetados, setElementosAfetados] = useState('');
     const [bonusTipo, setBonusTipo] = useState('nenhum');
     const [bonusValor, setBonusValor] = useState('');
@@ -192,7 +193,7 @@ export function ElementosFormProvider({ children }) {
     }, [abaAtual]);
 
     const cancelarEdicaoElem = useCallback(() => {
-        setElemEditandoId(null); setNomeElem(''); 
+        setElemEditandoId(null); setNomeElem(''); setDescricaoElem(''); // 🔥 LIMPANDO DESCRIÇÃO
         setElementosAfetados(''); 
         setEnergiaCombustao(abaAtual === 'elementos' || abaAtual === 'compostos' ? 'flexivel' : 'mana');
         setTipoMecanica('ataque'); setAlcanceQuad(1); setAreaQuad(0);
@@ -205,7 +206,7 @@ export function ElementosFormProvider({ children }) {
         updateFicha((ficha) => {
             if (!ficha.ataquesElementais) ficha.ataquesElementais = [];
             const novaMagia = {
-                nome: n, elemento: elemSelecionado, elementosAfetados, 
+                nome: n, descricao: descricaoElem, elemento: elemSelecionado, elementosAfetados, // 🔥 SALVANDO DESCRIÇÃO
                 bonusTipo, bonusValor, custoValor: parseFloat(custoValor) || 0, 
                 dadosExtraQtd: parseInt(dadosQtd) || 0, dadosExtraFaces: parseInt(dadosFaces) || 20,
                 energiaCombustao, tipoMecanica, savingAttr, alcanceQuad: parseFloat(alcanceQuad) || 1, 
@@ -226,7 +227,7 @@ export function ElementosFormProvider({ children }) {
         });
         cancelarEdicaoElem();
         salvarFichaSilencioso();
-    }, [nomeElem, elemSelecionado, elementosAfetados, bonusTipo, bonusValor, custoValor, dadosQtd, dadosFaces, energiaCombustao, tipoMecanica, savingAttr, alcanceQuad, areaQuad, alvosAfetados, duracaoZona, elemEditandoId, updateFicha, cancelarEdicaoElem]);
+    }, [nomeElem, descricaoElem, elemSelecionado, elementosAfetados, bonusTipo, bonusValor, custoValor, dadosQtd, dadosFaces, energiaCombustao, tipoMecanica, savingAttr, alcanceQuad, areaQuad, alvosAfetados, duracaoZona, elemEditandoId, updateFicha, cancelarEdicaoElem]);
 
     const editarElem = useCallback((id) => {
         const p = (minhaFicha.ataquesElementais || []).find(i => i.id === id);
@@ -249,7 +250,7 @@ export function ElementosFormProvider({ children }) {
             }
         }
         setAbaAtual(foundAba);
-        setElemEditandoId(p.id); setNomeElem(p.nome); setElementosAfetados(p.elementosAfetados || ''); 
+        setElemEditandoId(p.id); setNomeElem(p.nome); setDescricaoElem(p.descricao || ''); setElementosAfetados(p.elementosAfetados || ''); 
         setBonusTipo(p.bonusTipo || 'nenhum'); setBonusValor(p.bonusValor || ''); setCustoValor(p.custoValor || 0); 
         setDadosQtd(p.dadosExtraQtd || 0); setDadosFaces(p.dadosExtraFaces || 20); 
         setEnergiaCombustao(p.energiaCombustao || 'mana'); setTipoMecanica(p.tipoMecanica || 'ataque'); 
@@ -279,13 +280,57 @@ export function ElementosFormProvider({ children }) {
         setAbaAtiva('aba-ataque');
     }, [meuNome, setAbaAtiva]);
 
+    // 🔥 MOTOR IA PARA O GRIMÓRIO 🔥
+    const injetarJsonDaIA = useCallback((jsonString) => {
+        try {
+            const dados = JSON.parse(jsonString);
+            let countE = 0;
+            updateFicha(f => {
+                const time = Date.now();
+                if (dados.ataquesElementais && Array.isArray(dados.ataquesElementais)) {
+                    if (!f.ataquesElementais) f.ataquesElementais = [];
+                    dados.ataquesElementais.forEach((el, i) => {
+                        f.ataquesElementais.push({
+                            id: 'ia_el_' + time + i,
+                            nome: el.nome || 'Magia sem Nome',
+                            descricao: el.descricao || '',
+                            elemento: el.elemento || elemSelecionado, // Tenta o da IA ou cai no elemento aberto
+                            elementosAfetados: el.elementosAfetados || '',
+                            dadosExtraQtd: parseInt(el.danoQtd) || 0,
+                            dadosExtraFaces: parseInt(el.danoFaces) || 0,
+                            custoValor: parseFloat(el.custoPercentual) || 0,
+                            energiaCombustao: el.energiaCombustao || 'mana',
+                            tipoMecanica: el.tipoMecanica || 'ataque',
+                            savingAttr: el.savingAttr || 'destreza',
+                            alcanceQuad: parseFloat(el.alcance) || 1,
+                            areaQuad: parseFloat(el.area) || 0,
+                            alvosAfetados: 'todos',
+                            duracaoZona: 0,
+                            bonusTipo: 'nenhum',
+                            equipado: false,
+                            notasIA: el.notasIA || ''
+                        });
+                        countE++;
+                    });
+                }
+            });
+            salvarFichaSilencioso();
+            alert(`Grimório Atualizado!\n\n🌪️ Foram inscritos ${countE} novos pergaminhos mágicos com sucesso.`);
+            return true;
+        } catch (e) {
+            console.error(e);
+            alert("Erro no código da IA. Certifique-se de copiar o JSON completo.");
+            return false;
+        }
+    }, [updateFicha, elemSelecionado]);
+
     const ataquesElementais = minhaFicha.ataquesElementais || [];
     const magiasDoGrupo = useMemo(() => ataquesElementais.filter(e => (e.elemento || 'Neutro') === elemSelecionado), [ataquesElementais, elemSelecionado]);
     const magiasConjuradasOutros = useMemo(() => ataquesElementais.filter(e => e.equipado && (e.elemento || 'Neutro') !== elemSelecionado), [ataquesElementais, elemSelecionado]);
 
     const value = useMemo(() => ({
         abaAtual, setAbaAtual, elemSelecionado, setElemSelecionado,
-        nomeElem, setNomeElem, elementosAfetados, setElementosAfetados, 
+        nomeElem, setNomeElem, descricaoElem, setDescricaoElem, elementosAfetados, setElementosAfetados, 
         bonusTipo, setBonusTipo, bonusValor, setBonusValor,
         custoValor, setCustoValor, dadosQtd, setDadosQtd, dadosFaces, setDadosFaces,
         energiaCombustao, setEnergiaCombustao, tipoMecanica, setTipoMecanica,
@@ -294,11 +339,11 @@ export function ElementosFormProvider({ children }) {
         formRef, profGlobal, getModificadorDoisDigitos, allowedEnergies,
         selecionarElemento, salvarNovoElem, editarElem, cancelarEdicaoElem, toggleEquiparElem,
         deletarElem, conjurarMagia, magiasDoGrupo, magiasConjuradasOutros, elemEditandoId, minhaFicha,
-        elementosInatos
+        elementosInatos, injetarJsonDaIA // 🔥 Exportado aqui!
     }), [
-        abaAtual, elemSelecionado, nomeElem, elementosAfetados, bonusTipo, bonusValor, custoValor, dadosQtd, dadosFaces,
+        abaAtual, elemSelecionado, nomeElem, descricaoElem, elementosAfetados, bonusTipo, bonusValor, custoValor, dadosQtd, dadosFaces,
         energiaCombustao, tipoMecanica, savingAttr, alcanceQuad, areaQuad, alvosAfetados, duracaoZona, profGlobal, getModificadorDoisDigitos, allowedEnergies,
-        selecionarElemento, salvarNovoElem, editarElem, cancelarEdicaoElem, toggleEquiparElem, deletarElem, conjurarMagia, magiasDoGrupo, magiasConjuradasOutros, elemEditandoId, minhaFicha, elementosInatos
+        selecionarElemento, salvarNovoElem, editarElem, cancelarEdicaoElem, toggleEquiparElem, deletarElem, conjurarMagia, magiasDoGrupo, magiasConjuradasOutros, elemEditandoId, minhaFicha, elementosInatos, injetarJsonDaIA
     ]);
 
     return <ElementosFormContext.Provider value={value}>{children}</ElementosFormContext.Provider>;
