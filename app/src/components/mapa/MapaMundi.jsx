@@ -1,18 +1,20 @@
 import React, { useState, useRef } from 'react';
-// 🔥 1. IMPORTA O MAPA BASE
+// 🔥 IMPORTA O MAPA BASE
 import mapaClean from '../../assets/runeterra-clean.jpg';
 
-// 🔥 2. IMPORTA AS SUAS NOVAS IMAGENS SEPARADAS (Crie essas imagens e coloque na pasta assets)
-import gabaritoFreljord from '../../assets/gabarito-freljord.png';
-import gabaritoDemacia from '../../assets/gabarito-demacia.png';
-import gabaritoNoxus from '../../assets/gabarito-noxus.png';
-import gabaritoPiltover from '../../assets/gabarito-piltover.png';
+// 🔥 IMPORTA SÓ SHURIMA PARA O SEU TESTE!
 import gabaritoShurima from '../../assets/gabarito-shurima.png';
-import gabaritoTargon from '../../assets/gabarito-targon.png';
-import gabaritoIxtal from '../../assets/gabarito-ixtal.png';
-import gabaritoAguas from '../../assets/gabarito-aguas.png';
-import gabaritoIlha from '../../assets/gabarito-ilha.png';
-import gabaritoIonia from '../../assets/gabarito-ionia.png';
+
+// Quando você criar os outros no Photoshop, basta tirar os "//" da frente!
+// import gabaritoFreljord from '../../assets/gabarito-freljord.png';
+// import gabaritoDemacia from '../../assets/gabarito-demacia.png';
+// import gabaritoNoxus from '../../assets/gabarito-noxus.png';
+// import gabaritoPiltover from '../../assets/gabarito-piltover.png';
+// import gabaritoTargon from '../../assets/gabarito-targon.png';
+// import gabaritoIxtal from '../../assets/gabarito-ixtal.png';
+// import gabaritoAguas from '../../assets/gabarito-aguas.png';
+// import gabaritoIlha from '../../assets/gabarito-ilha.png';
+// import gabaritoIonia from '../../assets/gabarito-ionia.png';
 
 export default function MapaMundi({ children }) {
     const [nivelVisao, setNivelVisao] = useState('globo'); 
@@ -35,18 +37,18 @@ export default function MapaMundi({ children }) {
     const [isDragging, setIsDragging] = useState(false);
     const dragStart = useRef({ x: 0, y: 0 });
 
-    // 🔥 3. A NOVIDADE: Cada ping agora chama a sua própria imagem! 🔥
+    // 🔥 Deixei "img: null" nos que ainda não existem para não dar erro 🔥
     const posicoesPings = [
-        { nome: 'Freljord', img: gabaritoFreljord, top: '15%', left: '28%', cor: '#00b5e2' },
-        { nome: 'Demacia', img: gabaritoDemacia, top: '40%', left: '21%', cor: '#d3c29e' },
-        { nome: 'Noxus', img: gabaritoNoxus, top: '28%', left: '48%', cor: '#c62828' }, 
-        { nome: 'Piltover e Zaun', img: gabaritoPiltover, top: '54%', left: '51%', cor: '#d4a017' },
-        { nome: 'Shurima', img: gabaritoShurima, top: '75%', left: '43%', cor: '#c59b0d' },
-        { nome: 'Targon', img: gabaritoTargon, top: '78%', left: '26%', cor: '#5e35b1' },
-        { nome: 'Ixtal', img: gabaritoIxtal, top: '67%', left: '63%', cor: '#2e7d32' },
-        { nome: 'Águas de Sentina', img: gabaritoAguas, top: '57%', left: '72%', cor: '#d84315' },
-        { nome: 'Ilha das Sombras', img: gabaritoIlha, top: '86%', left: '85%', cor: '#00838f' },
-        { nome: 'Ionia', img: gabaritoIonia, top: '30%', left: '82%', cor: '#43a047' }
+        { nome: 'Shurima', img: gabaritoShurima, top: '75%', left: '43%', cor: '#c59b0d' }, // O SEU TESTE!
+        { nome: 'Freljord', img: null, top: '15%', left: '28%', cor: '#00b5e2' },
+        { nome: 'Demacia', img: null, top: '40%', left: '21%', cor: '#d3c29e' },
+        { nome: 'Noxus', img: null, top: '28%', left: '48%', cor: '#c62828' }, 
+        { nome: 'Piltover e Zaun', img: null, top: '54%', left: '51%', cor: '#d4a017' },
+        { nome: 'Targon', img: null, top: '78%', left: '26%', cor: '#5e35b1' },
+        { nome: 'Ixtal', img: null, top: '67%', left: '63%', cor: '#2e7d32' },
+        { nome: 'Águas de Sentina', img: null, top: '57%', left: '72%', cor: '#d84315' },
+        { nome: 'Ilha das Sombras', img: null, top: '86%', left: '85%', cor: '#00838f' },
+        { nome: 'Ionia', img: null, top: '30%', left: '82%', cor: '#43a047' }
     ];
 
     const handleDragStart = (e) => {
@@ -146,23 +148,24 @@ export default function MapaMundi({ children }) {
                 <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', position: 'relative', width: '100%' }}>
                     <div style={{ position: 'relative', display: 'inline-block', height: '100%', maxHeight: 'calc(65vh - 70px)' }} onClick={handleMapClickAdmin}>
                         
-                        {/* MAPA BASE */}
                         <img src={mapaClean} alt="Mapa Base" style={{ display: 'block', height: '100%', width: 'auto', objectFit: 'contain' }} />
 
-                        {/* 🔥 4. AQUI É ONDE AS IMAGENS MÁGICAS APARECEM! 🔥 */}
+                        {/* RENDERIZA A IMAGEM SE ELA EXISTIR! */}
                         {posicoesPings.map((reino) => (
-                            <img 
-                                key={`mask-${reino.nome}`}
-                                src={reino.img} 
-                                style={{ 
-                                    position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', 
-                                    pointerEvents: 'none', zIndex: 2, 
-                                    mixBlendMode: 'screen', // Efeito neon aceso!
-                                    opacity: reinoHover === reino.nome ? 1 : 0, // Só acende se o mouse estiver no botão dele
-                                    transition: 'opacity 0.3s ease-out'
-                                }} 
-                                alt={`Mascara ${reino.nome}`}
-                            />
+                            reino.img ? (
+                                <img 
+                                    key={`mask-${reino.nome}`}
+                                    src={reino.img} 
+                                    style={{ 
+                                        position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', 
+                                        pointerEvents: 'none', zIndex: 2, 
+                                        mixBlendMode: 'screen',
+                                        opacity: reinoHover === reino.nome ? 1 : 0, 
+                                        transition: 'opacity 0.3s ease-out'
+                                    }} 
+                                    alt={`Mascara ${reino.nome}`}
+                                />
+                            ) : null
                         ))}
 
                         <style dangerouslySetInnerHTML={{__html: `
