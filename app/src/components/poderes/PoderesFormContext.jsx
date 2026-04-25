@@ -373,7 +373,15 @@ export function PoderesFormProvider({ children }) {
     const armasEquipadas = useMemo(() => (minhaFicha?.inventario || []).filter(i => i.tipo === 'arma' && i.equipado), [minhaFicha]);
     const poderesGlobais = minhaFicha?.poderes || [];
     const passivas = minhaFicha?.passivas || [];
-    const itensFiltrados = useMemo(() => poderesGlobais.filter(p => (p.categoria || 'poder') === abaAtual), [poderesGlobais, abaAtual]);
+    
+    // 🔥 FILTRAGEM ÚNICA E BLINDADA 🔥
+    const itensFiltrados = useMemo(() => {
+        return poderesGlobais.filter(p => {
+            const cat = (p.categoria || 'poder').toLowerCase();
+            const alvo = abaAtual.toLowerCase();
+            return cat === alvo;
+        });
+    }, [poderesGlobais, abaAtual]);
 
     const relatorioAuditoria = useMemo(() => {
         const nomesProps = { mbase: 'MULT BASE (x)', mgeral: 'MULT GERAL (x)', mformas: 'MULT FORMA (x)', mabs: 'MULT ABSOLUTO (x)', munico: 'MULT UNICO (x)', base: 'VALOR BRUTO (+)' };
@@ -494,10 +502,11 @@ export function PoderesFormProvider({ children }) {
         setOverchargeAtivo(false);
     }, [overchargeAtivo, updateFicha, danoBruto, energiaElemental, mPotencial]);
 
-    // 🔥 O MOTOR DE INJEÇÃO DO JSON DA IA (SINCRONIZADO COM A ABA ATIVA) 🔥
+    // 🔥 MOTOR IA DEFINITIVO: RESPEITA A ABA ATUAL E GERA RELATÓRIO 🔥
     const injetarJsonDaIA = useCallback((jsonString) => {
         try {
             const dados = JSON.parse(jsonString);
+            let countP = 0, countE = 0, countPa = 0;
             updateFicha(f => {
                 const time = Date.now();
                 if (dados.poderes && Array.isArray(dados.poderes)) {
@@ -505,25 +514,25 @@ export function PoderesFormProvider({ children }) {
                     dados.poderes.forEach((p, i) => {
                         f.poderes.push({
                             id: 'pw_ia_' + time + i,
-                            nome: p.nome || 'Habilidade Desconhecida',
+                            nome: p.nome || 'Poder sem Nome',
                             descricao: p.descricao || '',
                             dadosQtd: parseInt(p.danoQtd) || 0,
                             dadosFaces: parseInt(p.danoFaces) || 0,
                             vertente: 'Físico',
-                            categoria: abaAtual, // 🎯 AGORA INJETA NA ABA ONDE VOCÊ ESTÁ!
+                            categoria: abaAtual, // 🎯 Fica exatamente onde você está!
                             ativa: false,
                             isForma: false,
                             notasIA: p.notasIA || '' 
                         });
+                        countP++;
                     });
                 }
-
                 if (dados.ataquesElementais && Array.isArray(dados.ataquesElementais)) {
                     if (!f.ataquesElementais) f.ataquesElementais = [];
                     dados.ataquesElementais.forEach((el, i) => {
                         f.ataquesElementais.push({
                             id: 'el_ia_' + time + i,
-                            nomeElem: el.nome || 'Magia Desconhecida',
+                            nomeElem: el.nome || 'Magia sem Nome',
                             descElem: el.descricao || '',
                             elemSelecionado: el.elementoAlvo || 'Fogo',
                             dadosQtd: parseInt(el.danoQtd) || 0,
@@ -531,32 +540,33 @@ export function PoderesFormProvider({ children }) {
                             equipado: false,
                             notasIA: el.notasIA || ''
                         });
+                        countE++;
                     });
                 }
-
                 if (dados.passivas && Array.isArray(dados.passivas)) {
                     if (!f.passivas) f.passivas = [];
                     dados.passivas.forEach((pa, i) => {
                         f.passivas.push({
                             id: 'pa_ia_' + time + i,
-                            nomePassiva: pa.nome || 'Passiva Desconhecida',
+                            nomePassiva: pa.nome || 'Passiva sem Nome',
                             descPassiva: pa.descricao || '',
                             ativa: true,
                             notasIA: pa.notasIA || ''
                         });
+                        countPa++;
                     });
                 }
             });
-            salvarFichaSilencioso();
-            alert("A magia aconteceu! As suas habilidades foram categorizadas e injetadas na Ficha!");
+            salvarFirebaseImediato();
+            alert(`Sincronização Concluída!\n\n🗡️ Injetados na aba atual: ${countP}\n🌪️ Enviados para Elementos: ${countE}\n🛡️ Enviados para Passivas: ${countPa}`);
             return true;
         } catch (e) {
             console.error(e);
-            alert("Erro ao ler o código da IA. Confirme se copiou o JSON corretamente.");
+            alert("Erro no código da IA. Certifique-se de copiar o JSON completo.");
             return false;
         }
     }, [updateFicha, abaAtual]);
-    
+
     const value = useMemo(() => ({
         minhaFicha, meuNome, isMestre, abaAtual, setAbaAtual,
         nomePoder, setNomePoder, descricaoPoder, setDescricaoPoder,

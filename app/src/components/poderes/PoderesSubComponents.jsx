@@ -21,88 +21,56 @@ const ELEMENTOS_OPCOES = [
 
 export function PoderesImportadorIA() {
     const ctx = usePoderesForm();
-    if (!ctx) return null;
-
-    const { injetarJsonDaIA } = ctx;
     const [aberto, setAberto] = useState(false);
     const [textoDocs, setTextoDocs] = useState('');
     const [jsonResposta, setJsonResposta] = useState('');
     const [fase, setFase] = useState(1); 
 
-    const gerarPrompt = () => {
-        if (!textoDocs.trim()) return alert("Cole primeiro os seus poderes na caixa de texto!");
-        
-        const prompt = `Atue como um extrator de dados de sistemas de RPG. Leia as habilidades abaixo e classifique-as em 3 categorias: "poderes" (ataques físicos ou habilidades de classe), "ataquesElementais" (magias que invocam fogo, água, relâmpago, luz, etc) ou "passivas" (efeitos constantes).
-Extraia o dano se houver (ex: "causa 15d6 de dano" vira danoQtd: 15 e danoFaces: 6).
-Se houver efeitos complexos (ex: "paralisa por 2 turnos", "invoca criaturas", "dano de fogo e cortante misturado"), coloque a explicação dessa mecânica no campo "notasIA", pois o sistema precisará que o mestre aplique isso manualmente no mapa. Para elementais, tente adivinhar o "elementoAlvo" (ex: "Relâmpago", "Fogo", "Vazio").
+    if (!ctx) return null;
+    const { injetarJsonDaIA, abaAtual } = ctx;
 
-TEXTO DA FICHA:
+    const gerarPrompt = () => {
+        if (!textoDocs.trim()) return alert("Cole o texto primeiro!");
+        
+        // 🔥 PROMPT BLINDADO: Obriga a IA a salvar tudo como "poder" na aba atual, ignorando se tem fogo/gelo 🔥
+        const prompt = `Atue como extrator de dados de RPG.
+Transforme TODAS as habilidades descritas no texto abaixo em itens dentro do array "poderes". 
+Mesmo que a habilidade use fogo, gelo ou magia, COLOQUE-A EM "poderes", pois o usuário quer registrá-la nesta aba específica.
+Extraia o dano (ex: "15d6" vira danoQtd: 15 e danoFaces: 6).
+Se houver efeitos complexos de paralisia ou condições, coloque no campo "notasIA".
+
+TEXTO:
 ${textoDocs}
 
-Retorne EXATAMENTE UM JSON VÁLIDO e puro (sem markdown de formatação como \`\`\`), neste formato exato:
+RETORNE EXATAMENTE UM JSON PURO:
 {
-  "poderes": [{ "nome": "Nome do Poder", "descricao": "Sua descricao limpa", "danoQtd": 0, "danoFaces": 0, "notasIA": "Efeitos paralelos complexos aqui" }],
-  "ataquesElementais": [{ "nome": "Nome Magia", "descricao": "Desc", "danoQtd": 5, "danoFaces": 6, "elementoAlvo": "Raio", "notasIA": "Paralisa oponente" }],
-  "passivas": [{ "nome": "Alerta", "descricao": "Voce recebe +5 na iniciativa e nao é surpreendido", "notasIA": "Iniciativa ganha +5 de bonus base" }]
+  "poderes": [{ "nome": "X", "descricao": "Y", "danoQtd": 0, "danoFaces": 0, "notasIA": "" }]
 }`;
-
         navigator.clipboard.writeText(prompt);
-        alert("✨ O Prompt Perfeito foi copiado para a sua Área de Transferência!\n\nCole no ChatGPT, Gemini ou na sua Sexta-Feira, e traga o código de volta para o Passo 2!");
+        alert("Instrução copiada! Cole na sua IA e traga o JSON gerado.");
         setFase(2);
-    };
-
-    const processarResposta = () => {
-        if (!jsonResposta.trim()) return alert("Cole o código que a IA gerou!");
-        const sucesso = injetarJsonDaIA(jsonResposta);
-        if (sucesso) {
-            setAberto(false);
-            setFase(1);
-            setTextoDocs('');
-            setJsonResposta('');
-        }
     };
 
     return (
         <div style={{ marginBottom: '20px' }}>
-            <button 
-                className="btn-neon btn-blue" 
-                onClick={() => setAberto(!aberto)}
-                style={{ margin: 0, padding: '8px 15px', fontSize: '0.85em', fontWeight: 'bold', width: '100%', boxShadow: aberto ? '0 0 15px rgba(0,136,255,0.4)' : 'none' }}
-            >
-                {aberto ? '❌ ESCONDER IMPORTADOR DE IA' : '🤖 IMPORTAR PODERES VIA IA'}
+            <button className="btn-neon btn-blue" onClick={() => setAberto(!aberto)} style={{ width: '100%', margin: 0, fontWeight: 'bold' }}>
+                {aberto ? '❌ FECHAR MOTOR IA' : '🤖 IMPORTAR DO GOOGLE DOCS'}
             </button>
-
             {aberto && (
-                <div className="fade-in" style={{ marginTop: '15px', background: 'rgba(0,136,255,0.05)', padding: '20px', borderRadius: '8px', border: '1px dashed #00aaff' }}>
-                    <h3 style={{ color: '#00aaff', margin: '0 0 15px 0' }}>🤖 Motor de Triagem da Sexta-Feira</h3>
-                    
-                    {fase === 1 && (
-                        <div className="fade-in">
-                            <p style={{ color: '#aaa', fontSize: '0.85em', marginBottom: '10px' }}><b>PASSO 1:</b> Cole abaixo todos os seus Poderes, Passivas e Magias exatamente como estão no Google Docs.</p>
-                            <textarea 
-                                value={textoDocs} onChange={e => setTextoDocs(e.target.value)}
-                                placeholder="Cole aqui os textos longos e confusos... Ex: Relâmpago: Causa 5d6+Atributo..."
-                                style={{ width: '100%', height: '150px', background: '#050505', color: '#fff', border: '1px solid #333', borderRadius: '5px', padding: '10px', fontSize: '0.9em', resize: 'vertical' }}
-                            />
-                            <button className="btn-neon btn-gold" onClick={gerarPrompt} style={{ width: '100%', padding: '12px', marginTop: '10px', fontWeight: 'bold' }}>
-                                ✨ GERAR INSTRUÇÃO E COPIAR PARA ÁREA DE TRANSFERÊNCIA
-                            </button>
-                        </div>
-                    )}
-
-                    {fase === 2 && (
-                        <div className="fade-in">
-                            <p style={{ color: '#ffcc00', fontSize: '0.85em', marginBottom: '10px' }}><b>PASSO 2:</b> Peça à IA para ler o texto que acabou de copiar. Ela vai devolver um código (JSON). Cole-o aqui:</p>
-                            <textarea 
-                                value={jsonResposta} onChange={e => setJsonResposta(e.target.value)}
-                                placeholder='{ "poderes": [...], "ataquesElementais": [...] }'
-                                style={{ width: '100%', height: '150px', background: '#000', color: '#0f0', fontFamily: 'monospace', border: '1px solid #00aaff', borderRadius: '5px', padding: '10px', fontSize: '0.9em', resize: 'vertical' }}
-                            />
+                <div className="def-box" style={{ marginTop: '10px', border: '1px dashed #00aaff', background: 'rgba(0,170,255,0.05)' }}>
+                    {fase === 1 ? (
+                        <>
+                            <textarea value={textoDocs} onChange={e => setTextoDocs(e.target.value)} placeholder="Cole aqui as habilidades do seu Docs..." style={{ width: '100%', height: '120px', background: '#000', color: '#fff', padding: '10px' }} />
+                            <button className="btn-neon btn-gold" onClick={gerarPrompt} style={{ width: '100%', marginTop: '10px' }}>1. COPIAR PROMPT PARA IA</button>
+                        </>
+                    ) : (
+                        <>
+                            <textarea value={jsonResposta} onChange={e => setJsonResposta(e.target.value)} placeholder="Cole aqui o JSON gerado..." style={{ width: '100%', height: '120px', background: '#000', color: '#0f0', fontFamily: 'monospace', padding: '10px' }} />
                             <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                                <button className="btn-neon btn-red" onClick={() => setFase(1)} style={{ flex: 1, padding: '12px', margin: 0 }}>⬅ VOLTAR</button>
-                                <button className="btn-neon btn-green" onClick={processarResposta} style={{ flex: 2, padding: '12px', margin: 0, fontWeight: 'bold' }}>⚡ APLICAR CÓDIGO NA FICHA</button>
+                                <button className="btn-neon btn-red" onClick={() => setFase(1)}>VOLTAR</button>
+                                <button className="btn-neon btn-green" onClick={() => { if(injetarJsonDaIA(jsonResposta)) setAberto(false); }}>2. INJETAR NA FICHA</button>
                             </div>
-                        </div>
+                        </>
                     )}
                 </div>
             )}
@@ -389,17 +357,16 @@ export function PoderesFormEditor() {
         imagemUrl, setImagemUrl, uploadingImg, handleImageUpload,
         dadosQtd, setDadosQtd, dadosFaces, setDadosFaces,
         custoPercentual, setCustoPercentual, poderAlcance, setPoderAlcance,
-        poderArea, setPoderArea, armaVinculada, setArmaVinculada, minhaFicha,
+        poderArea, setPoderArea, armaVinculada, setArmaVinculada,
         descricaoPoder, setDescricaoPoder,
         nomeEfeito, setNomeEfeito, novoAtr, setNovoAtr, novoProp, setNovoProp, novoVal, setNovoVal,
         addEfeitoTemp, efeitosTemp, removerEfeitoTemp,
         nomeEfeitoPassivo, setNomeEfeitoPassivo, novoAtrPassivo, setNovoAtrPassivo,
         novoPropPassivo, setNovoPropPassivo, novoValPassivo, setNovoValPassivo,
         addEfeitoPassivoTemp, efeitosTempPassivos, removerEfeitoPassivoTemp,
-        salvarNovoPoder, cancelarEdicaoPoder, formRef
+        salvarNovoPoder, cancelarEdicaoPoder, formRef, minhaFicha
     } = ctx;
 
-    // 🔥 FIX: Impede que falhe caso abaAtual seja desconhecida
     const sing = SINGULAR[abaAtual] || 'Poder/Habilidade';
 
     return (
@@ -568,7 +535,6 @@ export function PoderesLista() {
         salvarFormaPoder, deletarFormaPoder, ativarFormaPoder
     } = ctx;
 
-    // 🔥 FIX: Impede que falhe caso abaAtual seja desconhecida
     const sing = SINGULAR[abaAtual] || 'Poder/Habilidade';
 
     return (
