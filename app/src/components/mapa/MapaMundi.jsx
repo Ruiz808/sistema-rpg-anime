@@ -1,4 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
+// 🔥 AS IMAGENS AGORA SÃO IMPORTADAS COMO CÓDIGO 🔥
+import mapaClean from '../../assets/runeterra-clean.jpg';
+import mapaGabarito from '../../assets/runeterra-gabarito.png';
 
 export default function MapaMundi({ children }) {
     const [nivelVisao, setNivelVisao] = useState('globo'); 
@@ -22,11 +25,9 @@ export default function MapaMundi({ children }) {
     const [isDragging, setIsDragging] = useState(false);
     const dragStart = useRef({ x: 0, y: 0 });
 
-    // --- REFS DO LEITOR DE PIXEL ---
     const canvasRef = useRef(null);
     const imgIdMapRef = useRef(null);
 
-    // --- DICIONÁRIO DE CORES DO SEU MAPA GABARITO ---
     const dicionarioCores = {
         'rgb(255,0,0)': 'Noxus',      
         'rgb(0,255,0)': 'Ixtal',      
@@ -40,7 +41,6 @@ export default function MapaMundi({ children }) {
         'rgb(128,128,0)': 'Piltover e Zaun'
     };
 
-    // --- POSIÇÕES DOS PINGS (UI) ---
     const posicoesPings = [
         { nome: 'Freljord', top: '18%', left: '30%', cor: '#00b5e2' },
         { nome: 'Demacia', top: '42%', left: '22%', cor: '#d3c29e' },
@@ -54,7 +54,6 @@ export default function MapaMundi({ children }) {
         { nome: 'Ixtal', top: '72%', left: '65%', cor: '#2e7d32' }
     ];
 
-    // --- CONTROLES DE ARRASTE DO GLOBO ---
     const handleDragStart = (e) => {
         setIsDragging(true);
         dragStart.current = {
@@ -81,7 +80,6 @@ export default function MapaMundi({ children }) {
 
     const handleDragEnd = () => setIsDragging(false);
 
-    // --- CONTROLES DE NAVEGAÇÃO ---
     const criarNovoMapa = () => {
         const nome = prompt("Digite o nome do novo mapa para " + reinoSelecionado + ":");
         if (nome && nome.trim() !== "") {
@@ -112,7 +110,6 @@ export default function MapaMundi({ children }) {
         }
     };
 
-    // --- DETECÇÃO DO HOVER POR PIXEL ---
     const detectarReino = (e) => {
         if (nivelVisao !== 'continente' || !canvasRef.current) return;
 
@@ -143,9 +140,6 @@ export default function MapaMundi({ children }) {
         }
     }, [nivelVisao]);
 
-    // ==========================================
-    // 🌍 CAMADA 1: O GLOBO
-    // ==========================================
     if (nivelVisao === 'globo') {
         return (
             <div 
@@ -199,14 +193,10 @@ export default function MapaMundi({ children }) {
         );
     }
 
-    // ==========================================
-    // 🗺️ CAMADA 2: O CONTINENTE
-    // ==========================================
     if (nivelVisao === 'continente') {
         return (
             <div className="fade-in" style={{ width: '100%', height: '65vh', background: '#050508', borderRadius: '10px', border: '1px solid #0088ff', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
                 
-                {/* CABEÇALHO */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.8)', padding: '10px 20px', borderBottom: '1px solid #222', zIndex: 10 }}>
                     <button onClick={voltarCamera} className="btn-neon btn-red" style={{ margin: 0, padding: '5px 15px', fontSize: '0.85em', cursor: 'pointer' }}>⬅ VOLTAR AO GLOBO</button>
                     <h2 style={{ color: '#0088ff', margin: 0, textShadow: '0 0 10px #0088ff', textTransform: 'uppercase', letterSpacing: '2px' }}>
@@ -221,24 +211,22 @@ export default function MapaMundi({ children }) {
                         onMouseMove={detectarReino}
                         onClick={() => reinoHover && abrirMenuReino(reinoHover)}
                     >
-                        
-                        {/* 1. O MAPA BASE ORIGINAL */}
+                        {/* 🔥 IMAGEM CARREGADA VIA IMPORT 🔥 */}
                         <img 
-                            src="/runeterra-clean.jpg" 
+                            src={mapaClean} 
                             alt="Mapa de Runeterra" 
                             style={{ display: 'block', maxWidth: '100%', maxHeight: 'calc(65vh - 60px)', width: 'auto', height: 'auto', objectFit: 'contain' }} 
                         />
                         
-                        {/* 2. A IMAGEM DE GABARITO ORIGINAL */}
+                        {/* 🔥 GABARITO CARREGADO VIA IMPORT 🔥 */}
                         <img 
                             ref={imgIdMapRef}
-                            src="/runeterra-gabarito.png" 
+                            src={mapaGabarito} 
                             style={{ display: 'none' }} 
                             alt="Mapa ID"
                         />
                         <canvas ref={canvasRef} style={{ display: 'none' }} />
 
-                        {/* 3. CSS DOS PINGS DE UI */}
                         <style dangerouslySetInnerHTML={{__html: `
                             .ping-wrapper { position: absolute; transform: translate(-50%, -50%); pointer-events: none; display: flex; flex-direction: column; align-items: center; z-index: 5; }
                             .ping-anel-externo { width: 22px; height: 22px; border-radius: 50%; background: #000; display: flex; justify-content: center; align-items: center; transition: all 0.2s ease-out; box-shadow: 0 0 10px rgba(0,0,0,0.8); }
@@ -264,7 +252,6 @@ export default function MapaMundi({ children }) {
                     </div>
                 </div>
 
-                {/* MODAL DE SELEÇÃO E CRIAÇÃO */}
                 {reinoSelecionado && (
                     <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 20, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(5px)' }}>
                         <div style={{ background: '#111', border: '2px solid #0088ff', borderRadius: '15px', padding: '25px', width: '350px', textAlign: 'center', position: 'relative', boxShadow: '0 0 30px #0088ff' }}>
@@ -298,9 +285,6 @@ export default function MapaMundi({ children }) {
         );
     }
 
-    // ==========================================
-    // ⚔️ CAMADA 3: MAPA TÁTICO
-    // ==========================================
     if (nivelVisao === 'reino') {
         const backgroundUrl = mapasImagens[localAtual.mapaId];
 
