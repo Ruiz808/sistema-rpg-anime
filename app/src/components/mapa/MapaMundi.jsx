@@ -1,20 +1,18 @@
 import React, { useState, useRef } from 'react';
-// 🔥 IMPORTA O MAPA BASE
+// 🔥 O MAPA BASE
 import mapaClean from '../../assets/runeterra-clean.jpg';
 
-// 🔥 IMPORTA SÓ SHURIMA PARA O SEU TESTE!
+// 🔥 TODOS OS 10 CONTINENTES IMPORTADOS (Ajustei o nome do Freijord para bater com a sua pasta!) 🔥
+import gabaritoFreljord from '../../assets/gabarito-freijord.png';
+import gabaritoDemacia from '../../assets/gabarito-demacia.png';
+import gabaritoNoxus from '../../assets/gabarito-noxus.png';
+import gabaritoPiltover from '../../assets/gabarito-piltover.png';
 import gabaritoShurima from '../../assets/gabarito-shurima.png';
-
-// Quando você criar os outros no Photoshop, basta tirar os "//" da frente!
-// import gabaritoFreljord from '../../assets/gabarito-freljord.png';
-// import gabaritoDemacia from '../../assets/gabarito-demacia.png';
-// import gabaritoNoxus from '../../assets/gabarito-noxus.png';
-// import gabaritoPiltover from '../../assets/gabarito-piltover.png';
-// import gabaritoTargon from '../../assets/gabarito-targon.png';
-// import gabaritoIxtal from '../../assets/gabarito-ixtal.png';
-// import gabaritoAguas from '../../assets/gabarito-aguas.png';
-// import gabaritoIlha from '../../assets/gabarito-ilha.png';
-// import gabaritoIonia from '../../assets/gabarito-ionia.png';
+import gabaritoTargon from '../../assets/gabarito-targon.png';
+import gabaritoIxtal from '../../assets/gabarito-ixtal.png';
+import gabaritoAguas from '../../assets/gabarito-aguas.png';
+import gabaritoIlha from '../../assets/gabarito-ilha.png';
+import gabaritoIonia from '../../assets/gabarito-ionia.png';
 
 export default function MapaMundi({ children }) {
     const [nivelVisao, setNivelVisao] = useState('globo'); 
@@ -37,18 +35,18 @@ export default function MapaMundi({ children }) {
     const [isDragging, setIsDragging] = useState(false);
     const dragStart = useRef({ x: 0, y: 0 });
 
-    // 🔥 Deixei "img: null" nos que ainda não existem para não dar erro 🔥
+    // 🔥 AGORA SIM! TODOS POSSUEM SUA IMAGEM LINKADA E NENHUM ESTÁ NULL 🔥
     const posicoesPings = [
-        { nome: 'Shurima', img: gabaritoShurima, top: '75%', left: '43%', cor: '#c59b0d' }, // O SEU TESTE!
-        { nome: 'Freljord', img: null, top: '15%', left: '28%', cor: '#00b5e2' },
-        { nome: 'Demacia', img: null, top: '40%', left: '21%', cor: '#d3c29e' },
-        { nome: 'Noxus', img: null, top: '28%', left: '48%', cor: '#c62828' }, 
-        { nome: 'Piltover e Zaun', img: null, top: '54%', left: '51%', cor: '#d4a017' },
-        { nome: 'Targon', img: null, top: '78%', left: '26%', cor: '#5e35b1' },
-        { nome: 'Ixtal', img: null, top: '67%', left: '63%', cor: '#2e7d32' },
-        { nome: 'Águas de Sentina', img: null, top: '57%', left: '72%', cor: '#d84315' },
-        { nome: 'Ilha das Sombras', img: null, top: '86%', left: '85%', cor: '#00838f' },
-        { nome: 'Ionia', img: null, top: '30%', left: '82%', cor: '#43a047' }
+        { nome: 'Freljord', img: gabaritoFreljord, top: '15%', left: '28%', cor: '#00b5e2' },
+        { nome: 'Demacia', img: gabaritoDemacia, top: '40%', left: '21%', cor: '#d3c29e' },
+        { nome: 'Noxus', img: gabaritoNoxus, top: '28%', left: '48%', cor: '#c62828' }, 
+        { nome: 'Piltover e Zaun', img: gabaritoPiltover, top: '54%', left: '51%', cor: '#d4a017' },
+        { nome: 'Shurima', img: gabaritoShurima, top: '75%', left: '43%', cor: '#c59b0d' },
+        { nome: 'Targon', img: gabaritoTargon, top: '78%', left: '26%', cor: '#5e35b1' },
+        { nome: 'Ixtal', img: gabaritoIxtal, top: '67%', left: '63%', cor: '#2e7d32' },
+        { nome: 'Águas de Sentina', img: gabaritoAguas, top: '57%', left: '72%', cor: '#d84315' },
+        { nome: 'Ilha das Sombras', img: gabaritoIlha, top: '86%', left: '85%', cor: '#00838f' },
+        { nome: 'Ionia', img: gabaritoIonia, top: '30%', left: '82%', cor: '#43a047' }
     ];
 
     const handleDragStart = (e) => {
@@ -92,6 +90,7 @@ export default function MapaMundi({ children }) {
         else if (nivelVisao === 'continente') { setNivelVisao('globo'); setLocalAtual({ continente: null, reino: null }); }
     };
 
+    // Admin Click se precisar afinar posições (Shift + Click no mapa)
     const handleMapClickAdmin = (e) => {
         if (e.shiftKey) {
             const rect = e.currentTarget.getBoundingClientRect();
@@ -150,7 +149,7 @@ export default function MapaMundi({ children }) {
                         
                         <img src={mapaClean} alt="Mapa Base" style={{ display: 'block', height: '100%', width: 'auto', objectFit: 'contain' }} />
 
-                        {/* RENDERIZA A IMAGEM SE ELA EXISTIR! */}
+                        {/* RENDERIZA TODAS AS 10 IMAGENS DE FORMA AUTOMÁTICA! */}
                         {posicoesPings.map((reino) => (
                             reino.img ? (
                                 <img 
