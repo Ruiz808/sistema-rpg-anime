@@ -27,6 +27,7 @@ export default function MapaMundi({ children }) {
     const [reinoSelecionado, setReinoSelecionado] = useState(null);
     const [reinoHover, setReinoHover] = useState(null); 
     const [planoHover, setPlanoHover] = useState(null);
+    const [corHover, setCorHover] = useState('#ffffff');
     
     const [modoEdicaoMapa, setModoEdicaoMapa] = useState(false);
     const [urlInput, setUrlInput] = useState('');
@@ -49,23 +50,6 @@ export default function MapaMundi({ children }) {
         { nome: 'Ionia', img: gabaritoIonia, top: '30%', left: '82%', cor: '#43a047' }
     ];
 
-    // 🔥 A NOVA CONFIGURAÇÃO DA COSMOLOGIA 🔥
-    // Baseada exatamente na imagem de design e na lista de cores fornecida.
-    // O Plano do Caos é o background preto.
-    const planosDimensionais = [
-        { nome: 'Plano do Fogo', cor: '#F08080', angulo: 0, raio: 220 }, // Vermelho claro
-        { nome: 'Plano das fadas', cor: '#00FF00', angulo: 36, raio: 220 }, // Verde
-        { nome: 'Plano da terra', cor: '#CD853F', angulo: 72, raio: 220 }, // cor de pele/marrom
-        { nome: 'Plano da Agua', cor: '#0000FF', angulo: 108, raio: 220 }, // Azul
-        { nome: 'Plano do Ether', cor: '#800080', angulo: 144, raio: 220 }, // Roxo
-        { nome: 'Plano do Vento', cor: '#D3D3D3', angulo: 180, raio: 220 }, // Cinza claro
-        { nome: 'Plano Astral', cor: '#696969', angulo: 216, raio: 220 }, // Cinza escuro
-        { nome: 'Inferno', cor: '#800000', angulo: 252, raio: 220 }, // Vinho
-        { nome: 'Ceus', cor: '#ADD8E6', angulo: 288, raio: 220 }, // Azul claro
-        { nome: 'Plano da ordem', cor: '#FFFF00', angulo: 324, raio: 220 } // Amarelo
-    ];
-
-    // Funções de Movimento do Globo
     const handleDragStart = (e) => {
         setIsDragging(true);
         dragStart.current = { x: e.clientX || e.touches?.[0].clientX, y: e.clientY || e.touches?.[0].clientY };
@@ -82,7 +66,6 @@ export default function MapaMundi({ children }) {
     };
     const handleDragEnd = () => setIsDragging(false);
 
-    // Funções de Navegação
     const criarNovoMapa = () => {
         const nome = prompt("Escreva o nome do novo mapa para " + reinoSelecionado + ":");
         if (nome && nome.trim() !== "") setMapasSalvos(prev => ({ ...prev, [reinoSelecionado]: [...(prev[reinoSelecionado] || []), nome] }));
@@ -103,90 +86,128 @@ export default function MapaMundi({ children }) {
         else if (nivelVisao === 'globo') setNivelVisao('cosmologia');
     };
 
-    const handleMapClickAdmin = (e) => {
-        if (e.shiftKey) {
-            const rect = e.currentTarget.getBoundingClientRect();
-            alert(`Coordenadas exatas:\ntop: '${(((e.clientY - rect.top) / rect.height) * 100).toFixed(0)}%', left: '${(((e.clientX - rect.left) / rect.width) * 100).toFixed(0)}%'`);
-        }
+    const handlePlanoEnter = (nome, cor) => {
+        setPlanoHover(nome);
+        setCorHover(cor);
     };
 
     // ==========================================
-    // 🌌 CAMADA 0: O ATLAS DIMENSIONAL (Desenhado exatamente como solicitado!)
-    // 🔥 O FUNDO PRETO É O PLANO DO CAOS 🔥
+    // 🌌 CAMADA 0: A COSMOLOGIA PERFEITA (O DESENHO EXATO)
     // ==========================================
     if (nivelVisao === 'cosmologia') {
         return (
             <div className="fade-in" style={{ 
-                width: '100%', height: '85vh', background: '#000', borderRadius: '15px', 
-                border: '1px solid #1a1a2e', position: 'relative', overflow: 'hidden',
-                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                width: '100%', height: '85vh', background: '#000000', borderRadius: '15px', 
+                border: '1px solid #333', position: 'relative', overflow: 'hidden',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
             }}>
-                {/* Título Superior */}
-                <div style={{ position: 'absolute', top: '30px', textAlign: 'center', zIndex: 10 }}>
-                    <h1 style={{ color: '#fff', margin: 0, letterSpacing: '8px', textTransform: 'uppercase', fontSize: '1.5em', textShadow: '0 0 20px rgba(255,255,255,0.5)' }}>Cosmologia</h1>
-                    <div style={{ height: '2px', width: '200px', background: 'linear-gradient(to right, transparent, #fff, transparent)', margin: '10px auto' }}></div>
+                {/* O Fundo é o Caos, então capturamos o mouse na tela inteira */}
+                <div 
+                    style={{ position: 'absolute', inset: 0, zIndex: 1 }}
+                    onMouseEnter={() => handlePlanoEnter('Plano do Caos', '#555555')}
+                ></div>
+
+                {/* Título Dinâmico Superior */}
+                <div style={{ position: 'absolute', top: '40px', textAlign: 'center', zIndex: 10, pointerEvents: 'none' }}>
+                    <h1 style={{ color: corHover, margin: 0, letterSpacing: '4px', textTransform: 'uppercase', fontSize: '1.8em', textShadow: `0 0 15px ${corHover}`, transition: '0.3s' }}>
+                        {planoHover || 'Cosmologia'}
+                    </h1>
                 </div>
 
-                <div style={{ position: 'relative', width: '800px', height: '800px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    
-                    {/* 🔥 O DESIGN DO DIAGRAMA (Desenhado em CSS Puro!) 🔥 */}
-                    {/* Círculo Central Arcaico */}
-                    <div style={{ position: 'absolute', width: '420px', height: '420px', border: '3px solid rgba(255, 255, 255, 0.1)', borderRadius: '50%', pointerEvents: 'none' }}></div>
-                    <div style={{ position: 'absolute', width: '380px', height: '380px', border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: '50%', pointerEvents: 'none' }}></div>
-                    <div style={{ position: 'absolute', width: '340px', height: '340px', border: '3px solid rgba(255, 255, 255, 0.15)', borderRadius: '50%', pointerEvents: 'none' }}></div>
-                    
-                    {/* Linhas de Cruzamento Geométrica */}
-                    <div style={{ position: 'absolute', width: '100%', height: '2px', background: 'linear-gradient(to right, transparent, rgba(255, 255, 255, 0.3), transparent)', pointerEvents: 'none' }}></div>
-                    <div style={{ position: 'absolute', width: '2px', height: '100%', background: 'linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.3), transparent)', pointerEvents: 'none' }}></div>
-                    
-                    {/* Linhas Diagonais Arcanas */}
-                    <div style={{ position: 'absolute', width: '100%', height: '1px', background: 'rgba(255, 255, 255, 0.1)', transform: 'rotate(45deg)', pointerEvents: 'none' }}></div>
-                    <div style={{ position: 'absolute', width: '100%', height: '1px', background: 'rgba(255, 255, 255, 0.1)', transform: 'rotate(-45deg)', pointerEvents: 'none' }}></div>
+                {/* 🔥 O DIAGRAMA VETORIAL EXATO 🔥 */}
+                <svg 
+                    viewBox="0 0 600 600" 
+                    style={{ width: '650px', height: '650px', zIndex: 5 }}
+                    onMouseLeave={() => handlePlanoEnter('Plano do Caos', '#555555')}
+                >
+                    <g style={{ cursor: 'pointer' }}>
+                        {/* 1. CÉUS (Azul Claro) - Metade Superior Externa */}
+                        <path 
+                            d="M 20 300 A 280 280 0 0 1 580 300 L 510 300 A 210 210 0 0 0 90 300 Z" 
+                            fill="#00BFFF" stroke="#000" strokeWidth="3"
+                            onMouseEnter={() => handlePlanoEnter('Céus', '#00BFFF')}
+                            style={{ transition: 'opacity 0.3s', opacity: planoHover === 'Céus' ? 1 : 0.85 }}
+                        />
 
-                    {/* 🔥 CENTRO: Terra 0 (Runeterra) - BRANCO 🔥 */}
-                    <div 
-                        onClick={() => setNivelVisao('globo')}
-                        onMouseEnter={() => setPlanoHover('Terra 0')}
-                        onMouseLeave={() => setPlanoHover(null)}
-                        style={{ 
-                            width: '180px', height: '180px', borderRadius: '50%', cursor: 'pointer',
-                            background: '#000', border: '4px solid #FFFFFF', zIndex: 20,
-                            boxShadow: planoHover === 'Terra 0' ? '0 0 60px #FFFFFF' : '0 0 20px rgba(255,255,255,0.4)',
-                            transition: '0.4s', position: 'relative', overflow: 'hidden',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center'
-                        }}
-                    >
-                        <span style={{ color: '#FFFFFF', fontSize: '14px', fontWeight: 'bold', letterSpacing: '3px', textShadow: '0 0 8px #FFFFFF' }}>Terra 0<br/>(Runeterra)</span>
-                    </div>
+                        {/* 2. INFERNO (Vinho) - Metade Inferior Externa */}
+                        <path 
+                            d="M 580 300 A 280 280 0 0 1 20 300 L 90 300 A 210 210 0 0 0 510 300 Z" 
+                            fill="#800000" stroke="#000" strokeWidth="3"
+                            onMouseEnter={() => handlePlanoEnter('Inferno', '#800000')}
+                            style={{ transition: 'opacity 0.3s', opacity: planoHover === 'Inferno' ? 1 : 0.85 }}
+                        />
 
-                    {/* 🔥 OS NOME DAS DIMENSÕES FLUTUANTES (SEM BOLINHAS!) 🔥 */}
-                    {planosDimensionais.map((plano) => {
-                        const rad = (plano.angulo * Math.PI) / 180;
-                        const x = Math.cos(rad) * plano.raio;
-                        const y = Math.sin(rad) * plano.raio;
+                        {/* 3. PLANO ASTRAL (Cinza Escuro) - O Anel Divisório */}
+                        <path 
+                            d="M 90 300 A 210 210 0 1 1 510 300 A 210 210 0 1 1 90 300 M 120 300 A 180 180 0 1 0 480 300 A 180 180 0 1 0 120 300" 
+                            fill="#696969" fillRule="evenodd" stroke="#000" strokeWidth="3"
+                            onMouseEnter={() => handlePlanoEnter('Plano Astral', '#696969')}
+                            style={{ transition: 'opacity 0.3s', opacity: planoHover === 'Plano Astral' ? 1 : 0.85 }}
+                        />
 
-                        return (
-                            <div 
-                                key={plano.nome}
-                                onClick={() => alert(`Viajando para: ${plano.nome}`)}
-                                onMouseEnter={() => setPlanoHover(plano.nome)}
-                                onMouseLeave={() => setPlanoHover(null)}
-                                style={{
-                                    position: 'absolute', transform: `translate(${x}px, ${y}px)`,
-                                    width: '100px', height: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                                    cursor: 'pointer', zIndex: 15, transition: '0.3s'
-                                }}
-                            >
-                                {/* Só o texto colorido flutuando exatamente nas posições do design arcaico */}
-                                <span style={{ 
-                                    color: planoHover === plano.nome ? '#fff' : plano.cor,
-                                    fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', textShadow: planoHover === plano.nome ? `0 0 10px ${plano.cor}` : '0 0 5px #000',
-                                    letterSpacing: '1px', textAlign: 'center', transition: '0.3s'
-                                }}>{plano.nome}</span>
-                            </div>
-                        );
-                    })}
-                </div>
+                        {/* 4. PLANO DO FOGO (Vermelho Claro) - Quadrante Superior Esquerdo */}
+                        <path 
+                            d="M 300 120 A 180 180 0 0 0 120 300 L 240 300 A 60 60 0 0 1 300 240 Z" 
+                            fill="#FF6666" stroke="#000" strokeWidth="3"
+                            onMouseEnter={() => handlePlanoEnter('Plano do Fogo', '#FF6666')}
+                            style={{ transition: 'opacity 0.3s', opacity: planoHover === 'Plano do Fogo' ? 1 : 0.85 }}
+                        />
+
+                        {/* 5. PLANO DA TERRA (Marrom/Pele) - Quadrante Superior Direito */}
+                        <path 
+                            d="M 480 300 A 180 180 0 0 0 300 120 L 300 240 A 60 60 0 0 1 420 300 Z" 
+                            fill="#CD853F" stroke="#000" strokeWidth="3"
+                            onMouseEnter={() => handlePlanoEnter('Plano da Terra', '#CD853F')}
+                            style={{ transition: 'opacity 0.3s', opacity: planoHover === 'Plano da Terra' ? 1 : 0.85 }}
+                        />
+
+                        {/* 6. PLANO DA ÁGUA (Azul) - Quadrante Inferior Direito */}
+                        <path 
+                            d="M 300 480 A 180 180 0 0 0 480 300 L 420 300 A 60 60 0 0 1 300 360 Z" 
+                            fill="#3366FF" stroke="#000" strokeWidth="3"
+                            onMouseEnter={() => handlePlanoEnter('Plano da Água', '#3366FF')}
+                            style={{ transition: 'opacity 0.3s', opacity: planoHover === 'Plano da Água' ? 1 : 0.85 }}
+                        />
+
+                        {/* 7. PLANO DO VENTO (Cinza Claro) - Quadrante Inferior Esquerdo */}
+                        <path 
+                            d="M 120 300 A 180 180 0 0 0 300 480 L 300 360 A 60 60 0 0 1 240 300 Z" 
+                            fill="#D3D3D3" stroke="#000" strokeWidth="3"
+                            onMouseEnter={() => handlePlanoEnter('Plano do Vento', '#D3D3D3')}
+                            style={{ transition: 'opacity 0.3s', opacity: planoHover === 'Plano do Vento' ? 1 : 0.85 }}
+                        />
+
+                        {/* 8. PLANO DAS FADAS (Verde) - Bolinha Superior */}
+                        <circle 
+                            cx="300" cy="120" r="20" fill="#00FF00" stroke="#000" strokeWidth="3"
+                            onMouseEnter={() => handlePlanoEnter('Plano das Fadas', '#00FF00')}
+                            style={{ transition: 'transform 0.3s', transformOrigin: '300px 120px', transform: planoHover === 'Plano das Fadas' ? 'scale(1.2)' : 'scale(1)' }}
+                        />
+
+                        {/* 9. PLANO DO ETHER (Roxo) - Bolinha Inferior */}
+                        <circle 
+                            cx="300" cy="480" r="20" fill="#800080" stroke="#000" strokeWidth="3"
+                            onMouseEnter={() => handlePlanoEnter('Plano do Ether', '#800080')}
+                            style={{ transition: 'transform 0.3s', transformOrigin: '300px 480px', transform: planoHover === 'Plano do Ether' ? 'scale(1.2)' : 'scale(1)' }}
+                        />
+
+                        {/* 10. PLANO DA ORDEM (Amarelo) - Hexágono à esquerda */}
+                        <polygon 
+                            points="0,300 10,282 30,282 40,300 30,318 10,318" 
+                            fill="#FFD700" stroke="#000" strokeWidth="3"
+                            onMouseEnter={() => handlePlanoEnter('Plano da Ordem', '#FFD700')}
+                            style={{ transition: 'transform 0.3s', transformOrigin: '20px 300px', transform: planoHover === 'Plano da Ordem' ? 'scale(1.2)' : 'scale(1)' }}
+                        />
+
+                        {/* 11. TERRA 0 / RUNETERRA (Branco) - Centro Absoluto */}
+                        <circle 
+                            cx="300" cy="300" r="60" fill="#FFFFFF" stroke="#000" strokeWidth="3"
+                            onMouseEnter={() => handlePlanoEnter('Terra 0 (Runeterra)', '#FFFFFF')}
+                            onClick={() => setNivelVisao('globo')}
+                            style={{ transition: 'transform 0.3s', transformOrigin: '300px 300px', transform: planoHover === 'Terra 0 (Runeterra)' ? 'scale(1.1)' : 'scale(1)' }}
+                        />
+                    </g>
+                </svg>
 
                 <style dangerouslySetInnerHTML={{__html: `
                     .fade-in { animation: fadeIn 0.8s ease-in-out; }
@@ -197,7 +218,7 @@ export default function MapaMundi({ children }) {
     }
 
     // ==========================================
-    // 🌍 CAMADA 1: O GLOBO ORBITAL (INTOCÁVEL!)
+    // 🌍 CAMADA 1: O GLOBO ORBITAL
     // ==========================================
     if (nivelVisao === 'globo') {
         return (
@@ -206,7 +227,7 @@ export default function MapaMundi({ children }) {
                 style={{ width: '100%', height: '65vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#050508', borderRadius: '10px', border: '1px solid #0088ff', position: 'relative', overflow: 'hidden' }}
                 onMouseMove={handleDragMove} onMouseUp={handleDragEnd} onMouseLeave={handleDragEnd} onTouchMove={handleDragMove} onTouchEnd={handleDragEnd}
             >
-                <button onClick={voltarCamera} style={{ position: 'absolute', top: '20px', left: '20px', background: '#ff4444', border: 'none', color: '#fff', padding: '6px 18px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', zIndex: 30 }}>⬅ MULTIVERSO</button>
+                <button onClick={voltarCamera} style={{ position: 'absolute', top: '20px', left: '20px', background: '#ffffff', border: '1px solid #000', color: '#000', padding: '6px 18px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', zIndex: 30 }}>⬅ COSMOLOGIA</button>
 
                 <div style={{ position: 'absolute', top: '20px', textAlign: 'center', zIndex: 10, pointerEvents: 'none' }}>
                     <h2 style={{ color: '#00ffcc', margin: 0, textTransform: 'uppercase', letterSpacing: '3px', textShadow: '0 0 10px #00ffcc' }}>Visão Orbital</h2>
@@ -239,7 +260,7 @@ export default function MapaMundi({ children }) {
     }
 
     // ==========================================
-    // 🗺️ CAMADA 2: O CONTINENTE (INTOCÁVEL!)
+    // 🗺️ CAMADA 2: O CONTINENTE
     // ==========================================
     if (nivelVisao === 'continente') {
         return (
@@ -251,8 +272,7 @@ export default function MapaMundi({ children }) {
                 </div>
 
                 <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', position: 'relative', width: '100%' }}>
-                    <div style={{ position: 'relative', display: 'inline-block', height: '100%', maxHeight: 'calc(65vh - 70px)' }} onClick={handleMapClickAdmin}>
-                        
+                    <div style={{ position: 'relative', display: 'inline-block', height: '100%', maxHeight: 'calc(65vh - 70px)' }}>
                         <img src={mapaClean} alt="Mapa Base" style={{ display: 'block', height: '100%', width: 'auto', objectFit: 'contain' }} />
 
                         {posicoesPings.map((reino) => (
@@ -262,10 +282,8 @@ export default function MapaMundi({ children }) {
                                     src={reino.img} 
                                     style={{ 
                                         position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', 
-                                        pointerEvents: 'none', zIndex: 2, 
-                                        mixBlendMode: 'screen',
-                                        opacity: reinoHover === reino.nome ? 1 : 0, 
-                                        transition: 'opacity 0.3s ease-out'
+                                        pointerEvents: 'none', zIndex: 2, mixBlendMode: 'screen',
+                                        opacity: reinoHover === reino.nome ? 1 : 0, transition: 'opacity 0.3s ease-out'
                                     }} 
                                     alt={`Mascara ${reino.nome}`}
                                 />
