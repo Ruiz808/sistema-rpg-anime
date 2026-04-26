@@ -93,120 +93,121 @@ export default function MapaMundi({ children }) {
         setCorHover(cor);
     };
 
+    const travelingAlert = (plano) => {
+        alert(`Traveling to: ${plano}\n(Ainda não implementado!)`);
+    };
+
     // ==========================================
-    // 🌌 CAMADA 0: A COSMOLOGIA NEON (O DESENHO EXATO)
+    // 🌌 CAMADA 0: A COSMOLOGIA NEON (O DESENHO EXATO SEM BURACOS)
     // ==========================================
     if (nivelVisao === 'cosmologia') {
         return (
             <div className="fade-in" style={{ 
-                width: '100%', height: '85vh', background: '#050508', borderRadius: '15px', 
-                border: '1px solid #1a1a2e', position: 'relative', overflow: 'hidden',
+                width: '100%', height: '85vh', background: '#000000', borderRadius: '15px', 
+                border: '1px solid #222', position: 'relative', overflow: 'hidden',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
             }}>
-                {/* PLANO DO CAOS (O Fundo) */}
+                {/* PLANO DO CAOS (O Fundo Preto) */}
                 <div 
-                    style={{ position: 'absolute', inset: 0, zIndex: 1 }}
-                    onMouseEnter={() => handlePlanoEnter('Plano do Caos', '#555555')}
+                    style={{ position: 'absolute', inset: 0, zIndex: 1, cursor: 'pointer' }}
+                    onMouseEnter={() => handlePlanoEnter('Plano do Caos', '#777777')}
+                    onClick={() => setNivelVisao('globo')}
                 ></div>
 
-                {/* Título Dinâmico Superior */}
+                {/* Título Dinâmico Blinding Neon */}
                 <div style={{ position: 'absolute', top: '40px', textAlign: 'center', zIndex: 10, pointerEvents: 'none' }}>
                     <h1 style={{ color: corHover, margin: 0, letterSpacing: '6px', textTransform: 'uppercase', fontSize: '1.8em', textShadow: `0 0 20px ${corHover}`, transition: '0.3s' }}>
                         {planoHover || 'Atlas Multiversal'}
                     </h1>
-                    <p style={{ color: '#666', fontSize: '0.8em', textTransform: 'uppercase', letterSpacing: '2px', marginTop: '5px' }}>Selecione uma dimensão</p>
                 </div>
 
-                {/* Tag Fixa do Plano do Caos */}
+                {/* Tag Fixa Arcaica */}
                 <div style={{ position: 'absolute', top: '30px', left: '30px', color: '#555', fontSize: '12px', letterSpacing: '2px', fontWeight: 'bold', zIndex: 5, pointerEvents: 'none' }}>
                     PLANO DO CAOS
                 </div>
 
-                {/* 🔥 O DIAGRAMA NEON (SVG PURO) 🔥 */}
+                {/* 🔥 O DIAGRAMA NEON EXATO (SVG PURO) 🔥 */}
                 <svg 
                     viewBox="0 0 600 600" 
-                    style={{ width: '650px', height: '650px', zIndex: 5 }}
-                    onMouseLeave={() => handlePlanoEnter('Plano do Caos', '#555555')}
+                    style={{ width: '650px', height: '650px', zIndex: 5, filter: 'drop-shadow(0 0 5px rgba(255,255,255,0.15))' }}
+                    onMouseLeave={() => handlePlanoEnter('Plano do Caos', '#777777')}
                 >
-                    {/* Filtros de Glow para os Textos e Bordas */}
-                    <defs>
-                        <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-                            <feGaussianBlur stdDeviation="5" result="blur" />
-                            <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                        </filter>
-                    </defs>
-
                     <g style={{ cursor: 'pointer' }}>
+                        
                         {/* 1. CÉUS (Azul Claro) */}
-                        <g onMouseEnter={() => handlePlanoEnter('Céus', '#ADD8E6')} onClick={() => alert('Viajando para Céus')} style={{ filter: planoHover === 'Céus' ? 'drop-shadow(0 0 15px #ADD8E6)' : 'none', transition: '0.3s' }}>
-                            <path d="M 20 300 A 280 280 0 0 1 580 300 L 510 300 A 210 210 0 0 0 90 300 Z" fill="rgba(173, 216, 230, 0.15)" stroke="#ADD8E6" strokeWidth="3" />
-                            <text x="300" y="55" textAnchor="middle" fill="#ADD8E6" fontSize="14" fontWeight="bold" letterSpacing="3">CÉUS</text>
+                        <g onMouseEnter={() => handlePlanoEnter('Céus', '#00BFFF')} onClick={() => travelingAlert('Céus')} style={{ filter: planoHover === 'Céus' ? 'drop-shadow(0 0 15px #00BFFF)' : 'none', transition: '0.3s' }}>
+                            <path d="M 20 300 A 280 280 0 0 1 580 300 L 510 300 A 210 210 0 0 0 90 300 Z" fill="rgba(173, 216, 230, 0.2)" stroke="#00BFFF" strokeWidth="3" />
+                            <text x="300" y="70" textAnchor="middle" fill="#00BFFF" fontSize="14" fontWeight="bold" letterSpacing="3" style={{ textShadow: '0 0 10px #00BFFF' }}>CÉUS</text>
                         </g>
 
                         {/* 2. INFERNO (Vinho/Vermelho Escuro) */}
-                        <g onMouseEnter={() => handlePlanoEnter('Inferno', '#ff3333')} onClick={() => alert('Viajando para Inferno')} style={{ filter: planoHover === 'Inferno' ? 'drop-shadow(0 0 15px #ff3333)' : 'none', transition: '0.3s' }}>
-                            <path d="M 580 300 A 280 280 0 0 1 20 300 L 90 300 A 210 210 0 0 0 510 300 Z" fill="rgba(128, 0, 0, 0.25)" stroke="#ff3333" strokeWidth="3" />
-                            <text x="300" y="555" textAnchor="middle" fill="#ff3333" fontSize="14" fontWeight="bold" letterSpacing="3">INFERNO</text>
+                        <g onMouseEnter={() => handlePlanoEnter('Inferno', '#ff3333')} onClick={() => travelingAlert('Inferno')} style={{ filter: planoHover === 'Inferno' ? 'drop-shadow(0 0 15px #ff3333)' : 'none', transition: '0.3s' }}>
+                            <path d="M 580 300 A 280 280 0 0 1 20 300 L 90 300 A 210 210 0 0 0 510 300 Z" fill="rgba(128, 0, 0, 0.3)" stroke="#ff3333" strokeWidth="3" />
+                            <text x="300" y="540" textAnchor="middle" fill="#ff3333" fontSize="14" fontWeight="bold" letterSpacing="3" style={{ textShadow: '0 0 10px #ff3333' }}>INFERNO</text>
                         </g>
 
-                        {/* 3. PLANO ASTRAL (Cinza Escuro) */}
-                        <g onMouseEnter={() => handlePlanoEnter('Plano Astral', '#a0a0a0')} onClick={() => alert('Viajando para Plano Astral')} style={{ filter: planoHover === 'Plano Astral' ? 'drop-shadow(0 0 15px #a0a0a0)' : 'none', transition: '0.3s' }}>
-                            <path d="M 90 300 A 210 210 0 1 1 510 300 A 210 210 0 1 1 90 300 M 120 300 A 180 180 0 1 0 480 300 A 180 180 0 1 0 120 300" fill="rgba(105, 105, 105, 0.15)" fillRule="evenodd" stroke="#a0a0a0" strokeWidth="3" />
-                            <text x="105" y="305" textAnchor="middle" transform="rotate(-90 105 300)" fill="#a0a0a0" fontSize="12" fontWeight="bold" letterSpacing="2">PLANO ASTRAL</text>
-                            <text x="495" y="305" textAnchor="middle" transform="rotate(90 495 300)" fill="#a0a0a0" fontSize="12" fontWeight="bold" letterSpacing="2">PLANO ASTRAL</text>
+                        {/* 3. PLANO ASTRAL (Cinza Escuro - O Anel Divisório) */}
+                        <g onMouseEnter={() => handlePlanoEnter('Plano Astral', '#a0a0a0')} onClick={() => travelingAlert('Plano Astral')} style={{ filter: planoHover === 'Plano Astral' ? 'drop-shadow(0 0 15px #a0a0a0)' : 'none', transition: '0.3s' }}>
+                            <path d="M 90 300 A 210 210 0 1 1 510 300 A 210 210 0 1 1 90 300 M 120 300 A 180 180 0 1 0 480 300 A 180 180 0 1 0 120 300" fill="rgba(105, 105, 105, 0.25)" fillRule="evenodd" stroke="#a0a0a0" strokeWidth="3" />
+                            <text x="105" y="300" textAnchor="middle" transform="rotate(-90 105 300)" fill="#a0a0a0" fontSize="12" fontWeight="bold" letterSpacing="2" style={{ textShadow: '0 0 10px #a0a0a0' }}>PLANO ASTRAL</text>
+                            <text x="495" y="300" textAnchor="middle" transform="rotate(90 495 300)" fill="#a0a0a0" fontSize="12" fontWeight="bold" letterSpacing="2" style={{ textShadow: '0 0 10px #a0a0a0' }}>PLANO ASTRAL</text>
                         </g>
+
+                        {/* Quadrantes dos Elementos (Stacks under gray lines) */}
 
                         {/* 4. PLANO DO FOGO (Vermelho Claro) */}
-                        <g onMouseEnter={() => handlePlanoEnter('Plano do Fogo', '#F08080')} onClick={() => alert('Viajando para Plano do Fogo')} style={{ filter: planoHover === 'Plano do Fogo' ? 'drop-shadow(0 0 15px #F08080)' : 'none', transition: '0.3s' }}>
-                            <path d="M 300 120 A 180 180 0 0 0 120 300 L 240 300 A 60 60 0 0 1 300 240 Z" fill="rgba(240, 128, 128, 0.15)" stroke="#F08080" strokeWidth="3" />
-                            <text x="210" y="205" textAnchor="middle" fill="#F08080" fontSize="12" fontWeight="bold" letterSpacing="1">PLANO DO</text>
-                            <text x="210" y="225" textAnchor="middle" fill="#F08080" fontSize="14" fontWeight="bold" letterSpacing="2">FOGO</text>
+                        <g onMouseEnter={() => handlePlanoEnter('Plano do Fogo', '#F08080')} onClick={() => travelingAlert('Plano do Fogo')} style={{ filter: planoHover === 'Plano do Fogo' ? 'drop-shadow(0 0 15px #F08080)' : 'none', transition: '0.3s' }}>
+                            <path d="M 300 120 A 180 180 0 0 0 120 300 L 240 300 A 60 60 0 0 1 300 240 Z" fill="rgba(240, 128, 128, 0.2)" />
+                            <text x="210" y="210" textAnchor="middle" fill="#F08080" fontSize="12" fontWeight="bold" letterSpacing="1" style={{ textShadow: '0 0 10px #F08080' }}>PLANO DO FOGO</text>
                         </g>
 
-                        {/* 5. PLANO DA TERRA (Pele/Marrom) */}
-                        <g onMouseEnter={() => handlePlanoEnter('Plano da Terra', '#CD853F')} onClick={() => alert('Viajando para Plano da Terra')} style={{ filter: planoHover === 'Plano da Terra' ? 'drop-shadow(0 0 15px #CD853F)' : 'none', transition: '0.3s' }}>
-                            <path d="M 480 300 A 180 180 0 0 0 300 120 L 300 240 A 60 60 0 0 1 420 300 Z" fill="rgba(205, 133, 63, 0.15)" stroke="#CD853F" strokeWidth="3" />
-                            <text x="390" y="205" textAnchor="middle" fill="#CD853F" fontSize="12" fontWeight="bold" letterSpacing="1">PLANO DA</text>
-                            <text x="390" y="225" textAnchor="middle" fill="#CD853F" fontSize="14" fontWeight="bold" letterSpacing="2">TERRA</text>
+                        {/* 5. PLANO DA TERRA (cor de pele/marrom) */}
+                        <g onMouseEnter={() => handlePlanoEnter('Plano da Terra', '#CD853F')} onClick={() => travelingAlert('Plano da Terra')} style={{ filter: planoHover === 'Plano da Terra' ? 'drop-shadow(0 0 15px #CD853F)' : 'none', transition: '0.3s' }}>
+                            <path d="M 480 300 A 180 180 0 0 0 300 120 L 300 240 A 60 60 0 0 1 420 300 Z" fill="rgba(205, 133, 63, 0.2)" />
+                            <text x="390" y="210" textAnchor="middle" fill="#CD853F" fontSize="12" fontWeight="bold" letterSpacing="1" style={{ textShadow: '0 0 10px #CD853F' }}>PLANO DA TERRA</text>
                         </g>
 
                         {/* 6. PLANO DA ÁGUA (Azul) */}
-                        <g onMouseEnter={() => handlePlanoEnter('Plano da Água', '#0066FF')} onClick={() => alert('Viajando para Plano da Água')} style={{ filter: planoHover === 'Plano da Água' ? 'drop-shadow(0 0 15px #0066FF)' : 'none', transition: '0.3s' }}>
-                            <path d="M 300 480 A 180 180 0 0 0 480 300 L 420 300 A 60 60 0 0 1 300 360 Z" fill="rgba(0, 102, 255, 0.15)" stroke="#0066FF" strokeWidth="3" />
-                            <text x="390" y="390" textAnchor="middle" fill="#0066FF" fontSize="12" fontWeight="bold" letterSpacing="1">PLANO DA</text>
-                            <text x="390" y="410" textAnchor="middle" fill="#0066FF" fontSize="14" fontWeight="bold" letterSpacing="2">ÁGUA</text>
+                        <g onMouseEnter={() => handlePlanoEnter('Plano da Agua', '#0000FF')} onClick={() => travelingAlert('Plano da Agua')} style={{ filter: planoHover === 'Plano da Agua' ? 'drop-shadow(0 0 15px #0000FF)' : 'none', transition: '0.3s' }}>
+                            <path d="M 300 480 A 180 180 0 0 0 480 300 L 420 300 A 60 60 0 0 1 300 360 Z" fill="rgba(0, 0, 255, 0.2)" />
+                            <text x="390" y="400" textAnchor="middle" fill="#0000FF" fontSize="12" fontWeight="bold" letterSpacing="1" style={{ textShadow: '0 0 10px #0000FF' }}>PLANO DA AGUA</text>
                         </g>
 
                         {/* 7. PLANO DO VENTO (Cinza Claro) */}
-                        <g onMouseEnter={() => handlePlanoEnter('Plano do Vento', '#D3D3D3')} onClick={() => alert('Viajando para Plano do Vento')} style={{ filter: planoHover === 'Plano do Vento' ? 'drop-shadow(0 0 15px #D3D3D3)' : 'none', transition: '0.3s' }}>
-                            <path d="M 120 300 A 180 180 0 0 0 300 480 L 300 360 A 60 60 0 0 1 240 300 Z" fill="rgba(211, 211, 211, 0.15)" stroke="#D3D3D3" strokeWidth="3" />
-                            <text x="210" y="390" textAnchor="middle" fill="#D3D3D3" fontSize="12" fontWeight="bold" letterSpacing="1">PLANO DO</text>
-                            <text x="210" y="410" textAnchor="middle" fill="#D3D3D3" fontSize="14" fontWeight="bold" letterSpacing="2">VENTO</text>
+                        <g onMouseEnter={() => handlePlanoEnter('Plano do Vento', '#D3D3D3')} onClick={() => travelingAlert('Plano do Vento')} style={{ filter: planoHover === 'Plano do Vento' ? 'drop-shadow(0 0 15px #D3D3D3)' : 'none', transition: '0.3s' }}>
+                            <path d="M 120 300 A 180 180 0 0 0 300 480 L 300 360 A 60 60 0 0 1 240 300 Z" fill="rgba(211, 211, 211, 0.2)" />
+                            <text x="210" y="400" textAnchor="middle" fill="#D3D3D3" fontSize="12" fontWeight="bold" letterSpacing="1" style={{ textShadow: '0 0 10px #D3D3D3' }}>PLANO DO VENTO</text>
                         </g>
 
+                        {/* Blinding Gray Plant BaixaLines (Stacked on top of elements) 🔥 */}
+                        <path d="M 300 120 A 180 180 0 1 1 300 480 A 180 180 0 1 1 300 120 Z" fill="none" stroke="#696969" strokeWidth="4" />
+                        <line x1="300" y1="120" x2="300" y2="480" fill="none" stroke="#696969" strokeWidth="4" />
+                        <line x1="120" y1="300" x2="480" y2="300" fill="none" stroke="#696969" strokeWidth="4" />
+
+
                         {/* 8. PLANO DAS FADAS (Verde) */}
-                        <g onMouseEnter={() => handlePlanoEnter('Plano das Fadas', '#00FF00')} onClick={() => alert('Viajando para Plano das Fadas')} style={{ filter: planoHover === 'Plano das Fadas' ? 'drop-shadow(0 0 15px #00FF00)' : 'none', transition: '0.3s' }}>
-                            <circle cx="300" cy="120" r="20" fill="rgba(0, 255, 0, 0.2)" stroke="#00FF00" strokeWidth="3" />
-                            <text x="300" y="85" textAnchor="middle" fill="#00FF00" fontSize="12" fontWeight="bold" letterSpacing="1">PLANO DAS FADAS</text>
+                        <g onMouseEnter={() => handlePlanoEnter('Plano das fadas', '#00FF00')} onClick={() => travelingAlert('Plano das fadas')} style={{ filter: planoHover === 'Plano das fadas' ? 'drop-shadow(0 0 15px #00FF00)' : 'none', transition: '0.3s' }}>
+                            <circle cx="300" cy="120" r="20" fill="rgba(0, 255, 0, 0.3)" stroke="#00FF00" strokeWidth="3" />
+                            <text x="300" y="90" textAnchor="middle" fill="#00FF00" fontSize="11" fontWeight="bold" letterSpacing="1" style={{ textShadow: '0 0 10px #00FF00' }}>PLANO DAS FADAS</text>
                         </g>
 
                         {/* 9. PLANO DO ETHER (Roxo) */}
-                        <g onMouseEnter={() => handlePlanoEnter('Plano do Ether', '#b200ff')} onClick={() => alert('Viajando para Plano do Ether')} style={{ filter: planoHover === 'Plano do Ether' ? 'drop-shadow(0 0 15px #b200ff)' : 'none', transition: '0.3s' }}>
-                            <circle cx="300" cy="480" r="20" fill="rgba(178, 0, 255, 0.2)" stroke="#b200ff" strokeWidth="3" />
-                            <text x="300" y="520" textAnchor="middle" fill="#b200ff" fontSize="12" fontWeight="bold" letterSpacing="1">PLANO DO ETHER</text>
+                        <g onMouseEnter={() => handlePlanoEnter('Plano do Ether', '#800080')} onClick={() => travelingAlert('Plano do Ether')} style={{ filter: planoHover === 'Plano do Ether' ? 'drop-shadow(0 0 15px #800080)' : 'none', transition: '0.3s' }}>
+                            <circle cx="300" cy="480" r="20" fill="rgba(128, 0, 128, 0.3)" stroke="#800080" strokeWidth="3" />
+                            <text x="300" y="515" textAnchor="middle" fill="#800080" fontSize="11" fontWeight="bold" letterSpacing="1" style={{ textShadow: '0 0 10px #800080' }}>PLANO DO ETHER</text>
                         </g>
 
                         {/* 10. PLANO DA ORDEM (Amarelo) */}
-                        <g onMouseEnter={() => handlePlanoEnter('Plano da Ordem', '#FFFF00')} onClick={() => alert('Viajando para Plano da Ordem')} style={{ filter: planoHover === 'Plano da Ordem' ? 'drop-shadow(0 0 15px #FFFF00)' : 'none', transition: '0.3s' }}>
-                            <polygon points="0,300 10,282 30,282 40,300 30,318 10,318" fill="rgba(255, 255, 0, 0.15)" stroke="#FFFF00" strokeWidth="3" />
-                            <text x="60" y="275" textAnchor="start" fill="#FFFF00" fontSize="12" fontWeight="bold" letterSpacing="1">PLANO DA ORDEM</text>
+                        <g onMouseEnter={() => handlePlanoEnter('Plano da ordem', '#FFFF00')} onClick={() => travelingAlert('Plano da ordem')} style={{ filter: planoHover === 'Plano da ordem' ? 'drop-shadow(0 0 15px #FFFF00)' : 'none', transition: '0.3s' }}>
+                            <polygon points="0,300 10,282 30,282 40,300 30,318 10,318" fill="rgba(255, 255, 0, 0.25)" stroke="#FFFF00" strokeWidth="3" />
+                            <text x="50" y="275" textAnchor="start" fill="#FFFF00" fontSize="11" fontWeight="bold" letterSpacing="1" style={{ textShadow: '0 0 10px #FFFF00' }}>PLANO DA ORDEM</text>
                         </g>
 
                         {/* 11. TERRA 0 / RUNETERRA (Branco - Centro Absoluto) */}
                         <g onMouseEnter={() => handlePlanoEnter('Terra 0 (Runeterra)', '#FFFFFF')} onClick={() => setNivelVisao('globo')} style={{ filter: planoHover === 'Terra 0 (Runeterra)' ? 'drop-shadow(0 0 20px #FFFFFF)' : 'drop-shadow(0 0 5px rgba(255,255,255,0.5))', transition: '0.3s' }}>
-                            <circle cx="300" cy="300" r="60" fill="#000000" stroke="#FFFFFF" strokeWidth="3" />
-                            <text x="300" y="295" textAnchor="middle" fill="#FFFFFF" fontSize="14" fontWeight="bold" letterSpacing="2">TERRA 0</text>
-                            <text x="300" y="315" textAnchor="middle" fill="#FFFFFF" fontSize="10" fontWeight="bold" letterSpacing="1">(RUNETERRA)</text>
+                            <circle cx="300" cy="300" r="60" fill="#000000" stroke="#FFFFFF" strokeWidth="4" />
+                            <text x="300" y="295" textAnchor="middle" fill="#FFFFFF" fontSize="14" fontWeight="bold" letterSpacing="2" style={{ textShadow: '0 0 10px #FFFFFF' }}>TERRA 0</text>
+                            <text x="300" y="315" textAnchor="middle" fill="#FFFFFF" fontSize="10" fontWeight="bold" letterSpacing="1" style={{ textShadow: '0 0 5px #FFFFFF' }}>(RUNETERRA)</text>
                         </g>
                     </g>
                 </svg>
@@ -229,7 +230,7 @@ export default function MapaMundi({ children }) {
                 style={{ width: '100%', height: '65vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#050508', borderRadius: '10px', border: '1px solid #0088ff', position: 'relative', overflow: 'hidden' }}
                 onMouseMove={handleDragMove} onMouseUp={handleDragEnd} onMouseLeave={handleDragEnd} onTouchMove={handleDragMove} onTouchEnd={handleDragEnd}
             >
-                <button onClick={voltarCamera} style={{ position: 'absolute', top: '20px', left: '20px', background: 'transparent', border: '1px solid #00ffcc', color: '#00ffcc', padding: '6px 18px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', zIndex: 30 }}>⬅ COSMOLOGIA</button>
+                <button onClick={voltarCamera} style={{ position: 'absolute', top: '20px', left: '20px', background: 'transparent', border: '2px solid #00ffcc', color: '#00ffcc', padding: '6px 18px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', zIndex: 30, textShadow: '0 0 10px #00ffcc', boxShadow: '0 0 15px rgba(0,255,204,0.3)' }}>⬅ COSMOLOGIA</button>
 
                 <div style={{ position: 'absolute', top: '20px', textAlign: 'center', zIndex: 10, pointerEvents: 'none' }}>
                     <h2 style={{ color: '#00ffcc', margin: 0, textTransform: 'uppercase', letterSpacing: '3px', textShadow: '0 0 10px #00ffcc' }}>Visão Orbital</h2>
