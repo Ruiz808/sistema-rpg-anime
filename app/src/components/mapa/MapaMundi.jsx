@@ -49,19 +49,20 @@ export default function MapaMundi({ children }) {
         { nome: 'Ionia', img: gabaritoIonia, top: '30%', left: '82%', cor: '#43a047' }
     ];
 
-    // 🔥 CONFIGURAÇÃO DOS PLANOS DIMENSIONAIS (Para orbitar o Diagrama desenhado no CSS) 🔥
+    // 🔥 A NOVA CONFIGURAÇÃO DA COSMOLOGIA 🔥
+    // Baseada exatamente na imagem de design e na lista de cores fornecida.
+    // O Plano do Caos é o background preto.
     const planosDimensionais = [
-        { nome: 'Plano da Água', cor: '#00d4ff', angulo: 0, raio: 200 },
-        { nome: 'Plano do Fogo', cor: '#ff4e00', angulo: 180, raio: 200 },
-        { nome: 'Plano da Terra', cor: '#8b5a2b', angulo: 90, raio: 200 },
-        { nome: 'Plano do Vento', cor: '#a8ffeb', angulo: 270, raio: 200 },
-        { nome: 'Plano das Fadas', cor: '#ff00ff', angulo: 45, raio: 280 },
-        { nome: 'Plano do Ether', cor: '#9dff00', angulo: 135, raio: 280 },
-        { nome: 'Plano Astral', cor: '#ffffff', angulo: 225, raio: 280 },
-        { nome: 'Céus', cor: '#fff700', angulo: 315, raio: 360 },
-        { nome: 'Inferno', cor: '#ff0000', angulo: 135, raio: 360 },
-        { nome: 'Ordem', cor: '#004cff', angulo: 45, raio: 360 },
-        { nome: 'Caos', cor: '#7b00ff', angulo: 225, raio: 360 }
+        { nome: 'Plano do Fogo', cor: '#F08080', angulo: 0, raio: 220 }, // Vermelho claro
+        { nome: 'Plano das fadas', cor: '#00FF00', angulo: 36, raio: 220 }, // Verde
+        { nome: 'Plano da terra', cor: '#CD853F', angulo: 72, raio: 220 }, // cor de pele/marrom
+        { nome: 'Plano da Agua', cor: '#0000FF', angulo: 108, raio: 220 }, // Azul
+        { nome: 'Plano do Ether', cor: '#800080', angulo: 144, raio: 220 }, // Roxo
+        { nome: 'Plano do Vento', cor: '#D3D3D3', angulo: 180, raio: 220 }, // Cinza claro
+        { nome: 'Plano Astral', cor: '#696969', angulo: 216, raio: 220 }, // Cinza escuro
+        { nome: 'Inferno', cor: '#800000', angulo: 252, raio: 220 }, // Vinho
+        { nome: 'Ceus', cor: '#ADD8E6', angulo: 288, raio: 220 }, // Azul claro
+        { nome: 'Plano da ordem', cor: '#FFFF00', angulo: 324, raio: 220 } // Amarelo
     ];
 
     // Funções de Movimento do Globo
@@ -110,15 +111,17 @@ export default function MapaMundi({ children }) {
     };
 
     // ==========================================
-    // 🌌 CAMADA 0: O ATLAS DIMENSIONAL (Desenhado em CSS Puro!)
+    // 🌌 CAMADA 0: O ATLAS DIMENSIONAL (Desenhado exatamente como solicitado!)
+    // 🔥 O FUNDO PRETO É O PLANO DO CAOS 🔥
     // ==========================================
     if (nivelVisao === 'cosmologia') {
         return (
             <div className="fade-in" style={{ 
-                width: '100%', height: '85vh', background: '#020205', borderRadius: '15px', 
+                width: '100%', height: '85vh', background: '#000', borderRadius: '15px', 
                 border: '1px solid #1a1a2e', position: 'relative', overflow: 'hidden',
                 display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}>
+                {/* Título Superior */}
                 <div style={{ position: 'absolute', top: '30px', textAlign: 'center', zIndex: 10 }}>
                     <h1 style={{ color: '#fff', margin: 0, letterSpacing: '8px', textTransform: 'uppercase', fontSize: '1.5em', textShadow: '0 0 20px rgba(255,255,255,0.5)' }}>Cosmologia</h1>
                     <div style={{ height: '2px', width: '200px', background: 'linear-gradient(to right, transparent, #fff, transparent)', margin: '10px auto' }}></div>
@@ -126,36 +129,37 @@ export default function MapaMundi({ children }) {
 
                 <div style={{ position: 'relative', width: '800px', height: '800px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     
-                    {/* 🔥 O ASTROLÁBIO CSS (Substitui a Imagem) 🔥 */}
-                    <div style={{ position: 'absolute', width: '720px', height: '720px', border: '2px solid rgba(0, 255, 204, 0.1)', borderRadius: '50%', pointerEvents: 'none' }}></div>
-                    <div style={{ position: 'absolute', width: '560px', height: '560px', border: '1px dashed rgba(0, 255, 204, 0.2)', borderRadius: '50%', pointerEvents: 'none' }}></div>
-                    <div style={{ position: 'absolute', width: '400px', height: '400px', border: '2px solid rgba(0, 255, 204, 0.3)', borderRadius: '50%', pointerEvents: 'none', boxShadow: 'inset 0 0 50px rgba(0,255,204,0.05)' }}></div>
+                    {/* 🔥 O DESIGN DO DIAGRAMA (Desenhado em CSS Puro!) 🔥 */}
+                    {/* Círculo Central Arcaico */}
+                    <div style={{ position: 'absolute', width: '420px', height: '420px', border: '3px solid rgba(255, 255, 255, 0.1)', borderRadius: '50%', pointerEvents: 'none' }}></div>
+                    <div style={{ position: 'absolute', width: '380px', height: '380px', border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: '50%', pointerEvents: 'none' }}></div>
+                    <div style={{ position: 'absolute', width: '340px', height: '340px', border: '3px solid rgba(255, 255, 255, 0.15)', borderRadius: '50%', pointerEvents: 'none' }}></div>
                     
-                    {/* Linhas de Cruzamento (Eixos) */}
-                    <div style={{ position: 'absolute', width: '100%', height: '2px', background: 'linear-gradient(to right, transparent, rgba(0, 255, 204, 0.3), transparent)', pointerEvents: 'none' }}></div>
-                    <div style={{ position: 'absolute', width: '2px', height: '100%', background: 'linear-gradient(to bottom, transparent, rgba(0, 255, 204, 0.3), transparent)', pointerEvents: 'none' }}></div>
+                    {/* Linhas de Cruzamento Geométrica */}
+                    <div style={{ position: 'absolute', width: '100%', height: '2px', background: 'linear-gradient(to right, transparent, rgba(255, 255, 255, 0.3), transparent)', pointerEvents: 'none' }}></div>
+                    <div style={{ position: 'absolute', width: '2px', height: '100%', background: 'linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.3), transparent)', pointerEvents: 'none' }}></div>
                     
-                    {/* Linhas Diagonais */}
-                    <div style={{ position: 'absolute', width: '100%', height: '1px', background: 'rgba(255, 255, 255, 0.05)', transform: 'rotate(45deg)', pointerEvents: 'none' }}></div>
-                    <div style={{ position: 'absolute', width: '100%', height: '1px', background: 'rgba(255, 255, 255, 0.05)', transform: 'rotate(-45deg)', pointerEvents: 'none' }}></div>
+                    {/* Linhas Diagonais Arcanas */}
+                    <div style={{ position: 'absolute', width: '100%', height: '1px', background: 'rgba(255, 255, 255, 0.1)', transform: 'rotate(45deg)', pointerEvents: 'none' }}></div>
+                    <div style={{ position: 'absolute', width: '100%', height: '1px', background: 'rgba(255, 255, 255, 0.1)', transform: 'rotate(-45deg)', pointerEvents: 'none' }}></div>
 
-                    {/* GLOBO CENTRAL (PLANO MATERIAL) */}
+                    {/* 🔥 CENTRO: Terra 0 (Runeterra) - BRANCO 🔥 */}
                     <div 
                         onClick={() => setNivelVisao('globo')}
-                        onMouseEnter={() => setPlanoHover('Material')}
+                        onMouseEnter={() => setPlanoHover('Terra 0')}
                         onMouseLeave={() => setPlanoHover(null)}
                         style={{ 
-                            width: '140px', height: '140px', borderRadius: '50%', cursor: 'pointer',
-                            background: '#000', border: '2px solid #00ffcc', zIndex: 20,
-                            boxShadow: planoHover === 'Material' ? '0 0 50px #00ffcc' : '0 0 20px rgba(0,255,204,0.3)',
+                            width: '180px', height: '180px', borderRadius: '50%', cursor: 'pointer',
+                            background: '#000', border: '4px solid #FFFFFF', zIndex: 20,
+                            boxShadow: planoHover === 'Terra 0' ? '0 0 60px #FFFFFF' : '0 0 20px rgba(255,255,255,0.4)',
                             transition: '0.4s', position: 'relative', overflow: 'hidden',
                             display: 'flex', alignItems: 'center', justifyContent: 'center'
                         }}
                     >
-                        <span style={{ color: '#fff', fontSize: '12px', fontWeight: 'bold', textShadow: '0 0 8px #00ffcc', letterSpacing: '2px' }}>RUNETERRA</span>
+                        <span style={{ color: '#FFFFFF', fontSize: '14px', fontWeight: 'bold', letterSpacing: '3px', textShadow: '0 0 8px #FFFFFF' }}>Terra 0<br/>(Runeterra)</span>
                     </div>
 
-                    {/* PLANOS DIMENSIONAIS FLUTUANTES */}
+                    {/* 🔥 OS NOME DAS DIMENSÕES FLUTUANTES (SEM BOLINHAS!) 🔥 */}
                     {planosDimensionais.map((plano) => {
                         const rad = (plano.angulo * Math.PI) / 180;
                         const x = Math.cos(rad) * plano.raio;
@@ -169,19 +173,15 @@ export default function MapaMundi({ children }) {
                                 onMouseLeave={() => setPlanoHover(null)}
                                 style={{
                                     position: 'absolute', transform: `translate(${x}px, ${y}px)`,
-                                    width: '80px', height: '80px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                                    width: '100px', height: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                                     cursor: 'pointer', zIndex: 15, transition: '0.3s'
                                 }}
                             >
-                                <div style={{
-                                    width: '24px', height: '24px', borderRadius: '50%',
-                                    backgroundColor: '#050508', border: `2px solid ${plano.cor}`,
-                                    boxShadow: planoHover === plano.nome ? `0 0 30px ${plano.cor}` : `0 0 12px ${plano.cor}66`,
-                                    transition: '0.3s', marginBottom: '8px'
-                                }}></div>
+                                {/* Só o texto colorido flutuando exatamente nas posições do design arcaico */}
                                 <span style={{ 
-                                    color: planoHover === plano.nome ? '#fff' : '#aaa',
-                                    fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', textShadow: '0 0 5px #000'
+                                    color: planoHover === plano.nome ? '#fff' : plano.cor,
+                                    fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', textShadow: planoHover === plano.nome ? `0 0 10px ${plano.cor}` : '0 0 5px #000',
+                                    letterSpacing: '1px', textAlign: 'center', transition: '0.3s'
                                 }}>{plano.nome}</span>
                             </div>
                         );
@@ -197,7 +197,7 @@ export default function MapaMundi({ children }) {
     }
 
     // ==========================================
-    // 🌍 CAMADA 1: O GLOBO ORBITAL
+    // 🌍 CAMADA 1: O GLOBO ORBITAL (INTOCÁVEL!)
     // ==========================================
     if (nivelVisao === 'globo') {
         return (
@@ -239,7 +239,7 @@ export default function MapaMundi({ children }) {
     }
 
     // ==========================================
-    // 🗺️ CAMADA 2: O CONTINENTE
+    // 🗺️ CAMADA 2: O CONTINENTE (INTOCÁVEL!)
     // ==========================================
     if (nivelVisao === 'continente') {
         return (
