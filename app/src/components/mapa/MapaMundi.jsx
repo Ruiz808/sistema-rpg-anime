@@ -33,7 +33,6 @@ export default function MapaMundi({ children }) {
     const [reinoHover, setReinoHover] = useState(null); 
     const [planoHover, setPlanoHover] = useState(null);
     
-    // GLOBO 3D
     const [rotacaoGlobo, setRotacaoGlobo] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
     const dragStart = useRef({ x: 0, y: 0 });
@@ -43,7 +42,8 @@ export default function MapaMundi({ children }) {
     const [dragIndexCosmo, setDragIndexCosmo] = useState(null);
     const containerCosmoRef = useRef(null);
 
-    // 📍 TERRA 0 ATUALIZADA COM AS SUAS COORDENADAS EXATAS!
+    // 📍 AQUI É ONDE VOCÊ VAI COLAR O CÓDIGO NOVO QUANDO SALVAR!
+    // A Terra 0 já está com o "44.3%" e "49.3%" que você calibrou!
     const [zonasCosmologia, setZonasCosmologia] = useState([
         { nome: 'Terra 0 (Runeterra)', top: '44.3%', left: '49.3%', width: '10%', height: '16.6%', cor: '#ffffff', isCircle: true, isPlanet: true },
         { nome: 'Plano da Ordem', top: '37%', left: '5%', width: '13%', height: '22%', cor: '#DDA0DD', isCircle: true },
@@ -66,7 +66,7 @@ export default function MapaMundi({ children }) {
         { nome: 'Noxus', img: gabaritoNoxus, top: '28%', left: '48%', cor: '#c62828' }, 
         { nome: 'Piltover e Zaun', img: gabaritoPiltover, top: '54%', left: '51%', cor: '#d4a017' },
         { nome: 'Shurima', img: gabaritoShurima, top: '75%', left: '43%', cor: '#c59b0d' },
-        { nome: 'Targon', img: gabaritoTargon, top: '78%', left: '26%', cor: '#5e35b1' },
+        { nome: 'Targon', top: '78%', left: '26%', cor: '#5e35b1' },
         { nome: 'Ixtal', img: gabaritoIxtal, top: '67%', left: '63%', cor: '#2e7d32' },
         { nome: 'Águas de Sentina', img: gabaritoAguas, top: '57%', left: '72%', cor: '#d84315' },
         { nome: 'Ilha das Sombras', img: gabaritoIlha, top: '86%', left: '85%', cor: '#00838f' },
