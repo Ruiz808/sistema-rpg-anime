@@ -33,6 +33,9 @@ export default function MapaMundi({ children }) {
     const [reinoHover, setReinoHover] = useState(null); 
     const [planoHover, setPlanoHover] = useState(null);
     
+    // 🔥 NOVO: ESTADO PARA SALVAR A COORDENADA DO SEU TOQUE 🔥
+    const [debugCoords, setDebugCoords] = useState("Toque em qualquer lugar do mapa!");
+    
     const [rotacaoGlobo, setRotacaoGlobo] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
     const dragStart = useRef({ x: 0, y: 0 });
@@ -50,29 +53,18 @@ export default function MapaMundi({ children }) {
         { nome: 'Ionia', img: gabaritoIonia, top: '30%', left: '82%', cor: '#43a047' }
     ];
 
-    // 🌌 ZONAS DE INTERAÇÃO DA COSMOLOGIA 🌌
-    // AJUSTE CIRÚRGICO INDIVIDUAL COM BASE NO SEU PRINT
+    // Zonas mantidas as mesmas só pra não quebrar, vamos arrumar elas de vez depois!
     const zonasCosmologia = [
-        // O Diamante da Esquerda (Ordem)
         { nome: 'Plano da Ordem', top: '37%', left: '5%', width: '13%', height: '22%', cor: '#DDA0DD', isCircle: true },
-        // A Fumaça da Direita (Astral)
         { nome: 'Plano Astral', top: '43%', left: '71%', width: '13%', height: '22%', cor: '#483D8B', isCircle: true },
-        
-        // Os Quatro Elementos (Puxados pra esquerda e alinhados na altura)
         { nome: 'Plano do Vento', top: '29%', left: '25%', width: '12%', height: '20%', cor: '#2E8B57', isCircle: true },
         { nome: 'Plano do Fogo', top: '52%', left: '25%', width: '12%', height: '20%', cor: '#DC143C', isCircle: true },
         { nome: 'Plano da Água', top: '29%', left: '52%', width: '12%', height: '20%', cor: '#4169E1', isCircle: true },
         { nome: 'Plano da Terra', top: '52%', left: '52%', width: '12%', height: '20%', cor: '#8B4513', isCircle: true },
-
-        // Céus e Inferno
         { nome: 'Céus', top: '6%', left: '40%', width: '12%', height: '18%', cor: '#FCE883', isCircle: true },
         { nome: 'Inferno', top: '80%', left: '40%', width: '16%', height: '14%', cor: '#FF4500', isCircle: false },
-
-        // Bolinhas pequenas (Fadas e Éter)
         { nome: 'Plano das Fadas', top: '33%', left: '42.5%', width: '7%', height: '9%', cor: '#32CD32', isCircle: true },
         { nome: 'Plano do Éter', top: '57%', left: '42.5%', width: '7%', height: '9%', cor: '#9400D3', isCircle: true },
-        
-        // Caos (Cantos textuais)
         { nome: 'Plano do Caos', top: '2%', left: '70%', width: '22%', height: '10%', cor: '#800000', isCircle: false },
         { nome: 'Plano do Caos', top: '84%', left: '8%', width: '22%', height: '10%', cor: '#800000', isCircle: false }
     ];
@@ -113,63 +105,68 @@ export default function MapaMundi({ children }) {
         else if (nivelVisao === 'globo') setNivelVisao('cosmologia');
     };
 
+    // 🔥 NOVO SISTEMA DE CAPTURA DE COORDENADA (Funciona com Mouse ou Touch) 🔥
     const handleMapClickAdmin = (e) => {
-        if (e.shiftKey) {
-            const rect = e.currentTarget.getBoundingClientRect();
-            alert(`Coordenadas exatas:\ntop: '${(((e.clientY - rect.top) / rect.height) * 100).toFixed(0)}%', left: '${(((e.clientX - rect.left) / rect.width) * 100).toFixed(0)}%'`);
+        const rect = e.currentTarget.getBoundingClientRect();
+        let clientX = e.clientX;
+        let clientY = e.clientY;
+
+        // Suporte para touch no tablet
+        if (e.touches && e.touches.length > 0) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
         }
+
+        if (clientX === undefined || clientY === undefined) return;
+
+        const calcY = ((clientY - rect.top) / rect.height) * 100;
+        const calcX = ((clientX - rect.left) / rect.width) * 100;
+        
+        // Atualiza o texto piscante gigante no topo
+        setDebugCoords(`top: '${calcY.toFixed(1)}%', left: '${calcX.toFixed(1)}%'`);
     };
 
     // ==========================================
-    // 🌌 TELA 0: COSMOLOGIA (Modo Raio-X Ligado!)
+    // 🌌 TELA 0: COSMOLOGIA (CALIBRAGEM ON)
     // ==========================================
     if (nivelVisao === 'cosmologia') {
         return (
             <div className="fade-in" style={{ width: '100%', height: '85vh', background: '#050508', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative', overflow: 'hidden' }}>
-                <div style={{ position: 'relative', width: '1000px', height: '600px', borderRadius: '15px', overflow: 'hidden' }} onClick={handleMapClickAdmin}>
-                    
-                    <img src={mapaCosmologia} alt="Cosmologia" style={{ width: '100%', height: '100%', objectFit: 'fill', filter: 'drop-shadow(0 0 20px rgba(255,255,255,0.1))' }} />
+                <div 
+                    style={{ position: 'relative', width: '1000px', height: '600px', borderRadius: '15px', overflow: 'hidden' }} 
+                    onClick={handleMapClickAdmin} // Clicou no mouse
+                    onTouchStart={handleMapClickAdmin} // Tocou no tablet
+                >
+                    <img src={mapaCosmologia} alt="Cosmologia" style={{ width: '100%', height: '100%', objectFit: 'fill' }} />
 
-                    {/* ZONAS MOLDADAS NA UNHA COM CSS LIGADO PARA DEBUG */}
+                    {/* Zonas em Raio-X */}
                     {zonasCosmologia.map((zona, index) => (
                         <div 
                             key={`${zona.nome}-${index}`}
-                            onMouseEnter={() => setPlanoHover(zona.nome)}
-                            onMouseLeave={() => setPlanoHover(null)}
-                            onClick={() => alert(`Viajando para: ${zona.nome}`)}
                             style={{
                                 position: 'absolute', top: zona.top, left: zona.left, width: zona.width, height: zona.height,
-                                borderRadius: zona.isCircle ? '50%' : '15px', cursor: 'pointer', 
+                                borderRadius: zona.isCircle ? '50%' : '15px', cursor: 'crosshair', pointerEvents: 'none',
                                 zIndex: zona.zIndex || 10,
-                                // RAIO-X LIGADO PERMANENTE
-                                border: `2px solid ${zona.cor}`,
-                                boxShadow: `0 0 15px ${zona.cor}, inset 0 0 10px ${zona.cor}`,
-                                background: 'rgba(255,255,255,0.2)', 
-                                transition: '0.2s ease-in-out'
+                                border: `2px dashed ${zona.cor}`,
+                                background: 'rgba(255,255,255,0.1)', 
                             }}
                         />
                     ))}
 
-                    {/* 🔥 TERRA 0 (O BOTÃO CENTRAL) - AJUSTADO PARA A DIREITA! 🔥 */}
                     <div 
-                        onClick={() => setNivelVisao('globo')}
-                        onMouseEnter={() => setPlanoHover('Terra 0 (Runeterra)')}
-                        onMouseLeave={() => setPlanoHover(null)}
                         style={{
                             position: 'absolute', top: '41.5%', left: '48%', width: '10%', height: '16.6%',
-                            borderRadius: '50%', cursor: 'pointer', zIndex: 30,
-                            // RAIO-X LIGADO PERMANENTE
-                            border: '2px solid #ffffff',
-                            boxShadow: '0 0 30px #ffffff, inset 0 0 15px #ffffff',
-                            background: 'rgba(255,255,255,0.3)',
-                            transition: '0.2s ease-in-out'
+                            borderRadius: '50%', cursor: 'crosshair', zIndex: 30, pointerEvents: 'none',
+                            border: '2px dashed #ffffff',
+                            background: 'rgba(255,255,255,0.2)',
                         }}
                     />
                 </div>
                 
-                <div style={{ position: 'absolute', top: '20px', textAlign: 'center', pointerEvents: 'none', zIndex: 50 }}>
-                    <h1 style={{ color: '#fff', margin: 0, letterSpacing: '6px', textTransform: 'uppercase', fontSize: '1.4em', textShadow: '0 0 20px rgba(255,255,255,0.8)' }}>
-                        {planoHover || 'DEBUG MODE: VERIFIQUE O ALINHAMENTO'}
+                {/* 🔥 O PAINEL DE COORDENADAS GIGANTE 🔥 */}
+                <div style={{ position: 'absolute', top: '20px', background: 'rgba(0,0,0,0.8)', padding: '15px 30px', borderRadius: '10px', border: '2px solid #00ffcc', zIndex: 50 }}>
+                    <h1 style={{ color: '#00ffcc', margin: 0, letterSpacing: '3px', fontSize: '1.8em', textShadow: '0 0 10px #00ffcc' }}>
+                        📍 {debugCoords}
                     </h1>
                 </div>
                 
