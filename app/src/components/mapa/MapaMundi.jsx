@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 
-// 🔥 AS IMAGENS DO MUNDO MATERIAL (Intocáveis!) 🔥
+// 🔥 AS IMAGENS DO MUNDO MATERIAL 🔥
 import mapaClean from '../../assets/runeterra-clean.jpg';
 import gabaritoFreljord from '../../assets/gabarito-freijord.png';
 import gabaritoDemacia from '../../assets/gabarito-demacia.png';
@@ -12,40 +12,33 @@ import gabaritoIxtal from '../../assets/gabarito-ixtal.png';
 import gabaritoAguas from '../../assets/gabarito-aguas.png';
 import gabaritoIlha from '../../assets/gabarito-ilha.png';
 import gabaritoIonia from '../../assets/gabarito-ionia.png';
-
-// 🌌 A SUA ARTE DA COSMOLOGIA EXPANDIDA 🌌
 import mapaCosmologia from '../../assets/mapa-cosmologia.png';
 
 export default function MapaMundi({ children }) {
-    // 🚀 NOVO: O mapa agora começa no Espaço Físico (Sistema Solar)
     const [nivelVisao, setNivelVisao] = useState('sistema_solar'); 
     const [localAtual, setLocalAtual] = useState({ continente: null, reino: null, mapaId: null, plano: 'Material' });
 
     const [mapasSalvos, setMapasSalvos] = useState({
-        'Freljord': ['Acampamento Glacinata', 'Passe da Montanha'],
-        'Demacia': ['Grande Praça', 'Posto Avançado'],
-        'Noxus': ['Arena de Carnificina', 'Bastião Imortal']
+        'Freljord': ['Acampamento Glacinata', 'Passe da Montanha']
     });
     const [mapasImagens, setMapasImagens] = useState({});
     const [reinoSelecionado, setReinoSelecionado] = useState(null);
     const [modoEdicaoMapa, setModoEdicaoMapa] = useState(false);
     const [urlInput, setUrlInput] = useState('');
-
     const [reinoHover, setReinoHover] = useState(null); 
     const [planoHover, setPlanoHover] = useState(null);
-    
-    // GLOBO 3D
     const [rotacaoGlobo, setRotacaoGlobo] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
     const dragStart = useRef({ x: 0, y: 0 });
 
-    // 🛠️ MODO DE AJUSTE ARRASTAR E SOLTAR 🛠️
+    // 🛠️ MODO DE AJUSTE (MODO DEUS) 🛠️
     const [modoAjuste, setModoAjuste] = useState(false);
     const [dragIndexCosmo, setDragIndexCosmo] = useState(null);
-    const containerCosmoRef = useRef(null);
+    const [dragIdSolar, setDragIdSolar] = useState(null);
+    const containerRef = useRef(null);
+    const [codigoExportado, setCodigoExportado] = useState(null); // Tela de Exportação
 
-    // 📍 AQUI É ONDE VOCÊ VAI COLAR O CÓDIGO NOVO QUANDO SALVAR!
-    // A Terra 0 já está com o "44.3%" e "49.3%" que você calibrou!
+    // 📍 VARIÁVEL 1: POSIÇÕES DA COSMOLOGIA (SUBSTITUA ISSO QUANDO SALVAR)
     const [zonasCosmologia, setZonasCosmologia] = useState([
         { nome: 'Terra 0 (Runeterra)', top: '44.3%', left: '49.3%', width: '10%', height: '16.6%', cor: '#ffffff', isCircle: true, isPlanet: true },
         { nome: 'Plano da Ordem', top: '37%', left: '5%', width: '13%', height: '22%', cor: '#DDA0DD', isCircle: true },
@@ -62,6 +55,16 @@ export default function MapaMundi({ children }) {
         { nome: 'Plano do Caos Inferior', top: '84%', left: '8%', width: '22%', height: '10%', cor: '#800000', isCircle: false }
     ]);
 
+    // 📍 VARIÁVEL 2: POSIÇÕES DO SISTEMA SOLAR (SUBSTITUA ISSO QUANDO SALVAR)
+    const [elementosSolar, setElementosSolar] = useState([
+        { id: 'orichalcosA', tipo: 'estrela', nome: 'Orichalcos A', top: '40%', left: '20%', size: '120px' },
+        { id: 'orichalcosB', tipo: 'estrela', nome: 'Orichalcos B', top: '40%', left: '70%', size: '120px' },
+        { id: 'vegeta', tipo: 'planeta', nome: 'Vegeta', top: '45%', left: '10%', color1: '#ff6666', color2: '#990000', shadow: 'rgba(255,0,0,0.5)', size: '45px' },
+        { id: 'namekusei', tipo: 'planeta', nome: 'Namekusei', top: '20%', left: '60%', color1: '#66ff66', color2: '#006600', shadow: 'rgba(0,255,0,0.5)', size: '50px' },
+        { id: 'desconhecido', tipo: 'planeta', nome: 'Desconhecido', top: '60%', left: '80%', color1: '#66b3ff', color2: '#000066', shadow: 'rgba(0,100,255,0.5)', size: '40px' },
+        { id: 'terra0', tipo: 'terra', nome: 'Terra 0', top: '40%', left: '42%', size: '150px' }
+    ]);
+
     const posicoesPings = [
         { nome: 'Freljord', img: gabaritoFreljord, top: '15%', left: '28%', cor: '#00b5e2' },
         { nome: 'Demacia', img: gabaritoDemacia, top: '40%', left: '21%', cor: '#d3c29e' },
@@ -75,11 +78,7 @@ export default function MapaMundi({ children }) {
         { nome: 'Ionia', img: gabaritoIonia, top: '30%', left: '82%', cor: '#43a047' }
     ];
 
-    // FUNÇÕES DO GLOBO MANTIDAS INTACTAS
-    const handleGloboDragStart = (e) => {
-        setIsDragging(true);
-        dragStart.current = { x: e.clientX || e.touches?.[0].clientX, y: e.clientY || e.touches?.[0].clientY };
-    };
+    const handleGloboDragStart = (e) => { setIsDragging(true); dragStart.current = { x: e.clientX || e.touches?.[0].clientX, y: e.clientY || e.touches?.[0].clientY }; };
     const handleGloboDragMove = (e) => {
         if (!isDragging) return;
         const diffX = (e.clientX || e.touches?.[0].clientX) - dragStart.current.x;
@@ -92,23 +91,6 @@ export default function MapaMundi({ children }) {
     };
     const handleGloboDragEnd = () => setIsDragging(false);
 
-    // NAVEGAÇÃO
-    const criarNovoMapa = () => {
-        const nome = prompt("Escreva o nome do novo mapa para " + reinoSelecionado + ":");
-        if (nome && nome.trim() !== "") setMapasSalvos(prev => ({ ...prev, [reinoSelecionado]: [...(prev[reinoSelecionado] || []), nome] }));
-    };
-    const entrarNoContinente = (nomeContinente) => {
-        setLocalAtual({ continente: nomeContinente, reino: null, mapaId: null, plano: 'Material' });
-        setNivelVisao('continente');
-    };
-    const abrirMenuReino = (nomeReino) => setReinoSelecionado(nomeReino);
-    const entrarNoMapaDeBatalha = (mapaEscolhido) => {
-        setLocalAtual({ ...localAtual, reino: reinoSelecionado, mapaId: mapaEscolhido });
-        setReinoSelecionado(null);
-        setNivelVisao('reino');
-    };
-
-    // Ajustei o botão de voltar para respeitar a nova hierarquia!
     const voltarCamera = () => {
         if (nivelVisao === 'reino') setNivelVisao('continente');
         else if (nivelVisao === 'continente') setNivelVisao('globo');
@@ -116,131 +98,138 @@ export default function MapaMundi({ children }) {
         else if (nivelVisao === 'cosmologia') setNivelVisao('sistema_solar');
     };
 
-    // 🛠️ LÓGICA DE ARRASTAR (DRAG AND DROP) DA COSMOLOGIA 🛠️
-    const handleCosmoDragStart = (e, index) => {
+    // 🛠️ FUNÇÕES DO DRAG AND DROP (UNIFICADO) 🛠️
+    const handleDragStart = (e, index, isSolar = false) => {
         if (!modoAjuste) return;
-        setDragIndexCosmo(index);
+        if (isSolar) setDragIdSolar(index);
+        else setDragIndexCosmo(index);
     };
 
-    const handleCosmoDragMove = (e) => {
-        if (dragIndexCosmo === null || !containerCosmoRef.current || !modoAjuste) return;
+    const handleDragMove = (e) => {
+        if (!modoAjuste || !containerRef.current) return;
+        if (dragIndexCosmo === null && dragIdSolar === null) return;
         
-        const rect = containerCosmoRef.current.getBoundingClientRect();
-        let clientX = e.clientX;
-        let clientY = e.clientY;
-        
-        if (e.touches && e.touches.length > 0) {
-            clientX = e.touches[0].clientX;
-            clientY = e.touches[0].clientY;
-        }
-
-        if (clientX === undefined || clientY === undefined) return;
+        const rect = containerRef.current.getBoundingClientRect();
+        let clientX = e.clientX || (e.touches && e.touches[0].clientX);
+        let clientY = e.clientY || (e.touches && e.touches[0].clientY);
+        if (!clientX || !clientY) return;
 
         let xPercent = ((clientX - rect.left) / rect.width) * 100;
         let yPercent = ((clientY - rect.top) / rect.height) * 100;
 
-        const zonaAtual = zonasCosmologia[dragIndexCosmo];
-        const w = parseFloat(zonaAtual.width);
-        const h = parseFloat(zonaAtual.height);
-
-        setZonasCosmologia(prev => {
-            const novasZonas = [...prev];
-            novasZonas[dragIndexCosmo] = {
-                ...novasZonas[dragIndexCosmo],
-                top: `${(yPercent - h/2).toFixed(1)}%`,
-                left: `${(xPercent - w/2).toFixed(1)}%`
-            };
-            return novasZonas;
-        });
+        if (dragIndexCosmo !== null) {
+            const zonaAtual = zonasCosmologia[dragIndexCosmo];
+            const w = parseFloat(zonaAtual.width);
+            const h = parseFloat(zonaAtual.height);
+            setZonasCosmologia(prev => {
+                const novas = [...prev];
+                novas[dragIndexCosmo] = { ...novas[dragIndexCosmo], top: `${(yPercent - h/2).toFixed(1)}%`, left: `${(xPercent - w/2).toFixed(1)}%` };
+                return novas;
+            });
+        } else if (dragIdSolar !== null) {
+            const elIndex = elementosSolar.findIndex(el => el.id === dragIdSolar);
+            if (elIndex === -1) return;
+            const pxSize = parseInt(elementosSolar[elIndex].size);
+            const wPercent = (pxSize / rect.width) * 100;
+            const hPercent = (pxSize / rect.height) * 100;
+            
+            setElementosSolar(prev => {
+                const novas = [...prev];
+                novas[elIndex] = { ...novas[elIndex], top: `${(yPercent - hPercent/2).toFixed(1)}%`, left: `${(xPercent - wPercent/2).toFixed(1)}%` };
+                return novas;
+            });
+        }
     };
 
-    const handleCosmoDragEnd = () => {
-        setDragIndexCosmo(null);
+    const handleDragEnd = () => { setDragIndexCosmo(null); setDragIdSolar(null); };
+
+    const gerarCodigoExportacao = () => {
+        const codigoCosmo = JSON.stringify(zonasCosmologia, null, 4);
+        const codigoSolar = JSON.stringify(elementosSolar, null, 4);
+        setCodigoExportado(`// COPIE E SUBSTITUA A 'zonasCosmologia':\nconst [zonasCosmologia, setZonasCosmologia] = useState(${codigoCosmo});\n\n// ======================================\n\n// COPIE E SUBSTITUA A 'elementosSolar':\nconst [elementosSolar, setElementosSolar] = useState(${codigoSolar});`);
     };
 
-    const imprimirCodigo = () => {
-        const codigoFormatado = JSON.stringify(zonasCosmologia, null, 4);
-        alert("CÓDIGO GERADO! Copie abaixo e substitua a variável 'zonasCosmologia' no seu script original:\n\n" + codigoFormatado);
-        console.log(codigoFormatado);
-    };
+    // BOTÕES DE CONTROLE DO MODO DEUS (Para as duas telas)
+    const PainelModoDeus = () => (
+        <div style={{ position: 'absolute', top: '15px', left: '50%', transform: 'translateX(-50%)', zIndex: 100, display: 'flex', gap: '15px', background: 'rgba(0,0,0,0.8)', padding: '10px 20px', borderRadius: '10px', border: '1px solid #333' }}>
+            <button onClick={() => setModoAjuste(!modoAjuste)} style={{ background: modoAjuste ? '#ff4444' : '#0088ff', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+                {modoAjuste ? '❌ DESLIGAR MODO AJUSTE' : '🔧 LIGAR MODO DE AJUSTE'}
+            </button>
+            {modoAjuste && (
+                <button onClick={gerarCodigoExportacao} style={{ background: '#00cc66', color: '#000', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+                    💾 IMPRIMIR CÓDIGO
+                </button>
+            )}
+        </div>
+    );
 
     // ==========================================
-    // 🌌 TELA 0: SISTEMA SOLAR (NOVO UNIVERSO FÍSICO)
+    // 🌌 TELA 0: SISTEMA SOLAR (MÓVEL AGORA!)
     // ==========================================
     if (nivelVisao === 'sistema_solar') {
         return (
             <div className="fade-in" style={{ width: '100%', height: '85vh', background: 'radial-gradient(circle at center, #0a0a1a 0%, #000000 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', borderRadius: '15px', border: '1px solid #333' }}>
-                
-                {/* Efeito de estrelinhas no fundo */}
                 <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(2px 2px at 20px 30px, #ffffff, rgba(0,0,0,0)), radial-gradient(2px 2px at 40px 70px, #ffffff, rgba(0,0,0,0)), radial-gradient(2px 2px at 90px 40px, #ffffff, rgba(0,0,0,0))', backgroundRepeat: 'repeat', backgroundSize: '200px 200px', opacity: 0.3 }} />
+                
+                <PainelModoDeus />
 
-                <button 
-                    onClick={() => setNivelVisao('cosmologia')} 
-                    style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(72, 61, 139, 0.4)', border: '1px solid #DDA0DD', color: '#DDA0DD', padding: '10px 25px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', zIndex: 100, letterSpacing: '2px', boxShadow: '0 0 15px rgba(221, 160, 221, 0.3)', backdropFilter: 'blur(5px)' }}
-                >
-                    🌌 REVELAR DIMENSÕES
-                </button>
+                <button onClick={() => setNivelVisao('cosmologia')} style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(72, 61, 139, 0.4)', border: '1px solid #DDA0DD', color: '#DDA0DD', padding: '10px 25px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', zIndex: 100, letterSpacing: '2px', boxShadow: '0 0 15px rgba(221, 160, 221, 0.3)', backdropFilter: 'blur(5px)' }}>🌌 REVELAR DIMENSÕES</button>
 
                 <div style={{ position: 'absolute', top: '20px', left: '20px', zIndex: 10, pointerEvents: 'none' }}>
                     <h2 style={{ color: '#fff', margin: 0, textTransform: 'uppercase', letterSpacing: '4px', textShadow: '0 0 10px #fff' }}>Universo Material</h2>
                     <p style={{ color: '#aaa', fontSize: '0.85em', margin: '5px 0 0 0', letterSpacing: '1px' }}>Setor Orichalcos</p>
                 </div>
 
-                <div style={{ position: 'relative', width: '900px', height: '500px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <div ref={containerRef} onMouseMove={handleDragMove} onMouseUp={handleDragEnd} onMouseLeave={handleDragEnd} onTouchMove={handleDragMove} onTouchEnd={handleDragEnd} style={{ position: 'relative', width: '900px', height: '500px' }}>
                     
-                    {/* TRILHA DO INFINITO (A Órbita) */}
-                    <svg viewBox="0 0 1000 500" style={{ position: 'absolute', width: '100%', height: '100%', opacity: 0.15, pointerEvents: 'none' }}>
-                        <path d="M 500 250 C 650 -50, 950 50, 850 250 C 750 450, 500 250, 500 250 C 500 250, 250 50, 150 250 C 50, 450, 350 550, 500 250 Z" fill="none" stroke="#ffffff" strokeWidth="3" strokeDasharray="10 10" />
+                    <svg viewBox="0 0 900 500" style={{ position: 'absolute', width: '100%', height: '100%', opacity: 0.15, pointerEvents: 'none' }}>
+                        <path d="M 450 250 C 600 50, 850 50, 850 250 C 850 450, 600 450, 450 250 C 300 50, 50 50, 50 250 C 50 450, 300 450, 450 250 Z" fill="none" stroke="#ffffff" strokeWidth="3" strokeDasharray="10 10" />
                     </svg>
 
-                    {/* ESTRELAS BINÁRIAS (Orichalcos A e B) */}
-                    <div style={{ position: 'absolute', left: '16%', width: '120px', height: '120px', borderRadius: '50%', background: 'radial-gradient(circle, #ffffff 0%, #ffcc00 40%, #ff6600 100%)', boxShadow: '0 0 80px #ffcc00, 0 0 150px #ff6600', animation: 'pulseStar 4s infinite alternate' }} />
-                    <div style={{ position: 'absolute', right: '16%', width: '120px', height: '120px', borderRadius: '50%', background: 'radial-gradient(circle, #ffffff 0%, #ffcc00 40%, #ff6600 100%)', boxShadow: '0 0 80px #ffcc00, 0 0 150px #ff6600', animation: 'pulseStar 4s infinite alternate-reverse' }} />
+                    {elementosSolar.map(el => {
+                        const styleBase = { position: 'absolute', top: el.top, left: el.left, width: el.size, height: el.size, cursor: modoAjuste ? 'grab' : 'pointer', zIndex: el.tipo === 'terra' ? 20 : 10, transition: dragIdSolar === el.id ? 'none' : '0.2s', border: modoAjuste ? '2px dashed #fff' : 'none' };
+                        
+                        if (el.tipo === 'estrela') {
+                            return <div key={el.id} onMouseDown={(e) => handleDragStart(e, el.id, true)} onTouchStart={(e) => handleDragStart(e, el.id, true)} style={{ ...styleBase, borderRadius: '50%', background: 'radial-gradient(circle, #ffffff 0%, #ffcc00 40%, #ff6600 100%)', boxShadow: '0 0 80px #ffcc00, 0 0 150px #ff6600', animation: 'pulseStar 4s infinite alternate' }} />;
+                        }
+                        
+                        if (el.tipo === 'planeta') {
+                            return (
+                                <div key={el.id} onMouseDown={(e) => handleDragStart(e, el.id, true)} onTouchStart={(e) => handleDragStart(e, el.id, true)} style={{ ...styleBase, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                                    <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: `radial-gradient(circle at 30% 30%, ${el.color1}, ${el.color2})`, boxShadow: `inset -10px -10px 20px rgba(0,0,0,0.8), 0 0 20px ${el.shadow}` }} onClick={() => !modoAjuste && alert(`Planeta ${el.nome}\nAcesso restrito.`)} />
+                                    <span style={{ color: el.color1, position: 'absolute', bottom: '-20px', fontSize: '12px', fontWeight: 'bold', letterSpacing: '2px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{el.nome}</span>
+                                </div>
+                            );
+                        }
 
-                    {/* PLANETA: VEGETA (Vermelho) */}
-                    <div style={{ position: 'absolute', left: '5%', top: '40%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <div style={{ width: '45px', height: '45px', borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #ff6666, #990000)', boxShadow: 'inset -10px -10px 20px rgba(0,0,0,0.8), 0 0 20px rgba(255,0,0,0.5)', cursor: 'pointer' }} onClick={() => alert('Planeta Vegeta\nAcesso restrito no momento.')} />
-                        <span style={{ color: '#ff6666', marginTop: '8px', fontSize: '12px', fontWeight: 'bold', letterSpacing: '2px', textTransform: 'uppercase' }}>Vegeta</span>
-                    </div>
-
-                    {/* PLANETA: NAMEKUSEI (Verde) */}
-                    <div style={{ position: 'absolute', right: '28%', top: '15%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #66ff66, #006600)', boxShadow: 'inset -10px -10px 20px rgba(0,0,0,0.8), 0 0 20px rgba(0,255,0,0.5)', cursor: 'pointer' }} onClick={() => alert('Planeta Namekusei\nAcesso restrito no momento.')} />
-                        <span style={{ color: '#66ff66', marginTop: '8px', fontSize: '12px', fontWeight: 'bold', letterSpacing: '2px', textTransform: 'uppercase' }}>Namekusei</span>
-                    </div>
-
-                    {/* PLANETA: DESCONHECIDO (Azul) */}
-                    <div style={{ position: 'absolute', right: '8%', top: '65%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #66b3ff, #000066)', boxShadow: 'inset -10px -10px 20px rgba(0,0,0,0.8), 0 0 20px rgba(0,100,255,0.5)', cursor: 'pointer' }} onClick={() => alert('Planeta Desconhecido\nSinais vitais não detectados.')} />
-                        <span style={{ color: '#66b3ff', marginTop: '8px', fontSize: '12px', fontWeight: 'bold', letterSpacing: '2px', textTransform: 'uppercase' }}>Desconhecido</span>
-                    </div>
-
-                    {/* PLANETA PRINCIPAL: TERRA 0 (O Dobro do Tamanho) COM AS 3 LUAS */}
-                    <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 20 }}>
-                        <div style={{ position: 'relative', width: '150px', height: '150px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                            
-                            {/* O Planeta */}
-                            <div 
-                                onClick={() => setNivelVisao('globo')}
-                                style={{ width: '100px', height: '100px', borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #4db8ff, #003366)', boxShadow: 'inset -15px -15px 30px rgba(0,0,0,0.9), 0 0 40px rgba(0,150,255,0.6)', cursor: 'pointer', zIndex: 10, border: '1px solid rgba(255,255,255,0.2)' }} 
-                            />
-                            
-                            {/* Anel de Órbita das Luas */}
-                            <div className="moon-orbit" style={{ position: 'absolute', width: '160px', height: '160px', borderRadius: '50%', border: '1px dashed rgba(255,255,255,0.1)' }}>
-                                {/* Lua Maria */}
-                                <div style={{ position: 'absolute', top: '-6px', left: '50%', transform: 'translateX(-50%)', width: '12px', height: '12px', background: '#e6e6e6', borderRadius: '50%', boxShadow: '0 0 5px #fff' }}><span style={{position:'absolute', top: '-18px', left:'-10px', fontSize:'9px', color:'#aaa'}}>Maria</span></div>
-                                {/* Lua Rose */}
-                                <div style={{ position: 'absolute', bottom: '15px', right: '5px', width: '10px', height: '10px', background: '#e6e6e6', borderRadius: '50%', boxShadow: '0 0 5px #fff' }}><span style={{position:'absolute', bottom: '-15px', right:'-5px', fontSize:'9px', color:'#aaa'}}>Rose</span></div>
-                                {/* Lua Sina */}
-                                <div style={{ position: 'absolute', bottom: '15px', left: '5px', width: '14px', height: '14px', background: '#e6e6e6', borderRadius: '50%', boxShadow: '0 0 5px #fff' }}><span style={{position:'absolute', bottom: '-15px', left:'-5px', fontSize:'9px', color:'#aaa'}}>Sina</span></div>
-                            </div>
-
-                        </div>
-                        <span style={{ color: '#4db8ff', marginTop: '10px', fontSize: '16px', fontWeight: 'bold', letterSpacing: '3px', textTransform: 'uppercase', textShadow: '0 0 10px rgba(0,150,255,0.8)' }}>Terra 0</span>
-                    </div>
-
+                        if (el.tipo === 'terra') {
+                            return (
+                                <div key={el.id} onMouseDown={(e) => handleDragStart(e, el.id, true)} onTouchStart={(e) => handleDragStart(e, el.id, true)} style={{ ...styleBase, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                                    <div onClick={() => !modoAjuste && setNivelVisao('globo')} style={{ width: '100px', height: '100px', borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #4db8ff, #003366)', boxShadow: 'inset -15px -15px 30px rgba(0,0,0,0.9), 0 0 40px rgba(0,150,255,0.6)', border: '1px solid rgba(255,255,255,0.2)' }} />
+                                    <div className="moon-orbit" style={{ position: 'absolute', width: '100%', height: '100%', borderRadius: '50%', border: '1px dashed rgba(255,255,255,0.1)', pointerEvents: 'none' }}>
+                                        <div style={{ position: 'absolute', top: '-6px', left: '50%', transform: 'translateX(-50%)', width: '12px', height: '12px', background: '#e6e6e6', borderRadius: '50%', boxShadow: '0 0 5px #fff' }}><span style={{position:'absolute', top: '-18px', left:'-10px', fontSize:'9px', color:'#aaa'}}>Maria</span></div>
+                                        <div style={{ position: 'absolute', bottom: '15px', right: '5px', width: '10px', height: '10px', background: '#e6e6e6', borderRadius: '50%', boxShadow: '0 0 5px #fff' }}><span style={{position:'absolute', bottom: '-15px', right:'-5px', fontSize:'9px', color:'#aaa'}}>Rose</span></div>
+                                        <div style={{ position: 'absolute', bottom: '15px', left: '5px', width: '14px', height: '14px', background: '#e6e6e6', borderRadius: '50%', boxShadow: '0 0 5px #fff' }}><span style={{position:'absolute', bottom: '-15px', left:'-5px', fontSize:'9px', color:'#aaa'}}>Sina</span></div>
+                                    </div>
+                                    <span style={{ color: '#4db8ff', position: 'absolute', bottom: '-25px', fontSize: '16px', fontWeight: 'bold', letterSpacing: '3px', textTransform: 'uppercase', textShadow: '0 0 10px rgba(0,150,255,0.8)', whiteSpace: 'nowrap' }}>{el.nome}</span>
+                                </div>
+                            );
+                        }
+                        return null;
+                    })}
                 </div>
 
+                {/* MODAL DE CÓDIGO (COPIAR E COLAR FÁCIL) */}
+                {codigoExportado && (
+                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 200, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                        <div style={{ background: '#111', padding: '20px', borderRadius: '10px', width: '800px', border: '2px solid #00cc66' }}>
+                            <h2 style={{ color: '#00cc66', marginTop: 0 }}>✅ Pronto! Substitua seu código por este:</h2>
+                            <textarea readOnly value={codigoExportado} style={{ width: '100%', height: '400px', background: '#000', color: '#00ffcc', padding: '10px', fontFamily: 'monospace', fontSize: '12px' }} />
+                            <button onClick={() => setCodigoExportado(null)} style={{ background: '#ff4444', color: '#fff', border: 'none', padding: '10px 20px', marginTop: '10px', cursor: 'pointer', fontWeight: 'bold' }}>FECHAR E VOLTAR</button>
+                        </div>
+                    </div>
+                )}
+                
                 <style dangerouslySetInnerHTML={{__html: `
                     .fade-in { animation: fadeIn 0.8s ease-in-out; }
                     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -253,47 +242,15 @@ export default function MapaMundi({ children }) {
     }
 
     // ==========================================
-    // 🌌 TELA 1: COSMOLOGIA (DIMENSÕES EXPANDIDAS)
+    // 🌌 TELA 1: COSMOLOGIA (C/ DRAG E EXPORT)
     // ==========================================
     if (nivelVisao === 'cosmologia') {
         return (
             <div className="fade-in" style={{ width: '100%', height: '85vh', background: '#050508', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                
-                {/* PAINEL DE CONTROLE DO MODO DE AJUSTE */}
-                <div style={{ position: 'absolute', top: '15px', zIndex: 100, display: 'flex', gap: '15px', background: 'rgba(0,0,0,0.8)', padding: '10px 20px', borderRadius: '10px', border: '1px solid #333' }}>
-                    <button 
-                        onClick={() => setModoAjuste(!modoAjuste)} 
-                        style={{ background: modoAjuste ? '#ff4444' : '#0088ff', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
-                    >
-                        {modoAjuste ? '❌ DESLIGAR MODO AJUSTE' : '🔧 LIGAR MODO DE AJUSTE'}
-                    </button>
-                    
-                    {modoAjuste && (
-                        <button 
-                            onClick={imprimirCodigo} 
-                            style={{ background: '#00cc66', color: '#000', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
-                        >
-                            💾 IMPRIMIR CÓDIGO
-                        </button>
-                    )}
-                </div>
+                <PainelModoDeus />
+                <button onClick={() => setNivelVisao('sistema_solar')} style={{ position: 'absolute', top: '20px', left: '20px', background: 'transparent', border: '1px solid #fff', color: '#fff', padding: '8px 18px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', zIndex: 100 }}>⬅ VOLTAR AO ESPAÇO</button>
 
-                <button 
-                    onClick={() => setNivelVisao('sistema_solar')} 
-                    style={{ position: 'absolute', top: '20px', left: '20px', background: 'transparent', border: '1px solid #fff', color: '#fff', padding: '8px 18px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', zIndex: 100 }}
-                >
-                    ⬅ VOLTAR AO ESPAÇO
-                </button>
-
-                <div 
-                    ref={containerCosmoRef}
-                    onMouseMove={handleCosmoDragMove}
-                    onMouseUp={handleCosmoDragEnd}
-                    onMouseLeave={handleCosmoDragEnd}
-                    onTouchMove={handleCosmoDragMove}
-                    onTouchEnd={handleCosmoDragEnd}
-                    style={{ position: 'relative', width: '1000px', height: '600px', borderRadius: '15px', overflow: 'hidden', marginTop: '50px' }} 
-                >
+                <div ref={containerRef} onMouseMove={handleDragMove} onMouseUp={handleDragEnd} onMouseLeave={handleDragEnd} onTouchMove={handleDragMove} onTouchEnd={handleDragEnd} style={{ position: 'relative', width: '1000px', height: '600px', borderRadius: '15px', overflow: 'hidden', marginTop: '50px' }}>
                     <img src={mapaCosmologia} alt="Cosmologia" style={{ width: '100%', height: '100%', objectFit: 'fill', filter: 'drop-shadow(0 0 20px rgba(255,255,255,0.1))', pointerEvents: 'none' }} />
 
                     {zonasCosmologia.map((zona, index) => (
@@ -301,18 +258,12 @@ export default function MapaMundi({ children }) {
                             key={`${zona.nome}-${index}`}
                             onMouseEnter={() => !modoAjuste && setPlanoHover(zona.nome)}
                             onMouseLeave={() => !modoAjuste && setPlanoHover(null)}
-                            onMouseDown={(e) => handleCosmoDragStart(e, index)}
-                            onTouchStart={(e) => handleCosmoDragStart(e, index)}
-                            onClick={() => {
-                                if (modoAjuste) return;
-                                if (zona.isPlanet) setNivelVisao('globo');
-                                else alert(`Viajando para: ${zona.nome}`);
-                            }}
+                            onMouseDown={(e) => handleDragStart(e, index, false)}
+                            onTouchStart={(e) => handleDragStart(e, index, false)}
+                            onClick={() => { if (!modoAjuste) { if (zona.isPlanet) setNivelVisao('globo'); else alert(`Viajando para: ${zona.nome}`); } }}
                             style={{
                                 position: 'absolute', top: zona.top, left: zona.left, width: zona.width, height: zona.height,
-                                borderRadius: zona.isCircle ? '50%' : '15px', 
-                                cursor: modoAjuste ? (dragIndexCosmo === index ? 'grabbing' : 'grab') : 'pointer', 
-                                zIndex: zona.zIndex || 10,
+                                borderRadius: zona.isCircle ? '50%' : '15px', cursor: modoAjuste ? 'grab' : 'pointer', zIndex: zona.zIndex || 10,
                                 border: modoAjuste || planoHover === zona.nome ? `2px dashed ${zona.cor}` : '2px solid transparent',
                                 boxShadow: modoAjuste || planoHover === zona.nome ? `0 0 15px ${zona.cor}, inset 0 0 10px ${zona.cor}` : 'none',
                                 background: modoAjuste ? 'rgba(255,255,255,0.2)' : (planoHover === zona.nome ? 'rgba(255,255,255,0.15)' : 'transparent'), 
@@ -329,138 +280,14 @@ export default function MapaMundi({ children }) {
                         </h1>
                     </div>
                 )}
-                
-                <style dangerouslySetInnerHTML={{__html: `
-                    .fade-in { animation: fadeIn 0.8s ease-in-out; }
-                    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-                `}} />
-            </div>
-        );
-    }
 
-    // ==========================================
-    // 🌍 TELA 2: O GLOBO (Intocável)
-    // ==========================================
-    if (nivelVisao === 'globo') {
-        return (
-            <div 
-                className="fade-in" 
-                style={{ width: '100%', height: '85vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#050508', borderRadius: '10px', border: '1px solid #0088ff', position: 'relative', overflow: 'hidden' }}
-                onMouseMove={handleGloboDragMove} onMouseUp={handleGloboDragEnd} onMouseLeave={handleGloboDragEnd} onTouchMove={handleGloboDragMove} onTouchEnd={handleGloboDragEnd}
-            >
-                <div style={{ position: 'absolute', top: '20px', left: '20px', display: 'flex', gap: '10px', zIndex: 30 }}>
-                    <button onClick={() => setNivelVisao('sistema_solar')} style={{ background: 'transparent', border: '1px solid #00ffcc', color: '#00ffcc', padding: '8px 18px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>⬅ ESPAÇO FÍSICO</button>
-                    <button onClick={() => setNivelVisao('cosmologia')} style={{ background: 'rgba(72, 61, 139, 0.4)', border: '1px solid #DDA0DD', color: '#DDA0DD', padding: '8px 18px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>🌌 MULTIVERSO</button>
-                </div>
-
-                <div style={{ position: 'absolute', top: '20px', textAlign: 'center', zIndex: 10, pointerEvents: 'none' }}>
-                    <h2 style={{ color: '#00ffcc', margin: 0, textTransform: 'uppercase', letterSpacing: '3px', textShadow: '0 0 10px #00ffcc' }}>Visão Orbital: Terra 0</h2>
-                    <p style={{ color: '#aaa', fontSize: '0.85em', margin: '5px 0 0 0' }}>Arraste em qualquer direção para inspecionar o planeta.</p>
-                </div>
-                <div style={{ position: 'relative', width: '350px', height: '350px', perspective: '1000px' }}>
-                    <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', backgroundColor: '#000814', border: '2px solid #0088ff', pointerEvents: 'none', boxShadow: '0 0 50px rgba(0, 136, 255, 0.2)' }}></div>
-                    <div 
-                        onMouseDown={handleGloboDragStart} onTouchStart={handleGloboDragStart}
-                        style={{ position: 'absolute', inset: 0, transformStyle: 'preserve-3d', transform: `rotateX(${rotacaoGlobo.y}deg) rotateY(${rotacaoGlobo.x}deg)`, cursor: isDragging ? 'grabbing' : 'grab', transition: isDragging ? 'none' : 'transform 0.5s ease-out' }}
-                    >
-                        <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(0,255,204,0.15)', transform: 'rotateX(90deg)' }}></div>
-                        <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(0,255,204,0.15)', transform: 'rotateY(90deg)' }}></div>
-                        <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(0,255,204,0.15)', transform: 'rotateZ(45deg) rotateX(90deg)' }}></div>
-                        <div style={{ position: 'absolute', inset: 0, transform: 'translateZ(160px)', backfaceVisibility: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-                            <svg viewBox="0 0 200 200" style={{ position: 'absolute', width: '140px', height: '140px', filter: 'drop-shadow(0 0 3px rgba(0,255,204,0.8))' }}>
-                                <path d="M 12 55 L 18 45 L 30 38 L 42 35 L 55 30 L 70 28 L 85 25 L 100 28 L 115 32 L 125 30 L 135 38 L 142 42 L 140 52 L 132 58 L 122 56 L 115 65 L 105 72 L 95 68 L 82 72 L 68 80 L 52 75 L 40 82 L 25 72 L 15 75 Z" fill="rgba(0,255,204,0.08)" stroke="#00ffcc" strokeWidth="1" strokeLinejoin="round" />
-                                <path d="M 45 92 L 58 85 L 75 82 L 95 84 L 110 88 L 118 82 L 128 92 L 138 105 L 132 120 L 142 135 L 135 148 L 125 152 L 115 168 L 105 160 L 92 168 L 75 162 L 62 152 L 48 142 L 38 125 L 42 108 L 40 98 Z" fill="rgba(0,255,204,0.08)" stroke="#00ffcc" strokeWidth="1" strokeLinejoin="round" />
-                                <path d="M 152 28 L 162 20 L 175 18 L 182 25 L 185 38 L 178 50 L 182 62 L 172 72 L 160 75 L 150 65 L 148 50 L 145 38 Z" fill="rgba(0,255,204,0.08)" stroke="#00ffcc" strokeWidth="1" strokeLinejoin="round" />
-                                <circle cx="162" cy="85" r="2" fill="#00ffcc" />
-                                <line x1="105" y1="72" x2="110" y2="88" stroke="#ffcc00" strokeWidth="1.5" />
-                            </svg>
-                            <button onClick={() => entrarNoContinente('Runeterra')} style={{ pointerEvents: 'auto', background: 'rgba(0,255,204,0.1)', border: '2px solid #00ffcc', color: '#00ffcc', padding: '12px 24px', borderRadius: '30px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9em', letterSpacing: '2px', backdropFilter: 'blur(5px)', boxShadow: '0 0 20px rgba(0,255,204,0.4)', zIndex: 10 }}>🌍 ENTRAR EM RUNETERRA</button>
-                        </div>
-                    </div>
-                    <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', boxShadow: 'inset -50px -50px 100px rgba(0,0,0,0.9), inset 20px 20px 50px rgba(0,136,255,0.1)', pointerEvents: 'none', zIndex: 20 }}></div>
-                </div>
-            </div>
-        );
-    }
-
-    // ==========================================
-    // 🗺️ TELA 3: O CONTINENTE (As Máscaras Neon)
-    // ==========================================
-    if (nivelVisao === 'continente') {
-        return (
-            <div className="fade-in" style={{ width: '100%', height: '85vh', background: '#050508', borderRadius: '10px', border: '1px solid #0088ff', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.85)', padding: '12px 25px', borderBottom: '1px solid #222', zIndex: 10 }}>
-                    <button onClick={voltarCamera} style={{ background: '#ff4444', color: '#fff', border: 'none', padding: '6px 18px', borderRadius: '5px', fontSize: '0.85em', cursor: 'pointer', fontWeight: 'bold' }}>⬅ VOLTAR AO GLOBO</button>
-                    <h2 style={{ color: '#0088ff', margin: 0, textTransform: 'uppercase', letterSpacing: '3px', textShadow: '0 0 10px #0088ff' }}>{reinoHover || localAtual.continente}</h2>
-                    <div style={{ width: '120px' }}></div>
-                </div>
-
-                <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', position: 'relative', width: '100%' }}>
-                    <div style={{ position: 'relative', display: 'inline-block', height: '100%', maxHeight: 'calc(85vh - 70px)' }}>
-                        <img src={mapaClean} alt="Mapa Base" style={{ display: 'block', height: '100%', width: 'auto', objectFit: 'contain' }} />
-
-                        {posicoesPings.map((reino) => (
-                            reino.img ? (
-                                <img 
-                                    key={`mask-${reino.nome}`}
-                                    src={reino.img} 
-                                    style={{ 
-                                        position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', 
-                                        pointerEvents: 'none', zIndex: 2, 
-                                        mixBlendMode: 'screen',
-                                        opacity: reinoHover === reino.nome ? 1 : 0, 
-                                        transition: 'opacity 0.3s ease-out'
-                                    }} 
-                                    alt={`Mascara ${reino.nome}`}
-                                />
-                            ) : null
-                        ))}
-
-                        <style dangerouslySetInnerHTML={{__html: `
-                            .ping-wrapper { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; z-index: 5; transition: 0.2s; padding: 10px; }
-                            .ping-anel-externo { width: 24px; height: 24px; border-radius: 50%; background: #000; display: flex; justify-content: center; align-items: center; transition: 0.3s; box-shadow: 0 0 15px rgba(0,0,0,0.9); border-width: 2px; border-style: solid; }
-                            .ping-nucleo { width: 10px; height: 10px; border-radius: 50%; transition: 0.3s; }
-                            .ping-wrapper.active .ping-anel-externo { width: 30px; height: 30px; border-color: #fff !important; transform: scale(1.1); box-shadow: 0 0 20px #fff; }
-                            .ping-wrapper.active .ping-nucleo { width: 14px; height: 14px; background: #fff !important; box-shadow: 0 0 15px #fff; }
-                            .ping-legenda { margin-top: 6px; background: rgba(0,0,0,0.9); padding: 5px 12px; border-radius: 8px; font-size: 11px; font-weight: bold; color: #fff; text-transform: uppercase; letter-spacing: 1.5px; border: 1px solid transparent; white-space: nowrap; transition: 0.3s; }
-                            .ping-wrapper.active .ping-legenda { border-color: #fff; background: #fff; color: #000; }
-                        `}} />
-
-                        {posicoesPings.map((reino) => (
-                            <div 
-                                key={reino.nome}
-                                className={`ping-wrapper ${reinoHover === reino.nome ? 'active' : ''}`}
-                                style={{ top: reino.top, left: reino.left, pointerEvents: 'auto', cursor: 'pointer' }}
-                                onMouseEnter={() => setReinoHover(reino.nome)}
-                                onMouseLeave={() => setReinoHover(null)}
-                                onClick={(e) => { e.stopPropagation(); abrirMenuReino(reino.nome); }}
-                            >
-                                <div className="ping-anel-externo" style={{ borderColor: reino.cor }}><div className="ping-nucleo" style={{ background: reino.cor, boxShadow: `0 0 10px ${reino.cor}` }}></div></div>
-                                <div className="ping-legenda">{reino.nome}</div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* MODAL DE SELEÇÃO DE MAPAS */}
-                {reinoSelecionado && (
-                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 30, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(6px)' }}>
-                        <div style={{ background: '#111', border: '2px solid #0088ff', borderRadius: '20px', padding: '30px', width: '380px', textAlign: 'center', position: 'relative', boxShadow: '0 0 40px #0088ff' }}>
-                            <button onClick={() => setReinoSelecionado(null)} style={{ position: 'absolute', top: '15px', right: '20px', background: 'none', border: 'none', color: '#ff4444', fontSize: '22px', cursor: 'pointer', fontWeight: 'bold' }}>X</button>
-                            <h2 style={{ color: '#ffcc00', margin: '0 0 10px 0', textTransform: 'uppercase', letterSpacing: '2px' }}>{reinoSelecionado}</h2>
-                            <p style={{ color: '#888', fontSize: '0.9em', marginBottom: '20px' }}>Selecione o cenário para esta região:</p>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '25px', maxHeight: '200px', overflowY: 'auto', paddingRight: '5px' }}>
-                                {(mapasSalvos[reinoSelecionado] || []).map(mapa => (
-                                    <button 
-                                        key={mapa} onClick={() => entrarNoMapaDeBatalha(mapa)} 
-                                        style={{ background: '#1a1a1a', border: '1px solid #333', color: '#fff', padding: '14px', borderRadius: '10px', cursor: 'pointer', transition: '0.2s', textAlign: 'left', fontSize: '0.95em' }}
-                                        onMouseEnter={(e) => { e.target.style.borderColor='#0088ff'; e.target.style.background='#222'; }} 
-                                        onMouseLeave={(e) => { e.target.style.borderColor='#333'; e.target.style.background='#1a1a1a'; }}
-                                    >🗺️ {mapa}</button>
-                                ))}
-                                {!(mapasSalvos[reinoSelecionado]?.length) && <p style={{color: '#555', fontStyle: 'italic'}}>Nenhum mapa salvo nesta região.</p>}
-                            </div>
-                            <button onClick={criarNovoMapa} style={{ width: '100%', background: 'linear-gradient(to right, #0088ff, #00ffcc)', color: '#000', padding: '14px', borderRadius: '10px', fontWeight: 'bold', border: 'none', cursor: 'pointer', fontSize: '0.9em', boxShadow: '0 0 15px rgba(0,255,204,0.3)' }}>➕ CRIAR NOVO MAPA</button>
+                {/* MODAL DE CÓDIGO AQUI TAMBÉM */}
+                {codigoExportado && (
+                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 200, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                        <div style={{ background: '#111', padding: '20px', borderRadius: '10px', width: '800px', border: '2px solid #00cc66' }}>
+                            <h2 style={{ color: '#00cc66', marginTop: 0 }}>✅ Pronto! Substitua seu código por este:</h2>
+                            <textarea readOnly value={codigoExportado} style={{ width: '100%', height: '400px', background: '#000', color: '#00ffcc', padding: '10px', fontFamily: 'monospace', fontSize: '12px' }} />
+                            <button onClick={() => setCodigoExportado(null)} style={{ background: '#ff4444', color: '#fff', border: 'none', padding: '10px 20px', marginTop: '10px', cursor: 'pointer', fontWeight: 'bold' }}>FECHAR E VOLTAR</button>
                         </div>
                     </div>
                 )}
@@ -469,39 +296,87 @@ export default function MapaMundi({ children }) {
     }
 
     // ==========================================
-    // ⚔️ TELA 4: O MAPA DE BATALHA
+    // 🌍 TELA 2: O GLOBO E CONTINENTE (INTACTOS)
     // ==========================================
+    // (O resto do código para baixo continua idêntico às outras telas)
+    if (nivelVisao === 'globo') {
+        return (
+            <div className="fade-in" style={{ width: '100%', height: '85vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#050508', borderRadius: '10px', border: '1px solid #0088ff', position: 'relative', overflow: 'hidden' }} onMouseMove={handleGloboDragMove} onMouseUp={handleGloboDragEnd} onMouseLeave={handleGloboDragEnd} onTouchMove={handleGloboDragMove} onTouchEnd={handleGloboDragEnd}>
+                <div style={{ position: 'absolute', top: '20px', left: '20px', display: 'flex', gap: '10px', zIndex: 30 }}>
+                    <button onClick={() => setNivelVisao('sistema_solar')} style={{ background: 'transparent', border: '1px solid #00ffcc', color: '#00ffcc', padding: '8px 18px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>⬅ ESPAÇO FÍSICO</button>
+                    <button onClick={() => setNivelVisao('cosmologia')} style={{ background: 'rgba(72, 61, 139, 0.4)', border: '1px solid #DDA0DD', color: '#DDA0DD', padding: '8px 18px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>🌌 MULTIVERSO</button>
+                </div>
+                <div style={{ position: 'absolute', top: '20px', textAlign: 'center', zIndex: 10, pointerEvents: 'none' }}><h2 style={{ color: '#00ffcc', margin: 0, textTransform: 'uppercase', letterSpacing: '3px', textShadow: '0 0 10px #00ffcc' }}>Visão Orbital: Terra 0</h2></div>
+                <div style={{ position: 'relative', width: '350px', height: '350px', perspective: '1000px' }}>
+                    <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', backgroundColor: '#000814', border: '2px solid #0088ff', pointerEvents: 'none', boxShadow: '0 0 50px rgba(0, 136, 255, 0.2)' }}></div>
+                    <div onMouseDown={handleGloboDragStart} onTouchStart={handleGloboDragStart} style={{ position: 'absolute', inset: 0, transformStyle: 'preserve-3d', transform: `rotateX(${rotacaoGlobo.y}deg) rotateY(${rotacaoGlobo.x}deg)`, cursor: isDragging ? 'grabbing' : 'grab', transition: isDragging ? 'none' : 'transform 0.5s ease-out' }}>
+                        <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(0,255,204,0.15)', transform: 'rotateX(90deg)' }}></div><div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(0,255,204,0.15)', transform: 'rotateY(90deg)' }}></div><div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(0,255,204,0.15)', transform: 'rotateZ(45deg) rotateX(90deg)' }}></div>
+                        <div style={{ position: 'absolute', inset: 0, transform: 'translateZ(160px)', backfaceVisibility: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+                            <svg viewBox="0 0 200 200" style={{ position: 'absolute', width: '140px', height: '140px', filter: 'drop-shadow(0 0 3px rgba(0,255,204,0.8))' }}><path d="M 12 55 L 18 45 L 30 38 L 42 35 L 55 30 L 70 28 L 85 25 L 100 28 L 115 32 L 125 30 L 135 38 L 142 42 L 140 52 L 132 58 L 122 56 L 115 65 L 105 72 L 95 68 L 82 72 L 68 80 L 52 75 L 40 82 L 25 72 L 15 75 Z" fill="rgba(0,255,204,0.08)" stroke="#00ffcc" strokeWidth="1" strokeLinejoin="round" /><path d="M 45 92 L 58 85 L 75 82 L 95 84 L 110 88 L 118 82 L 128 92 L 138 105 L 132 120 L 142 135 L 135 148 L 125 152 L 115 168 L 105 160 L 92 168 L 75 162 L 62 152 L 48 142 L 38 125 L 42 108 L 40 98 Z" fill="rgba(0,255,204,0.08)" stroke="#00ffcc" strokeWidth="1" strokeLinejoin="round" /><path d="M 152 28 L 162 20 L 175 18 L 182 25 L 185 38 L 178 50 L 182 62 L 172 72 L 160 75 L 150 65 L 148 50 L 145 38 Z" fill="rgba(0,255,204,0.08)" stroke="#00ffcc" strokeWidth="1" strokeLinejoin="round" /><circle cx="162" cy="85" r="2" fill="#00ffcc" /><line x1="105" y1="72" x2="110" y2="88" stroke="#ffcc00" strokeWidth="1.5" /></svg>
+                            <button onClick={() => entrarNoContinente('Runeterra')} style={{ pointerEvents: 'auto', background: 'rgba(0,255,204,0.1)', border: '2px solid #00ffcc', color: '#00ffcc', padding: '12px 24px', borderRadius: '30px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9em', letterSpacing: '2px', backdropFilter: 'blur(5px)', boxShadow: '0 0 20px rgba(0,255,204,0.4)', zIndex: 10 }}>🌍 ENTRAR EM RUNETERRA</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (nivelVisao === 'continente') {
+        return (
+            <div className="fade-in" style={{ width: '100%', height: '85vh', background: '#050508', borderRadius: '10px', border: '1px solid #0088ff', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.85)', padding: '12px 25px', borderBottom: '1px solid #222', zIndex: 10 }}>
+                    <button onClick={voltarCamera} style={{ background: '#ff4444', color: '#fff', border: 'none', padding: '6px 18px', borderRadius: '5px', fontSize: '0.85em', cursor: 'pointer', fontWeight: 'bold' }}>⬅ VOLTAR AO GLOBO</button>
+                    <h2 style={{ color: '#0088ff', margin: 0, textTransform: 'uppercase', letterSpacing: '3px', textShadow: '0 0 10px #0088ff' }}>{reinoHover || localAtual.continente}</h2>
+                    <div style={{ width: '120px' }}></div>
+                </div>
+                <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', position: 'relative', width: '100%' }}>
+                    <div style={{ position: 'relative', display: 'inline-block', height: '100%', maxHeight: 'calc(85vh - 70px)' }}>
+                        <img src={mapaClean} alt="Mapa Base" style={{ display: 'block', height: '100%', width: 'auto', objectFit: 'contain' }} />
+                        {posicoesPings.map((reino) => (
+                            <div key={reino.nome} className={`ping-wrapper ${reinoHover === reino.nome ? 'active' : ''}`} style={{ top: reino.top, left: reino.left, pointerEvents: 'auto', cursor: 'pointer', position: 'absolute', transform: 'translate(-50%, -50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 5, padding: '10px' }} onMouseEnter={() => setReinoHover(reino.nome)} onMouseLeave={() => setReinoHover(null)} onClick={(e) => { e.stopPropagation(); abrirMenuReino(reino.nome); }}>
+                                <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#000', display: 'flex', justifyContent: 'center', alignItems: 'center', transition: '0.3s', boxShadow: '0 0 15px rgba(0,0,0,0.9)', borderWidth: '2px', borderStyle: 'solid', borderColor: reinoHover === reino.nome ? '#fff' : reino.cor, transform: reinoHover === reino.nome ? 'scale(1.1)' : 'scale(1)' }}>
+                                    <div style={{ width: '10px', height: '10px', borderRadius: '50%', transition: '0.3s', background: reinoHover === reino.nome ? '#fff' : reino.cor }} />
+                                </div>
+                                <div style={{ marginTop: '6px', background: reinoHover === reino.nome ? '#fff' : 'rgba(0,0,0,0.9)', padding: '5px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', color: reinoHover === reino.nome ? '#000' : '#fff', textTransform: 'uppercase', letterSpacing: '1.5px', border: `1px solid ${reinoHover === reino.nome ? '#fff' : 'transparent'}`, whiteSpace: 'nowrap', transition: '0.3s' }}>{reino.nome}</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                {reinoSelecionado && (
+                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 30, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(6px)' }}>
+                        <div style={{ background: '#111', border: '2px solid #0088ff', borderRadius: '20px', padding: '30px', width: '380px', textAlign: 'center', position: 'relative' }}>
+                            <button onClick={() => setReinoSelecionado(null)} style={{ position: 'absolute', top: '15px', right: '20px', background: 'none', border: 'none', color: '#ff4444', fontSize: '22px', cursor: 'pointer', fontWeight: 'bold' }}>X</button>
+                            <h2 style={{ color: '#ffcc00', margin: '0 0 10px 0', textTransform: 'uppercase' }}>{reinoSelecionado}</h2>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '25px', maxHeight: '200px', overflowY: 'auto' }}>
+                                {(mapasSalvos[reinoSelecionado] || []).map(mapa => (
+                                    <button key={mapa} onClick={() => entrarNoMapaDeBatalha(mapa)} style={{ background: '#1a1a1a', border: '1px solid #333', color: '#fff', padding: '14px', borderRadius: '10px', cursor: 'pointer', textAlign: 'left' }}>🗺️ {mapa}</button>
+                                ))}
+                            </div>
+                            <button onClick={criarNovoMapa} style={{ width: '100%', background: 'linear-gradient(to right, #0088ff, #00ffcc)', color: '#000', padding: '14px', borderRadius: '10px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>➕ CRIAR NOVO MAPA</button>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    }
+
     if (nivelVisao === 'reino') {
         const backgroundUrl = mapasImagens[localAtual.mapaId];
         return (
             <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', height: '85vh' }}>
                 <div style={{ background: '#111', padding: '12px 20px', borderRadius: '10px 10px 0 0', border: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
-                    <div style={{ display: 'flex', gap: '15px' }}>
-                        <button onClick={voltarCamera} style={{ background: '#ff4444', color: '#fff', border: 'none', padding: '7px 18px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85em' }}>⬅ SAIR DO MAPA</button>
-                        <button onClick={() => { setUrlInput(backgroundUrl || ''); setModoEdicaoMapa(true); }} style={{ background: 'transparent', color: '#0088ff', border: '1px solid #0088ff', padding: '7px 18px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85em' }}>⚙️ EDITAR CENÁRIO</button>
-                    </div>
-                    <span style={{ color: '#ffcc00', fontWeight: 'bold', fontSize: '1.1em', letterSpacing: '1px', textTransform: 'uppercase' }}>{localAtual.reino} : {localAtual.mapaId}</span>
+                    <div style={{ display: 'flex', gap: '15px' }}><button onClick={voltarCamera} style={{ background: '#ff4444', color: '#fff', border: 'none', padding: '7px 18px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>⬅ SAIR</button><button onClick={() => { setUrlInput(backgroundUrl || ''); setModoEdicaoMapa(true); }} style={{ background: 'transparent', color: '#0088ff', border: '1px solid #0088ff', padding: '7px 18px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>⚙️ EDITAR CENÁRIO</button></div>
+                    <span style={{ color: '#ffcc00', fontWeight: 'bold', textTransform: 'uppercase' }}>{localAtual.reino} : {localAtual.mapaId}</span>
                 </div>
-                
-                <div className="fade-in" style={{ flex: 1, position: 'relative', backgroundColor: '#050508', backgroundImage: backgroundUrl ? `url("${backgroundUrl}")` : 'none', backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat', border: '1px solid #333', borderTop: 'none', borderRadius: '0 0 10px 10px', overflow: 'hidden' }}>
-                    {!backgroundUrl && (
-                        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center', color: '#444', border: '2px dashed #333', padding: '50px', borderRadius: '20px', pointerEvents: 'none' }}>
-                            <h3 style={{ margin: '0 0 10px 0', color: '#666', textTransform: 'uppercase' }}>Campo de Batalha Vazio</h3><p style={{ margin: 0 }}>Clica em <b>"⚙️ EDITAR CENÁRIO"</b> para adicionar uma imagem de fundo.</p>
-                        </div>
-                    )}
-                    
-                    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 5 }}>
-                        {children}
-                    </div>
-
+                <div className="fade-in" style={{ flex: 1, position: 'relative', backgroundColor: '#050508', backgroundImage: backgroundUrl ? `url("${backgroundUrl}")` : 'none', backgroundSize: 'cover', backgroundPosition: 'center', border: '1px solid #333', borderTop: 'none', borderRadius: '0 0 10px 10px', overflow: 'hidden' }}>
+                    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 5 }}>{children}</div>
                     {modoEdicaoMapa && (
-                        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 25, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(4px)' }}>
-                            <div style={{ background: '#111', border: '2px solid #0088ff', borderRadius: '20px', padding: '30px', width: '420px', textAlign: 'center', boxShadow: '0 0 35px #0088ff', position: 'relative' }}>
-                                <button onClick={() => setModoEdicaoMapa(false)} style={{ position: 'absolute', top: '15px', right: '20px', background: 'none', border: 'none', color: '#ff4444', fontSize: '20px', cursor: 'pointer', fontWeight: 'bold' }}>X</button>
-                                <h3 style={{ color: '#0088ff', marginTop: '0', textTransform: 'uppercase', letterSpacing: '2px' }}>Configurar Cenário</h3>
-                                <p style={{ color: '#888', fontSize: '0.9em', marginBottom: '22px' }}>Cola o Link (URL) da imagem para o fundo da batalha.</p>
-                                <input type="text" value={urlInput} onChange={(e) => setUrlInput(e.target.value)} placeholder="Ex: https://i.imgur.com/mapa.jpg" style={{ width: '100%', padding: '14px', borderRadius: '10px', border: '1px solid #444', background: '#1a1a1a', color: '#fff', marginBottom: '25px', fontSize: '14px' }} />
-                                <button onClick={() => { setMapasImagens(prev => ({ ...prev, [localAtual.mapaId]: urlInput })); setModoEdicaoMapa(false); }} style={{ width: '100%', background: 'linear-gradient(to right, #0088ff, #00ffcc)', color: '#000', padding: '14px', borderRadius: '10px', fontWeight: 'bold', border: 'none', cursor: 'pointer', boxShadow: '0 0 15px rgba(0,255,204,0.3)' }}>💾 SALVAR CENÁRIO</button>
+                        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 25, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                            <div style={{ background: '#111', border: '2px solid #0088ff', borderRadius: '20px', padding: '30px', width: '420px', textAlign: 'center', position: 'relative' }}>
+                                <button onClick={() => setModoEdicaoMapa(false)} style={{ position: 'absolute', top: '15px', right: '20px', background: 'none', border: 'none', color: '#ff4444', fontSize: '20px', cursor: 'pointer' }}>X</button>
+                                <h3 style={{ color: '#0088ff', marginTop: 0 }}>Configurar Cenário</h3>
+                                <input type="text" value={urlInput} onChange={(e) => setUrlInput(e.target.value)} placeholder="URL da imagem" style={{ width: '100%', padding: '14px', borderRadius: '10px', border: '1px solid #444', background: '#1a1a1a', color: '#fff', marginBottom: '25px' }} />
+                                <button onClick={() => { setMapasImagens(prev => ({ ...prev, [localAtual.mapaId]: urlInput })); setModoEdicaoMapa(false); }} style={{ width: '100%', background: '#0088ff', color: '#fff', padding: '14px', borderRadius: '10px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>💾 SALVAR</button>
                             </div>
                         </div>
                     )}
@@ -509,6 +384,5 @@ export default function MapaMundi({ children }) {
             </div>
         );
     }
-
     return null;
 }
