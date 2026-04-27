@@ -38,7 +38,15 @@ export default function MapaMundi({ children }) {
     const containerRef = useRef(null);
     const [codigoExportado, setCodigoExportado] = useState(null);
 
-    // 📍 VARIÁVEL 1: POSIÇÕES DA COSMOLOGIA (CALIBRADAS POR VOCÊ!)
+    // 🛣️ AS 4 FAIXAS DA RODOVIA CÓSMICA (Evita o "Kabum")
+    const caminhosOrbita = [
+        "M 450 250 C 650 0, 900 0, 900 250 C 900 500, 650 500, 450 250 C 250 0, 0 0, 0 250 C 0 500, 250 500, 450 250 Z", // Faixa 0: Terra 0 (Centro)
+        "M 450 250 C 680 -30, 930 -30, 930 250 C 930 530, 680 530, 450 250 C 220 -30, -30 -30, -30 250 C -30 530, 220 530, 450 250 Z", // Faixa 1: Vegeta (Externa 1)
+        "M 450 250 C 620 30, 870 30, 870 250 C 870 470, 620 470, 450 250 C 280 30, 30 30, 30 250 C 30 470, 280 470, 450 250 Z", // Faixa 2: Namekusei (Interna)
+        "M 450 250 C 710 -60, 960 -60, 960 250 C 960 560, 710 560, 450 250 C 190 -60, -60 -60, -60 250 C -60 560, 190 560, 450 250 Z"  // Faixa 3: Desconhecido (Externa 2)
+    ];
+
+    // 📍 VARIÁVEL 1: POSIÇÕES DA COSMOLOGIA 
     const [zonasCosmologia, setZonasCosmologia] = useState([
         { "nome": "Terra 0 (Runeterra)", "top": "44.3%", "left": "49.3%", "width": "10%", "height": "16.6%", "cor": "#ffffff", "isCircle": true, "isPlanet": true },
         { "nome": "Plano da Ordem", "top": "40.6%", "left": "13.2%", "width": "13%", "height": "22%", "cor": "#DDA0DD", "isCircle": true },
@@ -55,14 +63,15 @@ export default function MapaMundi({ children }) {
         { "nome": "Plano do Caos Inferior", "top": "84%", "left": "8%", "width": "22%", "height": "10%", "cor": "#800000", "isCircle": false }
     ]);
 
-    // 📍 VARIÁVEL 2: POSIÇÕES DO SISTEMA SOLAR (Estrelas e Propriedades)
+    // 📍 VARIÁVEL 2: POSIÇÕES DO SISTEMA SOLAR
+    // Nota: Adicionei o 'pathIdx' para dizer qual planeta anda em qual faixa da estrada!
     const [elementosSolar, setElementosSolar] = useState([
-        { id: 'orichalcosA', tipo: 'estrela', nome: 'Orichalcos A', top: '37.7%', left: '-5.2%', size: '120px' },
-        { id: 'orichalcosB', tipo: 'estrela', nome: 'Orichalcos B', top: '36.9%', left: '92.9%', size: '120px' },
-        { id: 'vegeta', tipo: 'planeta', nome: 'Vegeta', color1: '#ff6666', color2: '#990000', shadow: 'rgba(255,0,0,0.5)', size: '45px', tempo: '40s' },
-        { id: 'namekusei', tipo: 'planeta', nome: 'Namekusei', color1: '#66ff66', color2: '#006600', shadow: 'rgba(0,255,0,0.5)', size: '50px', tempo: '50s' },
-        { id: 'desconhecido', tipo: 'planeta', nome: 'Desconhecido', color1: '#66b3ff', color2: '#000066', shadow: 'rgba(0,100,255,0.5)', size: '40px', tempo: '60s' },
-        { id: 'terra0', tipo: 'terra', nome: 'Terra 0', size: '150px', tempo: '30s' }
+        { "id": "orichalcosA", "tipo": "estrela", "nome": "Orichalcos A", "top": "33.9%", "left": "10.4%", "size": "120px" },
+        { "id": "orichalcosB", "tipo": "estrela", "nome": "Orichalcos B", "top": "36.5%", "left": "76.1%", "size": "120px" },
+        { "id": "vegeta", "tipo": "planeta", "nome": "Vegeta", "color1": "#ff6666", "color2": "#990000", "shadow": "rgba(255,0,0,0.5)", "size": "45px", "tempo": "40s", "pathIdx": 1 },
+        { "id": "namekusei", "tipo": "planeta", "nome": "Namekusei", "color1": "#66ff66", "color2": "#006600", "shadow": "rgba(0,255,0,0.5)", "size": "50px", "tempo": "50s", "pathIdx": 2 },
+        { "id": "desconhecido", "tipo": "planeta", "nome": "Desconhecido", "color1": "#66b3ff", "color2": "#000066", "shadow": "rgba(0,100,255,0.5)", "size": "40px", "tempo": "60s", "pathIdx": 3 },
+        { "id": "terra0", "tipo": "terra", "nome": "Terra 0", "size": "150px", "tempo": "30s", "pathIdx": 0 }
     ]);
 
     const posicoesPings = [
@@ -98,7 +107,7 @@ export default function MapaMundi({ children }) {
         else if (nivelVisao === 'cosmologia') setNivelVisao('sistema_solar');
     };
 
-    // 🛠️ FUNÇÕES DO DRAG AND DROP (UNIFICADO) 🛠️
+    // 🛠️ FUNÇÕES DO DRAG AND DROP 🛠️
     const handleDragStart = (e, index, isSolar = false) => {
         if (!modoAjuste) return;
         if (isSolar) setDragIdSolar(index);
@@ -165,7 +174,7 @@ export default function MapaMundi({ children }) {
         </div>
     );
 
-    // NAVEGAÇÃO E MODAL MANTIDOS IDÊNTICOS
+    // NAVEGAÇÃO
     const criarNovoMapa = () => {
         const nome = prompt("Escreva o nome do novo mapa para " + reinoSelecionado + ":");
         if (nome && nome.trim() !== "") setMapasSalvos(prev => ({ ...prev, [reinoSelecionado]: [...(prev[reinoSelecionado] || []), nome] }));
@@ -182,12 +191,9 @@ export default function MapaMundi({ children }) {
     };
 
     // ==========================================
-    // 🌌 TELA 0: SISTEMA SOLAR 
+    // 🌌 TELA 0: SISTEMA SOLAR (RODOVIA CÓSMICA)
     // ==========================================
     if (nivelVisao === 'sistema_solar') {
-        // Definir o caminho da órbita idêntico ao SVG
-        const caminhoOrbita = "M 450 250 C 650 0, 900 0, 900 250 C 900 500, 650 500, 450 250 C 250 0, 0 0, 0 250 C 0 500, 250 500, 450 250 Z";
-
         return (
             <div className="fade-in" style={{ width: '100%', height: '85vh', background: 'radial-gradient(circle at center, #0a0a1a 0%, #000000 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', borderRadius: '15px', border: '1px solid #333' }}>
                 <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(2px 2px at 20px 30px, #ffffff, rgba(0,0,0,0)), radial-gradient(2px 2px at 40px 70px, #ffffff, rgba(0,0,0,0)), radial-gradient(2px 2px at 90px 40px, #ffffff, rgba(0,0,0,0))', backgroundRepeat: 'repeat', backgroundSize: '200px 200px', opacity: 0.3 }} />
@@ -203,42 +209,41 @@ export default function MapaMundi({ children }) {
 
                 <div ref={containerRef} onMouseMove={handleDragMove} onMouseUp={handleDragEnd} onMouseLeave={handleDragEnd} onTouchMove={handleDragMove} onTouchEnd={handleDragEnd} style={{ position: 'relative', width: '900px', height: '500px' }}>
                     
-                    {/* TRILHA DO INFINITO NO FUNDO (Passando por trás das estrelas e planetas) */}
+                    {/* TRILHA MULTIPLA DO INFINITO (Z-Index baixo para passar por TRÁS das estrelas) */}
                     <svg viewBox="0 0 900 500" style={{ position: 'absolute', width: '100%', height: '100%', pointerEvents: 'none', zIndex: 1 }}>
                         <defs>
                             <filter id="glow">
-                                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-                                <feMerge>
-                                    <feMergeNode in="coloredBlur"/>
-                                    <feMergeNode in="SourceGraphic"/>
-                                </feMerge>
+                                <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                                <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
                             </filter>
                         </defs>
-                        <path 
-                            className="linha-orbita-animada"
-                            d={caminhoOrbita} 
-                            fill="none" 
-                            stroke="rgba(255, 255, 255, 0.4)" 
-                            strokeWidth="2" 
-                            strokeDasharray="10 15" 
-                            filter="url(#glow)"
-                        />
+                        {caminhosOrbita.map((path, idx) => (
+                            <path 
+                                key={idx}
+                                className="linha-orbita-animada"
+                                d={path} 
+                                fill="none" 
+                                stroke={idx === 0 ? "rgba(255, 255, 255, 0.4)" : "rgba(255, 255, 255, 0.15)"} 
+                                strokeWidth={idx === 0 ? "2" : "1"} 
+                                strokeDasharray="10 15" 
+                                filter="url(#glow)"
+                            />
+                        ))}
                     </svg>
 
                     {elementosSolar.map(el => {
-                        // Estilo base para estrelas fixas
+                        // Estrelas ficam fixas nos cantos com Z-Index 5 (Pra linha passar por trás)
                         const styleFixoBase = { position: 'absolute', top: el.top, left: el.left, width: el.size, height: el.size, zIndex: 5, border: (modoAjuste && (el.tipo === 'estrela')) ? '2px dashed #fff' : 'none', transition: (modoAjuste || dragIdSolar === el.id) ? 'none' : '0.2s', cursor: modoAjuste ? 'grab' : 'auto' };
 
-                        // Estilo base para planetas móveis
+                        // Planetas ganham a habilidade do motor de órbita
                         const styleMovelBase = {
                             position: 'absolute',
                             width: el.size,
                             height: el.size,
                             zIndex: el.tipo === 'terra' ? 20 : 10,
                             border: 'none',
-                            // O pulo do gato: os planetas móveis não têm top/left fixos, eles seguem o caminho.
                             transition: dragIdSolar === el.id ? 'none' : '0.2s',
-                            offsetPath: `path("${caminhoOrbita}")`,
+                            offsetPath: `path("${caminhosOrbita[el.pathIdx || 0]}")`, // Pega a faixa certa baseada no index!
                             offsetRotate: 'auto',
                             animation: `orbitaSempre ${el.tempo} linear infinite`
                         };
@@ -253,8 +258,8 @@ export default function MapaMundi({ children }) {
                                     <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                                         {/* O Planeta */}
                                         <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: `radial-gradient(circle at 30% 30%, ${el.color1}, ${el.color2})`, boxShadow: `inset -10px -10px 20px rgba(0,0,0,0.8), 0 0 20px ${el.shadow}`, zIndex: 10, cursor: 'pointer' }} onClick={() => alert(`Planeta ${el.nome}\nAcesso restrito.`)} />
-                                        {/* Anel de Órbita tracejado proporcional */}
-                                        <div style={{ position: 'absolute', width: 'calc(100% + 20px)', height: 'calc(100% + 20px)', borderRadius: '50%', border: '1px dashed rgba(255,255,255,0.2)', pointerEvents: 'none', zIndex: 5 }}></div>
+                                        {/* Anel de Órbita tracejado */}
+                                        <div className="moon-orbit" style={{ position: 'absolute', width: 'calc(100% + 20px)', height: 'calc(100% + 20px)', borderRadius: '50%', border: '1px dashed rgba(255,255,255,0.2)', pointerEvents: 'none', zIndex: 5 }}></div>
                                     </div>
                                     <span style={{ color: el.color1, position: 'absolute', bottom: '-20px', fontSize: '12px', fontWeight: 'bold', letterSpacing: '2px', textTransform: 'uppercase', whiteSpace: 'nowrap', pointerEvents: 'none' }}>{el.nome}</span>
                                 </div>
@@ -267,8 +272,8 @@ export default function MapaMundi({ children }) {
                                     <div style={{ position: 'relative', width: '100px', height: '100px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                                         {/* O Planeta */}
                                         <div onClick={() => setNivelVisao('globo')} style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #4db8ff, #003366)', boxShadow: 'inset -15px -15px 30px rgba(0,0,0,0.9), 0 0 40px rgba(0,150,255,0.6)', border: '1px solid rgba(255,255,255,0.2)', zIndex: 10, cursor: 'pointer' }} />
-                                        {/* Anel de Órbita das Luas com rotação animada */}
-                                        <div className="moon-orbit" style={{ position: 'absolute', width: '100%', height: '100%', borderRadius: '50%', border: '1px dashed rgba(255,255,255,0.2)', pointerEvents: 'none', zIndex: 5 }}>
+                                        {/* Anel de Órbita das Luas */}
+                                        <div className="moon-orbit" style={{ position: 'absolute', width: '100%', height: '100%', borderRadius: '50%', border: '1px dashed rgba(255,255,255,0.4)', pointerEvents: 'none', zIndex: 5 }}>
                                             <div style={{ position: 'absolute', top: '-6px', left: '50%', transform: 'translateX(-50%)', width: '12px', height: '12px', background: '#e6e6e6', borderRadius: '50%', boxShadow: '0 0 5px #fff' }}><span style={{position:'absolute', top: '-18px', left:'-10px', fontSize:'9px', color:'#aaa'}}>Maria</span></div>
                                             <div style={{ position: 'absolute', bottom: '15px', right: '5px', width: '10px', height: '10px', background: '#e6e6e6', borderRadius: '50%', boxShadow: '0 0 5px #fff' }}><span style={{position:'absolute', bottom: '-15px', right:'-5px', fontSize:'9px', color:'#aaa'}}>Rose</span></div>
                                             <div style={{ position: 'absolute', bottom: '15px', left: '5px', width: '14px', height: '14px', background: '#e6e6e6', borderRadius: '50%', boxShadow: '0 0 5px #fff' }}><span style={{position:'absolute', bottom: '-15px', left:'-5px', fontSize:'9px', color:'#aaa'}}>Sina</span></div>
@@ -282,7 +287,7 @@ export default function MapaMundi({ children }) {
                     })}
                 </div>
 
-                {/* MODAL DE CÓDIGO AQUI TAMBÉM */}
+                {/* MODAL DE CÓDIGO */}
                 {codigoExportado && (
                     <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 200, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                         <div style={{ background: '#111', padding: '20px', borderRadius: '10px', width: '800px', border: '2px solid #00cc66' }}>
@@ -293,7 +298,6 @@ export default function MapaMundi({ children }) {
                     </div>
                 )}
                 
-                {/* CSS COM ANIMAÇÃO DA TRILHA DE ENERGIA E DA ÓRBITA SEMPRE */}
                 <style dangerouslySetInnerHTML={{__html: `
                     .fade-in { animation: fadeIn 0.8s ease-in-out; }
                     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
