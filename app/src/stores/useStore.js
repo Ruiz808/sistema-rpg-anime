@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 
 export const fichaPadrao = {
-    ascensaoBase: 1, poderes: [], inventario: [], ataquesElementais: [], passivas: [],
+    ascensaoBase: 1, poderes: [], inventario: [], ataquesElementais: [], passivas: [], seresSelados: [],
     hierarquia: { poder: false, infinity: false, singularidade: '', poderNome: '', poderDesc: '', infinityNome: '', infinityDesc: '', singularidadeNome: '', singularidadeDesc: '' },
     proficienciaBase: 2, proficiencias: {}, avatar: { base: "" },
     bio: { raca: "", classe: "", idade: "", fisico: "", sangue: "", alinhamento: "", afiliacao: "", dinheiro: "" },
@@ -40,7 +40,6 @@ const useStore = create(
         jogadoresOnline: [],
         setJogadoresOnline: (lista) => set(state => { state.jogadoresOnline = lista; }),
 
-        // 🔥 NOVO: Variáveis para a Hierarquia da Mesa 🔥
         mesaCriador: '',
         mesaMestres: {},
         setMesaInfo: (criador, mestresMap) => set(state => {
@@ -102,6 +101,7 @@ const useStore = create(
             state.minhaFicha.poderes = dados.poderes || [];
             state.minhaFicha.ataquesElementais = dados.ataquesElementais || [];
             state.minhaFicha.passivas = dados.passivas || [];
+            state.minhaFicha.seresSelados = dados.seresSelados || []; // 🔥 ADICIONADO AQUI
             if (dados.hierarquia != null) state.minhaFicha.hierarquia = Object.assign({}, fichaPadrao.hierarquia, dados.hierarquia);
             if (dados.cores !== undefined) state.minhaFicha.cores = Object.assign({}, fichaPadrao.cores, dados.cores || {});
             if (dados.acoes) {
@@ -114,7 +114,7 @@ const useStore = create(
 
             for (let i = 0; i < chaves.length; i++) {
                 const ch = chaves[i];
-                if (dados[ch] !== undefined && ch !== 'ascensaoBase' && ch !== 'poderes' && ch !== 'divisores' && ch !== 'inventario' && ch !== 'ataquesElementais' && ch !== 'ataqueConfig' && ch !== 'avatar' && ch !== 'bio' && ch !== 'notas' && ch !== 'passivas' && ch !== 'posicao' && ch !== 'iniciativa' && ch !== 'acoes' && ch !== 'proficienciaBase' && ch !== 'proficiencias' && ch !== 'cores' && ch !== 'hierarquia') {
+                if (dados[ch] !== undefined && ch !== 'ascensaoBase' && ch !== 'poderes' && ch !== 'divisores' && ch !== 'inventario' && ch !== 'ataquesElementais' && ch !== 'ataqueConfig' && ch !== 'avatar' && ch !== 'bio' && ch !== 'notas' && ch !== 'passivas' && ch !== 'seresSelados' && ch !== 'posicao' && ch !== 'iniciativa' && ch !== 'acoes' && ch !== 'proficienciaBase' && ch !== 'proficiencias' && ch !== 'cores' && ch !== 'hierarquia') {
                     if (typeof fichaPadrao[ch] === 'object' && !Array.isArray(fichaPadrao[ch])) {
                         state.minhaFicha[ch] = Object.assign({}, fichaPadrao[ch], dados[ch]);
                         const numF = ['base', 'mBase', 'mGeral', 'mFormas', 'mAbsoluto', 'reducaoCusto', 'regeneracao', 'atual'];
@@ -124,7 +124,6 @@ const useStore = create(
             }
         }),
 
-        // 🔥 NOVA AÇÃO: IMPORTAR TEXTO DO GOOGLE DOCS 🔥
         importarDaAbaStatus: (textoBruto) => set((state) => {
             const extrairNumero = (regex) => {
                 const match = textoBruto.match(regex);
@@ -142,7 +141,6 @@ const useStore = create(
                 'Poder mágico': 'inteligencia'
             };
 
-            // 1. Atualizar Energias (Vida, Mana, Aura, Chakra, Corpo)
             ['Vida', 'Mana', 'Aura', 'Chakra', 'Corpo'].forEach(campo => {
                 const regex = new RegExp(`${campo}:\\s*([\\d\\.]+)`, 'i');
                 const valor = extrairNumero(regex);
@@ -154,7 +152,6 @@ const useStore = create(
                 }
             });
 
-            // 2. Atualizar Atributos (os valores com + no Docs)
             Object.entries(mapaAtributos).forEach(([textoDoc, chaveStore]) => {
                 const regex = new RegExp(`${textoDoc}\\s*=\\s*\\(\\+?([\\d\\.]+)\\)`, 'i');
                 const valor = extrairNumero(regex);

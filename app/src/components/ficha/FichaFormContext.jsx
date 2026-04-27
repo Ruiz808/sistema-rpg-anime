@@ -76,8 +76,14 @@ export function FichaFormProvider({ children }) {
     const [dinheiro, setDinheiro] = useState('');
     const [salvandoBio, setSalvandoBio] = useState(false);
     
-    // 🔥 NOVO: Estado que controla o menu manual dos painéis 🔥
     const [painelForcado, setPainelForcado] = useState('auto');
+
+    // 🔥 NOVOS ESTADOS PARA SERES SELADOS 🔥
+    const seresSelados = minhaFicha?.seresSelados || [];
+    const [serNome, setSerNome] = useState('');
+    const [serDescricao, setSerDescricao] = useState('');
+    const [serElemento, setSerElemento] = useState('');
+    const [serEditandoId, setSerEditandoId] = useState(null);
 
     const overridesCompendio = useMemo(() => {
         if (!minhaFicha) return {};
@@ -267,9 +273,6 @@ export function FichaFormProvider({ children }) {
     const sKeyForBuffs = (selAtributo === 'todos_status') ? 'forca' : (selAtributo === 'todas_energias') ? 'mana' : selAtributo;
     const buffsAtuais = minhaFicha ? getBuffs(minhaFicha, sKeyForBuffs) : null;
 
-    // =========================================================================================
-    // 🔥 BLINDAGEM CONDICIONAL E CONTROLE MANUAL 🔥
-    // =========================================================================================
     const hierarquia = minhaFicha?.hierarquia || {};
     const poderesGlobais = minhaFicha?.poderes || [];
     const hPoder = hierarquia.poder || false;
@@ -288,13 +291,11 @@ export function FichaFormProvider({ children }) {
     const classConceitual = (hPoder && checkVertente(hPoderVertente, 'conceitual')) || (hInfinity && checkVertente(hInfinityVertente, 'conceitual'));
     const classUtilitario = (hPoder && checkVertente(hPoderVertente, 'utilitario')) || (hInfinity && checkVertente(hInfinityVertente, 'utilitario'));
 
-    // AGORA O painelForcado MANDA NA EXIBIÇÃO!
     const showMarcadoresCena = painelForcado === 'acumulativo' || (painelForcado === 'auto' && (classAcumulativo || poderesGlobais.some(p => p.ativa && checkVertente(p.vertente, 'acumulativo'))));
     const showForjaCalamidade = painelForcado === 'acumulativo' || (painelForcado === 'auto' && (classAcumulativo || poderesGlobais.some(p => p.ativa && checkVertente(p.vertente, 'acumulativo'))));
     const showElemental = painelForcado === 'elemental' || (painelForcado === 'auto' && (classElemental || poderesGlobais.some(p => p.ativa && checkVertente(p.vertente, 'elemental'))));
     const showConceitual = painelForcado === 'conceitual' || (painelForcado === 'auto' && (classConceitual || poderesGlobais.some(p => p.ativa && checkVertente(p.vertente, 'conceitual'))));
     const showUtilitario = painelForcado === 'utilitario' || (painelForcado === 'auto' && (classUtilitario || poderesGlobais.some(p => p.ativa && checkVertente(p.vertente, 'utilitario'))));
-    // =========================================================================================
 
     const trackersCena = minhaFicha?.combate?.trackers || [];
     const [novoTrackerNome, setNovoTrackerNome] = useState('');
@@ -388,13 +389,56 @@ export function FichaFormProvider({ children }) {
         return max;
     }, [minhaFicha]);
 
+    // 🔥 FUNÇÕES DE SERES SELADOS 🔥
+    const cancelarEdicaoSer = useCallback(() => {
+        setSerEditandoId(null); setSerNome(''); setSerDescricao(''); setSerElemento('');
+    }, []);
+
+    const addSerSelado = useCallback(() => {
+        if (!serNome.trim()) return;
+        updateFicha(f => {
+            if (!f.seresSelados) f.seresSelados = [];
+            if (serEditandoId) {
+                const s = f.seresSelados.find(x => x.id === serEditandoId);
+                if (s) { s.nome = serNome; s.descricao = serDescricao; s.elemento = serElemento; }
+            } else {
+                f.seresSelados.push({ id: Date.now().toString(), nome: serNome, descricao: serDescricao, elemento: serElemento, ativo: false });
+            }
+        });
+        salvarFichaSilencioso();
+        cancelarEdicaoSer();
+    }, [serNome, serDescricao, serElemento, serEditandoId, updateFicha, cancelarEdicaoSer]);
+
+    const editarSerSelado = useCallback((id) => {
+        const s = (minhaFicha?.seresSelados || []).find(x => x.id === id);
+        if (!s) return;
+        setSerEditandoId(s.id); setSerNome(s.nome); setSerDescricao(s.descricao || ''); setSerElemento(s.elemento || '');
+    }, [minhaFicha]);
+
+    const removeSerSelado = useCallback((id) => {
+        if(!window.confirm('Tem certeza que deseja exilar esta entidade e quebrar o pacto?')) return;
+        updateFicha(f => {
+            if (f.seresSelados) f.seresSelados = f.seresSelados.filter(x => x.id !== id);
+        });
+        salvarFichaSilencioso();
+    }, [updateFicha]);
+
+    const toggleSerSelado = useCallback((id) => {
+        updateFicha(f => {
+            if (!f.seresSelados) return;
+            const s = f.seresSelados.find(x => x.id === id);
+            if (s) s.ativo = !s.ativo;
+        });
+        salvarFichaSilencioso();
+    }, [updateFicha]);
+
     const value = useMemo(() => ({
         minhaFicha, updateFicha, personagens, meuNome,
         mesa, setMesa, raca, setRaca, classe, setClasse, subClasse, setSubClasse,
         alterEgoSlot1, setAlterEgoSlot1, alterEgoSlot2, setAlterEgoSlot2, classesMemorizadas, setClassesMemorizadas,
         idade, setIdade, fisico, setFisico, sangue, setSangue, alinhamento, setAlinhamento,
         afiliacao, setAfiliacao, dinheiro, setDinheiro, salvandoBio,
-        painelForcado, setPainelForcado, // 🔥 EXPORTANDO O SELETOR AQUI
+        painelForcado, setPainelForcado, 
         overridesCompendio, grands, isGrand, grandIcone, comitarBio, salvarBio, mudarSubClasseDireto,
         multiplicadorFuriaClasse, rawMaxVida, maxVida, atualVida, percAtualLostFloor, furiaMax, percEfetivoParaDisplay,
         multiplicadorFuriaVisor, furiaAcalmadaMsg, acalmarFuria, toggleMemoriaPretender, descansoLongoPretender,
@@ -411,7 +455,11 @@ export function FichaFormProvider({ children }) {
         valorInjecao, setValorInjecao, alvosInjecao, setAlvosInjecao, showAbsorverMsg, toggleAlvo, injetarAnomalia,
         leisCena, novaLeiNome, setNovaLeiNome, addLeiCena, removeLeiCena,
         copiasAtivas, novaCopiaNome, setNovaCopiaNome, novaCopiaEfeito, setNovaCopiaEfeito,
-        addCopiaAtiva, removeCopiaAtiva, getAtualVital
+        addCopiaAtiva, removeCopiaAtiva, getAtualVital,
+        // Seres Selados
+        seresSelados, serNome, setSerNome, serDescricao, setSerDescricao,
+        serElemento, setSerElemento, serEditandoId,
+        addSerSelado, editarSerSelado, removeSerSelado, toggleSerSelado, cancelarEdicaoSer
     }), [
         minhaFicha, updateFicha, personagens, meuNome, mesa, raca, classe, subClasse, alterEgoSlot1, alterEgoSlot2, classesMemorizadas,
         idade, fisico, sangue, alinhamento, afiliacao, dinheiro, salvandoBio, painelForcado, overridesCompendio, grands, isGrand, grandIcone,
@@ -422,7 +470,9 @@ export function FichaFormProvider({ children }) {
         showMarcadoresCena, showForjaCalamidade, showElemental, showConceitual, showUtilitario,
         trackersCena, novoTrackerNome, novoTrackerValor, addTrackerCena, modTrackerCena, removeTrackerCena, resetarTrackersCena,
         valorInjecao, alvosInjecao, showAbsorverMsg, toggleAlvo, injetarAnomalia, leisCena, novaLeiNome, addLeiCena, removeLeiCena,
-        copiasAtivas, novaCopiaNome, novaCopiaEfeito, addCopiaAtiva, removeCopiaAtiva, getAtualVital
+        copiasAtivas, novaCopiaNome, novaCopiaEfeito, addCopiaAtiva, removeCopiaAtiva, getAtualVital,
+        seresSelados, serNome, serDescricao, serElemento, serEditandoId,
+        addSerSelado, editarSerSelado, removeSerSelado, toggleSerSelado, cancelarEdicaoSer
     ]);
 
     return (

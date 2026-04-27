@@ -126,6 +126,58 @@ export function FichaBioGroup() {
     );
 }
 
+// 🔥 NOVO: PAINEL DE SERES SELADOS E PACTOS 🔥
+export function FichaSeresSelados() {
+    const ctx = useFichaForm();
+    if (!ctx) return null;
+    const {
+        seresSelados, serNome, setSerNome, serDescricao, setSerDescricao,
+        serElemento, setSerElemento, serEditandoId,
+        addSerSelado, editarSerSelado, removeSerSelado, toggleSerSelado, cancelarEdicaoSer
+    } = ctx;
+
+    return (
+        <div className="def-box fade-in" style={{ marginTop: 15, background: 'rgba(138, 43, 226, 0.05)', border: '1px solid #8a2be2', boxShadow: '0 0 15px rgba(138, 43, 226, 0.2)' }}>
+            <h3 style={{ color: '#8a2be2', margin: '0 0 10px 0', textShadow: '0 0 5px #8a2be2' }}>👁️ Reino Interior (Entidades Seladas & Pactos)</h3>
+            <p style={{ color: '#aaa', fontSize: '0.85em', margin: '0 0 15px 0' }}>Gerencie as entidades, espíritos ou demônios que habitam sua alma. Ative a sincronização para aplicar os bônus na sua ficha e narrar suas ações conjuntas.</p>
+
+            {seresSelados.length > 0 && (
+                <div style={{ display: 'grid', gap: '10px', marginBottom: '20px' }}>
+                    {seresSelados.map(ser => (
+                        <div key={ser.id} style={{ background: 'rgba(0,0,0,0.6)', borderLeft: `4px solid ${ser.ativo ? '#00ffcc' : '#555'}`, padding: '15px', borderRadius: '5px', transition: '0.3s' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
+                                <div>
+                                    <h4 style={{ margin: 0, color: ser.ativo ? '#00ffcc' : '#fff', textShadow: ser.ativo ? '0 0 10px #00ffcc' : 'none' }}>{ser.nome}</h4>
+                                    <div style={{ color: '#8a2be2', fontSize: '0.8em', fontWeight: 'bold', marginTop: '4px' }}>Domínio: {ser.elemento || 'Desconhecido'}</div>
+                                </div>
+                                <div style={{ display: 'flex', gap: '5px' }}>
+                                    <button className={`btn-neon btn-small ${ser.ativo ? 'btn-green' : ''}`} onClick={() => toggleSerSelado(ser.id)} style={{ margin: 0 }}>{ser.ativo ? '🌀 SINCRONIZADO' : 'ADORMECIDO'}</button>
+                                    <button className="btn-neon btn-blue btn-small" onClick={() => editarSerSelado(ser.id)} style={{ margin: 0 }}>⚙️</button>
+                                    <button className="btn-neon btn-red btn-small" onClick={() => removeSerSelado(ser.id)} style={{ margin: 0 }}>X</button>
+                                </div>
+                            </div>
+                            <p style={{ color: '#ccc', fontSize: '0.85em', marginTop: '10px', fontStyle: 'italic', whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>{ser.descricao}</p>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            <div style={{ background: 'rgba(0,0,0,0.4)', padding: '15px', borderRadius: '5px', border: '1px dashed #8a2be2' }}>
+                <h4 style={{ color: '#8a2be2', margin: '0 0 10px 0' }}>{serEditandoId ? '⚙️ Editar Entidade' : '🔗 Vincular Nova Entidade'}</h4>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                    <input className="input-neon" type="text" placeholder="Nome da Entidade (Ex: Kurama, Sukuna)" value={serNome} onChange={e => setSerNome(e.target.value)} style={{ flex: '2 1 200px', margin: 0, borderColor: '#8a2be2', color: '#fff' }} />
+                    <input className="input-neon" type="text" placeholder="Elemento / Essência" value={serElemento} onChange={e => setSerElemento(e.target.value)} style={{ flex: '1 1 150px', margin: 0, borderColor: '#8a2be2', color: '#fff' }} />
+                </div>
+                <textarea className="input-neon" placeholder="Descreva os buffs, poderes passivos e condições do contrato. O que você ganha ao sincronizar com ele?" value={serDescricao} onChange={e => setSerDescricao(e.target.value)} style={{ width: '100%', minHeight: '60px', borderColor: '#8a2be2', color: '#ccc', resize: 'vertical', marginBottom: '10px' }} />
+                <div style={{ display: 'flex', gap: '10px' }}>
+                    <button className="btn-neon" style={{ flex: 1, borderColor: '#8a2be2', color: '#8a2be2', fontWeight: 'bold', margin: 0 }} onClick={addSerSelado}>{serEditandoId ? '💾 SALVAR MUDANÇAS' : '+ FORJAR PACTO'}</button>
+                    {serEditandoId && <button className="btn-neon btn-red" style={{ flex: 1, margin: 0 }} onClick={cancelarEdicaoSer}>CANCELAR</button>}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export function FichaEditorAtributos() {
     const ctx = useFichaForm();
     if (!ctx) return FALLBACK;
@@ -186,7 +238,7 @@ export function FichaDistorcaoConceitual() {
     return (
         <div className="def-box fade-in" style={{ marginTop: 15, background: 'rgba(255, 0, 255, 0.05)', border: '1px solid #ff00ff', boxShadow: '0 0 15px rgba(255, 0, 255, 0.2)' }}>
             <h3 style={{ color: '#ff00ff', margin: '0 0 10px 0', textShadow: '0 0 5px #ff00ff' }}>🧩 Distorção Conceitual (Quebra de Regras)</h3>
-            <p style={{ color: '#aaa', fontSize: '0.85em', margin: '0 0 15px 0' }}>Anomalias conceituais reescrevem as leis da realidade. Decrete as "Leis da Cena" em vigor.</p>
+            <p style={{ color: '#aaa', fontSize: '0.85em', margin: '0 0 15px 0' }}>Anomalias conceituais reescrevem as laws da realidade. Decrete as "Leis da Cena" em vigor.</p>
             <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '15px' }}>
                 <input className="input-neon" type="text" placeholder="Decrete uma nova Lei (Ex: Oponentes não podem esquivar)" value={novaLeiNome} onChange={e => setNovaLeiNome(e.target.value)} style={{ flex: '1 1 200px', minHeight: '48px', fontSize: '1.1em', padding: '10px', borderColor: '#ff00ff', color: '#fff', margin: 0 }} />
                 <button className="btn-neon" style={{ flex: '0 1 150px', minHeight: '48px', borderColor: '#ff00ff', color: '#ff00ff', margin: 0, padding: '10px 20px', fontSize: '1.1em', fontWeight: 'bold', background: 'rgba(255, 0, 255, 0.1)' }} onClick={addLeiCena}>+ DECRETAR</button>
@@ -378,7 +430,6 @@ export function FichaMultiplicadoresDano() {
     );
 }
 
-// 🔥 NOVO COMPONENTE DE CONTROLE MANUAL DOS PAINÉIS 🔥
 export function FichaControlePaineis() {
     const ctx = useFichaForm();
     if (!ctx) return null;
