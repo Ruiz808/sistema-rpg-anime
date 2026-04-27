@@ -45,26 +45,25 @@ export default function MapaMundi({ children }) {
         { nome: 'Shurima', img: gabaritoShurima, top: '75%', left: '43%', cor: '#c59b0d' },
         { nome: 'Targon', img: gabaritoTargon, top: '78%', left: '26%', cor: '#5e35b1' },
         { nome: 'Ixtal', img: gabaritoIxtal, top: '67%', left: '63%', cor: '#2e7d32' },
-        { nome: 'Águas de Sentina', img: gabaritoAguas, top: '57%', left: '72%', cor: '#d84315' },
+        { nome: 'Águas de Sentina', top: '57%', left: '72%', cor: '#d84315' },
         { nome: 'Ilha das Sombras', img: gabaritoIlha, top: '86%', left: '85%', cor: '#00838f' },
         { nome: 'Ionia', img: gabaritoIonia, top: '30%', left: '82%', cor: '#43a047' }
     ];
 
     // 🌌 ZONAS DE INTERAÇÃO DA COSMOLOGIA 🌌
-    // Ajuste Fino: Puxei tudo exatamente 2.5% de volta para a esquerda!
     const zonasCosmologia = [
-        { nome: 'Céus', top: '7%', left: '49%', width: '13%', height: '18%', cor: '#FCE883', isCircle: true },
-        { nome: 'Inferno', top: '78%', left: '48%', width: '15%', height: '14%', cor: '#FF4500', isCircle: false },
-        { nome: 'Plano do Vento', top: '27%', left: '35.5%', width: '13%', height: '18%', cor: '#2E8B57', isCircle: true },
-        { nome: 'Plano do Fogo', top: '55%', left: '35.5%', width: '13%', height: '18%', cor: '#DC143C', isCircle: true },
-        { nome: 'Plano da Água', top: '27%', left: '62.5%', width: '13%', height: '18%', cor: '#4169E1', isCircle: true },
-        { nome: 'Plano da Terra', top: '55%', left: '62.5%', width: '13%', height: '18%', cor: '#8B4513', isCircle: true },
-        { nome: 'Plano da Ordem', top: '40%', left: '15.5%', width: '11%', height: '20%', cor: '#DDA0DD', isCircle: true },
-        { nome: 'Plano Astral', top: '40%', left: '81.5%', width: '15%', height: '20%', cor: '#483D8B', isCircle: true },
-        { nome: 'Plano das Fadas', top: '31.5%', left: '52%', width: '7%', height: '10%', cor: '#32CD32', isCircle: true },
-        { nome: 'Plano do Éter', top: '59.5%', left: '52%', width: '7%', height: '10%', cor: '#9400D3', isCircle: true },
+        { nome: 'Céus', top: '7%', left: '51.5%', width: '13%', height: '18%', cor: '#FCE883', isCircle: true },
+        { nome: 'Inferno', top: '78%', left: '50.5%', width: '15%', height: '14%', cor: '#FF4500', isCircle: false },
+        { nome: 'Plano do Vento', top: '27%', left: '38%', width: '13%', height: '18%', cor: '#2E8B57', isCircle: true },
+        { nome: 'Plano do Fogo', top: '55%', left: '38%', width: '13%', height: '18%', cor: '#DC143C', isCircle: true },
+        { nome: 'Plano da Água', top: '27%', left: '65%', width: '13%', height: '18%', cor: '#4169E1', isCircle: true },
+        { nome: 'Plano da Terra', top: '55%', left: '65%', width: '13%', height: '18%', cor: '#8B4513', isCircle: true },
+        { nome: 'Plano da Ordem', top: '40%', left: '18%', width: '11%', height: '20%', cor: '#DDA0DD', isCircle: true },
+        { nome: 'Plano Astral', top: '40%', left: '84%', width: '15%', height: '20%', cor: '#483D8B', isCircle: true },
+        { nome: 'Plano das Fadas', top: '31.5%', left: '54.5%', width: '7%', height: '10%', cor: '#32CD32', isCircle: true },
+        { nome: 'Plano do Éter', top: '59.5%', left: '54.5%', width: '7%', height: '10%', cor: '#9400D3', isCircle: true },
         
-        // Caos (Cenário de fundo, mantido nos cantos)
+        // Caos
         { nome: 'Plano do Caos', top: '2%', left: '76%', width: '20%', height: '10%', cor: '#800000', isCircle: false },
         { nome: 'Plano do Caos', top: '84%', left: '12%', width: '20%', height: '10%', cor: '#800000', isCircle: false }
     ];
@@ -113,7 +112,7 @@ export default function MapaMundi({ children }) {
     };
 
     // ==========================================
-    // 🌌 TELA 0: COSMOLOGIA (A Imagem Interativa)
+    // 🌌 TELA 0: COSMOLOGIA (Modo Raio-X Ligado!)
     // ==========================================
     if (nivelVisao === 'cosmologia') {
         return (
@@ -122,6 +121,7 @@ export default function MapaMundi({ children }) {
                     
                     <img src={mapaCosmologia} alt="Cosmologia" style={{ width: '100%', height: '100%', objectFit: 'fill', filter: 'drop-shadow(0 0 20px rgba(255,255,255,0.1))' }} />
 
+                    {/* ZONAS - COM O CSS LIGADO PERMANENTEMENTE PARA DEBUG */}
                     {zonasCosmologia.map((zona, index) => (
                         <div 
                             key={`${zona.nome}-${index}`}
@@ -132,25 +132,27 @@ export default function MapaMundi({ children }) {
                                 position: 'absolute', top: zona.top, left: zona.left, width: zona.width, height: zona.height,
                                 borderRadius: zona.isCircle ? '50%' : '15px', cursor: 'pointer', 
                                 zIndex: zona.zIndex || 10,
-                                border: planoHover === zona.nome ? `2px solid ${zona.cor}` : '2px solid transparent',
-                                boxShadow: planoHover === zona.nome ? `0 0 25px ${zona.cor}, inset 0 0 15px ${zona.cor}` : 'none',
-                                background: planoHover === zona.nome ? 'rgba(255,255,255,0.08)' : 'transparent',
+                                // ESTILOS TRAVADOS EM "LIGADO"
+                                border: `2px solid ${zona.cor}`,
+                                boxShadow: `0 0 25px ${zona.cor}, inset 0 0 15px ${zona.cor}`,
+                                background: 'rgba(255,255,255,0.15)', // fundo um pouco mais forte pra ver bem
                                 transition: '0.2s ease-in-out'
                             }}
                         />
                     ))}
 
-                    {/* 🔥 TERRA 0 (O BOTÃO CENTRAL) RECALCULADO NA MOSCA 🔥 */}
+                    {/* 🔥 TERRA 0 - LIGADO PERMANENTEMENTE 🔥 */}
                     <div 
                         onClick={() => setNivelVisao('globo')}
                         onMouseEnter={() => setPlanoHover('Terra 0 (Runeterra)')}
                         onMouseLeave={() => setPlanoHover(null)}
                         style={{
-                            position: 'absolute', top: '42.5%', left: '49%', width: '10.5%', height: '16.5%',
+                            position: 'absolute', top: '42.5%', left: '51.5%', width: '10.5%', height: '16.5%',
                             borderRadius: '50%', cursor: 'pointer', zIndex: 30,
-                            border: planoHover === 'Terra 0 (Runeterra)' ? '2px solid #ffffff' : '2px solid transparent',
-                            boxShadow: planoHover === 'Terra 0 (Runeterra)' ? '0 0 40px #ffffff, inset 0 0 20px #ffffff' : 'none',
-                            background: planoHover === 'Terra 0 (Runeterra)' ? 'rgba(255,255,255,0.15)' : 'transparent',
+                            // ESTILOS TRAVADOS EM "LIGADO"
+                            border: '2px solid #ffffff',
+                            boxShadow: '0 0 40px #ffffff, inset 0 0 20px #ffffff',
+                            background: 'rgba(255,255,255,0.3)',
                             transition: '0.2s ease-in-out'
                         }}
                     />
@@ -158,7 +160,7 @@ export default function MapaMundi({ children }) {
                 
                 <div style={{ position: 'absolute', top: '20px', textAlign: 'center', pointerEvents: 'none', zIndex: 50 }}>
                     <h1 style={{ color: '#fff', margin: 0, letterSpacing: '6px', textTransform: 'uppercase', fontSize: '1.4em', textShadow: '0 0 20px rgba(255,255,255,0.8)' }}>
-                        {planoHover || 'Atlas Multiversal'}
+                        {planoHover || 'MODO DEBUG ATIVADO'}
                     </h1>
                 </div>
                 
