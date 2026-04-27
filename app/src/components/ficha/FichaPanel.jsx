@@ -2,6 +2,7 @@ import React from 'react';
 import { FichaFormProvider } from './FichaFormContext';
 import { 
     FichaBioGroup, 
+    FichaSeresSelados, 
     FichaEditorAtributos, 
     FichaReatorElemental, 
     FichaDistorcaoConceitual, 
@@ -21,6 +22,7 @@ export default function FichaPanel({ className, children }) {
                 {hasChildren ? children : (
                     <>
                         <FichaBioGroup />
+                        <FichaSeresSelados />
                         <FichaEditorAtributos />
                         <FichaReatorElemental />
                         <FichaDistorcaoConceitual />
