@@ -37,8 +37,8 @@ export default function MapaMundi({ children }) {
     const containerRef = useRef(null);
     const [codigoExportado, setCodigoExportado] = useState(null);
 
-    // 🎥 CÂMERA 3D DO SISTEMA SOLAR (AGORA SUAVE!) 🎥
-    const [camRotX, setCamRotX] = useState(60); 
+    // 🎥 CÂMERA 3D DO SISTEMA SOLAR 🎥
+    const [camRotX, setCamRotX] = useState(55); // Inclinação 3D
     const [camRotY, setCamRotY] = useState(0);  
     const [camZoom, setCamZoom] = useState(1);
     const [isDraggingCam, setIsDraggingCam] = useState(false);
@@ -52,7 +52,7 @@ export default function MapaMundi({ children }) {
         "M 500 250 C 760 -110, 1060 -10, 1060 250 C 1060 510, 760 610, 500 250 C 240 -110, -60 -10, -60 250 C -60 510, 240 610, 500 250 Z"
     ];
 
-    // 📍 VARIÁVEL 1: POSIÇÕES DA COSMOLOGIA
+    // 📍 VARIÁVEIS CALIBRADAS
     const [zonasCosmologia, setZonasCosmologia] = useState([
         { "nome": "Terra 0 (Runeterra)", "top": "44.3%", "left": "49.3%", "width": "10%", "height": "16.6%", "cor": "#ffffff", "isCircle": true, "isPlanet": true },
         { "nome": "Plano da Ordem", "top": "40.6%", "left": "13.2%", "width": "13%", "height": "22%", "cor": "#DDA0DD", "isCircle": true },
@@ -69,7 +69,6 @@ export default function MapaMundi({ children }) {
         { "nome": "Plano do Caos Inferior", "top": "84%", "left": "8%", "width": "22%", "height": "10%", "cor": "#800000", "isCircle": false }
     ]);
 
-    // 📍 VARIÁVEL 2: POSIÇÕES DO SISTEMA SOLAR
     const [elementosSolar, setElementosSolar] = useState([
         { "id": "orichalcosA", "tipo": "estrela", "nome": "Orichalcos A", "top": "30.9%", "left": "16.3%", "size": "180px" },
         { "id": "orichalcosB", "tipo": "estrela", "nome": "Orichalcos B", "top": "29.1%", "left": "66.9%", "size": "180px" },
@@ -93,7 +92,7 @@ export default function MapaMundi({ children }) {
     ];
 
     // ==========================================
-    // 🕹️ CONTROLES DA CÂMERA ESPACIAL (Suaves)
+    // 🕹️ CONTROLES DA CÂMERA ESPACIAL (Tablets e Mouse)
     // ==========================================
     const handleEspacoMouseDown = (e) => {
         if (modoAjuste) return;
@@ -106,9 +105,8 @@ export default function MapaMundi({ children }) {
         const diffX = (e.clientX || e.touches?.[0].clientX) - camDragStart.current.x;
         const diffY = (e.clientY || e.touches?.[0].clientY) - camDragStart.current.y;
         
-        // Aumentei a sensibilidade de 0.3 para 0.7 para ficar mais fácil de mexer!
-        setCamRotY(prev => prev + diffX * 0.7);
-        setCamRotX(prev => Math.max(0, Math.min(90, prev - diffY * 0.7))); 
+        setCamRotY(prev => prev + diffX * 0.6);
+        setCamRotX(prev => Math.max(10, Math.min(85, prev - diffY * 0.6))); 
         
         camDragStart.current = { x: e.clientX || e.touches?.[0].clientX, y: e.clientY || e.touches?.[0].clientY };
     };
@@ -121,7 +119,9 @@ export default function MapaMundi({ children }) {
         setCamZoom(Math.max(0.5, Math.min(2.5, novoZoom)));
     };
 
-    // FUNÇÕES GLOBO
+    // ==========================================
+    // 🕹️ CONTROLES DO GLOBO
+    // ==========================================
     const handleGloboDragStart = (e) => { setIsDragging(true); dragStart.current = { x: e.clientX || e.touches?.[0].clientX, y: e.clientY || e.touches?.[0].clientY }; };
     const handleGloboDragMove = (e) => {
         if (!isDragging) return;
@@ -142,7 +142,7 @@ export default function MapaMundi({ children }) {
     // 🛠️ FUNÇÕES DO DRAG AND DROP (MODO DEUS) 🛠️
     const handleDragStart = (e, index, isSolar = false) => {
         if (!modoAjuste) return;
-        e.stopPropagation(); // Impede a câmera de girar ao mesmo tempo
+        e.stopPropagation();
         if (isSolar) setDragIdSolar(index);
         else setDragIndexCosmo(index);
     };
@@ -221,10 +221,9 @@ export default function MapaMundi({ children }) {
     };
 
     // ==========================================
-    // 🌌 TELA 0: SISTEMA SOLAR CÂMERA 3D!
+    // 🌌 TELA 0: SISTEMA SOLAR (BLINDADA CONTRA TABLETS)
     // ==========================================
     if (nivelVisao === 'sistema_solar') {
-        // MATEMÁTICA DO BILLBOARD (Faz a esfera sempre encarar você, cancelando a rotação da câmera)
         const billboardTransform = `rotateY(${-camRotY}deg) rotateX(${-camRotX}deg)`;
 
         return (
@@ -238,18 +237,20 @@ export default function MapaMundi({ children }) {
                 <div style={{ position: 'absolute', top: '20px', left: '20px', zIndex: 10, pointerEvents: 'none' }}>
                     <h2 style={{ color: '#fff', margin: 0, textTransform: 'uppercase', letterSpacing: '4px', textShadow: '0 0 10px #fff' }}>Universo Material</h2>
                     <p style={{ color: '#aaa', fontSize: '0.85em', margin: '5px 0 0 0', letterSpacing: '1px' }}>Setor Orichalcos</p>
-                    <p style={{ color: '#00ffcc', fontSize: '0.75em', margin: '5px 0 0 0' }}>🖱️ Arraste para girar a câmera | ⚙️ Scroll para Zoom</p>
+                    <p style={{ color: '#00ffcc', fontSize: '0.75em', margin: '5px 0 0 0' }}>🖱️ Arraste para girar a câmera</p>
                 </div>
 
-                {/* WRAPPER DA CÂMERA */}
-                <div onWheel={handleEspacoZoom} style={{ position: 'absolute', inset: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', transform: `scale(${camZoom})`, transformStyle: 'preserve-3d' }}>
+                {/* WRAPPER DA CÂMERA COM TOUCH-ACTION NONE (Bloqueia scroll do tablet) */}
+                <div 
+                    onWheel={handleEspacoZoom} 
+                    style={{ position: 'absolute', inset: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', transform: `scale(${camZoom})`, transformStyle: 'preserve-3d', touchAction: 'none' }}
+                >
                     
-                    {/* CAIXA QUE GIRA (isDraggingCam controla o cursor e tira a transição pra não engasgar) */}
                     <div 
                         ref={containerRef} 
                         onMouseDown={handleEspacoMouseDown} onMouseMove={(e) => { handleEspacoMouseMove(e); handleDragMove(e); }} onMouseUp={(e) => { handleEspacoMouseUp(e); handleDragEnd(e); }} onMouseLeave={(e) => { handleEspacoMouseUp(e); handleDragEnd(e); }} 
                         onTouchStart={handleEspacoMouseDown} onTouchMove={(e) => { handleEspacoMouseMove(e); handleDragMove(e); }} onTouchEnd={(e) => { handleEspacoMouseUp(e); handleDragEnd(e); }}
-                        style={{ position: 'relative', width: '1000px', height: '500px', transform: `perspective(1500px) rotateX(${camRotX}deg) rotateY(${camRotY}deg)`, transformStyle: 'preserve-3d', cursor: isDraggingCam ? 'grabbing' : (modoAjuste ? 'default' : 'grab'), transition: isDraggingCam ? 'none' : 'transform 0.2s ease-out' }}
+                        style={{ position: 'relative', width: '1000px', height: '500px', transform: `perspective(1500px) rotateX(${camRotX}deg) rotateY(${camRotY}deg)`, transformStyle: 'preserve-3d', cursor: isDraggingCam ? 'grabbing' : (modoAjuste ? 'default' : 'grab'), transition: isDraggingCam ? 'none' : 'transform 0.1s ease-out' }}
                     >
                         
                         <svg viewBox="0 0 1000 500" style={{ position: 'absolute', width: '100%', height: '100%', pointerEvents: 'none', zIndex: 1, transformStyle: 'preserve-3d' }}>
@@ -261,22 +262,27 @@ export default function MapaMundi({ children }) {
                             ))}
                         </svg>
 
+                        {/* CAIXAS INVISÍVEIS PARA PROTEGER O 3D NO TABLET (WEBKIT BUG) */}
                         {elementosSolar.map(el => {
                             if (el.tipo === 'estrela') {
                                 return (
-                                    <div key={el.id} onMouseDown={(e) => handleDragStart(e, el.id, true)} style={{ position: 'absolute', top: el.top, left: el.left, width: el.size, height: el.size, zIndex: 5, transformStyle: 'preserve-3d', border: modoAjuste ? '2px dashed #fff' : 'none' }}>
-                                        <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #ffffff 0%, #ffcc00 40%, #ff5500 100%)', boxShadow: '0 0 80px #ffcc00, 0 0 150px #ff5500, inset -20px -20px 40px rgba(255,50,0,0.8)', transform: billboardTransform, transformStyle: 'preserve-3d' }} />
+                                    <div key={el.id} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', transformStyle: 'preserve-3d' }}>
+                                        <div onMouseDown={(e) => handleDragStart(e, el.id, true)} onTouchStart={(e) => handleDragStart(e, el.id, true)} style={{ position: 'absolute', top: el.top, left: el.left, width: el.size, height: el.size, zIndex: 5, transformStyle: 'preserve-3d', border: modoAjuste ? '2px dashed #fff' : 'none', pointerEvents: 'auto' }}>
+                                            <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #ffffff 0%, #ffcc00 40%, #ff5500 100%)', boxShadow: '0 0 80px #ffcc00, 0 0 150px #ff5500, inset -20px -20px 40px rgba(255,50,0,0.8)', transform: billboardTransform, transformStyle: 'preserve-3d' }} />
+                                        </div>
                                     </div>
                                 );
                             }
                             
                             if (el.tipo === 'planeta') {
                                 return (
-                                    <div key={el.id} style={{ position: 'absolute', width: el.size, height: el.size, zIndex: 10, offsetPath: `path("${caminhosOrbita[el.pathIdx || 0]}")`, offsetRotate: '0deg', animation: `orbitaSempre ${el.tempo} linear infinite`, animationDelay: el.delay, transformStyle: 'preserve-3d' }}>
-                                        <div style={{ width: '100%', height: '100%', transform: billboardTransform, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', transformStyle: 'preserve-3d' }}>
-                                            <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: `radial-gradient(circle at 30% 30%, ${el.color1}, ${el.color2})`, boxShadow: `inset -15px -15px 25px rgba(0,0,0,0.9), inset 5px 5px 15px rgba(255,255,255,0.4), 0 0 20px ${el.shadow}`, zIndex: 10, cursor: 'pointer' }} onClick={() => alert(`Planeta ${el.nome}\nAcesso restrito.`)} />
-                                            <div style={{ position: 'absolute', width: '140%', height: '140%', borderRadius: '50%', border: '1px dashed rgba(255,255,255,0.2)', pointerEvents: 'none', zIndex: 5, transform: 'rotateX(65deg)' }}></div>
-                                            <span style={{ color: el.color1, position: 'absolute', bottom: '-25px', fontSize: '12px', fontWeight: 'bold', letterSpacing: '2px', textTransform: 'uppercase', whiteSpace: 'nowrap', textShadow: '0 2px 4px rgba(0,0,0,0.9), 0 0 8px rgba(255,255,255,0.5)' }}>{el.nome}</span>
+                                    <div key={el.id} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', transformStyle: 'preserve-3d' }}>
+                                        <div style={{ position: 'absolute', width: el.size, height: el.size, zIndex: 10, offsetPath: `path("${caminhosOrbita[el.pathIdx || 0]}")`, offsetRotate: '0deg', animation: `orbitaSempre ${el.tempo} linear infinite`, animationDelay: el.delay, transformStyle: 'preserve-3d', pointerEvents: 'auto' }}>
+                                            <div style={{ width: '100%', height: '100%', transform: billboardTransform, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', transformStyle: 'preserve-3d' }}>
+                                                <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: `radial-gradient(circle at 30% 30%, ${el.color1}, ${el.color2})`, boxShadow: `inset -15px -15px 25px rgba(0,0,0,0.9), inset 5px 5px 15px rgba(255,255,255,0.4), 0 0 20px ${el.shadow}`, zIndex: 10, cursor: 'pointer' }} onClick={() => alert(`Planeta ${el.nome}\nAcesso restrito.`)} />
+                                                <div style={{ position: 'absolute', width: '140%', height: '140%', borderRadius: '50%', border: '1px dashed rgba(255,255,255,0.2)', pointerEvents: 'none', zIndex: 5, transform: 'rotateX(65deg)' }}></div>
+                                                <span style={{ color: el.color1, position: 'absolute', bottom: '-25px', fontSize: '12px', fontWeight: 'bold', letterSpacing: '2px', textTransform: 'uppercase', whiteSpace: 'nowrap', textShadow: '0 2px 4px rgba(0,0,0,0.9), 0 0 8px rgba(255,255,255,0.5)' }}>{el.nome}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 );
@@ -284,38 +290,42 @@ export default function MapaMundi({ children }) {
 
                             if (el.tipo === 'terra') {
                                 return (
-                                    <div key={el.id} style={{ position: 'absolute', width: el.size, height: el.size, zIndex: 20, offsetPath: `path("${caminhosOrbita[el.pathIdx || 0]}")`, offsetRotate: '0deg', animation: `orbitaSempre ${el.tempo} linear infinite`, animationDelay: el.delay, transformStyle: 'preserve-3d' }}>
-                                        <div style={{ width: '100%', height: '100%', transform: billboardTransform, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', transformStyle: 'preserve-3d' }}>
-                                            
-                                            <div onClick={() => setNivelVisao('globo')} style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #4db8ff, #002244)', boxShadow: 'inset -20px -20px 40px rgba(0,0,0,0.9), inset 10px 10px 20px rgba(255,255,255,0.4), 0 0 40px rgba(0,150,255,0.6)', border: '1px solid rgba(255,255,255,0.2)', zIndex: 10, cursor: 'pointer' }} />
-                                            
-                                            {/* O ANEL DAS LUAS (Deitado) */}
-                                            <div style={{ position: 'absolute', width: '220%', height: '220%', transform: 'rotateX(75deg)', pointerEvents: 'none', zIndex: 5, transformStyle: 'preserve-3d' }}>
-                                                <div className="moon-orbit-flat" style={{ width: '100%', height: '100%', borderRadius: '50%', border: '2px dashed rgba(255,255,255,0.25)', position: 'relative', transformStyle: 'preserve-3d' }}>
-                                                    
-                                                    {/* LUAS 100% ESFÉRICAS 3D (Elas anulam a rotação do anel para ficarem sempre em pé!) */}
-                                                    <div style={{ position: 'absolute', top: '0%', left: '50%', width: 0, height: 0 }}>
-                                                        <div className="moon-sphere" style={{ width: '16px', height: '16px', background: 'radial-gradient(circle at 30% 30%, #ffffff, #666666)', borderRadius: '50%', boxShadow: 'inset -4px -4px 8px rgba(0,0,0,0.8), 0 0 15px rgba(255,255,255,0.8)' }}>
-                                                            <span style={{position:'absolute', top: '-20px', left:'-5px', fontSize:'11px', fontWeight: 'bold', color:'#fff', textShadow: '0 0 5px #000'}}>Maria</span>
+                                    <div key={el.id} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', transformStyle: 'preserve-3d' }}>
+                                        <div style={{ position: 'absolute', width: el.size, height: el.size, zIndex: 20, offsetPath: `path("${caminhosOrbita[el.pathIdx || 0]}")`, offsetRotate: '0deg', animation: `orbitaSempre ${el.tempo} linear infinite`, animationDelay: el.delay, transformStyle: 'preserve-3d', pointerEvents: 'auto' }}>
+                                            <div style={{ width: '100%', height: '100%', transform: billboardTransform, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', transformStyle: 'preserve-3d' }}>
+                                                
+                                                <div onClick={() => setNivelVisao('globo')} style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #4db8ff, #002244)', boxShadow: 'inset -20px -20px 40px rgba(0,0,0,0.9), inset 10px 10px 20px rgba(255,255,255,0.4), 0 0 40px rgba(0,150,255,0.6)', border: '1px solid rgba(255,255,255,0.2)', zIndex: 10, cursor: 'pointer' }} />
+                                                
+                                                {/* O ANEL DAS LUAS (Deitado) */}
+                                                <div style={{ position: 'absolute', width: '220%', height: '220%', transform: 'rotateX(75deg)', pointerEvents: 'none', zIndex: 5, transformStyle: 'preserve-3d' }}>
+                                                    <div className="moon-orbit-flat" style={{ width: '100%', height: '100%', borderRadius: '50%', border: '2px dashed rgba(255,255,255,0.25)', position: 'relative', transformStyle: 'preserve-3d' }}>
+                                                        
+                                                        {/* MARIA */}
+                                                        <div style={{ position: 'absolute', top: '0%', left: '50%', width: 0, height: 0 }}>
+                                                            <div className="moon-sphere" style={{ width: '16px', height: '16px', background: 'radial-gradient(circle at 30% 30%, #ffffff, #666666)', borderRadius: '50%', boxShadow: 'inset -4px -4px 8px rgba(0,0,0,0.8), 0 0 15px rgba(255,255,255,0.8)' }}>
+                                                                <span style={{position:'absolute', top: '-20px', left:'-5px', fontSize:'11px', fontWeight: 'bold', color:'#fff', textShadow: '0 0 5px #000'}}>Maria</span>
+                                                            </div>
                                                         </div>
-                                                    </div>
 
-                                                    <div style={{ position: 'absolute', top: '85%', left: '85%', width: 0, height: 0 }}>
-                                                        <div className="moon-sphere" style={{ width: '14px', height: '14px', background: 'radial-gradient(circle at 30% 30%, #ffdddd, #883333)', borderRadius: '50%', boxShadow: 'inset -4px -4px 8px rgba(0,0,0,0.8), 0 0 15px rgba(255,100,100,0.8)' }}>
-                                                            <span style={{position:'absolute', top: '-20px', right:'-5px', fontSize:'11px', fontWeight: 'bold', color:'#fff', textShadow: '0 0 5px #000'}}>Rose</span>
+                                                        {/* ROSE */}
+                                                        <div style={{ position: 'absolute', top: '85%', left: '85%', width: 0, height: 0 }}>
+                                                            <div className="moon-sphere" style={{ width: '14px', height: '14px', background: 'radial-gradient(circle at 30% 30%, #ffdddd, #883333)', borderRadius: '50%', boxShadow: 'inset -4px -4px 8px rgba(0,0,0,0.8), 0 0 15px rgba(255,100,100,0.8)' }}>
+                                                                <span style={{position:'absolute', top: '-20px', right:'-5px', fontSize:'11px', fontWeight: 'bold', color:'#fff', textShadow: '0 0 5px #000'}}>Rose</span>
+                                                            </div>
                                                         </div>
-                                                    </div>
 
-                                                    <div style={{ position: 'absolute', top: '85%', left: '15%', width: 0, height: 0 }}>
-                                                        <div className="moon-sphere" style={{ width: '20px', height: '20px', background: 'radial-gradient(circle at 30% 30%, #ddddff, #444488)', borderRadius: '50%', boxShadow: 'inset -5px -5px 10px rgba(0,0,0,0.8), 0 0 15px rgba(100,150,255,0.8)' }}>
-                                                            <span style={{position:'absolute', top: '-20px', left:'-5px', fontSize:'11px', fontWeight: 'bold', color:'#fff', textShadow: '0 0 5px #000'}}>Sina</span>
+                                                        {/* SINA */}
+                                                        <div style={{ position: 'absolute', top: '85%', left: '15%', width: 0, height: 0 }}>
+                                                            <div className="moon-sphere" style={{ width: '20px', height: '20px', background: 'radial-gradient(circle at 30% 30%, #ddddff, #444488)', borderRadius: '50%', boxShadow: 'inset -5px -5px 10px rgba(0,0,0,0.8), 0 0 15px rgba(100,150,255,0.8)' }}>
+                                                                <span style={{position:'absolute', top: '-20px', left:'-5px', fontSize:'11px', fontWeight: 'bold', color:'#fff', textShadow: '0 0 5px #000'}}>Sina</span>
+                                                            </div>
                                                         </div>
-                                                    </div>
 
+                                                    </div>
                                                 </div>
+                                                
+                                                <span style={{ color: '#4db8ff', position: 'absolute', bottom: '-45px', fontSize: '18px', fontWeight: 'bold', letterSpacing: '4px', textTransform: 'uppercase', textShadow: '0 2px 4px rgba(0,0,0,0.9), 0 0 12px rgba(0,150,255,1)', whiteSpace: 'nowrap', pointerEvents: 'none' }}>{el.nome}</span>
                                             </div>
-                                            
-                                            <span style={{ color: '#4db8ff', position: 'absolute', bottom: '-45px', fontSize: '18px', fontWeight: 'bold', letterSpacing: '4px', textTransform: 'uppercase', textShadow: '0 2px 4px rgba(0,0,0,0.9), 0 0 12px rgba(0,150,255,1)', whiteSpace: 'nowrap', pointerEvents: 'none' }}>{el.nome}</span>
                                         </div>
                                     </div>
                                 );
@@ -338,6 +348,7 @@ export default function MapaMundi({ children }) {
                 <style dangerouslySetInnerHTML={{__html: `
                     .fade-in { animation: fadeIn 0.8s ease-in-out; }
                     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+                    @keyframes pulseStar { from { transform: scale(1); opacity: 0.9; } to { transform: scale(1.05); opacity: 1; } }
                     
                     /* O anel das luas gira 360 no eixo Z */
                     .moon-orbit-flat { animation: spinFlat 15s linear infinite; }
