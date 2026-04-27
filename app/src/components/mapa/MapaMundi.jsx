@@ -51,30 +51,30 @@ export default function MapaMundi({ children }) {
     ];
 
     // 🌌 ZONAS DE INTERAÇÃO DA COSMOLOGIA 🌌
-    // CADA UM FEITO NA UNHA! Ajustados visualmente para o centro das artes!
+    // AJUSTE CIRÚRGICO INDIVIDUAL COM BASE NO SEU PRINT
     const zonasCosmologia = [
         // O Diamante da Esquerda (Ordem)
-        { nome: 'Plano da Ordem', top: '40%', left: '11%', width: '13%', height: '22%', cor: '#DDA0DD', isCircle: true },
+        { nome: 'Plano da Ordem', top: '37%', left: '5%', width: '13%', height: '22%', cor: '#DDA0DD', isCircle: true },
         // A Fumaça da Direita (Astral)
-        { nome: 'Plano Astral', top: '40%', left: '76%', width: '13%', height: '22%', cor: '#483D8B', isCircle: true },
+        { nome: 'Plano Astral', top: '43%', left: '71%', width: '13%', height: '22%', cor: '#483D8B', isCircle: true },
         
-        // Os Quatro Elementos (No meio do caminho)
-        { nome: 'Plano do Vento', top: '26%', left: '31%', width: '12%', height: '20%', cor: '#2E8B57', isCircle: true },
-        { nome: 'Plano do Fogo', top: '55%', left: '31%', width: '12%', height: '20%', cor: '#DC143C', isCircle: true },
-        { nome: 'Plano da Água', top: '26%', left: '57%', width: '12%', height: '20%', cor: '#4169E1', isCircle: true },
-        { nome: 'Plano da Terra', top: '55%', left: '57%', width: '12%', height: '20%', cor: '#8B4513', isCircle: true },
+        // Os Quatro Elementos (Puxados pra esquerda e alinhados na altura)
+        { nome: 'Plano do Vento', top: '29%', left: '25%', width: '12%', height: '20%', cor: '#2E8B57', isCircle: true },
+        { nome: 'Plano do Fogo', top: '52%', left: '25%', width: '12%', height: '20%', cor: '#DC143C', isCircle: true },
+        { nome: 'Plano da Água', top: '29%', left: '52%', width: '12%', height: '20%', cor: '#4169E1', isCircle: true },
+        { nome: 'Plano da Terra', top: '52%', left: '52%', width: '12%', height: '20%', cor: '#8B4513', isCircle: true },
 
-        // Céus (Runa do topo) e Inferno (Lava de baixo)
-        { nome: 'Céus', top: '6%', left: '44%', width: '12%', height: '18%', cor: '#FCE883', isCircle: true },
-        { nome: 'Inferno', top: '80%', left: '42%', width: '16%', height: '14%', cor: '#FF4500', isCircle: false },
+        // Céus e Inferno
+        { nome: 'Céus', top: '6%', left: '40%', width: '12%', height: '18%', cor: '#FCE883', isCircle: true },
+        { nome: 'Inferno', top: '80%', left: '40%', width: '16%', height: '14%', cor: '#FF4500', isCircle: false },
 
         // Bolinhas pequenas (Fadas e Éter)
-        { nome: 'Plano das Fadas', top: '31%', left: '46.5%', width: '7%', height: '9%', cor: '#32CD32', isCircle: true },
-        { nome: 'Plano do Éter', top: '60%', left: '46.5%', width: '7%', height: '9%', cor: '#9400D3', isCircle: true },
+        { nome: 'Plano das Fadas', top: '33%', left: '42.5%', width: '7%', height: '9%', cor: '#32CD32', isCircle: true },
+        { nome: 'Plano do Éter', top: '57%', left: '42.5%', width: '7%', height: '9%', cor: '#9400D3', isCircle: true },
         
         // Caos (Cantos textuais)
-        { nome: 'Plano do Caos', top: '2%', left: '75%', width: '22%', height: '10%', cor: '#800000', isCircle: false },
-        { nome: 'Plano do Caos', top: '84%', left: '10%', width: '22%', height: '10%', cor: '#800000', isCircle: false }
+        { nome: 'Plano do Caos', top: '2%', left: '70%', width: '22%', height: '10%', cor: '#800000', isCircle: false },
+        { nome: 'Plano do Caos', top: '84%', left: '8%', width: '22%', height: '10%', cor: '#800000', isCircle: false }
     ];
 
     const handleDragStart = (e) => {
@@ -144,19 +144,19 @@ export default function MapaMundi({ children }) {
                                 // RAIO-X LIGADO PERMANENTE
                                 border: `2px solid ${zona.cor}`,
                                 boxShadow: `0 0 15px ${zona.cor}, inset 0 0 10px ${zona.cor}`,
-                                background: 'rgba(255,255,255,0.2)', // Dá pra ver o fundo colorido
+                                background: 'rgba(255,255,255,0.2)', 
                                 transition: '0.2s ease-in-out'
                             }}
                         />
                     ))}
 
-                    {/* 🔥 TERRA 0 (O BOTÃO CENTRAL) REFEITO NA UNHA 🔥 */}
+                    {/* 🔥 TERRA 0 (O BOTÃO CENTRAL) - AJUSTADO PARA A DIREITA! 🔥 */}
                     <div 
                         onClick={() => setNivelVisao('globo')}
                         onMouseEnter={() => setPlanoHover('Terra 0 (Runeterra)')}
                         onMouseLeave={() => setPlanoHover(null)}
                         style={{
-                            position: 'absolute', top: '41.5%', left: '45%', width: '10%', height: '16.6%',
+                            position: 'absolute', top: '41.5%', left: '48%', width: '10%', height: '16.6%',
                             borderRadius: '50%', cursor: 'pointer', zIndex: 30,
                             // RAIO-X LIGADO PERMANENTE
                             border: '2px solid #ffffff',
