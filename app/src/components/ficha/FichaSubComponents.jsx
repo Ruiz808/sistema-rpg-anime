@@ -1,7 +1,21 @@
 import React from 'react';
 import { useFichaForm, ATRIBUTO_OPTIONS, CLASSES_OPTIONS, STATS, ENERGIAS } from './FichaFormContext';
+import FormasEditor from '../shared/FormasEditor';
 
 const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Ficha provider não encontrado</div>;
+
+// Propriedades simplificadas para evitar dependências cruzadas complexas
+const PROPRIEDADE_OPTIONS = [
+    { val: 'base', lbl: 'Valor Bruto (+)' },
+    { val: 'mbase', lbl: 'Mult Base (x)' },
+    { val: 'mgeral', lbl: 'Mult Geral (x)' },
+    { val: 'mformas', lbl: 'Mult Formas (x)' },
+    { val: 'mabs', lbl: 'Mult Absoluto (x)' },
+    { val: 'munico', lbl: 'Mult Único (x)' },
+    { val: 'furia_berserker', lbl: 'Fúria Berserker (x)' },
+    { val: 'reducaocusto', lbl: 'Redução Custo (%)' },
+    { val: 'regeneracao', lbl: 'Regeneração' }
+];
 
 function renderBuffHolograma(rawVal, buffVal, hasBuff, isMult = false) {
     if (isMult && !hasBuff) return null;
@@ -126,37 +140,58 @@ export function FichaBioGroup() {
     );
 }
 
-// 🔥 NOVO: PAINEL DE SERES SELADOS E PACTOS 🔥
 export function FichaSeresSelados() {
     const ctx = useFichaForm();
     if (!ctx) return null;
     const {
         seresSelados, serNome, setSerNome, serDescricao, setSerDescricao,
         serElemento, setSerElemento, serEditandoId,
-        addSerSelado, editarSerSelado, removeSerSelado, toggleSerSelado, cancelarEdicaoSer
+        serEfeitos, serEfeitosPassivos, serNovoNomeEfeito, setSerNovoNomeEfeito,
+        serNovoAtr, setSerNovoAtr, serNovoProp, setSerNovoProp, serNovoVal, setSerNovoVal,
+        serNovoNomeEfeitoPassivo, setSerNovoNomeEfeitoPassivo, serNovoAtrPassivo, setSerNovoAtrPassivo,
+        serNovoPropPassivo, setSerNovoPropPassivo, serNovoValPassivo, setSerNovoValPassivo,
+        addSerEfeito, removeSerEfeito, addSerEfeitoPassivo, removeSerEfeitoPassivo,
+        addSerSelado, editarSerSelado, removeSerSelado, toggleSerSelado, cancelarEdicaoSer,
+        salvarFormaSer, deletarFormaSer, ativarFormaSer
     } = ctx;
 
     return (
         <div className="def-box fade-in" style={{ marginTop: 15, background: 'rgba(138, 43, 226, 0.05)', border: '1px solid #8a2be2', boxShadow: '0 0 15px rgba(138, 43, 226, 0.2)' }}>
             <h3 style={{ color: '#8a2be2', margin: '0 0 10px 0', textShadow: '0 0 5px #8a2be2' }}>👁️ Reino Interior (Entidades Seladas & Pactos)</h3>
-            <p style={{ color: '#aaa', fontSize: '0.85em', margin: '0 0 15px 0' }}>Gerencie as entidades, espíritos ou demônios que habitam sua alma. Ative a sincronização para aplicar os bônus na sua ficha e narrar suas ações conjuntas.</p>
+            <p style={{ color: '#aaa', fontSize: '0.85em', margin: '0 0 15px 0' }}>Gerencie as entidades, espíritos ou demônios que habitam sua alma. Sincronize com a entidade para acessar as suas Formas passivas e ativas.</p>
 
             {seresSelados.length > 0 && (
                 <div style={{ display: 'grid', gap: '10px', marginBottom: '20px' }}>
                     {seresSelados.map(ser => (
                         <div key={ser.id} style={{ background: 'rgba(0,0,0,0.6)', borderLeft: `4px solid ${ser.ativo ? '#00ffcc' : '#555'}`, padding: '15px', borderRadius: '5px', transition: '0.3s' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
-                                <div>
-                                    <h4 style={{ margin: 0, color: ser.ativo ? '#00ffcc' : '#fff', textShadow: ser.ativo ? '0 0 10px #00ffcc' : 'none' }}>{ser.nome}</h4>
-                                    <div style={{ color: '#8a2be2', fontSize: '0.8em', fontWeight: 'bold', marginTop: '4px' }}>Domínio: {ser.elemento || 'Desconhecido'}</div>
+                                <div style={{ flex: 1 }}>
+                                    <h4 style={{ margin: 0, color: ser.ativo ? '#00ffcc' : '#fff', textShadow: ser.ativo ? '0 0 10px #00ffcc' : 'none', fontSize: '1.2em' }}>{ser.nome}</h4>
+                                    <div style={{ color: '#8a2be2', fontSize: '0.8em', fontWeight: 'bold', marginTop: '4px' }}>Domínio (Zera Custo do Elemento): {ser.elemento || 'Nenhum'}</div>
                                 </div>
                                 <div style={{ display: 'flex', gap: '5px' }}>
-                                    <button className={`btn-neon btn-small ${ser.ativo ? 'btn-green' : ''}`} onClick={() => toggleSerSelado(ser.id)} style={{ margin: 0 }}>{ser.ativo ? '🌀 SINCRONIZADO' : 'ADORMECIDO'}</button>
+                                    <button className={`btn-neon btn-small ${ser.ativo ? 'btn-green' : ''}`} onClick={() => toggleSerSelado(ser.id)} style={{ margin: 0, boxShadow: ser.ativo ? '0 0 10px #0f0' : 'none' }}>{ser.ativo ? '🌀 SINCRONIZADO' : 'ADORMECIDO'}</button>
                                     <button className="btn-neon btn-blue btn-small" onClick={() => editarSerSelado(ser.id)} style={{ margin: 0 }}>⚙️</button>
                                     <button className="btn-neon btn-red btn-small" onClick={() => removeSerSelado(ser.id)} style={{ margin: 0 }}>X</button>
                                 </div>
                             </div>
                             <p style={{ color: '#ccc', fontSize: '0.85em', marginTop: '10px', fontStyle: 'italic', whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>{ser.descricao}</p>
+                            
+                            {((ser.efeitos && ser.efeitos.length > 0) || (ser.efeitosPassivos && ser.efeitosPassivos.length > 0)) && (
+                                <div style={{ marginTop: '10px', borderTop: '1px dashed #555', paddingTop: '8px' }}>
+                                    {ser.efeitos?.map((e, idx) => <span key={`a-${idx}`} style={{ display: 'inline-block', fontSize: '0.7em', color: '#0ff', background: 'rgba(0,255,255,0.1)', padding: '2px 6px', borderRadius: '4px', marginRight: '4px', marginBottom: '4px' }}>{e.nome}: +{e.valor}</span>)}
+                                    {ser.efeitosPassivos?.map((e, idx) => <span key={`p-${idx}`} style={{ display: 'inline-block', fontSize: '0.7em', color: '#f0f', background: 'rgba(255,0,255,0.1)', padding: '2px 6px', borderRadius: '4px', marginRight: '4px', marginBottom: '4px' }}>[Pass] {e.nome}: +{e.valor}</span>)}
+                                </div>
+                            )}
+
+                            {/* 🔥 EDITOR DE FORMAS INJETADO NO CARTÃO DO SER SELADO 🔥 */}
+                            <FormasEditor
+                                formas={ser.formas || []}
+                                formaAtivaId={ser.formaAtivaId || null}
+                                onSalvarForma={(forma) => salvarFormaSer(ser.id, forma)}
+                                onDeletarForma={(formaId) => deletarFormaSer(ser.id, formaId)}
+                                onAtivarForma={(formaId) => ativarFormaSer(ser.id, formaId)}
+                            />
                         </div>
                     ))}
                 </div>
@@ -168,7 +203,40 @@ export function FichaSeresSelados() {
                     <input className="input-neon" type="text" placeholder="Nome da Entidade (Ex: Kurama, Sukuna)" value={serNome} onChange={e => setSerNome(e.target.value)} style={{ flex: '2 1 200px', margin: 0, borderColor: '#8a2be2', color: '#fff' }} />
                     <input className="input-neon" type="text" placeholder="Elemento / Essência" value={serElemento} onChange={e => setSerElemento(e.target.value)} style={{ flex: '1 1 150px', margin: 0, borderColor: '#8a2be2', color: '#fff' }} />
                 </div>
-                <textarea className="input-neon" placeholder="Descreva os buffs, poderes passivos e condições do contrato. O que você ganha ao sincronizar com ele?" value={serDescricao} onChange={e => setSerDescricao(e.target.value)} style={{ width: '100%', minHeight: '60px', borderColor: '#8a2be2', color: '#ccc', resize: 'vertical', marginBottom: '10px' }} />
+                <textarea className="input-neon" placeholder="História, condições do pacto, e narrativas do que acontece quando o poder dele transborda..." value={serDescricao} onChange={e => setSerDescricao(e.target.value)} style={{ width: '100%', minHeight: '60px', borderColor: '#8a2be2', color: '#ccc', resize: 'vertical', marginBottom: '15px' }} />
+                
+                <h5 style={{ color: '#0ff', margin: '0 0 5px 0', fontSize: '0.85em' }}>💥 Buffs Ativos (Injetados ao Sincronizar)</h5>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 5, marginBottom: '10px' }}>
+                    <input className="input-neon" type="text" placeholder="Nome do Efeito" value={serNovoNomeEfeito} onChange={e => setSerNovoNomeEfeito(e.target.value)} />
+                    <select className="input-neon" value={serNovoAtr} onChange={e => setSerNovoAtr(e.target.value)}>{ATRIBUTO_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select>
+                    <select className="input-neon" value={serNovoProp} onChange={e => setSerNovoProp(e.target.value)}>{PROPRIEDADE_OPTIONS.map(o => <option key={o.val} value={o.val}>{o.lbl}</option>)}</select>
+                    <div style={{ display: 'flex', gap: 5 }}><input className="input-neon" type="text" placeholder="Valor" value={serNovoVal} onChange={e => setSerNovoVal(e.target.value)} style={{ width: '60px' }} /><button className="btn-neon btn-blue" onClick={addSerEfeito} style={{ padding: '0 10px', margin: 0 }}>+</button></div>
+                </div>
+                <div style={{ marginBottom: '15px', display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                    {serEfeitos.map((e, i) => (
+                        <div key={i} style={{ fontSize: '0.75em', color: '#0ff', background: 'rgba(0,255,255,0.1)', padding: '4px 8px', borderRadius: '4px', border: '1px solid #0ff', display: 'flex', gap: '5px', alignItems: 'center' }}>
+                            <span>{e.nome}: [{e.atributo}] {e.propriedade}: +{e.valor}</span>
+                            <button onClick={() => removeSerEfeito(i)} style={{ background: 'none', border: 'none', color: '#f00', cursor: 'pointer', fontWeight: 'bold' }}>X</button>
+                        </div>
+                    ))}
+                </div>
+
+                <h5 style={{ color: '#f0f', margin: '0 0 5px 0', fontSize: '0.85em' }}>🛡️ Buffs Passivos (Passados passivamente para o Hospedeiro)</h5>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 5, marginBottom: '10px' }}>
+                    <input className="input-neon" type="text" placeholder="Nome do Passivo" value={serNovoNomeEfeitoPassivo} onChange={e => setSerNovoNomeEfeitoPassivo(e.target.value)} />
+                    <select className="input-neon" value={serNovoAtrPassivo} onChange={e => setSerNovoAtrPassivo(e.target.value)}>{ATRIBUTO_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select>
+                    <select className="input-neon" value={serNovoPropPassivo} onChange={e => setSerNovoPropPassivo(e.target.value)}>{PROPRIEDADE_OPTIONS.map(o => <option key={o.val} value={o.val}>{o.lbl}</option>)}</select>
+                    <div style={{ display: 'flex', gap: 5 }}><input className="input-neon" type="text" placeholder="Valor" value={serNovoValPassivo} onChange={e => setSerNovoValPassivo(e.target.value)} style={{ width: '60px' }} /><button className="btn-neon" onClick={addSerEfeitoPassivo} style={{ padding: '0 10px', margin: 0, borderColor: '#f0f', color: '#f0f' }}>+</button></div>
+                </div>
+                <div style={{ marginBottom: '15px', display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                    {serEfeitosPassivos.map((e, i) => (
+                        <div key={i} style={{ fontSize: '0.75em', color: '#f0f', background: 'rgba(255,0,255,0.1)', padding: '4px 8px', borderRadius: '4px', border: '1px solid #f0f', display: 'flex', gap: '5px', alignItems: 'center' }}>
+                            <span>{e.nome}: [{e.atributo}] {e.propriedade}: +{e.valor}</span>
+                            <button onClick={() => removeSerEfeitoPassivo(i)} style={{ background: 'none', border: 'none', color: '#f00', cursor: 'pointer', fontWeight: 'bold' }}>X</button>
+                        </div>
+                    ))}
+                </div>
+
                 <div style={{ display: 'flex', gap: '10px' }}>
                     <button className="btn-neon" style={{ flex: 1, borderColor: '#8a2be2', color: '#8a2be2', fontWeight: 'bold', margin: 0 }} onClick={addSerSelado}>{serEditandoId ? '💾 SALVAR MUDANÇAS' : '+ FORJAR PACTO'}</button>
                     {serEditandoId && <button className="btn-neon btn-red" style={{ flex: 1, margin: 0 }} onClick={cancelarEdicaoSer}>CANCELAR</button>}

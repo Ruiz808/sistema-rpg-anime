@@ -134,9 +134,42 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false, avoidLoop = fa
                         if (activeConfig.efeitos) processarEfeitos(activeConfig.efeitos, `[Bankai] ${activeForm.nome || ''} - ${activeConfig.nome || ''}`);
                         if (activeConfig.efeitosPassivos) processarEfeitos(activeConfig.efeitosPassivos, `[Bankai Passivo] ${activeForm.nome || ''} - ${activeConfig.nome || ''}`);
                     } else {
-                        // Retrocompatibilidade se for uma forma antiga gravada sem configs!
                         if (activeForm.efeitos) processarEfeitos(activeForm.efeitos, `[Bankai] ${activeForm.nome || ''}`);
                         if (activeForm.efeitosPassivos) processarEfeitos(activeForm.efeitosPassivos, `[Bankai Passivo] ${activeForm.nome || ''}`);
+                    }
+                }
+            }
+        }
+    }
+
+    // 🔥 LER OS SERES SELADOS E AS SUAS FORMAS 🔥
+    if (ficha.seresSelados) {
+        for (let i = 0; i < ficha.seresSelados.length; i++) {
+            let ser = ficha.seresSelados[i];
+            if (ser && ser.ativo) {
+                let resolved = resolverEfeitosEntidade(ser);
+                if (resolved.efeitos) processarEfeitos(resolved.efeitos, `[Pacto] ${ser.nome}`);
+                if (resolved.efeitosPassivos) processarEfeitos(resolved.efeitosPassivos, `[Pacto Passivo] ${ser.nome}`);
+
+                // Lê as Formas do Ser Selado (Modos de Jinchuuriki/Sincronização)
+                if (ser.formaAtivaId && ser.formas) {
+                    let activeForm = ser.formas.find(f => f.id === ser.formaAtivaId);
+                    if (activeForm) {
+                        let activeConfig = null;
+                        if (ser.configAtivaId) {
+                            activeConfig = (activeForm.configs || []).find(c => c.id === ser.configAtivaId);
+                        }
+                        if (!activeConfig && activeForm.configs && activeForm.configs.length > 0) {
+                            activeConfig = activeForm.configs[0];
+                        }
+
+                        if (activeConfig) {
+                            if (activeConfig.efeitos) processarEfeitos(activeConfig.efeitos, `[Forma Entidade] ${activeForm.nome || ''} - ${activeConfig.nome || ''}`);
+                            if (activeConfig.efeitosPassivos) processarEfeitos(activeConfig.efeitosPassivos, `[Forma Entidade Passiva] ${activeForm.nome || ''} - ${activeConfig.nome || ''}`);
+                        } else {
+                            if (activeForm.efeitos) processarEfeitos(activeForm.efeitos, `[Forma Entidade] ${activeForm.nome || ''}`);
+                            if (activeForm.efeitosPassivos) processarEfeitos(activeForm.efeitosPassivos, `[Forma Entidade Passiva] ${activeForm.nome || ''}`);
+                        }
                     }
                 }
             }
@@ -193,15 +226,42 @@ export function getBuffs(ficha, statKey, ignorarPassivas = false, avoidLoop = fa
 
 export function getPoderesDefesa(ficha, tipo) {
     let t = 0;
-    if (!ficha || !ficha.poderes) return 0;
+    if (!ficha) return 0;
     
-    for (let i = 0; i < ficha.poderes.length; i++) {
-        let p = ficha.poderes[i];
-        if (p && p.ativa) {
-            let resolved = resolverEfeitosEntidade(p);
-            for (let j = 0; j < resolved.efeitos.length; j++) {
-                if (resolved.efeitos[j] && (resolved.efeitos[j].propriedade || '').toLowerCase() === tipo) {
-                    t += (parseFloat(resolved.efeitos[j].valor) || 0);
+    if (ficha.poderes) {
+        for (let i = 0; i < ficha.poderes.length; i++) {
+            let p = ficha.poderes[i];
+            if (p && p.ativa) {
+                let resolved = resolverEfeitosEntidade(p);
+                for (let j = 0; j < resolved.efeitos.length; j++) {
+                    if (resolved.efeitos[j] && (resolved.efeitos[j].propriedade || '').toLowerCase() === tipo) {
+                        t += (parseFloat(resolved.efeitos[j].valor) || 0);
+                    }
+                }
+            }
+        }
+    }
+
+    if (ficha.seresSelados) {
+        for (let i = 0; i < ficha.seresSelados.length; i++) {
+            let ser = ficha.seresSelados[i];
+            if (ser && ser.ativo) {
+                let resolved = resolverEfeitosEntidade(ser);
+                for (let j = 0; j < resolved.efeitos.length; j++) {
+                    if (resolved.efeitos[j] && (resolved.efeitos[j].propriedade || '').toLowerCase() === tipo) {
+                        t += (parseFloat(resolved.efeitos[j].valor) || 0);
+                    }
+                }
+                // Adiciona a defesa concedida pelas Formas da Entidade
+                if (ser.formaAtivaId && ser.formas) {
+                    let activeForm = ser.formas.find(f => f.id === ser.formaAtivaId);
+                    if (activeForm && activeForm.efeitos) {
+                        for (let j = 0; j < activeForm.efeitos.length; j++) {
+                            if (activeForm.efeitos[j] && (activeForm.efeitos[j].propriedade || '').toLowerCase() === tipo) {
+                                t += (parseFloat(activeForm.efeitos[j].valor) || 0);
+                            }
+                        }
+                    }
                 }
             }
         }

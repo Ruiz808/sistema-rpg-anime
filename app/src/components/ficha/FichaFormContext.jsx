@@ -25,6 +25,8 @@ export const ATRIBUTO_OPTIONS = [
     { value: 'pontosMortais', label: 'Pontos Mortais' },
     { value: 'todos_status', label: 'TODOS OS STATUS' },
     { value: 'todas_energias', label: 'TODAS AS ENERGIAS' },
+    { value: 'geral', label: 'GERAL (Todos)' },
+    { value: 'dano', label: 'Dano (Apenas Mult)' }
 ];
 
 export const CLASSES_OPTIONS = [
@@ -78,12 +80,24 @@ export function FichaFormProvider({ children }) {
     
     const [painelForcado, setPainelForcado] = useState('auto');
 
-    // 🔥 NOVOS ESTADOS PARA SERES SELADOS 🔥
     const seresSelados = minhaFicha?.seresSelados || [];
     const [serNome, setSerNome] = useState('');
     const [serDescricao, setSerDescricao] = useState('');
     const [serElemento, setSerElemento] = useState('');
     const [serEditandoId, setSerEditandoId] = useState(null);
+    
+    const [serEfeitos, setSerEfeitos] = useState([]);
+    const [serEfeitosPassivos, setSerEfeitosPassivos] = useState([]);
+
+    const [serNovoNomeEfeito, setSerNovoNomeEfeito] = useState('');
+    const [serNovoAtr, setSerNovoAtr] = useState('forca');
+    const [serNovoProp, setSerNovoProp] = useState('base');
+    const [serNovoVal, setSerNovoVal] = useState('');
+
+    const [serNovoNomeEfeitoPassivo, setSerNovoNomeEfeitoPassivo] = useState('');
+    const [serNovoAtrPassivo, setSerNovoAtrPassivo] = useState('forca');
+    const [serNovoPropPassivo, setSerNovoPropPassivo] = useState('base');
+    const [serNovoValPassivo, setSerNovoValPassivo] = useState('');
 
     const overridesCompendio = useMemo(() => {
         if (!minhaFicha) return {};
@@ -162,6 +176,15 @@ export function FichaFormProvider({ children }) {
         (minhaFicha.poderes || []).forEach(p => { if (p && p.ativa) scanFuria(p.efeitos); scanFuria(p.efeitosPassivos); });
         (minhaFicha.inventario || []).forEach(i => { if (i && i.equipado) { scanFuria(i.efeitos); scanFuria(i.efeitosPassivos); } });
         (minhaFicha.passivas || []).forEach(p => scanFuria(p.efeitos));
+        (minhaFicha.seresSelados || []).forEach(s => { 
+            if (s && s.ativo) { 
+                scanFuria(s.efeitos); scanFuria(s.efeitosPassivos);
+                if (s.formaAtivaId && s.formas) {
+                    const frm = s.formas.find(f => f.id === s.formaAtivaId);
+                    if (frm) { scanFuria(frm.efeitos); scanFuria(frm.efeitosPassivos); }
+                }
+            }
+        });
         scanFuria(getEfeitosDeClasse(minhaFicha));
     }
 
@@ -272,6 +295,113 @@ export function FichaFormProvider({ children }) {
 
     const sKeyForBuffs = (selAtributo === 'todos_status') ? 'forca' : (selAtributo === 'todas_energias') ? 'mana' : selAtributo;
     const buffsAtuais = minhaFicha ? getBuffs(minhaFicha, sKeyForBuffs) : null;
+
+    const addSerEfeito = useCallback(() => {
+        if (!serNovoVal || !serNovoNomeEfeito.trim()) { alert('Preencha o nome e o valor do efeito!'); return; }
+        setSerEfeitos([...serEfeitos, { nome: serNovoNomeEfeito.trim(), atributo: serNovoAtr, propriedade: serNovoProp, valor: serNovoVal }]);
+        setSerNovoVal(''); setSerNovoNomeEfeito('');
+    }, [serNovoVal, serNovoNomeEfeito, serNovoAtr, serNovoProp, serEfeitos]);
+
+    const removeSerEfeito = useCallback((index) => {
+        setSerEfeitos(serEfeitos.filter((_, i) => i !== index));
+    }, [serEfeitos]);
+
+    const addSerEfeitoPassivo = useCallback(() => {
+        if (!serNovoValPassivo || !serNovoNomeEfeitoPassivo.trim()) { alert('Preencha o nome e o valor do passivo!'); return; }
+        setSerEfeitosPassivos([...serEfeitosPassivos, { nome: serNovoNomeEfeitoPassivo.trim(), atributo: serNovoAtrPassivo, propriedade: serNovoPropPassivo, valor: serNovoValPassivo }]);
+        setSerNovoValPassivo(''); setSerNovoNomeEfeitoPassivo('');
+    }, [serNovoValPassivo, serNovoNomeEfeitoPassivo, serNovoAtrPassivo, serNovoPropPassivo, serEfeitosPassivos]);
+
+    const removeSerEfeitoPassivo = useCallback((index) => {
+        setSerEfeitosPassivos(serEfeitosPassivos.filter((_, i) => i !== index));
+    }, [serEfeitosPassivos]);
+
+    const cancelarEdicaoSer = useCallback(() => {
+        setSerEditandoId(null); setSerNome(''); setSerDescricao(''); setSerElemento('');
+        setSerEfeitos([]); setSerEfeitosPassivos([]);
+    }, []);
+
+    const addSerSelado = useCallback(() => {
+        if (!serNome.trim()) return;
+        updateFicha(f => {
+            if (!f.seresSelados) f.seresSelados = [];
+            if (serEditandoId) {
+                const s = f.seresSelados.find(x => x.id === serEditandoId);
+                if (s) { 
+                    s.nome = serNome; s.descricao = serDescricao; s.elemento = serElemento; 
+                    s.efeitos = [...serEfeitos]; s.efeitosPassivos = [...serEfeitosPassivos];
+                }
+            } else {
+                f.seresSelados.push({ 
+                    id: Date.now().toString(), nome: serNome, descricao: serDescricao, elemento: serElemento, ativo: false,
+                    efeitos: [...serEfeitos], efeitosPassivos: [...serEfeitosPassivos], formas: [], formaAtivaId: null
+                });
+            }
+        });
+        salvarFichaSilencioso();
+        cancelarEdicaoSer();
+    }, [serNome, serDescricao, serElemento, serEfeitos, serEfeitosPassivos, serEditandoId, updateFicha, cancelarEdicaoSer]);
+
+    const editarSerSelado = useCallback((id) => {
+        const s = (minhaFicha?.seresSelados || []).find(x => x.id === id);
+        if (!s) return;
+        if (s.ativo) { alert("Desative a sincronização do Ser antes de editá-lo!"); return; }
+        setSerEditandoId(s.id); setSerNome(s.nome); setSerDescricao(s.descricao || ''); setSerElemento(s.elemento || '');
+        setSerEfeitos([...(s.efeitos || [])]); setSerEfeitosPassivos([...(s.efeitosPassivos || [])]);
+    }, [minhaFicha]);
+
+    const removeSerSelado = useCallback((id) => {
+        if(!window.confirm('Tem certeza que deseja exilar esta entidade e quebrar o pacto?')) return;
+        updateFicha(f => {
+            if (f.seresSelados) f.seresSelados = f.seresSelados.filter(x => x.id !== id);
+        });
+        salvarFichaSilencioso();
+    }, [updateFicha]);
+
+    const toggleSerSelado = useCallback((id) => {
+        updateFicha(f => {
+            if (!f.seresSelados) return;
+            const s = f.seresSelados.find(x => x.id === id);
+            if (s) s.ativo = !s.ativo;
+        });
+        salvarFichaSilencioso();
+    }, [updateFicha]);
+
+    // 🔥 NOVAS FUNÇÕES PARA FORMAS DOS SERES SELADOS 🔥
+    const salvarFormaSer = useCallback((serId, forma) => {
+        updateFicha(f => {
+            const s = (f.seresSelados || []).find(x => x.id === serId);
+            if (!s) return;
+            if (!s.formas) s.formas = [];
+            const ix = s.formas.findIndex(x => x.id === forma.id);
+            if (ix >= 0) s.formas[ix] = forma;
+            else s.formas.push(forma);
+        });
+        salvarFichaSilencioso();
+    }, [updateFicha]);
+
+    const deletarFormaSer = useCallback((serId, formaId) => {
+        if (!window.confirm("Deseja apagar esta forma/modo do Ser Selado?")) return;
+        updateFicha(f => {
+            const s = (f.seresSelados || []).find(x => x.id === serId);
+            if (s && s.formas) {
+                s.formas = s.formas.filter(x => x.id !== formaId);
+                if (s.formaAtivaId === formaId) s.formaAtivaId = null;
+            }
+        });
+        salvarFichaSilencioso();
+    }, [updateFicha]);
+
+    const ativarFormaSer = useCallback((serId, formaId) => {
+        updateFicha(f => {
+            const s = (f.seresSelados || []).find(x => x.id === serId);
+            if (s) {
+                s.formaAtivaId = s.formaAtivaId === formaId ? null : formaId;
+                if (s.formaAtivaId && !s.ativo) s.ativo = true; // Sincroniza automaticamente se ativar uma forma
+            }
+        });
+        salvarFichaSilencioso();
+    }, [updateFicha]);
 
     const hierarquia = minhaFicha?.hierarquia || {};
     const poderesGlobais = minhaFicha?.poderes || [];
@@ -389,49 +519,6 @@ export function FichaFormProvider({ children }) {
         return max;
     }, [minhaFicha]);
 
-    // 🔥 FUNÇÕES DE SERES SELADOS 🔥
-    const cancelarEdicaoSer = useCallback(() => {
-        setSerEditandoId(null); setSerNome(''); setSerDescricao(''); setSerElemento('');
-    }, []);
-
-    const addSerSelado = useCallback(() => {
-        if (!serNome.trim()) return;
-        updateFicha(f => {
-            if (!f.seresSelados) f.seresSelados = [];
-            if (serEditandoId) {
-                const s = f.seresSelados.find(x => x.id === serEditandoId);
-                if (s) { s.nome = serNome; s.descricao = serDescricao; s.elemento = serElemento; }
-            } else {
-                f.seresSelados.push({ id: Date.now().toString(), nome: serNome, descricao: serDescricao, elemento: serElemento, ativo: false });
-            }
-        });
-        salvarFichaSilencioso();
-        cancelarEdicaoSer();
-    }, [serNome, serDescricao, serElemento, serEditandoId, updateFicha, cancelarEdicaoSer]);
-
-    const editarSerSelado = useCallback((id) => {
-        const s = (minhaFicha?.seresSelados || []).find(x => x.id === id);
-        if (!s) return;
-        setSerEditandoId(s.id); setSerNome(s.nome); setSerDescricao(s.descricao || ''); setSerElemento(s.elemento || '');
-    }, [minhaFicha]);
-
-    const removeSerSelado = useCallback((id) => {
-        if(!window.confirm('Tem certeza que deseja exilar esta entidade e quebrar o pacto?')) return;
-        updateFicha(f => {
-            if (f.seresSelados) f.seresSelados = f.seresSelados.filter(x => x.id !== id);
-        });
-        salvarFichaSilencioso();
-    }, [updateFicha]);
-
-    const toggleSerSelado = useCallback((id) => {
-        updateFicha(f => {
-            if (!f.seresSelados) return;
-            const s = f.seresSelados.find(x => x.id === id);
-            if (s) s.ativo = !s.ativo;
-        });
-        salvarFichaSilencioso();
-    }, [updateFicha]);
-
     const value = useMemo(() => ({
         minhaFicha, updateFicha, personagens, meuNome,
         mesa, setMesa, raca, setRaca, classe, setClasse, subClasse, setSubClasse,
@@ -456,10 +543,13 @@ export function FichaFormProvider({ children }) {
         leisCena, novaLeiNome, setNovaLeiNome, addLeiCena, removeLeiCena,
         copiasAtivas, novaCopiaNome, setNovaCopiaNome, novaCopiaEfeito, setNovaCopiaEfeito,
         addCopiaAtiva, removeCopiaAtiva, getAtualVital,
-        // Seres Selados
         seresSelados, serNome, setSerNome, serDescricao, setSerDescricao,
         serElemento, setSerElemento, serEditandoId,
-        addSerSelado, editarSerSelado, removeSerSelado, toggleSerSelado, cancelarEdicaoSer
+        serEfeitos, serEfeitosPassivos, serNovoNomeEfeito, serNovoAtr, serNovoProp, serNovoVal,
+        serNovoNomeEfeitoPassivo, serNovoAtrPassivo, serNovoPropPassivo, serNovoValPassivo,
+        addSerEfeito, removeSerEfeito, addSerEfeitoPassivo, removeSerEfeitoPassivo,
+        addSerSelado, editarSerSelado, removeSerSelado, toggleSerSelado, cancelarEdicaoSer,
+        salvarFormaSer, deletarFormaSer, ativarFormaSer
     }), [
         minhaFicha, updateFicha, personagens, meuNome, mesa, raca, classe, subClasse, alterEgoSlot1, alterEgoSlot2, classesMemorizadas,
         idade, fisico, sangue, alinhamento, afiliacao, dinheiro, salvandoBio, painelForcado, overridesCompendio, grands, isGrand, grandIcone,
@@ -472,7 +562,11 @@ export function FichaFormProvider({ children }) {
         valorInjecao, alvosInjecao, showAbsorverMsg, toggleAlvo, injetarAnomalia, leisCena, novaLeiNome, addLeiCena, removeLeiCena,
         copiasAtivas, novaCopiaNome, novaCopiaEfeito, addCopiaAtiva, removeCopiaAtiva, getAtualVital,
         seresSelados, serNome, serDescricao, serElemento, serEditandoId,
-        addSerSelado, editarSerSelado, removeSerSelado, toggleSerSelado, cancelarEdicaoSer
+        serEfeitos, serEfeitosPassivos, serNovoNomeEfeito, serNovoAtr, serNovoProp, serNovoVal,
+        serNovoNomeEfeitoPassivo, serNovoAtrPassivo, serNovoPropPassivo, serNovoValPassivo,
+        addSerEfeito, removeSerEfeito, addSerEfeitoPassivo, removeSerEfeitoPassivo,
+        addSerSelado, editarSerSelado, removeSerSelado, toggleSerSelado, cancelarEdicaoSer,
+        salvarFormaSer, deletarFormaSer, ativarFormaSer
     ]);
 
     return (
