@@ -51,18 +51,18 @@ export default function MapaMundi({ children }) {
     ];
 
     // 🌌 ZONAS DE INTERAÇÃO DA COSMOLOGIA 🌌
-    // TODOS empurrados agressivamente para a DIREITA (left maior) para casar com a arte!
+    // Ajuste Fino: Puxei tudo exatamente 2.5% de volta para a esquerda!
     const zonasCosmologia = [
-        { nome: 'Céus', top: '7%', left: '51.5%', width: '13%', height: '18%', cor: '#FCE883', isCircle: true },
-        { nome: 'Inferno', top: '78%', left: '50.5%', width: '15%', height: '14%', cor: '#FF4500', isCircle: false },
-        { nome: 'Plano do Vento', top: '27%', left: '38%', width: '13%', height: '18%', cor: '#2E8B57', isCircle: true },
-        { nome: 'Plano do Fogo', top: '55%', left: '38%', width: '13%', height: '18%', cor: '#DC143C', isCircle: true },
-        { nome: 'Plano da Água', top: '27%', left: '65%', width: '13%', height: '18%', cor: '#4169E1', isCircle: true },
-        { nome: 'Plano da Terra', top: '55%', left: '65%', width: '13%', height: '18%', cor: '#8B4513', isCircle: true },
-        { nome: 'Plano da Ordem', top: '40%', left: '18%', width: '11%', height: '20%', cor: '#DDA0DD', isCircle: true },
-        { nome: 'Plano Astral', top: '40%', left: '84%', width: '15%', height: '20%', cor: '#483D8B', isCircle: true },
-        { nome: 'Plano das Fadas', top: '31.5%', left: '54.5%', width: '7%', height: '10%', cor: '#32CD32', isCircle: true },
-        { nome: 'Plano do Éter', top: '59.5%', left: '54.5%', width: '7%', height: '10%', cor: '#9400D3', isCircle: true },
+        { nome: 'Céus', top: '7%', left: '49%', width: '13%', height: '18%', cor: '#FCE883', isCircle: true },
+        { nome: 'Inferno', top: '78%', left: '48%', width: '15%', height: '14%', cor: '#FF4500', isCircle: false },
+        { nome: 'Plano do Vento', top: '27%', left: '35.5%', width: '13%', height: '18%', cor: '#2E8B57', isCircle: true },
+        { nome: 'Plano do Fogo', top: '55%', left: '35.5%', width: '13%', height: '18%', cor: '#DC143C', isCircle: true },
+        { nome: 'Plano da Água', top: '27%', left: '62.5%', width: '13%', height: '18%', cor: '#4169E1', isCircle: true },
+        { nome: 'Plano da Terra', top: '55%', left: '62.5%', width: '13%', height: '18%', cor: '#8B4513', isCircle: true },
+        { nome: 'Plano da Ordem', top: '40%', left: '15.5%', width: '11%', height: '20%', cor: '#DDA0DD', isCircle: true },
+        { nome: 'Plano Astral', top: '40%', left: '81.5%', width: '15%', height: '20%', cor: '#483D8B', isCircle: true },
+        { nome: 'Plano das Fadas', top: '31.5%', left: '52%', width: '7%', height: '10%', cor: '#32CD32', isCircle: true },
+        { nome: 'Plano do Éter', top: '59.5%', left: '52%', width: '7%', height: '10%', cor: '#9400D3', isCircle: true },
         
         // Caos (Cenário de fundo, mantido nos cantos)
         { nome: 'Plano do Caos', top: '2%', left: '76%', width: '20%', height: '10%', cor: '#800000', isCircle: false },
@@ -140,13 +140,13 @@ export default function MapaMundi({ children }) {
                         />
                     ))}
 
-                    {/* 🔥 TERRA 0 (O BOTÃO CENTRAL) JOGADO PARA A DIREITA 🔥 */}
+                    {/* 🔥 TERRA 0 (O BOTÃO CENTRAL) RECALCULADO NA MOSCA 🔥 */}
                     <div 
                         onClick={() => setNivelVisao('globo')}
                         onMouseEnter={() => setPlanoHover('Terra 0 (Runeterra)')}
                         onMouseLeave={() => setPlanoHover(null)}
                         style={{
-                            position: 'absolute', top: '42.5%', left: '51.5%', width: '10.5%', height: '16.5%',
+                            position: 'absolute', top: '42.5%', left: '49%', width: '10.5%', height: '16.5%',
                             borderRadius: '50%', cursor: 'pointer', zIndex: 30,
                             border: planoHover === 'Terra 0 (Runeterra)' ? '2px solid #ffffff' : '2px solid transparent',
                             boxShadow: planoHover === 'Terra 0 (Runeterra)' ? '0 0 40px #ffffff, inset 0 0 20px #ffffff' : 'none',
@@ -271,6 +271,7 @@ export default function MapaMundi({ children }) {
                     </div>
                 </div>
 
+                {/* MODAL DE SELEÇÃO DE MAPAS */}
                 {reinoSelecionado && (
                     <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 30, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(6px)' }}>
                         <div style={{ background: '#111', border: '2px solid #0088ff', borderRadius: '20px', padding: '30px', width: '380px', textAlign: 'center', position: 'relative', boxShadow: '0 0 40px #0088ff' }}>
@@ -296,6 +297,9 @@ export default function MapaMundi({ children }) {
         );
     }
 
+    // ==========================================
+    // ⚔️ TELA 3: O MAPA DE BATALHA
+    // ==========================================
     if (nivelVisao === 'reino') {
         const backgroundUrl = mapasImagens[localAtual.mapaId];
         return (
