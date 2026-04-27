@@ -37,22 +37,22 @@ export default function MapaMundi({ children }) {
     const containerRef = useRef(null);
     const [codigoExportado, setCodigoExportado] = useState(null);
 
-    // 🎥 CÂMERA 3D DO SISTEMA SOLAR (COMEÇA AFASTADA PARA VER A ESCALA REAL) 🎥
-    const [camRotX, setCamRotX] = useState(65); 
+    // 🎥 CÂMERA 3D DO SISTEMA SOLAR
+    const [camRotX, setCamRotX] = useState(60); 
     const [camRotY, setCamRotY] = useState(0);  
-    const [camZoom, setCamZoom] = useState(0.4); // Zoom inicial imersivo
+    const [camZoom, setCamZoom] = useState(0.5); 
     const [isDraggingCam, setIsDraggingCam] = useState(false);
     const camDragStart = useRef({ x: 0, y: 0 });
 
-    // 🛣️ FAIXAS EXPANDIDAS MASSIVAMENTE (O UNIVERSO AGORA TEM 2400px DE LARGURA)
+    // 🛣️ FAIXAS DA RODOVIA CÓSMICA RECALCULADAS (Mais fechadas no centro!)
     const caminhosOrbita = [
-        "M 1200 600 C 1680 -120, 2400 120, 2400 600 C 2400 1080, 1680 1320, 1200 600 C 720 -120, 0 120, 0 600 C 0 1080, 720 1320, 1200 600 Z", // Terra 0
-        "M 1200 600 C 1752 -192, 2472 48, 2472 600 C 2472 1152, 1752 1392, 1200 600 C 648 -192, -72 48, -72 600 C -72 1152, 648 1392, 1200 600 Z", // Vegeta
-        "M 1200 600 C 1608 -48, 2328 192, 2328 600 C 2328 1008, 1608 1248, 1200 600 C 792 -48, 72 192, 72 600 C 72 1008, 792 1248, 1200 600 Z", // Namekusei
-        "M 1200 600 C 1824 -264, 2544 -24, 2544 600 C 2544 1224, 1824 1464, 1200 600 C 576 -264, -144 -24, -144 600 C -144 1224, 576 1464, 1200 600 Z" // Desconhecido
+        "M 1200 600 C 1400 200, 1800 300, 1800 600 C 1800 900, 1400 1000, 1200 600 C 1000 200, 600 300, 600 600 C 600 900, 1000 1000, 1200 600 Z", // Faixa 0 (Terra 0)
+        "M 1200 600 C 1430 150, 1900 250, 1900 600 C 1900 950, 1430 1050, 1200 600 C 970 150, 500 250, 500 600 C 500 950, 970 1050, 1200 600 Z", // Faixa 1 (Vegeta)
+        "M 1200 600 C 1370 250, 1700 350, 1700 600 C 1700 850, 1370 950, 1200 600 C 1030 250, 700 350, 700 600 C 700 850, 1030 950, 1200 600 Z",  // Faixa 2 (Namekusei)
+        "M 1200 600 C 1460 100, 2000 200, 2000 600 C 2000 1000, 1460 1100, 1200 600 C 940 100, 400 200, 400 600 C 400 1000, 940 1100, 1200 600 Z"   // Faixa 3 (Desconhecido)
     ];
 
-    // 📍 VARIÁVEL 1: POSIÇÕES DA COSMOLOGIA 
+    // 📍 VARIÁVEL 1: POSIÇÕES DA COSMOLOGIA
     const [zonasCosmologia, setZonasCosmologia] = useState([
         { "nome": "Terra 0 (Runeterra)", "top": "44.3%", "left": "49.3%", "width": "10%", "height": "16.6%", "cor": "#ffffff", "isCircle": true, "isPlanet": true },
         { "nome": "Plano da Ordem", "top": "40.6%", "left": "13.2%", "width": "13%", "height": "22%", "cor": "#DDA0DD", "isCircle": true },
@@ -69,14 +69,15 @@ export default function MapaMundi({ children }) {
         { "nome": "Plano do Caos Inferior", "top": "84%", "left": "8%", "width": "22%", "height": "10%", "cor": "#800000", "isCircle": false }
     ]);
 
-    // 📍 VARIÁVEL 2: POSIÇÕES DO SISTEMA SOLAR (COM TAMANHOS COLOSSAIS)
+    // 📍 VARIÁVEL 2: POSIÇÕES DO SISTEMA SOLAR 
+    // Ajustei as estrelas para nascerem mais perto do meio por padrão, facilitando a sua calibragem!
     const [elementosSolar, setElementosSolar] = useState([
-        { "id": "orichalcosA", "tipo": "estrela", "nome": "Orichalcos A", "top": "30.9%", "left": "16.3%", "size": "320px" },
-        { "id": "orichalcosB", "tipo": "estrela", "nome": "Orichalcos B", "top": "29.1%", "left": "66.9%", "size": "320px" },
-        { "id": "vegeta", "tipo": "planeta", "nome": "Vegeta", "color1": "#ff6666", "color2": "#990000", "shadow": "rgba(255,0,0,0.5)", "size": "65px", "tempo": "40s", "pathIdx": 1 },
-        { "id": "namekusei", "tipo": "planeta", "nome": "Namekusei", "color1": "#66ff66", "color2": "#006600", "shadow": "rgba(0,255,0,0.5)", "size": "80px", "tempo": "50s", "pathIdx": 2 },
-        { "id": "desconhecido", "tipo": "planeta", "nome": "Desconhecido", "color1": "#66b3ff", "color2": "#000066", "shadow": "rgba(0,100,255,0.5)", "size": "55px", "tempo": "60s", "pathIdx": 3 },
-        { "id": "terra0", "tipo": "terra", "nome": "Terra 0", "size": "150px", "tempo": "30s", "pathIdx": 0 }
+        { "id": "orichalcosA", "tipo": "estrela", "nome": "Orichalcos A", "top": "37.0%", "left": "25.0%", "size": "180px" },
+        { "id": "orichalcosB", "tipo": "estrela", "nome": "Orichalcos B", "top": "37.0%", "left": "65.0%", "size": "180px" },
+        { "id": "vegeta", "tipo": "planeta", "nome": "Vegeta", "color1": "#ff6666", "color2": "#990000", "shadow": "rgba(255,0,0,0.5)", "size": "45px", "tempo": "40s", "pathIdx": 1 },
+        { "id": "namekusei", "tipo": "planeta", "nome": "Namekusei", "color1": "#66ff66", "color2": "#006600", "shadow": "rgba(0,255,0,0.5)", "size": "50px", "tempo": "50s", "pathIdx": 2 },
+        { "id": "desconhecido", "tipo": "planeta", "nome": "Desconhecido", "color1": "#66b3ff", "color2": "#000066", "shadow": "rgba(0,100,255,0.5)", "size": "40px", "tempo": "60s", "pathIdx": 3 },
+        { "id": "terra0", "tipo": "terra", "nome": "Terra 0", "size": "110px", "tempo": "30s", "pathIdx": 0 }
     ]);
 
     const posicoesPings = [
@@ -85,7 +86,7 @@ export default function MapaMundi({ children }) {
         { nome: 'Noxus', img: gabaritoNoxus, top: '28%', left: '48%', cor: '#c62828' }, 
         { nome: 'Piltover e Zaun', img: gabaritoPiltover, top: '54%', left: '51%', cor: '#d4a017' },
         { nome: 'Shurima', img: gabaritoShurima, top: '75%', left: '43%', cor: '#c59b0d' },
-        { nome: 'Targon', img: gabaritoTargon, top: '78%', left: '26%', cor: '#5e35b1' },
+        { nome: 'Targon', img: gabaritoTargon, top: '78%', left: '26%', cor: '#5e35b1' }, 
         { nome: 'Ixtal', img: gabaritoIxtal, top: '67%', left: '63%', cor: '#2e7d32' },
         { nome: 'Águas de Sentina', img: gabaritoAguas, top: '57%', left: '72%', cor: '#d84315' },
         { nome: 'Ilha das Sombras', img: gabaritoIlha, top: '86%', left: '85%', cor: '#00838f' },
@@ -120,13 +121,10 @@ export default function MapaMundi({ children }) {
     const handleEspacoZoom = (e) => {
         if (nivelVisao !== 'sistema_solar') return;
         let novoZoom = camZoom - e.deltaY * 0.001;
-        // Agora você pode afastar MUITO e dar um zoom IMENSO
         setCamZoom(Math.max(0.1, Math.min(3.5, novoZoom))); 
     };
 
-    // ==========================================
-    // 🕹️ CONTROLES GLOBO
-    // ==========================================
+    // FUNÇÕES GLOBO
     const handleGloboDragStart = (e) => { setIsDragging(true); dragStart.current = { x: e.clientX || e.touches?.[0].clientX, y: e.clientY || e.touches?.[0].clientY }; };
     const handleGloboDragMove = (e) => {
         if (!isDragging) return;
@@ -144,9 +142,7 @@ export default function MapaMundi({ children }) {
         else if (nivelVisao === 'cosmologia') setNivelVisao('sistema_solar');
     };
 
-    // ==========================================
-    // 🛠️ FUNÇÕES DO DRAG AND DROP (MODO DEUS) 
-    // ==========================================
+    // 🛠️ FUNÇÕES DO DRAG AND DROP (MODO DEUS) 🛠️
     const handleDragStart = (e, index, isSolar = false) => {
         if (!modoAjuste) return;
         e.stopPropagation();
@@ -265,7 +261,7 @@ export default function MapaMundi({ children }) {
                         }}
                     >
                         
-                        {/* O SVG AGORA TEM 2400X1200 - ESCALA COLOSSAL */}
+                        {/* AS NOVAS FAIXAS AJUSTADAS AO CENTRO */}
                         <svg viewBox="0 0 2400 1200" style={{ position: 'absolute', width: '100%', height: '100%', pointerEvents: 'none', zIndex: 1, transformStyle: 'preserve-3d' }}>
                             <defs>
                                 <filter id="glow"><feGaussianBlur stdDeviation="3" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
