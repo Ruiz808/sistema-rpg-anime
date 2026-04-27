@@ -31,22 +31,21 @@ export default function MapaMundi({ children }) {
     const [isDragging, setIsDragging] = useState(false);
     const dragStart = useRef({ x: 0, y: 0 });
 
-    // 🛠️ MODO DE AJUSTE (MODO DEUS) 🛠️
     const [modoAjuste, setModoAjuste] = useState(false);
     const [dragIndexCosmo, setDragIndexCosmo] = useState(null);
     const [dragIdSolar, setDragIdSolar] = useState(null);
     const containerRef = useRef(null);
     const [codigoExportado, setCodigoExportado] = useState(null);
 
-    // 🛣️ AS 4 FAIXAS DA RODOVIA CÓSMICA (Evita o "Kabum")
+    // 🛣️ FAIXAS EXPANDIDAS (O Infinito esticado até os cantos máximos da tela 1000x500)
     const caminhosOrbita = [
-        "M 450 250 C 650 0, 900 0, 900 250 C 900 500, 650 500, 450 250 C 250 0, 0 0, 0 250 C 0 500, 250 500, 450 250 Z", // Faixa 0: Terra 0 (Centro)
-        "M 450 250 C 680 -30, 930 -30, 930 250 C 930 530, 680 530, 450 250 C 220 -30, -30 -30, -30 250 C -30 530, 220 530, 450 250 Z", // Faixa 1: Vegeta (Externa 1)
-        "M 450 250 C 620 30, 870 30, 870 250 C 870 470, 620 470, 450 250 C 280 30, 30 30, 30 250 C 30 470, 280 470, 450 250 Z", // Faixa 2: Namekusei (Interna)
-        "M 450 250 C 710 -60, 960 -60, 960 250 C 960 560, 710 560, 450 250 C 190 -60, -60 -60, -60 250 C -60 560, 190 560, 450 250 Z"  // Faixa 3: Desconhecido (Externa 2)
+        "M 500 250 C 700 -50, 1000 50, 1000 250 C 1000 450, 700 550, 500 250 C 300 -50, 0 50, 0 250 C 0 450, 300 550, 500 250 Z", // Faixa 0 (Terra 0)
+        "M 500 250 C 730 -80, 1030 20, 1030 250 C 1030 480, 730 580, 500 250 C 270 -80, -30 20, -30 250 C -30 480, 270 580, 500 250 Z", // Faixa 1 (Vegeta)
+        "M 500 250 C 670 -20, 970 80, 970 250 C 970 420, 670 520, 500 250 C 330 -20, 30 80, 30 250 C 30 420, 330 520, 500 250 Z",  // Faixa 2 (Namekusei)
+        "M 500 250 C 760 -110, 1060 -10, 1060 250 C 1060 510, 760 610, 500 250 C 240 -110, -60 -10, -60 250 C -60 510, 240 610, 500 250 Z" // Faixa 3 (Desconhecido)
     ];
 
-    // 📍 VARIÁVEL 1: POSIÇÕES DA COSMOLOGIA 
+    // 📍 VARIÁVEL 1: POSIÇÕES DA COSMOLOGIA
     const [zonasCosmologia, setZonasCosmologia] = useState([
         { "nome": "Terra 0 (Runeterra)", "top": "44.3%", "left": "49.3%", "width": "10%", "height": "16.6%", "cor": "#ffffff", "isCircle": true, "isPlanet": true },
         { "nome": "Plano da Ordem", "top": "40.6%", "left": "13.2%", "width": "13%", "height": "22%", "cor": "#DDA0DD", "isCircle": true },
@@ -63,11 +62,10 @@ export default function MapaMundi({ children }) {
         { "nome": "Plano do Caos Inferior", "top": "84%", "left": "8%", "width": "22%", "height": "10%", "cor": "#800000", "isCircle": false }
     ]);
 
-    // 📍 VARIÁVEL 2: POSIÇÕES DO SISTEMA SOLAR
-    // Nota: Adicionei o 'pathIdx' para dizer qual planeta anda em qual faixa da estrada!
+    // 📍 VARIÁVEL 2: POSIÇÕES DO SISTEMA SOLAR (Estrelas Maiores nos Cantos)
     const [elementosSolar, setElementosSolar] = useState([
-        { "id": "orichalcosA", "tipo": "estrela", "nome": "Orichalcos A", "top": "33.9%", "left": "10.4%", "size": "120px" },
-        { "id": "orichalcosB", "tipo": "estrela", "nome": "Orichalcos B", "top": "36.5%", "left": "76.1%", "size": "120px" },
+        { "id": "orichalcosA", "tipo": "estrela", "nome": "Orichalcos A", "top": "32%", "left": "-2%", "size": "180px" },
+        { "id": "orichalcosB", "tipo": "estrela", "nome": "Orichalcos B", "top": "32%", "left": "84%", "size": "180px" },
         { "id": "vegeta", "tipo": "planeta", "nome": "Vegeta", "color1": "#ff6666", "color2": "#990000", "shadow": "rgba(255,0,0,0.5)", "size": "45px", "tempo": "40s", "pathIdx": 1 },
         { "id": "namekusei", "tipo": "planeta", "nome": "Namekusei", "color1": "#66ff66", "color2": "#006600", "shadow": "rgba(0,255,0,0.5)", "size": "50px", "tempo": "50s", "pathIdx": 2 },
         { "id": "desconhecido", "tipo": "planeta", "nome": "Desconhecido", "color1": "#66b3ff", "color2": "#000066", "shadow": "rgba(0,100,255,0.5)", "size": "40px", "tempo": "60s", "pathIdx": 3 },
@@ -174,7 +172,6 @@ export default function MapaMundi({ children }) {
         </div>
     );
 
-    // NAVEGAÇÃO
     const criarNovoMapa = () => {
         const nome = prompt("Escreva o nome do novo mapa para " + reinoSelecionado + ":");
         if (nome && nome.trim() !== "") setMapasSalvos(prev => ({ ...prev, [reinoSelecionado]: [...(prev[reinoSelecionado] || []), nome] }));
@@ -191,7 +188,7 @@ export default function MapaMundi({ children }) {
     };
 
     // ==========================================
-    // 🌌 TELA 0: SISTEMA SOLAR (RODOVIA CÓSMICA)
+    // 🌌 TELA 0: SISTEMA SOLAR (RODOVIA EXPANDIDA + LUAS 3D)
     // ==========================================
     if (nivelVisao === 'sistema_solar') {
         return (
@@ -207,10 +204,10 @@ export default function MapaMundi({ children }) {
                     <p style={{ color: '#aaa', fontSize: '0.85em', margin: '5px 0 0 0', letterSpacing: '1px' }}>Setor Orichalcos</p>
                 </div>
 
-                <div ref={containerRef} onMouseMove={handleDragMove} onMouseUp={handleDragEnd} onMouseLeave={handleDragEnd} onTouchMove={handleDragMove} onTouchEnd={handleDragEnd} style={{ position: 'relative', width: '900px', height: '500px' }}>
+                <div ref={containerRef} onMouseMove={handleDragMove} onMouseUp={handleDragEnd} onMouseLeave={handleDragEnd} onTouchMove={handleDragMove} onTouchEnd={handleDragEnd} style={{ position: 'relative', width: '1000px', height: '500px' }}>
                     
-                    {/* TRILHA MULTIPLA DO INFINITO (Z-Index baixo para passar por TRÁS das estrelas) */}
-                    <svg viewBox="0 0 900 500" style={{ position: 'absolute', width: '100%', height: '100%', pointerEvents: 'none', zIndex: 1 }}>
+                    {/* TRILHA MULTIPLA DO INFINITO */}
+                    <svg viewBox="0 0 1000 500" style={{ position: 'absolute', width: '100%', height: '100%', pointerEvents: 'none', zIndex: 1 }}>
                         <defs>
                             <filter id="glow">
                                 <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
@@ -232,33 +229,24 @@ export default function MapaMundi({ children }) {
                     </svg>
 
                     {elementosSolar.map(el => {
-                        // Estrelas ficam fixas nos cantos com Z-Index 5 (Pra linha passar por trás)
                         const styleFixoBase = { position: 'absolute', top: el.top, left: el.left, width: el.size, height: el.size, zIndex: 5, border: (modoAjuste && (el.tipo === 'estrela')) ? '2px dashed #fff' : 'none', transition: (modoAjuste || dragIdSolar === el.id) ? 'none' : '0.2s', cursor: modoAjuste ? 'grab' : 'auto' };
 
-                        // Planetas ganham a habilidade do motor de órbita
                         const styleMovelBase = {
-                            position: 'absolute',
-                            width: el.size,
-                            height: el.size,
-                            zIndex: el.tipo === 'terra' ? 20 : 10,
-                            border: 'none',
+                            position: 'absolute', width: el.size, height: el.size, zIndex: el.tipo === 'terra' ? 20 : 10, border: 'none',
                             transition: dragIdSolar === el.id ? 'none' : '0.2s',
-                            offsetPath: `path("${caminhosOrbita[el.pathIdx || 0]}")`, // Pega a faixa certa baseada no index!
-                            offsetRotate: 'auto',
-                            animation: `orbitaSempre ${el.tempo} linear infinite`
+                            offsetPath: `path("${caminhosOrbita[el.pathIdx || 0]}")`,
+                            offsetRotate: 'auto', animation: `orbitaSempre ${el.tempo} linear infinite`
                         };
 
                         if (el.tipo === 'estrela') {
-                            return <div key={el.id} onMouseDown={(e) => handleDragStart(e, el.id, true)} onTouchStart={(e) => handleDragStart(e, el.id, true)} style={{ ...styleFixoBase, borderRadius: '50%', background: 'radial-gradient(circle, #ffffff 0%, #ffcc00 40%, #ff6600 100%)', boxShadow: '0 0 80px #ffcc00, 0 0 150px #ff6600', animation: 'pulseStar 4s infinite alternate' }} />;
+                            return <div key={el.id} onMouseDown={(e) => handleDragStart(e, el.id, true)} onTouchStart={(e) => handleDragStart(e, el.id, true)} style={{ ...styleFixoBase, borderRadius: '50%', background: 'radial-gradient(circle, #ffffff 0%, #ffcc00 40%, #ff6600 100%)', boxShadow: '0 0 100px #ffcc00, 0 0 200px #ff6600', animation: 'pulseStar 4s infinite alternate' }} />;
                         }
                         
                         if (el.tipo === 'planeta') {
                             return (
                                 <div key={el.id} style={{ ...styleMovelBase, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                                     <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                                        {/* O Planeta */}
                                         <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: `radial-gradient(circle at 30% 30%, ${el.color1}, ${el.color2})`, boxShadow: `inset -10px -10px 20px rgba(0,0,0,0.8), 0 0 20px ${el.shadow}`, zIndex: 10, cursor: 'pointer' }} onClick={() => alert(`Planeta ${el.nome}\nAcesso restrito.`)} />
-                                        {/* Anel de Órbita tracejado */}
                                         <div className="moon-orbit" style={{ position: 'absolute', width: 'calc(100% + 20px)', height: 'calc(100% + 20px)', borderRadius: '50%', border: '1px dashed rgba(255,255,255,0.2)', pointerEvents: 'none', zIndex: 5 }}></div>
                                     </div>
                                     <span style={{ color: el.color1, position: 'absolute', bottom: '-20px', fontSize: '12px', fontWeight: 'bold', letterSpacing: '2px', textTransform: 'uppercase', whiteSpace: 'nowrap', pointerEvents: 'none' }}>{el.nome}</span>
@@ -270,13 +258,26 @@ export default function MapaMundi({ children }) {
                             return (
                                 <div key={el.id} style={{ ...styleMovelBase, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                                     <div style={{ position: 'relative', width: '100px', height: '100px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                                        {/* O Planeta */}
+                                        
                                         <div onClick={() => setNivelVisao('globo')} style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #4db8ff, #003366)', boxShadow: 'inset -15px -15px 30px rgba(0,0,0,0.9), 0 0 40px rgba(0,150,255,0.6)', border: '1px solid rgba(255,255,255,0.2)', zIndex: 10, cursor: 'pointer' }} />
-                                        {/* Anel de Órbita das Luas */}
+                                        
+                                        {/* Luas em 3D e maiores */}
                                         <div className="moon-orbit" style={{ position: 'absolute', width: '100%', height: '100%', borderRadius: '50%', border: '1px dashed rgba(255,255,255,0.4)', pointerEvents: 'none', zIndex: 5 }}>
-                                            <div style={{ position: 'absolute', top: '-6px', left: '50%', transform: 'translateX(-50%)', width: '12px', height: '12px', background: '#e6e6e6', borderRadius: '50%', boxShadow: '0 0 5px #fff' }}><span style={{position:'absolute', top: '-18px', left:'-10px', fontSize:'9px', color:'#aaa'}}>Maria</span></div>
-                                            <div style={{ position: 'absolute', bottom: '15px', right: '5px', width: '10px', height: '10px', background: '#e6e6e6', borderRadius: '50%', boxShadow: '0 0 5px #fff' }}><span style={{position:'absolute', bottom: '-15px', right:'-5px', fontSize:'9px', color:'#aaa'}}>Rose</span></div>
-                                            <div style={{ position: 'absolute', bottom: '15px', left: '5px', width: '14px', height: '14px', background: '#e6e6e6', borderRadius: '50%', boxShadow: '0 0 5px #fff' }}><span style={{position:'absolute', bottom: '-15px', left:'-5px', fontSize:'9px', color:'#aaa'}}>Sina</span></div>
+                                            
+                                            {/* Maria */}
+                                            <div style={{ position: 'absolute', top: '-9px', left: '50%', transform: 'translateX(-50%)', width: '18px', height: '18px', background: 'radial-gradient(circle at 30% 30%, #ffffff, #888888)', borderRadius: '50%', boxShadow: 'inset -3px -3px 6px rgba(0,0,0,0.8), 0 0 10px rgba(255,255,255,0.8)' }}>
+                                                <span style={{position:'absolute', top: '-20px', left:'-5px', fontSize:'12px', fontWeight: 'bold', color:'#fff', textShadow: '0 0 5px #fff'}}>Maria</span>
+                                            </div>
+
+                                            {/* Rose */}
+                                            <div style={{ position: 'absolute', bottom: '15px', right: '-2px', width: '15px', height: '15px', background: 'radial-gradient(circle at 30% 30%, #ffdddd, #995555)', borderRadius: '50%', boxShadow: 'inset -3px -3px 6px rgba(0,0,0,0.8), 0 0 10px rgba(255,100,100,0.6)' }}>
+                                                <span style={{position:'absolute', bottom: '-20px', right:'-10px', fontSize:'12px', fontWeight: 'bold', color:'#fff', textShadow: '0 0 5px #fff'}}>Rose</span>
+                                            </div>
+
+                                            {/* Sina */}
+                                            <div style={{ position: 'absolute', bottom: '15px', left: '-2px', width: '22px', height: '22px', background: 'radial-gradient(circle at 30% 30%, #ddddff, #555599)', borderRadius: '50%', boxShadow: 'inset -3px -3px 6px rgba(0,0,0,0.8), 0 0 10px rgba(100,150,255,0.6)' }}>
+                                                <span style={{position:'absolute', bottom: '-20px', left:'-10px', fontSize:'12px', fontWeight: 'bold', color:'#fff', textShadow: '0 0 5px #fff'}}>Sina</span>
+                                            </div>
                                         </div>
                                     </div>
                                     <span style={{ color: '#4db8ff', position: 'absolute', bottom: '-25px', fontSize: '16px', fontWeight: 'bold', letterSpacing: '3px', textTransform: 'uppercase', textShadow: '0 0 10px rgba(0,150,255,0.8)', whiteSpace: 'nowrap', pointerEvents: 'none' }}>{el.nome}</span>
@@ -287,7 +288,6 @@ export default function MapaMundi({ children }) {
                     })}
                 </div>
 
-                {/* MODAL DE CÓDIGO */}
                 {codigoExportado && (
                     <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 200, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                         <div style={{ background: '#111', padding: '20px', borderRadius: '10px', width: '800px', border: '2px solid #00cc66' }}>
