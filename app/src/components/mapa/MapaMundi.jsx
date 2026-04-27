@@ -13,15 +13,15 @@ import gabaritoAguas from '../../assets/gabarito-aguas.png';
 import gabaritoIlha from '../../assets/gabarito-ilha.png';
 import gabaritoIonia from '../../assets/gabarito-ionia.png';
 
-// 🌌 A IMAGEM VIBRANTE DA COSMOLOGIA 🌌
-import mapaCosmologia from '../../assets/mapa-cosmologia.png';
+// 🌌 A SUA NOVA ARTE DA COSMOLOGIA EXPANDIDA 🌌
+import mapaCosmologia from '../../assets/mapa-cosmologia.jpg';
 
 export default function MapaMundi({ children }) {
     // ESTADOS GERAIS
     const [nivelVisao, setNivelVisao] = useState('cosmologia'); 
     const [localAtual, setLocalAtual] = useState({ continente: null, reino: null, mapaId: null, plano: 'Material' });
 
-    // ESTADOS DE GERENCIAMENTO DE MAPAS (A parte que sumiu!)
+    // ESTADOS DE GERENCIAMENTO DE MAPAS
     const [mapasSalvos, setMapasSalvos] = useState({
         'Freljord': ['Acampamento Glacinata', 'Passe da Montanha'],
         'Demacia': ['Grande Praça', 'Posto Avançado'],
@@ -55,21 +55,22 @@ export default function MapaMundi({ children }) {
         { nome: 'Ionia', img: gabaritoIonia, top: '30%', left: '82%', cor: '#43a047' }
     ];
 
-    // 🌌 AS ZONAS INVISÍVEIS DA COSMOLOGIA (Sobre a sua imagem épica) 🌌
-    // Dica de mestre: você pode usar a ferramenta de "Shift + Clique" para pegar o 'top' e 'left' 
-    // exatos e ajustar essas posições para casarem 100% com o desenho da sua imagem final.
+    // 🌌 ZONAS DE INTERAÇÃO DA COSMOLOGIA 🌌
+    // Mapeadas milimetricamente em cima da sua nova imagem
     const zonasCosmologia = [
-        { nome: 'Céus', top: '5%', left: '40%', width: '20%', height: '10%', cor: '#00BFFF' },
-        { nome: 'Inferno', top: '85%', left: '40%', width: '20%', height: '10%', cor: '#ff3333' },
-        { nome: 'Plano do Fogo', top: '25%', left: '20%', width: '20%', height: '20%', cor: '#F08080', isCircle: true },
-        { nome: 'Plano da Terra', top: '25%', left: '60%', width: '20%', height: '20%', cor: '#CD853F', isCircle: true },
-        { nome: 'Plano da Água', top: '55%', left: '60%', width: '20%', height: '20%', cor: '#0066FF', isCircle: true },
-        { nome: 'Plano do Vento', top: '55%', left: '20%', width: '20%', height: '20%', cor: '#D3D3D3', isCircle: true },
-        { nome: 'Plano das Fadas', top: '15%', left: '47%', width: '6%', height: '6%', cor: '#00FF00', isCircle: true },
-        { nome: 'Plano do Ether', top: '78%', left: '47%', width: '6%', height: '6%', cor: '#b200ff', isCircle: true },
-        { nome: 'Plano da Ordem', top: '45%', left: '5%', width: '10%', height: '10%', cor: '#FFFF00' },
-        { nome: 'Plano do Caos', top: '45%', left: '85%', width: '10%', height: '10%', cor: '#555555' },
-        { nome: 'Plano Astral', top: '30%', left: '30%', width: '40%', height: '40%', cor: '#a0a0a0', isCircle: true, zIndex: 5 },
+        { nome: 'Céus', top: '4%', left: '38%', width: '24%', height: '18%', cor: '#FCE883', isCircle: true },
+        { nome: 'Inferno', top: '78%', left: '38%', width: '24%', height: '18%', cor: '#FF4500' },
+        { nome: 'Plano do Vento', top: '22%', left: '28%', width: '16%', height: '20%', cor: '#2E8B57', isCircle: true },
+        { nome: 'Plano do Fogo', top: '58%', left: '28%', width: '16%', height: '20%', cor: '#DC143C', isCircle: true },
+        { nome: 'Plano da Água', top: '22%', left: '56%', width: '16%', height: '20%', cor: '#4169E1', isCircle: true },
+        { nome: 'Plano da Terra', top: '58%', left: '56%', width: '16%', height: '20%', cor: '#8B4513', isCircle: true },
+        { nome: 'Plano da Ordem', top: '38%', left: '10%', width: '14%', height: '22%', cor: '#DDA0DD', isCircle: true },
+        { nome: 'Plano Astral', top: '38%', left: '76%', width: '14%', height: '22%', cor: '#483D8B', isCircle: true },
+        { nome: 'Plano das Fadas', top: '27%', left: '46%', width: '8%', height: '10%', cor: '#32CD32', isCircle: true },
+        { nome: 'Plano do Éter', top: '63%', left: '46%', width: '8%', height: '10%', cor: '#9400D3', isCircle: true },
+        // Caos nos cantos onde tem texto
+        { nome: 'Plano do Caos', top: '2%', left: '75%', width: '23%', height: '15%', cor: '#800000' },
+        { nome: 'Plano do Caos', top: '80%', left: '5%', width: '23%', height: '15%', cor: '#800000' }
     ];
 
     // FUNÇÕES DO GLOBO
@@ -110,7 +111,7 @@ export default function MapaMundi({ children }) {
         else if (nivelVisao === 'globo') setNivelVisao('cosmologia');
     };
 
-    // Ferramenta de desenvolvedor (Shift + Clique para pegar coordenadas)
+    // Ferramenta Admin: shift + click na imagem para ver coordenadas caso queira ajustar botões
     const handleMapClickAdmin = (e) => {
         if (e.shiftKey) {
             const rect = e.currentTarget.getBoundingClientRect();
@@ -123,49 +124,51 @@ export default function MapaMundi({ children }) {
     // ==========================================
     if (nivelVisao === 'cosmologia') {
         return (
-            <div className="fade-in" style={{ width: '100%', height: '85vh', background: '#000', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative', overflow: 'hidden' }}>
+            <div className="fade-in" style={{ width: '100%', height: '85vh', background: '#050508', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative', overflow: 'hidden' }}>
                 <div style={{ position: 'relative', width: '1000px', height: '600px' }} onClick={handleMapClickAdmin}>
                     
-                    {/* A IMAGEM DE FUNDO */}
-                    <img src={mapaCosmologia} alt="Cosmologia" style={{ width: '100%', height: '100%', objectFit: 'contain', filter: 'drop-shadow(0 0 20px rgba(255,255,255,0.1))' }} />
+                    {/* A IMAGEM DE FUNDO ESPETACULAR */}
+                    <img src={mapaCosmologia} alt="Cosmologia" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
 
                     {/* ZONAS CLICÁVEIS INVISÍVEIS PARA CADA DIMENSÃO */}
-                    {zonasCosmologia.map(zona => (
+                    {zonasCosmologia.map((zona, index) => (
                         <div 
-                            key={zona.nome}
+                            key={`${zona.nome}-${index}`}
                             onMouseEnter={() => setPlanoHover(zona.nome)}
                             onMouseLeave={() => setPlanoHover(null)}
-                            onClick={() => alert(`Viajando para: ${zona.nome}\n(Implemente mapas dimensionais no futuro!)`)}
+                            onClick={() => alert(`Viajando para: ${zona.nome}`)}
                             style={{
                                 position: 'absolute', top: zona.top, left: zona.left, width: zona.width, height: zona.height,
-                                borderRadius: zona.isCircle ? '50%' : '10px', cursor: 'pointer', 
-                                zIndex: zona.zIndex || 10,
-                                border: planoHover === zona.nome ? `2px solid ${zona.cor}` : 'none',
-                                boxShadow: planoHover === zona.nome ? `0 0 30px ${zona.cor}` : 'none',
+                                borderRadius: zona.isCircle ? '50%' : '15px', cursor: 'pointer', zIndex: 10,
+                                border: planoHover === zona.nome ? `2px solid ${zona.cor}` : '2px solid transparent',
+                                boxShadow: planoHover === zona.nome ? `0 0 25px ${zona.cor}, inset 0 0 15px ${zona.cor}` : 'none',
                                 background: planoHover === zona.nome ? 'rgba(255,255,255,0.1)' : 'transparent',
-                                transition: '0.3s'
+                                transition: '0.2s ease-in-out'
                             }}
                         />
                     ))}
 
-                    {/* 🔥 TERRA 0 (O BOTÃO DE ENTRADA PARA O GLOBO) 🔥 */}
+                    {/* 🔥 TERRA 0 (O BOTÃO CENTRAL PARA O GLOBO) 🔥 */}
                     <div 
                         onClick={() => setNivelVisao('globo')}
-                        onMouseEnter={() => setPlanoHover('Terra 0')}
+                        onMouseEnter={() => setPlanoHover('Terra 0 (Runeterra)')}
                         onMouseLeave={() => setPlanoHover(null)}
                         style={{
-                            position: 'absolute', top: '40%', left: '44%', width: '12%', height: '20%',
-                            borderRadius: '50%', cursor: 'pointer', zIndex: 30,
-                            boxShadow: planoHover === 'Terra 0' ? '0 0 50px #fff' : 'none',
-                            background: planoHover === 'Terra 0' ? 'rgba(255,255,255,0.2)' : 'transparent',
-                            transition: '0.3s'
+                            position: 'absolute', top: '39%', left: '42%', width: '16%', height: '22%',
+                            borderRadius: '50%', cursor: 'pointer', zIndex: 20,
+                            border: planoHover === 'Terra 0 (Runeterra)' ? '2px solid #ffffff' : '2px solid transparent',
+                            boxShadow: planoHover === 'Terra 0 (Runeterra)' ? '0 0 40px #ffffff, inset 0 0 20px #ffffff' : 'none',
+                            background: planoHover === 'Terra 0 (Runeterra)' ? 'rgba(255,255,255,0.15)' : 'transparent',
+                            transition: '0.2s ease-in-out'
                         }}
                     />
                 </div>
                 
-                {/* Legenda Dinâmica */}
-                <div style={{ position: 'absolute', top: '30px', textAlign: 'center', pointerEvents: 'none', zIndex: 50 }}>
-                    <h1 style={{ color: '#fff', margin: 0, letterSpacing: '8px', textTransform: 'uppercase', fontSize: '1.5em', textShadow: '0 0 20px rgba(255,255,255,0.5)' }}>{planoHover || 'Atlas Multiversal'}</h1>
+                {/* Legenda Dinâmica Superior */}
+                <div style={{ position: 'absolute', top: '20px', textAlign: 'center', pointerEvents: 'none', zIndex: 50 }}>
+                    <h1 style={{ color: '#fff', margin: 0, letterSpacing: '6px', textTransform: 'uppercase', fontSize: '1.4em', textShadow: '0 0 20px rgba(255,255,255,0.8)' }}>
+                        {planoHover || 'Atlas Multiversal'}
+                    </h1>
                 </div>
                 
                 <style dangerouslySetInnerHTML={{__html: `
@@ -231,8 +234,7 @@ export default function MapaMundi({ children }) {
                 </div>
 
                 <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', position: 'relative', width: '100%' }}>
-                    <div style={{ position: 'relative', display: 'inline-block', height: '100%', maxHeight: 'calc(85vh - 70px)' }} onClick={handleMapClickAdmin}>
-                        
+                    <div style={{ position: 'relative', display: 'inline-block', height: '100%', maxHeight: 'calc(85vh - 70px)' }}>
                         <img src={mapaClean} alt="Mapa Base" style={{ display: 'block', height: '100%', width: 'auto', objectFit: 'contain' }} />
 
                         {posicoesPings.map((reino) => (
@@ -305,7 +307,7 @@ export default function MapaMundi({ children }) {
     }
 
     // ==========================================
-    // ⚔️ TELA 3: O MAPA DE BATALHA (O QUE SUMIU!)
+    // ⚔️ TELA 3: O MAPA DE BATALHA
     // ==========================================
     if (nivelVisao === 'reino') {
         const backgroundUrl = mapasImagens[localAtual.mapaId];
@@ -319,7 +321,6 @@ export default function MapaMundi({ children }) {
                     <span style={{ color: '#ffcc00', fontWeight: 'bold', fontSize: '1.1em', letterSpacing: '1px', textTransform: 'uppercase' }}>{localAtual.reino} : {localAtual.mapaId}</span>
                 </div>
                 
-                {/* CAMPO DE BATALHA */}
                 <div className="fade-in" style={{ flex: 1, position: 'relative', backgroundColor: '#050508', backgroundImage: backgroundUrl ? `url("${backgroundUrl}")` : 'none', backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat', border: '1px solid #333', borderTop: 'none', borderRadius: '0 0 10px 10px', overflow: 'hidden' }}>
                     {!backgroundUrl && (
                         <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center', color: '#444', border: '2px dashed #333', padding: '50px', borderRadius: '20px', pointerEvents: 'none' }}>
@@ -327,12 +328,10 @@ export default function MapaMundi({ children }) {
                         </div>
                     )}
                     
-                    {/* Renderiza os seus tokens e o grid por cima da imagem de batalha! */}
                     <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 5 }}>
                         {children}
                     </div>
 
-                    {/* MODAL DE INSERIR URL DA IMAGEM DE BATALHA */}
                     {modoEdicaoMapa && (
                         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 25, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(4px)' }}>
                             <div style={{ background: '#111', border: '2px solid #0088ff', borderRadius: '20px', padding: '30px', width: '420px', textAlign: 'center', boxShadow: '0 0 35px #0088ff', position: 'relative' }}>
