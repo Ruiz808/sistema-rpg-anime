@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 
-// 🔥 AS IMAGENS DO MUNDO MATERIAL (Intocáveis!) 🔥
+// 🔥 AS IMAGENS DO MUNDO MATERIAL 🔥
 import mapaClean from '../../assets/runeterra-clean.jpg';
 import gabaritoFreljord from '../../assets/gabarito-freijord.png';
 import gabaritoDemacia from '../../assets/gabarito-demacia.png';
@@ -12,8 +12,6 @@ import gabaritoIxtal from '../../assets/gabarito-ixtal.png';
 import gabaritoAguas from '../../assets/gabarito-aguas.png';
 import gabaritoIlha from '../../assets/gabarito-ilha.png';
 import gabaritoIonia from '../../assets/gabarito-ionia.png';
-
-// 🌌 A SUA ARTE DA COSMOLOGIA EXPANDIDA 🌌
 import mapaCosmologia from '../../assets/mapa-cosmologia.png';
 
 export default function MapaMundi({ children }) {
@@ -21,9 +19,7 @@ export default function MapaMundi({ children }) {
     const [localAtual, setLocalAtual] = useState({ continente: null, reino: null, mapaId: null, plano: 'Material' });
 
     const [mapasSalvos, setMapasSalvos] = useState({
-        'Freljord': ['Acampamento Glacinata', 'Passe da Montanha'],
-        'Demacia': ['Grande Praça', 'Posto Avançado'],
-        'Noxus': ['Arena de Carnificina', 'Bastião Imortal']
+        'Freljord': ['Acampamento Glacinata', 'Passe da Montanha']
     });
     const [mapasImagens, setMapasImagens] = useState({});
     const [reinoSelecionado, setReinoSelecionado] = useState(null);
@@ -42,187 +38,31 @@ export default function MapaMundi({ children }) {
     const containerRef = useRef(null);
     const [codigoExportado, setCodigoExportado] = useState(null);
 
-    // 📍 VARIÁVEL 1: POSIÇÕES DA COSMOLOGIA (CALIBRADAS POR VOCÊ)
+    // 📍 VARIÁVEL 1: POSIÇÕES DA COSMOLOGIA 
     const [zonasCosmologia, setZonasCosmologia] = useState([
-        {
-            "nome": "Terra 0 (Runeterra)",
-            "top": "44.3%",
-            "left": "49.3%",
-            "width": "10%",
-            "height": "16.6%",
-            "cor": "#ffffff",
-            "isCircle": true,
-            "isPlanet": true
-        },
-        {
-            "nome": "Plano da Ordem",
-            "top": "37%",
-            "left": "5%",
-            "width": "13%",
-            "height": "22%",
-            "cor": "#DDA0DD",
-            "isCircle": true
-        },
-        {
-            "nome": "Plano Astral",
-            "top": "43%",
-            "left": "71%",
-            "width": "13%",
-            "height": "22%",
-            "cor": "#483D8B",
-            "isCircle": true
-        },
-        {
-            "nome": "Plano do Vento",
-            "top": "29%",
-            "left": "25%",
-            "width": "12%",
-            "height": "20%",
-            "cor": "#2E8B57",
-            "isCircle": true
-        },
-        {
-            "nome": "Plano do Fogo",
-            "top": "52%",
-            "left": "25%",
-            "width": "12%",
-            "height": "20%",
-            "cor": "#DC143C",
-            "isCircle": true
-        },
-        {
-            "nome": "Plano da Água",
-            "top": "29%",
-            "left": "52%",
-            "width": "12%",
-            "height": "20%",
-            "cor": "#4169E1",
-            "isCircle": true
-        },
-        {
-            "nome": "Plano da Terra",
-            "top": "52%",
-            "left": "52%",
-            "width": "12%",
-            "height": "20%",
-            "cor": "#8B4513",
-            "isCircle": true
-        },
-        {
-            "nome": "Céus",
-            "top": "6%",
-            "left": "40%",
-            "width": "12%",
-            "height": "18%",
-            "cor": "#FCE883",
-            "isCircle": true
-        },
-        {
-            "nome": "Inferno",
-            "top": "80%",
-            "left": "40%",
-            "width": "16%",
-            "height": "14%",
-            "cor": "#FF4500",
-            "isCircle": false
-        },
-        {
-            "nome": "Plano das Fadas",
-            "top": "33%",
-            "left": "42.5%",
-            "width": "7%",
-            "height": "9%",
-            "cor": "#32CD32",
-            "isCircle": true
-        },
-        {
-            "nome": "Plano do Éter",
-            "top": "57%",
-            "left": "42.5%",
-            "width": "7%",
-            "height": "9%",
-            "cor": "#9400D3",
-            "isCircle": true
-        },
-        {
-            "nome": "Plano do Caos",
-            "top": "2%",
-            "left": "70%",
-            "width": "22%",
-            "height": "10%",
-            "cor": "#800000",
-            "isCircle": false
-        },
-        {
-            "nome": "Plano do Caos Inferior",
-            "top": "84%",
-            "left": "8%",
-            "width": "22%",
-            "height": "10%",
-            "cor": "#800000",
-            "isCircle": false
-        }
+        { "nome": "Terra 0 (Runeterra)", "top": "44.3%", "left": "49.3%", "width": "10%", "height": "16.6%", "cor": "#ffffff", "isCircle": true, "isPlanet": true },
+        { "nome": "Plano da Ordem", "top": "37%", "left": "5%", "width": "13%", "height": "22%", "cor": "#DDA0DD", "isCircle": true },
+        { "nome": "Plano Astral", "top": "43%", "left": "71%", "width": "13%", "height": "22%", "cor": "#483D8B", "isCircle": true },
+        { "nome": "Plano do Vento", "top": "29%", "left": "25%", "width": "12%", "height": "20%", "cor": "#2E8B57", "isCircle": true },
+        { "nome": "Plano do Fogo", "top": "52%", "left": "25%", "width": "12%", "height": "20%", "cor": "#DC143C", "isCircle": true },
+        { "nome": "Plano da Água", "top": "29%", "left": "52%", "width": "12%", "height": "20%", "cor": "#4169E1", "isCircle": true },
+        { "nome": "Plano da Terra", "top": "52%", "left": "52%", "width": "12%", "height": "20%", "cor": "#8B4513", "isCircle": true },
+        { "nome": "Céus", "top": "6%", "left": "40%", "width": "12%", "height": "18%", "cor": "#FCE883", "isCircle": true },
+        { "nome": "Inferno", "top": "80%", "left": "40%", "width": "16%", "height": "14%", "cor": "#FF4500", "isCircle": false },
+        { "nome": "Plano das Fadas", "top": "33%", "left": "42.5%", "width": "7%", "height": "9%", "cor": "#32CD32", "isCircle": true },
+        { "nome": "Plano do Éter", "top": "57%", "left": "42.5%", "width": "7%", "height": "9%", "cor": "#9400D3", "isCircle": true },
+        { "nome": "Plano do Caos", "top": "2%", "left": "70%", "width": "22%", "height": "10%", "cor": "#800000", "isCircle": false },
+        { "nome": "Plano do Caos Inferior", "top": "84%", "left": "8%", "width": "22%", "height": "10%", "cor": "#800000", "isCircle": false }
     ]);
 
-    // 📍 VARIÁVEL 2: POSIÇÕES DO SISTEMA SOLAR (CALIBRADAS POR VOCÊ)
+    // 📍 VARIÁVEL 2: POSIÇÕES DO SISTEMA SOLAR 
     const [elementosSolar, setElementosSolar] = useState([
-        {
-            "id": "orichalcosA",
-            "tipo": "estrela",
-            "nome": "Orichalcos A",
-            "top": "37.7%",
-            "left": "-5.2%",
-            "size": "120px"
-        },
-        {
-            "id": "orichalcosB",
-            "tipo": "estrela",
-            "nome": "Orichalcos B",
-            "top": "36.9%",
-            "left": "92.9%",
-            "size": "120px"
-        },
-        {
-            "id": "vegeta",
-            "tipo": "planeta",
-            "nome": "Vegeta",
-            "top": "45.8%",
-            "left": "24.6%",
-            "color1": "#ff6666",
-            "color2": "#990000",
-            "shadow": "rgba(255,0,0,0.5)",
-            "size": "45px"
-        },
-        {
-            "id": "namekusei",
-            "tipo": "planeta",
-            "nome": "Namekusei",
-            "top": "43.7%",
-            "left": "67.3%",
-            "color1": "#66ff66",
-            "color2": "#006600",
-            "shadow": "rgba(0,255,0,0.5)",
-            "size": "50px"
-        },
-        {
-            "id": "desconhecido",
-            "tipo": "planeta",
-            "nome": "Desconhecido",
-            "top": "44.9%",
-            "left": "81.1%",
-            "color1": "#66b3ff",
-            "color2": "#000066",
-            "shadow": "rgba(0,100,255,0.5)",
-            "size": "40px"
-        },
-        {
-            "id": "terra0",
-            "tipo": "terra",
-            "nome": "Terra 0",
-            "top": "35.7%",
-            "left": "42.1%",
-            "size": "150px"
-        }
+        { "id": "orichalcosA", "tipo": "estrela", "nome": "Orichalcos A", "top": "37.7%", "left": "-5.2%", "size": "120px" },
+        { "id": "orichalcosB", "tipo": "estrela", "nome": "Orichalcos B", "top": "36.9%", "left": "92.9%", "size": "120px" },
+        { "id": "vegeta", "tipo": "planeta", "nome": "Vegeta", "top": "45.8%", "left": "24.6%", "color1": "#ff6666", "color2": "#990000", "shadow": "rgba(255,0,0,0.5)", "size": "45px" },
+        { "id": "namekusei", "tipo": "planeta", "nome": "Namekusei", "top": "43.7%", "left": "67.3%", "color1": "#66ff66", "color2": "#006600", "shadow": "rgba(0,255,0,0.5)", "size": "50px" },
+        { "id": "desconhecido", "tipo": "planeta", "nome": "Desconhecido", "top": "44.9%", "left": "81.1%", "color1": "#66b3ff", "color2": "#000066", "shadow": "rgba(0,100,255,0.5)", "size": "40px" },
+        { "id": "terra0", "tipo": "terra", "nome": "Terra 0", "top": "35.7%", "left": "42.1%", "size": "150px" }
     ]);
 
     const posicoesPings = [
@@ -258,7 +98,7 @@ export default function MapaMundi({ children }) {
         else if (nivelVisao === 'cosmologia') setNivelVisao('sistema_solar');
     };
 
-    // 🛠️ FUNÇÕES DO DRAG AND DROP (UNIFICADO) 🛠️
+    // 🛠️ FUNÇÕES DO DRAG AND DROP 🛠️
     const handleDragStart = (e, index, isSolar = false) => {
         if (!modoAjuste) return;
         if (isSolar) setDragIdSolar(index);
@@ -309,7 +149,6 @@ export default function MapaMundi({ children }) {
         setCodigoExportado(`// COPIE E SUBSTITUA A 'zonasCosmologia':\nconst [zonasCosmologia, setZonasCosmologia] = useState(${codigoCosmo});\n\n// ======================================\n\n// COPIE E SUBSTITUA A 'elementosSolar':\nconst [elementosSolar, setElementosSolar] = useState(${codigoSolar});`);
     };
 
-    // NAVEGAÇÃO
     const criarNovoMapa = () => {
         const nome = prompt("Escreva o nome do novo mapa para " + reinoSelecionado + ":");
         if (nome && nome.trim() !== "") setMapasSalvos(prev => ({ ...prev, [reinoSelecionado]: [...(prev[reinoSelecionado] || []), nome] }));
@@ -325,7 +164,6 @@ export default function MapaMundi({ children }) {
         setNivelVisao('reino');
     };
 
-    // BOTÕES DE CONTROLE DO MODO DEUS
     const PainelModoDeus = () => (
         <div style={{ position: 'absolute', top: '15px', left: '50%', transform: 'translateX(-50%)', zIndex: 100, display: 'flex', gap: '15px', background: 'rgba(0,0,0,0.8)', padding: '10px 20px', borderRadius: '10px', border: '1px solid #333' }}>
             <button onClick={() => setModoAjuste(!modoAjuste)} style={{ background: modoAjuste ? '#ff4444' : '#0088ff', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
@@ -340,7 +178,7 @@ export default function MapaMundi({ children }) {
     );
 
     // ==========================================
-    // 🌌 TELA 0: SISTEMA SOLAR 
+    // 🌌 TELA 0: SISTEMA SOLAR (COM ÓRBITA ANIMADA)
     // ==========================================
     if (nivelVisao === 'sistema_solar') {
         return (
@@ -358,9 +196,26 @@ export default function MapaMundi({ children }) {
 
                 <div ref={containerRef} onMouseMove={handleDragMove} onMouseUp={handleDragEnd} onMouseLeave={handleDragEnd} onTouchMove={handleDragMove} onTouchEnd={handleDragEnd} style={{ position: 'relative', width: '900px', height: '500px' }}>
                     
-                    {/* TRILHA DO INFINITO (A Órbita Atualizada para passar pelo centro exato das estrelas nos cantos) */}
+                    {/* TRILHA DO INFINITO (AGORA ANIMADA E COM GLOW) */}
                     <svg viewBox="0 0 900 500" style={{ position: 'absolute', width: '100%', height: '100%', pointerEvents: 'none' }}>
-                        <path d="M 450 250 C 650 0, 900 0, 900 250 C 900 500, 650 500, 450 250 C 250 0, 0 0, 0 250 C 0 500, 250 500, 450 250 Z" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="2" strokeDasharray="5 5" />
+                        <defs>
+                            <filter id="glow">
+                                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                                <feMerge>
+                                    <feMergeNode in="coloredBlur"/>
+                                    <feMergeNode in="SourceGraphic"/>
+                                </feMerge>
+                            </filter>
+                        </defs>
+                        <path 
+                            className="linha-orbita-animada"
+                            d="M 450 250 C 650 0, 900 0, 900 250 C 900 500, 650 500, 450 250 C 250 0, 0 0, 0 250 C 0 500, 250 500, 450 250 Z" 
+                            fill="none" 
+                            stroke="rgba(255, 255, 255, 0.4)" 
+                            strokeWidth="2" 
+                            strokeDasharray="10 15" 
+                            filter="url(#glow)"
+                        />
                     </svg>
 
                     {elementosSolar.map(el => {
@@ -383,7 +238,6 @@ export default function MapaMundi({ children }) {
                             return (
                                 <div key={el.id} onMouseDown={(e) => handleDragStart(e, el.id, true)} onTouchStart={(e) => handleDragStart(e, el.id, true)} style={{ ...styleBase, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                                     <div onClick={() => !modoAjuste && setNivelVisao('globo')} style={{ width: '100px', height: '100px', borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #4db8ff, #003366)', boxShadow: 'inset -15px -15px 30px rgba(0,0,0,0.9), 0 0 40px rgba(0,150,255,0.6)', border: '1px solid rgba(255,255,255,0.2)' }} />
-                                    {/* O tracejado das luas ao redor da Terra 0 */}
                                     <div className="moon-orbit" style={{ position: 'absolute', width: '100%', height: '100%', borderRadius: '50%', border: '1px dashed rgba(255,255,255,0.2)', pointerEvents: 'none' }}>
                                         <div style={{ position: 'absolute', top: '-6px', left: '50%', transform: 'translateX(-50%)', width: '12px', height: '12px', background: '#e6e6e6', borderRadius: '50%', boxShadow: '0 0 5px #fff' }}><span style={{position:'absolute', top: '-18px', left:'-10px', fontSize:'9px', color:'#aaa'}}>Maria</span></div>
                                         <div style={{ position: 'absolute', bottom: '15px', right: '5px', width: '10px', height: '10px', background: '#e6e6e6', borderRadius: '50%', boxShadow: '0 0 5px #fff' }}><span style={{position:'absolute', bottom: '-15px', right:'-5px', fontSize:'9px', color:'#aaa'}}>Rose</span></div>
@@ -397,7 +251,6 @@ export default function MapaMundi({ children }) {
                     })}
                 </div>
 
-                {/* MODAL DE CÓDIGO */}
                 {codigoExportado && (
                     <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 200, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                         <div style={{ background: '#111', padding: '20px', borderRadius: '10px', width: '800px', border: '2px solid #00cc66' }}>
@@ -408,12 +261,19 @@ export default function MapaMundi({ children }) {
                     </div>
                 )}
                 
+                {/* CSS ATUALIZADO COM ANIMAÇÃO DA TRILHA DE ENERGIA */}
                 <style dangerouslySetInnerHTML={{__html: `
                     .fade-in { animation: fadeIn 0.8s ease-in-out; }
                     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
                     @keyframes pulseStar { from { transform: scale(1); opacity: 0.9; } to { transform: scale(1.05); opacity: 1; } }
                     .moon-orbit { animation: spin 20s linear infinite; }
                     @keyframes spin { 100% { transform: rotate(360deg); } }
+                    
+                    .linha-orbita-animada { animation: fluxoEnergia 2s linear infinite; }
+                    @keyframes fluxoEnergia {
+                        from { stroke-dashoffset: 25; }
+                        to { stroke-dashoffset: 0; }
+                    }
                 `}} />
             </div>
         );
@@ -473,7 +333,7 @@ export default function MapaMundi({ children }) {
     }
 
     // ==========================================
-    // 🌍 TELA 2: O GLOBO
+    // 🌍 TELA 2: O GLOBO E CONTINENTE
     // ==========================================
     if (nivelVisao === 'globo') {
         return (
@@ -497,9 +357,6 @@ export default function MapaMundi({ children }) {
         );
     }
 
-    // ==========================================
-    // 🗺️ TELA 3: O CONTINENTE
-    // ==========================================
     if (nivelVisao === 'continente') {
         return (
             <div className="fade-in" style={{ width: '100%', height: '85vh', background: '#050508', borderRadius: '10px', border: '1px solid #0088ff', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
