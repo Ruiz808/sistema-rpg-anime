@@ -17,7 +17,8 @@ import gabaritoIonia from '../../assets/gabarito-ionia.png';
 import mapaCosmologia from '../../assets/mapa-cosmologia.png';
 
 export default function MapaMundi({ children }) {
-    const [nivelVisao, setNivelVisao] = useState('cosmologia'); 
+    // 🚀 NOVO: O mapa agora começa no Espaço Físico (Sistema Solar)
+    const [nivelVisao, setNivelVisao] = useState('sistema_solar'); 
     const [localAtual, setLocalAtual] = useState({ continente: null, reino: null, mapaId: null, plano: 'Material' });
 
     const [mapasSalvos, setMapasSalvos] = useState({
@@ -33,32 +34,10 @@ export default function MapaMundi({ children }) {
     const [reinoHover, setReinoHover] = useState(null); 
     const [planoHover, setPlanoHover] = useState(null);
     
+    // GLOBO 3D
     const [rotacaoGlobo, setRotacaoGlobo] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
     const dragStart = useRef({ x: 0, y: 0 });
-
-    // 🛠️ MODO DE AJUSTE ARRASTAR E SOLTAR 🛠️
-    const [modoAjuste, setModoAjuste] = useState(false);
-    const [dragIndexCosmo, setDragIndexCosmo] = useState(null);
-    const containerCosmoRef = useRef(null);
-
-    // 📍 AQUI É ONDE VOCÊ VAI COLAR O CÓDIGO NOVO QUANDO SALVAR!
-    // A Terra 0 já está com o "44.3%" e "49.3%" que você calibrou!
-    const [zonasCosmologia, setZonasCosmologia] = useState([
-        { nome: 'Terra 0 (Runeterra)', top: '44.3%', left: '49.3%', width: '10%', height: '16.6%', cor: '#ffffff', isCircle: true, isPlanet: true },
-        { nome: 'Plano da Ordem', top: '37%', left: '5%', width: '13%', height: '22%', cor: '#DDA0DD', isCircle: true },
-        { nome: 'Plano Astral', top: '43%', left: '71%', width: '13%', height: '22%', cor: '#483D8B', isCircle: true },
-        { nome: 'Plano do Vento', top: '29%', left: '25%', width: '12%', height: '20%', cor: '#2E8B57', isCircle: true },
-        { nome: 'Plano do Fogo', top: '52%', left: '25%', width: '12%', height: '20%', cor: '#DC143C', isCircle: true },
-        { nome: 'Plano da Água', top: '29%', left: '52%', width: '12%', height: '20%', cor: '#4169E1', isCircle: true },
-        { nome: 'Plano da Terra', top: '52%', left: '52%', width: '12%', height: '20%', cor: '#8B4513', isCircle: true },
-        { nome: 'Céus', top: '6%', left: '40%', width: '12%', height: '18%', cor: '#FCE883', isCircle: true },
-        { nome: 'Inferno', top: '80%', left: '40%', width: '16%', height: '14%', cor: '#FF4500', isCircle: false },
-        { nome: 'Plano das Fadas', top: '33%', left: '42.5%', width: '7%', height: '9%', cor: '#32CD32', isCircle: true },
-        { nome: 'Plano do Éter', top: '57%', left: '42.5%', width: '7%', height: '9%', cor: '#9400D3', isCircle: true },
-        { nome: 'Plano do Caos', top: '2%', left: '70%', width: '22%', height: '10%', cor: '#800000', isCircle: false },
-        { nome: 'Plano do Caos Inferior', top: '84%', left: '8%', width: '22%', height: '10%', cor: '#800000', isCircle: false }
-    ]);
 
     const posicoesPings = [
         { nome: 'Freljord', img: gabaritoFreljord, top: '15%', left: '28%', cor: '#00b5e2' },
@@ -73,7 +52,23 @@ export default function MapaMundi({ children }) {
         { nome: 'Ionia', img: gabaritoIonia, top: '30%', left: '82%', cor: '#43a047' }
     ];
 
-    // FUNÇÕES DO GLOBO MANTIDAS INTACTAS
+    // 🌌 ZONAS DE INTERAÇÃO DA COSMOLOGIA (As calibradas no pixel!) 🌌
+    const zonasCosmologia = [
+        { nome: 'Terra 0 (Runeterra)', top: '44.3%', left: '49.3%', width: '10%', height: '16.6%', cor: '#ffffff', isCircle: true, isPlanet: true },
+        { nome: 'Plano da Ordem', top: '37%', left: '5%', width: '13%', height: '22%', cor: '#DDA0DD', isCircle: true },
+        { nome: 'Plano Astral', top: '43%', left: '71%', width: '13%', height: '22%', cor: '#483D8B', isCircle: true },
+        { nome: 'Plano do Vento', top: '29%', left: '25%', width: '12%', height: '20%', cor: '#2E8B57', isCircle: true },
+        { nome: 'Plano do Fogo', top: '52%', left: '25%', width: '12%', height: '20%', cor: '#DC143C', isCircle: true },
+        { nome: 'Plano da Água', top: '29%', left: '52%', width: '12%', height: '20%', cor: '#4169E1', isCircle: true },
+        { nome: 'Plano da Terra', top: '52%', left: '52%', width: '12%', height: '20%', cor: '#8B4513', isCircle: true },
+        { nome: 'Céus', top: '6%', left: '40%', width: '12%', height: '18%', cor: '#FCE883', isCircle: true },
+        { nome: 'Inferno', top: '80%', left: '40%', width: '16%', height: '14%', cor: '#FF4500', isCircle: false },
+        { nome: 'Plano das Fadas', top: '33%', left: '42.5%', width: '7%', height: '9%', cor: '#32CD32', isCircle: true },
+        { nome: 'Plano do Éter', top: '57%', left: '42.5%', width: '7%', height: '9%', cor: '#9400D3', isCircle: true },
+        { nome: 'Plano do Caos', top: '2%', left: '70%', width: '22%', height: '10%', cor: '#800000', isCircle: false },
+        { nome: 'Plano do Caos Inferior', top: '84%', left: '8%', width: '22%', height: '10%', cor: '#800000', isCircle: false }
+    ];
+
     const handleGloboDragStart = (e) => {
         setIsDragging(true);
         dragStart.current = { x: e.clientX || e.touches?.[0].clientX, y: e.clientY || e.touches?.[0].clientY };
@@ -90,7 +85,6 @@ export default function MapaMundi({ children }) {
     };
     const handleGloboDragEnd = () => setIsDragging(false);
 
-    // NAVEGAÇÃO
     const criarNovoMapa = () => {
         const nome = prompt("Escreva o nome do novo mapa para " + reinoSelecionado + ":");
         if (nome && nome.trim() !== "") setMapasSalvos(prev => ({ ...prev, [reinoSelecionado]: [...(prev[reinoSelecionado] || []), nome] }));
@@ -105,130 +99,146 @@ export default function MapaMundi({ children }) {
         setReinoSelecionado(null);
         setNivelVisao('reino');
     };
+
+    // Ajustei o botão de voltar para respeitar a nova hierarquia!
     const voltarCamera = () => {
         if (nivelVisao === 'reino') setNivelVisao('continente');
         else if (nivelVisao === 'continente') setNivelVisao('globo');
-        else if (nivelVisao === 'globo') setNivelVisao('cosmologia');
-    };
-
-    // 🛠️ LÓGICA DE ARRASTAR (DRAG AND DROP) DA COSMOLOGIA 🛠️
-    const handleCosmoDragStart = (e, index) => {
-        if (!modoAjuste) return;
-        setDragIndexCosmo(index);
-    };
-
-    const handleCosmoDragMove = (e) => {
-        if (dragIndexCosmo === null || !containerCosmoRef.current || !modoAjuste) return;
-        
-        const rect = containerCosmoRef.current.getBoundingClientRect();
-        let clientX = e.clientX;
-        let clientY = e.clientY;
-        
-        if (e.touches && e.touches.length > 0) {
-            clientX = e.touches[0].clientX;
-            clientY = e.touches[0].clientY;
-        }
-
-        if (clientX === undefined || clientY === undefined) return;
-
-        let xPercent = ((clientX - rect.left) / rect.width) * 100;
-        let yPercent = ((clientY - rect.top) / rect.height) * 100;
-
-        const zonaAtual = zonasCosmologia[dragIndexCosmo];
-        const w = parseFloat(zonaAtual.width);
-        const h = parseFloat(zonaAtual.height);
-
-        setZonasCosmologia(prev => {
-            const novasZonas = [...prev];
-            novasZonas[dragIndexCosmo] = {
-                ...novasZonas[dragIndexCosmo],
-                top: `${(yPercent - h/2).toFixed(1)}%`,
-                left: `${(xPercent - w/2).toFixed(1)}%`
-            };
-            return novasZonas;
-        });
-    };
-
-    const handleCosmoDragEnd = () => {
-        setDragIndexCosmo(null);
-    };
-
-    const imprimirCodigo = () => {
-        const codigoFormatado = JSON.stringify(zonasCosmologia, null, 4);
-        alert("CÓDIGO GERADO! Copie abaixo e substitua a variável 'zonasCosmologia' no seu script original:\n\n" + codigoFormatado);
-        console.log(codigoFormatado);
+        else if (nivelVisao === 'globo') setNivelVisao('sistema_solar');
+        else if (nivelVisao === 'cosmologia') setNivelVisao('sistema_solar');
     };
 
     // ==========================================
-    // 🌌 TELA 0: COSMOLOGIA (C/ DRAG AND DROP)
+    // 🌌 TELA 0: SISTEMA SOLAR (NOVO UNIVERSO FÍSICO)
+    // ==========================================
+    if (nivelVisao === 'sistema_solar') {
+        return (
+            <div className="fade-in" style={{ width: '100%', height: '85vh', background: 'radial-gradient(circle at center, #0a0a1a 0%, #000000 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', borderRadius: '15px', border: '1px solid #333' }}>
+                
+                {/* Efeito de estrelinhas no fundo */}
+                <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(2px 2px at 20px 30px, #ffffff, rgba(0,0,0,0)), radial-gradient(2px 2px at 40px 70px, #ffffff, rgba(0,0,0,0)), radial-gradient(2px 2px at 90px 40px, #ffffff, rgba(0,0,0,0))', backgroundRepeat: 'repeat', backgroundSize: '200px 200px', opacity: 0.3 }} />
+
+                <button 
+                    onClick={() => setNivelVisao('cosmologia')} 
+                    style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(72, 61, 139, 0.4)', border: '1px solid #DDA0DD', color: '#DDA0DD', padding: '10px 25px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', zIndex: 100, letterSpacing: '2px', boxShadow: '0 0 15px rgba(221, 160, 221, 0.3)', backdropFilter: 'blur(5px)' }}
+                >
+                    🌌 REVELAR DIMENSÕES
+                </button>
+
+                <div style={{ position: 'absolute', top: '20px', left: '20px', zIndex: 10, pointerEvents: 'none' }}>
+                    <h2 style={{ color: '#fff', margin: 0, textTransform: 'uppercase', letterSpacing: '4px', textShadow: '0 0 10px #fff' }}>Universo Material</h2>
+                    <p style={{ color: '#aaa', fontSize: '0.85em', margin: '5px 0 0 0', letterSpacing: '1px' }}>Setor Orichalcos</p>
+                </div>
+
+                <div style={{ position: 'relative', width: '900px', height: '500px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                    
+                    {/* TRILHA DO INFINITO (A Órbita) */}
+                    <svg viewBox="0 0 1000 500" style={{ position: 'absolute', width: '100%', height: '100%', opacity: 0.15, pointerEvents: 'none' }}>
+                        <path d="M 500 250 C 650 -50, 950 50, 850 250 C 750 450, 500 250, 500 250 C 500 250, 250 50, 150 250 C 50, 450, 350 550, 500 250 Z" fill="none" stroke="#ffffff" strokeWidth="3" strokeDasharray="10 10" />
+                    </svg>
+
+                    {/* ESTRELAS BINÁRIAS (Orichalcos A e B) */}
+                    <div style={{ position: 'absolute', left: '16%', width: '120px', height: '120px', borderRadius: '50%', background: 'radial-gradient(circle, #ffffff 0%, #ffcc00 40%, #ff6600 100%)', boxShadow: '0 0 80px #ffcc00, 0 0 150px #ff6600', animation: 'pulseStar 4s infinite alternate' }} />
+                    <div style={{ position: 'absolute', right: '16%', width: '120px', height: '120px', borderRadius: '50%', background: 'radial-gradient(circle, #ffffff 0%, #ffcc00 40%, #ff6600 100%)', boxShadow: '0 0 80px #ffcc00, 0 0 150px #ff6600', animation: 'pulseStar 4s infinite alternate-reverse' }} />
+
+                    {/* PLANETA: VEGETA (Vermelho) */}
+                    <div style={{ position: 'absolute', left: '5%', top: '40%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <div style={{ width: '45px', height: '45px', borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #ff6666, #990000)', boxShadow: 'inset -10px -10px 20px rgba(0,0,0,0.8), 0 0 20px rgba(255,0,0,0.5)', cursor: 'pointer' }} onClick={() => alert('Planeta Vegeta\nAcesso restrito no momento.')} />
+                        <span style={{ color: '#ff6666', marginTop: '8px', fontSize: '12px', fontWeight: 'bold', letterSpacing: '2px', textTransform: 'uppercase' }}>Vegeta</span>
+                    </div>
+
+                    {/* PLANETA: NAMEKUSEI (Verde) */}
+                    <div style={{ position: 'absolute', right: '28%', top: '15%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #66ff66, #006600)', boxShadow: 'inset -10px -10px 20px rgba(0,0,0,0.8), 0 0 20px rgba(0,255,0,0.5)', cursor: 'pointer' }} onClick={() => alert('Planeta Namekusei\nAcesso restrito no momento.')} />
+                        <span style={{ color: '#66ff66', marginTop: '8px', fontSize: '12px', fontWeight: 'bold', letterSpacing: '2px', textTransform: 'uppercase' }}>Namekusei</span>
+                    </div>
+
+                    {/* PLANETA: DESCONHECIDO (Azul) */}
+                    <div style={{ position: 'absolute', right: '8%', top: '65%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #66b3ff, #000066)', boxShadow: 'inset -10px -10px 20px rgba(0,0,0,0.8), 0 0 20px rgba(0,100,255,0.5)', cursor: 'pointer' }} onClick={() => alert('Planeta Desconhecido\nSinais vitais não detectados.')} />
+                        <span style={{ color: '#66b3ff', marginTop: '8px', fontSize: '12px', fontWeight: 'bold', letterSpacing: '2px', textTransform: 'uppercase' }}>Desconhecido</span>
+                    </div>
+
+                    {/* PLANETA PRINCIPAL: TERRA 0 (O Dobro do Tamanho) COM AS 3 LUAS */}
+                    <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 20 }}>
+                        <div style={{ position: 'relative', width: '150px', height: '150px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                            
+                            {/* O Planeta */}
+                            <div 
+                                onClick={() => setNivelVisao('globo')}
+                                style={{ width: '100px', height: '100px', borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #4db8ff, #003366)', boxShadow: 'inset -15px -15px 30px rgba(0,0,0,0.9), 0 0 40px rgba(0,150,255,0.6)', cursor: 'pointer', zIndex: 10, border: '1px solid rgba(255,255,255,0.2)' }} 
+                            />
+                            
+                            {/* Anel de Órbita das Luas */}
+                            <div className="moon-orbit" style={{ position: 'absolute', width: '160px', height: '160px', borderRadius: '50%', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                                {/* Lua Maria */}
+                                <div style={{ position: 'absolute', top: '-6px', left: '50%', transform: 'translateX(-50%)', width: '12px', height: '12px', background: '#e6e6e6', borderRadius: '50%', boxShadow: '0 0 5px #fff' }}><span style={{position:'absolute', top: '-18px', left:'-10px', fontSize:'9px', color:'#aaa'}}>Maria</span></div>
+                                {/* Lua Rose */}
+                                <div style={{ position: 'absolute', bottom: '15px', right: '5px', width: '10px', height: '10px', background: '#e6e6e6', borderRadius: '50%', boxShadow: '0 0 5px #fff' }}><span style={{position:'absolute', bottom: '-15px', right:'-5px', fontSize:'9px', color:'#aaa'}}>Rose</span></div>
+                                {/* Lua Sina */}
+                                <div style={{ position: 'absolute', bottom: '15px', left: '5px', width: '14px', height: '14px', background: '#e6e6e6', borderRadius: '50%', boxShadow: '0 0 5px #fff' }}><span style={{position:'absolute', bottom: '-15px', left:'-5px', fontSize:'9px', color:'#aaa'}}>Sina</span></div>
+                            </div>
+
+                        </div>
+                        <span style={{ color: '#4db8ff', marginTop: '10px', fontSize: '16px', fontWeight: 'bold', letterSpacing: '3px', textTransform: 'uppercase', textShadow: '0 0 10px rgba(0,150,255,0.8)' }}>Terra 0</span>
+                    </div>
+
+                </div>
+
+                <style dangerouslySetInnerHTML={{__html: `
+                    .fade-in { animation: fadeIn 0.8s ease-in-out; }
+                    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+                    @keyframes pulseStar { from { transform: scale(1); opacity: 0.9; } to { transform: scale(1.05); opacity: 1; } }
+                    .moon-orbit { animation: spin 20s linear infinite; }
+                    @keyframes spin { 100% { transform: rotate(360deg); } }
+                `}} />
+            </div>
+        );
+    }
+
+    // ==========================================
+    // 🌌 TELA 1: COSMOLOGIA (DIMENSÕES EXPANDIDAS)
     // ==========================================
     if (nivelVisao === 'cosmologia') {
         return (
             <div className="fade-in" style={{ width: '100%', height: '85vh', background: '#050508', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
                 
-                {/* PAINEL DE CONTROLE DO MODO DE AJUSTE */}
-                <div style={{ position: 'absolute', top: '15px', zIndex: 100, display: 'flex', gap: '15px', background: 'rgba(0,0,0,0.8)', padding: '10px 20px', borderRadius: '10px', border: '1px solid #333' }}>
-                    <button 
-                        onClick={() => setModoAjuste(!modoAjuste)} 
-                        style={{ background: modoAjuste ? '#ff4444' : '#0088ff', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
-                    >
-                        {modoAjuste ? '❌ DESLIGAR MODO AJUSTE' : '🔧 LIGAR MODO DE AJUSTE'}
-                    </button>
-                    
-                    {modoAjuste && (
-                        <button 
-                            onClick={imprimirCodigo} 
-                            style={{ background: '#00cc66', color: '#000', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
-                        >
-                            💾 IMPRIMIR CÓDIGO
-                        </button>
-                    )}
-                </div>
-
-                <div 
-                    ref={containerCosmoRef}
-                    onMouseMove={handleCosmoDragMove}
-                    onMouseUp={handleCosmoDragEnd}
-                    onMouseLeave={handleCosmoDragEnd}
-                    onTouchMove={handleCosmoDragMove}
-                    onTouchEnd={handleCosmoDragEnd}
-                    style={{ position: 'relative', width: '1000px', height: '600px', borderRadius: '15px', overflow: 'hidden', marginTop: '50px' }} 
+                <button 
+                    onClick={() => setNivelVisao('sistema_solar')} 
+                    style={{ position: 'absolute', top: '20px', left: '20px', background: 'transparent', border: '1px solid #fff', color: '#fff', padding: '8px 18px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', zIndex: 100 }}
                 >
-                    <img src={mapaCosmologia} alt="Cosmologia" style={{ width: '100%', height: '100%', objectFit: 'fill', filter: 'drop-shadow(0 0 20px rgba(255,255,255,0.1))', pointerEvents: 'none' }} />
+                    ⬅ VOLTAR AO ESPAÇO
+                </button>
+
+                <div style={{ position: 'relative', width: '1000px', height: '600px', borderRadius: '15px', overflow: 'hidden' }}>
+                    <img src={mapaCosmologia} alt="Cosmologia" style={{ width: '100%', height: '100%', objectFit: 'fill', filter: 'drop-shadow(0 0 20px rgba(255,255,255,0.1))' }} />
 
                     {zonasCosmologia.map((zona, index) => (
                         <div 
                             key={`${zona.nome}-${index}`}
-                            onMouseEnter={() => !modoAjuste && setPlanoHover(zona.nome)}
-                            onMouseLeave={() => !modoAjuste && setPlanoHover(null)}
-                            onMouseDown={(e) => handleCosmoDragStart(e, index)}
-                            onTouchStart={(e) => handleCosmoDragStart(e, index)}
+                            onMouseEnter={() => setPlanoHover(zona.nome)}
+                            onMouseLeave={() => setPlanoHover(null)}
                             onClick={() => {
-                                if (modoAjuste) return;
                                 if (zona.isPlanet) setNivelVisao('globo');
                                 else alert(`Viajando para: ${zona.nome}`);
                             }}
                             style={{
                                 position: 'absolute', top: zona.top, left: zona.left, width: zona.width, height: zona.height,
-                                borderRadius: zona.isCircle ? '50%' : '15px', 
-                                cursor: modoAjuste ? (dragIndexCosmo === index ? 'grabbing' : 'grab') : 'pointer', 
-                                zIndex: zona.zIndex || 10,
-                                border: modoAjuste || planoHover === zona.nome ? `2px dashed ${zona.cor}` : '2px solid transparent',
-                                boxShadow: modoAjuste || planoHover === zona.nome ? `0 0 15px ${zona.cor}, inset 0 0 10px ${zona.cor}` : 'none',
-                                background: modoAjuste ? 'rgba(255,255,255,0.2)' : (planoHover === zona.nome ? 'rgba(255,255,255,0.15)' : 'transparent'), 
-                                transition: dragIndexCosmo === index ? 'none' : '0.2s ease-in-out'
+                                borderRadius: zona.isCircle ? '50%' : '15px', cursor: 'pointer', zIndex: zona.zIndex || 10,
+                                border: planoHover === zona.nome ? `2px solid ${zona.cor}` : '2px solid transparent',
+                                boxShadow: planoHover === zona.nome ? `0 0 25px ${zona.cor}, inset 0 0 15px ${zona.cor}` : 'none',
+                                background: planoHover === zona.nome ? 'rgba(255,255,255,0.08)' : 'transparent',
+                                transition: '0.2s ease-in-out'
                             }}
                         />
                     ))}
                 </div>
                 
-                {!modoAjuste && (
-                    <div style={{ position: 'absolute', bottom: '30px', textAlign: 'center', pointerEvents: 'none', zIndex: 50 }}>
-                        <h1 style={{ color: '#fff', margin: 0, letterSpacing: '6px', textTransform: 'uppercase', fontSize: '1.4em', textShadow: '0 0 20px rgba(255,255,255,0.8)' }}>
-                            {planoHover || 'Atlas Multiversal'}
-                        </h1>
-                    </div>
-                )}
+                <div style={{ position: 'absolute', bottom: '30px', textAlign: 'center', pointerEvents: 'none', zIndex: 50 }}>
+                    <h1 style={{ color: '#fff', margin: 0, letterSpacing: '6px', textTransform: 'uppercase', fontSize: '1.4em', textShadow: '0 0 20px rgba(255,255,255,0.8)' }}>
+                        {planoHover || 'Atlas Multiversal'}
+                    </h1>
+                </div>
                 
                 <style dangerouslySetInnerHTML={{__html: `
                     .fade-in { animation: fadeIn 0.8s ease-in-out; }
@@ -239,25 +249,28 @@ export default function MapaMundi({ children }) {
     }
 
     // ==========================================
-    // 🌍 TELA 1: O GLOBO (Intocável)
+    // 🌍 TELA 2: O GLOBO (Intocável)
     // ==========================================
     if (nivelVisao === 'globo') {
         return (
             <div 
                 className="fade-in" 
                 style={{ width: '100%', height: '85vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#050508', borderRadius: '10px', border: '1px solid #0088ff', position: 'relative', overflow: 'hidden' }}
-                onMouseMove={handleGloboDragMove} onMouseUp={handleGloboDragEnd} onMouseLeave={handleGloboDragEnd} onTouchMove={handleGloboDragMove} onTouchEnd={handleGloboDragEnd}
+                onMouseMove={handleDragMove} onMouseUp={handleDragEnd} onMouseLeave={handleDragEnd} onTouchMove={handleDragMove} onTouchEnd={handleDragEnd}
             >
-                <button onClick={voltarCamera} style={{ position: 'absolute', top: '20px', left: '20px', background: 'transparent', border: '1px solid #00ffcc', color: '#00ffcc', padding: '8px 18px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', zIndex: 30 }}>⬅ MULTIVERSO</button>
+                <div style={{ position: 'absolute', top: '20px', left: '20px', display: 'flex', gap: '10px', zIndex: 30 }}>
+                    <button onClick={() => setNivelVisao('sistema_solar')} style={{ background: 'transparent', border: '1px solid #00ffcc', color: '#00ffcc', padding: '8px 18px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>⬅ ESPAÇO FÍSICO</button>
+                    <button onClick={() => setNivelVisao('cosmologia')} style={{ background: 'rgba(72, 61, 139, 0.4)', border: '1px solid #DDA0DD', color: '#DDA0DD', padding: '8px 18px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>🌌 MULTIVERSO</button>
+                </div>
 
                 <div style={{ position: 'absolute', top: '20px', textAlign: 'center', zIndex: 10, pointerEvents: 'none' }}>
-                    <h2 style={{ color: '#00ffcc', margin: 0, textTransform: 'uppercase', letterSpacing: '3px', textShadow: '0 0 10px #00ffcc' }}>Visão Orbital</h2>
+                    <h2 style={{ color: '#00ffcc', margin: 0, textTransform: 'uppercase', letterSpacing: '3px', textShadow: '0 0 10px #00ffcc' }}>Visão Orbital: Terra 0</h2>
                     <p style={{ color: '#aaa', fontSize: '0.85em', margin: '5px 0 0 0' }}>Arraste em qualquer direção para inspecionar o planeta.</p>
                 </div>
                 <div style={{ position: 'relative', width: '350px', height: '350px', perspective: '1000px' }}>
                     <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', backgroundColor: '#000814', border: '2px solid #0088ff', pointerEvents: 'none', boxShadow: '0 0 50px rgba(0, 136, 255, 0.2)' }}></div>
                     <div 
-                        onMouseDown={handleGloboDragStart} onTouchStart={handleGloboDragStart}
+                        onMouseDown={handleDragStart} onTouchStart={handleDragStart}
                         style={{ position: 'absolute', inset: 0, transformStyle: 'preserve-3d', transform: `rotateX(${rotacaoGlobo.y}deg) rotateY(${rotacaoGlobo.x}deg)`, cursor: isDragging ? 'grabbing' : 'grab', transition: isDragging ? 'none' : 'transform 0.5s ease-out' }}
                     >
                         <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(0,255,204,0.15)', transform: 'rotateX(90deg)' }}></div>
@@ -281,7 +294,7 @@ export default function MapaMundi({ children }) {
     }
 
     // ==========================================
-    // 🗺️ TELA 2: O CONTINENTE (As Máscaras Neon)
+    // 🗺️ TELA 3: O CONTINENTE (As Máscaras Neon)
     // ==========================================
     if (nivelVisao === 'continente') {
         return (
@@ -366,7 +379,7 @@ export default function MapaMundi({ children }) {
     }
 
     // ==========================================
-    // ⚔️ TELA 3: O MAPA DE BATALHA
+    // ⚔️ TELA 4: O MAPA DE BATALHA
     // ==========================================
     if (nivelVisao === 'reino') {
         const backgroundUrl = mapasImagens[localAtual.mapaId];
