@@ -39,21 +39,14 @@ export default function MapaMundi({ children }) {
     const [isDragging, setIsDragging] = useState(false);
     const dragStart = useRef({ x: 0, y: 0 });
 
-    const posicoesPings = [
-        { nome: 'Freljord', img: gabaritoFreljord, top: '15%', left: '28%', cor: '#00b5e2' },
-        { nome: 'Demacia', img: gabaritoDemacia, top: '40%', left: '21%', cor: '#d3c29e' },
-        { nome: 'Noxus', img: gabaritoNoxus, top: '28%', left: '48%', cor: '#c62828' }, 
-        { nome: 'Piltover e Zaun', img: gabaritoPiltover, top: '54%', left: '51%', cor: '#d4a017' },
-        { nome: 'Shurima', img: gabaritoShurima, top: '75%', left: '43%', cor: '#c59b0d' },
-        { nome: 'Targon', top: '78%', left: '26%', cor: '#5e35b1' },
-        { nome: 'Ixtal', img: gabaritoIxtal, top: '67%', left: '63%', cor: '#2e7d32' },
-        { nome: 'Águas de Sentina', img: gabaritoAguas, top: '57%', left: '72%', cor: '#d84315' },
-        { nome: 'Ilha das Sombras', img: gabaritoIlha, top: '86%', left: '85%', cor: '#00838f' },
-        { nome: 'Ionia', img: gabaritoIonia, top: '30%', left: '82%', cor: '#43a047' }
-    ];
+    // 🛠️ MODO DE AJUSTE ARRASTAR E SOLTAR 🛠️
+    const [modoAjuste, setModoAjuste] = useState(false);
+    const [dragIndexCosmo, setDragIndexCosmo] = useState(null);
+    const containerCosmoRef = useRef(null);
 
-    // 🌌 ZONAS DE INTERAÇÃO DA COSMOLOGIA (As calibradas no pixel!) 🌌
-    const zonasCosmologia = [
+    // 📍 AQUI É ONDE VOCÊ VAI COLAR O CÓDIGO NOVO QUANDO SALVAR!
+    // A Terra 0 já está com o "44.3%" e "49.3%" que você calibrou!
+    const [zonasCosmologia, setZonasCosmologia] = useState([
         { nome: 'Terra 0 (Runeterra)', top: '44.3%', left: '49.3%', width: '10%', height: '16.6%', cor: '#ffffff', isCircle: true, isPlanet: true },
         { nome: 'Plano da Ordem', top: '37%', left: '5%', width: '13%', height: '22%', cor: '#DDA0DD', isCircle: true },
         { nome: 'Plano Astral', top: '43%', left: '71%', width: '13%', height: '22%', cor: '#483D8B', isCircle: true },
@@ -67,8 +60,22 @@ export default function MapaMundi({ children }) {
         { nome: 'Plano do Éter', top: '57%', left: '42.5%', width: '7%', height: '9%', cor: '#9400D3', isCircle: true },
         { nome: 'Plano do Caos', top: '2%', left: '70%', width: '22%', height: '10%', cor: '#800000', isCircle: false },
         { nome: 'Plano do Caos Inferior', top: '84%', left: '8%', width: '22%', height: '10%', cor: '#800000', isCircle: false }
+    ]);
+
+    const posicoesPings = [
+        { nome: 'Freljord', img: gabaritoFreljord, top: '15%', left: '28%', cor: '#00b5e2' },
+        { nome: 'Demacia', img: gabaritoDemacia, top: '40%', left: '21%', cor: '#d3c29e' },
+        { nome: 'Noxus', img: gabaritoNoxus, top: '28%', left: '48%', cor: '#c62828' }, 
+        { nome: 'Piltover e Zaun', img: gabaritoPiltover, top: '54%', left: '51%', cor: '#d4a017' },
+        { nome: 'Shurima', img: gabaritoShurima, top: '75%', left: '43%', cor: '#c59b0d' },
+        { nome: 'Targon', top: '78%', left: '26%', cor: '#5e35b1' },
+        { nome: 'Ixtal', img: gabaritoIxtal, top: '67%', left: '63%', cor: '#2e7d32' },
+        { nome: 'Águas de Sentina', img: gabaritoAguas, top: '57%', left: '72%', cor: '#d84315' },
+        { nome: 'Ilha das Sombras', img: gabaritoIlha, top: '86%', left: '85%', cor: '#00838f' },
+        { nome: 'Ionia', img: gabaritoIonia, top: '30%', left: '82%', cor: '#43a047' }
     ];
 
+    // FUNÇÕES DO GLOBO MANTIDAS INTACTAS
     const handleGloboDragStart = (e) => {
         setIsDragging(true);
         dragStart.current = { x: e.clientX || e.touches?.[0].clientX, y: e.clientY || e.touches?.[0].clientY };
@@ -85,6 +92,7 @@ export default function MapaMundi({ children }) {
     };
     const handleGloboDragEnd = () => setIsDragging(false);
 
+    // NAVEGAÇÃO
     const criarNovoMapa = () => {
         const nome = prompt("Escreva o nome do novo mapa para " + reinoSelecionado + ":");
         if (nome && nome.trim() !== "") setMapasSalvos(prev => ({ ...prev, [reinoSelecionado]: [...(prev[reinoSelecionado] || []), nome] }));
@@ -106,6 +114,54 @@ export default function MapaMundi({ children }) {
         else if (nivelVisao === 'continente') setNivelVisao('globo');
         else if (nivelVisao === 'globo') setNivelVisao('sistema_solar');
         else if (nivelVisao === 'cosmologia') setNivelVisao('sistema_solar');
+    };
+
+    // 🛠️ LÓGICA DE ARRASTAR (DRAG AND DROP) DA COSMOLOGIA 🛠️
+    const handleCosmoDragStart = (e, index) => {
+        if (!modoAjuste) return;
+        setDragIndexCosmo(index);
+    };
+
+    const handleCosmoDragMove = (e) => {
+        if (dragIndexCosmo === null || !containerCosmoRef.current || !modoAjuste) return;
+        
+        const rect = containerCosmoRef.current.getBoundingClientRect();
+        let clientX = e.clientX;
+        let clientY = e.clientY;
+        
+        if (e.touches && e.touches.length > 0) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        }
+
+        if (clientX === undefined || clientY === undefined) return;
+
+        let xPercent = ((clientX - rect.left) / rect.width) * 100;
+        let yPercent = ((clientY - rect.top) / rect.height) * 100;
+
+        const zonaAtual = zonasCosmologia[dragIndexCosmo];
+        const w = parseFloat(zonaAtual.width);
+        const h = parseFloat(zonaAtual.height);
+
+        setZonasCosmologia(prev => {
+            const novasZonas = [...prev];
+            novasZonas[dragIndexCosmo] = {
+                ...novasZonas[dragIndexCosmo],
+                top: `${(yPercent - h/2).toFixed(1)}%`,
+                left: `${(xPercent - w/2).toFixed(1)}%`
+            };
+            return novasZonas;
+        });
+    };
+
+    const handleCosmoDragEnd = () => {
+        setDragIndexCosmo(null);
+    };
+
+    const imprimirCodigo = () => {
+        const codigoFormatado = JSON.stringify(zonasCosmologia, null, 4);
+        alert("CÓDIGO GERADO! Copie abaixo e substitua a variável 'zonasCosmologia' no seu script original:\n\n" + codigoFormatado);
+        console.log(codigoFormatado);
     };
 
     // ==========================================
@@ -203,6 +259,25 @@ export default function MapaMundi({ children }) {
         return (
             <div className="fade-in" style={{ width: '100%', height: '85vh', background: '#050508', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
                 
+                {/* PAINEL DE CONTROLE DO MODO DE AJUSTE */}
+                <div style={{ position: 'absolute', top: '15px', zIndex: 100, display: 'flex', gap: '15px', background: 'rgba(0,0,0,0.8)', padding: '10px 20px', borderRadius: '10px', border: '1px solid #333' }}>
+                    <button 
+                        onClick={() => setModoAjuste(!modoAjuste)} 
+                        style={{ background: modoAjuste ? '#ff4444' : '#0088ff', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+                    >
+                        {modoAjuste ? '❌ DESLIGAR MODO AJUSTE' : '🔧 LIGAR MODO DE AJUSTE'}
+                    </button>
+                    
+                    {modoAjuste && (
+                        <button 
+                            onClick={imprimirCodigo} 
+                            style={{ background: '#00cc66', color: '#000', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+                        >
+                            💾 IMPRIMIR CÓDIGO
+                        </button>
+                    )}
+                </div>
+
                 <button 
                     onClick={() => setNivelVisao('sistema_solar')} 
                     style={{ position: 'absolute', top: '20px', left: '20px', background: 'transparent', border: '1px solid #fff', color: '#fff', padding: '8px 18px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', zIndex: 100 }}
@@ -210,35 +285,50 @@ export default function MapaMundi({ children }) {
                     ⬅ VOLTAR AO ESPAÇO
                 </button>
 
-                <div style={{ position: 'relative', width: '1000px', height: '600px', borderRadius: '15px', overflow: 'hidden' }}>
-                    <img src={mapaCosmologia} alt="Cosmologia" style={{ width: '100%', height: '100%', objectFit: 'fill', filter: 'drop-shadow(0 0 20px rgba(255,255,255,0.1))' }} />
+                <div 
+                    ref={containerCosmoRef}
+                    onMouseMove={handleCosmoDragMove}
+                    onMouseUp={handleCosmoDragEnd}
+                    onMouseLeave={handleCosmoDragEnd}
+                    onTouchMove={handleCosmoDragMove}
+                    onTouchEnd={handleCosmoDragEnd}
+                    style={{ position: 'relative', width: '1000px', height: '600px', borderRadius: '15px', overflow: 'hidden', marginTop: '50px' }} 
+                >
+                    <img src={mapaCosmologia} alt="Cosmologia" style={{ width: '100%', height: '100%', objectFit: 'fill', filter: 'drop-shadow(0 0 20px rgba(255,255,255,0.1))', pointerEvents: 'none' }} />
 
                     {zonasCosmologia.map((zona, index) => (
                         <div 
                             key={`${zona.nome}-${index}`}
-                            onMouseEnter={() => setPlanoHover(zona.nome)}
-                            onMouseLeave={() => setPlanoHover(null)}
+                            onMouseEnter={() => !modoAjuste && setPlanoHover(zona.nome)}
+                            onMouseLeave={() => !modoAjuste && setPlanoHover(null)}
+                            onMouseDown={(e) => handleCosmoDragStart(e, index)}
+                            onTouchStart={(e) => handleCosmoDragStart(e, index)}
                             onClick={() => {
+                                if (modoAjuste) return;
                                 if (zona.isPlanet) setNivelVisao('globo');
                                 else alert(`Viajando para: ${zona.nome}`);
                             }}
                             style={{
                                 position: 'absolute', top: zona.top, left: zona.left, width: zona.width, height: zona.height,
-                                borderRadius: zona.isCircle ? '50%' : '15px', cursor: 'pointer', zIndex: zona.zIndex || 10,
-                                border: planoHover === zona.nome ? `2px solid ${zona.cor}` : '2px solid transparent',
-                                boxShadow: planoHover === zona.nome ? `0 0 25px ${zona.cor}, inset 0 0 15px ${zona.cor}` : 'none',
-                                background: planoHover === zona.nome ? 'rgba(255,255,255,0.08)' : 'transparent',
-                                transition: '0.2s ease-in-out'
+                                borderRadius: zona.isCircle ? '50%' : '15px', 
+                                cursor: modoAjuste ? (dragIndexCosmo === index ? 'grabbing' : 'grab') : 'pointer', 
+                                zIndex: zona.zIndex || 10,
+                                border: modoAjuste || planoHover === zona.nome ? `2px dashed ${zona.cor}` : '2px solid transparent',
+                                boxShadow: modoAjuste || planoHover === zona.nome ? `0 0 15px ${zona.cor}, inset 0 0 10px ${zona.cor}` : 'none',
+                                background: modoAjuste ? 'rgba(255,255,255,0.2)' : (planoHover === zona.nome ? 'rgba(255,255,255,0.15)' : 'transparent'), 
+                                transition: dragIndexCosmo === index ? 'none' : '0.2s ease-in-out'
                             }}
                         />
                     ))}
                 </div>
                 
-                <div style={{ position: 'absolute', bottom: '30px', textAlign: 'center', pointerEvents: 'none', zIndex: 50 }}>
-                    <h1 style={{ color: '#fff', margin: 0, letterSpacing: '6px', textTransform: 'uppercase', fontSize: '1.4em', textShadow: '0 0 20px rgba(255,255,255,0.8)' }}>
-                        {planoHover || 'Atlas Multiversal'}
-                    </h1>
-                </div>
+                {!modoAjuste && (
+                    <div style={{ position: 'absolute', bottom: '30px', textAlign: 'center', pointerEvents: 'none', zIndex: 50 }}>
+                        <h1 style={{ color: '#fff', margin: 0, letterSpacing: '6px', textTransform: 'uppercase', fontSize: '1.4em', textShadow: '0 0 20px rgba(255,255,255,0.8)' }}>
+                            {planoHover || 'Atlas Multiversal'}
+                        </h1>
+                    </div>
+                )}
                 
                 <style dangerouslySetInnerHTML={{__html: `
                     .fade-in { animation: fadeIn 0.8s ease-in-out; }
@@ -256,7 +346,7 @@ export default function MapaMundi({ children }) {
             <div 
                 className="fade-in" 
                 style={{ width: '100%', height: '85vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#050508', borderRadius: '10px', border: '1px solid #0088ff', position: 'relative', overflow: 'hidden' }}
-                onMouseMove={handleDragMove} onMouseUp={handleDragEnd} onMouseLeave={handleDragEnd} onTouchMove={handleDragMove} onTouchEnd={handleDragEnd}
+                onMouseMove={handleGloboDragMove} onMouseUp={handleGloboDragEnd} onMouseLeave={handleGloboDragEnd} onTouchMove={handleGloboDragMove} onTouchEnd={handleGloboDragEnd}
             >
                 <div style={{ position: 'absolute', top: '20px', left: '20px', display: 'flex', gap: '10px', zIndex: 30 }}>
                     <button onClick={() => setNivelVisao('sistema_solar')} style={{ background: 'transparent', border: '1px solid #00ffcc', color: '#00ffcc', padding: '8px 18px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>⬅ ESPAÇO FÍSICO</button>
@@ -270,7 +360,7 @@ export default function MapaMundi({ children }) {
                 <div style={{ position: 'relative', width: '350px', height: '350px', perspective: '1000px' }}>
                     <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', backgroundColor: '#000814', border: '2px solid #0088ff', pointerEvents: 'none', boxShadow: '0 0 50px rgba(0, 136, 255, 0.2)' }}></div>
                     <div 
-                        onMouseDown={handleDragStart} onTouchStart={handleDragStart}
+                        onMouseDown={handleGloboDragStart} onTouchStart={handleGloboDragStart}
                         style={{ position: 'absolute', inset: 0, transformStyle: 'preserve-3d', transform: `rotateX(${rotacaoGlobo.y}deg) rotateY(${rotacaoGlobo.x}deg)`, cursor: isDragging ? 'grabbing' : 'grab', transition: isDragging ? 'none' : 'transform 0.5s ease-out' }}
                     >
                         <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(0,255,204,0.15)', transform: 'rotateX(90deg)' }}></div>
