@@ -33,26 +33,25 @@ export default function MapaMundi({ children }) {
 
     const [modoAjuste, setModoAjuste] = useState(false);
     const [dragIndexCosmo, setDragIndexCosmo] = useState(null);
-    const [dragIdSolar, setDragIdSolar] = useState(null);
     const containerRef = useRef(null);
     const [codigoExportado, setCodigoExportado] = useState(null);
 
-    // 🎥 CÂMERA 3D DO SISTEMA SOLAR 
-    const [camRotX, setCamRotX] = useState(65); 
+    // 🎥 CÂMERA 3D (Começa com zoom bem afastado para ver os 4000px!)
+    const [camRotX, setCamRotX] = useState(60); 
     const [camRotY, setCamRotY] = useState(0);  
-    const [camZoom, setCamZoom] = useState(0.35); // Zoom afastado para caber o novo universo colossal
+    const [camZoom, setCamZoom] = useState(0.35); 
     const [isDraggingCam, setIsDraggingCam] = useState(false);
     const camDragStart = useRef({ x: 0, y: 0 });
 
-    // 🛣️ FAIXAS ESCALA COLOSSAL (3000px de Universo - Matemática Absoluta)
+    // 🛣️ MATEMÁTICA PURA DAS FAIXAS (ESCALA COLOSSAL - 4000x2000)
     const caminhosOrbita = [
-        "M 1500 750 C 1950 150, 2700 300, 2700 750 C 2700 1200, 1950 1350, 1500 750 C 1050 150, 300 300, 300 750 C 300 1200, 1050 1350, 1500 750 Z", // Faixa 0 (Terra 0)
-        "M 1500 750 C 1995 90, 2775 240, 2775 750 C 2775 1260, 1995 1410, 1500 750 C 1005 90, 225 240, 225 750 C 225 1260, 1005 1410, 1500 750 Z", // Faixa 1 (Vegeta)
-        "M 1500 750 C 1905 210, 2625 360, 2625 750 C 2625 1140, 1905 1290, 1500 750 C 1095 210, 375 360, 375 750 C 375 1140, 1095 1290, 1500 750 Z", // Faixa 2 (Namekusei)
-        "M 1500 750 C 2040 30, 2850 180, 2850 750 C 2850 1320, 2040 1470, 1500 750 C 960 30, 150 180, 150 750 C 150 1320, 960 1470, 1500 750 Z" // Faixa 3 (Desconhecido)
+        "M 2000 1000 C 2800 -200, 4000 200, 4000 1000 C 4000 1800, 2800 2200, 2000 1000 C 1200 -200, 0 200, 0 1000 C 0 1800, 1200 2200, 2000 1000 Z", // Faixa 0 (Terra 0)
+        "M 2000 1000 C 2900 -300, 4200 100, 4200 1000 C 4200 1900, 2900 2300, 2000 1000 C 1100 -300, -200 100, -200 1000 C -200 1900, 1100 2300, 2000 1000 Z", // Faixa 1 (Vegeta - Externa)
+        "M 2000 1000 C 2700 -100, 3800 300, 3800 1000 C 3800 1700, 2700 2100, 2000 1000 C 1300 -100, 200 300, 200 1000 C 200 1700, 1300 2100, 2000 1000 Z", // Faixa 2 (Namekusei - Interna)
+        "M 2000 1000 C 3000 -400, 4400 0, 4400 1000 C 4400 2000, 3000 2400, 2000 1000 C 1000 -400, -400 0, -400 1000 C -400 2000, 1000 2400, 2000 1000 Z"  // Faixa 3 (Desconhecido - Mais Externa)
     ];
 
-    // 📍 VARIÁVEL 1: POSIÇÕES DA COSMOLOGIA
+    // 📍 VARIÁVEL: POSIÇÕES DA COSMOLOGIA (Calibrada)
     const [zonasCosmologia, setZonasCosmologia] = useState([
         { "nome": "Terra 0 (Runeterra)", "top": "44.3%", "left": "49.3%", "width": "10%", "height": "16.6%", "cor": "#ffffff", "isCircle": true, "isPlanet": true },
         { "nome": "Plano da Ordem", "top": "40.6%", "left": "13.2%", "width": "13%", "height": "22%", "cor": "#DDA0DD", "isCircle": true },
@@ -69,16 +68,7 @@ export default function MapaMundi({ children }) {
         { "nome": "Plano do Caos Inferior", "top": "84%", "left": "8%", "width": "22%", "height": "10%", "cor": "#800000", "isCircle": false }
     ]);
 
-    // 📍 VARIÁVEL 2: POSIÇÕES DO SISTEMA SOLAR (Estrelas centralizadas nos loops)
-    const [elementosSolar, setElementosSolar] = useState([
-        { "id": "orichalcosA", "tipo": "estrela", "nome": "Orichalcos A", "top": "50%", "left": "30%", "size": "320px" },
-        { "id": "orichalcosB", "tipo": "estrela", "nome": "Orichalcos B", "top": "50%", "left": "70%", "size": "320px" },
-        { "id": "vegeta", "tipo": "planeta", "nome": "Vegeta", "color1": "#ff6666", "color2": "#990000", "shadow": "rgba(255,0,0,0.5)", "size": "65px", "tempo": "40s", "delay": "-5s", "pathIdx": 1 },
-        { "id": "namekusei", "tipo": "planeta", "nome": "Namekusei", "color1": "#66ff66", "color2": "#006600", "shadow": "rgba(0,255,0,0.5)", "size": "80px", "tempo": "50s", "delay": "-20s", "pathIdx": 2 },
-        { "id": "desconhecido", "tipo": "planeta", "nome": "Desconhecido", "color1": "#66b3ff", "color2": "#000066", "shadow": "rgba(0,100,255,0.5)", "size": "55px", "tempo": "60s", "delay": "-45s", "pathIdx": 3 },
-        { "id": "terra0", "tipo": "terra", "nome": "Terra 0", "size": "150px", "tempo": "30s", "delay": "0s", "pathIdx": 0 }
-    ]);
-
+    // 🔥 MÁSCARAS DE RUNETERRA
     const posicoesPings = [
         { nome: 'Freljord', img: gabaritoFreljord, top: '15%', left: '28%', cor: '#00b5e2' },
         { nome: 'Demacia', img: gabaritoDemacia, top: '40%', left: '21%', cor: '#d3c29e' },
@@ -109,8 +99,8 @@ export default function MapaMundi({ children }) {
         const diffX = clientX - camDragStart.current.x;
         const diffY = clientY - camDragStart.current.y;
         
-        setCamRotY(prev => prev + diffX * 0.5);
-        setCamRotX(prev => Math.max(10, Math.min(85, prev - diffY * 0.5))); 
+        setCamRotY(prev => prev + diffX * 0.4);
+        setCamRotX(prev => Math.max(10, Math.min(85, prev - diffY * 0.4))); 
         
         camDragStart.current = { x: clientX, y: clientY };
     };
@@ -120,7 +110,8 @@ export default function MapaMundi({ children }) {
     const handleEspacoZoom = (e) => {
         if (nivelVisao !== 'sistema_solar') return;
         let novoZoom = camZoom - e.deltaY * 0.001;
-        setCamZoom(Math.max(0.1, Math.min(3.5, novoZoom))); 
+        // Permite afastar bastante e aproximar muito!
+        setCamZoom(Math.max(0.15, Math.min(4.0, novoZoom))); 
     };
 
     // CONTROLES GLOBO
@@ -141,17 +132,15 @@ export default function MapaMundi({ children }) {
         else if (nivelVisao === 'cosmologia') setNivelVisao('sistema_solar');
     };
 
-    // 🛠️ FUNÇÕES DO DRAG AND DROP (MODO DEUS)
-    const handleDragStart = (e, index, isSolar = false) => {
+    // 🛠️ MODO DEUS (Apenas para a Cosmologia agora)
+    const handleDragStart = (e, index) => {
         if (!modoAjuste) return;
         e.stopPropagation();
-        if (isSolar) setDragIdSolar(index);
-        else setDragIndexCosmo(index);
+        setDragIndexCosmo(index);
     };
 
     const handleDragMove = (e) => {
-        if (!modoAjuste || !containerRef.current) return;
-        if (dragIndexCosmo === null && dragIdSolar === null) return;
+        if (!modoAjuste || !containerRef.current || dragIndexCosmo === null) return;
         
         const rect = containerRef.current.getBoundingClientRect();
         let clientX = e.clientX || (e.touches && e.touches[0].clientX);
@@ -161,31 +150,20 @@ export default function MapaMundi({ children }) {
         let xPercent = ((clientX - rect.left) / rect.width) * 100;
         let yPercent = ((clientY - rect.top) / rect.height) * 100;
 
-        if (dragIndexCosmo !== null) {
-            const w = parseFloat(zonasCosmologia[dragIndexCosmo].width);
-            const h = parseFloat(zonasCosmologia[dragIndexCosmo].height);
-            setZonasCosmologia(prev => {
-                const novas = [...prev];
-                novas[dragIndexCosmo] = { ...novas[dragIndexCosmo], top: `${(yPercent - h/2).toFixed(1)}%`, left: `${(xPercent - w/2).toFixed(1)}%` };
-                return novas;
-            });
-        } else if (dragIdSolar !== null) {
-            const elIndex = elementosSolar.findIndex(el => el.id === dragIdSolar);
-            if (elIndex === -1) return;
-            setElementosSolar(prev => {
-                const novas = [...prev];
-                novas[elIndex] = { ...novas[elIndex], top: `${yPercent.toFixed(1)}%`, left: `${xPercent.toFixed(1)}%` };
-                return novas;
-            });
-        }
+        const w = parseFloat(zonasCosmologia[dragIndexCosmo].width);
+        const h = parseFloat(zonasCosmologia[dragIndexCosmo].height);
+        setZonasCosmologia(prev => {
+            const novas = [...prev];
+            novas[dragIndexCosmo] = { ...novas[dragIndexCosmo], top: `${(yPercent - h/2).toFixed(1)}%`, left: `${(xPercent - w/2).toFixed(1)}%` };
+            return novas;
+        });
     };
 
-    const handleDragEnd = () => { setDragIndexCosmo(null); setDragIdSolar(null); };
+    const handleDragEnd = () => { setDragIndexCosmo(null); };
 
     const gerarCodigoExportacao = () => {
         const codigoCosmo = JSON.stringify(zonasCosmologia, null, 4);
-        const codigoSolar = JSON.stringify(elementosSolar, null, 4);
-        setCodigoExportado(`// COPIE E SUBSTITUA A 'zonasCosmologia':\nconst [zonasCosmologia, setZonasCosmologia] = useState(${codigoCosmo});\n\n// ======================================\n\n// COPIE E SUBSTITUA A 'elementosSolar':\nconst [elementosSolar, setElementosSolar] = useState(${codigoSolar});`);
+        setCodigoExportado(`// COPIE E SUBSTITUA A 'zonasCosmologia':\nconst [zonasCosmologia, setZonasCosmologia] = useState(${codigoCosmo});`);
     };
 
     const PainelModoDeus = () => (
@@ -200,7 +178,7 @@ export default function MapaMundi({ children }) {
                     </button>
                 )}
             </div>
-            {modoAjuste && <span style={{ color: '#aaa', fontSize: '11px', textAlign: 'center' }}>(As estrelas Orichalcos já vêm alinhadas de fábrica, mas você pode arrastar se quiser.)</span>}
+            {modoAjuste && <span style={{ color: '#aaa', fontSize: '11px', textAlign: 'center' }}>(Arraste os planos e as dimensões.)</span>}
         </div>
     );
 
@@ -220,17 +198,13 @@ export default function MapaMundi({ children }) {
     };
 
     // ==========================================
-    // 🌌 TELA 0: SISTEMA SOLAR CÂMERA 3D PURA
+    // 🌌 TELA 0: SISTEMA SOLAR (ESCALA COLOSSAL 4000x2000)
     // ==========================================
     if (nivelVisao === 'sistema_solar') {
-        const billboardTransform = `rotateY(${-camRotY}deg) rotateX(${-camRotX}deg)`;
-
         return (
             <div className="fade-in" style={{ width: '100%', height: '85vh', background: 'radial-gradient(circle at center, #0a0a1a 0%, #000000 100%)', position: 'relative', overflow: 'hidden', borderRadius: '15px', border: '1px solid #333' }}>
                 <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(2px 2px at 20px 30px, #ffffff, rgba(0,0,0,0)), radial-gradient(2px 2px at 40px 70px, #ffffff, rgba(0,0,0,0)), radial-gradient(2px 2px at 90px 40px, #ffffff, rgba(0,0,0,0))', backgroundRepeat: 'repeat', backgroundSize: '200px 200px', opacity: 0.3 }} />
                 
-                <PainelModoDeus />
-
                 <button onClick={() => setNivelVisao('cosmologia')} style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(72, 61, 139, 0.4)', border: '1px solid #DDA0DD', color: '#DDA0DD', padding: '10px 25px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', zIndex: 100, letterSpacing: '2px', boxShadow: '0 0 15px rgba(221, 160, 221, 0.3)', backdropFilter: 'blur(5px)' }}>🌌 REVELAR DIMENSÕES</button>
 
                 <div style={{ position: 'absolute', top: '20px', left: '20px', zIndex: 10, pointerEvents: 'none' }}>
@@ -240,151 +214,155 @@ export default function MapaMundi({ children }) {
                     <p style={{ color: '#ffcc00', fontSize: '0.75em', margin: '2px 0 0 0' }}>🔍 Use o Scroll/Pinch para aplicar Zoom</p>
                 </div>
 
-                {/* VIEWPORT 3D DEFINITIVO */}
                 <div 
                     onWheel={handleEspacoZoom} 
-                    style={{ position: 'absolute', inset: 0, perspective: '3000px', touchAction: 'none', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+                    style={{ position: 'absolute', inset: 0, perspective: '2000px', touchAction: 'none', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+                    onMouseDown={handleEspacoMouseDown} onMouseMove={handleEspacoMouseMove} onMouseUp={handleEspacoMouseUp} onMouseLeave={handleEspacoMouseUp} 
+                    onTouchStart={handleEspacoMouseDown} onTouchMove={handleEspacoMouseMove} onTouchEnd={handleEspacoMouseUp}
                 >
-                    {/* CÂMERA MÓVEL */}
-                    <div 
-                        ref={containerRef} 
-                        onMouseDown={handleEspacoMouseDown} onMouseMove={(e) => { handleEspacoMouseMove(e); handleDragMove(e); }} onMouseUp={(e) => { handleEspacoMouseUp(e); handleDragEnd(e); }} onMouseLeave={(e) => { handleEspacoMouseUp(e); handleDragEnd(e); }} 
-                        onTouchStart={handleEspacoMouseDown} onTouchMove={(e) => { handleEspacoMouseMove(e); handleDragMove(e); }} onTouchEnd={(e) => { handleEspacoMouseUp(e); handleDragEnd(e); }}
-                        style={{ 
-                            position: 'relative', width: '3000px', height: '1500px', 
-                            transformStyle: 'preserve-3d', 
-                            transform: `scale(${camZoom}) rotateX(${camRotX}deg) rotateY(${camRotY}deg)`, 
-                            cursor: isDraggingCam ? 'grabbing' : (modoAjuste ? 'default' : 'grab'), 
-                            transition: isDraggingCam ? 'none' : 'transform 0.1s ease-out' 
-                        }}
-                    >
+                    <div style={{ position: 'relative', width: '4000px', height: '2000px', transformStyle: 'preserve-3d', transform: `scale(${camZoom}) rotateX(${camRotX}deg) rotateY(${camRotY}deg)`, cursor: isDraggingCam ? 'grabbing' : 'grab', transition: isDraggingCam ? 'none' : 'transform 0.1s ease-out' }}>
                         
-                        {/* RODOVIA CÓSMICA EM SVG COM OVERFLOW VISIBLE */}
-                        <svg viewBox="0 0 3000 1500" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 1, transformStyle: 'preserve-3d', overflow: 'visible' }}>
+                        {/* 🎨 O NOVO UNIVERSO COLOSSAL (SVG de 4000x2000) */}
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4000 2000" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', overflow: 'visible', pointerEvents: 'none' }}>
                             <defs>
+                                <radialGradient id="sol" cx="35%" cy="35%">
+                                    <stop offset="0%" stopColor="#ffffff" />
+                                    <stop offset="30%" stopColor="#ffcc00" />
+                                    <stop offset="100%" stopColor="#ff5500" />
+                                </radialGradient>
+                                <radialGradient id="vegeta" cx="35%" cy="35%">
+                                    <stop offset="0%" stopColor="#ff6666" />
+                                    <stop offset="100%" stopColor="#660000" />
+                                </radialGradient>
+                                <radialGradient id="namekusei" cx="35%" cy="35%">
+                                    <stop offset="0%" stopColor="#66ff66" />
+                                    <stop offset="100%" stopColor="#004400" />
+                                </radialGradient>
+                                <radialGradient id="desconhecido" cx="35%" cy="35%">
+                                    <stop offset="0%" stopColor="#66b3ff" />
+                                    <stop offset="100%" stopColor="#000044" />
+                                </radialGradient>
+                                <radialGradient id="terra0" cx="35%" cy="35%">
+                                    <stop offset="0%" stopColor="#4db8ff" />
+                                    <stop offset="100%" stopColor="#001133" />
+                                </radialGradient>
+                                <radialGradient id="maria" cx="35%" cy="35%">
+                                    <stop offset="0%" stopColor="#ffffff" />
+                                    <stop offset="100%" stopColor="#555555" />
+                                </radialGradient>
+                                <radialGradient id="rose" cx="35%" cy="35%">
+                                    <stop offset="0%" stopColor="#ffaaaa" />
+                                    <stop offset="100%" stopColor="#aa3333" />
+                                </radialGradient>
+                                <radialGradient id="sina" cx="35%" cy="35%">
+                                    <stop offset="0%" stopColor="#aaaaff" />
+                                    <stop offset="100%" stopColor="#4444aa" />
+                                </radialGradient>
+
                                 <filter id="glow"><feGaussianBlur stdDeviation="4" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                                <filter id="glow-sol"><feGaussianBlur stdDeviation="25" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
                             </defs>
+
+                            {/* 🛣️ TRILHAS (Matemática Colossal) */}
                             {caminhosOrbita.map((path, idx) => (
-                                <path 
-                                    key={idx} 
-                                    className="linha-orbita-animada"
-                                    d={path} 
-                                    fill="none" 
-                                    stroke={idx === 0 ? "rgba(255, 255, 255, 0.7)" : "rgba(255, 255, 255, 0.3)"} 
-                                    strokeWidth={idx === 0 ? "4" : "2"} 
-                                    strokeDasharray="20 35" 
-                                    filter="url(#glow)" 
-                                />
+                                <path key={`trilha-${idx}`} d={path} fill="none" stroke={idx === 0 ? "rgba(255, 255, 255, 0.6)" : "rgba(255, 255, 255, 0.2)"} strokeWidth={idx === 0 ? "6" : "4"} strokeDasharray="20 40" filter="url(#glow)" />
                             ))}
+
+                            {/* ⭐ ESTRELAS (Ancoradas nos focos: Left=800, Right=3200) */}
+                            <g style={{ transform: `translate(800px, 1000px) rotateX(${-camRotX}deg) rotateY(${-camRotY}deg)`, transformOrigin: '0 0' }}>
+                                <circle r="150" fill="url(#sol)" filter="url(#glow-sol)" />
+                            </g>
+                            <g style={{ transform: `translate(3200px, 1000px) rotateX(${-camRotX}deg) rotateY(${-camRotY}deg)`, transformOrigin: '0 0' }}>
+                                <circle r="150" fill="url(#sol)" filter="url(#glow-sol)" />
+                            </g>
+
+                            {/* 🌍 PLANETAS MÓVEIS */}
+                            <g>
+                                <animateMotion dur="40s" repeatCount="indefinite" path={caminhosOrbita[1]} begin="-5s" />
+                                <g style={{ transform: `rotateX(${-camRotX}deg) rotateY(${-camRotY}deg)`, transformOrigin: '0 0' }}>
+                                    <circle r="32.5" fill="url(#vegeta)" />
+                                    <text y="55" textAnchor="middle" fill="#ff6666" fontSize="18" fontWeight="bold" style={{textShadow: '0px 2px 5px black', pointerEvents: 'none'}}>VEGETA</text>
+                                </g>
+                            </g>
+
+                            <g>
+                                <animateMotion dur="50s" repeatCount="indefinite" path={caminhosOrbita[2]} begin="-20s" />
+                                <g style={{ transform: `rotateX(${-camRotX}deg) rotateY(${-camRotY}deg)`, transformOrigin: '0 0' }}>
+                                    <circle r="40" fill="url(#namekusei)" />
+                                    <text y="65" textAnchor="middle" fill="#66ff66" fontSize="18" fontWeight="bold" style={{textShadow: '0px 2px 5px black', pointerEvents: 'none'}}>NAMEKUSEI</text>
+                                </g>
+                            </g>
+
+                            <g>
+                                <animateMotion dur="60s" repeatCount="indefinite" path={caminhosOrbita[3]} begin="-45s" />
+                                <g style={{ transform: `rotateX(${-camRotX}deg) rotateY(${-camRotY}deg)`, transformOrigin: '0 0' }}>
+                                    <circle r="27.5" fill="url(#desconhecido)" />
+                                    <text y="50" textAnchor="middle" fill="#66b3ff" fontSize="18" fontWeight="bold" style={{textShadow: '0px 2px 5px black', pointerEvents: 'none'}}>DESCONHECIDO</text>
+                                </g>
+                            </g>
+
+                            {/* 🌍 TERRA 0 E AS LUAS 3D */}
+                            <g>
+                                <animateMotion dur="30s" repeatCount="indefinite" path={caminhosOrbita[0]} begin="0s" />
+                                <g style={{ transform: `rotateX(${-camRotX}deg) rotateY(${-camRotY}deg)`, transformOrigin: '0 0' }}>
+                                    <circle r="75" fill="url(#terra0)" onClick={() => setNivelVisao('globo')} style={{ cursor: 'pointer', pointerEvents: 'auto' }} />
+                                    
+                                    {/* O Anel das Luas Inclinado */}
+                                    <g style={{ transform: 'rotateX(75deg)', transformOrigin: '0 0' }}>
+                                        <circle r="180" fill="none" stroke="rgba(255,255,255,0.4)" strokeDasharray="8 15" strokeWidth="4" />
+                                        <g className="spin-ring">
+                                            
+                                            {/* Maria */}
+                                            <g style={{ transform: 'rotate(0deg) translate(0, -180px)', transformOrigin: '0 0' }}>
+                                                <g className="counter-spin-ring">
+                                                    <g style={{ transform: 'rotateX(-75deg)', transformOrigin: '0 0' }}>
+                                                        <circle r="10" fill="url(#maria)" />
+                                                        <text y="-20" textAnchor="middle" fill="#fff" fontSize="16" fontWeight="bold" style={{textShadow: '0px 2px 5px black'}}>Maria</text>
+                                                    </g>
+                                                </g>
+                                            </g>
+
+                                            {/* Rose */}
+                                            <g style={{ transform: 'rotate(120deg) translate(0, -180px)', transformOrigin: '0 0' }}>
+                                                <g className="counter-spin-ring">
+                                                    <g style={{ transform: 'rotateX(-75deg)', transformOrigin: '0 0' }}>
+                                                        <circle r="9" fill="url(#rose)" />
+                                                        <text y="-20" textAnchor="middle" fill="#fff" fontSize="16" fontWeight="bold" style={{textShadow: '0px 2px 5px black'}}>Rose</text>
+                                                    </g>
+                                                </g>
+                                            </g>
+
+                                            {/* Sina */}
+                                            <g style={{ transform: 'rotate(240deg) translate(0, -180px)', transformOrigin: '0 0' }}>
+                                                <g className="counter-spin-ring">
+                                                    <g style={{ transform: 'rotateX(-75deg)', transformOrigin: '0 0' }}>
+                                                        <circle r="13" fill="url(#sina)" />
+                                                        <text y="-20" textAnchor="middle" fill="#fff" fontSize="16" fontWeight="bold" style={{textShadow: '0px 2px 5px black'}}>Sina</text>
+                                                    </g>
+                                                </g>
+                                            </g>
+
+                                        </g>
+                                    </g>
+                                    
+                                    <text y="120" textAnchor="middle" fill="#4db8ff" fontSize="26" fontWeight="bold" letterSpacing="4px" style={{textShadow: '0px 3px 8px black', pointerEvents: 'none'}}>TERRA 0</text>
+                                </g>
+                            </g>
                         </svg>
-
-                        {/* PLANETAS E ESTRELAS EM HTML 3D PURO */}
-                        {elementosSolar.map(el => {
-                            if (el.tipo === 'estrela') {
-                                // O transform 'translate(-50%, -50%)' ancora o sol exatamenteno ponto central dele!
-                                return (
-                                    <div key={el.id} style={{ position: 'absolute', top: el.top, left: el.left, width: 0, height: 0, zIndex: 5, transformStyle: 'preserve-3d' }}>
-                                        <div onMouseDown={(e) => handleDragStart(e, el.id, true)} onTouchStart={(e) => handleDragStart(e, el.id, true)} style={{ position: 'absolute', width: el.size, height: el.size, transform: `translate(-50%, -50%) ${billboardTransform}`, transformStyle: 'preserve-3d', pointerEvents: 'auto', border: modoAjuste ? '2px dashed #fff' : 'none', borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #ffffff 0%, #ffcc00 40%, #ff5500 100%)', boxShadow: '0 0 150px #ffcc00, 0 0 250px #ff5500, inset -30px -30px 60px rgba(255,50,0,0.8)' }}>
-                                        </div>
-                                    </div>
-                                );
-                            }
-                            
-                            if (el.tipo === 'planeta') {
-                                return (
-                                    <div key={el.id} style={{ position: 'absolute', top: 0, left: 0, width: el.size, height: el.size, zIndex: 10, offsetPath: `path("${caminhosOrbita[el.pathIdx || 0]}")`, offsetRotate: '0deg', animation: `orbitaSempre ${el.tempo} linear infinite`, animationDelay: el.delay, transformStyle: 'preserve-3d', pointerEvents: 'auto' }}>
-                                        <div style={{ width: '100%', height: '100%', transform: billboardTransform, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', transformStyle: 'preserve-3d' }}>
-                                            <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: `radial-gradient(circle at 30% 30%, ${el.color1}, ${el.color2})`, boxShadow: `inset -20px -20px 30px rgba(0,0,0,0.9), inset 8px 8px 20px rgba(255,255,255,0.4), 0 0 30px ${el.shadow}`, zIndex: 10, cursor: 'pointer' }} onClick={() => alert(`Planeta ${el.nome}\nAcesso restrito.`)} />
-                                            <div style={{ position: 'absolute', width: '140%', height: '140%', borderRadius: '50%', border: '2px dashed rgba(255,255,255,0.2)', pointerEvents: 'none', zIndex: 5, transform: 'rotateX(65deg)' }}></div>
-                                            <span style={{ color: el.color1, position: 'absolute', bottom: '-40px', fontSize: '16px', fontWeight: 'bold', letterSpacing: '2px', textTransform: 'uppercase', whiteSpace: 'nowrap', textShadow: '0 2px 4px rgba(0,0,0,0.9), 0 0 10px rgba(255,255,255,0.5)' }}>{el.nome}</span>
-                                        </div>
-                                    </div>
-                                );
-                            }
-
-                            if (el.tipo === 'terra') {
-                                return (
-                                    <div key={el.id} style={{ position: 'absolute', top: 0, left: 0, width: el.size, height: el.size, zIndex: 20, offsetPath: `path("${caminhosOrbita[el.pathIdx || 0]}")`, offsetRotate: '0deg', animation: `orbitaSempre ${el.tempo} linear infinite`, animationDelay: el.delay, transformStyle: 'preserve-3d', pointerEvents: 'auto' }}>
-                                        <div style={{ width: '100%', height: '100%', transform: billboardTransform, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', transformStyle: 'preserve-3d' }}>
-                                            
-                                            <div onClick={() => setNivelVisao('globo')} style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #4db8ff, #002244)', boxShadow: 'inset -30px -30px 50px rgba(0,0,0,0.9), inset 12px 12px 25px rgba(255,255,255,0.4), 0 0 60px rgba(0,150,255,0.6)', border: '1px solid rgba(255,255,255,0.2)', zIndex: 10, cursor: 'pointer' }} />
-                                            
-                                            <div style={{ position: 'absolute', width: '220%', height: '220%', transform: 'rotateX(75deg)', pointerEvents: 'none', zIndex: 5, transformStyle: 'preserve-3d' }}>
-                                                <div className="moon-orbit-flat" style={{ width: '100%', height: '100%', borderRadius: '50%', border: '3px dashed rgba(255,255,255,0.25)', position: 'relative', transformStyle: 'preserve-3d' }}>
-                                                    
-                                                    {/* MARIA */}
-                                                    <div style={{ position: 'absolute', top: '0%', left: '50%', width: 0, height: 0, transformStyle: 'preserve-3d' }}>
-                                                        <div className="moon-sphere" style={{ width: '20px', height: '20px', background: 'radial-gradient(circle at 35% 35%, #ffffff 0%, #777777 50%, #000000 100%)', borderRadius: '50%', boxShadow: 'inset -5px -5px 10px rgba(0,0,0,0.9), 0 0 15px rgba(255,255,255,0.6)' }}>
-                                                            <span className="moon-text" style={{position:'absolute', top: '-25px', left:'-10px', fontSize:'14px', fontWeight: 'bold', color:'#fff', textShadow: '0 0 8px #000'}}>Maria</span>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* ROSE */}
-                                                    <div style={{ position: 'absolute', top: '85%', left: '85%', width: 0, height: 0, transformStyle: 'preserve-3d' }}>
-                                                        <div className="moon-sphere" style={{ width: '18px', height: '18px', background: 'radial-gradient(circle at 35% 35%, #ffaaaa 0%, #aa3333 50%, #220000 100%)', borderRadius: '50%', boxShadow: 'inset -5px -5px 10px rgba(0,0,0,0.9), 0 0 15px rgba(255,100,100,0.6)' }}>
-                                                            <span className="moon-text" style={{position:'absolute', top: '-25px', right:'-5px', fontSize:'14px', fontWeight: 'bold', color:'#fff', textShadow: '0 0 8px #000'}}>Rose</span>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* SINA */}
-                                                    <div style={{ position: 'absolute', top: '85%', left: '15%', width: 0, height: 0, transformStyle: 'preserve-3d' }}>
-                                                        <div className="moon-sphere" style={{ width: '24px', height: '24px', background: 'radial-gradient(circle at 35% 35%, #aaaaff 0%, #4444aa 50%, #000022 100%)', borderRadius: '50%', boxShadow: 'inset -6px -6px 12px rgba(0,0,0,0.9), 0 0 15px rgba(100,150,255,0.6)' }}>
-                                                            <span className="moon-text" style={{position:'absolute', top: '-25px', left:'-5px', fontSize:'14px', fontWeight: 'bold', color:'#fff', textShadow: '0 0 8px #000'}}>Sina</span>
-                                                        </div>
-                                                    </div>
-
-                                                </div>
-                                            </div>
-                                            
-                                            <span style={{ color: '#4db8ff', position: 'absolute', bottom: '-60px', fontSize: '22px', fontWeight: 'bold', letterSpacing: '5px', textTransform: 'uppercase', textShadow: '0 2px 4px rgba(0,0,0,0.9), 0 0 15px rgba(0,150,255,1)', whiteSpace: 'nowrap', pointerEvents: 'none' }}>{el.nome}</span>
-                                        </div>
-                                    </div>
-                                );
-                            }
-                            return null;
-                        })}
                     </div>
                 </div>
-
-                {codigoExportado && (
-                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 200, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                        <div style={{ background: '#111', padding: '20px', borderRadius: '10px', width: '800px', border: '2px solid #00cc66' }}>
-                            <h2 style={{ color: '#00cc66', marginTop: 0 }}>✅ Pronto! Substitua seu código por este:</h2>
-                            <textarea readOnly value={codigoExportado} style={{ width: '100%', height: '400px', background: '#000', color: '#00ffcc', padding: '10px', fontFamily: 'monospace', fontSize: '12px' }} />
-                            <button onClick={() => setCodigoExportado(null)} style={{ background: '#ff4444', color: '#fff', border: 'none', padding: '10px 20px', marginTop: '10px', cursor: 'pointer', fontWeight: 'bold' }}>FECHAR E VOLTAR</button>
-                        </div>
-                    </div>
-                )}
                 
                 <style dangerouslySetInnerHTML={{__html: `
                     .fade-in { animation: fadeIn 0.8s ease-in-out; }
                     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
                     
-                    /* O anel das luas gira 360 no eixo Z */
-                    .moon-orbit-flat { animation: spinFlat 15s linear infinite; }
-                    @keyframes spinFlat { 100% { transform: rotateZ(360deg); } }
+                    /* Gira o Anel Base 360 Graus */
+                    .spin-ring { animation: spin 20s linear infinite; transform-origin: 0 0; }
+                    @keyframes spin { 100% { transform: rotate(360deg); } }
                     
-                    /* A lua gira -360 no eixo Z e desfaz os 75 graus pra sempre encarar a tela! */
-                    .moon-sphere { 
-                        position: absolute; 
-                        transform-style: preserve-3d;
-                        animation: standUpMoon 15s linear infinite; 
-                    }
-                    @keyframes standUpMoon {
-                        0% { transform: translate(-50%, -50%) rotateZ(0deg) rotateX(-75deg); }
-                        100% { transform: translate(-50%, -50%) rotateZ(-360deg) rotateX(-75deg); }
-                    }
-
-                    .linha-orbita-animada { animation: fluxoEnergia 2s linear infinite; }
-                    @keyframes fluxoEnergia {
-                        from { stroke-dashoffset: 40; }
-                        to { stroke-dashoffset: 0; }
-                    }
-
-                    @keyframes orbitaSempre {
-                        0% { offset-distance: 0%; }
-                        100% { offset-distance: 100%; }
-                    }
+                    /* Gira a Lua pra trás (-360 Graus) pra ela não capotar de cabeça pra baixo */
+                    .counter-spin-ring { animation: counterSpin 20s linear infinite; transform-origin: 0 0; }
+                    @keyframes counterSpin { 100% { transform: rotate(-360deg); } }
                 `}} />
             </div>
         );
@@ -407,8 +385,8 @@ export default function MapaMundi({ children }) {
                             key={`${zona.nome}-${index}`}
                             onMouseEnter={() => !modoAjuste && setPlanoHover(zona.nome)}
                             onMouseLeave={() => !modoAjuste && setPlanoHover(null)}
-                            onMouseDown={(e) => handleDragStart(e, index, false)}
-                            onTouchStart={(e) => handleDragStart(e, index, false)}
+                            onMouseDown={(e) => handleDragStart(e, index)}
+                            onTouchStart={(e) => handleDragStart(e, index)}
                             onClick={() => { if (!modoAjuste) { if (zona.isPlanet) setNivelVisao('globo'); else alert(`Viajando para: ${zona.nome}`); } }}
                             style={{
                                 position: 'absolute', top: zona.top, left: zona.left, width: zona.width, height: zona.height,
