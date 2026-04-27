@@ -17,11 +17,9 @@ import gabaritoIonia from '../../assets/gabarito-ionia.png';
 import mapaCosmologia from '../../assets/mapa-cosmologia.png';
 
 export default function MapaMundi({ children }) {
-    // ESTADOS GERAIS
     const [nivelVisao, setNivelVisao] = useState('cosmologia'); 
     const [localAtual, setLocalAtual] = useState({ continente: null, reino: null, mapaId: null, plano: 'Material' });
 
-    // ESTADOS DE GERENCIAMENTO DE MAPAS
     const [mapasSalvos, setMapasSalvos] = useState({
         'Freljord': ['Acampamento Glacinata', 'Passe da Montanha'],
         'Demacia': ['Grande Praça', 'Posto Avançado'],
@@ -32,16 +30,13 @@ export default function MapaMundi({ children }) {
     const [modoEdicaoMapa, setModoEdicaoMapa] = useState(false);
     const [urlInput, setUrlInput] = useState('');
 
-    // ESTADOS VISUAIS (HOVER)
     const [reinoHover, setReinoHover] = useState(null); 
     const [planoHover, setPlanoHover] = useState(null);
     
-    // GLOBO 3D
     const [rotacaoGlobo, setRotacaoGlobo] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
     const dragStart = useRef({ x: 0, y: 0 });
 
-    // 📍 OS PINGS DE RUNETERRA 📍
     const posicoesPings = [
         { nome: 'Freljord', img: gabaritoFreljord, top: '15%', left: '28%', cor: '#00b5e2' },
         { nome: 'Demacia', img: gabaritoDemacia, top: '40%', left: '21%', cor: '#d3c29e' },
@@ -56,26 +51,24 @@ export default function MapaMundi({ children }) {
     ];
 
     // 🌌 ZONAS DE INTERAÇÃO DA COSMOLOGIA 🌌
-    // Tudo movido "em bloco" mais para a esquerda! 
-    // Astral colocado no local correto à direita.
+    // TODOS empurrados agressivamente 10% a mais para a esquerda!
     const zonasCosmologia = [
-        { nome: 'Céus', top: '7%', left: '42%', width: '13%', height: '18%', cor: '#FCE883', isCircle: true },
-        { nome: 'Inferno', top: '78%', left: '42%', width: '15%', height: '14%', cor: '#FF4500', isCircle: false },
-        { nome: 'Plano do Vento', top: '27%', left: '28%', width: '13%', height: '18%', cor: '#2E8B57', isCircle: true },
-        { nome: 'Plano do Fogo', top: '55%', left: '28%', width: '13%', height: '18%', cor: '#DC143C', isCircle: true },
-        { nome: 'Plano da Água', top: '27%', left: '55%', width: '13%', height: '18%', cor: '#4169E1', isCircle: true },
-        { nome: 'Plano da Terra', top: '55%', left: '55%', width: '13%', height: '18%', cor: '#8B4513', isCircle: true },
-        { nome: 'Plano da Ordem', top: '40%', left: '8%', width: '11%', height: '20%', cor: '#DDA0DD', isCircle: true },
-        { nome: 'Plano Astral', top: '40%', left: '74%', width: '15%', height: '20%', cor: '#483D8B', isCircle: true },
-        { nome: 'Plano das Fadas', top: '31.5%', left: '44.5%', width: '7%', height: '10%', cor: '#32CD32', isCircle: true },
-        { nome: 'Plano do Éter', top: '59.5%', left: '44.5%', width: '7%', height: '10%', cor: '#9400D3', isCircle: true },
+        { nome: 'Céus', top: '7%', left: '32%', width: '13%', height: '18%', cor: '#FCE883', isCircle: true },
+        { nome: 'Inferno', top: '78%', left: '32%', width: '15%', height: '14%', cor: '#FF4500', isCircle: false },
+        { nome: 'Plano do Vento', top: '27%', left: '18%', width: '13%', height: '18%', cor: '#2E8B57', isCircle: true },
+        { nome: 'Plano do Fogo', top: '55%', left: '18%', width: '13%', height: '18%', cor: '#DC143C', isCircle: true },
+        { nome: 'Plano da Água', top: '27%', left: '45%', width: '13%', height: '18%', cor: '#4169E1', isCircle: true },
+        { nome: 'Plano da Terra', top: '55%', left: '45%', width: '13%', height: '18%', cor: '#8B4513', isCircle: true },
+        { nome: 'Plano da Ordem', top: '40%', left: '0%', width: '11%', height: '20%', cor: '#DDA0DD', isCircle: true },
+        { nome: 'Plano Astral', top: '40%', left: '64%', width: '15%', height: '20%', cor: '#483D8B', isCircle: true },
+        { nome: 'Plano das Fadas', top: '31.5%', left: '34.5%', width: '7%', height: '10%', cor: '#32CD32', isCircle: true },
+        { nome: 'Plano do Éter', top: '59.5%', left: '34.5%', width: '7%', height: '10%', cor: '#9400D3', isCircle: true },
         
-        // Caos: mantido nos cantos originais
+        // Caos
         { nome: 'Plano do Caos', top: '2%', left: '76%', width: '20%', height: '10%', cor: '#800000', isCircle: false },
         { nome: 'Plano do Caos', top: '84%', left: '12%', width: '20%', height: '10%', cor: '#800000', isCircle: false }
     ];
 
-    // FUNÇÕES DO GLOBO
     const handleDragStart = (e) => {
         setIsDragging(true);
         dragStart.current = { x: e.clientX || e.touches?.[0].clientX, y: e.clientY || e.touches?.[0].clientY };
@@ -92,7 +85,6 @@ export default function MapaMundi({ children }) {
     };
     const handleDragEnd = () => setIsDragging(false);
 
-    // FUNÇÕES DE NAVEGAÇÃO E MAPAS
     const criarNovoMapa = () => {
         const nome = prompt("Escreva o nome do novo mapa para " + reinoSelecionado + ":");
         if (nome && nome.trim() !== "") setMapasSalvos(prev => ({ ...prev, [reinoSelecionado]: [...(prev[reinoSelecionado] || []), nome] }));
@@ -113,7 +105,6 @@ export default function MapaMundi({ children }) {
         else if (nivelVisao === 'globo') setNivelVisao('cosmologia');
     };
 
-    // Ferramenta Admin: shift + click na imagem para ver coordenadas
     const handleMapClickAdmin = (e) => {
         if (e.shiftKey) {
             const rect = e.currentTarget.getBoundingClientRect();
@@ -127,12 +118,10 @@ export default function MapaMundi({ children }) {
     if (nivelVisao === 'cosmologia') {
         return (
             <div className="fade-in" style={{ width: '100%', height: '85vh', background: '#050508', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative', overflow: 'hidden' }}>
-                <div style={{ position: 'relative', width: '1000px', height: '600px' }} onClick={handleMapClickAdmin}>
+                <div style={{ position: 'relative', width: '1000px', height: '600px', borderRadius: '15px', overflow: 'hidden' }} onClick={handleMapClickAdmin}>
                     
-                    {/* A IMAGEM DE FUNDO ESPETACULAR */}
-                    <img src={mapaCosmologia} alt="Cosmologia" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                    <img src={mapaCosmologia} alt="Cosmologia" style={{ width: '100%', height: '100%', objectFit: 'fill', filter: 'drop-shadow(0 0 20px rgba(255,255,255,0.1))' }} />
 
-                    {/* ZONAS CLICÁVEIS INVISÍVEIS PARA CADA DIMENSÃO */}
                     {zonasCosmologia.map((zona, index) => (
                         <div 
                             key={`${zona.nome}-${index}`}
@@ -151,13 +140,13 @@ export default function MapaMundi({ children }) {
                         />
                     ))}
 
-                    {/* 🔥 TERRA 0 (O BOTÃO CENTRAL) TAMBÉM DESLOCADO PARA A ESQUERDA 🔥 */}
+                    {/* 🔥 TERRA 0 (O BOTÃO CENTRAL) JOGADO MUITO PRA ESQUERDA 🔥 */}
                     <div 
                         onClick={() => setNivelVisao('globo')}
                         onMouseEnter={() => setPlanoHover('Terra 0 (Runeterra)')}
                         onMouseLeave={() => setPlanoHover(null)}
                         style={{
-                            position: 'absolute', top: '42.5%', left: '42%', width: '10.5%', height: '16.5%',
+                            position: 'absolute', top: '42.5%', left: '32%', width: '10.5%', height: '16.5%',
                             borderRadius: '50%', cursor: 'pointer', zIndex: 30,
                             border: planoHover === 'Terra 0 (Runeterra)' ? '2px solid #ffffff' : '2px solid transparent',
                             boxShadow: planoHover === 'Terra 0 (Runeterra)' ? '0 0 40px #ffffff, inset 0 0 20px #ffffff' : 'none',
@@ -167,7 +156,6 @@ export default function MapaMundi({ children }) {
                     />
                 </div>
                 
-                {/* Legenda Dinâmica Superior */}
                 <div style={{ position: 'absolute', top: '20px', textAlign: 'center', pointerEvents: 'none', zIndex: 50 }}>
                     <h1 style={{ color: '#fff', margin: 0, letterSpacing: '6px', textTransform: 'uppercase', fontSize: '1.4em', textShadow: '0 0 20px rgba(255,255,255,0.8)' }}>
                         {planoHover || 'Atlas Multiversal'}
@@ -283,7 +271,6 @@ export default function MapaMundi({ children }) {
                     </div>
                 </div>
 
-                {/* MODAL DE SELEÇÃO DE MAPAS */}
                 {reinoSelecionado && (
                     <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 30, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(6px)' }}>
                         <div style={{ background: '#111', border: '2px solid #0088ff', borderRadius: '20px', padding: '30px', width: '380px', textAlign: 'center', position: 'relative', boxShadow: '0 0 40px #0088ff' }}>
@@ -309,9 +296,6 @@ export default function MapaMundi({ children }) {
         );
     }
 
-    // ==========================================
-    // ⚔️ TELA 3: O MAPA DE BATALHA
-    // ==========================================
     if (nivelVisao === 'reino') {
         const backgroundUrl = mapasImagens[localAtual.mapaId];
         return (
