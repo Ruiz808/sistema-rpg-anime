@@ -14,7 +14,7 @@ import gabaritoIlha from '../../assets/gabarito-ilha.png';
 import gabaritoIonia from '../../assets/gabarito-ionia.png';
 
 // 🌌 A SUA NOVA ARTE DA COSMOLOGIA EXPANDIDA 🌌
-import mapaCosmologia from '../../assets/mapa-cosmologia.jpg';
+import mapaCosmologia from '../../assets/mapa-cosmologia.png';
 
 export default function MapaMundi({ children }) {
     // ESTADOS GERAIS
