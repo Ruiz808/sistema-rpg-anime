@@ -43,9 +43,9 @@ export default function MapaMundi({ children }) {
     const [dragIndexCosmo, setDragIndexCosmo] = useState(null);
     const containerCosmoRef = useRef(null);
 
-    // Juntei a Terra 0 na mesma lista pra você poder arrastar ela também!
+    // 📍 TERRA 0 ATUALIZADA COM AS SUAS COORDENADAS EXATAS!
     const [zonasCosmologia, setZonasCosmologia] = useState([
-        { nome: 'Terra 0 (Runeterra)', top: '41.5%', left: '48%', width: '10%', height: '16.6%', cor: '#ffffff', isCircle: true, isPlanet: true },
+        { nome: 'Terra 0 (Runeterra)', top: '44.3%', left: '49.3%', width: '10%', height: '16.6%', cor: '#ffffff', isCircle: true, isPlanet: true },
         { nome: 'Plano da Ordem', top: '37%', left: '5%', width: '13%', height: '22%', cor: '#DDA0DD', isCircle: true },
         { nome: 'Plano Astral', top: '43%', left: '71%', width: '13%', height: '22%', cor: '#483D8B', isCircle: true },
         { nome: 'Plano do Vento', top: '29%', left: '25%', width: '12%', height: '20%', cor: '#2E8B57', isCircle: true },
