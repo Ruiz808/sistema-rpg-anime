@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import useStore from '../../stores/useStore';
 import { salvarFichaSilencioso } from '../../services/firebase-sync.js';
 
-// 📜 A TABELA DE REFERÊNCIA DE NÍVEIS E BUFFS
+// 📜 REFERÊNCIA DE NÍVEIS
 const NIVEIS_INFO = {
     1: { nome: "Básico", cor: "#44ff44", desc: "+10% Dano" },
     2: { nome: "Intermediário", cor: "#44ff44", desc: "+25% Dano | -5% Custo" },
@@ -16,7 +16,6 @@ const NIVEIS_INFO = {
     10: { nome: "Eterno", cor: "#ffcc00", desc: "Dano Incalculável | Apagamento Conceitual" }
 };
 
-// 🛡️ LISTAS ORGANIZADAS POR SUBCATEGORIAS (OPTGROUPS)
 const PREDEFINICOES = {
     elementos: {
         "Elementos Básicos": ["Fogo", "Raio", "Agua", "Vento", "Terra"],
@@ -63,13 +62,12 @@ const PREDEFINICOES = {
 };
 
 const flatPredefs = {};
-Object.keys(PREDEFINICOES).forEach(key => {
-    flatPredefs[key] = Object.values(PREDEFINICOES[key]).flat();
-});
+Object.keys(PREDEFINICOES).forEach(key => { flatPredefs[key] = Object.values(PREDEFINICOES[key]).flat(); });
 
 export default function AbaDominios() {
     const { minhaFicha, updateFicha } = useStore();
     const [selecionados, setSelecionados] = useState({});
+    const [salvando, setSalvando] = useState(false);
 
     if (!minhaFicha) return <div style={{ color: '#888', padding: 20 }}>Carregando ficha...</div>;
     const dominios = minhaFicha.dominios || {};
@@ -79,15 +77,20 @@ export default function AbaDominios() {
             if (!f.dominios) f.dominios = {};
             const targetCat = ['elementos', 'mana', 'chakra', 'aura', 'astral', 'primordiais'].includes(categoria) ? 'elementais' : categoria;
             if (!f.dominios[targetCat]) f.dominios[targetCat] = {};
-
-            if (nivel === 0) {
-                delete f.dominios[targetCat][item];
-            } else {
-                f.dominios[targetCat][item] = { nivel: nivel, nome: NIVEIS_INFO[nivel].nome };
-            }
+            if (nivel === 0) delete f.dominios[targetCat][item];
+            else f.dominios[targetCat][item] = { nivel: nivel, nome: NIVEIS_INFO[nivel].nome };
         });
-        
-        if (typeof salvarFichaSilencioso === 'function') salvarFichaSilencioso();
+    };
+
+    const handleSalvarTudo = async () => {
+        setSalvando(true);
+        try {
+            await salvarFichaSilencioso(); // 🔥 Força a sincronização com o Firebase!
+            setTimeout(() => setSalvando(false), 2000);
+        } catch (e) {
+            alert("Erro ao salvar no Firebase! Verifique as regras de segurança.");
+            setSalvando(false);
+        }
     };
 
     const renderSecao = (titulo, chave, corBase) => {
@@ -98,18 +101,10 @@ export default function AbaDominios() {
         return (
             <div className="def-box" style={{ borderLeft: `4px solid ${corBase}`, marginBottom: '20px' }}>
                 <h3 style={{ color: corBase, margin: '0 0 10px 0', fontSize: '1em' }}>{titulo}</h3>
-                
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '15px' }}>
-                    
-                    {/* 1. SELETOR OFICIAL (LORE) */}
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <select 
-                            className="input-neon" 
-                            value={selecionados[chave] || ""} 
-                            onChange={(e) => setSelecionados(prev => ({ ...prev, [chave]: e.target.value }))}
-                            // 🔥 CORREÇÃO: Força o flex: 1 e width: 100% para empurrar o botão
-                            style={{ flex: '1', width: '100%', padding: '8px', borderColor: corBase, background: 'rgba(0,0,0,0.5)', color: '#fff' }}
-                        >
+                        <select className="input-neon" value={selecionados[chave] || ""} onChange={(e) => setSelecionados(prev => ({ ...prev, [chave]: e.target.value }))}
+                            style={{ flex: '1', width: '100%', padding: '8px', borderColor: corBase, background: 'rgba(0,0,0,0.5)', color: '#fff' }}>
                             <option value="">-- Escolher da Lore --</option>
                             {Object.entries(PREDEFINICOES[chave] || {}).map(([grupo, itens]) => (
                                 <optgroup key={grupo} label={`— ${grupo} —`} style={{ color: corBase, fontStyle: 'italic', background: '#111' }}>
@@ -117,52 +112,23 @@ export default function AbaDominios() {
                                 </optgroup>
                             ))}
                         </select>
-                        <button className="btn-neon" onClick={() => {
-                            if(selecionados[chave]) {
-                                atualizarDominio(chave, selecionados[chave], 1);
-                                setSelecionados(prev => ({ ...prev, [chave]: "" }));
-                            }
-                        // 🔥 CORREÇÃO: Força o botão a encolher ao tamanho do texto (width: auto)
-                        }} style={{ flex: '0 0 auto', width: 'auto', borderColor: corBase, color: corBase, margin: 0, padding: '8px 15px', fontWeight: 'bold' }}>ADICIONAR</button>
+                        <button className="btn-neon" onClick={() => { if(selecionados[chave]) { atualizarDominio(chave, selecionados[chave], 1); setSelecionados(prev => ({ ...prev, [chave]: "" })); } }} 
+                            style={{ flex: '0 0 auto', width: 'auto', borderColor: corBase, color: corBase, margin: 0, padding: '8px 15px', fontWeight: 'bold' }}>ADICIONAR</button>
                     </div>
-
-                    {/* 2. CRIADOR PERSONALIZADO */}
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <input 
-                            id={`custom-${chave}`}
-                            className="input-neon" 
-                            placeholder="Criar novo (Ex: Punho das Sombras)" 
-                            // 🔥 CORREÇÃO: Força o flex: 1 e width: 100% para empurrar o botão
+                        <input id={`custom-${chave}`} className="input-neon" placeholder="Criar novo (Ex: Punho das Sombras)" 
                             style={{ flex: '1', width: '100%', padding: '8px', borderColor: '#ffcc00', background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: '0.85em' }}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    const val = e.target.value;
-                                    if(val && val.trim() !== '') { atualizarDominio(chave, val.trim(), 1); e.target.value = ''; }
-                                }
-                            }}
-                        />
-                        <button className="btn-neon" onClick={() => {
-                            const input = document.getElementById(`custom-${chave}`);
-                            if(input.value && input.value.trim() !== '') {
-                                atualizarDominio(chave, input.value.trim(), 1);
-                                input.value = '';
-                            }
-                        // 🔥 CORREÇÃO: Força o botão a encolher ao tamanho do texto (width: auto)
-                        }} style={{ flex: '0 0 auto', width: 'auto', borderColor: '#ffcc00', color: '#ffcc00', margin: 0, padding: '8px 15px', fontWeight: 'bold' }}>➕ CRIAR</button>
+                            onKeyDown={(e) => { if (e.key === 'Enter') { const val = e.target.value; if(val && val.trim() !== '') { atualizarDominio(chave, val.trim(), 1); e.target.value = ''; } } }} />
+                        <button className="btn-neon" onClick={() => { const input = document.getElementById(`custom-${chave}`); if(input.value && input.value.trim() !== '') { atualizarDominio(chave, input.value.trim(), 1); input.value = ''; } }} 
+                            style={{ flex: '0 0 auto', width: 'auto', borderColor: '#ffcc00', color: '#ffcc00', margin: 0, padding: '8px 15px', fontWeight: 'bold' }}>➕ CRIAR</button>
                     </div>
-
                 </div>
 
-                {/* LISTA DOS DOMÍNIOS ATIVOS DO PERSONAGEM */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {Object.entries(dominios[gavetaDoStore] || {}).filter(([nome]) => {
                         const isNestaLista = flatPredefs[chave].includes(nome);
                         const isCustom = isMagica ? !todasMagias.includes(nome) : !flatPredefs[chave].includes(nome);
-                        
-                        if (isNestaLista) return true;
-                        if (isCustom && chave === 'elementos') return true; 
-                        if (isCustom && !isMagica) return true; 
-                        return false;
+                        return isNestaLista || (isCustom && (chave === 'elementos' || !isMagica));
                     }).map(([nome, dados]) => (
                         <div key={nome} style={{ background: 'rgba(0,0,0,0.4)', padding: '10px', borderRadius: '5px', border: '1px solid #333' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -184,7 +150,6 @@ export default function AbaDominios() {
     return (
         <div style={{ padding: '10px' }}>
             <h2 style={{ color: '#ffcc00', borderBottom: '2px solid #ffcc00', paddingBottom: '10px', marginBottom: '20px' }}>💎 HIERARQUIA DE DOMÍNIOS</h2>
-            
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '15px' }}>
                 {renderSecao("🔥 Manipulação Elemental", "elementos", "#ff6600")}
                 {renderSecao("🔮 Artes de Mana (Grimório)", "mana", "#0088ff")}
@@ -197,6 +162,12 @@ export default function AbaDominios() {
                 {renderSecao("💚 Atributos de Cura", "cura", "#44ff44")}
                 {renderSecao("👹 Summons & Contratos", "summons", "#aa00ff")}
             </div>
+
+            {/* 🔥 BOTÃO DE SALVAMENTO MANUAL INTEGRADO 🔥 */}
+            <button className={`btn-neon ${salvando ? 'btn-green' : 'btn-gold'}`} onClick={handleSalvarTudo} 
+                style={{ width: '100%', marginTop: '20px', height: '50px', fontWeight: 'bold', fontSize: '1.1em' }}>
+                {salvando ? '✅ HIERARQUIA SINCRONIZADA!' : '💾 SALVAR HIERARQUIA NO SERVIDOR'}
+            </button>
         </div>
     );
 }
