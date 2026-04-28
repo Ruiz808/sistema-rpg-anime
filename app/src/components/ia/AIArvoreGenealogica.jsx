@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import useStore, { fichaPadrao } from '../../stores/useStore'; 
+import { ref, set } from 'firebase/database'; // 🔥 IMPORTAÇÃO DO FIREBASE 🔥
+import { database } from '../../services/firebase-config'; // 🔥 IMPORTAÇÃO DA LIGAÇÃO 🔥
 
 export default function AIArvoreGenealogica() {
-    // 💾 CONEXÃO COM O ZUSTAND (PAINEL DO MESTRE)
-    const dummies = useStore(s => s.dummies);
-    const setDummies = useStore(s => s.setDummies);
+    // 💾 CONEXÃO COM O ZUSTAND (Apenas para ler e evitar duplicados)
+    const personagens = useStore(s => s.personagens);
 
     // 💾 CARREGA DO LOCALSTORAGE DA ÁRVORE (Ou inicia vazio)
     const [familias, setFamilias] = useState(() => {
@@ -122,23 +123,26 @@ export default function AIArvoreGenealogica() {
     };
 
     // ==========================================
-    // 🚀 INTEGRAÇÃO SUPREMA: ENVIAR PARA O PAINEL DO MESTRE (ABAS NPCS)
+    // 🚀 INTEGRAÇÃO SUPREMA: ENVIAR PARA O FIREBASE COMO NPC
     // ==========================================
-    const injetarNaMesa = () => {
+    const injetarNaMesa = async () => {
         if (!npcSelecionado || !npcSelecionado.nome || npcSelecionado.nome.trim() === '') {
             return alert("O NPC precisa ter um Nome Completo antes de ser enviado para a mesa!");
         }
 
         const nomePersonagem = npcSelecionado.nome.trim();
 
-        if (dummies[nomePersonagem]) {
-            if (!window.confirm(`⚠️ O NPC "${nomePersonagem}" já existe na aba de NPCs! Deseja sobrescrever a ficha atual dele com os dados da Árvore Genealógica?`)) {
+        // Verifica se já existe e pede confirmação para sobrescrever
+        if (personagens && personagens[nomePersonagem]) {
+            if (!window.confirm(`⚠️ O personagem "${nomePersonagem}" já está no Banco de Dados (Painel do Mestre)! Deseja sobrescrever a ficha atual dele com os dados da Árvore Genealógica?`)) {
                 return;
             }
         }
 
+        // Deep clone da Ficha Padrão para formatar corretamente
         const novaFicha = JSON.parse(JSON.stringify(fichaPadrao));
 
+        // Convertendo os dados da Árvore para a Estrutura do Jogo
         const hpValor = Number(npcSelecionado.hp) || 100000;
         novaFicha.vida = { ...novaFicha.vida, base: hpValor, atual: hpValor };
         
@@ -153,7 +157,8 @@ export default function AIArvoreGenealogica() {
             ...novaFicha.bio,
             raca: npcSelecionado.papel || "Membro de Clã",
             classe: npcSelecionado.classe || "Desconhecida",
-            alinhamento: npcSelecionado.status || "Vivo"
+            alinhamento: npcSelecionado.status || "Vivo",
+            mesa: 'npc' // 🔥 A ETIQUETA QUE O SEU SISTEMA USA PARA A ABA VERMELHA 🔥
         };
 
         novaFicha.notas = {
@@ -161,10 +166,17 @@ export default function AIArvoreGenealogica() {
             geral: `🔸 Elemento Mágico: ${npcSelecionado.elemento || 'Nenhum'}\n🔸 Origem: Clã ${familiaAtiva}\n\n📖 Lore Genealógica:\n${npcSelecionado.lore || 'Sem registros na árvore.'}`
         };
 
-        const novosDummies = { ...dummies, [nomePersonagem]: novaFicha };
-        setDummies(novosDummies);
+        novaFicha.isNPC = true; // 🔥 OUTRA ETIQUETA OBRIGATÓRIA PARA NPCS 🔥
+        novaFicha.dataCriacao = Date.now();
 
-        alert(`✅ Sucesso! "${nomePersonagem}" foi injetado na Aba de NPCs do Painel do Mestre!`);
+        try {
+            // 🔥 INJETA DIRETO NO FIREBASE (Igual à sua Forja de NPCs) 🔥
+            await set(ref(database, `personagens/${nomePersonagem}`), novaFicha);
+            alert(`✅ Sucesso! "${nomePersonagem}" foi injetado no Firebase e já deve aparecer na Aba de NPCs do Mestre!`);
+        } catch (erro) {
+            console.error("Erro ao invocar entidade no Firebase:", erro);
+            alert("❌ Erro ao enviar para o Firebase. Verifique a ligação à internet.");
+        }
     };
 
     // ==========================================
@@ -209,7 +221,6 @@ export default function AIArvoreGenealogica() {
         const parceirosRaw = npc.parceiros || npc.conjuge || ""; 
         const parceirosSet = new Set(parceirosRaw.split(',').map(s => s.trim()).filter(Boolean));
         
-        // 🔒 BLINDAGEM: Usar (familias[familiaAtiva] || [])
         const filhos = (familias[familiaAtiva] || []).filter(n => n.parentId === npc.id);
         
         filhos.forEach(f => { if (f.genitor2 && f.genitor2.trim()) parceirosSet.add(f.genitor2.trim()); });
@@ -317,7 +328,6 @@ export default function AIArvoreGenealogica() {
         );
     };
 
-    // 🔒 BLINDAGEM NO PAI ATIVO TAMBÉM
     const paiAtivo = (npcSelecionado?.parentId && familiaAtiva) 
         ? (familias[familiaAtiva] || []).find(n => n.id === npcSelecionado.parentId) 
         : null;
@@ -401,7 +411,6 @@ export default function AIArvoreGenealogica() {
 
                         {/* Motor CSS */}
                         <div className="genealogy-tree">
-                            {/* 🔒 BLINDAGEM NO FILTER AQUI TAMBÉM */}
                             {(familias[familiaAtiva] || []).filter(n => n.parentId === null).length === 0 ? (
                                 <p style={{ color: '#555', fontStyle: 'italic' }}>Esta árvore está vazia. Adicione um fundador.</p>
                             ) : (
@@ -467,7 +476,6 @@ export default function AIArvoreGenealogica() {
                                 style={{ width: '100%', padding: '8px', borderColor: '#0088ff', color: '#fff', marginTop: '5px', background: '#05070a', boxSizing: 'border-box' }}
                             >
                                 <option value="">👑 Nenhum (É um Fundador)</option>
-                                {/* 🔒 BLINDAGEM AQUI TAMBÉM */}
                                 {(familias[familiaAtiva] || []).filter(n => n.id !== npcSelecionado.id).map(n => (
                                     <option key={n.id} value={n.id}>↳ {n.nome}</option>
                                 ))}
