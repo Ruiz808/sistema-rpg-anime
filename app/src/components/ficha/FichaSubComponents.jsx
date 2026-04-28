@@ -4,7 +4,6 @@ import FormasEditor from '../shared/FormasEditor';
 
 const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Ficha provider não encontrado</div>;
 
-// Propriedades simplificadas para evitar dependências cruzadas complexas
 const PROPRIEDADE_OPTIONS = [
     { val: 'base', lbl: 'Valor Bruto (+)' },
     { val: 'mbase', lbl: 'Mult Base (x)' },
@@ -35,8 +34,7 @@ export function FichaBioGroup() {
     if (!ctx) return FALLBACK;
     const {
         minhaFicha, isGrand, grandIcone, classe, mesa, setMesa, comitarBio,
-        raca, setRaca, setClasse, subClasse, alterEgoSlot1, setAlterEgoSlot1,
-        alterEgoSlot2, setAlterEgoSlot2, mudarSubClasseDireto,
+        raca, setRaca, setClasse, subClasse, alterEgoSlot1, alterEgoSerId, setAlterEgoSlot1, setAlterEgoSerId, mudarSubClasseDireto,
         descansoLongoPretender, classesMemorizadas, toggleMemoriaPretender,
         idade, setIdade, fisico, setFisico, sangue, setSangue,
         alinhamento, setAlinhamento, afiliacao, setAfiliacao,
@@ -44,6 +42,8 @@ export function FichaBioGroup() {
     } = ctx;
 
     if (!minhaFicha) return <div style={{ color: '#aaa', textAlign: 'center' }}>Carregando ficha...</div>;
+
+    const seresComClasse = (minhaFicha.seresSelados || []).filter(s => s.classe);
 
     return (
         <div className="def-box" style={{ position: 'relative', overflow: 'hidden', border: isGrand ? '2px solid #ff003c' : '', boxShadow: isGrand ? '0 0 30px rgba(255, 0, 60, 0.3), inset 0 0 50px rgba(255, 204, 0, 0.1)' : '' }}>
@@ -80,27 +80,34 @@ export function FichaBioGroup() {
                 )}
                 {(!isGrand && classe === 'alterego') && (
                     <div className="fade-in" style={{ gridColumn: 'span 2', background: 'rgba(255, 0, 255, 0.1)', padding: '15px', borderRadius: '5px', border: '1px dashed #ff00ff' }}>
-                        <label style={{ color: '#ff00ff', fontSize: '0.9em', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>🎭 Dualidade (Fragmentos de Ego)</label>
-                        <p style={{ color: '#aaa', fontSize: '0.75em', margin: '2px 0 12px 0', lineHeight: '1.4' }}>Escolha as duas classes base que formam a sua personalidade. <strong>Você só pode ativar os poderes de uma delas por vez.</strong></p>
+                        <label style={{ color: '#ff00ff', fontSize: '0.9em', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>🎭 Dualidade (Fragmento Base + Entidade)</label>
+                        <p style={{ color: '#aaa', fontSize: '0.75em', margin: '2px 0 12px 0', lineHeight: '1.4' }}>O Alter Ego possui 2 fragmentos: a sua Classe Base e a Classe concedida por um Ser Selado. <strong>Você só pode ativar os poderes de uma delas por vez.</strong></p>
+                        
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
                             <div>
-                                <label style={{ color: '#ff00ff', fontSize: '0.75em' }}>Fragmento Fixo 1</label>
+                                <label style={{ color: '#ff00ff', fontSize: '0.75em' }}>Fragmento Fixo (Slot 1)</label>
                                 <select className="input-neon" value={alterEgoSlot1} onChange={e => { const val = e.target.value; setAlterEgoSlot1(val); if(subClasse === alterEgoSlot1 && alterEgoSlot1 !== '') { setSubClasse(val); comitarBio({ alterEgoSlot1: val, subClasse: val }); } else { comitarBio({ alterEgoSlot1: val }); } }} style={{ width: '100%', padding: '6px', background: '#111', color: '#ff00ff', border: '1px solid #ff00ff', borderRadius: '4px' }}>
                                     {CLASSES_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <label style={{ color: '#ff00ff', fontSize: '0.75em' }}>Fragmento Fixo 2</label>
-                                <select className="input-neon" value={alterEgoSlot2} onChange={e => { const val = e.target.value; setAlterEgoSlot2(val); if(subClasse === alterEgoSlot2 && alterEgoSlot2 !== '') { setSubClasse(val); comitarBio({ alterEgoSlot2: val, subClasse: val }); } else { comitarBio({ alterEgoSlot2: val }); } }} style={{ width: '100%', padding: '6px', background: '#111', color: '#ff00ff', border: '1px solid #ff00ff', borderRadius: '4px' }}>
-                                    {CLASSES_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                                <label style={{ color: '#00ffcc', fontSize: '0.75em' }}>Fragmento da Entidade (Slot 2)</label>
+                                <select className="input-neon" value={alterEgoSerId} onChange={e => { const val = e.target.value; setAlterEgoSerId(val); const serC = seresComClasse.find(s=>s.id===val)?.classe || ''; if(subClasse && subClasse !== alterEgoSlot1) { setSubClasse(serC); comitarBio({ alterEgoSerId: val, subClasse: serC }); } else { comitarBio({ alterEgoSerId: val }); } }} style={{ width: '100%', padding: '6px', background: '#111', color: '#00ffcc', border: '1px solid #00ffcc', borderRadius: '4px' }}>
+                                    <option value="">Nenhuma Entidade Selecionada</option>
+                                    {seresComClasse.map(s => <option key={s.id} value={s.id}>🐺 {s.nome} ({CLASSES_OPTIONS.find(o=>o.value===s.classe)?.label || s.classe})</option>)}
                                 </select>
                             </div>
                         </div>
-                        <label style={{ color: '#ffcc00', fontSize: '0.8em', display: 'block', marginBottom: '8px' }}>⚡ Qual Fragmento de Ego está a dominar o seu corpo neste turno?</label>
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                            <button className={`btn-neon ${subClasse === alterEgoSlot1 && alterEgoSlot1 !== '' ? 'btn-gold' : ''}`} onClick={(e) => { e.preventDefault(); mudarSubClasseDireto(alterEgoSlot1); }} disabled={!alterEgoSlot1} style={{ flex: 1, padding: '6px', fontSize: '0.75em', margin: 0, opacity: !alterEgoSlot1 ? 0.3 : 1 }}>{alterEgoSlot1 ? `Ativar ${CLASSES_OPTIONS.find(o => o.value === alterEgoSlot1)?.label}` : 'Slot 1 Vazio'}</button>
-                            <button className={`btn-neon ${subClasse === alterEgoSlot2 && alterEgoSlot2 !== '' ? 'btn-gold' : ''}`} onClick={(e) => { e.preventDefault(); mudarSubClasseDireto(alterEgoSlot2); }} disabled={!alterEgoSlot2} style={{ flex: 1, padding: '6px', fontSize: '0.75em', margin: 0, opacity: !alterEgoSlot2 ? 0.3 : 1 }}>{alterEgoSlot2 ? `Ativar ${CLASSES_OPTIONS.find(o => o.value === alterEgoSlot2)?.label}` : 'Slot 2 Vazio'}</button>
-                            <button className={`btn-neon ${subClasse === '' ? 'btn-red' : ''}`} onClick={(e) => { e.preventDefault(); mudarSubClasseDireto(''); }} style={{ flex: 1, padding: '6px', fontSize: '0.75em', margin: 0 }}>Desativar Ambos</button>
+
+                        <label style={{ color: '#ffcc00', fontSize: '0.8em', display: 'block', marginBottom: '8px' }}>⚡ Qual Fragmento está a dominar o seu corpo neste turno?</label>
+                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                            <button className={`btn-neon ${subClasse === alterEgoSlot1 && alterEgoSlot1 !== '' ? 'btn-gold' : ''}`} onClick={(e) => { e.preventDefault(); mudarSubClasseDireto(alterEgoSlot1); }} disabled={!alterEgoSlot1} style={{ flex: '1 1 100px', padding: '6px', fontSize: '0.75em', margin: 0, opacity: !alterEgoSlot1 ? 0.3 : 1 }}>{alterEgoSlot1 ? `Ativar ${CLASSES_OPTIONS.find(o => o.value === alterEgoSlot1)?.label}` : 'Slot 1 Vazio'}</button>
+                            
+                            <button className={`btn-neon ${alterEgoSerId && subClasse === seresComClasse.find(s=>s.id===alterEgoSerId)?.classe ? 'btn-gold' : ''}`} onClick={(e) => { e.preventDefault(); const s = seresComClasse.find(x=>x.id===alterEgoSerId); if(s) mudarSubClasseDireto(s.classe); }} disabled={!alterEgoSerId} style={{ flex: '1 1 100px', padding: '6px', fontSize: '0.75em', margin: 0, borderColor: '#00ffcc', color: '#00ffcc', opacity: !alterEgoSerId ? 0.3 : 1 }}>
+                                {alterEgoSerId ? `Ativar ${CLASSES_OPTIONS.find(o=>o.value===seresComClasse.find(s=>s.id===alterEgoSerId)?.classe)?.label || 'Entidade'}` : 'Slot 2 Vazio'}
+                            </button>
+
+                            <button className={`btn-neon ${subClasse === '' ? 'btn-red' : ''}`} onClick={(e) => { e.preventDefault(); mudarSubClasseDireto(''); }} style={{ flex: '1 1 100px', padding: '6px', fontSize: '0.75em', margin: 0 }}>Desativar Todos</button>
                         </div>
                     </div>
                 )}
@@ -145,7 +152,7 @@ export function FichaSeresSelados() {
     if (!ctx) return null;
     const {
         seresSelados, serNome, setSerNome, serDescricao, setSerDescricao,
-        serElemento, setSerElemento, serEditandoId,
+        serElemento, setSerElemento, serClasse, setSerClasse, serEditandoId,
         serEfeitos, serEfeitosPassivos, serNovoNomeEfeito, setSerNovoNomeEfeito,
         serNovoAtr, setSerNovoAtr, serNovoProp, setSerNovoProp, serNovoVal, setSerNovoVal,
         serNovoNomeEfeitoPassivo, setSerNovoNomeEfeitoPassivo, serNovoAtrPassivo, setSerNovoAtrPassivo,
@@ -168,6 +175,7 @@ export function FichaSeresSelados() {
                                 <div style={{ flex: 1 }}>
                                     <h4 style={{ margin: 0, color: ser.ativo ? '#00ffcc' : '#fff', textShadow: ser.ativo ? '0 0 10px #00ffcc' : 'none', fontSize: '1.2em' }}>{ser.nome}</h4>
                                     <div style={{ color: '#8a2be2', fontSize: '0.8em', fontWeight: 'bold', marginTop: '4px' }}>Domínio (Zera Custo do Elemento): {ser.elemento || 'Nenhum'}</div>
+                                    {ser.classe && <div style={{ color: '#00ffcc', fontSize: '0.8em', fontWeight: 'bold', marginTop: '2px' }}>Classe Herdada: {CLASSES_OPTIONS.find(o => o.value === ser.classe)?.label || ser.classe}</div>}
                                 </div>
                                 <div style={{ display: 'flex', gap: '5px' }}>
                                     <button className={`btn-neon btn-small ${ser.ativo ? 'btn-green' : ''}`} onClick={() => toggleSerSelado(ser.id)} style={{ margin: 0, boxShadow: ser.ativo ? '0 0 10px #0f0' : 'none' }}>{ser.ativo ? '🌀 SINCRONIZADO' : 'ADORMECIDO'}</button>
@@ -184,14 +192,17 @@ export function FichaSeresSelados() {
                                 </div>
                             )}
 
-                            {/* 🔥 EDITOR DE FORMAS INJETADO NO CARTÃO DO SER SELADO 🔥 */}
-                            <FormasEditor
-                                formas={ser.formas || []}
-                                formaAtivaId={ser.formaAtivaId || null}
-                                onSalvarForma={(forma) => salvarFormaSer(ser.id, forma)}
-                                onDeletarForma={(formaId) => deletarFormaSer(ser.id, formaId)}
-                                onAtivarForma={(formaId) => ativarFormaSer(ser.id, formaId)}
-                            />
+                            {/* 🔥 EDITOR DE FORMAS DESTACADO 🔥 */}
+                            <div style={{ marginTop: '15px', paddingTop: '10px', borderTop: '1px solid #444' }}>
+                                <h5 style={{ color: '#0ff', margin: '0 0 10px 0', textTransform: 'uppercase', letterSpacing: '1px' }}>🎭 Formas / Modos de Sincronização</h5>
+                                <FormasEditor
+                                    formas={ser.formas || []}
+                                    formaAtivaId={ser.formaAtivaId || null}
+                                    onSalvarForma={(forma) => salvarFormaSer(ser.id, forma)}
+                                    onDeletarForma={(formaId) => deletarFormaSer(ser.id, formaId)}
+                                    onAtivarForma={(formaId) => ativarFormaSer(ser.id, formaId)}
+                                />
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -202,6 +213,10 @@ export function FichaSeresSelados() {
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '10px' }}>
                     <input className="input-neon" type="text" placeholder="Nome da Entidade (Ex: Kurama, Sukuna)" value={serNome} onChange={e => setSerNome(e.target.value)} style={{ flex: '2 1 200px', margin: 0, borderColor: '#8a2be2', color: '#fff' }} />
                     <input className="input-neon" type="text" placeholder="Elemento / Essência" value={serElemento} onChange={e => setSerElemento(e.target.value)} style={{ flex: '1 1 150px', margin: 0, borderColor: '#8a2be2', color: '#fff' }} />
+                    <select className="input-neon" value={serClasse} onChange={e => setSerClasse(e.target.value)} style={{ flex: '1 1 150px', margin: 0, borderColor: '#8a2be2', color: '#fff' }}>
+                        <option value="">Classe (Opcional)</option>
+                        {CLASSES_OPTIONS.filter(o => o.value !== '').map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
                 </div>
                 <textarea className="input-neon" placeholder="História, condições do pacto, e narrativas do que acontece quando o poder dele transborda..." value={serDescricao} onChange={e => setSerDescricao(e.target.value)} style={{ width: '100%', minHeight: '60px', borderColor: '#8a2be2', color: '#ccc', resize: 'vertical', marginBottom: '15px' }} />
                 
