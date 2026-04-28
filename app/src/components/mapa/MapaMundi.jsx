@@ -36,10 +36,10 @@ export default function MapaMundi({ children }) {
     const containerRef = useRef(null);
     const [codigoExportado, setCodigoExportado] = useState(null);
 
-    // 🎥 CÂMERA 3D DO SISTEMA SOLAR (Zoom Perfeito Inicial: 0.7)
+    // 🎥 CÂMERA 3D DO SISTEMA SOLAR (Zoom bem afastado para ver tudo)
     const [camRotX, setCamRotX] = useState(60); 
     const [camRotY, setCamRotY] = useState(0);  
-    const [camZoom, setCamZoom] = useState(0.7); 
+    const [camZoom, setCamZoom] = useState(0.25); // <--- ZOOM INICIAL REDUZIDO
     const [isDraggingCam, setIsDraggingCam] = useState(false);
     const camDragStart = useRef({ x: 0, y: 0 });
 
@@ -60,7 +60,7 @@ export default function MapaMundi({ children }) {
         { "nome": "Plano do Caos Inferior", "top": "84%", "left": "8%", "width": "22%", "height": "10%", "cor": "#800000", "isCircle": false }
     ]);
 
-    // 📍 VARIÁVEL 2: ESTRELAS E PLANETAS (Centralizados na Escala Ouro)
+    // 📍 VARIÁVEL 2: ESTRELAS E PLANETAS 
     const [elementosSolar, setElementosSolar] = useState([
         { "id": "orichalcosA", "tipo": "estrela", "nome": "Orichalcos A", "top": "500px", "left": "500px", "size": "240px" },
         { "id": "orichalcosB", "tipo": "estrela", "nome": "Orichalcos B", "top": "500px", "left": "1500px", "size": "240px" },
@@ -70,7 +70,7 @@ export default function MapaMundi({ children }) {
         { "id": "terra0", "tipo": "terra", "nome": "Terra 0", "size": "130px", "tempo": "30s", "delay": "0s", "pathIdx": 0 }
     ]);
 
-    // 📍 VARIÁVEL 3: CALIBRAGEM DAS ÓRBITAS (Perfeitas para 2000x1000)
+    // 📍 VARIÁVEL 3: CALIBRAGEM DAS ÓRBITAS
     const [configOrbitas, setConfigOrbitas] = useState({
         "terra0": { rx: 700, ry: 350 },
         "vegeta": { rx: 750, ry: 380 },
@@ -136,7 +136,8 @@ export default function MapaMundi({ children }) {
     const handleEspacoZoom = (e) => {
         if (nivelVisao !== 'sistema_solar') return;
         let novoZoom = camZoom - e.deltaY * 0.001;
-        setCamZoom(Math.max(0.2, Math.min(3.5, novoZoom))); 
+        // <--- LIMITE MÍNIMO DE ZOOM AMPLIADO PARA 0.1
+        setCamZoom(Math.max(0.1, Math.min(3.5, novoZoom))); 
     };
 
     const voltarCamera = () => {
@@ -193,7 +194,7 @@ export default function MapaMundi({ children }) {
         setCodigoExportado(`// COPIE E SUBSTITUA A 'zonasCosmologia':\nconst [zonasCosmologia, setZonasCosmologia] = useState(${codigoCosmo});\n\n// ======================================\n\n// COPIE E SUBSTITUA A 'elementosSolar':\nconst [elementosSolar, setElementosSolar] = useState(${codigoSolar});\n\n// ======================================\n\n// COPIE E SUBSTITUA A 'configOrbitas':\nconst [configOrbitas, setConfigOrbitas] = useState(${codigoOrbs});`);
     };
 
-    // 🎛️ PAINEL DE ENGENHARIA SOLAR (Escala Ouro)
+    // 🎛️ PAINEL DE ENGENHARIA SOLAR
     const PainelEngenhariaSolar = () => {
         if (!modoAjuste || nivelVisao !== 'sistema_solar') return null;
         
@@ -276,7 +277,7 @@ export default function MapaMundi({ children }) {
     };
 
     // ==========================================
-    // 🌌 TELA 0: SISTEMA SOLAR CÂMERA 3D (VISÃO PADRÃO PERFEITA)
+    // 🌌 TELA 0: SISTEMA SOLAR CÂMERA 3D
     // ==========================================
     if (nivelVisao === 'sistema_solar') {
         const billboardTransform = `rotateY(${-camRotY}deg) rotateX(${-camRotX}deg)`;
@@ -303,7 +304,6 @@ export default function MapaMundi({ children }) {
                     onMouseDown={handleEspacoMouseDown} onMouseMove={handleEspacoMouseMove} onMouseUp={handleEspacoMouseUp} onMouseLeave={handleEspacoMouseUp} 
                     onTouchStart={handleEspacoMouseDown} onTouchMove={handleEspacoMouseMove} onTouchEnd={handleEspacoMouseUp}
                 >
-                    {/* CONTAINER 3D DE 2000x1000 - A ESCALA OURO */}
                     <div style={{ position: 'relative', width: '2000px', height: '1000px', transformStyle: 'preserve-3d', transform: `scale(${camZoom}) rotateX(${camRotX}deg) rotateY(${camRotY}deg)`, cursor: isDraggingCam ? 'grabbing' : (modoAjuste ? 'default' : 'grab'), transition: isDraggingCam ? 'none' : 'transform 0.1s ease-out' }}>
                         
                         <svg viewBox="0 0 2000 1000" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', overflow: 'visible', pointerEvents: 'none', zIndex: 1 }}>
@@ -324,7 +324,7 @@ export default function MapaMundi({ children }) {
                             ))}
                         </svg>
 
-                        {/* ESTRELAS E PLANETAS */}
+                        {/* ESTRELAS E PLANETAS HTML PRESERVANDO O 3D */}
                         {elementosSolar.map(el => {
                             if (el.tipo === 'estrela') {
                                 return (
