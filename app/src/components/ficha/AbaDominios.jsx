@@ -76,13 +76,19 @@ export default function AbaDominios() {
 
     const atualizarDominio = (categoria, item, nivel) => {
         updateFicha(f => {
-            if (!f.dominios) f.dominios = { elementais: {}, marciais: {}, armas: {}, cura: {}, summons: {} };
+            // Blinda a criação da gaveta mestre para não dar undefined
+            if (!f.dominios) f.dominios = {};
             
             const targetCat = ['elementos', 'mana', 'chakra', 'aura', 'astral', 'primordiais'].includes(categoria) ? 'elementais' : categoria;
+            
+            // Blinda a criação da subgaveta para o alvo exato
             if (!f.dominios[targetCat]) f.dominios[targetCat] = {};
 
-            if (nivel === 0) delete f.dominios[targetCat][item];
-            else f.dominios[targetCat][item] = { nivel: nivel, nome: NIVEIS_INFO[nivel].nome };
+            if (nivel === 0) {
+                delete f.dominios[targetCat][item];
+            } else {
+                f.dominios[targetCat][item] = { nivel: nivel, nome: NIVEIS_INFO[nivel].nome };
+            }
         });
         
         if (typeof salvarFichaSilencioso === 'function') salvarFichaSilencioso();
@@ -97,15 +103,15 @@ export default function AbaDominios() {
             <div className="def-box" style={{ borderLeft: `4px solid ${corBase}`, marginBottom: '20px' }}>
                 <h3 style={{ color: corBase, margin: '0 0 10px 0', fontSize: '1em' }}>{titulo}</h3>
                 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '15px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '15px' }}>
                     
                     {/* 1. SELETOR OFICIAL (LORE) */}
-                    <div style={{ display: 'flex', gap: '5px' }}>
+                    <div style={{ display: 'flex', gap: '8px' }}>
                         <select 
                             className="input-neon" 
                             value={selecionados[chave] || ""} 
                             onChange={(e) => setSelecionados(prev => ({ ...prev, [chave]: e.target.value }))}
-                            style={{ flex: 1, borderColor: corBase, background: 'rgba(0,0,0,0.5)', color: '#fff' }}
+                            style={{ flex: '1 1 auto', minWidth: 0, padding: '8px', borderColor: corBase, background: 'rgba(0,0,0,0.5)', color: '#fff' }}
                         >
                             <option value="">-- Escolher da Lore --</option>
                             {Object.entries(PREDEFINICOES[chave] || {}).map(([grupo, itens]) => (
@@ -119,16 +125,16 @@ export default function AbaDominios() {
                                 atualizarDominio(chave, selecionados[chave], 1);
                                 setSelecionados(prev => ({ ...prev, [chave]: "" }));
                             }
-                        }} style={{ borderColor: corBase, color: corBase, margin: 0, padding: '0 15px', fontWeight: 'bold' }}>ADICIONAR</button>
+                        }} style={{ flex: 'none', borderColor: corBase, color: corBase, margin: 0, padding: '0 15px', fontWeight: 'bold' }}>ADICIONAR</button>
                     </div>
 
                     {/* 2. CRIADOR PERSONALIZADO */}
-                    <div style={{ display: 'flex', gap: '5px' }}>
+                    <div style={{ display: 'flex', gap: '8px' }}>
                         <input 
                             id={`custom-${chave}`}
                             className="input-neon" 
-                            placeholder="Ou crie um novo (Ex: Punho das Sombras)" 
-                            style={{ flex: 1, borderColor: '#ffcc00', background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: '0.85em', padding: '6px 10px' }}
+                            placeholder="Criar novo (Ex: Punho das Sombras)" 
+                            style={{ flex: '1 1 auto', minWidth: 0, padding: '8px', borderColor: '#ffcc00', background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: '0.85em' }}
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
                                     const val = e.target.value;
@@ -142,7 +148,7 @@ export default function AbaDominios() {
                                 atualizarDominio(chave, input.value.trim(), 1);
                                 input.value = '';
                             }
-                        }} style={{ borderColor: '#ffcc00', color: '#ffcc00', margin: 0, padding: '0 15px', fontWeight: 'bold' }}>➕ CRIAR</button>
+                        }} style={{ flex: 'none', borderColor: '#ffcc00', color: '#ffcc00', margin: 0, padding: '0 15px', fontWeight: 'bold' }}>➕ CRIAR</button>
                     </div>
 
                 </div>
