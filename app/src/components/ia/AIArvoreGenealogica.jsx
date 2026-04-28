@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import useStore, { fichaPadrao } from '../../stores/useStore'; 
-import { ref, set } from 'firebase/database'; // 🔥 IMPORTAÇÃO DO FIREBASE 🔥
-import { database } from '../../services/firebase-config'; // 🔥 IMPORTAÇÃO DA LIGAÇÃO 🔥
+import useStore from '../../stores/useStore'; 
+import { ref, set } from 'firebase/database'; 
+import { database } from '../../services/firebase-config'; 
 
 export default function AIArvoreGenealogica() {
-    // 💾 CONEXÃO COM O ZUSTAND (Apenas para ler e evitar duplicados)
+    // 💾 CONEXÃO COM O ZUSTAND 
     const personagens = useStore(s => s.personagens);
 
     // 💾 CARREGA DO LOCALSTORAGE DA ÁRVORE (Ou inicia vazio)
@@ -50,7 +50,6 @@ export default function AIArvoreGenealogica() {
         }
     };
 
-    // 🔥 EDITAR NOME DA ÁRVORE 🔥
     const editarNomeFamilia = (nomeAtual) => {
         const novoNome = window.prompt("Digite o novo nome para esta Árvore:", nomeAtual);
         if (!novoNome || novoNome.trim() === '' || novoNome === nomeAtual) return;
@@ -123,7 +122,7 @@ export default function AIArvoreGenealogica() {
     };
 
     // ==========================================
-    // 🚀 INTEGRAÇÃO SUPREMA: ENVIAR PARA O FIREBASE COMO NPC
+    // 🚀 INTEGRAÇÃO SUPREMA: ENVIAR PARA O FIREBASE COMO NPC (CORRIGIDO)
     // ==========================================
     const injetarNaMesa = async () => {
         if (!npcSelecionado || !npcSelecionado.nome || npcSelecionado.nome.trim() === '') {
@@ -132,50 +131,39 @@ export default function AIArvoreGenealogica() {
 
         const nomePersonagem = npcSelecionado.nome.trim();
 
-        // Verifica se já existe e pede confirmação para sobrescrever
         if (personagens && personagens[nomePersonagem]) {
-            if (!window.confirm(`⚠️ O personagem "${nomePersonagem}" já está no Banco de Dados (Painel do Mestre)! Deseja sobrescrever a ficha atual dele com os dados da Árvore Genealógica?`)) {
+            if (!window.confirm(`⚠️ O personagem "${nomePersonagem}" já está no Banco de Dados! Deseja sobrescrever a ficha atual dele com os dados da Árvore Genealógica?`)) {
                 return;
             }
         }
 
-        // Deep clone da Ficha Padrão para formatar corretamente
-        const novaFicha = JSON.parse(JSON.stringify(fichaPadrao));
-
-        // Convertendo os dados da Árvore para a Estrutura do Jogo
         const hpValor = Number(npcSelecionado.hp) || 100000;
-        novaFicha.vida = { ...novaFicha.vida, base: hpValor, atual: hpValor };
-        
         const manaValor = Number(npcSelecionado.mana) || 100000;
-        novaFicha.mana = { ...novaFicha.mana, base: manaValor, atual: manaValor };
 
-        if (npcSelecionado.avatar && npcSelecionado.avatar.trim() !== '') {
-            novaFicha.avatar = { base: npcSelecionado.avatar.trim() };
-        }
-
-        novaFicha.bio = {
-            ...novaFicha.bio,
-            raca: npcSelecionado.papel || "Membro de Clã",
-            classe: npcSelecionado.classe || "Desconhecida",
-            alinhamento: npcSelecionado.status || "Vivo",
-            mesa: 'npc' // 🔥 A ETIQUETA QUE O SEU SISTEMA USA PARA A ABA VERMELHA 🔥
+        // 🔥 PACOTE LIMPO: Sem arrays vazios para não irritar o Firebase! 🔥
+        const fichaLimpa = {
+            bio: {
+                classe: npcSelecionado.classe || "Desconhecida",
+                raca: npcSelecionado.papel || "Membro de Clã",
+                alinhamento: npcSelecionado.status || "Vivo",
+                mesa: 'npc' // Etiqueta da aba vermelha
+            },
+            vida: { atual: hpValor, base: hpValor },
+            mana: { atual: manaValor, base: manaValor },
+            avatar: npcSelecionado.avatar ? npcSelecionado.avatar.trim() : "",
+            notas: {
+                geral: `🔸 Elemento Mágico: ${npcSelecionado.elemento || 'Nenhum'}\n🔸 Origem: Clã ${familiaAtiva}\n\n📖 Lore Genealógica:\n${npcSelecionado.lore || 'Sem registros na árvore.'}`
+            },
+            isNPC: true,
+            dataCriacao: Date.now()
         };
-
-        novaFicha.notas = {
-            ...novaFicha.notas,
-            geral: `🔸 Elemento Mágico: ${npcSelecionado.elemento || 'Nenhum'}\n🔸 Origem: Clã ${familiaAtiva}\n\n📖 Lore Genealógica:\n${npcSelecionado.lore || 'Sem registros na árvore.'}`
-        };
-
-        novaFicha.isNPC = true; // 🔥 OUTRA ETIQUETA OBRIGATÓRIA PARA NPCS 🔥
-        novaFicha.dataCriacao = Date.now();
 
         try {
-            // 🔥 INJETA DIRETO NO FIREBASE (Igual à sua Forja de NPCs) 🔥
-            await set(ref(database, `personagens/${nomePersonagem}`), novaFicha);
-            alert(`✅ Sucesso! "${nomePersonagem}" foi injetado no Firebase e já deve aparecer na Aba de NPCs do Mestre!`);
+            await set(ref(database, `personagens/${nomePersonagem}`), fichaLimpa);
+            alert(`✅ Sucesso! "${nomePersonagem}" foi forjado no Firebase e já deve aparecer na Aba de NPCs do Mestre!`);
         } catch (erro) {
             console.error("Erro ao invocar entidade no Firebase:", erro);
-            alert("❌ Erro ao enviar para o Firebase. Verifique a ligação à internet.");
+            alert(`❌ Erro do Firebase: ${erro.message}`); // Vai mostrar o motivo real se der erro
         }
     };
 
