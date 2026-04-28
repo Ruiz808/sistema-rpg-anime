@@ -36,10 +36,10 @@ export default function MapaMundi({ children }) {
     const containerRef = useRef(null);
     const [codigoExportado, setCodigoExportado] = useState(null);
 
-    // 🎥 CÂMERA 3D DO SISTEMA SOLAR 
+    // 🎥 CÂMERA 3D DO SISTEMA SOLAR
     const [camRotX, setCamRotX] = useState(60); 
     const [camRotY, setCamRotY] = useState(0);  
-    const [camZoom, setCamZoom] = useState(0.35); 
+    const [camZoom, setCamZoom] = useState(0.45); 
     const [isDraggingCam, setIsDraggingCam] = useState(false);
     const camDragStart = useRef({ x: 0, y: 0 });
 
@@ -60,23 +60,22 @@ export default function MapaMundi({ children }) {
         { "nome": "Plano do Caos Inferior", "top": "84%", "left": "8%", "width": "22%", "height": "10%", "cor": "#800000", "isCircle": false }
     ]);
 
-    // 📍 VARIÁVEL 2: ESTRELAS E PLANETAS
+    // 📍 VARIÁVEL 2: ESTRELAS E PLANETAS 
     const [elementosSolar, setElementosSolar] = useState([
-        { "id": "orichalcosA", "tipo": "estrela", "nome": "Orichalcos A", "top": "1000px", "left": "800px", "size": "300px" },
-        { "id": "orichalcosB", "tipo": "estrela", "nome": "Orichalcos B", "top": "1000px", "left": "3200px", "size": "300px" },
-        { "id": "vegeta", "tipo": "planeta", "nome": "Vegeta", "color1": "#ff6666", "color2": "#990000", "shadow": "rgba(255,0,0,0.5)", "size": "65px", "tempo": "40s", "delay": "-5s", "pathIdx": 1 },
-        { "id": "namekusei", "tipo": "planeta", "nome": "Namekusei", "color1": "#66ff66", "color2": "#006600", "shadow": "rgba(0,255,0,0.5)", "size": "80px", "tempo": "50s", "delay": "-20s", "pathIdx": 2 },
-        { "id": "desconhecido", "tipo": "planeta", "nome": "Desconhecido", "color1": "#66b3ff", "color2": "#000066", "shadow": "rgba(0,100,255,0.5)", "size": "55px", "tempo": "60s", "delay": "-45s", "pathIdx": 3 },
-        { "id": "terra0", "tipo": "terra", "nome": "Terra 0", "size": "150px", "tempo": "30s", "delay": "0s", "pathIdx": 0 }
+        { "id": "orichalcosA", "tipo": "estrela", "nome": "Orichalcos A", "top": "500px", "left": "500px", "size": "240px" },
+        { "id": "orichalcosB", "tipo": "estrela", "nome": "Orichalcos B", "top": "500px", "left": "1500px", "size": "240px" },
+        { "id": "vegeta", "tipo": "planeta", "nome": "Vegeta", "color1": "#ff6666", "color2": "#990000", "shadow": "rgba(255,0,0,0.5)", "size": "55px", "tempo": "40s", "delay": "-5s", "pathIdx": 1 },
+        { "id": "namekusei", "tipo": "planeta", "nome": "Namekusei", "color1": "#66ff66", "color2": "#006600", "shadow": "rgba(0,255,0,0.5)", "size": "70px", "tempo": "50s", "delay": "-20s", "pathIdx": 2 },
+        { "id": "desconhecido", "tipo": "planeta", "nome": "Desconhecido", "color1": "#66b3ff", "color2": "#000066", "shadow": "rgba(0,100,255,0.5)", "size": "45px", "tempo": "60s", "delay": "-45s", "pathIdx": 3 },
+        { "id": "terra0", "tipo": "terra", "nome": "Terra 0", "size": "130px", "tempo": "30s", "delay": "0s", "pathIdx": 0 }
     ]);
 
     // 📍 VARIÁVEL 3: CALIBRAGEM DAS ÓRBITAS
-    // Agora o RX significa "A folga além da Estrela". Valores menores deixam a órbita rente à estrela!
     const [configOrbitas, setConfigOrbitas] = useState({
-        "terra0": { rx: 200, ry: 600 },
-        "vegeta": { rx: 350, ry: 700 },
-        "namekusei": { rx: 100, ry: 500 },
-        "desconhecido": { rx: 500, ry: 800 }
+        "terra0": { rx: 700, ry: 350 },
+        "vegeta": { rx: 750, ry: 380 },
+        "namekusei": { rx: 650, ry: 320 },
+        "desconhecido": { rx: 800, ry: 410 }
     });
 
     const posicoesPings = [
@@ -93,10 +92,10 @@ export default function MapaMundi({ children }) {
     ];
 
     // ==========================================
-    // 🧮 GERADOR MATEMÁTICO DA RODOVIA CÓSMICA (AMARRADO NAS ESTRELAS)
+    // 🧮 GERADOR MATEMÁTICO DA RODOVIA CÓSMICA (AGORA SIM, AMARRADO!)
     // ==========================================
     const getPathCaminho = (rx, ry) => {
-        // Encontra as coordenadas exatas dos Sóis no seu sistema
+        // 1. Busca as posições exatas dos sóis no Painel de Engenharia
         const starA = elementosSolar.find(e => e.id === 'orichalcosA');
         const starB = elementosSolar.find(e => e.id === 'orichalcosB');
         
@@ -105,14 +104,14 @@ export default function MapaMundi({ children }) {
         const posBx = parseInt(starB.left);
         const posBy = parseInt(starB.top);
 
-        // O centro do infinito sempre será o exato meio do caminho entre as estrelas
+        // 2. Calcula o centro exato entre os dois sóis
         const cx = (posAx + posBx) / 2;
         const cy = (posAy + posBy) / 2;
 
-        // A distância entre o centro e a estrela
+        // 3. Calcula a distância do centro até a estrela
         const distEstrelas = Math.abs(posBx - posAx) / 2;
 
-        // A largura da órbita = A distância até a estrela + A "Folga" que você configurou no painel (rx)
+        // 4. A largura total da órbita é a distância da estrela + a Folga (rx) que vc definir
         const raioX = distEstrelas + rx;
 
         return `M ${cx} ${cy} C ${cx + raioX*0.375} ${cy - ry}, ${cx + raioX} ${cy - ry*0.75}, ${cx + raioX} ${cy} C ${cx + raioX} ${cy + ry*0.75}, ${cx + raioX*0.375} ${cy + ry}, ${cx} ${cy} C ${cx - raioX*0.375} ${cy - ry}, ${cx - raioX} ${cy - ry*0.75}, ${cx - raioX} ${cy} C ${cx - raioX} ${cy + ry*0.75}, ${cx - raioX*0.375} ${cy + ry}, ${cx} ${cy} Z`;
@@ -211,7 +210,7 @@ export default function MapaMundi({ children }) {
         setCodigoExportado(`// COPIE E SUBSTITUA A 'zonasCosmologia':\nconst [zonasCosmologia, setZonasCosmologia] = useState(${codigoCosmo});\n\n// ======================================\n\n// COPIE E SUBSTITUA A 'elementosSolar':\nconst [elementosSolar, setElementosSolar] = useState(${codigoSolar});\n\n// ======================================\n\n// COPIE E SUBSTITUA A 'configOrbitas':\nconst [configOrbitas, setConfigOrbitas] = useState(${codigoOrbs});`);
     };
 
-    // 🎛️ PAINEL DE ENGENHARIA SOLAR (COM LIMITES QUEBRADOS!)
+    // 🎛️ PAINEL DE ENGENHARIA SOLAR 
     const PainelEngenhariaSolar = () => {
         if (!modoAjuste || nivelVisao !== 'sistema_solar') return null;
         
@@ -224,23 +223,21 @@ export default function MapaMundi({ children }) {
             >
                 <h3 style={{ color: '#fff', margin: '0', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '2px', borderBottom: '1px solid #333', paddingBottom: '10px' }}>Engenharia Orbital</h3>
                 
-                {/* Sliders das Órbitas com LIMITES MASSIVOS E STEP 10 */}
                 {['terra0', 'vegeta', 'namekusei', 'desconhecido'].map(id => (
                     <div key={id} style={{ marginBottom: '5px', paddingBottom: '10px', borderBottom: '1px dotted #333' }}>
                         <span style={{ color: '#00ffcc', fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase' }}>Órbita: {id}</span>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
-                            <label style={{ color: '#aaa', fontSize: '10px', display: 'flex', justifyContent: 'space-between' }}>Folga Externa (Eixo X) <span>{configOrbitas[id].rx}</span></label>
-                            <input type="range" min="50" max="2000" step="10" value={configOrbitas[id].rx} onChange={(e) => setConfigOrbitas(prev => ({...prev, [id]: {...prev[id], rx: parseInt(e.target.value)}}))} />
+                            <label style={{ color: '#aaa', fontSize: '10px', display: 'flex', justifyContent: 'space-between' }}>Folga (Eixo X) <span>{configOrbitas[id].rx}</span></label>
+                            <input type="range" min="100" max="1500" step="10" value={configOrbitas[id].rx} onChange={(e) => setConfigOrbitas(prev => ({...prev, [id]: {...prev[id], rx: parseInt(e.target.value)}}))} />
                             
                             <label style={{ color: '#aaa', fontSize: '10px', display: 'flex', justifyContent: 'space-between' }}>Altura (Eixo Y) <span>{configOrbitas[id].ry}</span></label>
-                            <input type="range" min="200" max="4000" step="10" value={configOrbitas[id].ry} onChange={(e) => setConfigOrbitas(prev => ({...prev, [id]: {...prev[id], ry: parseInt(e.target.value)}}))} />
+                            <input type="range" min="100" max="1000" step="10" value={configOrbitas[id].ry} onChange={(e) => setConfigOrbitas(prev => ({...prev, [id]: {...prev[id], ry: parseInt(e.target.value)}}))} />
                         </div>
                     </div>
                 ))}
 
                 <h3 style={{ color: '#ffcc00', margin: '10px 0 0 0', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '2px', borderBottom: '1px solid #333', paddingBottom: '10px' }}>Estrelas Gêmeas</h3>
                 
-                {/* Sliders das Estrelas PODEM IR PRO NEGATIVO */}
                 {['orichalcosA', 'orichalcosB'].map(id => {
                     const star = elementosSolar.find(e => e.id === id);
                     return (
@@ -248,11 +245,11 @@ export default function MapaMundi({ children }) {
                             <span style={{ color: '#ffcc00', fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase' }}>{star.nome}</span>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
                                 <label style={{ color: '#aaa', fontSize: '10px', display: 'flex', justifyContent: 'space-between' }}>Posição X (Dir/Esq)</label>
-                                <input type="range" min="-2000" max="10000" step="10" value={parseInt(star.left)} onChange={(e) => {
+                                <input type="range" min="-1000" max="3000" step="10" value={parseInt(star.left)} onChange={(e) => {
                                     setElementosSolar(prev => prev.map(el => el.id === id ? { ...el, left: `${e.target.value}px` } : el))
                                 }} />
                                 <label style={{ color: '#aaa', fontSize: '10px', display: 'flex', justifyContent: 'space-between' }}>Posição Y (Cima/Baixo)</label>
-                                <input type="range" min="-1000" max="5000" step="10" value={parseInt(star.top)} onChange={(e) => {
+                                <input type="range" min="0" max="2000" step="10" value={parseInt(star.top)} onChange={(e) => {
                                     setElementosSolar(prev => prev.map(el => el.id === id ? { ...el, top: `${e.target.value}px` } : el))
                                 }} />
                             </div>
@@ -317,18 +314,17 @@ export default function MapaMundi({ children }) {
                     <p style={{ color: '#ffcc00', fontSize: '0.75em', margin: '2px 0 0 0' }}>🔍 Use o Scroll/Pinch para aplicar Zoom</p>
                 </div>
 
-                {/* WRAPPER COM ZOOM E PERSPECTIVA */}
                 <div 
                     onWheel={handleEspacoZoom} 
-                    style={{ position: 'absolute', inset: 0, perspective: '3000px', touchAction: 'none', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+                    style={{ position: 'absolute', inset: 0, perspective: '2500px', touchAction: 'none', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
                     onMouseDown={handleEspacoMouseDown} onMouseMove={handleEspacoMouseMove} onMouseUp={handleEspacoMouseUp} onMouseLeave={handleEspacoMouseUp} 
                     onTouchStart={handleEspacoMouseDown} onTouchMove={handleEspacoMouseMove} onTouchEnd={handleEspacoMouseUp}
                 >
-                    <div style={{ position: 'relative', width: '8000px', height: '4000px', transformStyle: 'preserve-3d', transform: `scale(${camZoom}) rotateX(${camRotX}deg) rotateY(${camRotY}deg)`, cursor: isDraggingCam ? 'grabbing' : (modoAjuste ? 'default' : 'grab'), transition: isDraggingCam ? 'none' : 'transform 0.1s ease-out' }}>
+                    <div style={{ position: 'relative', width: '2000px', height: '1000px', transformStyle: 'preserve-3d', transform: `scale(${camZoom}) rotateX(${camRotX}deg) rotateY(${camRotY}deg)`, cursor: isDraggingCam ? 'grabbing' : (modoAjuste ? 'default' : 'grab'), transition: isDraggingCam ? 'none' : 'transform 0.1s ease-out' }}>
                         
-                        <svg viewBox="0 0 8000 4000" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', overflow: 'visible', pointerEvents: 'none', zIndex: 1 }}>
+                        <svg viewBox="0 0 2000 1000" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', overflow: 'visible', pointerEvents: 'none', zIndex: 1 }}>
                             <defs>
-                                <filter id="glow"><feGaussianBlur stdDeviation="6" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                                <filter id="glow"><feGaussianBlur stdDeviation="4" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
                             </defs>
                             {['terra0', 'vegeta', 'namekusei', 'desconhecido'].map((id) => (
                                 <path 
@@ -337,19 +333,19 @@ export default function MapaMundi({ children }) {
                                     d={caminhosGerados[id]} 
                                     fill="none" 
                                     stroke={id === 'terra0' ? "rgba(255, 255, 255, 0.6)" : "rgba(255, 255, 255, 0.25)"} 
-                                    strokeWidth={id === 'terra0' ? "10" : "5"} 
-                                    strokeDasharray="40 80" 
+                                    strokeWidth={id === 'terra0' ? "6" : "3"} 
+                                    strokeDasharray="20 40" 
                                     filter="url(#glow)" 
                                 />
                             ))}
                         </svg>
 
-                        {/* ESTRELAS E PLANETAS HTML */}
+                        {/* ESTRELAS E PLANETAS HTML PRESERVANDO O 3D */}
                         {elementosSolar.map(el => {
                             if (el.tipo === 'estrela') {
                                 return (
                                     <div key={el.id} style={{ position: 'absolute', top: el.top, left: el.left, width: el.size, height: el.size, zIndex: 5, transform: 'translate(-50%, -50%)', transformStyle: 'preserve-3d', pointerEvents: 'none' }}>
-                                        <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #ffffff 0%, #ffcc00 40%, #ff5500 100%)', boxShadow: '0 0 300px #ffcc00, 0 0 500px #ff5500, inset -50px -50px 100px rgba(255,50,0,0.8)', transform: billboardTransform, transformStyle: 'preserve-3d' }} />
+                                        <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #ffffff 0%, #ffcc00 40%, #ff5500 100%)', boxShadow: '0 0 150px #ffcc00, 0 0 250px #ff5500, inset -30px -30px 60px rgba(255,50,0,0.8)', transform: billboardTransform, transformStyle: 'preserve-3d' }} />
                                     </div>
                                 );
                             }
@@ -359,9 +355,9 @@ export default function MapaMundi({ children }) {
                                     <div key={el.id} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', transformStyle: 'preserve-3d' }}>
                                         <div style={{ position: 'absolute', top: 0, left: 0, width: el.size, height: el.size, zIndex: 10, offsetPath: `path("${caminhosGerados[el.id]}")`, offsetRotate: '0deg', animation: `orbitaSempre ${el.tempo} linear infinite`, animationDelay: el.delay, transformStyle: 'preserve-3d', pointerEvents: 'auto' }}>
                                             <div style={{ width: '100%', height: '100%', transform: billboardTransform, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', transformStyle: 'preserve-3d' }}>
-                                                <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: `radial-gradient(circle at 30% 30%, ${el.color1}, ${el.color2})`, boxShadow: `inset -25px -25px 40px rgba(0,0,0,0.9), inset 10px 10px 30px rgba(255,255,255,0.4), 0 0 50px ${el.shadow}`, zIndex: 10, cursor: 'pointer' }} onClick={() => alert(`Planeta ${el.nome}\nAcesso restrito.`)} />
-                                                <div style={{ position: 'absolute', width: '140%', height: '140%', borderRadius: '50%', border: '4px dashed rgba(255,255,255,0.2)', pointerEvents: 'none', zIndex: 5, transform: 'rotateX(65deg)' }}></div>
-                                                <span style={{ color: el.color1, position: 'absolute', bottom: '-60px', fontSize: '24px', fontWeight: 'bold', letterSpacing: '3px', textTransform: 'uppercase', whiteSpace: 'nowrap', textShadow: '0 4px 8px rgba(0,0,0,0.9), 0 0 15px rgba(255,255,255,0.5)' }}>{el.nome}</span>
+                                                <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: `radial-gradient(circle at 30% 30%, ${el.color1}, ${el.color2})`, boxShadow: `inset -20px -20px 30px rgba(0,0,0,0.9), inset 8px 8px 20px rgba(255,255,255,0.4), 0 0 30px ${el.shadow}`, zIndex: 10, cursor: 'pointer' }} onClick={() => alert(`Planeta ${el.nome}\nAcesso restrito.`)} />
+                                                <div style={{ position: 'absolute', width: '140%', height: '140%', borderRadius: '50%', border: '2px dashed rgba(255,255,255,0.2)', pointerEvents: 'none', zIndex: 5, transform: 'rotateX(65deg)' }}></div>
+                                                <span style={{ color: el.color1, position: 'absolute', bottom: '-45px', fontSize: '16px', fontWeight: 'bold', letterSpacing: '2px', textTransform: 'uppercase', whiteSpace: 'nowrap', textShadow: '0 2px 4px rgba(0,0,0,0.9), 0 0 10px rgba(255,255,255,0.5)' }}>{el.nome}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -374,36 +370,33 @@ export default function MapaMundi({ children }) {
                                         <div style={{ position: 'absolute', top: 0, left: 0, width: el.size, height: el.size, zIndex: 20, offsetPath: `path("${caminhosGerados[el.id]}")`, offsetRotate: '0deg', animation: `orbitaSempre ${el.tempo} linear infinite`, animationDelay: el.delay, transformStyle: 'preserve-3d', pointerEvents: 'auto' }}>
                                             <div style={{ width: '100%', height: '100%', transform: billboardTransform, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', transformStyle: 'preserve-3d' }}>
                                                 
-                                                <div onClick={() => setNivelVisao('globo')} style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #4db8ff, #002244)', boxShadow: 'inset -40px -40px 70px rgba(0,0,0,0.9), inset 15px 15px 35px rgba(255,255,255,0.4), 0 0 80px rgba(0,150,255,0.6)', border: '2px solid rgba(255,255,255,0.2)', zIndex: 10, cursor: 'pointer' }} />
+                                                <div onClick={() => setNivelVisao('globo')} style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #4db8ff, #002244)', boxShadow: 'inset -30px -30px 50px rgba(0,0,0,0.9), inset 12px 12px 25px rgba(255,255,255,0.4), 0 0 60px rgba(0,150,255,0.6)', border: '2px solid rgba(255,255,255,0.2)', zIndex: 10, cursor: 'pointer' }} />
                                                 
                                                 <div style={{ position: 'absolute', width: '220%', height: '220%', transform: 'rotateX(75deg)', pointerEvents: 'none', zIndex: 5, transformStyle: 'preserve-3d' }}>
-                                                    <div className="moon-orbit-flat" style={{ width: '100%', height: '100%', borderRadius: '50%', border: '4px dashed rgba(255,255,255,0.25)', position: 'relative', transformStyle: 'preserve-3d' }}>
+                                                    <div className="moon-orbit-flat" style={{ width: '100%', height: '100%', borderRadius: '50%', border: '3px dashed rgba(255,255,255,0.25)', position: 'relative', transformStyle: 'preserve-3d' }}>
                                                         
-                                                        {/* MARIA */}
                                                         <div style={{ position: 'absolute', top: '0%', left: '50%', width: 0, height: 0, transformStyle: 'preserve-3d' }}>
-                                                            <div className="moon-sphere" style={{ width: '28px', height: '28px', background: 'radial-gradient(circle at 35% 35%, #ffffff 0%, #777777 50%, #000000 100%)', borderRadius: '50%', boxShadow: 'inset -6px -6px 12px rgba(0,0,0,0.9), 0 0 20px rgba(255,255,255,0.6)' }}>
-                                                                <span className="moon-text" style={{position:'absolute', top: '-35px', left:'-10px', fontSize: '20px', fontWeight: 'bold', color:'#fff', textShadow: '0 0 10px #000'}}>Maria</span>
+                                                            <div className="moon-sphere" style={{ width: '20px', height: '20px', background: 'radial-gradient(circle at 35% 35%, #ffffff 0%, #777777 50%, #000000 100%)', borderRadius: '50%', boxShadow: 'inset -5px -5px 10px rgba(0,0,0,0.9), 0 0 15px rgba(255,255,255,0.6)' }}>
+                                                                <span className="moon-text" style={{position:'absolute', top: '-25px', left:'-10px', fontSize:'14px', fontWeight: 'bold', color:'#fff', textShadow: '0 0 8px #000'}}>Maria</span>
                                                             </div>
                                                         </div>
 
-                                                        {/* ROSE */}
                                                         <div style={{ position: 'absolute', top: '85%', left: '85%', width: 0, height: 0, transformStyle: 'preserve-3d' }}>
-                                                            <div className="moon-sphere" style={{ width: '24px', height: '24px', background: 'radial-gradient(circle at 35% 35%, #ffaaaa 0%, #aa3333 50%, #220000 100%)', borderRadius: '50%', boxShadow: 'inset -6px -6px 12px rgba(0,0,0,0.9), 0 0 20px rgba(255,100,100,0.6)' }}>
-                                                                <span className="moon-text" style={{position:'absolute', top: '-35px', right:'-5px', fontSize: '20px', fontWeight: 'bold', color:'#fff', textShadow: '0 0 10px #000'}}>Rose</span>
+                                                            <div className="moon-sphere" style={{ width: '18px', height: '18px', background: 'radial-gradient(circle at 35% 35%, #ffaaaa 0%, #aa3333 50%, #220000 100%)', borderRadius: '50%', boxShadow: 'inset -5px -5px 10px rgba(0,0,0,0.9), 0 0 15px rgba(255,100,100,0.6)' }}>
+                                                                <span className="moon-text" style={{position:'absolute', top: '-25px', right:'-5px', fontSize:'14px', fontWeight: 'bold', color:'#fff', textShadow: '0 0 8px #000'}}>Rose</span>
                                                             </div>
                                                         </div>
 
-                                                        {/* SINA */}
                                                         <div style={{ position: 'absolute', top: '85%', left: '15%', width: 0, height: 0, transformStyle: 'preserve-3d' }}>
-                                                            <div className="moon-sphere" style={{ width: '34px', height: '34px', background: 'radial-gradient(circle at 35% 35%, #aaaaff 0%, #4444aa 50%, #000022 100%)', borderRadius: '50%', boxShadow: 'inset -8px -8px 16px rgba(0,0,0,0.9), 0 0 20px rgba(100,150,255,0.6)' }}>
-                                                                <span className="moon-text" style={{position:'absolute', top: '-35px', left:'-5px', fontSize: '20px', fontWeight: 'bold', color:'#fff', textShadow: '0 0 10px #000'}}>Sina</span>
+                                                            <div className="moon-sphere" style={{ width: '24px', height: '24px', background: 'radial-gradient(circle at 35% 35%, #aaaaff 0%, #4444aa 50%, #000022 100%)', borderRadius: '50%', boxShadow: 'inset -6px -6px 12px rgba(0,0,0,0.9), 0 0 15px rgba(100,150,255,0.6)' }}>
+                                                                <span className="moon-text" style={{position:'absolute', top: '-25px', left:'-5px', fontSize:'14px', fontWeight: 'bold', color:'#fff', textShadow: '0 0 8px #000'}}>Sina</span>
                                                             </div>
                                                         </div>
 
                                                     </div>
                                                 </div>
                                                 
-                                                <span style={{ color: '#4db8ff', position: 'absolute', bottom: '-80px', fontSize: '30px', fontWeight: 'bold', letterSpacing: '6px', textTransform: 'uppercase', textShadow: '0 4px 8px rgba(0,0,0,0.9), 0 0 20px rgba(0,150,255,1)', whiteSpace: 'nowrap', pointerEvents: 'none' }}>{el.nome}</span>
+                                                <span style={{ color: '#4db8ff', position: 'absolute', bottom: '-55px', fontSize: '22px', fontWeight: 'bold', letterSpacing: '5px', textTransform: 'uppercase', textShadow: '0 2px 4px rgba(0,0,0,0.9), 0 0 15px rgba(0,150,255,1)', whiteSpace: 'nowrap', pointerEvents: 'none' }}>{el.nome}</span>
                                             </div>
                                         </div>
                                     </div>
