@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import useStore from '../../stores/useStore';
-import { salvarFichaSilencioso } from '../../services/firebase-sync.js'; // 🔥 Adicionado o Auto-Save!
+import { salvarFichaSilencioso } from '../../services/firebase-sync.js';
 
 // 📜 A TABELA DE REFERÊNCIA DE NÍVEIS E BUFFS
 const NIVEIS_INFO = {
@@ -62,7 +62,6 @@ const PREDEFINICOES = {
     }
 };
 
-// Transforma os objetos em arrays simples para a lógica de filtragem funcionar
 const flatPredefs = {};
 Object.keys(PREDEFINICOES).forEach(key => {
     flatPredefs[key] = Object.values(PREDEFINICOES[key]).flat();
@@ -70,12 +69,9 @@ Object.keys(PREDEFINICOES).forEach(key => {
 
 export default function AbaDominios() {
     const { minhaFicha, updateFicha } = useStore();
-    
-    // 🔥 ESTADO INTELIGENTE DO REACT PARA CONTROLAR AS LISTAS SUSPENSAS 🔥
     const [selecionados, setSelecionados] = useState({});
 
     if (!minhaFicha) return <div style={{ color: '#888', padding: 20 }}>Carregando ficha...</div>;
-    
     const dominios = minhaFicha.dominios || {};
 
     const atualizarDominio = (categoria, item, nivel) => {
@@ -89,60 +85,69 @@ export default function AbaDominios() {
             else f.dominios[targetCat][item] = { nivel: nivel, nome: NIVEIS_INFO[nivel].nome };
         });
         
-        // Salva na nuvem para não perder se atualizar a página
         if (typeof salvarFichaSilencioso === 'function') salvarFichaSilencioso();
-    };
-
-    const adicionarNovo = (chaveSelect) => {
-        // Agora ele puxa o valor diretamente da memória do React!
-        let nome = selecionados[chaveSelect];
-        
-        if (!nome) {
-            return alert("Por favor, selecione um domínio na lista ou escolha 'Criar Outro Domínio' antes de clicar em adicionar! ➕");
-        }
-        
-        if (nome === 'custom') {
-            nome = window.prompt(`Digite o nome do Domínio personalizado:`);
-        }
-
-        if (nome && nome.trim() !== '') {
-            atualizarDominio(chaveSelect, nome, 1);
-            // Limpa a caixa de seleção depois de adicionar
-            setSelecionados(prev => ({ ...prev, [chaveSelect]: "" }));
-        }
     };
 
     const renderSecao = (titulo, chave, corBase) => {
         const isMagica = ['elementos', 'mana', 'chakra', 'aura', 'astral', 'primordiais'].includes(chave);
         const gavetaDoStore = isMagica ? 'elementais' : chave;
-        
         const todasMagias = flatPredefs.elementos.concat(flatPredefs.mana, flatPredefs.chakra, flatPredefs.aura, flatPredefs.astral, flatPredefs.primordiais);
 
         return (
             <div className="def-box" style={{ borderLeft: `4px solid ${corBase}`, marginBottom: '20px' }}>
                 <h3 style={{ color: corBase, margin: '0 0 10px 0', fontSize: '1em' }}>{titulo}</h3>
-                <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '15px' }}>
                     
-                    <select 
-                        className="input-neon" 
-                        value={selecionados[chave] || ""} 
-                        onChange={(e) => setSelecionados(prev => ({ ...prev, [chave]: e.target.value }))}
-                        style={{ flex: 1, borderColor: corBase, background: 'rgba(0,0,0,0.5)', color: '#fff' }}
-                    >
-                        <option value="">-- Selecione para Adicionar --</option>
-                        {Object.entries(PREDEFINICOES[chave] || {}).map(([grupo, itens]) => (
-                            <optgroup key={grupo} label={`— ${grupo} —`} style={{ color: corBase, fontStyle: 'italic', background: '#111' }}>
-                                {itens.map(p => <option key={p} value={p} style={{ color: '#fff', fontStyle: 'normal' }}>{p}</option>)}
-                            </optgroup>
-                        ))}
-                        <optgroup label="— Personalizado —" style={{ color: '#ffcc00', background: '#111' }}>
-                            <option value="custom">✍️ Criar Outro Domínio...</option>
-                        </optgroup>
-                    </select>
+                    {/* 1. SELETOR OFICIAL (LORE) */}
+                    <div style={{ display: 'flex', gap: '5px' }}>
+                        <select 
+                            className="input-neon" 
+                            value={selecionados[chave] || ""} 
+                            onChange={(e) => setSelecionados(prev => ({ ...prev, [chave]: e.target.value }))}
+                            style={{ flex: 1, borderColor: corBase, background: 'rgba(0,0,0,0.5)', color: '#fff' }}
+                        >
+                            <option value="">-- Escolher da Lore --</option>
+                            {Object.entries(PREDEFINICOES[chave] || {}).map(([grupo, itens]) => (
+                                <optgroup key={grupo} label={`— ${grupo} —`} style={{ color: corBase, fontStyle: 'italic', background: '#111' }}>
+                                    {itens.map(p => <option key={p} value={p} style={{ color: '#fff', fontStyle: 'normal' }}>{p}</option>)}
+                                </optgroup>
+                            ))}
+                        </select>
+                        <button className="btn-neon" onClick={() => {
+                            if(selecionados[chave]) {
+                                atualizarDominio(chave, selecionados[chave], 1);
+                                setSelecionados(prev => ({ ...prev, [chave]: "" }));
+                            }
+                        }} style={{ borderColor: corBase, color: corBase, margin: 0, padding: '0 15px', fontWeight: 'bold' }}>ADICIONAR</button>
+                    </div>
 
-                    <button className="btn-neon" onClick={() => adicionarNovo(chave)} style={{ borderColor: corBase, color: corBase, margin: 0, padding: '0 15px', fontWeight: 'bold' }}>➕</button>
+                    {/* 2. CRIADOR PERSONALIZADO */}
+                    <div style={{ display: 'flex', gap: '5px' }}>
+                        <input 
+                            id={`custom-${chave}`}
+                            className="input-neon" 
+                            placeholder="Ou crie um novo (Ex: Punho das Sombras)" 
+                            style={{ flex: 1, borderColor: '#ffcc00', background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: '0.85em', padding: '6px 10px' }}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    const val = e.target.value;
+                                    if(val && val.trim() !== '') { atualizarDominio(chave, val.trim(), 1); e.target.value = ''; }
+                                }
+                            }}
+                        />
+                        <button className="btn-neon" onClick={() => {
+                            const input = document.getElementById(`custom-${chave}`);
+                            if(input.value && input.value.trim() !== '') {
+                                atualizarDominio(chave, input.value.trim(), 1);
+                                input.value = '';
+                            }
+                        }} style={{ borderColor: '#ffcc00', color: '#ffcc00', margin: 0, padding: '0 15px', fontWeight: 'bold' }}>➕ CRIAR</button>
+                    </div>
+
                 </div>
 
+                {/* LISTA DOS DOMÍNIOS ATIVOS DO PERSONAGEM */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {Object.entries(dominios[gavetaDoStore] || {}).filter(([nome]) => {
                         const isNestaLista = flatPredefs[chave].includes(nome);
