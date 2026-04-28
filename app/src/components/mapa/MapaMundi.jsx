@@ -36,14 +36,14 @@ export default function MapaMundi({ children }) {
     const containerRef = useRef(null);
     const [codigoExportado, setCodigoExportado] = useState(null);
 
-    // 🎥 CÂMERA 3D DO SISTEMA SOLAR (Zoom confortável restaurado)
+    // 🎥 CÂMERA 3D DO SISTEMA SOLAR (Zoom Perfeito Inicial: 0.7)
     const [camRotX, setCamRotX] = useState(60); 
     const [camRotY, setCamRotY] = useState(0);  
-    const [camZoom, setCamZoom] = useState(0.45); 
+    const [camZoom, setCamZoom] = useState(0.7); 
     const [isDraggingCam, setIsDraggingCam] = useState(false);
     const camDragStart = useRef({ x: 0, y: 0 });
 
-    // 📍 VARIÁVEL 1: POSIÇÕES DA COSMOLOGIA 
+    // 📍 VARIÁVEL 1: POSIÇÕES DA COSMOLOGIA
     const [zonasCosmologia, setZonasCosmologia] = useState([
         { "nome": "Terra 0 (Runeterra)", "top": "44.3%", "left": "49.3%", "width": "10%", "height": "16.6%", "cor": "#ffffff", "isCircle": true, "isPlanet": true },
         { "nome": "Plano da Ordem", "top": "40.6%", "left": "13.2%", "width": "13%", "height": "22%", "cor": "#DDA0DD", "isCircle": true },
@@ -60,22 +60,22 @@ export default function MapaMundi({ children }) {
         { "nome": "Plano do Caos Inferior", "top": "84%", "left": "8%", "width": "22%", "height": "10%", "cor": "#800000", "isCircle": false }
     ]);
 
-    // 📍 VARIÁVEL 2: ESTRELAS E PLANETAS 
+    // 📍 VARIÁVEL 2: ESTRELAS E PLANETAS (Centralizados na Escala Ouro)
     const [elementosSolar, setElementosSolar] = useState([
-        { "id": "orichalcosA", "tipo": "estrela", "nome": "Orichalcos A", "top": "1000px", "left": "800px", "size": "300px" },
-        { "id": "orichalcosB", "tipo": "estrela", "nome": "Orichalcos B", "top": "1000px", "left": "3200px", "size": "300px" },
-        { "id": "vegeta", "tipo": "planeta", "nome": "Vegeta", "color1": "#ff6666", "color2": "#990000", "shadow": "rgba(255,0,0,0.5)", "size": "65px", "tempo": "40s", "delay": "-5s", "pathIdx": 1 },
-        { "id": "namekusei", "tipo": "planeta", "nome": "Namekusei", "color1": "#66ff66", "color2": "#006600", "shadow": "rgba(0,255,0,0.5)", "size": "80px", "tempo": "50s", "delay": "-20s", "pathIdx": 2 },
-        { "id": "desconhecido", "tipo": "planeta", "nome": "Desconhecido", "color1": "#66b3ff", "color2": "#000066", "shadow": "rgba(0,100,255,0.5)", "size": "55px", "tempo": "60s", "delay": "-45s", "pathIdx": 3 },
-        { "id": "terra0", "tipo": "terra", "nome": "Terra 0", "size": "150px", "tempo": "30s", "delay": "0s", "pathIdx": 0 }
+        { "id": "orichalcosA", "tipo": "estrela", "nome": "Orichalcos A", "top": "500px", "left": "500px", "size": "240px" },
+        { "id": "orichalcosB", "tipo": "estrela", "nome": "Orichalcos B", "top": "500px", "left": "1500px", "size": "240px" },
+        { "id": "vegeta", "tipo": "planeta", "nome": "Vegeta", "color1": "#ff6666", "color2": "#990000", "shadow": "rgba(255,0,0,0.5)", "size": "55px", "tempo": "40s", "delay": "-5s", "pathIdx": 1 },
+        { "id": "namekusei", "tipo": "planeta", "nome": "Namekusei", "color1": "#66ff66", "color2": "#006600", "shadow": "rgba(0,255,0,0.5)", "size": "70px", "tempo": "50s", "delay": "-20s", "pathIdx": 2 },
+        { "id": "desconhecido", "tipo": "planeta", "nome": "Desconhecido", "color1": "#66b3ff", "color2": "#000066", "shadow": "rgba(0,100,255,0.5)", "size": "45px", "tempo": "60s", "delay": "-45s", "pathIdx": 3 },
+        { "id": "terra0", "tipo": "terra", "nome": "Terra 0", "size": "130px", "tempo": "30s", "delay": "0s", "pathIdx": 0 }
     ]);
 
-    // 📍 VARIÁVEL 3: CALIBRAGEM DAS ÓRBITAS
+    // 📍 VARIÁVEL 3: CALIBRAGEM DAS ÓRBITAS (Perfeitas para 2000x1000)
     const [configOrbitas, setConfigOrbitas] = useState({
-        "terra0": { rx: 1200, ry: 600 },
-        "vegeta": { rx: 1400, ry: 700 },
-        "namekusei": { rx: 1000, ry: 500 },
-        "desconhecido": { rx: 1600, ry: 800 }
+        "terra0": { rx: 700, ry: 350 },
+        "vegeta": { rx: 750, ry: 380 },
+        "namekusei": { rx: 650, ry: 320 },
+        "desconhecido": { rx: 800, ry: 410 }
     });
 
     const posicoesPings = [
@@ -95,8 +95,8 @@ export default function MapaMundi({ children }) {
     // 🧮 GERADOR MATEMÁTICO DA RODOVIA CÓSMICA
     // ==========================================
     const getPathCaminho = (rx, ry) => {
-        const cx = 2000;
-        const cy = 1000;
+        const cx = 1000;
+        const cy = 500;
         return `M ${cx} ${cy} C ${cx + rx*0.375} ${cy - ry}, ${cx + rx} ${cy - ry*0.75}, ${cx + rx} ${cy} C ${cx + rx} ${cy + ry*0.75}, ${cx + rx*0.375} ${cy + ry}, ${cx} ${cy} C ${cx - rx*0.375} ${cy - ry}, ${cx - rx} ${cy - ry*0.75}, ${cx - rx} ${cy} C ${cx - rx} ${cy + ry*0.75}, ${cx - rx*0.375} ${cy + ry}, ${cx} ${cy} Z`;
     };
 
@@ -136,7 +136,7 @@ export default function MapaMundi({ children }) {
     const handleEspacoZoom = (e) => {
         if (nivelVisao !== 'sistema_solar') return;
         let novoZoom = camZoom - e.deltaY * 0.001;
-        setCamZoom(Math.max(0.1, Math.min(3.5, novoZoom))); 
+        setCamZoom(Math.max(0.2, Math.min(3.5, novoZoom))); 
     };
 
     const voltarCamera = () => {
@@ -193,7 +193,7 @@ export default function MapaMundi({ children }) {
         setCodigoExportado(`// COPIE E SUBSTITUA A 'zonasCosmologia':\nconst [zonasCosmologia, setZonasCosmologia] = useState(${codigoCosmo});\n\n// ======================================\n\n// COPIE E SUBSTITUA A 'elementosSolar':\nconst [elementosSolar, setElementosSolar] = useState(${codigoSolar});\n\n// ======================================\n\n// COPIE E SUBSTITUA A 'configOrbitas':\nconst [configOrbitas, setConfigOrbitas] = useState(${codigoOrbs});`);
     };
 
-    // 🎛️ PAINEL DE ENGENHARIA SOLAR
+    // 🎛️ PAINEL DE ENGENHARIA SOLAR (Escala Ouro)
     const PainelEngenhariaSolar = () => {
         if (!modoAjuste || nivelVisao !== 'sistema_solar') return null;
         
@@ -211,10 +211,10 @@ export default function MapaMundi({ children }) {
                         <span style={{ color: '#00ffcc', fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase' }}>Órbita: {id}</span>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
                             <label style={{ color: '#aaa', fontSize: '10px', display: 'flex', justifyContent: 'space-between' }}>Largura (Eixo X) <span>{configOrbitas[id].rx}</span></label>
-                            <input type="range" min="300" max="4000" step="10" value={configOrbitas[id].rx} onChange={(e) => setConfigOrbitas(prev => ({...prev, [id]: {...prev[id], rx: parseInt(e.target.value)}}))} />
+                            <input type="range" min="300" max="1500" step="5" value={configOrbitas[id].rx} onChange={(e) => setConfigOrbitas(prev => ({...prev, [id]: {...prev[id], rx: parseInt(e.target.value)}}))} />
                             
                             <label style={{ color: '#aaa', fontSize: '10px', display: 'flex', justifyContent: 'space-between' }}>Altura (Eixo Y) <span>{configOrbitas[id].ry}</span></label>
-                            <input type="range" min="100" max="2000" step="10" value={configOrbitas[id].ry} onChange={(e) => setConfigOrbitas(prev => ({...prev, [id]: {...prev[id], ry: parseInt(e.target.value)}}))} />
+                            <input type="range" min="100" max="800" step="5" value={configOrbitas[id].ry} onChange={(e) => setConfigOrbitas(prev => ({...prev, [id]: {...prev[id], ry: parseInt(e.target.value)}}))} />
                         </div>
                     </div>
                 ))}
@@ -228,11 +228,11 @@ export default function MapaMundi({ children }) {
                             <span style={{ color: '#ffcc00', fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase' }}>{star.nome}</span>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
                                 <label style={{ color: '#aaa', fontSize: '10px', display: 'flex', justifyContent: 'space-between' }}>Posição X (Dir/Esq)</label>
-                                <input type="range" min="-1000" max="5000" step="10" value={parseInt(star.left)} onChange={(e) => {
+                                <input type="range" min="0" max="2000" step="5" value={parseInt(star.left)} onChange={(e) => {
                                     setElementosSolar(prev => prev.map(el => el.id === id ? { ...el, left: `${e.target.value}px` } : el))
                                 }} />
                                 <label style={{ color: '#aaa', fontSize: '10px', display: 'flex', justifyContent: 'space-between' }}>Posição Y (Cima/Baixo)</label>
-                                <input type="range" min="-1000" max="3000" step="10" value={parseInt(star.top)} onChange={(e) => {
+                                <input type="range" min="0" max="1000" step="5" value={parseInt(star.top)} onChange={(e) => {
                                     setElementosSolar(prev => prev.map(el => el.id === id ? { ...el, top: `${e.target.value}px` } : el))
                                 }} />
                             </div>
@@ -255,7 +255,7 @@ export default function MapaMundi({ children }) {
                     </button>
                 )}
             </div>
-            {modoAjuste && nivelVisao === 'sistema_solar' && <span style={{ color: '#00ffcc', fontSize: '11px', textAlign: 'center' }}>(Use o Painel Lateral para ajustar o Sistema Solar!)</span>}
+            {modoAjuste && nivelVisao === 'sistema_solar' && <span style={{ color: '#00ffcc', fontSize: '11px', textAlign: 'center' }}>(Use o Painel Lateral para ajustar as Órbitas!)</span>}
             {modoAjuste && nivelVisao === 'cosmologia' && <span style={{ color: '#aaa', fontSize: '11px', textAlign: 'center' }}>(Arraste os planos e as dimensões.)</span>}
         </div>
     );
@@ -276,7 +276,7 @@ export default function MapaMundi({ children }) {
     };
 
     // ==========================================
-    // 🌌 TELA 0: SISTEMA SOLAR CÂMERA 3D BLINDADA 
+    // 🌌 TELA 0: SISTEMA SOLAR CÂMERA 3D (VISÃO PADRÃO PERFEITA)
     // ==========================================
     if (nivelVisao === 'sistema_solar') {
         const billboardTransform = `rotateY(${-camRotY}deg) rotateX(${-camRotX}deg)`;
@@ -297,18 +297,16 @@ export default function MapaMundi({ children }) {
                     <p style={{ color: '#ffcc00', fontSize: '0.75em', margin: '2px 0 0 0' }}>🔍 Use o Scroll/Pinch para aplicar Zoom</p>
                 </div>
 
-                {/* CONTAINER DE PERSPECTIVA */}
                 <div 
                     onWheel={handleEspacoZoom} 
                     style={{ position: 'absolute', inset: 0, perspective: '2500px', touchAction: 'none', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
                     onMouseDown={handleEspacoMouseDown} onMouseMove={handleEspacoMouseMove} onMouseUp={handleEspacoMouseUp} onMouseLeave={handleEspacoMouseUp} 
                     onTouchStart={handleEspacoMouseDown} onTouchMove={handleEspacoMouseMove} onTouchEnd={handleEspacoMouseUp}
                 >
-                    {/* CONTAINER 3D COM FÍSICA VOLUMÉTRICA */}
-                    <div style={{ position: 'relative', width: '4000px', height: '2000px', transformStyle: 'preserve-3d', transform: `scale(${camZoom}) rotateX(${camRotX}deg) rotateY(${camRotY}deg)`, cursor: isDraggingCam ? 'grabbing' : (modoAjuste ? 'default' : 'grab'), transition: isDraggingCam ? 'none' : 'transform 0.1s ease-out' }}>
+                    {/* CONTAINER 3D DE 2000x1000 - A ESCALA OURO */}
+                    <div style={{ position: 'relative', width: '2000px', height: '1000px', transformStyle: 'preserve-3d', transform: `scale(${camZoom}) rotateX(${camRotX}deg) rotateY(${camRotY}deg)`, cursor: isDraggingCam ? 'grabbing' : (modoAjuste ? 'default' : 'grab'), transition: isDraggingCam ? 'none' : 'transform 0.1s ease-out' }}>
                         
-                        {/* 🖌️ O FUNDO SVG PARA DESENHAR AS LINHAS INQUEBRÁVEIS */}
-                        <svg viewBox="0 0 4000 2000" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', overflow: 'visible', pointerEvents: 'none', zIndex: 1 }}>
+                        <svg viewBox="0 0 2000 1000" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', overflow: 'visible', pointerEvents: 'none', zIndex: 1 }}>
                             <defs>
                                 <filter id="glow"><feGaussianBlur stdDeviation="4" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
                             </defs>
@@ -326,7 +324,7 @@ export default function MapaMundi({ children }) {
                             ))}
                         </svg>
 
-                        {/* 🌍 ESTRELAS E PLANETAS HTML */}
+                        {/* ESTRELAS E PLANETAS */}
                         {elementosSolar.map(el => {
                             if (el.tipo === 'estrela') {
                                 return (
@@ -528,7 +526,7 @@ export default function MapaMundi({ children }) {
                     <div style={{ position: 'relative', display: 'inline-block', height: '100%', maxHeight: 'calc(85vh - 70px)' }}>
                         <img src={mapaClean} alt="Mapa Base" style={{ display: 'block', height: '100%', width: 'auto', objectFit: 'contain' }} />
                         
-                        {/* 🌟 AS MÁSCARAS DE RUNETERRA (Targon 100% A Salvo) 🌟 */}
+                        {/* 🌟 MÁSCARAS DE RUNETERRA */}
                         {posicoesPings.map((reino) => (
                             reino.img ? (
                                 <img 
