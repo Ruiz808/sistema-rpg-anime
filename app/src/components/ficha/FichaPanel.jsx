@@ -13,6 +13,7 @@ import {
     FichaMultiplicadoresDano 
 } from './FichaSubComponents';
 import TabelaPrestigio from './TabelaPrestigio';
+import AbaDominios from './AbaDominios'; // 🔥 IMPORTAÇÃO DA NOSSA NOVA ABA AQUI 🔥
 
 export default function FichaPanel({ className, children }) {
     const hasChildren = React.Children.count(children) > 0
@@ -31,6 +32,10 @@ export default function FichaPanel({ className, children }) {
                         <FichaMarcadoresCena />
                         <FichaForjaCalamidade />
                         <FichaMultiplicadoresDano />
+                        
+                        {/* 🔥 A NOSSA NOVA ABA RENDERIZADA AQUI 🔥 */}
+                        <AbaDominios /> 
+
                         <TabelaPrestigio />
                     </>
                 )}

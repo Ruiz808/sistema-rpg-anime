@@ -24,7 +24,16 @@ export const fichaPadrao = {
     aura: { base: 100000000, mBase: 1.0, mGeral: 1.0, mFormas: 1.0, mUnico: "1.0", mAbsoluto: 1.0, reducaoCusto: 0, regeneracao: 0, atual: 100000000 },
     chakra: { base: 100000000, mBase: 1.0, mGeral: 1.0, mFormas: 1.0, mUnico: "1.0", mAbsoluto: 1.0, reducaoCusto: 0, regeneracao: 0, atual: 100000000 },
     corpo: { base: 100000000, mBase: 1.0, mGeral: 1.0, mFormas: 1.0, mUnico: "1.0", mAbsoluto: 1.0, reducaoCusto: 0, regeneracao: 0, atual: 100000000 },
-    compendioOverrides: {}, cores: {}
+    compendioOverrides: {}, cores: {},
+    
+    // 🔥 NOVA ADIÇÃO: O SISTEMA DE DOMÍNIOS EXPANSÍVEL 🔥
+    dominios: {
+        elementais: {}, // Ex: { fogo: { nivel: 5, nome: 'Maestria' } }
+        marciais: {},   // Ex: { taijutsu: { nivel: 3, nome: 'Avançado' } }
+        armas: {},      // Ex: { katanas: { nivel: 7, nome: 'Molecular' } }
+        cura: {},       // Ex: { regeneracao: { nivel: 4, nome: 'Virtuoso' } }
+        summons: {}     // Ex: { familiares: { nivel: 9, nome: 'Absoluto' } }
+    }
 };
 
 export function sanitizarNome(n) { return !n ? '' : n.replace(/[.#$\[\]\/]/g, '_').trim(); }
@@ -101,9 +110,14 @@ const useStore = create(
             state.minhaFicha.poderes = dados.poderes || [];
             state.minhaFicha.ataquesElementais = dados.ataquesElementais || [];
             state.minhaFicha.passivas = dados.passivas || [];
-            state.minhaFicha.seresSelados = dados.seresSelados || []; // 🔥 ADICIONADO AQUI
+            state.minhaFicha.seresSelados = dados.seresSelados || []; 
             if (dados.hierarquia != null) state.minhaFicha.hierarquia = Object.assign({}, fichaPadrao.hierarquia, dados.hierarquia);
             if (dados.cores !== undefined) state.minhaFicha.cores = Object.assign({}, fichaPadrao.cores, dados.cores || {});
+            
+            // 🔥 CARREGAMENTO DOS DOMÍNIOS 🔥
+            if (dados.dominios) state.minhaFicha.dominios = Object.assign({}, fichaPadrao.dominios, dados.dominios);
+            else state.minhaFicha.dominios = deepClone(fichaPadrao.dominios); // Garante que nunca fica nulo no load
+
             if (dados.acoes) {
                 state.minhaFicha.acoes = {
                     padrao: Object.assign({}, fichaPadrao.acoes.padrao, dados.acoes.padrao),
@@ -114,7 +128,8 @@ const useStore = create(
 
             for (let i = 0; i < chaves.length; i++) {
                 const ch = chaves[i];
-                if (dados[ch] !== undefined && ch !== 'ascensaoBase' && ch !== 'poderes' && ch !== 'divisores' && ch !== 'inventario' && ch !== 'ataquesElementais' && ch !== 'ataqueConfig' && ch !== 'avatar' && ch !== 'bio' && ch !== 'notas' && ch !== 'passivas' && ch !== 'seresSelados' && ch !== 'posicao' && ch !== 'iniciativa' && ch !== 'acoes' && ch !== 'proficienciaBase' && ch !== 'proficiencias' && ch !== 'cores' && ch !== 'hierarquia') {
+                // 🔥 ADICIONADO 'dominios' À LISTA DE EXCEÇÕES PARA NÃO DAR OVERRIDE 🔥
+                if (dados[ch] !== undefined && ch !== 'ascensaoBase' && ch !== 'poderes' && ch !== 'divisores' && ch !== 'inventario' && ch !== 'ataquesElementais' && ch !== 'ataqueConfig' && ch !== 'avatar' && ch !== 'bio' && ch !== 'notas' && ch !== 'passivas' && ch !== 'seresSelados' && ch !== 'posicao' && ch !== 'iniciativa' && ch !== 'acoes' && ch !== 'proficienciaBase' && ch !== 'proficiencias' && ch !== 'cores' && ch !== 'hierarquia' && ch !== 'dominios') {
                     if (typeof fichaPadrao[ch] === 'object' && !Array.isArray(fichaPadrao[ch])) {
                         state.minhaFicha[ch] = Object.assign({}, fichaPadrao[ch], dados[ch]);
                         const numF = ['base', 'mBase', 'mGeral', 'mFormas', 'mAbsoluto', 'reducaoCusto', 'regeneracao', 'atual'];
