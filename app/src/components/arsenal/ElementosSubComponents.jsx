@@ -3,6 +3,20 @@ import { useElementosForm, emogis, cores, ABAS_GRIMORIO, BONUS_OPTIONS } from '.
 
 const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Elementos provider nao encontrado</div>;
 
+// 📜 TABELA DE DOMÍNIOS (Copiada para o Grimório saber ler os buffs)
+const NIVEIS_DOMINIO = {
+    1: { nome: "Básico", cor: "#44ff44", desc: "+10% Dano" },
+    2: { nome: "Intermediário", cor: "#44ff44", desc: "+25% Dano | -5% Custo" },
+    3: { nome: "Avançado", cor: "#44ff44", desc: "+50% Dano | -10% Custo" },
+    4: { nome: "Virtuoso", cor: "#0088ff", desc: "Dano x2 | Ignora Resistências Menores" },
+    5: { nome: "Maestria", cor: "#0088ff", desc: "Dano x3.5 | -25% Custo | -50% Dano Sofrido" },
+    6: { nome: "Perfeito", cor: "#0088ff", desc: "Dano x6 | Imunidade Total | Incancelável" },
+    7: { nome: "Molecular", cor: "#aa00ff", desc: "Dano x10 | Ignora Imunidades | Dano Persistente" },
+    8: { nome: "Atômico", cor: "#aa00ff", desc: "Dano x50 | -50% Custo | Desintegração de Armadura" },
+    9: { nome: "Absoluto", cor: "#ff003c", desc: "Dano x100 | Custo ZERO | Silenciamento de Elemento" },
+    10: { nome: "Eterno", cor: "#ffcc00", desc: "Dano Incalculável | Apagamento Conceitual" }
+};
+
 // ============================================================================
 // 🔥 O IMPORTADOR INTELIGENTE DO GRIMÓRIO 🔥
 // ============================================================================
@@ -93,8 +107,11 @@ export function ElementosSidebar() {
 export function ElementosGrimorio() {
     const ctx = useElementosForm();
     if (!ctx) return FALLBACK;
-    const { abaAtual, elemSelecionado, selecionarElemento } = ctx;
+    const { abaAtual, elemSelecionado, selecionarElemento, minhaFicha } = ctx;
     const categoriasVisiveis = ABAS_GRIMORIO[abaAtual]?.categorias || [];
+
+    // Busca os domínios para saber se o personagem tem maestria num elemento
+    const dominios = minhaFicha?.dominios?.elementais || {};
 
     return (
         <div className="def-box">
@@ -111,10 +128,16 @@ export function ElementosGrimorio() {
                             {categoria.itens.map(elem => {
                                 const cor = cores[elem] || '#ccc';
                                 const isActive = elem === elemSelecionado;
+                                
+                                // 🔥 INJEÇÃO DE UX: Mostra o Nível no botão se o jogador tiver upado o Domínio! 🔥
+                                const nivelDom = dominios[elem]?.nivel;
+                                const domTexto = nivelDom ? ` (Nv.${nivelDom})` : '';
+                                
                                 return (
                                     <button key={elem} className="badge-elem" onClick={() => selecionarElemento(elem)}
                                         style={{ padding: '4px 8px', fontSize: '0.75em', border: `1px solid ${isActive ? cor : '#444'}`, borderRadius: 4, background: 'transparent', color: isActive ? cor : '#aaa', cursor: 'pointer', boxShadow: isActive ? `inset 0 0 10px ${cor}` : 'none' }}>
                                         {emogis[elem] || '\u2728'} {elem}
+                                        <span style={{ color: nivelDom ? '#ffcc00' : 'inherit', fontWeight: nivelDom ? 'bold' : 'normal' }}>{domTexto}</span>
                                     </button>
                                 );
                             })}
@@ -143,7 +166,6 @@ export function ElementosFormMagia() {
             <h3 style={{ color: '#0ff', marginBottom: 10 }}>{elemEditandoId ? `Editando: ${nomeElem}` : 'Criar Nova Magia / Técnica'}</h3>
             <input className="input-neon" type="text" placeholder="Nome da Magia/Técnica" value={nomeElem} onChange={e => setNomeElem(e.target.value)} />
             
-            {/* 🔥 NOVO: Caixa de descrição injetada! 🔥 */}
             <textarea className="input-neon" placeholder="Descrição e Efeitos Narrativos (Como a magia atua na realidade?)" value={descricaoElem} onChange={e => setDescricaoElem(e.target.value)} style={{ width: '100%', minHeight: '60px', marginTop: 10, borderColor: '#555', color: '#ccc', fontStyle: 'italic', resize: 'vertical' }} />
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginTop: 10, padding: 10, background: 'rgba(0,136,255,0.1)', border: '1px solid #0088ff', borderRadius: 5 }}>
@@ -232,6 +254,19 @@ export function ElementosMagiaCard({ magia }) {
 
     const isInato = elementosInatos.includes(elemText.toLowerCase().trim());
 
+    // 🔥 LÓGICA DO DOMÍNIO: Extrai as infos da Aba de Domínios 🔥
+    const dominioData = minhaFicha?.dominios?.elementais?.[elemText];
+    const nivelDom = dominioData?.nivel || 0;
+    const infoDom = NIVEIS_DOMINIO[nivelDom];
+
+    // 🔥 MATEMÁTICA DE REDUÇÃO DE MANA 🔥
+    let redCustoMult = 1;
+    if (nivelDom >= 9) redCustoMult = 0;
+    else if (nivelDom >= 8) redCustoMult = 0.50; // -50%
+    else if (nivelDom >= 5) redCustoMult = 0.75; // -25%
+    else if (nivelDom >= 3) redCustoMult = 0.90; // -10%
+    else if (nivelDom >= 2) redCustoMult = 0.95; // -5%
+
     const isEquipped = magia.equipado;
     const corPura = cores[elemText] || '#cccccc';
     const c = isEquipped ? corPura : '#888';
@@ -242,10 +277,17 @@ export function ElementosMagiaCard({ magia }) {
     const bValorStr = bTipo === 'nenhum' ? '' : `: ${bTipo.includes('mult_') ? 'x' : '+'}${magia.bonusValor || 0}`;
     const dadosStr = magia.dadosExtraQtd > 0 ? ` | Dados: +${magia.dadosExtraQtd}d${magia.dadosExtraFaces || 20}` : '';
     
-    const custoFinal = isInato ? 0 : magia.custoValor;
-    const custoStr = isInato 
-        ? ` | Custo: ZERO (Ressonância Inata)` 
-        : (custoFinal > 0 ? ` | Custo: ${custoFinal}% (${energiaAtiva?.toUpperCase()})` : ` | Custo: Livre`);
+    // 🔥 DISPLAY INTELIGENTE DO CUSTO 🔥
+    const custoFinal = isInato ? 0 : (magia.custoValor * redCustoMult);
+    const custoOriginalDisplay = magia.custoValor > 0 && redCustoMult < 1 && !isInato 
+        ? <span style={{ textDecoration: 'line-through', color: '#555', marginRight: '5px' }}>{magia.custoValor}%</span> 
+        : null;
+
+    let txtCusto = `Custo: ${custoFinal}% (${energiaAtiva?.toUpperCase()})`;
+    if (isInato) txtCusto = `Custo: ZERO (Ressonância Inata)`;
+    else if (nivelDom >= 9) txtCusto = `Custo: ZERO (Domínio Absoluto)`;
+    else if (magia.custoValor === 0 || isNaN(magia.custoValor)) txtCusto = `Custo: Livre`;
+    else if (redCustoMult < 1) txtCusto = `Custo: ${custoFinal}% (Reduzido pelo Domínio)`;
 
     const mec = magia.tipoMecanica || 'ataque';
     const alvoStr = magia.alvosAfetados === 'inimigos' ? 'Inimigos' : magia.alvosAfetados === 'aliados' ? 'Aliados' : 'Todos';
@@ -270,7 +312,6 @@ export function ElementosMagiaCard({ magia }) {
     return (
         <div className="def-box" style={{ borderLeft: `5px solid ${c}`, background: bg, marginTop: 15, padding: 15, position: 'relative' }}>
             
-            {/* 🔥 ALERTA NEON QUANDO NOTAS IA EXISTIREM 🔥 */}
             {magia.notasIA && (
                 <div style={{ background: '#ffcc00', color: '#000', padding: '4px 10px', fontSize: '0.8em', fontWeight: 'bold', borderRadius: '4px', marginBottom: '10px' }}>
                     ⚠️ NOTA DA SEXTA-FEIRA: {magia.notasIA}
@@ -278,12 +319,11 @@ export function ElementosMagiaCard({ magia }) {
             )}
 
             <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 15 }}>
-                <div>
+                <div style={{ flex: 1 }}>
                     <h3 style={{ margin: 0, color: c, textShadow: `0 0 10px ${c}` }}>
                         {emogis[elemText] || '\u2728'} {magia.nome || 'Magia'} <span style={{fontSize: '0.6em', color: '#fff'}}>(Alc: {magia.alcanceQuad || 1}Q)</span>
                     </h3>
                     
-                    {/* 🔥 DESCRIÇÃO MÁGICA RENDERIZADA AQUI 🔥 */}
                     {magia.descricao && (
                         <p style={{ color: '#ccc', fontSize: '0.85em', fontStyle: 'italic', margin: '8px 0', padding: '8px', background: 'rgba(0,0,0,0.3)', borderRadius: '4px', borderLeft: `2px solid ${c}` }}>
                             "{magia.descricao}"
@@ -306,21 +346,39 @@ export function ElementosMagiaCard({ magia }) {
                     )}
 
                     {isInato && (
-                        <div style={{ background: 'rgba(0, 255, 204, 0.1)', border: '1px solid #00ffcc', padding: '4px 8px', borderRadius: '4px', display: 'inline-block', marginTop: '6px' }}>
+                        <div style={{ background: 'rgba(0, 255, 204, 0.1)', border: '1px solid #00ffcc', padding: '4px 8px', borderRadius: '4px', display: 'inline-block', marginTop: '6px', width: '100%' }}>
                             <p style={{ color: '#00ffcc', fontSize: '0.85em', margin: '0', fontWeight: 'bold', textShadow: '0 0 5px rgba(0,255,204,0.5)' }}>
                                 🌪️ Domínio Inato: Você possui a Ressonância deste elemento. Custo zerado!
                             </p>
                         </div>
                     )}
 
-                    <p style={{ color: '#aaa', fontSize: '0.85em', margin: '6px 0 0' }}>
-                        Bônus: {propText}{bValorStr}{dadosStr}{custoStr}
+                    {/* 🔥 O PAINEL DE DOMÍNIO INJETADO NA MAGIA 🔥 */}
+                    {infoDom && (
+                        <div style={{ background: `rgba(0, 0, 0, 0.5)`, border: `1px solid ${infoDom.cor}`, padding: '6px 10px', borderRadius: '4px', marginTop: '8px', borderLeft: `4px solid ${infoDom.cor}` }}>
+                            <div style={{ color: infoDom.cor, fontSize: '0.9em', fontWeight: 'bold', textShadow: `0 0 5px ${infoDom.cor}` }}>
+                                💎 Nv. {nivelDom} - {infoDom.nome}
+                            </div>
+                            <div style={{ color: '#ccc', fontSize: '0.8em', marginTop: '2px', fontStyle: 'italic' }}>
+                                <span style={{ color: '#fff' }}>Pressão Passiva:</span> {infoDom.desc}
+                            </div>
+                        </div>
+                    )}
+
+                    <p style={{ color: '#aaa', fontSize: '0.85em', margin: '8px 0 0' }}>
+                        Bônus Adicional: {propText}{bValorStr}{dadosStr} <br/>
+                        {custoOriginalDisplay} <span style={{ color: redCustoMult < 1 && magia.custoValor > 0 ? '#0f0' : '#aaa', fontWeight: redCustoMult < 1 && magia.custoValor > 0 ? 'bold' : 'normal' }}>| {txtCusto}</span>
                     </p>
                 </div>
-                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <button className="btn-neon" style={{ borderColor: c, color: c, padding: '5px 15px', fontSize: '1em', margin: 0 }} onClick={() => toggleEquiparElem(magia.id)}>{isEquipped ? 'PREPARADA' : 'MEMORIZAR'}</button>
-                    <button className="btn-neon btn-blue" style={{ padding: '5px 15px', fontSize: '0.9em', margin: 0 }} onClick={() => editarElem(magia.id)}>EDITAR</button>
-                    <button className="btn-neon btn-red" style={{ padding: '5px 15px', fontSize: '0.9em', margin: 0 }} onClick={() => deletarElem(magia.id)}>APAGAR</button>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-end', justifyContent: 'flex-start' }}>
+                    <button className="btn-neon" style={{ borderColor: c, color: c, padding: '8px 20px', fontSize: '1.1em', margin: 0, fontWeight: 'bold', width: '100%' }} onClick={() => toggleEquiparElem(magia.id)}>
+                        {isEquipped ? 'PREPARADA' : 'MEMORIZAR'}
+                    </button>
+                    <div style={{ display: 'flex', gap: 5, width: '100%' }}>
+                        <button className="btn-neon btn-blue" style={{ flex: 1, padding: '5px 0', fontSize: '0.8em', margin: 0 }} onClick={() => editarElem(magia.id)}>EDITAR</button>
+                        <button className="btn-neon btn-red" style={{ flex: 1, padding: '5px 0', fontSize: '0.8em', margin: 0 }} onClick={() => deletarElem(magia.id)}>APAGAR</button>
+                    </div>
                 </div>
             </div>
         </div>
