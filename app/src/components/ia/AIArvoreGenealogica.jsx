@@ -7,8 +7,8 @@ export default function AIArvoreGenealogica() {
         if (salvo) return JSON.parse(salvo);
         return {
             "Ackermann": [
-                { id: 1, nome: "Natsu Ackermann", parceiros: "Lucy Heartfilia", papel: "Protagonista", classe: "Mago Psíquico", elemento: "Fogo Sombrio", hp: "150", mana: "200", status: "Vivo", lore: "Fundador principal.", parentId: null },
-                { id: 2, nome: "Filho do Natsu", parceiros: "", genitor2: "Lucy Heartfilia", papel: "Herdeiro", classe: "Mago", elemento: "Fogo", hp: "100", mana: "100", status: "Vivo", lore: "Herdeiro da família.", parentId: 1 }
+                { id: 1, nome: "Natsu Ackermann", avatar: "", parceiros: "Lucy Heartfilia", papel: "Protagonista", classe: "Mago Psíquico", elemento: "Fogo Sombrio", hp: "150", mana: "200", status: "Vivo", lore: "Fundador principal.", parentId: null },
+                { id: 2, nome: "Filho do Natsu", avatar: "", parceiros: "", genitor2: "Lucy Heartfilia", papel: "Herdeiro", classe: "Mago", elemento: "Fogo", hp: "100", mana: "100", status: "Vivo", lore: "Herdeiro da família.", parentId: 1 }
             ]
         };
     });
@@ -22,6 +22,15 @@ export default function AIArvoreGenealogica() {
     useEffect(() => {
         localStorage.setItem('rpgSextaFeira_arvore', JSON.stringify(familias));
     }, [familias]);
+
+    // Função utilitária para pegar iniciais quando não há foto
+    const getIniciais = (nome) => {
+        if (!nome) return "?";
+        const partes = nome.trim().split(' ').filter(Boolean);
+        if (partes.length === 0) return "?";
+        if (partes.length === 1) return partes[0].substring(0, 2).toUpperCase();
+        return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
+    };
 
     // ==========================================
     // 🛠️ SISTEMA DE ÁRVORES E MEMBROS
@@ -51,8 +60,9 @@ export default function AIArvoreGenealogica() {
         const novoNpc = { 
             id: novoId, 
             nome: parentId ? "Novo Herdeiro" : "Fundador(a)", 
+            avatar: "", // 📸 Novo campo de Foto!
             parceiros: "", 
-            genitor2: genitor2, // Sabe de qual parceiro desceu
+            genitor2: genitor2, 
             papel: "", classe: "", elemento: "", hp: "", mana: "", status: "Vivo", lore: "", 
             parentId: parentId 
         };
@@ -122,22 +132,21 @@ export default function AIArvoreGenealogica() {
     };
 
     // ==========================================
-    // 🌳 MOTOR DA ÁRVORE (RECURSIVO & POLIGÂMICO)
+    // 🌳 MOTOR DA ÁRVORE (RECURSIVO & POLIGÂMICO & AVATARES)
     // ==========================================
     const renderNPC = (npc) => {
         const isMorto = npc.status === 'Morto';
         const isSelecionado = npcSelecionado?.id === npc.id;
 
-        // 1. Processa as parcerias/cônjuges
         const parceirosRaw = npc.parceiros || npc.conjuge || ""; 
         const parceirosSet = new Set(parceirosRaw.split(',').map(s => s.trim()).filter(Boolean));
         
-        // 2. Coleta todos os filhos deste NPC
         const filhos = familias[familiaAtiva]?.filter(n => n.parentId === npc.id) || [];
-        
-        // 3. Adiciona na lista de "parceiros" qualquer genitor2 que os filhos informem ter (caso o mestre esqueça de colocar no pai)
         filhos.forEach(f => { if (f.genitor2 && f.genitor2.trim()) parceirosSet.add(f.genitor2.trim()); });
         const parceirosUnicos = Array.from(parceirosSet);
+
+        // Borda dinâmica baseada no estado
+        const corBordaAvatar = isSelecionado ? '#00ffcc' : (isMorto ? '#ff4444' : '#555');
 
         return (
             <li key={npc.id}>
@@ -155,7 +164,24 @@ export default function AIArvoreGenealogica() {
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-                        <div style={{ textAlign: 'center' }}>
+                        {/* O Titular com Foto */}
+                        <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            {/* 📸 AVATAR / FOTO */}
+                            <div style={{ 
+                                width: '45px', height: '45px', borderRadius: '50%', background: '#1a2333', 
+                                border: `2px solid ${corBordaAvatar}`, display: 'flex', alignItems: 'center', 
+                                justifyContent: 'center', marginBottom: '8px', overflow: 'hidden',
+                                boxShadow: isSelecionado ? '0 0 10px rgba(0,255,204,0.5)' : 'none'
+                            }}>
+                                {npc.avatar && npc.avatar.trim() !== '' ? (
+                                    <img src={npc.avatar} alt={npc.nome} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
+                                ) : null}
+                                {/* Placeholder com iniciais (fallback) */}
+                                <span style={{ color: '#aaa', fontSize: '16px', fontWeight: 'bold', display: (npc.avatar && npc.avatar.trim() !== '') ? 'none' : 'block' }}>
+                                    {getIniciais(npc.nome)}
+                                </span>
+                            </div>
+
                             <div style={{ fontWeight: 'bold', color: isMorto ? '#ff4444' : (isSelecionado ? '#00ffcc' : '#fff'), fontSize: '15px' }}>
                                 {npc.nome || 'Desconhecido'}
                             </div>
@@ -164,7 +190,7 @@ export default function AIArvoreGenealogica() {
                             </div>
                         </div>
 
-                        {/* SE SÓ TEM UM CASAMENTO, RENDERIZA INLINE PRA ECONOMIZAR ESPAÇO */}
+                        {/* SE SÓ TEM UM CASAMENTO, RENDERIZA INLINE */}
                         {parceirosUnicos.length === 1 && (
                             <>
                                 <div style={{ color: '#ffcc00', fontSize: '12px' }}>💍</div>
@@ -188,13 +214,11 @@ export default function AIArvoreGenealogica() {
                 </div>
 
                 {/* 🌿 RAMIFICAÇÕES DE FILHOS */}
-                
-                {/* Caso A: Nenhum ou Apenas Um Parceiro (A árvore desce direto) */}
                 {filhos.length > 0 && parceirosUnicos.length <= 1 && (
                     <ul>{filhos.map(f => renderNPC(f))}</ul>
                 )}
 
-                {/* Caso B: Poligamia / Mais de Um Parceiro (A árvore divide os galhos) */}
+                {/* Poligamia / Divisão de Galhos */}
                 {parceirosUnicos.length > 1 && (
                     <ul>
                         {parceirosUnicos.map(parceiroNome => {
@@ -205,7 +229,7 @@ export default function AIArvoreGenealogica() {
                                         <div style={{ color: '#ffcc00', fontSize: '12px', marginBottom: '5px' }}>💍 União com:</div>
                                         <div style={{ fontWeight: 'bold', color: '#fff', fontSize: '14px' }}>{parceiroNome}</div>
                                         <div style={{ marginTop: '8px', borderTop: '1px solid #555', paddingTop: '8px' }}>
-                                            <button className="btn-neon" onClick={(e) => { e.stopPropagation(); adicionarMembro(npc.id, parceiroNome); }} style={{ padding: '2px 8px', fontSize: '10px', margin: 0, borderColor: '#ffcc00', color: '#ffcc00' }}>➕ Filho(a) de {parceiroNome}</button>
+                                            <button className="btn-neon" onClick={(e) => { e.stopPropagation(); adicionarMembro(npc.id, parceiroNome); }} style={{ padding: '2px 8px', fontSize: '10px', margin: 0, borderColor: '#ffcc00', color: '#ffcc00' }}>➕ Filho(a)</button>
                                         </div>
                                     </div>
                                     {filhosDesteParceiro.length > 0 && (
@@ -215,7 +239,7 @@ export default function AIArvoreGenealogica() {
                             )
                         })}
 
-                        {/* Galho dos "Filhos Fora do Casamento" / Linhagem Indefinida */}
+                        {/* Galho Secundário / Desconhecidos */}
                         {filhos.filter(f => !(f.genitor2||"").trim()).length > 0 && (
                             <li key="desconhecido">
                                 <div className="arvore-node-container" style={{ borderColor: '#888', padding: '8px 15px', background: 'rgba(255, 255, 255, 0.05)' }}>
@@ -233,7 +257,6 @@ export default function AIArvoreGenealogica() {
         );
     };
 
-    // Variáveis úteis para os Dropdowns da Ficha
     const paiAtivo = npcSelecionado?.parentId ? familias[familiaAtiva].find(n => n.id === npcSelecionado.parentId) : null;
     const opcoesGenitor2 = paiAtivo ? Array.from(new Set((paiAtivo.parceiros || paiAtivo.conjuge || "").split(',').map(s=>s.trim()).filter(Boolean))) : [];
 
@@ -246,7 +269,7 @@ export default function AIArvoreGenealogica() {
             {/* 🌳 LADO ESQUERDO: O VISUALIZADOR DA ÁRVORE */}
             <div className="def-box" style={{ flex: '1.5', display: 'flex', flexDirection: 'column', padding: '20px', overflow: 'hidden', position: 'relative' }}>
                 
-                {/* HEADER: GESTÃO DE MÚLTIPLAS ÁRVORES */}
+                {/* HEADER */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #333', paddingBottom: '10px', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
                     <h3 style={{ color: '#00ffcc', margin: 0, textShadow: '0 0 10px rgba(0,255,204,0.4)' }}>🌳 Suas Árvores</h3>
                     
@@ -306,7 +329,7 @@ export default function AIArvoreGenealogica() {
                             </button>
                         </div>
 
-                        {/* Motor CSS que desenha as linhas */}
+                        {/* Motor CSS */}
                         <div className="genealogy-tree">
                             {familias[familiaAtiva]?.filter(n => n.parentId === null).length === 0 ? (
                                 <p style={{ color: '#555', fontStyle: 'italic' }}>Esta árvore está vazia. Adicione um fundador.</p>
@@ -321,7 +344,7 @@ export default function AIArvoreGenealogica() {
                 )}
             </div>
 
-            {/* 📋 LADO DIREITO: FICHA E MOVER DE GALHO */}
+            {/* 📋 LADO DIREITO: FICHA E FOTO */}
             <div className="def-box" style={{ flex: '1', display: 'flex', flexDirection: 'column', padding: '20px', overflowY: 'auto' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #00ffcc', paddingBottom: '10px', marginBottom: '15px' }}>
                     <h3 style={{ color: '#00ffcc', margin: 0 }}>📋 Editor de Ficha</h3>
@@ -335,7 +358,23 @@ export default function AIArvoreGenealogica() {
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                         
-                        {/* 🔥 MOVER DE GALHO (A QUALIDADE DE VIDA!) */}
+                        {/* 🔥 AREA DO AVATAR NA FICHA 🔥 */}
+                        <div style={{ display: 'flex', gap: '15px', alignItems: 'center', background: 'rgba(0, 255, 204, 0.05)', padding: '10px', borderRadius: '8px', border: '1px dashed #00ffcc' }}>
+                            <div style={{ width: '60px', height: '60px', borderRadius: '8px', border: '1px solid #00ffcc', background: '#05070a', display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }}>
+                                {npcSelecionado.avatar && npcSelecionado.avatar.trim() !== '' ? (
+                                    <img src={npcSelecionado.avatar} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
+                                ) : null}
+                                <span style={{ color: '#00ffcc', fontSize: '20px', fontWeight: 'bold', display: (npcSelecionado.avatar && npcSelecionado.avatar.trim() !== '') ? 'none' : 'block' }}>
+                                    {getIniciais(npcSelecionado.nome)}
+                                </span>
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <label style={{ color: '#00ffcc', fontSize: '0.8em', textTransform: 'uppercase', fontWeight: 'bold' }}>🔗 URL da Foto (Avatar)</label>
+                                <input type="text" className="input-neon" placeholder="Cole o link da imagem aqui..." value={npcSelecionado.avatar || ''} onChange={(e) => atualizarNpc('avatar', e.target.value)} style={{ width: '100%', padding: '8px', borderColor: '#00ffcc', color: '#fff', marginTop: '5px', background: '#05070a', boxSizing: 'border-box' }} />
+                            </div>
+                        </div>
+
+                        {/* MOVER DE GALHO */}
                         <div style={{ background: 'rgba(0, 136, 255, 0.1)', border: '1px solid #0088ff', padding: '10px', borderRadius: '8px' }}>
                             <label style={{ color: '#0088ff', fontSize: '0.8em', textTransform: 'uppercase', fontWeight: 'bold' }}>🧬 Descende de (Pai/Mãe Direto):</label>
                             <select 
@@ -356,14 +395,14 @@ export default function AIArvoreGenealogica() {
                             <input type="text" className="input-neon" value={npcSelecionado.nome} onChange={(e) => atualizarNpc('nome', e.target.value)} style={{ width: '100%', padding: '10px', borderColor: '#333', color: '#fff', marginTop: '5px', boxSizing: 'border-box' }} />
                         </div>
 
-                        {/* 💍 CAMPO DE CÔNJUGES (Gera Ramificações!) */}
+                        {/* 💍 CAMPO DE CÔNJUGES */}
                         <div>
                             <label style={{ color: '#ffcc00', fontSize: '0.8em', textTransform: 'uppercase' }}>💍 Parceiro(s) de Sangue / Cônjuge</label>
                             <input type="text" className="input-neon" placeholder="Separe por vírgulas se houver mais de um. Ex: Lilith, Eva" value={npcSelecionado.parceiros || npcSelecionado.conjuge || ""} onChange={(e) => atualizarNpc('parceiros', e.target.value)} style={{ width: '100%', padding: '10px', borderColor: '#ffcc00', color: '#fff', marginTop: '5px', boxSizing: 'border-box' }} />
                             <span style={{ fontSize: '10px', color: '#aaa', display: 'block', marginTop: '4px' }}>Se colocar mais de um nome, a árvore criará divisões separadas.</span>
                         </div>
 
-                        {/* 💍 ESCOLHER QUAL PARCEIRO GEROU ELE */}
+                        {/* ESCOLHER QUAL PARCEIRO GEROU ELE */}
                         {paiAtivo && opcoesGenitor2.length > 0 && (
                             <div style={{ background: 'rgba(255, 204, 0, 0.1)', border: '1px solid #ffcc00', padding: '10px', borderRadius: '8px' }}>
                                 <label style={{ color: '#ffcc00', fontSize: '0.8em', textTransform: 'uppercase', fontWeight: 'bold' }}>👼 Fruto da União com:</label>
@@ -384,7 +423,7 @@ export default function AIArvoreGenealogica() {
                         <div style={{ display: 'flex', gap: '15px' }}>
                             <div style={{ flex: 1 }}>
                                 <label style={{ color: '#aaa', fontSize: '0.8em', textTransform: 'uppercase' }}>Papel na Lore</label>
-                                <input type="text" className="input-neon" placeholder="Ex: Herdeiro..." value={npcSelecionado.papel} onChange={(e) => atualizarNpc('papel', e.target.value)} style={{ width: '100%', padding: '10px', borderColor: '#333', color: '#fff', marginTop: '5px', boxSizing: 'border-box' }} />
+                                <input type="text" className="input-neon" placeholder="Ex: Herdeiro, Bastardo..." value={npcSelecionado.papel} onChange={(e) => atualizarNpc('papel', e.target.value)} style={{ width: '100%', padding: '10px', borderColor: '#333', color: '#fff', marginTop: '5px', boxSizing: 'border-box' }} />
                             </div>
                             <div style={{ flex: 1 }}>
                                 <label style={{ color: '#aaa', fontSize: '0.8em', textTransform: 'uppercase' }}>Status Atual</label>
@@ -408,6 +447,17 @@ export default function AIArvoreGenealogica() {
                             </div>
                         </div>
 
+                        <div style={{ display: 'flex', gap: '15px' }}>
+                            <div style={{ flex: 1 }}>
+                                <label style={{ color: '#44ff44', fontSize: '0.8em', textTransform: 'uppercase' }}>Pontos de Vida (HP)</label>
+                                <input type="number" className="input-neon" value={npcSelecionado.hp} onChange={(e) => atualizarNpc('hp', e.target.value)} style={{ width: '100%', padding: '10px', borderColor: '#333', color: '#44ff44', marginTop: '5px', fontWeight: 'bold', boxSizing: 'border-box' }} />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <label style={{ color: '#44bbff', fontSize: '0.8em', textTransform: 'uppercase' }}>Mana / Energia</label>
+                                <input type="number" className="input-neon" value={npcSelecionado.mana} onChange={(e) => atualizarNpc('mana', e.target.value)} style={{ width: '100%', padding: '10px', borderColor: '#333', color: '#44bbff', marginTop: '5px', fontWeight: 'bold', boxSizing: 'border-box' }} />
+                            </div>
+                        </div>
+
                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                             <label style={{ color: '#00ffcc', fontSize: '0.8em', textTransform: 'uppercase' }}>Histórico / Lore Base</label>
                             <textarea 
@@ -422,7 +472,7 @@ export default function AIArvoreGenealogica() {
                 )}
             </div>
 
-            {/* 🎨 O MILAGRE DO CSS: LIGAÇÕES DA ÁRVORE SEM QUEBRAR */}
+            {/* 🎨 O MILAGRE DO CSS */}
             <style dangerouslySetInnerHTML={{__html: `
                 .genealogy-tree {
                     display: flex;
@@ -442,7 +492,6 @@ export default function AIArvoreGenealogica() {
                     position: relative;
                     padding: 20px 10px 0 10px;
                 }
-                /* As linhas horizontais conectoras dos filhos */
                 .genealogy-tree li::before, .genealogy-tree li::after {
                     content: '';
                     position: absolute; top: 0; right: 50%;
@@ -460,7 +509,6 @@ export default function AIArvoreGenealogica() {
                 .genealogy-tree li:first-child::before, .genealogy-tree li:last-child::after {
                     border: 0 none;
                 }
-                /* Curvas */
                 .genealogy-tree li:last-child::before {
                     border-right: 2px solid #334455;
                     border-radius: 0 5px 0 0;
@@ -468,7 +516,6 @@ export default function AIArvoreGenealogica() {
                 .genealogy-tree li:first-child::after {
                     border-radius: 5px 0 0 0;
                 }
-                /* Linha descendo do pai/casal para os filhos */
                 .genealogy-tree ul::before {
                     content: '';
                     position: absolute; top: 0; left: 50%;
@@ -476,12 +523,10 @@ export default function AIArvoreGenealogica() {
                     width: 0; height: 20px;
                     transform: translateX(-50%);
                 }
-                /* Remove o pino de cima do nodo raiz para ficar limpo */
                 .genealogy-tree > ul::before {
                     display: none; 
                 }
                 
-                /* Design do Bloco Principal */
                 .arvore-node-container {
                     background: rgba(0,0,0,0.7);
                     border: 1px solid #333;
