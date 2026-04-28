@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import useStore, { sanitizarNome, fichaPadrao } from '../../stores/useStore'; 
+import useStore, { sanitizarNome } from '../../stores/useStore'; 
 import { ref, set } from 'firebase/database'; 
 import { database } from '../../services/firebase-config'; 
 
 export default function AIArvoreGenealogica() {
     // 💾 CONEXÃO COM O ZUSTAND 
     const personagens = useStore(s => s.personagens);
+    const setPersonagens = useStore(s => s.setPersonagens);
 
     // 💾 CARREGA DO LOCALSTORAGE DA ÁRVORE (Ou inicia vazio)
     const [familias, setFamilias] = useState(() => {
@@ -121,11 +122,11 @@ export default function AIArvoreGenealogica() {
     };
 
     // ==========================================
-    // 🚀 INTEGRAÇÃO SUPREMA: FIREBASE (COMPATÍVEL 100%)
+    // 🚀 O MODO BYPASS: INJEÇÃO DIRETA + FIREBASE
     // ==========================================
     const injetarNaMesa = async () => {
         if (!npcSelecionado || !npcSelecionado.nome || npcSelecionado.nome.trim() === '') {
-            return alert("O NPC precisa ter um Nome Completo antes de ser enviado para a mesa!");
+            return alert("O NPC precisa de um Nome Completo antes de ser enviado para a mesa!");
         }
 
         const nomeOriginal = npcSelecionado.nome.trim();
@@ -133,58 +134,52 @@ export default function AIArvoreGenealogica() {
         const nomePersonagem = funcSanitizar(nomeOriginal);
 
         if (personagens && personagens[nomePersonagem]) {
-            if (!window.confirm(`⚠️ O personagem "${nomePersonagem}" já está no Banco de Dados! Deseja sobrescrever a ficha dele com a da Árvore?`)) {
+            if (!window.confirm(`⚠️ O personagem "${nomePersonagem}" já está na memória! Deseja sobrescrever a ficha dele com a da Árvore?`)) {
                 return;
             }
-        }
-
-        // 🔥 O SEGREDO: Clonamos a Ficha Padrão verdadeira para a UI do mestre não bugar! 🔥
-        let novaFicha = {};
-        if (typeof fichaPadrao !== 'undefined') {
-            novaFicha = JSON.parse(JSON.stringify(fichaPadrao));
-        } else {
-            return alert("Erro: fichaPadrao não encontrada no useStore.js!");
         }
 
         const hpValor = Number(npcSelecionado.hp) || 100000;
         const manaValor = Number(npcSelecionado.mana) || 100000;
 
-        novaFicha.bio = { 
-            ...novaFicha.bio,
-            classe: npcSelecionado.classe || 'NPC - Ameaça', 
-            raca: npcSelecionado.papel || 'Criatura', 
-            mesa: 'npc'
+        // 🔥 A FORJA PERFEITA: Estrutura 100% igual ao seu MestreForjaNPC 🔥
+        const fichaParaServidor = {
+            bio: { 
+                classe: npcSelecionado.classe || 'NPC - Ameaça', 
+                raca: npcSelecionado.papel || 'Criatura', 
+                mesa: 'npc' // <-- A etiqueta que faz ele ir para a aba vermelha!
+            },
+            vida: { atual: hpValor, base: hpValor },
+            mana: { atual: manaValor, base: manaValor },
+            forca: { base: 1 },         
+            destreza: { base: 1 },      
+            inteligencia: { base: 1 },  
+            avatar: npcSelecionado.avatar ? npcSelecionado.avatar.trim() : "",
+            poderes: [
+                {
+                    nome: "📖 Linhagem & Lore",
+                    dano: "0",
+                    descricao: `Status: ${npcSelecionado.status || 'Vivo'}\nElemento Mágico: ${npcSelecionado.elemento || 'Nenhum'}\nClã de Origem: ${familiaAtiva}\n\nHistória: ${npcSelecionado.lore || 'Sem registos.'}`
+                }
+            ],
+            formas: [],
+            isNPC: true,
+            dataCriacao: Date.now()
         };
-        
-        // Mantém a estrutura complexa de HP e Mana
-        novaFicha.vida = { ...novaFicha.vida, atual: hpValor, base: hpValor };
-        novaFicha.mana = { ...novaFicha.mana, atual: manaValor, base: manaValor };
-        
-        // O avatar precisa ser um objeto { base: "" } e não apenas uma string
-        novaFicha.avatar = { base: npcSelecionado.avatar ? npcSelecionado.avatar.trim() : "" };
 
-        novaFicha.notas = {
-            ...novaFicha.notas,
-            geral: `🔸 Elemento Mágico: ${npcSelecionado.elemento || 'Nenhum'}\n🔸 Origem: Clã ${familiaAtiva}\n\n📖 História Genealógica:\n${npcSelecionado.lore || 'Sem registros.'}`
-        };
+        // Injeta localmente no ecrã para garantir que funciona imediatamente
+        const novosPersonagens = { ...personagens, [nomePersonagem]: fichaParaServidor };
+        if (setPersonagens) {
+            setPersonagens(novosPersonagens);
+        }
 
-        // Coloca a Lore na aba de Poderes para leitura fácil durante o combate
-        if (!novaFicha.poderes) novaFicha.poderes = [];
-        novaFicha.poderes.push({
-            nome: "📖 Linhagem & Lore",
-            dano: "0",
-            descricao: `Status: ${npcSelecionado.status || 'Vivo'}\nElemento Mágico: ${npcSelecionado.elemento || 'Nenhum'}\nClã de Origem: ${familiaAtiva}\n\nHistória: ${npcSelecionado.lore || 'Sem registros.'}`
-        });
-
-        novaFicha.isNPC = true;
-        novaFicha.dataCriacao = Date.now();
-
+        // Tenta enviar para o Firebase
         try {
-            await set(ref(database, `personagens/${nomePersonagem}`), novaFicha);
-            alert(`✅ INJEÇÃO ABSOLUTA! O personagem "${nomePersonagem}" já deve estar visível na Aba de NPCs do Mestre!`);
+            await set(ref(database, `personagens/${nomePersonagem}`), fichaParaServidor);
+            alert(`✅ INJEÇÃO ABSOLUTA! O personagem [${nomePersonagem}] foi forjado!\n\n👉 Vá ao Painel do Mestre e CLIQUE NA ABA VERMELHA "NPCs" para o ver!`);
         } catch (erro) {
-            console.error("Erro Firebase:", erro);
-            alert(`❌ Erro do Firebase: ${erro.message}`);
+            console.warn("Erro Firebase:", erro);
+            alert(`⚠️ O Firebase bloqueou o save na cloud, MAS A INJEÇÃO LOCAL FUNCIONOU! \n\n👉 Vá ao Painel do Mestre e CLIQUE NA ABA VERMELHA "NPCs" para o ver!`);
         }
     };
 
@@ -213,7 +208,7 @@ export default function AIArvoreGenealogica() {
                 setNpcSelecionado(null);
                 alert("✅ Backup das Árvores carregado com sucesso!");
             } catch (err) {
-                alert("❌ Erro ao ler o arquivo. Tem certeza que é o JSON gerado pelo sistema?");
+                alert("❌ Erro ao ler o ficheiro. Tem a certeza que é o JSON gerado pelo sistema?");
             }
         };
         reader.readAsText(file);
@@ -248,7 +243,7 @@ export default function AIArvoreGenealogica() {
                     onClick={() => setNpcSelecionado(npc)}
                 >
                     <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '-5px' }}>
-                        <button onClick={(e) => { e.stopPropagation(); deletarNpc(npc.id); }} style={{ background: 'none', border: 'none', color: '#ff4444', fontSize: '14px', cursor: 'pointer' }} title="Deletar Personagem">✖</button>
+                        <button onClick={(e) => { e.stopPropagation(); deletarNpc(npc.id); }} style={{ background: 'none', border: 'none', color: '#ff4444', fontSize: '14px', cursor: 'pointer' }} title="Apagar Personagem">✖</button>
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
@@ -356,7 +351,7 @@ export default function AIArvoreGenealogica() {
                     <h3 style={{ color: '#00ffcc', margin: 0, textShadow: '0 0 10px rgba(0,255,204,0.4)' }}>🌳 Suas Árvores</h3>
                     
                     <div style={{ display: 'flex', gap: '5px' }}>
-                        <button className="btn-neon btn-blue" onClick={exportarBackup} style={{ padding: '5px 10px', fontSize: '11px', margin: 0 }} title="Baixar todas as Árvores">💾 Backup</button>
+                        <button className="btn-neon btn-blue" onClick={exportarBackup} style={{ padding: '5px 10px', fontSize: '11px', margin: 0 }} title="Descarregar todas as Árvores">💾 Backup</button>
                         <input type="file" ref={fileInputRef} accept=".json" onChange={importarBackup} style={{ display: 'none' }} />
                         <button className="btn-neon btn-gold" onClick={() => fileInputRef.current?.click()} style={{ padding: '5px 10px', fontSize: '11px', margin: 0 }}>📂 Carregar</button>
                     </div>
