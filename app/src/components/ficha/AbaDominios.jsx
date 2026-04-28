@@ -15,58 +15,71 @@ const NIVEIS_INFO = {
     10: { nome: "Eterno", cor: "#ffcc00", desc: "Dano Incalculável | Apagamento Conceitual" }
 };
 
-// 🛡️ LISTAS ÚNICAS POR FONTE DE ENERGIA E LORE
+// 🛡️ LISTAS ORGANIZADAS POR SUBCATEGORIAS (OPTGROUPS)
 const PREDEFINICOES = {
-    mana: [
-        "Fogo", "Raio", "Agua", "Vento", "Terra", "Gelo", "Natureza", "Energia", "Vacuo", "Solar",
-        "Fogo Verdadeiro", "Raio Verdadeiro", "Agua Verdadeira", "Vento Verdadeiro", "Terra Verdadeira",
-        "Solar Verdadeiro", "Energia Verdadeira", "Gelo Verdadeiro", "Vacuo Verdadeiro", "Natureza Verdadeira",
-        "Truques de Ciclo", "Magias de 1º a 10º Ciclo", "Truques Arcanos/Negros", "Magias Arcanas/Negra de 1º a 10º Ciclo",
-        "Truques Ancestrais", "Magia de Sangue", "Magia de Osso", "Magia Draconica", "Magia de Alma", 
-        "Magia de Tempo", "Magia de Gravidade", "Magia Espacial", "Magia de Borracha", "Magia de Espelho", 
-        "Magia de Sal", "Magia de Tremor", "Magia de Equipamento", "Magia de Explosao", "Magia de Metamorfose"
-    ],
-    chakra: [
-        "Elemento Madeira", "Elemento Mineral", "Elemento Cinzas", "Elemento Igneo", "Elemento Lava", 
-        "Elemento Vapor", "Elemento Nevoa", "Elemento Tempestade", "Elemento Areia", "Elemento Tufao",
-        "Elemento Velocidade", "Elemento Poeira", "Elemento Veneno", "Elemento Cal", "Elemento Carbono", 
-        "Elemento Calor", "Elemento Som", "Elemento Magnetismo"
-    ],
-    aura: [
-        "Aura Pura", "Projeção de Aura", "Reforço de Aura", "Fusões Básicas", "Fusões Avançadas"
-    ],
-    primordiais: [
-        "Luz", "Trevas", "Ether", "Celestial", "Infernal", "Caos", "Criacao", "Destruicao", "Cosmos"
-    ],
-    astral: [
-        "Vida", "Morte", "Vazio", "Neutro", "Energia Astral"
-    ],
-    marciais: [
-        "Artes Marciais", "Punho do Dragão", "Palma Suave", "Caminho do Tigre", "Boxe Demoníaco", "Artes de Assassino"
-    ],
-    armas: [
-        "Ittouryu (1 Espada)", "Nitouryu (2 Espadas)", "Santouryu (3 Espadas)", "Iaido", "Kenjutsu",
-        "Maestria com Lança", "Maestria com Foice", "Maestria com Arco", "Maestria com Armas de Fogo", "Maestria com Escudo"
-    ],
-    cura: [
-        "Regeneração Básica", "Cura Celular", "Purificação", "Reversão Temporal", "Transferência Vital", "Ressurreição Limitada"
-    ],
-    summons: [
-        "Pacto Demoníaco", "Feras Divinas", "Espíritos Ancestrais", "Contrato Dracônico", "Exército de Sombras", "Invocação de Armamento Sagrado"
-    ]
+    elementos: {
+        "Elementos Básicos": ["Fogo", "Raio", "Agua", "Vento", "Terra"],
+        "Básicos Verdadeiros": ["Fogo Verdadeiro", "Raio Verdadeiro", "Agua Verdadeira", "Vento Verdadeiro", "Terra Verdadeira"],
+        "Elementos Avançados": ["Solar", "Energia", "Gelo", "Vacuo", "Natureza"],
+        "Avançados Verdadeiros": ["Solar Verdadeiro", "Energia Verdadeira", "Gelo Verdadeiro", "Vacuo Verdadeiro", "Natureza Verdadeira"]
+    },
+    mana: {
+        "Magias de Ciclo": ["Truques de Ciclo", "Magias de 1º a 10º Ciclo"],
+        "Magias Arcanas/Negras": ["Truques Arcanos/Negros", "Magias Arcanas/Negra de 1º a 10º Ciclo"],
+        "Magias Ancestrais": ["Truques Ancestrais", "Magia de Sangue", "Magia de Osso", "Magia Draconica", "Magia de Alma", "Magia de Tempo", "Magia de Gravidade", "Magia Espacial", "Magia de Borracha", "Magia de Espelho", "Magia de Sal", "Magia de Tremor", "Magia de Equipamento", "Magia de Explosao", "Magia de Metamorfose"]
+    },
+    chakra: {
+        "Kekkei Genkai": ["Elemento Madeira", "Elemento Mineral", "Elemento Cinzas", "Elemento Igneo", "Elemento Lava", "Elemento Vapor", "Elemento Nevoa", "Elemento Tempestade", "Elemento Areia", "Elemento Tufao"],
+        "Kekkei Touta": ["Elemento Velocidade", "Elemento Poeira", "Elemento Veneno", "Elemento Cal", "Elemento Carbono", "Elemento Calor", "Elemento Som", "Elemento Magnetismo"]
+    },
+    aura: {
+        "Manifestação": ["Aura Pura", "Projeção de Aura", "Reforço de Aura"],
+        "Fusões": ["Fusões Básicas", "Fusões Avançadas"]
+    },
+    primordiais: {
+        "Primordiais Base": ["Luz", "Trevas", "Ether"],
+        "Primordiais Verdadeiros": ["Celestial", "Infernal", "Caos"],
+        "Absolutos": ["Criacao", "Destruicao", "Cosmos"]
+    },
+    astral: {
+        "Domínios da Existência": ["Vida", "Morte", "Vazio", "Neutro", "Energia Astral"]
+    },
+    marciais: {
+        "Fundamentos": ["Artes Marciais (Combate Corpo-a-Corpo)", "Reforço Físico"],
+        "Estilos de Combate": ["Punho do Dragão", "Palma Suave", "Caminho do Tigre", "Boxe Demoníaco", "Artes de Assassino", "Estilo Bêbado", "Punho de Ferro"]
+    },
+    armas: {
+        "Kenjutsu (Espadas)": ["Ittouryu (1 Espada)", "Nitouryu (2 Espadas)", "Santouryu (3 Espadas)", "Iaido", "Kenjutsu"],
+        "Posturas de Combate": ["Postura da Montanha", "Postura da Água", "Postura do Vento", "Postura do Trovão"],
+        "Outras Armas": ["Maestria com Lança", "Maestria com Foice", "Maestria com Arco", "Maestria com Armas de Fogo", "Maestria com Escudo"]
+    },
+    cura: {
+        "Medicina": ["Regeneração Básica", "Cura Celular", "Purificação", "Reversão Temporal", "Transferência Vital", "Ressurreição Limitada"]
+    },
+    summons: {
+        "Pactos": ["Pacto Demoníaco", "Feras Divinas", "Espíritos Ancestrais", "Contrato Dracônico", "Exército de Sombras", "Invocação de Armamento Sagrado"]
+    }
 };
+
+// Transforma os objetos em arrays simples para a lógica de filtragem funcionar
+const flatPredefs = {};
+Object.keys(PREDEFINICOES).forEach(key => {
+    flatPredefs[key] = Object.values(PREDEFINICOES[key]).flat();
+});
 
 export default function AbaDominios() {
     const { minhaFicha, updateFicha } = useStore();
+    
     if (!minhaFicha) return <div style={{ color: '#888', padding: 20 }}>Carregando ficha...</div>;
+    
     const dominios = minhaFicha.dominios || {};
 
     const atualizarDominio = (categoria, item, nivel) => {
         updateFicha(f => {
             if (!f.dominios) f.dominios = { elementais: {}, marciais: {}, armas: {}, cura: {}, summons: {} };
             
-            // 🔥 Mapeia as energias mágicas para a gaveta principal de elementais do useStore
-            const targetCat = ['mana', 'chakra', 'aura', 'astral', 'primordiais'].includes(categoria) ? 'elementais' : categoria;
+            // 🔥 Adicionamos 'elementos' à lista de chaves mágicas que vão para a gaveta 'elementais'
+            const targetCat = ['elementos', 'mana', 'chakra', 'aura', 'astral', 'primordiais'].includes(categoria) ? 'elementais' : categoria;
             if (!f.dominios[targetCat]) f.dominios[targetCat] = {};
 
             if (nivel === 0) delete f.dominios[targetCat][item];
@@ -86,33 +99,40 @@ export default function AbaDominios() {
     };
 
     const renderSecao = (titulo, chave, corBase) => {
-        const isMagica = ['mana', 'chakra', 'aura', 'astral', 'primordiais'].includes(chave);
+        const isMagica = ['elementos', 'mana', 'chakra', 'aura', 'astral', 'primordiais'].includes(chave);
         const gavetaDoStore = isMagica ? 'elementais' : chave;
         
-        // Junta todas as magias para saber se um nome customizado foi digitado
-        const todasMagias = PREDEFINICOES.mana.concat(PREDEFINICOES.chakra, PREDEFINICOES.aura, PREDEFINICOES.astral, PREDEFINICOES.primordiais);
+        const todasMagias = flatPredefs.elementos.concat(flatPredefs.mana, flatPredefs.chakra, flatPredefs.aura, flatPredefs.astral, flatPredefs.primordiais);
 
         return (
             <div className="def-box" style={{ borderLeft: `4px solid ${corBase}`, marginBottom: '20px' }}>
                 <h3 style={{ color: corBase, margin: '0 0 10px 0', fontSize: '1em' }}>{titulo}</h3>
                 <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+                    
                     <select id={`select-${chave}`} className="input-neon" style={{ flex: 1, borderColor: corBase, background: 'rgba(0,0,0,0.5)', color: '#fff' }}>
-                        <option value="">-- Adicionar Domínio --</option>
-                        {PREDEFINICOES[chave]?.map(p => <option key={p} value={p}>{p}</option>)}
-                        <option value="custom" style={{ color: '#ffcc00' }}>✍️ Outro...</option>
+                        <option value="">-- Selecione para Adicionar --</option>
+                        {Object.entries(PREDEFINICOES[chave] || {}).map(([grupo, itens]) => (
+                            <optgroup key={grupo} label={`— ${grupo} —`} style={{ color: corBase, fontStyle: 'italic', background: '#111' }}>
+                                {itens.map(p => <option key={p} value={p} style={{ color: '#fff', fontStyle: 'normal' }}>{p}</option>)}
+                            </optgroup>
+                        ))}
+                        <optgroup label="— Personalizado —" style={{ color: '#ffcc00', background: '#111' }}>
+                            <option value="custom">✍️ Criar Outro Domínio...</option>
+                        </optgroup>
                     </select>
+
                     <button className="btn-neon" onClick={() => adicionarNovo(chave)} style={{ borderColor: corBase, color: corBase, margin: 0 }}>➕</button>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {Object.entries(dominios[gavetaDoStore] || {}).filter(([nome]) => {
-                        const isNestaLista = PREDEFINICOES[chave].includes(nome);
-                        // Se for uma habilidade "custom" (fora de todas as listas), jogamos na aba "Mana" ou na respectiva aba não-mágica
-                        const isCustom = isMagica ? !todasMagias.includes(nome) : !PREDEFINICOES[chave].includes(nome);
+                        const isNestaLista = flatPredefs[chave].includes(nome);
+                        const isCustom = isMagica ? !todasMagias.includes(nome) : !flatPredefs[chave].includes(nome);
                         
                         if (isNestaLista) return true;
-                        if (isCustom && chave === 'mana') return true; // Custons mágicos vão para Mana
-                        if (isCustom && !isMagica) return true; // Custons físicos vão para suas próprias abas
+                        // Custons mágicos agora podem cair em 'elementos' por padrão se criados lá
+                        if (isCustom && chave === 'elementos') return true; 
+                        if (isCustom && !isMagica) return true; 
                         return false;
                     }).map(([nome, dados]) => (
                         <div key={nome} style={{ background: 'rgba(0,0,0,0.4)', padding: '10px', borderRadius: '5px', border: '1px solid #333' }}>
@@ -137,6 +157,7 @@ export default function AbaDominios() {
             <h2 style={{ color: '#ffcc00', borderBottom: '2px solid #ffcc00', paddingBottom: '10px', marginBottom: '20px' }}>💎 HIERARQUIA DE DOMÍNIOS</h2>
             
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '15px' }}>
+                {renderSecao("🔥 Manipulação Elemental", "elementos", "#ff6600")}
                 {renderSecao("🔮 Artes de Mana (Grimório)", "mana", "#0088ff")}
                 {renderSecao("🌀 Artes de Chakra (Shinobi)", "chakra", "#00ffcc")}
                 {renderSecao("✨ Artes de Aura (Manifestação)", "aura", "#b366ff")}
