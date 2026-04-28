@@ -119,11 +119,19 @@ export function salvarFirebaseImediato() {
     const { minhaFicha, meuNome, mesaId } = useStore.getState();
     const nomeSanitizado = sanitizarNome(meuNome);
     if (!nomeSanitizado || !mesaId) return Promise.resolve();
+    
     const fichaParaSalvar = JSON.parse(JSON.stringify(minhaFicha));
+
+    // 🔥 TRAVA DE SEGURANÇA DOS DOMÍNIOS (Força a inclusão) 🔥
+    if (minhaFicha.dominios && !fichaParaSalvar.dominios) {
+        fichaParaSalvar.dominios = minhaFicha.dominios;
+    }
+
     try {
         localStorage.setItem('rpgFicha_' + nomeSanitizado, JSON.stringify(fichaParaSalvar));
         localStorage.setItem('rpgNome', nomeSanitizado);
     } catch (err) {}
+    
     if (!db) return Promise.resolve();
     return set(ref(db, `mesas/${mesaId}/personagens/${nomeSanitizado}`), fichaParaSalvar).catch((err) => { throw err; });
 }
