@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import useStore, { fichaPadrao } from '../../stores/useStore'; 
 
 export default function AIArvoreGenealogica() {
-    // 💾 CONEXÃO COM O ZUSTAND (PAINEL DO MESTRE - AGORA NOS NPCS CORRETOS!)
+    // 💾 CONEXÃO COM O ZUSTAND (PAINEL DO MESTRE)
     const dummies = useStore(s => s.dummies);
     const setDummies = useStore(s => s.setDummies);
 
@@ -75,6 +75,8 @@ export default function AIArvoreGenealogica() {
     }
 
     const adicionarMembro = (parentId = null, genitor2 = "") => {
+        if (!familiaAtiva) return alert("Crie ou selecione uma árvore primeiro!");
+        
         const novoId = Date.now();
         const novoNpc = { 
             id: novoId, 
@@ -88,28 +90,29 @@ export default function AIArvoreGenealogica() {
         
         setFamilias({
             ...familias,
-            [familiaAtiva]: [...familias[familiaAtiva], novoNpc]
+            [familiaAtiva]: [...(familias[familiaAtiva] || []), novoNpc]
         });
         setNpcSelecionado(novoNpc); 
     };
 
     const atualizarNpc = (campo, valor) => {
-        if (!npcSelecionado) return;
+        if (!npcSelecionado || !familiaAtiva) return;
         
         if (campo === 'parentId' && valor === npcSelecionado.id) return alert("Erro de paradoxo: Você não pode ser pai de si mesmo.");
 
         const npcAtualizado = { ...npcSelecionado, [campo]: valor };
         setNpcSelecionado(npcAtualizado);
         
-        const listaAtualizada = familias[familiaAtiva].map(npc => 
+        const listaAtualizada = (familias[familiaAtiva] || []).map(npc => 
             npc.id === npcSelecionado.id ? npcAtualizado : npc
         );
         setFamilias({ ...familias, [familiaAtiva]: listaAtualizada });
     };
 
     const deletarNpc = (id) => {
+        if (!familiaAtiva) return;
         if(window.confirm("Apagar este NPC? (Seus filhos se tornarão fundadores órfãos soltos na árvore para não sumirem)")) {
-            const listaAtualizada = familias[familiaAtiva]
+            const listaAtualizada = (familias[familiaAtiva] || [])
                 .filter(npc => npc.id !== id)
                 .map(npc => npc.parentId === id ? { ...npc, parentId: null } : npc);
             
@@ -128,17 +131,14 @@ export default function AIArvoreGenealogica() {
 
         const nomePersonagem = npcSelecionado.nome.trim();
 
-        // Verifica se já existe na aba de NPCs (dummies) e pede confirmação
         if (dummies[nomePersonagem]) {
             if (!window.confirm(`⚠️ O NPC "${nomePersonagem}" já existe na aba de NPCs! Deseja sobrescrever a ficha atual dele com os dados da Árvore Genealógica?`)) {
                 return;
             }
         }
 
-        // Deep clone da Ficha Padrão do seu useStore
         const novaFicha = JSON.parse(JSON.stringify(fichaPadrao));
 
-        // Convertendo os dados da Árvore para a Estrutura do Jogo
         const hpValor = Number(npcSelecionado.hp) || 100000;
         novaFicha.vida = { ...novaFicha.vida, base: hpValor, atual: hpValor };
         
@@ -161,7 +161,6 @@ export default function AIArvoreGenealogica() {
             geral: `🔸 Elemento Mágico: ${npcSelecionado.elemento || 'Nenhum'}\n🔸 Origem: Clã ${familiaAtiva}\n\n📖 Lore Genealógica:\n${npcSelecionado.lore || 'Sem registros na árvore.'}`
         };
 
-        // Salva globalmente nos NPCs (dummies)
         const novosDummies = { ...dummies, [nomePersonagem]: novaFicha };
         setDummies(novosDummies);
 
@@ -210,7 +209,9 @@ export default function AIArvoreGenealogica() {
         const parceirosRaw = npc.parceiros || npc.conjuge || ""; 
         const parceirosSet = new Set(parceirosRaw.split(',').map(s => s.trim()).filter(Boolean));
         
-        const filhos = familias[familiaAtiva]?.filter(n => n.parentId === npc.id) || [];
+        // 🔒 BLINDAGEM: Usar (familias[familiaAtiva] || [])
+        const filhos = (familias[familiaAtiva] || []).filter(n => n.parentId === npc.id);
+        
         filhos.forEach(f => { if (f.genitor2 && f.genitor2.trim()) parceirosSet.add(f.genitor2.trim()); });
         const parceirosUnicos = Array.from(parceirosSet);
 
@@ -316,7 +317,10 @@ export default function AIArvoreGenealogica() {
         );
     };
 
-    const paiAtivo = npcSelecionado?.parentId ? familias[familiaAtiva].find(n => n.id === npcSelecionado.parentId) : null;
+    // 🔒 BLINDAGEM NO PAI ATIVO TAMBÉM
+    const paiAtivo = (npcSelecionado?.parentId && familiaAtiva) 
+        ? (familias[familiaAtiva] || []).find(n => n.id === npcSelecionado.parentId) 
+        : null;
     const opcoesGenitor2 = paiAtivo ? Array.from(new Set((paiAtivo.parceiros || paiAtivo.conjuge || "").split(',').map(s=>s.trim()).filter(Boolean))) : [];
 
     // ==========================================
@@ -397,11 +401,12 @@ export default function AIArvoreGenealogica() {
 
                         {/* Motor CSS */}
                         <div className="genealogy-tree">
-                            {familias[familiaAtiva]?.filter(n => n.parentId === null).length === 0 ? (
+                            {/* 🔒 BLINDAGEM NO FILTER AQUI TAMBÉM */}
+                            {(familias[familiaAtiva] || []).filter(n => n.parentId === null).length === 0 ? (
                                 <p style={{ color: '#555', fontStyle: 'italic' }}>Esta árvore está vazia. Adicione um fundador.</p>
                             ) : (
                                 <ul>
-                                    {familias[familiaAtiva].filter(n => n.parentId === null).map(n => renderNPC(n))}
+                                    {(familias[familiaAtiva] || []).filter(n => n.parentId === null).map(n => renderNPC(n))}
                                 </ul>
                             )}
                         </div>
@@ -462,7 +467,8 @@ export default function AIArvoreGenealogica() {
                                 style={{ width: '100%', padding: '8px', borderColor: '#0088ff', color: '#fff', marginTop: '5px', background: '#05070a', boxSizing: 'border-box' }}
                             >
                                 <option value="">👑 Nenhum (É um Fundador)</option>
-                                {familias[familiaAtiva].filter(n => n.id !== npcSelecionado.id).map(n => (
+                                {/* 🔒 BLINDAGEM AQUI TAMBÉM */}
+                                {(familias[familiaAtiva] || []).filter(n => n.id !== npcSelecionado.id).map(n => (
                                     <option key={n.id} value={n.id}>↳ {n.nome}</option>
                                 ))}
                             </select>
