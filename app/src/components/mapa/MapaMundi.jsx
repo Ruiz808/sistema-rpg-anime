@@ -36,7 +36,7 @@ export default function MapaMundi({ children }) {
     const containerRef = useRef(null);
     const [codigoExportado, setCodigoExportado] = useState(null);
 
-    // 🎥 CÂMERA 3D DO SISTEMA SOLAR
+    // 🎥 CÂMERA 3D DO SISTEMA SOLAR 
     const [camRotX, setCamRotX] = useState(60); 
     const [camRotY, setCamRotY] = useState(0);  
     const [isDraggingCam, setIsDraggingCam] = useState(false);
@@ -63,7 +63,7 @@ export default function MapaMundi({ children }) {
         { "nome": "Plano do Caos Inferior", "top": "84%", "left": "8%", "width": "22%", "height": "10%", "cor": "#800000", "isCircle": false }
     ]);
 
-    // 📍 VARIÁVEL 2: ESTRELAS E PLANETAS
+    // 📍 VARIÁVEL 2: ESTRELAS E PLANETAS 
     const [elementosSolar, setElementosSolar] = useState([
         { "id": "orichalcosA", "tipo": "estrela", "nome": "Orichalcos A", "top": "250px", "left": "250px", "size": "180px" },
         { "id": "orichalcosB", "tipo": "estrela", "nome": "Orichalcos B", "top": "250px", "left": "750px", "size": "180px" },
@@ -95,7 +95,7 @@ export default function MapaMundi({ children }) {
     ];
 
     // ==========================================
-    // 🧮 GERADOR MATEMÁTICO DA RODOVIA CÓSMICA 
+    // 🧮 GERADOR MATEMÁTICO DA RODOVIA CÓSMICA
     // ==========================================
     const getPathCaminho = (rx, ry) => {
         const starA = elementosSolar.find(e => e.id === 'orichalcosA');
@@ -123,30 +123,33 @@ export default function MapaMundi({ children }) {
     };
 
     // ==========================================
-    // ✨ SISTEMA DE NAVEGAÇÃO / VOO ✨
+    // ✨ SISTEMA DE NAVEGAÇÃO / VOO (A POLIDA!) ✨
     // ==========================================
-    const iniciarViagem = (nomeDestino, proximaVisao) => {
+    const iniciarViagem = (nomeDestino, acao) => {
         if (modoAjuste) return;
         
-        // Dispara a animação de zoom absurdo no planeta clicado
+        // 1. Marca quem é o destino (o resto some pelo CSS)
         setVoandoPara(nomeDestino);
         
-        // Aos 600ms, quando o planeta engolir a tela, dispara o clarão
+        // 2. Aos 1200ms, o planeta engole a tela e dá o clarão
         setTimeout(() => {
             setFlashBranco(true);
-        }, 600);
+        }, 1200);
 
-        // Aos 850ms, com a tela branca, muda o cenário
+        // 3. Aos 1500ms, finaliza o voo e executa a navegação
         setTimeout(() => {
-            if (proximaVisao) {
-                setNivelVisao(proximaVisao);
+            if (typeof acao === 'function') {
+                acao(); // Executa funções como abrir menu
+            } else if (acao) {
+                setNivelVisao(acao); // Muda a visão da tela
             } else {
                 alert(`Oculto pelas névoas.\nAcesso restrito a: ${nomeDestino}`);
             }
-            // Reseta tudo para você não ficar preso na velocidade da luz
+            
+            // Reseta a física
             setVoandoPara(null);
             setFlashBranco(false);
-        }, 850);
+        }, 1500);
     };
 
 
@@ -230,7 +233,7 @@ export default function MapaMundi({ children }) {
         setCodigoExportado(`// COPIE E SUBSTITUA A 'zonasCosmologia':\nconst [zonasCosmologia, setZonasCosmologia] = useState(${codigoCosmo});\n\n// ======================================\n\n// COPIE E SUBSTITUA A 'elementosSolar':\nconst [elementosSolar, setElementosSolar] = useState(${codigoSolar});\n\n// ======================================\n\n// COPIE E SUBSTITUA A 'configOrbitas':\nconst [configOrbitas, setConfigOrbitas] = useState(${codigoOrbs});`);
     };
 
-    // 🎛️ PAINEL DE ENGENHARIA SOLAR 
+    // 🎛️ PAINEL DE ENGENHARIA SOLAR
     const PainelEngenhariaSolar = () => {
         if (!modoAjuste || nivelVisao !== 'sistema_solar') return null;
         
@@ -281,7 +284,7 @@ export default function MapaMundi({ children }) {
     };
 
     const PainelModoDeus = () => (
-        <div style={{ position: 'absolute', top: '15px', left: '50%', transform: 'translateX(-50%)', zIndex: 100, display: 'flex', flexDirection: 'column', gap: '5px', background: 'rgba(0,0,0,0.8)', padding: '10px 20px', borderRadius: '10px', border: '1px solid #333' }}>
+        <div style={{ position: 'absolute', top: '15px', left: '50%', transform: 'translateX(-50%)', zIndex: 100, display: 'flex', flexDirection: 'column', gap: '5px', background: 'rgba(0,0,0,0.8)', padding: '10px 20px', borderRadius: '10px', border: '1px solid #333', opacity: voandoPara ? 0 : 1, transition: 'opacity 1s' }}>
             <div style={{ display: 'flex', gap: '15px', justifyContent: 'center' }}>
                 <button onClick={() => setModoAjuste(!modoAjuste)} style={{ background: modoAjuste ? '#ff4444' : '#0088ff', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
                     {modoAjuste ? '❌ DESLIGAR MODO AJUSTE' : '🔧 LIGAR MODO DE AJUSTE'}
@@ -292,8 +295,6 @@ export default function MapaMundi({ children }) {
                     </button>
                 )}
             </div>
-            {modoAjuste && nivelVisao === 'sistema_solar' && <span style={{ color: '#00ffcc', fontSize: '11px', textAlign: 'center' }}>(O elástico cósmico está ativado!)</span>}
-            {modoAjuste && nivelVisao === 'cosmologia' && <span style={{ color: '#aaa', fontSize: '11px', textAlign: 'center' }}>(Arraste os planos e as dimensões.)</span>}
         </div>
     );
 
@@ -313,24 +314,23 @@ export default function MapaMundi({ children }) {
     };
 
     // ==========================================
-    // 🌌 TELA 0: SISTEMA SOLAR CÂMERA 3D (DIORAMA PERFEITO + ANIMAÇÃO WARP)
+    // 🌌 TELA 0: SISTEMA SOLAR CÂMERA 3D
     // ==========================================
     if (nivelVisao === 'sistema_solar') {
         const billboardTransform = `rotateY(${-camRotY}deg) rotateX(${-camRotX}deg)`;
 
         return (
             <div className="fade-in" style={{ width: '100%', height: '85vh', background: 'radial-gradient(circle at center, #0a0a1a 0%, #000000 100%)', position: 'relative', overflow: 'hidden', borderRadius: '15px', border: '1px solid #333' }}>
-                <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(2px 2px at 20px 30px, #ffffff, rgba(0,0,0,0)), radial-gradient(2px 2px at 40px 70px, #ffffff, rgba(0,0,0,0)), radial-gradient(2px 2px at 90px 40px, #ffffff, rgba(0,0,0,0))', backgroundRepeat: 'repeat', backgroundSize: '200px 200px', opacity: 0.3 }} />
+                <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(2px 2px at 20px 30px, #ffffff, rgba(0,0,0,0)), radial-gradient(2px 2px at 40px 70px, #ffffff, rgba(0,0,0,0)), radial-gradient(2px 2px at 90px 40px, #ffffff, rgba(0,0,0,0))', backgroundRepeat: 'repeat', backgroundSize: '200px 200px', opacity: voandoPara ? 0 : 0.3, transition: 'opacity 1s' }} />
                 
                 <PainelModoDeus />
                 <PainelEngenhariaSolar />
 
-                <button onClick={() => iniciarViagem('Multiverso', 'cosmologia')} style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(72, 61, 139, 0.4)', border: '1px solid #DDA0DD', color: '#DDA0DD', padding: '10px 25px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', zIndex: 100, letterSpacing: '2px', boxShadow: '0 0 15px rgba(221, 160, 221, 0.3)', backdropFilter: 'blur(5px)' }}>🌌 REVELAR DIMENSÕES</button>
+                <button onClick={() => iniciarViagem('Multiverso', 'cosmologia')} style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(72, 61, 139, 0.4)', border: '1px solid #DDA0DD', color: '#DDA0DD', padding: '10px 25px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', zIndex: 100, opacity: voandoPara ? 0 : 1, transition: 'opacity 1s' }}>🌌 REVELAR DIMENSÕES</button>
 
-                <div style={{ position: 'absolute', top: '20px', left: '20px', zIndex: 10, pointerEvents: 'none' }}>
+                <div style={{ position: 'absolute', top: '20px', left: '20px', zIndex: 10, pointerEvents: 'none', opacity: voandoPara ? 0 : 1, transition: 'opacity 1s' }}>
                     <h2 style={{ color: '#fff', margin: 0, textTransform: 'uppercase', letterSpacing: '4px', textShadow: '0 0 10px #fff' }}>Universo Material</h2>
                     <p style={{ color: '#aaa', fontSize: '0.85em', margin: '5px 0 0 0', letterSpacing: '1px' }}>Setor Orichalcos</p>
-                    <p style={{ color: '#00ffcc', fontSize: '0.75em', margin: '5px 0 0 0' }}>🖱️ Arraste a tela para girar a câmera</p>
                 </div>
 
                 <div 
@@ -338,10 +338,9 @@ export default function MapaMundi({ children }) {
                     onMouseDown={handleEspacoMouseDown} onMouseMove={handleEspacoMouseMove} onMouseUp={handleEspacoMouseUp} onMouseLeave={handleEspacoMouseUp} 
                     onTouchStart={handleEspacoMouseDown} onTouchMove={handleEspacoMouseMove} onTouchEnd={handleEspacoMouseUp}
                 >
-                    {/* CONTAINER CENTRAL (Afastando a perspectiva base pra a animação bater de frente) */}
                     <div style={{ position: 'relative', width: '1000px', height: '500px', transformStyle: 'preserve-3d', transform: `perspective(1500px) rotateX(${camRotX}deg) rotateY(${camRotY}deg)`, cursor: isDraggingCam ? 'grabbing' : (modoAjuste ? 'default' : 'grab') }}>
                         
-                        <svg viewBox="0 0 1000 500" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', overflow: 'visible', pointerEvents: 'none', zIndex: 1 }}>
+                        <svg viewBox="0 0 1000 500" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', overflow: 'visible', pointerEvents: 'none', zIndex: 1, opacity: voandoPara ? 0 : 1, transition: 'opacity 1s' }}>
                             <defs>
                                 <filter id="glow"><feGaussianBlur stdDeviation="3" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
                             </defs>
@@ -359,32 +358,33 @@ export default function MapaMundi({ children }) {
                             ))}
                         </svg>
 
-                        {/* ESTRELAS E PLANETAS */}
+                        {/* ESTRELAS */}
                         {elementosSolar.map(el => {
                             if (el.tipo === 'estrela') {
                                 return (
-                                    <div key={el.id} style={{ position: 'absolute', top: el.top, left: el.left, width: el.size, height: el.size, zIndex: 5, transform: 'translate(-50%, -50%)', transformStyle: 'preserve-3d', pointerEvents: 'none' }}>
+                                    <div key={el.id} style={{ position: 'absolute', top: el.top, left: el.left, width: el.size, height: el.size, zIndex: 5, transform: 'translate(-50%, -50%)', transformStyle: 'preserve-3d', pointerEvents: 'none', opacity: voandoPara ? 0 : 1, transition: 'opacity 1s' }}>
                                         <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #ffffff 0%, #ffcc00 40%, #ff5500 100%)', boxShadow: '0 0 100px #ffcc00, 0 0 150px #ff5500, inset -20px -20px 40px rgba(255,50,0,0.8)', transform: billboardTransform, transformStyle: 'preserve-3d' }} />
                                     </div>
                                 );
                             }
                             
+                            // PLANETAS
                             if (el.tipo === 'planeta') {
                                 return (
                                     <div key={el.id} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', transformStyle: 'preserve-3d' }}>
                                         <div style={{ position: 'absolute', top: 0, left: 0, width: el.size, height: el.size, zIndex: voandoPara === el.nome ? 9999 : 10, offsetPath: `path("${caminhosGerados[el.id]}")`, offsetRotate: '0deg', animation: `orbitaSempre ${el.tempo} linear infinite`, animationDelay: el.delay, transformStyle: 'preserve-3d', pointerEvents: 'auto' }}>
                                             
-                                            {/* ✨ MAGIA DA ANIMAÇÃO DE VOO ✨ (Scale 30x!) */}
+                                            {/* ✨ O VOO DE 1.5 SEGUNDOS ✨ */}
                                             <div style={{ 
                                                 width: '100%', height: '100%', 
-                                                transform: voandoPara === el.nome ? `${billboardTransform} scale(30)` : billboardTransform, 
-                                                transition: voandoPara === el.nome ? 'all 0.8s cubic-bezier(0.5, 0, 0.2, 1)' : 'none',
-                                                opacity: voandoPara === el.nome ? 0 : 1,
+                                                transform: voandoPara === el.nome ? `${billboardTransform} scale(40)` : billboardTransform, 
+                                                transition: voandoPara === el.nome ? 'all 1.5s cubic-bezier(0.4, 0, 0.2, 1)' : 'none',
+                                                opacity: voandoPara && voandoPara !== el.nome ? 0 : 1,
                                                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', transformStyle: 'preserve-3d' 
                                             }}>
                                                 <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: `radial-gradient(circle at 30% 30%, ${el.color1}, ${el.color2})`, boxShadow: `inset -15px -15px 25px rgba(0,0,0,0.9), inset 5px 5px 15px rgba(255,255,255,0.4), 0 0 20px ${el.shadow}`, zIndex: 10, cursor: 'pointer' }} onClick={() => iniciarViagem(el.nome, null)} />
-                                                <div style={{ position: 'absolute', width: '140%', height: '140%', borderRadius: '50%', border: '2px dashed rgba(255,255,255,0.2)', pointerEvents: 'none', zIndex: 5, transform: 'rotateX(65deg)' }}></div>
-                                                <span style={{ color: el.color1, position: 'absolute', bottom: '-30px', fontSize: '12px', fontWeight: 'bold', letterSpacing: '2px', textTransform: 'uppercase', whiteSpace: 'nowrap', textShadow: '0 2px 4px rgba(0,0,0,0.9), 0 0 8px rgba(255,255,255,0.5)' }}>{el.nome}</span>
+                                                <div style={{ position: 'absolute', width: '140%', height: '140%', borderRadius: '50%', border: '2px dashed rgba(255,255,255,0.2)', pointerEvents: 'none', zIndex: 5, transform: 'rotateX(65deg)', opacity: voandoPara === el.nome ? 0 : 1, transition: 'opacity 0.5s' }}></div>
+                                                <span style={{ color: el.color1, position: 'absolute', bottom: '-30px', fontSize: '12px', fontWeight: 'bold', letterSpacing: '2px', textTransform: 'uppercase', whiteSpace: 'nowrap', textShadow: '0 2px 4px rgba(0,0,0,0.9), 0 0 8px rgba(255,255,255,0.5)', opacity: voandoPara === el.nome ? 0 : 1, transition: 'opacity 0.5s' }}>{el.nome}</span>
                                             </div>
 
                                         </div>
@@ -392,23 +392,24 @@ export default function MapaMundi({ children }) {
                                 );
                             }
 
+                            // TERRA 0
                             if (el.tipo === 'terra') {
                                 return (
                                     <div key={el.id} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', transformStyle: 'preserve-3d' }}>
                                         <div style={{ position: 'absolute', top: 0, left: 0, width: el.size, height: el.size, zIndex: voandoPara === 'Terra 0' ? 9999 : 20, offsetPath: `path("${caminhosGerados[el.id]}")`, offsetRotate: '0deg', animation: `orbitaSempre ${el.tempo} linear infinite`, animationDelay: el.delay, transformStyle: 'preserve-3d', pointerEvents: 'auto' }}>
                                             
-                                            {/* ✨ MAGIA DA ANIMAÇÃO DE VOO ✨ (Scale 30x!) */}
+                                            {/* ✨ O VOO PARA A TERRA DE 1.5 SEGUNDOS ✨ */}
                                             <div style={{ 
                                                 width: '100%', height: '100%', 
-                                                transform: voandoPara === 'Terra 0' ? `${billboardTransform} scale(30)` : billboardTransform, 
-                                                transition: voandoPara === 'Terra 0' ? 'all 0.8s cubic-bezier(0.5, 0, 0.2, 1)' : 'none',
-                                                opacity: voandoPara === 'Terra 0' ? 0 : 1,
+                                                transform: voandoPara === 'Terra 0' ? `${billboardTransform} scale(40)` : billboardTransform, 
+                                                transition: voandoPara === 'Terra 0' ? 'all 1.5s cubic-bezier(0.4, 0, 0.2, 1)' : 'none',
+                                                opacity: voandoPara && voandoPara !== 'Terra 0' ? 0 : 1,
                                                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', transformStyle: 'preserve-3d' 
                                             }}>
                                                 
                                                 <div onClick={() => iniciarViagem('Terra 0', 'globo')} style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #4db8ff, #002244)', boxShadow: 'inset -20px -20px 40px rgba(0,0,0,0.9), inset 10px 10px 20px rgba(255,255,255,0.4), 0 0 40px rgba(0,150,255,0.6)', border: '1px solid rgba(255,255,255,0.2)', zIndex: 10, cursor: 'pointer' }} />
                                                 
-                                                <div style={{ position: 'absolute', width: '220%', height: '220%', transform: 'rotateX(75deg)', pointerEvents: 'none', zIndex: 5, transformStyle: 'preserve-3d' }}>
+                                                <div style={{ position: 'absolute', width: '220%', height: '220%', transform: 'rotateX(75deg)', pointerEvents: 'none', zIndex: 5, transformStyle: 'preserve-3d', opacity: voandoPara === 'Terra 0' ? 0 : 1, transition: 'opacity 0.5s' }}>
                                                     <div className="moon-orbit-flat" style={{ width: '100%', height: '100%', borderRadius: '50%', border: '2px dashed rgba(255,255,255,0.25)', position: 'relative', transformStyle: 'preserve-3d' }}>
                                                         
                                                         {/* MARIA */}
@@ -435,7 +436,7 @@ export default function MapaMundi({ children }) {
                                                     </div>
                                                 </div>
                                                 
-                                                <span style={{ color: '#4db8ff', position: 'absolute', bottom: '-40px', fontSize: '18px', fontWeight: 'bold', letterSpacing: '4px', textTransform: 'uppercase', textShadow: '0 2px 4px rgba(0,0,0,0.9), 0 0 10px rgba(0,150,255,1)', whiteSpace: 'nowrap', pointerEvents: 'none' }}>{el.nome}</span>
+                                                <span style={{ color: '#4db8ff', position: 'absolute', bottom: '-40px', fontSize: '18px', fontWeight: 'bold', letterSpacing: '4px', textTransform: 'uppercase', textShadow: '0 2px 4px rgba(0,0,0,0.9), 0 0 10px rgba(0,150,255,1)', whiteSpace: 'nowrap', pointerEvents: 'none', opacity: voandoPara === 'Terra 0' ? 0 : 1, transition: 'opacity 0.5s' }}>{el.nome}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -446,16 +447,9 @@ export default function MapaMundi({ children }) {
                     </div>
                 </div>
 
-                {codigoExportado && (
-                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 200, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                        <div style={{ background: '#111', padding: '20px', borderRadius: '10px', width: '800px', border: '2px solid #00cc66' }}>
-                            <h2 style={{ color: '#00cc66', marginTop: 0 }}>✅ Pronto! Substitua seu código por este:</h2>
-                            <textarea readOnly value={codigoExportado} style={{ width: '100%', height: '400px', background: '#000', color: '#00ffcc', padding: '10px', fontFamily: 'monospace', fontSize: '12px' }} />
-                            <button onClick={() => setCodigoExportado(null)} style={{ background: '#ff4444', color: '#fff', border: 'none', padding: '10px 20px', marginTop: '10px', cursor: 'pointer', fontWeight: 'bold' }}>FECHAR E VOLTAR</button>
-                        </div>
-                    </div>
-                )}
-                
+                {/* 💥 O CLARÃO DE TRANSIÇÃO 💥 */}
+                <div style={{ position: 'absolute', inset: 0, background: '#fff', opacity: flashBranco ? 1 : 0, pointerEvents: 'none', zIndex: 999999, transition: 'opacity 0.2s ease-out' }} />
+
                 <style dangerouslySetInnerHTML={{__html: `
                     .fade-in { animation: fadeIn 0.8s ease-in-out; }
                     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -489,16 +483,16 @@ export default function MapaMundi({ children }) {
     }
 
     // ==========================================
-    // 🌌 TELA 1: COSMOLOGIA (COM TRANSIÇÃO TAMBÉM)
+    // 🌌 TELA 1: COSMOLOGIA (COM APAGÃO)
     // ==========================================
     if (nivelVisao === 'cosmologia') {
         return (
             <div className="fade-in" style={{ width: '100%', height: '85vh', background: '#050508', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
                 <PainelModoDeus />
-                <button onClick={() => iniciarViagem('Espaço Sideral', 'sistema_solar')} style={{ position: 'absolute', top: '20px', left: '20px', background: 'transparent', border: '1px solid #fff', color: '#fff', padding: '8px 18px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', zIndex: 100 }}>⬅ VOLTAR AO ESPAÇO</button>
+                <button onClick={() => iniciarViagem('Espaço Sideral', 'sistema_solar')} style={{ position: 'absolute', top: '20px', left: '20px', background: 'transparent', border: '1px solid #fff', color: '#fff', padding: '8px 18px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', zIndex: 100, opacity: voandoPara ? 0 : 1, transition: 'opacity 1s' }}>⬅ VOLTAR AO ESPAÇO</button>
 
                 <div ref={containerRef} onMouseMove={handleDragMoveCosmo} onMouseUp={handleDragEndCosmo} onMouseLeave={handleDragEndCosmo} onTouchMove={handleDragMoveCosmo} onTouchEnd={handleDragEndCosmo} style={{ position: 'relative', width: '1000px', height: '600px', borderRadius: '15px', overflow: 'hidden', marginTop: '50px' }}>
-                    <img src={mapaCosmologia} alt="Cosmologia" style={{ width: '100%', height: '100%', objectFit: 'fill', filter: 'drop-shadow(0 0 20px rgba(255,255,255,0.1))', pointerEvents: 'none' }} />
+                    <img src={mapaCosmologia} alt="Cosmologia" style={{ width: '100%', height: '100%', objectFit: 'fill', filter: 'drop-shadow(0 0 20px rgba(255,255,255,0.1))', pointerEvents: 'none', opacity: voandoPara ? 0 : 1, transition: 'opacity 1s' }} />
 
                     {zonasCosmologia.map((zona, index) => (
                         <div 
@@ -508,66 +502,62 @@ export default function MapaMundi({ children }) {
                             onMouseDown={(e) => handleDragStartCosmo(e, index)}
                             onTouchStart={(e) => handleDragStartCosmo(e, index)}
                             
-                            // ✨ MAGIA DA ANIMAÇÃO DE VOO ✨ (Scale 15x pros planos!)
+                            // ✨ MAGIA DA ANIMAÇÃO DE VOO (Planos) ✨ 
                             onClick={() => iniciarViagem(zona.nome, zona.isPlanet ? 'globo' : null)}
                             style={{
                                 position: 'absolute', top: zona.top, left: zona.left, width: zona.width, height: zona.height,
-                                borderRadius: zona.isCircle ? '50%' : '15px', cursor: modoAjuste ? 'grab' : 'pointer',
+                                borderRadius: zona.isCircle ? '50%' : '15px', cursor: modoAjuste ? 'grab' : 'pointer', zIndex: voandoPara === zona.nome ? 9999 : (zona.zIndex || 10),
                                 border: modoAjuste || planoHover === zona.nome ? `2px dashed ${zona.cor}` : '2px solid transparent',
                                 boxShadow: modoAjuste || planoHover === zona.nome ? `0 0 15px ${zona.cor}, inset 0 0 10px ${zona.cor}` : 'none',
                                 background: modoAjuste ? 'rgba(255,255,255,0.2)' : (planoHover === zona.nome ? 'rgba(255,255,255,0.15)' : 'transparent'), 
                                 
-                                transform: voandoPara === zona.nome ? 'scale(15)' : 'scale(1)',
-                                transition: voandoPara === zona.nome ? 'all 0.8s cubic-bezier(0.5, 0, 0.2, 1)' : (dragIndexCosmo === index ? 'none' : '0.2s ease-in-out'),
-                                opacity: voandoPara === zona.nome ? 0 : 1,
-                                zIndex: voandoPara === zona.nome ? 9999 : (zona.zIndex || 10)
+                                transform: voandoPara === zona.nome ? 'scale(30)' : 'scale(1)',
+                                transition: voandoPara === zona.nome ? 'all 1.5s cubic-bezier(0.4, 0, 0.2, 1)' : (dragIndexCosmo === index ? 'none' : '0.2s ease-in-out'),
+                                opacity: voandoPara && voandoPara !== zona.nome ? 0 : 1,
                             }}
                         />
                     ))}
                 </div>
                 
                 {!modoAjuste && (
-                    <div style={{ position: 'absolute', bottom: '30px', textAlign: 'center', pointerEvents: 'none', zIndex: 50 }}>
+                    <div style={{ position: 'absolute', bottom: '30px', textAlign: 'center', pointerEvents: 'none', zIndex: 50, opacity: voandoPara ? 0 : 1, transition: 'opacity 1s' }}>
                         <h1 style={{ color: '#fff', margin: 0, letterSpacing: '6px', textTransform: 'uppercase', fontSize: '1.4em', textShadow: '0 0 20px rgba(255,255,255,0.8)' }}>
                             {planoHover || 'Atlas Multiversal'}
                         </h1>
                     </div>
                 )}
 
-                {codigoExportado && (
-                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 200, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                        <div style={{ background: '#111', padding: '20px', borderRadius: '10px', width: '800px', border: '2px solid #00cc66' }}>
-                            <h2 style={{ color: '#00cc66', marginTop: 0 }}>✅ Pronto! Substitua seu código por este:</h2>
-                            <textarea readOnly value={codigoExportado} style={{ width: '100%', height: '400px', background: '#000', color: '#00ffcc', padding: '10px', fontFamily: 'monospace', fontSize: '12px' }} />
-                            <button onClick={() => setCodigoExportado(null)} style={{ background: '#ff4444', color: '#fff', border: 'none', padding: '10px 20px', marginTop: '10px', cursor: 'pointer', fontWeight: 'bold' }}>FECHAR E VOLTAR</button>
-                        </div>
-                    </div>
-                )}
+                {/* 💥 O CLARÃO DE TRANSIÇÃO 💥 */}
+                <div style={{ position: 'absolute', inset: 0, background: '#fff', opacity: flashBranco ? 1 : 0, pointerEvents: 'none', zIndex: 999999, transition: 'opacity 0.2s ease-out' }} />
             </div>
         );
     }
 
     // ==========================================
-    // 🌍 TELA 2: O GLOBO E CONTINENTE
+    // 🌍 TELA 2: O GLOBO
     // ==========================================
     if (nivelVisao === 'globo') {
         return (
             <div className="fade-in" style={{ width: '100%', height: '85vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#050508', borderRadius: '10px', border: '1px solid #0088ff', position: 'relative', overflow: 'hidden' }} onMouseMove={handleGloboDragMove} onMouseUp={handleGloboDragEnd} onMouseLeave={handleGloboDragEnd} onTouchMove={handleGloboDragMove} onTouchEnd={handleGloboDragEnd}>
-                <div style={{ position: 'absolute', top: '20px', left: '20px', display: 'flex', gap: '10px', zIndex: 30 }}>
-                    <button onClick={() => setNivelVisao('sistema_solar')} style={{ background: 'transparent', border: '1px solid #00ffcc', color: '#00ffcc', padding: '8px 18px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>⬅ ESPAÇO FÍSICO</button>
-                    <button onClick={() => setNivelVisao('cosmologia')} style={{ background: 'rgba(72, 61, 139, 0.4)', border: '1px solid #DDA0DD', color: '#DDA0DD', padding: '8px 18px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>🌌 MULTIVERSO</button>
+                <div style={{ position: 'absolute', top: '20px', left: '20px', display: 'flex', gap: '10px', zIndex: 30, opacity: voandoPara ? 0 : 1, transition: 'opacity 1s' }}>
+                    <button onClick={() => iniciarViagem('Espaço Sideral', 'sistema_solar')} style={{ background: 'transparent', border: '1px solid #00ffcc', color: '#00ffcc', padding: '8px 18px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>⬅ ESPAÇO FÍSICO</button>
+                    <button onClick={() => iniciarViagem('Multiverso', 'cosmologia')} style={{ background: 'rgba(72, 61, 139, 0.4)', border: '1px solid #DDA0DD', color: '#DDA0DD', padding: '8px 18px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>🌌 MULTIVERSO</button>
                 </div>
-                <div style={{ position: 'absolute', top: '20px', textAlign: 'center', zIndex: 10, pointerEvents: 'none' }}><h2 style={{ color: '#00ffcc', margin: 0, textTransform: 'uppercase', letterSpacing: '3px', textShadow: '0 0 10px #00ffcc' }}>Visão Orbital: Terra 0</h2></div>
+                <div style={{ position: 'absolute', top: '20px', textAlign: 'center', zIndex: 10, pointerEvents: 'none', opacity: voandoPara ? 0 : 1, transition: 'opacity 1s' }}><h2 style={{ color: '#00ffcc', margin: 0, textTransform: 'uppercase', letterSpacing: '3px', textShadow: '0 0 10px #00ffcc' }}>Visão Orbital: Terra 0</h2></div>
                 <div style={{ position: 'relative', width: '350px', height: '350px', perspective: '1000px' }}>
-                    <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', backgroundColor: '#000814', border: '2px solid #0088ff', pointerEvents: 'none', boxShadow: '0 0 50px rgba(0, 136, 255, 0.2)' }}></div>
-                    <div onMouseDown={handleGloboDragStart} onTouchStart={handleGloboDragStart} style={{ position: 'absolute', inset: 0, transformStyle: 'preserve-3d', transform: `rotateX(${rotacaoGlobo.y}deg) rotateY(${rotacaoGlobo.x}deg)`, cursor: isDragging ? 'grabbing' : 'grab', transition: isDragging ? 'none' : 'transform 0.5s ease-out' }}>
-                        <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(0,255,204,0.15)', transform: 'rotateX(90deg)' }}></div><div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(0,255,204,0.15)', transform: 'rotateY(90deg)' }}></div><div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(0,255,204,0.15)', transform: 'rotateZ(45deg) rotateX(90deg)' }}></div>
+                    <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', backgroundColor: '#000814', border: '2px solid #0088ff', pointerEvents: 'none', boxShadow: '0 0 50px rgba(0, 136, 255, 0.2)', opacity: voandoPara ? 0 : 1, transition: 'opacity 1s' }}></div>
+                    <div onMouseDown={handleGloboDragStart} onTouchStart={handleGloboDragStart} style={{ position: 'absolute', inset: 0, transformStyle: 'preserve-3d', transform: voandoPara === 'Runeterra' ? `scale(10)` : `rotateX(${rotacaoGlobo.y}deg) rotateY(${rotacaoGlobo.x}deg)`, cursor: isDragging ? 'grabbing' : 'grab', transition: voandoPara === 'Runeterra' ? 'transform 1.5s cubic-bezier(0.4, 0, 0.2, 1)' : (isDragging ? 'none' : 'transform 0.5s ease-out') }}>
+                        <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(0,255,204,0.15)', transform: 'rotateX(90deg)', opacity: voandoPara ? 0 : 1, transition: 'opacity 1s' }}></div><div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(0,255,204,0.15)', transform: 'rotateY(90deg)', opacity: voandoPara ? 0 : 1, transition: 'opacity 1s' }}></div><div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(0,255,204,0.15)', transform: 'rotateZ(45deg) rotateX(90deg)', opacity: voandoPara ? 0 : 1, transition: 'opacity 1s' }}></div>
                         <div style={{ position: 'absolute', inset: 0, transform: 'translateZ(160px)', backfaceVisibility: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-                            <svg viewBox="0 0 200 200" style={{ position: 'absolute', width: '140px', height: '140px', filter: 'drop-shadow(0 0 3px rgba(0,255,204,0.8))' }}><path d="M 12 55 L 18 45 L 30 38 L 42 35 L 55 30 L 70 28 L 85 25 L 100 28 L 115 32 L 125 30 L 135 38 L 142 42 L 140 52 L 132 58 L 122 56 L 115 65 L 105 72 L 95 68 L 82 72 L 68 80 L 52 75 L 40 82 L 25 72 L 15 75 Z" fill="rgba(0,255,204,0.08)" stroke="#00ffcc" strokeWidth="1" strokeLinejoin="round" /><path d="M 45 92 L 58 85 L 75 82 L 95 84 L 110 88 L 118 82 L 128 92 L 138 105 L 132 120 L 142 135 L 135 148 L 125 152 L 115 168 L 105 160 L 92 168 L 75 162 L 62 152 L 48 142 L 38 125 L 42 108 L 40 98 Z" fill="rgba(0,255,204,0.08)" stroke="#00ffcc" strokeWidth="1" strokeLinejoin="round" /><path d="M 152 28 L 162 20 L 175 18 L 182 25 L 185 38 L 178 50 L 182 62 L 172 72 L 160 75 L 150 65 L 148 50 L 145 38 Z" fill="rgba(0,255,204,0.08)" stroke="#00ffcc" strokeWidth="1" strokeLinejoin="round" /><circle cx="162" cy="85" r="2" fill="#00ffcc" /><line x1="105" y1="72" x2="110" y2="88" stroke="#ffcc00" strokeWidth="1.5" /></svg>
-                            <button onClick={() => entrarNoContinente('Runeterra')} style={{ pointerEvents: 'auto', background: 'rgba(0,255,204,0.1)', border: '2px solid #00ffcc', color: '#00ffcc', padding: '12px 24px', borderRadius: '30px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9em', letterSpacing: '2px', backdropFilter: 'blur(5px)', boxShadow: '0 0 20px rgba(0,255,204,0.4)', zIndex: 10 }}>🌍 ENTRAR EM RUNETERRA</button>
+                            <svg viewBox="0 0 200 200" style={{ position: 'absolute', width: '140px', height: '140px', filter: 'drop-shadow(0 0 3px rgba(0,255,204,0.8))', opacity: voandoPara ? 0 : 1, transition: 'opacity 1s' }}><path d="M 12 55 L 18 45 L 30 38 L 42 35 L 55 30 L 70 28 L 85 25 L 100 28 L 115 32 L 125 30 L 135 38 L 142 42 L 140 52 L 132 58 L 122 56 L 115 65 L 105 72 L 95 68 L 82 72 L 68 80 L 52 75 L 40 82 L 25 72 L 15 75 Z" fill="rgba(0,255,204,0.08)" stroke="#00ffcc" strokeWidth="1" strokeLinejoin="round" /><path d="M 45 92 L 58 85 L 75 82 L 95 84 L 110 88 L 118 82 L 128 92 L 138 105 L 132 120 L 142 135 L 135 148 L 125 152 L 115 168 L 105 160 L 92 168 L 75 162 L 62 152 L 48 142 L 38 125 L 42 108 L 40 98 Z" fill="rgba(0,255,204,0.08)" stroke="#00ffcc" strokeWidth="1" strokeLinejoin="round" /><path d="M 152 28 L 162 20 L 175 18 L 182 25 L 185 38 L 178 50 L 182 62 L 172 72 L 160 75 L 150 65 L 148 50 L 145 38 Z" fill="rgba(0,255,204,0.08)" stroke="#00ffcc" strokeWidth="1" strokeLinejoin="round" /><circle cx="162" cy="85" r="2" fill="#00ffcc" /><line x1="105" y1="72" x2="110" y2="88" stroke="#ffcc00" strokeWidth="1.5" /></svg>
+                            
+                            {/* ✨ MAGIA DA ANIMAÇÃO DE VOO (Continente) ✨ */}
+                            <button onClick={() => iniciarViagem('Runeterra', 'continente')} style={{ pointerEvents: 'auto', background: 'rgba(0,255,204,0.1)', border: '2px solid #00ffcc', color: '#00ffcc', padding: '12px 24px', borderRadius: '30px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9em', letterSpacing: '2px', backdropFilter: 'blur(5px)', boxShadow: '0 0 20px rgba(0,255,204,0.4)', zIndex: 10, opacity: voandoPara ? 0 : 1, transition: 'opacity 1s' }}>🌍 ENTRAR EM RUNETERRA</button>
                         </div>
                     </div>
                 </div>
+                {/* 💥 O CLARÃO DE TRANSIÇÃO 💥 */}
+                <div style={{ position: 'absolute', inset: 0, background: '#fff', opacity: flashBranco ? 1 : 0, pointerEvents: 'none', zIndex: 999999, transition: 'opacity 0.2s ease-out' }} />
             </div>
         );
     }
@@ -575,14 +565,14 @@ export default function MapaMundi({ children }) {
     if (nivelVisao === 'continente') {
         return (
             <div className="fade-in" style={{ width: '100%', height: '85vh', background: '#050508', borderRadius: '10px', border: '1px solid #0088ff', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.85)', padding: '12px 25px', borderBottom: '1px solid #222', zIndex: 10 }}>
-                    <button onClick={voltarCamera} style={{ background: '#ff4444', color: '#fff', border: 'none', padding: '6px 18px', borderRadius: '5px', fontSize: '0.85em', cursor: 'pointer', fontWeight: 'bold' }}>⬅ VOLTAR AO GLOBO</button>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.85)', padding: '12px 25px', borderBottom: '1px solid #222', zIndex: 10, opacity: voandoPara ? 0 : 1, transition: 'opacity 1s' }}>
+                    <button onClick={() => iniciarViagem('Globo', 'globo')} style={{ background: '#ff4444', color: '#fff', border: 'none', padding: '6px 18px', borderRadius: '5px', fontSize: '0.85em', cursor: 'pointer', fontWeight: 'bold' }}>⬅ VOLTAR AO GLOBO</button>
                     <h2 style={{ color: '#0088ff', margin: 0, textTransform: 'uppercase', letterSpacing: '3px', textShadow: '0 0 10px #0088ff' }}>{reinoHover || localAtual.continente}</h2>
                     <div style={{ width: '120px' }}></div>
                 </div>
                 <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', position: 'relative', width: '100%' }}>
                     <div style={{ position: 'relative', display: 'inline-block', height: '100%', maxHeight: 'calc(85vh - 70px)' }}>
-                        <img src={mapaClean} alt="Mapa Base" style={{ display: 'block', height: '100%', width: 'auto', objectFit: 'contain' }} />
+                        <img src={mapaClean} alt="Mapa Base" style={{ display: 'block', height: '100%', width: 'auto', objectFit: 'contain', opacity: voandoPara ? 0 : 1, transition: 'opacity 1s' }} />
                         
                         {/* 🌟 MÁSCARAS DE RUNETERRA */}
                         {posicoesPings.map((reino) => (
@@ -594,7 +584,7 @@ export default function MapaMundi({ children }) {
                                         position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', 
                                         pointerEvents: 'none', zIndex: 2, 
                                         mixBlendMode: 'screen',
-                                        opacity: reinoHover === reino.nome ? 1 : 0, 
+                                        opacity: voandoPara ? 0 : (reinoHover === reino.nome ? 1 : 0), 
                                         transition: 'opacity 0.3s ease-out'
                                     }} 
                                     alt={`Mascara ${reino.nome}`}
@@ -602,12 +592,30 @@ export default function MapaMundi({ children }) {
                             ) : null
                         ))}
 
+                        {/* ✨ MAGIA DA ANIMAÇÃO DE VOO (Regiões) ✨ */}
                         {posicoesPings.map((reino) => (
-                            <div key={reino.nome} className={`ping-wrapper ${reinoHover === reino.nome ? 'active' : ''}`} style={{ top: reino.top, left: reino.left, pointerEvents: 'auto', cursor: 'pointer', position: 'absolute', transform: 'translate(-50%, -50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 5, padding: '10px' }} onMouseEnter={() => setReinoHover(reino.nome)} onMouseLeave={() => setReinoHover(null)} onClick={(e) => { e.stopPropagation(); abrirMenuReino(reino.nome); }}>
-                                <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#000', display: 'flex', justifyContent: 'center', alignItems: 'center', transition: '0.3s', boxShadow: '0 0 15px rgba(0,0,0,0.9)', borderWidth: '2px', borderStyle: 'solid', borderColor: reinoHover === reino.nome ? '#fff' : reino.cor, transform: reinoHover === reino.nome ? 'scale(1.1)' : 'scale(1)' }}>
+                            <div 
+                                key={reino.nome} 
+                                className={`ping-wrapper ${reinoHover === reino.nome ? 'active' : ''}`} 
+                                style={{ 
+                                    top: reino.top, left: reino.left, pointerEvents: 'auto', cursor: 'pointer', position: 'absolute', 
+                                    transform: voandoPara === reino.nome ? 'translate(-50%, -50%) scale(40)' : (reinoHover === reino.nome ? 'translate(-50%, -50%) scale(1.1)' : 'translate(-50%, -50%) scale(1)'), 
+                                    display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: voandoPara === reino.nome ? 9999 : 5, padding: '10px',
+                                    opacity: voandoPara && voandoPara !== reino.nome ? 0 : 1,
+                                    transition: voandoPara === reino.nome ? 'all 1.5s cubic-bezier(0.4, 0, 0.2, 1)' : 'all 0.3s ease-out'
+                                }} 
+                                onMouseEnter={() => setReinoHover(reino.nome)} 
+                                onMouseLeave={() => setReinoHover(null)} 
+                                onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    // Ação de viagem dispara a abertura do menu após o clarão!
+                                    iniciarViagem(reino.nome, () => abrirMenuReino(reino.nome)); 
+                                }}
+                            >
+                                <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#000', display: 'flex', justifyContent: 'center', alignItems: 'center', transition: '0.3s', boxShadow: '0 0 15px rgba(0,0,0,0.9)', borderWidth: '2px', borderStyle: 'solid', borderColor: reinoHover === reino.nome ? '#fff' : reino.cor, opacity: voandoPara === reino.nome ? 0 : 1 }}>
                                     <div style={{ width: '10px', height: '10px', borderRadius: '50%', transition: '0.3s', background: reinoHover === reino.nome ? '#fff' : reino.cor }} />
                                 </div>
-                                <div style={{ marginTop: '6px', background: reinoHover === reino.nome ? '#fff' : 'rgba(0,0,0,0.9)', padding: '5px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', color: reinoHover === reino.nome ? '#000' : '#fff', textTransform: 'uppercase', letterSpacing: '1.5px', border: `1px solid ${reinoHover === reino.nome ? '#fff' : 'transparent'}`, whiteSpace: 'nowrap', transition: '0.3s' }}>{reino.nome}</div>
+                                <div style={{ marginTop: '6px', background: reinoHover === reino.nome ? '#fff' : 'rgba(0,0,0,0.9)', padding: '5px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', color: reinoHover === reino.nome ? '#000' : '#fff', textTransform: 'uppercase', letterSpacing: '1.5px', border: `1px solid ${reinoHover === reino.nome ? '#fff' : 'transparent'}`, whiteSpace: 'nowrap', transition: '0.3s', opacity: voandoPara === reino.nome ? 0 : 1 }}>{reino.nome}</div>
                             </div>
                         ))}
                     </div>
@@ -626,6 +634,9 @@ export default function MapaMundi({ children }) {
                         </div>
                     </div>
                 )}
+
+                {/* 💥 O CLARÃO DE TRANSIÇÃO 💥 */}
+                <div style={{ position: 'absolute', inset: 0, background: '#fff', opacity: flashBranco ? 1 : 0, pointerEvents: 'none', zIndex: 999999, transition: 'opacity 0.2s ease-out' }} />
             </div>
         );
     }
@@ -654,11 +665,5 @@ export default function MapaMundi({ children }) {
             </div>
         );
     }
-    
-    // ✨ O FLASH BRANCO DE TRANSIÇÃO (Fica fora de tudo para cobrir a tela inteira!)
-    return (
-        <>
-            <div style={{ position: 'fixed', inset: 0, background: '#fff', opacity: flashBranco ? 1 : 0, transition: 'opacity 0.2s ease-out', pointerEvents: 'none', zIndex: 999999 }} />
-        </>
-    );
+    return null;
 }
