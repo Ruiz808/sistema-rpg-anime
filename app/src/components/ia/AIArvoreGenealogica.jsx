@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import useStore, { sanitizarNome } from '../../stores/useStore'; 
+import useStore, { sanitizarNome, fichaPadrao } from '../../stores/useStore'; 
 import { ref, set } from 'firebase/database'; 
 import { database } from '../../services/firebase-config'; 
 
@@ -121,7 +121,7 @@ export default function AIArvoreGenealogica() {
     };
 
     // ==========================================
-    // 🚀 INTEGRAÇÃO: O CAVALO DE TROIA DO FIREBASE
+    // 🚀 INTEGRAÇÃO SUPREMA: FIREBASE (COMPATÍVEL 100%)
     // ==========================================
     const injetarNaMesa = async () => {
         if (!npcSelecionado || !npcSelecionado.nome || npcSelecionado.nome.trim() === '') {
@@ -129,51 +129,62 @@ export default function AIArvoreGenealogica() {
         }
 
         const nomeOriginal = npcSelecionado.nome.trim();
-        // Fallback caso a importação do sanitizarNome falhe por algum motivo
         const funcSanitizar = typeof sanitizarNome === 'function' ? sanitizarNome : (n) => n.replace(/[.#$\[\]\/]/g, '_');
         const nomePersonagem = funcSanitizar(nomeOriginal);
 
         if (personagens && personagens[nomePersonagem]) {
-            if (!window.confirm(`⚠️ O personagem "${nomePersonagem}" já está no Banco de Dados! Deseja sobrescrever a ficha atual dele com os dados da Árvore Genealógica?`)) {
+            if (!window.confirm(`⚠️ O personagem "${nomePersonagem}" já está no Banco de Dados! Deseja sobrescrever a ficha dele com a da Árvore?`)) {
                 return;
             }
+        }
+
+        // 🔥 O SEGREDO: Clonamos a Ficha Padrão verdadeira para a UI do mestre não bugar! 🔥
+        let novaFicha = {};
+        if (typeof fichaPadrao !== 'undefined') {
+            novaFicha = JSON.parse(JSON.stringify(fichaPadrao));
+        } else {
+            return alert("Erro: fichaPadrao não encontrada no useStore.js!");
         }
 
         const hpValor = Number(npcSelecionado.hp) || 100000;
         const manaValor = Number(npcSelecionado.mana) || 100000;
 
-        // 🔥 A FORJA PERFEITA: Estrutura 100% igual ao MestreForjaNPC 🔥
-        // Transformamos a Lore em um Poder para o Firebase não rejeitar chaves extras!
-        const fichaParaServidor = {
-            bio: { 
-                classe: npcSelecionado.classe || 'NPC - Ameaça', 
-                raca: npcSelecionado.papel || 'Criatura', 
-                mesa: 'npc'
-            },
-            vida: { atual: hpValor, base: hpValor },
-            mana: { atual: manaValor, base: manaValor },
-            forca: { base: 1 },         
-            destreza: { base: 1 },      
-            inteligencia: { base: 1 },  
-            avatar: npcSelecionado.avatar ? npcSelecionado.avatar.trim() : "",
-            poderes: [
-                {
-                    nome: "📖 Linhagem & Lore",
-                    dano: "0",
-                    descricao: `Status: ${npcSelecionado.status || 'Vivo'}\nElemento Mágico: ${npcSelecionado.elemento || 'Nenhum'}\nClã de Origem: ${familiaAtiva}\n\nHistória: ${npcSelecionado.lore || 'Sem registros.'}`
-                }
-            ],
-            formas: [],
-            isNPC: true,
-            dataCriacao: Date.now()
+        novaFicha.bio = { 
+            ...novaFicha.bio,
+            classe: npcSelecionado.classe || 'NPC - Ameaça', 
+            raca: npcSelecionado.papel || 'Criatura', 
+            mesa: 'npc'
+        };
+        
+        // Mantém a estrutura complexa de HP e Mana
+        novaFicha.vida = { ...novaFicha.vida, atual: hpValor, base: hpValor };
+        novaFicha.mana = { ...novaFicha.mana, atual: manaValor, base: manaValor };
+        
+        // O avatar precisa ser um objeto { base: "" } e não apenas uma string
+        novaFicha.avatar = { base: npcSelecionado.avatar ? npcSelecionado.avatar.trim() : "" };
+
+        novaFicha.notas = {
+            ...novaFicha.notas,
+            geral: `🔸 Elemento Mágico: ${npcSelecionado.elemento || 'Nenhum'}\n🔸 Origem: Clã ${familiaAtiva}\n\n📖 História Genealógica:\n${npcSelecionado.lore || 'Sem registros.'}`
         };
 
+        // Coloca a Lore na aba de Poderes para leitura fácil durante o combate
+        if (!novaFicha.poderes) novaFicha.poderes = [];
+        novaFicha.poderes.push({
+            nome: "📖 Linhagem & Lore",
+            dano: "0",
+            descricao: `Status: ${npcSelecionado.status || 'Vivo'}\nElemento Mágico: ${npcSelecionado.elemento || 'Nenhum'}\nClã de Origem: ${familiaAtiva}\n\nHistória: ${npcSelecionado.lore || 'Sem registros.'}`
+        });
+
+        novaFicha.isNPC = true;
+        novaFicha.dataCriacao = Date.now();
+
         try {
-            await set(ref(database, `personagens/${nomePersonagem}`), fichaParaServidor);
-            alert(`✅ INJEÇÃO CONCLUÍDA! "${nomePersonagem}" driblou a segurança do Firebase e já está na Aba de NPCs do Mestre!`);
+            await set(ref(database, `personagens/${nomePersonagem}`), novaFicha);
+            alert(`✅ INJEÇÃO ABSOLUTA! O personagem "${nomePersonagem}" já deve estar visível na Aba de NPCs do Mestre!`);
         } catch (erro) {
             console.error("Erro Firebase:", erro);
-            alert(`❌ Firebase ainda está negando o acesso. \nMotivo: ${erro.message}`);
+            alert(`❌ Erro do Firebase: ${erro.message}`);
         }
     };
 
@@ -443,7 +454,7 @@ export default function AIArvoreGenealogica() {
 
                 {!npcSelecionado ? (
                     <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#555', textAlign: 'center', fontStyle: 'italic' }}>
-                        Clique em um membro da árvore <br/> para visualizar e editar sua ficha.
+                        Clique num membro da árvore <br/> para visualizar e editar a sua ficha.
                     </div>
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
