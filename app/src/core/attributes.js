@@ -252,7 +252,6 @@ export function getPoderesDefesa(ficha, tipo) {
                         t += (parseFloat(resolved.efeitos[j].valor) || 0);
                     }
                 }
-                // Adiciona a defesa concedida pelas Formas da Entidade
                 if (ser.formaAtivaId && ser.formas) {
                     let activeForm = ser.formas.find(f => f.id === ser.formaAtivaId);
                     if (activeForm && activeForm.efeitos) {

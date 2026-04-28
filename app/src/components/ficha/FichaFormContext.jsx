@@ -68,7 +68,7 @@ export function FichaFormProvider({ children }) {
     const [classe, setClasse] = useState('');
     const [subClasse, setSubClasse] = useState(''); 
     const [alterEgoSlot1, setAlterEgoSlot1] = useState('');
-    const [alterEgoSlot2, setAlterEgoSlot2] = useState('');
+    const [alterEgoSerId, setAlterEgoSerId] = useState(''); 
     const [classesMemorizadas, setClassesMemorizadas] = useState([]); 
     const [idade, setIdade] = useState('');
     const [fisico, setFisico] = useState('');
@@ -84,6 +84,7 @@ export function FichaFormProvider({ children }) {
     const [serNome, setSerNome] = useState('');
     const [serDescricao, setSerDescricao] = useState('');
     const [serElemento, setSerElemento] = useState('');
+    const [serClasse, setSerClasse] = useState('');
     const [serEditandoId, setSerEditandoId] = useState(null);
     
     const [serEfeitos, setSerEfeitos] = useState([]);
@@ -122,7 +123,7 @@ export function FichaFormProvider({ children }) {
         setClasse(bio.classe || '');
         setSubClasse(bio.subClasse || ''); 
         setAlterEgoSlot1(bio.alterEgoSlot1 || '');
-        setAlterEgoSlot2(bio.alterEgoSlot2 || '');
+        setAlterEgoSerId(bio.alterEgoSerId || '');
         setClassesMemorizadas(bio.classesMemorizadas || []); 
         setIdade(bio.idade || '');
         setFisico(bio.fisico || '');
@@ -142,7 +143,7 @@ export function FichaFormProvider({ children }) {
             ficha.bio.classe = overrides.classe !== undefined ? overrides.classe : classe;
             ficha.bio.subClasse = overrides.subClasse !== undefined ? overrides.subClasse : subClasse; 
             ficha.bio.alterEgoSlot1 = overrides.alterEgoSlot1 !== undefined ? overrides.alterEgoSlot1 : alterEgoSlot1;
-            ficha.bio.alterEgoSlot2 = overrides.alterEgoSlot2 !== undefined ? overrides.alterEgoSlot2 : alterEgoSlot2;
+            ficha.bio.alterEgoSerId = overrides.alterEgoSerId !== undefined ? overrides.alterEgoSerId : alterEgoSerId;
             ficha.bio.classesMemorizadas = overrides.classesMemorizadas !== undefined ? overrides.classesMemorizadas : classesMemorizadas; 
             ficha.bio.idade = overrides.idade !== undefined ? overrides.idade : idade;
             ficha.bio.fisico = overrides.fisico !== undefined ? overrides.fisico : fisico;
@@ -152,7 +153,7 @@ export function FichaFormProvider({ children }) {
             ficha.bio.dinheiro = overrides.dinheiro !== undefined ? overrides.dinheiro : dinheiro;
         });
         salvarFichaSilencioso();
-    }, [updateFicha, mesa, raca, classe, subClasse, alterEgoSlot1, alterEgoSlot2, classesMemorizadas, idade, fisico, sangue, alinhamento, afiliacao, dinheiro]);
+    }, [updateFicha, mesa, raca, classe, subClasse, alterEgoSlot1, alterEgoSerId, classesMemorizadas, idade, fisico, sangue, alinhamento, afiliacao, dinheiro]);
 
     const salvarBio = useCallback(() => {
         comitarBio(); setSalvandoBio(true); setTimeout(() => setSalvandoBio(false), 2000);
@@ -317,7 +318,7 @@ export function FichaFormProvider({ children }) {
     }, [serEfeitosPassivos]);
 
     const cancelarEdicaoSer = useCallback(() => {
-        setSerEditandoId(null); setSerNome(''); setSerDescricao(''); setSerElemento('');
+        setSerEditandoId(null); setSerNome(''); setSerDescricao(''); setSerElemento(''); setSerClasse('');
         setSerEfeitos([]); setSerEfeitosPassivos([]);
     }, []);
 
@@ -328,25 +329,25 @@ export function FichaFormProvider({ children }) {
             if (serEditandoId) {
                 const s = f.seresSelados.find(x => x.id === serEditandoId);
                 if (s) { 
-                    s.nome = serNome; s.descricao = serDescricao; s.elemento = serElemento; 
+                    s.nome = serNome; s.descricao = serDescricao; s.elemento = serElemento; s.classe = serClasse;
                     s.efeitos = [...serEfeitos]; s.efeitosPassivos = [...serEfeitosPassivos];
                 }
             } else {
                 f.seresSelados.push({ 
-                    id: Date.now().toString(), nome: serNome, descricao: serDescricao, elemento: serElemento, ativo: false,
+                    id: Date.now().toString(), nome: serNome, descricao: serDescricao, elemento: serElemento, classe: serClasse, ativo: false,
                     efeitos: [...serEfeitos], efeitosPassivos: [...serEfeitosPassivos], formas: [], formaAtivaId: null
                 });
             }
         });
         salvarFichaSilencioso();
         cancelarEdicaoSer();
-    }, [serNome, serDescricao, serElemento, serEfeitos, serEfeitosPassivos, serEditandoId, updateFicha, cancelarEdicaoSer]);
+    }, [serNome, serDescricao, serElemento, serClasse, serEfeitos, serEfeitosPassivos, serEditandoId, updateFicha, cancelarEdicaoSer]);
 
     const editarSerSelado = useCallback((id) => {
         const s = (minhaFicha?.seresSelados || []).find(x => x.id === id);
         if (!s) return;
         if (s.ativo) { alert("Desative a sincronização do Ser antes de editá-lo!"); return; }
-        setSerEditandoId(s.id); setSerNome(s.nome); setSerDescricao(s.descricao || ''); setSerElemento(s.elemento || '');
+        setSerEditandoId(s.id); setSerNome(s.nome); setSerDescricao(s.descricao || ''); setSerElemento(s.elemento || ''); setSerClasse(s.classe || '');
         setSerEfeitos([...(s.efeitos || [])]); setSerEfeitosPassivos([...(s.efeitosPassivos || [])]);
     }, [minhaFicha]);
 
@@ -367,7 +368,6 @@ export function FichaFormProvider({ children }) {
         salvarFichaSilencioso();
     }, [updateFicha]);
 
-    // 🔥 NOVAS FUNÇÕES PARA FORMAS DOS SERES SELADOS 🔥
     const salvarFormaSer = useCallback((serId, forma) => {
         updateFicha(f => {
             const s = (f.seresSelados || []).find(x => x.id === serId);
@@ -397,7 +397,7 @@ export function FichaFormProvider({ children }) {
             const s = (f.seresSelados || []).find(x => x.id === serId);
             if (s) {
                 s.formaAtivaId = s.formaAtivaId === formaId ? null : formaId;
-                if (s.formaAtivaId && !s.ativo) s.ativo = true; // Sincroniza automaticamente se ativar uma forma
+                if (s.formaAtivaId && !s.ativo) s.ativo = true;
             }
         });
         salvarFichaSilencioso();
@@ -522,7 +522,7 @@ export function FichaFormProvider({ children }) {
     const value = useMemo(() => ({
         minhaFicha, updateFicha, personagens, meuNome,
         mesa, setMesa, raca, setRaca, classe, setClasse, subClasse, setSubClasse,
-        alterEgoSlot1, setAlterEgoSlot1, alterEgoSlot2, setAlterEgoSlot2, classesMemorizadas, setClassesMemorizadas,
+        alterEgoSlot1, setAlterEgoSlot1, alterEgoSerId, setAlterEgoSerId, classesMemorizadas, setClassesMemorizadas,
         idade, setIdade, fisico, setFisico, sangue, setSangue, alinhamento, setAlinhamento,
         afiliacao, setAfiliacao, dinheiro, setDinheiro, salvandoBio,
         painelForcado, setPainelForcado, 
@@ -544,14 +544,14 @@ export function FichaFormProvider({ children }) {
         copiasAtivas, novaCopiaNome, setNovaCopiaNome, novaCopiaEfeito, setNovaCopiaEfeito,
         addCopiaAtiva, removeCopiaAtiva, getAtualVital,
         seresSelados, serNome, setSerNome, serDescricao, setSerDescricao,
-        serElemento, setSerElemento, serEditandoId,
+        serElemento, setSerElemento, serClasse, setSerClasse, serEditandoId,
         serEfeitos, serEfeitosPassivos, serNovoNomeEfeito, serNovoAtr, serNovoProp, serNovoVal,
         serNovoNomeEfeitoPassivo, serNovoAtrPassivo, serNovoPropPassivo, serNovoValPassivo,
         addSerEfeito, removeSerEfeito, addSerEfeitoPassivo, removeSerEfeitoPassivo,
         addSerSelado, editarSerSelado, removeSerSelado, toggleSerSelado, cancelarEdicaoSer,
         salvarFormaSer, deletarFormaSer, ativarFormaSer
     }), [
-        minhaFicha, updateFicha, personagens, meuNome, mesa, raca, classe, subClasse, alterEgoSlot1, alterEgoSlot2, classesMemorizadas,
+        minhaFicha, updateFicha, personagens, meuNome, mesa, raca, classe, subClasse, alterEgoSlot1, alterEgoSerId, classesMemorizadas,
         idade, fisico, sangue, alinhamento, afiliacao, dinheiro, salvandoBio, painelForcado, overridesCompendio, grands, isGrand, grandIcone,
         comitarBio, salvarBio, mudarSubClasseDireto, multiplicadorFuriaClasse, rawMaxVida, maxVida, atualVida, percAtualLostFloor, furiaMax, percEfetivoParaDisplay,
         multiplicadorFuriaVisor, furiaAcalmadaMsg, acalmarFuria, toggleMemoriaPretender, descansoLongoPretender, selAtributo, campos, handleCampo, carregarAtributoNaTela, salvarAtributo,
@@ -561,7 +561,7 @@ export function FichaFormProvider({ children }) {
         trackersCena, novoTrackerNome, novoTrackerValor, addTrackerCena, modTrackerCena, removeTrackerCena, resetarTrackersCena,
         valorInjecao, alvosInjecao, showAbsorverMsg, toggleAlvo, injetarAnomalia, leisCena, novaLeiNome, addLeiCena, removeLeiCena,
         copiasAtivas, novaCopiaNome, novaCopiaEfeito, addCopiaAtiva, removeCopiaAtiva, getAtualVital,
-        seresSelados, serNome, serDescricao, serElemento, serEditandoId,
+        seresSelados, serNome, serDescricao, serElemento, serClasse, serEditandoId,
         serEfeitos, serEfeitosPassivos, serNovoNomeEfeito, serNovoAtr, serNovoProp, serNovoVal,
         serNovoNomeEfeitoPassivo, serNovoAtrPassivo, serNovoPropPassivo, serNovoValPassivo,
         addSerEfeito, removeSerEfeito, addSerEfeitoPassivo, removeSerEfeitoPassivo,
