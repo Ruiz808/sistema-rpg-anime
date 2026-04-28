@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import useStore from '../../stores/useStore';
+import { salvarFichaSilencioso } from '../../services/firebase-sync.js'; // 🔥 Adicionado o Auto-Save!
 
 // 📜 A TABELA DE REFERÊNCIA DE NÍVEIS E BUFFS
 const NIVEIS_INFO = {
@@ -70,6 +71,9 @@ Object.keys(PREDEFINICOES).forEach(key => {
 export default function AbaDominios() {
     const { minhaFicha, updateFicha } = useStore();
     
+    // 🔥 ESTADO INTELIGENTE DO REACT PARA CONTROLAR AS LISTAS SUSPENSAS 🔥
+    const [selecionados, setSelecionados] = useState({});
+
     if (!minhaFicha) return <div style={{ color: '#888', padding: 20 }}>Carregando ficha...</div>;
     
     const dominios = minhaFicha.dominios || {};
@@ -78,23 +82,33 @@ export default function AbaDominios() {
         updateFicha(f => {
             if (!f.dominios) f.dominios = { elementais: {}, marciais: {}, armas: {}, cura: {}, summons: {} };
             
-            // 🔥 Adicionamos 'elementos' à lista de chaves mágicas que vão para a gaveta 'elementais'
             const targetCat = ['elementos', 'mana', 'chakra', 'aura', 'astral', 'primordiais'].includes(categoria) ? 'elementais' : categoria;
             if (!f.dominios[targetCat]) f.dominios[targetCat] = {};
 
             if (nivel === 0) delete f.dominios[targetCat][item];
             else f.dominios[targetCat][item] = { nivel: nivel, nome: NIVEIS_INFO[nivel].nome };
         });
+        
+        // Salva na nuvem para não perder se atualizar a página
+        if (typeof salvarFichaSilencioso === 'function') salvarFichaSilencioso();
     };
 
     const adicionarNovo = (chaveSelect) => {
-        const selectElement = document.getElementById(`select-${chaveSelect}`);
-        let nome = selectElement.value;
-        if (!nome) return;
-        if (nome === 'custom') nome = window.prompt(`Digite o nome do Domínio personalizado:`);
+        // Agora ele puxa o valor diretamente da memória do React!
+        let nome = selecionados[chaveSelect];
+        
+        if (!nome) {
+            return alert("Por favor, selecione um domínio na lista ou escolha 'Criar Outro Domínio' antes de clicar em adicionar! ➕");
+        }
+        
+        if (nome === 'custom') {
+            nome = window.prompt(`Digite o nome do Domínio personalizado:`);
+        }
+
         if (nome && nome.trim() !== '') {
             atualizarDominio(chaveSelect, nome, 1);
-            selectElement.value = "";
+            // Limpa a caixa de seleção depois de adicionar
+            setSelecionados(prev => ({ ...prev, [chaveSelect]: "" }));
         }
     };
 
@@ -109,7 +123,12 @@ export default function AbaDominios() {
                 <h3 style={{ color: corBase, margin: '0 0 10px 0', fontSize: '1em' }}>{titulo}</h3>
                 <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
                     
-                    <select id={`select-${chave}`} className="input-neon" style={{ flex: 1, borderColor: corBase, background: 'rgba(0,0,0,0.5)', color: '#fff' }}>
+                    <select 
+                        className="input-neon" 
+                        value={selecionados[chave] || ""} 
+                        onChange={(e) => setSelecionados(prev => ({ ...prev, [chave]: e.target.value }))}
+                        style={{ flex: 1, borderColor: corBase, background: 'rgba(0,0,0,0.5)', color: '#fff' }}
+                    >
                         <option value="">-- Selecione para Adicionar --</option>
                         {Object.entries(PREDEFINICOES[chave] || {}).map(([grupo, itens]) => (
                             <optgroup key={grupo} label={`— ${grupo} —`} style={{ color: corBase, fontStyle: 'italic', background: '#111' }}>
@@ -121,7 +140,7 @@ export default function AbaDominios() {
                         </optgroup>
                     </select>
 
-                    <button className="btn-neon" onClick={() => adicionarNovo(chave)} style={{ borderColor: corBase, color: corBase, margin: 0 }}>➕</button>
+                    <button className="btn-neon" onClick={() => adicionarNovo(chave)} style={{ borderColor: corBase, color: corBase, margin: 0, padding: '0 15px', fontWeight: 'bold' }}>➕</button>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -130,7 +149,6 @@ export default function AbaDominios() {
                         const isCustom = isMagica ? !todasMagias.includes(nome) : !flatPredefs[chave].includes(nome);
                         
                         if (isNestaLista) return true;
-                        // Custons mágicos agora podem cair em 'elementos' por padrão se criados lá
                         if (isCustom && chave === 'elementos') return true; 
                         if (isCustom && !isMagica) return true; 
                         return false;
