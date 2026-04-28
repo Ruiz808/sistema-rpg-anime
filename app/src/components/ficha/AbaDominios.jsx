@@ -76,12 +76,8 @@ export default function AbaDominios() {
 
     const atualizarDominio = (categoria, item, nivel) => {
         updateFicha(f => {
-            // Blinda a criação da gaveta mestre para não dar undefined
             if (!f.dominios) f.dominios = {};
-            
             const targetCat = ['elementos', 'mana', 'chakra', 'aura', 'astral', 'primordiais'].includes(categoria) ? 'elementais' : categoria;
-            
-            // Blinda a criação da subgaveta para o alvo exato
             if (!f.dominios[targetCat]) f.dominios[targetCat] = {};
 
             if (nivel === 0) {
@@ -106,12 +102,13 @@ export default function AbaDominios() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '15px' }}>
                     
                     {/* 1. SELETOR OFICIAL (LORE) */}
-                    <div style={{ display: 'flex', gap: '8px' }}>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         <select 
                             className="input-neon" 
                             value={selecionados[chave] || ""} 
                             onChange={(e) => setSelecionados(prev => ({ ...prev, [chave]: e.target.value }))}
-                            style={{ flex: '1 1 auto', minWidth: 0, padding: '8px', borderColor: corBase, background: 'rgba(0,0,0,0.5)', color: '#fff' }}
+                            // 🔥 CORREÇÃO: Força o flex: 1 e width: 100% para empurrar o botão
+                            style={{ flex: '1', width: '100%', padding: '8px', borderColor: corBase, background: 'rgba(0,0,0,0.5)', color: '#fff' }}
                         >
                             <option value="">-- Escolher da Lore --</option>
                             {Object.entries(PREDEFINICOES[chave] || {}).map(([grupo, itens]) => (
@@ -125,16 +122,18 @@ export default function AbaDominios() {
                                 atualizarDominio(chave, selecionados[chave], 1);
                                 setSelecionados(prev => ({ ...prev, [chave]: "" }));
                             }
-                        }} style={{ flex: 'none', borderColor: corBase, color: corBase, margin: 0, padding: '0 15px', fontWeight: 'bold' }}>ADICIONAR</button>
+                        // 🔥 CORREÇÃO: Força o botão a encolher ao tamanho do texto (width: auto)
+                        }} style={{ flex: '0 0 auto', width: 'auto', borderColor: corBase, color: corBase, margin: 0, padding: '8px 15px', fontWeight: 'bold' }}>ADICIONAR</button>
                     </div>
 
                     {/* 2. CRIADOR PERSONALIZADO */}
-                    <div style={{ display: 'flex', gap: '8px' }}>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         <input 
                             id={`custom-${chave}`}
                             className="input-neon" 
                             placeholder="Criar novo (Ex: Punho das Sombras)" 
-                            style={{ flex: '1 1 auto', minWidth: 0, padding: '8px', borderColor: '#ffcc00', background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: '0.85em' }}
+                            // 🔥 CORREÇÃO: Força o flex: 1 e width: 100% para empurrar o botão
+                            style={{ flex: '1', width: '100%', padding: '8px', borderColor: '#ffcc00', background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: '0.85em' }}
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
                                     const val = e.target.value;
@@ -148,7 +147,8 @@ export default function AbaDominios() {
                                 atualizarDominio(chave, input.value.trim(), 1);
                                 input.value = '';
                             }
-                        }} style={{ flex: 'none', borderColor: '#ffcc00', color: '#ffcc00', margin: 0, padding: '0 15px', fontWeight: 'bold' }}>➕ CRIAR</button>
+                        // 🔥 CORREÇÃO: Força o botão a encolher ao tamanho do texto (width: auto)
+                        }} style={{ flex: '0 0 auto', width: 'auto', borderColor: '#ffcc00', color: '#ffcc00', margin: 0, padding: '8px 15px', fontWeight: 'bold' }}>➕ CRIAR</button>
                     </div>
 
                 </div>
