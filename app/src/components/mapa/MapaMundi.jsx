@@ -36,11 +36,15 @@ export default function MapaMundi({ children }) {
     const containerRef = useRef(null);
     const [codigoExportado, setCodigoExportado] = useState(null);
 
-    // 🎥 CÂMERA 3D DO SISTEMA SOLAR (ZOOM COMPLETAMENTE REMOVIDO)
+    // 🎥 CÂMERA 3D DO SISTEMA SOLAR
     const [camRotX, setCamRotX] = useState(60); 
     const [camRotY, setCamRotY] = useState(0);  
     const [isDraggingCam, setIsDraggingCam] = useState(false);
     const camDragStart = useRef({ x: 0, y: 0 });
+
+    // ✨ FRUFRUZINHO: ESTADOS DE ANIMAÇÃO DE VOO ✨
+    const [voandoPara, setVoandoPara] = useState(null);
+    const [flashBranco, setFlashBranco] = useState(false);
 
     // 📍 VARIÁVEL 1: POSIÇÕES DA COSMOLOGIA 
     const [zonasCosmologia, setZonasCosmologia] = useState([
@@ -59,7 +63,7 @@ export default function MapaMundi({ children }) {
         { "nome": "Plano do Caos Inferior", "top": "84%", "left": "8%", "width": "22%", "height": "10%", "cor": "#800000", "isCircle": false }
     ]);
 
-    // 📍 VARIÁVEL 2: ESTRELAS E PLANETAS 
+    // 📍 VARIÁVEL 2: ESTRELAS E PLANETAS
     const [elementosSolar, setElementosSolar] = useState([
         { "id": "orichalcosA", "tipo": "estrela", "nome": "Orichalcos A", "top": "250px", "left": "250px", "size": "180px" },
         { "id": "orichalcosB", "tipo": "estrela", "nome": "Orichalcos B", "top": "250px", "left": "750px", "size": "180px" },
@@ -91,7 +95,7 @@ export default function MapaMundi({ children }) {
     ];
 
     // ==========================================
-    // 🧮 GERADOR MATEMÁTICO DA RODOVIA CÓSMICA
+    // 🧮 GERADOR MATEMÁTICO DA RODOVIA CÓSMICA 
     // ==========================================
     const getPathCaminho = (rx, ry) => {
         const starA = elementosSolar.find(e => e.id === 'orichalcosA');
@@ -119,17 +123,45 @@ export default function MapaMundi({ children }) {
     };
 
     // ==========================================
+    // ✨ SISTEMA DE NAVEGAÇÃO / VOO ✨
+    // ==========================================
+    const iniciarViagem = (nomeDestino, proximaVisao) => {
+        if (modoAjuste) return;
+        
+        // Dispara a animação de zoom absurdo no planeta clicado
+        setVoandoPara(nomeDestino);
+        
+        // Aos 600ms, quando o planeta engolir a tela, dispara o clarão
+        setTimeout(() => {
+            setFlashBranco(true);
+        }, 600);
+
+        // Aos 850ms, com a tela branca, muda o cenário
+        setTimeout(() => {
+            if (proximaVisao) {
+                setNivelVisao(proximaVisao);
+            } else {
+                alert(`Oculto pelas névoas.\nAcesso restrito a: ${nomeDestino}`);
+            }
+            // Reseta tudo para você não ficar preso na velocidade da luz
+            setVoandoPara(null);
+            setFlashBranco(false);
+        }, 850);
+    };
+
+
+    // ==========================================
     // 🕹️ CONTROLES DA CÂMERA ESPACIAL
     // ==========================================
     const handleEspacoMouseDown = (e) => {
-        if (e.target.closest('.painel-engenharia')) return;
+        if (e.target.closest('.painel-engenharia') || voandoPara) return;
         if (modoAjuste) return;
         setIsDraggingCam(true);
         camDragStart.current = { x: e.clientX || e.touches?.[0].clientX, y: e.clientY || e.touches?.[0].clientY };
     };
 
     const handleEspacoMouseMove = (e) => {
-        if (!isDraggingCam) return;
+        if (!isDraggingCam || voandoPara) return;
         const clientX = e.clientX || e.touches?.[0].clientX;
         const clientY = e.clientY || e.touches?.[0].clientY;
 
@@ -260,7 +292,7 @@ export default function MapaMundi({ children }) {
                     </button>
                 )}
             </div>
-            {modoAjuste && nivelVisao === 'sistema_solar' && <span style={{ color: '#00ffcc', fontSize: '11px', textAlign: 'center' }}>(Use o Painel Lateral para ajustar as Órbitas!)</span>}
+            {modoAjuste && nivelVisao === 'sistema_solar' && <span style={{ color: '#00ffcc', fontSize: '11px', textAlign: 'center' }}>(O elástico cósmico está ativado!)</span>}
             {modoAjuste && nivelVisao === 'cosmologia' && <span style={{ color: '#aaa', fontSize: '11px', textAlign: 'center' }}>(Arraste os planos e as dimensões.)</span>}
         </div>
     );
@@ -281,7 +313,7 @@ export default function MapaMundi({ children }) {
     };
 
     // ==========================================
-    // 🌌 TELA 0: SISTEMA SOLAR CÂMERA 3D
+    // 🌌 TELA 0: SISTEMA SOLAR CÂMERA 3D (DIORAMA PERFEITO + ANIMAÇÃO WARP)
     // ==========================================
     if (nivelVisao === 'sistema_solar') {
         const billboardTransform = `rotateY(${-camRotY}deg) rotateX(${-camRotX}deg)`;
@@ -293,7 +325,7 @@ export default function MapaMundi({ children }) {
                 <PainelModoDeus />
                 <PainelEngenhariaSolar />
 
-                <button onClick={() => setNivelVisao('cosmologia')} style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(72, 61, 139, 0.4)', border: '1px solid #DDA0DD', color: '#DDA0DD', padding: '10px 25px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', zIndex: 100, letterSpacing: '2px', boxShadow: '0 0 15px rgba(221, 160, 221, 0.3)', backdropFilter: 'blur(5px)' }}>🌌 REVELAR DIMENSÕES</button>
+                <button onClick={() => iniciarViagem('Multiverso', 'cosmologia')} style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(72, 61, 139, 0.4)', border: '1px solid #DDA0DD', color: '#DDA0DD', padding: '10px 25px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', zIndex: 100, letterSpacing: '2px', boxShadow: '0 0 15px rgba(221, 160, 221, 0.3)', backdropFilter: 'blur(5px)' }}>🌌 REVELAR DIMENSÕES</button>
 
                 <div style={{ position: 'absolute', top: '20px', left: '20px', zIndex: 10, pointerEvents: 'none' }}>
                     <h2 style={{ color: '#fff', margin: 0, textTransform: 'uppercase', letterSpacing: '4px', textShadow: '0 0 10px #fff' }}>Universo Material</h2>
@@ -306,6 +338,7 @@ export default function MapaMundi({ children }) {
                     onMouseDown={handleEspacoMouseDown} onMouseMove={handleEspacoMouseMove} onMouseUp={handleEspacoMouseUp} onMouseLeave={handleEspacoMouseUp} 
                     onTouchStart={handleEspacoMouseDown} onTouchMove={handleEspacoMouseMove} onTouchEnd={handleEspacoMouseUp}
                 >
+                    {/* CONTAINER CENTRAL (Afastando a perspectiva base pra a animação bater de frente) */}
                     <div style={{ position: 'relative', width: '1000px', height: '500px', transformStyle: 'preserve-3d', transform: `perspective(1500px) rotateX(${camRotX}deg) rotateY(${camRotY}deg)`, cursor: isDraggingCam ? 'grabbing' : (modoAjuste ? 'default' : 'grab') }}>
                         
                         <svg viewBox="0 0 1000 500" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', overflow: 'visible', pointerEvents: 'none', zIndex: 1 }}>
@@ -326,6 +359,7 @@ export default function MapaMundi({ children }) {
                             ))}
                         </svg>
 
+                        {/* ESTRELAS E PLANETAS */}
                         {elementosSolar.map(el => {
                             if (el.tipo === 'estrela') {
                                 return (
@@ -338,12 +372,21 @@ export default function MapaMundi({ children }) {
                             if (el.tipo === 'planeta') {
                                 return (
                                     <div key={el.id} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', transformStyle: 'preserve-3d' }}>
-                                        <div style={{ position: 'absolute', top: 0, left: 0, width: el.size, height: el.size, zIndex: 10, offsetPath: `path("${caminhosGerados[el.id]}")`, offsetRotate: '0deg', animation: `orbitaSempre ${el.tempo} linear infinite`, animationDelay: el.delay, transformStyle: 'preserve-3d', pointerEvents: 'auto' }}>
-                                            <div style={{ width: '100%', height: '100%', transform: billboardTransform, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', transformStyle: 'preserve-3d' }}>
-                                                <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: `radial-gradient(circle at 30% 30%, ${el.color1}, ${el.color2})`, boxShadow: `inset -15px -15px 25px rgba(0,0,0,0.9), inset 5px 5px 15px rgba(255,255,255,0.4), 0 0 20px ${el.shadow}`, zIndex: 10, cursor: 'pointer' }} onClick={() => alert(`Planeta ${el.nome}\nAcesso restrito.`)} />
+                                        <div style={{ position: 'absolute', top: 0, left: 0, width: el.size, height: el.size, zIndex: voandoPara === el.nome ? 9999 : 10, offsetPath: `path("${caminhosGerados[el.id]}")`, offsetRotate: '0deg', animation: `orbitaSempre ${el.tempo} linear infinite`, animationDelay: el.delay, transformStyle: 'preserve-3d', pointerEvents: 'auto' }}>
+                                            
+                                            {/* ✨ MAGIA DA ANIMAÇÃO DE VOO ✨ (Scale 30x!) */}
+                                            <div style={{ 
+                                                width: '100%', height: '100%', 
+                                                transform: voandoPara === el.nome ? `${billboardTransform} scale(30)` : billboardTransform, 
+                                                transition: voandoPara === el.nome ? 'all 0.8s cubic-bezier(0.5, 0, 0.2, 1)' : 'none',
+                                                opacity: voandoPara === el.nome ? 0 : 1,
+                                                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', transformStyle: 'preserve-3d' 
+                                            }}>
+                                                <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: `radial-gradient(circle at 30% 30%, ${el.color1}, ${el.color2})`, boxShadow: `inset -15px -15px 25px rgba(0,0,0,0.9), inset 5px 5px 15px rgba(255,255,255,0.4), 0 0 20px ${el.shadow}`, zIndex: 10, cursor: 'pointer' }} onClick={() => iniciarViagem(el.nome, null)} />
                                                 <div style={{ position: 'absolute', width: '140%', height: '140%', borderRadius: '50%', border: '2px dashed rgba(255,255,255,0.2)', pointerEvents: 'none', zIndex: 5, transform: 'rotateX(65deg)' }}></div>
                                                 <span style={{ color: el.color1, position: 'absolute', bottom: '-30px', fontSize: '12px', fontWeight: 'bold', letterSpacing: '2px', textTransform: 'uppercase', whiteSpace: 'nowrap', textShadow: '0 2px 4px rgba(0,0,0,0.9), 0 0 8px rgba(255,255,255,0.5)' }}>{el.nome}</span>
                                             </div>
+
                                         </div>
                                     </div>
                                 );
@@ -352,10 +395,18 @@ export default function MapaMundi({ children }) {
                             if (el.tipo === 'terra') {
                                 return (
                                     <div key={el.id} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', transformStyle: 'preserve-3d' }}>
-                                        <div style={{ position: 'absolute', top: 0, left: 0, width: el.size, height: el.size, zIndex: 20, offsetPath: `path("${caminhosGerados[el.id]}")`, offsetRotate: '0deg', animation: `orbitaSempre ${el.tempo} linear infinite`, animationDelay: el.delay, transformStyle: 'preserve-3d', pointerEvents: 'auto' }}>
-                                            <div style={{ width: '100%', height: '100%', transform: billboardTransform, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', transformStyle: 'preserve-3d' }}>
+                                        <div style={{ position: 'absolute', top: 0, left: 0, width: el.size, height: el.size, zIndex: voandoPara === 'Terra 0' ? 9999 : 20, offsetPath: `path("${caminhosGerados[el.id]}")`, offsetRotate: '0deg', animation: `orbitaSempre ${el.tempo} linear infinite`, animationDelay: el.delay, transformStyle: 'preserve-3d', pointerEvents: 'auto' }}>
+                                            
+                                            {/* ✨ MAGIA DA ANIMAÇÃO DE VOO ✨ (Scale 30x!) */}
+                                            <div style={{ 
+                                                width: '100%', height: '100%', 
+                                                transform: voandoPara === 'Terra 0' ? `${billboardTransform} scale(30)` : billboardTransform, 
+                                                transition: voandoPara === 'Terra 0' ? 'all 0.8s cubic-bezier(0.5, 0, 0.2, 1)' : 'none',
+                                                opacity: voandoPara === 'Terra 0' ? 0 : 1,
+                                                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', transformStyle: 'preserve-3d' 
+                                            }}>
                                                 
-                                                <div onClick={() => setNivelVisao('globo')} style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #4db8ff, #002244)', boxShadow: 'inset -20px -20px 40px rgba(0,0,0,0.9), inset 10px 10px 20px rgba(255,255,255,0.4), 0 0 40px rgba(0,150,255,0.6)', border: '1px solid rgba(255,255,255,0.2)', zIndex: 10, cursor: 'pointer' }} />
+                                                <div onClick={() => iniciarViagem('Terra 0', 'globo')} style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #4db8ff, #002244)', boxShadow: 'inset -20px -20px 40px rgba(0,0,0,0.9), inset 10px 10px 20px rgba(255,255,255,0.4), 0 0 40px rgba(0,150,255,0.6)', border: '1px solid rgba(255,255,255,0.2)', zIndex: 10, cursor: 'pointer' }} />
                                                 
                                                 <div style={{ position: 'absolute', width: '220%', height: '220%', transform: 'rotateX(75deg)', pointerEvents: 'none', zIndex: 5, transformStyle: 'preserve-3d' }}>
                                                     <div className="moon-orbit-flat" style={{ width: '100%', height: '100%', borderRadius: '50%', border: '2px dashed rgba(255,255,255,0.25)', position: 'relative', transformStyle: 'preserve-3d' }}>
@@ -438,13 +489,13 @@ export default function MapaMundi({ children }) {
     }
 
     // ==========================================
-    // 🌌 TELA 1: COSMOLOGIA
+    // 🌌 TELA 1: COSMOLOGIA (COM TRANSIÇÃO TAMBÉM)
     // ==========================================
     if (nivelVisao === 'cosmologia') {
         return (
             <div className="fade-in" style={{ width: '100%', height: '85vh', background: '#050508', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
                 <PainelModoDeus />
-                <button onClick={() => setNivelVisao('sistema_solar')} style={{ position: 'absolute', top: '20px', left: '20px', background: 'transparent', border: '1px solid #fff', color: '#fff', padding: '8px 18px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', zIndex: 100 }}>⬅ VOLTAR AO ESPAÇO</button>
+                <button onClick={() => iniciarViagem('Espaço Sideral', 'sistema_solar')} style={{ position: 'absolute', top: '20px', left: '20px', background: 'transparent', border: '1px solid #fff', color: '#fff', padding: '8px 18px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', zIndex: 100 }}>⬅ VOLTAR AO ESPAÇO</button>
 
                 <div ref={containerRef} onMouseMove={handleDragMoveCosmo} onMouseUp={handleDragEndCosmo} onMouseLeave={handleDragEndCosmo} onTouchMove={handleDragMoveCosmo} onTouchEnd={handleDragEndCosmo} style={{ position: 'relative', width: '1000px', height: '600px', borderRadius: '15px', overflow: 'hidden', marginTop: '50px' }}>
                     <img src={mapaCosmologia} alt="Cosmologia" style={{ width: '100%', height: '100%', objectFit: 'fill', filter: 'drop-shadow(0 0 20px rgba(255,255,255,0.1))', pointerEvents: 'none' }} />
@@ -456,14 +507,20 @@ export default function MapaMundi({ children }) {
                             onMouseLeave={() => !modoAjuste && setPlanoHover(null)}
                             onMouseDown={(e) => handleDragStartCosmo(e, index)}
                             onTouchStart={(e) => handleDragStartCosmo(e, index)}
-                            onClick={() => { if (!modoAjuste) { if (zona.isPlanet) setNivelVisao('globo'); else alert(`Viajando para: ${zona.nome}`); } }}
+                            
+                            // ✨ MAGIA DA ANIMAÇÃO DE VOO ✨ (Scale 15x pros planos!)
+                            onClick={() => iniciarViagem(zona.nome, zona.isPlanet ? 'globo' : null)}
                             style={{
                                 position: 'absolute', top: zona.top, left: zona.left, width: zona.width, height: zona.height,
-                                borderRadius: zona.isCircle ? '50%' : '15px', cursor: modoAjuste ? 'grab' : 'pointer', zIndex: zona.zIndex || 10,
+                                borderRadius: zona.isCircle ? '50%' : '15px', cursor: modoAjuste ? 'grab' : 'pointer',
                                 border: modoAjuste || planoHover === zona.nome ? `2px dashed ${zona.cor}` : '2px solid transparent',
                                 boxShadow: modoAjuste || planoHover === zona.nome ? `0 0 15px ${zona.cor}, inset 0 0 10px ${zona.cor}` : 'none',
                                 background: modoAjuste ? 'rgba(255,255,255,0.2)' : (planoHover === zona.nome ? 'rgba(255,255,255,0.15)' : 'transparent'), 
-                                transition: dragIndexCosmo === index ? 'none' : '0.2s ease-in-out'
+                                
+                                transform: voandoPara === zona.nome ? 'scale(15)' : 'scale(1)',
+                                transition: voandoPara === zona.nome ? 'all 0.8s cubic-bezier(0.5, 0, 0.2, 1)' : (dragIndexCosmo === index ? 'none' : '0.2s ease-in-out'),
+                                opacity: voandoPara === zona.nome ? 0 : 1,
+                                zIndex: voandoPara === zona.nome ? 9999 : (zona.zIndex || 10)
                             }}
                         />
                     ))}
@@ -597,5 +654,11 @@ export default function MapaMundi({ children }) {
             </div>
         );
     }
-    return null;
+    
+    // ✨ O FLASH BRANCO DE TRANSIÇÃO (Fica fora de tudo para cobrir a tela inteira!)
+    return (
+        <>
+            <div style={{ position: 'fixed', inset: 0, background: '#fff', opacity: flashBranco ? 1 : 0, transition: 'opacity 0.2s ease-out', pointerEvents: 'none', zIndex: 999999 }} />
+        </>
+    );
 }
