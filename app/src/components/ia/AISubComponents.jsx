@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAIForm, TODOS_RANKS } from './AIFormContext';
 import GravadorPanel from './GravadorPanel';
+import AIArvoreGenealogica from './AIArvoreGenealogica'; // <-- ADIÇÃO: Importando o novo componente
 
 const FALLBACK = <div style={{ color: '#888', padding: 10 }}>AI provider não encontrado</div>;
 
@@ -17,6 +18,8 @@ export function AIHeader() {
                 <button className={`btn-neon ${subAba === 'gravador' ? 'btn-red' : ''}`} onClick={() => setSubAba('gravador')} style={{ padding: '5px 10px', margin: 0 }}>🎙️ Gravador</button>
                 <button className={`btn-neon ${subAba === 'tierlist' ? 'btn-gold' : ''}`} onClick={() => setSubAba('tierlist')} style={{ padding: '5px 10px', margin: 0 }}>🏆 Tier List</button>
                 <button className={`btn-neon ${subAba === 'lore' ? 'btn-blue' : ''}`} onClick={() => setSubAba('lore')} style={{ padding: '5px 10px', margin: 0 }}>📜 Registros</button>
+                {/* 👇 ADIÇÃO: O NOVO BOTÃO ENTRA AQUI 👇 */}
+                <button className={`btn-neon ${subAba === 'arvore' ? 'btn-purple' : ''}`} onClick={() => setSubAba('arvore')} style={{ padding: '5px 10px', margin: 0, borderColor: subAba === 'arvore' ? '#b180ff' : '', color: subAba === 'arvore' ? '#b180ff' : '' }}>🌳 Árvore</button>
             </div>
         </div>
     );
@@ -235,5 +238,7 @@ export function AIAreaCentral() {
     if (subAba === 'gravador') return <div style={{ flex: 1, overflowY: 'auto' }}><GravadorPanel /></div>;
     if (subAba === 'tierlist') return <AITierList />;
     if (subAba === 'lore') return <AILore />;
+    {/* 👇 ADIÇÃO: O ROTEADOR DA NOVA ABA 👇 */}
+    if (subAba === 'arvore') return <AIArvoreGenealogica />; 
     return null;
 }
