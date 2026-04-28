@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import useStore, { fichaPadrao } from '../../stores/useStore'; // 🔥 IMPORTANDO O SEU BANCO DE DADOS GLOBAL 🔥
+import useStore, { fichaPadrao } from '../../stores/useStore'; 
 
 export default function AIArvoreGenealogica() {
-    // 💾 CONEXÃO COM O ZUSTAND (PAINEL DO MESTRE)
-    const personagens = useStore(s => s.personagens);
-    const setPersonagens = useStore(s => s.setPersonagens);
+    // 💾 CONEXÃO COM O ZUSTAND (PAINEL DO MESTRE - AGORA NOS NPCS CORRETOS!)
+    const dummies = useStore(s => s.dummies);
+    const setDummies = useStore(s => s.setDummies);
 
     // 💾 CARREGA DO LOCALSTORAGE DA ÁRVORE (Ou inicia vazio)
     const [familias, setFamilias] = useState(() => {
@@ -119,7 +119,7 @@ export default function AIArvoreGenealogica() {
     };
 
     // ==========================================
-    // 🚀 INTEGRAÇÃO SUPREMA: ENVIAR PARA O PAINEL DO MESTRE
+    // 🚀 INTEGRAÇÃO SUPREMA: ENVIAR PARA O PAINEL DO MESTRE (ABAS NPCS)
     // ==========================================
     const injetarNaMesa = () => {
         if (!npcSelecionado || !npcSelecionado.nome || npcSelecionado.nome.trim() === '') {
@@ -128,14 +128,14 @@ export default function AIArvoreGenealogica() {
 
         const nomePersonagem = npcSelecionado.nome.trim();
 
-        // Verifica se já existe e pede confirmação para sobrescrever
-        if (personagens[nomePersonagem]) {
-            if (!window.confirm(`⚠️ O personagem "${nomePersonagem}" já está no Painel do Mestre! Deseja sobrescrever a ficha atual dele com os dados da Árvore Genealógica?`)) {
+        // Verifica se já existe na aba de NPCs (dummies) e pede confirmação
+        if (dummies[nomePersonagem]) {
+            if (!window.confirm(`⚠️ O NPC "${nomePersonagem}" já existe na aba de NPCs! Deseja sobrescrever a ficha atual dele com os dados da Árvore Genealógica?`)) {
                 return;
             }
         }
 
-        // Deep clone da Ficha Padrão para não quebrar a reatividade do Zustand
+        // Deep clone da Ficha Padrão do seu useStore
         const novaFicha = JSON.parse(JSON.stringify(fichaPadrao));
 
         // Convertendo os dados da Árvore para a Estrutura do Jogo
@@ -161,11 +161,11 @@ export default function AIArvoreGenealogica() {
             geral: `🔸 Elemento Mágico: ${npcSelecionado.elemento || 'Nenhum'}\n🔸 Origem: Clã ${familiaAtiva}\n\n📖 Lore Genealógica:\n${npcSelecionado.lore || 'Sem registros na árvore.'}`
         };
 
-        // Salva globalmente!
-        const novosPersonagens = { ...personagens, [nomePersonagem]: novaFicha };
-        setPersonagens(novosPersonagens);
+        // Salva globalmente nos NPCs (dummies)
+        const novosDummies = { ...dummies, [nomePersonagem]: novaFicha };
+        setDummies(novosDummies);
 
-        alert(`✅ Sucesso! "${nomePersonagem}" foi injetado na mesa e já deve aparecer no seu Painel do Mestre!`);
+        alert(`✅ Sucesso! "${nomePersonagem}" foi injetado na Aba de NPCs do Painel do Mestre!`);
     };
 
     // ==========================================
@@ -422,9 +422,9 @@ export default function AIArvoreGenealogica() {
                             onClick={injetarNaMesa}
                             className="btn-neon btn-green"
                             style={{ padding: '5px 15px', margin: 0, fontSize: '12px', boxShadow: '0 0 10px rgba(0, 255, 0, 0.4)' }}
-                            title="Criar/Atualizar a ficha deste personagem no Painel do Mestre"
+                            title="Criar/Atualizar a ficha deste personagem na Aba de NPCs do Mestre"
                         >
-                            🚀 INJETAR NA MESA
+                            🚀 INJETAR NOS NPCs
                         </button>
                     )}
                 </div>
