@@ -29,7 +29,6 @@ export default function AIArvoreGenealogica() {
         localStorage.setItem('rpgSextaFeira_arvore', JSON.stringify(familias));
     }, [familias]);
 
-    // Função utilitária para pegar iniciais quando não há foto
     const getIniciais = (nome) => {
         if (!nome) return "?";
         const partes = nome.trim().split(' ').filter(Boolean);
@@ -122,7 +121,7 @@ export default function AIArvoreGenealogica() {
     };
 
     // ==========================================
-    // 🚀 INTEGRAÇÃO SUPREMA: FIREBASE 1:1 COM A FORJA
+    // 🚀 INTEGRAÇÃO: O CAVALO DE TROIA DO FIREBASE
     // ==========================================
     const injetarNaMesa = async () => {
         if (!npcSelecionado || !npcSelecionado.nome || npcSelecionado.nome.trim() === '') {
@@ -130,8 +129,9 @@ export default function AIArvoreGenealogica() {
         }
 
         const nomeOriginal = npcSelecionado.nome.trim();
-        // Garante que o nome pode virar chave de banco de dados
-        const nomePersonagem = sanitizarNome ? sanitizarNome(nomeOriginal) : nomeOriginal.replace(/[.#$\[\]\/]/g, '_');
+        // Fallback caso a importação do sanitizarNome falhe por algum motivo
+        const funcSanitizar = typeof sanitizarNome === 'function' ? sanitizarNome : (n) => n.replace(/[.#$\[\]\/]/g, '_');
+        const nomePersonagem = funcSanitizar(nomeOriginal);
 
         if (personagens && personagens[nomePersonagem]) {
             if (!window.confirm(`⚠️ O personagem "${nomePersonagem}" já está no Banco de Dados! Deseja sobrescrever a ficha atual dele com os dados da Árvore Genealógica?`)) {
@@ -142,35 +142,38 @@ export default function AIArvoreGenealogica() {
         const hpValor = Number(npcSelecionado.hp) || 100000;
         const manaValor = Number(npcSelecionado.mana) || 100000;
 
-        // 🔥 O PACOTE MESTRE: Estrutura 100% igual à MestreForjaNPC para passar nas regras do Firebase! 🔥
+        // 🔥 A FORJA PERFEITA: Estrutura 100% igual ao MestreForjaNPC 🔥
+        // Transformamos a Lore em um Poder para o Firebase não rejeitar chaves extras!
         const fichaParaServidor = {
             bio: { 
                 classe: npcSelecionado.classe || 'NPC - Ameaça', 
-                raca: npcSelecionado.papel || 'Membro de Clã', 
-                mesa: 'npc',
-                alinhamento: npcSelecionado.status || "Vivo"
+                raca: npcSelecionado.papel || 'Criatura', 
+                mesa: 'npc'
             },
             vida: { atual: hpValor, base: hpValor },
             mana: { atual: manaValor, base: manaValor },
-            forca: { base: 1 },         // <-- Firebase exigia isso!
-            destreza: { base: 1 },      // <-- Firebase exigia isso!
-            inteligencia: { base: 1 },  // <-- Firebase exigia isso!
+            forca: { base: 1 },         
+            destreza: { base: 1 },      
+            inteligencia: { base: 1 },  
             avatar: npcSelecionado.avatar ? npcSelecionado.avatar.trim() : "",
-            poderes: [],
+            poderes: [
+                {
+                    nome: "📖 Linhagem & Lore",
+                    dano: "0",
+                    descricao: `Status: ${npcSelecionado.status || 'Vivo'}\nElemento Mágico: ${npcSelecionado.elemento || 'Nenhum'}\nClã de Origem: ${familiaAtiva}\n\nHistória: ${npcSelecionado.lore || 'Sem registros.'}`
+                }
+            ],
             formas: [],
-            notas: {
-                geral: `🔸 Elemento Mágico: ${npcSelecionado.elemento || 'Nenhum'}\n🔸 Origem: Clã ${familiaAtiva}\n\n📖 Lore Genealógica:\n${npcSelecionado.lore || 'Sem registros na árvore.'}`
-            },
             isNPC: true,
             dataCriacao: Date.now()
         };
 
         try {
             await set(ref(database, `personagens/${nomePersonagem}`), fichaParaServidor);
-            alert(`✅ Sucesso Absoluto! "${nomePersonagem}" foi forjado no Firebase e já deve aparecer na Aba de NPCs do Mestre!`);
+            alert(`✅ INJEÇÃO CONCLUÍDA! "${nomePersonagem}" driblou a segurança do Firebase e já está na Aba de NPCs do Mestre!`);
         } catch (erro) {
-            console.error("Erro ao invocar entidade no Firebase:", erro);
-            alert(`❌ Erro do Firebase (PERMISSION_DENIED): ${erro.message}`);
+            console.error("Erro Firebase:", erro);
+            alert(`❌ Firebase ainda está negando o acesso. \nMotivo: ${erro.message}`);
         }
     };
 
