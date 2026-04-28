@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import useStore from '../../stores/useStore'; 
+import useStore, { sanitizarNome } from '../../stores/useStore'; 
 import { ref, set } from 'firebase/database'; 
 import { database } from '../../services/firebase-config'; 
 
@@ -122,14 +122,16 @@ export default function AIArvoreGenealogica() {
     };
 
     // ==========================================
-    // 🚀 INTEGRAÇÃO SUPREMA: ENVIAR PARA O FIREBASE COMO NPC (CORRIGIDO)
+    // 🚀 INTEGRAÇÃO SUPREMA: FIREBASE 1:1 COM A FORJA
     // ==========================================
     const injetarNaMesa = async () => {
         if (!npcSelecionado || !npcSelecionado.nome || npcSelecionado.nome.trim() === '') {
             return alert("O NPC precisa ter um Nome Completo antes de ser enviado para a mesa!");
         }
 
-        const nomePersonagem = npcSelecionado.nome.trim();
+        const nomeOriginal = npcSelecionado.nome.trim();
+        // Garante que o nome pode virar chave de banco de dados
+        const nomePersonagem = sanitizarNome ? sanitizarNome(nomeOriginal) : nomeOriginal.replace(/[.#$\[\]\/]/g, '_');
 
         if (personagens && personagens[nomePersonagem]) {
             if (!window.confirm(`⚠️ O personagem "${nomePersonagem}" já está no Banco de Dados! Deseja sobrescrever a ficha atual dele com os dados da Árvore Genealógica?`)) {
@@ -140,17 +142,22 @@ export default function AIArvoreGenealogica() {
         const hpValor = Number(npcSelecionado.hp) || 100000;
         const manaValor = Number(npcSelecionado.mana) || 100000;
 
-        // 🔥 PACOTE LIMPO: Sem arrays vazios para não irritar o Firebase! 🔥
-        const fichaLimpa = {
-            bio: {
-                classe: npcSelecionado.classe || "Desconhecida",
-                raca: npcSelecionado.papel || "Membro de Clã",
-                alinhamento: npcSelecionado.status || "Vivo",
-                mesa: 'npc' // Etiqueta da aba vermelha
+        // 🔥 O PACOTE MESTRE: Estrutura 100% igual à MestreForjaNPC para passar nas regras do Firebase! 🔥
+        const fichaParaServidor = {
+            bio: { 
+                classe: npcSelecionado.classe || 'NPC - Ameaça', 
+                raca: npcSelecionado.papel || 'Membro de Clã', 
+                mesa: 'npc',
+                alinhamento: npcSelecionado.status || "Vivo"
             },
             vida: { atual: hpValor, base: hpValor },
             mana: { atual: manaValor, base: manaValor },
+            forca: { base: 1 },         // <-- Firebase exigia isso!
+            destreza: { base: 1 },      // <-- Firebase exigia isso!
+            inteligencia: { base: 1 },  // <-- Firebase exigia isso!
             avatar: npcSelecionado.avatar ? npcSelecionado.avatar.trim() : "",
+            poderes: [],
+            formas: [],
             notas: {
                 geral: `🔸 Elemento Mágico: ${npcSelecionado.elemento || 'Nenhum'}\n🔸 Origem: Clã ${familiaAtiva}\n\n📖 Lore Genealógica:\n${npcSelecionado.lore || 'Sem registros na árvore.'}`
             },
@@ -159,11 +166,11 @@ export default function AIArvoreGenealogica() {
         };
 
         try {
-            await set(ref(database, `personagens/${nomePersonagem}`), fichaLimpa);
-            alert(`✅ Sucesso! "${nomePersonagem}" foi forjado no Firebase e já deve aparecer na Aba de NPCs do Mestre!`);
+            await set(ref(database, `personagens/${nomePersonagem}`), fichaParaServidor);
+            alert(`✅ Sucesso Absoluto! "${nomePersonagem}" foi forjado no Firebase e já deve aparecer na Aba de NPCs do Mestre!`);
         } catch (erro) {
             console.error("Erro ao invocar entidade no Firebase:", erro);
-            alert(`❌ Erro do Firebase: ${erro.message}`); // Vai mostrar o motivo real se der erro
+            alert(`❌ Erro do Firebase (PERMISSION_DENIED): ${erro.message}`);
         }
     };
 
