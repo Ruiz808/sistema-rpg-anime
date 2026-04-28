@@ -15,13 +15,29 @@ const NIVEIS_INFO = {
     10: { nome: "Eterno", cor: "#ffcc00", desc: "Dano Incalculável | Apagamento Conceitual" }
 };
 
-// ⚔️ NOMES PRÉ-DEFINIDOS PARA FACILITAR (INSPIRAÇÃO ANIME)
+// ⚔️ LISTA OFICIAL SINCRONIZADA COM O SEU SISTEMA DE MAGIAS
 const PREDEFINICOES = {
     elementais: [
-        "Fogo (Katon)", "Água (Suiton)", "Vento (Fuuton)", "Terra (Doton)", "Raio (Raiton)", 
-        "Gelo", "Luz", "Trevas", "Metal", "Magma", "Madeira", "Gravidade", "Sangue", "Espaço-Tempo"
+        // Elementos Básicos e Verdadeiros
+        "Fogo", "Raio", "Agua", "Vento", "Terra",
+        "Fogo Verdadeiro", "Raio Verdadeiro", "Agua Verdadeira", "Vento Verdadeiro", "Terra Verdadeira",
+        // Elementos Avançados e Primordiais
+        "Solar", "Energia", "Gelo", "Vacuo", "Natureza",
+        "Solar Verdadeiro", "Energia Verdadeira", "Gelo Verdadeiro", "Vacuo Verdadeiro", "Natureza Verdadeira",
+        "Luz", "Trevas", "Ether", "Celestial", "Infernal", "Caos", "Criacao", "Destruicao", "Cosmos", "Neutro",
+        "Vida", "Morte", "Vazio",
+        // Chakra e Kekkei Genkai/Touta
+        "Elemento Madeira", "Elemento Mineral", "Elemento Cinzas", "Elemento Igneo", "Elemento Lava", "Elemento Vapor", "Elemento Nevoa", "Elemento Tempestade", "Elemento Areia", "Elemento Tufao",
+        "Elemento Velocidade", "Elemento Poeira", "Elemento Veneno", "Elemento Cal", "Elemento Carbono", "Elemento Calor", "Elemento Som", "Elemento Magnetismo",
+        // Magias e Arcanas
+        "Truques de Ciclo", "Magias de 1º a 10º Ciclo", 
+        "Truques Arcanos/Negros", "Magias Arcanas/Negra de 1º a 10º Ciclo",
+        "Truques Ancestrais", "Magia de Sangue", "Magia de Osso", "Magia Draconica", "Magia de Borracha", "Magia de Espelho", "Magia de Sal", "Magia de Alma", "Magia de Tremor", "Magia de Gravidade", "Magia de Tempo", "Magia de Equipamento", "Magia de Explosao", "Magia Espacial", "Magia de Metamorfose",
+        // Outros (Aura, Fusões)
+        "Aura Pura", "Projeção de Aura", "Fusões Básicas", "Fusões Avançadas"
     ],
     marciais: [
+        "Artes Marciais (Combate Básico)", "Reforço Físico (Aura/Mana)",
         "Punho do Dragão (Agressivo)", "Palma Suave (Controle Interno)", "Caminho do Tigre (Força Bruta)", 
         "Passos de Vento (Esquiva/Velocidade)", "Boxe Demoníaco (Impacto)", "Estilo Bêbado (Imprevisível)", 
         "Punho de Ferro (Defesa Absoluta)", "Artes de Assassino (Furtividade)"
@@ -30,26 +46,30 @@ const PREDEFINICOES = {
         "Ittouryu (1 Espada)", "Nitouryu (2 Espadas)", "Santouryu (3 Espadas)", "Iaido (Saque Rápido Cortante)", 
         "Postura da Montanha (Defesa Pesada)", "Postura da Água (Contra-ataque Fluido)", 
         "Postura do Vento (Cortes Velozes)", "Postura do Trovão (Estocadas Fatais)", 
-        "Maestria com Lança", "Maestria com Foice", "Maestria com Arco/Projéteis"
+        "Maestria com Lança", "Maestria com Foice", "Maestria com Arco/Projéteis",
+        "Maestria com Armas de Fogo", "Maestria com Escudo"
     ],
     cura: [
         "Magia de Regeneração Básica", "Cura Celular Avançada", "Purificação de Status (Antídoto)", 
-        "Reversão Temporal Localizada", "Transferência de Força Vital"
+        "Reversão Temporal Localizada", "Transferência de Força Vital", "Ressurreição Limitada"
     ],
     summons: [
         "Pacto Demoníaco", "Invocação de Feras Divinas", "Espíritos Ancestrais", 
-        "Contrato Dracônico", "Exército de Sombras Familiares"
+        "Contrato Dracônico", "Exército de Sombras Familiares", "Invocação de Armamento Sagrado"
     ]
 };
 
 export default function AbaDominios() {
     const { minhaFicha, updateFicha } = useStore();
+    
+    // 🛡️ TRAVA DE SEGURANÇA CONTRA UNDEFINED
+    if (!minhaFicha) return <div style={{ color: '#888', padding: 20 }}>Carregando ficha...</div>;
+    
     const dominios = minhaFicha.dominios || {};
 
     const atualizarDominio = (categoria, item, nivel) => {
         updateFicha(f => {
             if (!f.dominios) f.dominios = { elementais: {}, marciais: {}, armas: {}, cura: {}, summons: {} };
-            // 🔥 TRAVA DE SEGURANÇA QUE FALTAVA PARA EVITAR O BUG DO "UNDEFINED" 🔥
             if (!f.dominios[categoria]) f.dominios[categoria] = {};
 
             if (nivel === 0) {
@@ -129,7 +149,6 @@ export default function AbaDominios() {
             <h2 style={{ color: '#ffcc00', borderBottom: '2px solid #ffcc00', paddingBottom: '10px', marginBottom: '20px' }}>💎 HIERARQUIA DE DOMÍNIOS</h2>
             
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '20px' }}>
-                {/* Aqui está a correção chave: "elementais" ao invés de "elementals" */}
                 {renderCategoria("Manipulação Elemental", "elementais", "#00ffcc")}
                 {renderCategoria("Técnicas Marciais (Taijutsu)", "marciais", "#ff003c")}
                 {renderCategoria("Maestria de Armas (Kenjutsu)", "armas", "#0088ff")}
