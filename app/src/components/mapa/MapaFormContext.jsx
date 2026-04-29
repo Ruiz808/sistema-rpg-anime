@@ -65,11 +65,9 @@ export function MapaFormProvider({ children }) {
     const [modo3D, setModo3D] = useState(false);
     const [tamanhoCelula, setTamanhoCelula] = useState(35);
     const [iniciativaInput, setIniciativaInput] = useState(() => fichaSegura.iniciativa || 0);
-    const [altitudeInput, setAltitudeInput] = useState(() => fichaSegura.posicao?.z || 0);
+    const [altitudeInput, setAltitudeInput] = useState(0);
     
-    // 🔥 O TURNO AGORA É GLOBAL E SINCRONIZADO NO FIREBASE 🔥
     const turnoAtualIndex = cenario?.turnoAtualIndex || 0;
-    
     const [feedIndexTurnoAtual, setFeedIndexTurnoAtual] = useState(0);
     const [jogadorHistory, setJogadorHistory] = useState(null);
 
@@ -103,6 +101,12 @@ export function MapaFormProvider({ children }) {
     
     const tavernaAtivos = Array.isArray(cenario?.tavernaAtivos) ? cenario.tavernaAtivos : [];
     const isPresenteNaTaverna = tavernaAtivos.includes(meuNome);
+
+    // Atualiza a altitude baseada na cena atual!
+    useEffect(() => {
+        const pos = fichaSegura.posicoes ? fichaSegura.posicoes[cenaRenderId] : fichaSegura.posicao;
+        setAltitudeInput(pos?.z || 0);
+    }, [fichaSegura, cenaRenderId]);
 
     const toggleModoRP = useCallback(() => {
         const novoCenario = JSON.parse(JSON.stringify(cenario || {}));
@@ -147,20 +151,14 @@ export function MapaFormProvider({ children }) {
             const dData = storeState.dummies[idDummie];
             if (!dData) return;
             const acoes = dData.acoes ? JSON.parse(JSON.stringify(dData.acoes)) : { padrao: {max:1, atual:1}, bonus: {max:1, atual:1}, reacao: {max:1, atual:1} };
-            if (isAvailable) {
-                acoes[tipo].atual = Math.max(0, acoes[tipo].atual - 1);
-            } else {
-                acoes[tipo].atual = Math.min(acoes[tipo].max, acoes[tipo].atual + 1);
-            }
+            if (isAvailable) acoes[tipo].atual = Math.max(0, acoes[tipo].atual - 1);
+            else acoes[tipo].atual = Math.min(acoes[tipo].max, acoes[tipo].atual + 1);
             salvarDummie(idDummie, { ...dData, acoes });
         } else if (entidadeNome === meuNome) {
             updateFicha(f => {
                 if (!f.acoes) f.acoes = { padrao: {max:1, atual:1}, bonus: {max:1, atual:1}, reacao: {max:1, atual:1} };
-                if (isAvailable) {
-                    f.acoes[tipo].atual = Math.max(0, f.acoes[tipo].atual - 1);
-                } else {
-                    f.acoes[tipo].atual = Math.min(f.acoes[tipo].max, f.acoes[tipo].atual + 1);
-                }
+                if (isAvailable) f.acoes[tipo].atual = Math.max(0, f.acoes[tipo].atual - 1);
+                else f.acoes[tipo].atual = Math.min(f.acoes[tipo].max, f.acoes[tipo].atual + 1);
             });
             salvarFichaSilencioso();
         }
@@ -170,7 +168,6 @@ export function MapaFormProvider({ children }) {
         if (feedCombate.length > prevFeedLen.current) {
             const newItem = feedCombate[feedCombate.length - 1];
             if (newItem && newItem.rolagem && (newItem.tipo === 'acerto' || newItem.tipo === 'dano')) {
-                
                 const painelMapa = document.querySelector('.mapa-panel');
                 const mapaVisivel = painelMapa && (painelMapa.offsetWidth > 0 || painelMapa.offsetHeight > 0);
                 const isAbaMapa = String(abaAtiva || '').toLowerCase().includes('map');
@@ -192,7 +189,6 @@ export function MapaFormProvider({ children }) {
                             if (nums.length > 0) rawRoll = Math.max(...nums);
                         }
                     }
-                    
                     if (rawRoll > 0) {
                         let corFinal = '#0088ff'; 
                         if (newItem.tipo === 'dano') {
@@ -203,7 +199,6 @@ export function MapaFormProvider({ children }) {
                             else if (rawRoll >= 18) corFinal = '#ffcc00'; 
                             else if (rawRoll === 1) corFinal = '#660000'; 
                         }
-
                         setDadoAnim({ ativo: true, numero: Math.floor(Math.random() * 20) + 1, finalResult: null, cor: '#00ffcc', quemRolou: newItem.nome });
                         let intervalos = 0;
                         const tempoGiro = setInterval(() => {
@@ -226,10 +221,6 @@ export function MapaFormProvider({ children }) {
         setMapVantagens(fichaSegura.ataqueConfig?.vantagens || 0);
         setMapDesvantagens(fichaSegura.ataqueConfig?.desvantagens || 0);
     }, [fichaSegura.ataqueConfig?.vantagens, fichaSegura.ataqueConfig?.desvantagens]);
-
-    useEffect(() => {
-        setAltitudeInput(fichaSegura.posicao?.z || 0);
-    }, [fichaSegura.posicao?.z]);
 
     const changeVantagem = useCallback((e) => {
         const val = parseInt(e.target.value) || 0;
@@ -261,7 +252,6 @@ export function MapaFormProvider({ children }) {
             enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `🗺️ O Mestre começou a preparar uma área desconhecida...` });
             setNovaCenaNome('');
         } catch (err) {
-            console.error(err);
             alert('Erro ao enviar a imagem para o Mapa. Verifique o Firebase Storage.');
         } finally {
             setUploadingMap(false);
@@ -328,16 +318,14 @@ export function MapaFormProvider({ children }) {
         return arr;
     }, []);
 
+    // 🔥 COLETA TODOS OS JOGADORES NA SALA (O Filtro de Cena é feito no TokenMap!) 🔥
     const jogadores = useMemo(() => {
         const result = {};
-        if (meuNome && minhaFicha?.posicao && minhaFicha.posicao.x !== undefined) result[meuNome] = minhaFicha;
+        if (meuNome && minhaFicha) result[meuNome] = minhaFicha;
         if (personagens) {
             const nomes = Object.keys(personagens);
             for (let i = 0; i < nomes.length; i++) {
-                const nome = nomes[i];
-                if (nome === meuNome) continue;
-                const ficha = personagens[nome];
-                if (ficha && ficha.posicao && ficha.posicao.x !== undefined) result[nome] = ficha;
+                if (nomes[i] !== meuNome) result[nomes[i]] = personagens[nomes[i]];
             }
         }
         return result;
@@ -350,17 +338,55 @@ export function MapaFormProvider({ children }) {
         }).filter(([n, f]) => f != null);
     }, [tavernaAtivos, meuNome, minhaFicha, personagens]);
 
-    // 🔥 FIX 1: A Ordem de Iniciativa agora lê Dummies E Jogadores da mesma lista central 🔥
+    // 🔥 MAPA DE TOKENS INDEPENDENTES POR CENA 🔥
+    const tokenMap = useMemo(() => {
+        const map = {};
+        const nomes = Object.keys(jogadores);
+        for (let i = 0; i < nomes.length; i++) {
+            const nome = nomes[i];
+            const ficha = jogadores[nome];
+            
+            // Puxa a posição ESPECÍFICA DESTA CENA
+            let pos = ficha.posicoes ? ficha.posicoes[cenaRenderId] : null;
+            
+            // Fallback para personagens antigos que ainda não se moveram no novo sistema
+            if (!pos && ficha.posicao && (ficha.posicao.cenaId || 'default') === cenaRenderId) {
+                pos = ficha.posicao;
+            }
+
+            if (pos && pos.x !== undefined) {
+                const key = `${pos.x},${pos.y}`;
+                if (!map[key]) map[key] = [];
+                map[key].push({ nome, ficha });
+            }
+        }
+        return map;
+    }, [jogadores, cenaRenderId]);
+
+    const tokens3D = useMemo(() => {
+        return Object.entries(jogadores)
+            .map(([nome, ficha]) => {
+                let pos = ficha.posicoes ? ficha.posicoes[cenaRenderId] : null;
+                if (!pos && ficha.posicao && (ficha.posicao.cenaId || 'default') === cenaRenderId) pos = ficha.posicao;
+                return { nome, pos, ficha };
+            })
+            .filter(tk => tk.pos && tk.pos.x !== undefined)
+            .map(tk => ({ nome: tk.nome, x: tk.pos.x || 0, y: tk.pos.y || 0, z: tk.pos.z || 0, cor: corDoJogador(tk.nome) }));
+    }, [jogadores, cenaRenderId, corDoJogador]);
+
     const ordemIniciativa = useMemo(() => {
         const lista = [];
-        
         if (jogadores) {
             const nomes = Object.keys(jogadores);
             for (let i = 0; i < nomes.length; i++) {
                 const n = nomes[i];
                 const f = jogadores[n];
-                const cenaDoJogador = f?.posicao?.cenaId || 'default';
-                if (f && f.iniciativa !== undefined && f.iniciativa > 0 && cenaDoJogador === cenaRenderId) {
+                
+                let pos = f.posicoes ? f.posicoes[cenaRenderId] : null;
+                if (!pos && f.posicao && (f.posicao.cenaId || 'default') === cenaRenderId) pos = f.posicao;
+
+                // Só aparece na iniciativa se estiver NA CENA ATUAL!
+                if (f && f.iniciativa !== undefined && f.iniciativa > 0 && pos) {
                     lista.push({ id: n, nome: n, ficha: f, iniciativa: f.iniciativa, isDummie: false });
                 }
             }
@@ -384,30 +410,20 @@ export function MapaFormProvider({ children }) {
 
     const getDanoDinamicoZona = useCallback((zona) => {
         let baseResult = { dano: zona.danoOriginal || zona.danoAplicado || 0, letalidade: zona.letalidadeOriginal || 0 };
-        
         const storeState = useStore.getState();
         const fichaCaster = (zona.conjurador === storeState.meuNome) ? storeState.minhaFicha : storeState.personagens?.[zona.conjurador];
         if (!fichaCaster) return baseResult;
         
         const buffs = getBuffs(fichaCaster);
-        let maxFuria = 0;
-        let danoBrutoAtual = 0;
-        let letalidadeAtual = 0;
+        let maxFuria = 0; let danoBrutoAtual = 0; let letalidadeAtual = 0;
         
         const scan = (efs) => {
             (efs || []).forEach(e => {
                 if (!e) return;
                 const prop = (e.propriedade || '').toLowerCase().trim();
-                if (prop === 'furia_berserker') {
-                    const v = parseFloat(e.valor) || 0;
-                    if (v > maxFuria) maxFuria = v;
-                }
-                if (prop === 'dano_bruto' || prop === 'dano_verdadeiro') {
-                    danoBrutoAtual += parseFloat(e.valor) || 0;
-                }
-                if (prop === 'letalidade') {
-                    letalidadeAtual += parseFloat(e.valor) || 0;
-                }
+                if (prop === 'furia_berserker') { const v = parseFloat(e.valor) || 0; if (v > maxFuria) maxFuria = v; }
+                if (prop === 'dano_bruto' || prop === 'dano_verdadeiro') danoBrutoAtual += parseFloat(e.valor) || 0;
+                if (prop === 'letalidade') letalidadeAtual += parseFloat(e.valor) || 0;
             });
         };
         
@@ -432,10 +448,7 @@ export function MapaFormProvider({ children }) {
         const novoDanoBase = (zona.danoOriginal / baseMulti) + diffStatus + diffBruto;
         const novoDano = Math.floor(novoDanoBase * multAtual);
         
-        return {
-            dano: novoDano > 0 ? novoDano : zona.danoOriginal,
-            letalidade: (zona.letalidadeOriginal || 0) + diffLetalidade
-        };
+        return { dano: novoDano > 0 ? novoDano : zona.danoOriginal, letalidade: (zona.letalidadeOriginal || 0) + diffLetalidade };
     }, []);
 
     const dispararEfeitoDaZona = useCallback((zona) => {
@@ -467,14 +480,13 @@ export function MapaFormProvider({ children }) {
         };
 
         Object.entries(dummies || {}).forEach(([id, d]) => checkHit(d.posicao, d.nome, true, id, d));
-        if (minhaFicha?.posicao) checkHit(minhaFicha.posicao, meuNome, false, null, null);
+        
+        let myPos = minhaFicha?.posicoes ? minhaFicha.posicoes[cenaAtivaId] : minhaFicha?.posicao;
+        if (myPos) checkHit(myPos, meuNome, false, null, null);
         
         if (hitLog.length > 0) {
             const letalStr = letalAtual > 0 ? ` (+${letalAtual} Letalidade)` : '';
-            enviarParaFeed({
-                tipo: 'sistema', nome: 'SISTEMA',
-                texto: `🌪️ A Zona [${zona.nome}] castigou ${hitLog.join(', ')} com ${danoAtual} de Dano${letalStr}!`
-            });
+            enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `🌪️ A Zona [${zona.nome}] castigou ${hitLog.join(', ')} com ${danoAtual} de Dano${letalStr}!` });
         }
     }, [cenario, getDanoDinamicoZona, dummies, minhaFicha, meuNome, updateFicha]);
 
@@ -506,10 +518,7 @@ export function MapaFormProvider({ children }) {
                 const letalAtual = din.letalidade;
                 const letalStr = letalAtual > 0 ? ` (+${letalAtual} Letalidade)` : '';
                 
-                enviarParaFeed({
-                    tipo: 'sistema', nome: 'SISTEMA',
-                    texto: `⚠️ ${entidadeNome} pisou na área de [${zona.nome}] e sofreu ${danoAtual} de Dano${letalStr} imediatamente!`
-                });
+                enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `⚠️ ${entidadeNome} pisou na área de [${zona.nome}] e sofreu ${danoAtual} de Dano${letalStr} imediatamente!` });
                 
                 if (isDummie && idDummie && dData) {
                     salvarDummie(idDummie, { ...dData, hpAtual: Math.max(0, dData.hpAtual - danoAtual) });
@@ -521,10 +530,16 @@ export function MapaFormProvider({ children }) {
         });
     }, [cenario, cenaRenderId, meuNome, updateFicha, getDanoDinamicoZona]);
 
+    // 🔥 SALVAMENTO ISOLADO DE POSIÇÕES POR CENA 🔥
     const handleCellClick = useCallback((x, y) => {
         const z = parseInt(altitudeInput) || 0;
         
-        const oldPos = isMestre && alvoSelecionado && dummies[alvoSelecionado] ? dummies[alvoSelecionado].posicao : minhaFicha?.posicao;
+        let oldPos = null;
+        if (isMestre && alvoSelecionado && dummies[alvoSelecionado]) {
+            oldPos = dummies[alvoSelecionado].posicao;
+        } else {
+            oldPos = minhaFicha?.posicoes ? minhaFicha.posicoes[cenaRenderId] : (minhaFicha?.posicao?.cenaId === cenaRenderId ? minhaFicha.posicao : null);
+        }
         
         if (isMestre && alvoSelecionado && dummies[alvoSelecionado]) {
             const d = dummies[alvoSelecionado];
@@ -532,6 +547,11 @@ export function MapaFormProvider({ children }) {
             processarEntradaNaZona(oldPos, x, y, z, d.nome, true, alvoSelecionado, d);
         } else {
             updateFicha((ficha) => {
+                // Guarda na nova estrutura independente
+                if (!ficha.posicoes) ficha.posicoes = {};
+                ficha.posicoes[cenaRenderId] = { x, y, z, cenaId: cenaRenderId };
+                
+                // Mantém o antigo só para segurança de outras páginas
                 if (!ficha.posicao) ficha.posicao = {};
                 ficha.posicao.x = x;
                 ficha.posicao.y = y;
@@ -556,14 +576,13 @@ export function MapaFormProvider({ children }) {
         const val = parseInt(iniciativaInput) || 0;
         updateFicha((ficha) => {
             ficha.iniciativa = val;
-            if (!ficha.posicao) ficha.posicao = {};
-            ficha.posicao.cenaId = cenaRenderId; 
+            if (!ficha.posicoes) ficha.posicoes = {};
+            ficha.posicoes[cenaRenderId] = { ...ficha.posicoes[cenaRenderId], cenaId: cenaRenderId }; 
         });
         salvarFichaSilencioso();
         setFeedIndexTurnoAtual(feedCombate.length); 
     }, [iniciativaInput, cenaRenderId, updateFicha, feedCombate.length]);
 
-    // 🔥 FIX 2: AVANCAR TURNO GLOBAL (MULTI-PLAYER) 🔥
     const avancarTurno = useCallback(() => {
         if (ordemIniciativa.length === 0) return;
         
@@ -575,26 +594,17 @@ export function MapaFormProvider({ children }) {
         setFeedIndexTurnoAtual(feedCombate.length);
         setJogadorHistory(null);
 
-        // Feedback no Chat para provar que rodou!
-        enviarParaFeed({ 
-            tipo: 'sistema', 
-            nome: 'SISTEMA', 
-            texto: `🔄 É a vez de ${nextPlayer.nome} agir!` 
-        });
+        enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `🔄 É a vez de ${nextPlayer.nome} agir!` });
 
         const storeState = useStore.getState();
         const novoCenario = JSON.parse(JSON.stringify(storeState.cenario || {}));
         novoCenario.turnoAtualIndex = nextIndex;
 
-        let mudouCenario = true;
-        
         if (novoCenario.zonas && novoCenario.zonas.length > 0) {
             novoCenario.zonas = novoCenario.zonas.filter(z => {
                 if (z.conjurador === nextPlayer.nome) {
                     z.duracao -= 1;
-                    if (z.duracao > 0 && z.danoOriginal) {
-                        dispararEfeitoDaZona(z);
-                    }
+                    if (z.duracao > 0 && z.danoOriginal) dispararEfeitoDaZona(z);
                     return z.duracao > 0;
                 }
                 return true; 
@@ -603,7 +613,6 @@ export function MapaFormProvider({ children }) {
 
         salvarCenarioCompleto(novoCenario);
 
-        // Recupera as ações do Dummie se for a vez dele (Mestre cuida disso)
         if (nextPlayer.isDummie && isMestre) {
             const dData = storeState.dummies[nextPlayer.id];
             if (dData && dData.acoes) {
@@ -614,18 +623,14 @@ export function MapaFormProvider({ children }) {
                 salvarDummie(nextPlayer.id, { ...dData, acoes });
             }
         }
-
     }, [ordemIniciativa, cenario, feedCombate.length, dispararEfeitoDaZona, isMestre]);
 
-    // 🔥 FIX 3: SENSOR DE AUTO-RECARGA DE JOGADOR 🔥
     const prevTurnoIndex = useRef(cenario?.turnoAtualIndex || 0);
 
     useEffect(() => {
         const currentIndex = cenario?.turnoAtualIndex || 0;
         if (currentIndex !== prevTurnoIndex.current && ordemIniciativa.length > 0) {
             const currentActor = ordemIniciativa[currentIndex];
-            
-            // Se chegou o turno deste ecrã, recupera as ações automaticamente!
             if (currentActor && !currentActor.isDummie && currentActor.nome === meuNome) {
                 updateFicha(f => {
                     if (!f.acoes) f.acoes = { padrao: {max:1, atual:1}, bonus: {max:1, atual:1}, reacao: {max:1, atual:1} };
@@ -639,7 +644,6 @@ export function MapaFormProvider({ children }) {
         }
     }, [cenario?.turnoAtualIndex, ordemIniciativa, meuNome, updateFicha]);
 
-
     const sairDoCombate = useCallback(() => {
         updateFicha(ficha => { ficha.iniciativa = 0; });
         setIniciativaInput(0);
@@ -651,11 +655,9 @@ export function MapaFormProvider({ children }) {
         if (!window.confirm(`Tem a certeza que deseja ZERAR A INICIATIVA DE TODOS OS JOGADORES E ENTIDADES presentes na cena "${cenaAtual.nome}"?`)) return;
         enviarParaFeed({ tipo: 'sistema', nome: 'SISTEMA', texto: `⚔️ O COMBATE EM ${cenaAtual.nome.toUpperCase()} FOI ENCERRADO PELO MESTRE! ⚔️` });
         
-        // Zera os jogadores
         const nomesNaCena = ordemIniciativa.filter(j => !j.isDummie).map(j => j.nome);
         if (nomesNaCena.length > 0) zerarIniciativaGlobal(nomesNaCena);
 
-        // Zera os dummies locais do Mestre
         const storeState = useStore.getState();
         ordemIniciativa.filter(j => j.isDummie).forEach(d => {
             const dData = storeState.dummies[d.id];
@@ -667,7 +669,6 @@ export function MapaFormProvider({ children }) {
         salvarFichaSilencioso();
         setJogadorHistory(null);
         
-        // Zera o turno atual!
         const novoCenario = JSON.parse(JSON.stringify(storeState.cenario || {}));
         novoCenario.turnoAtualIndex = 0;
         salvarCenarioCompleto(novoCenario);
@@ -728,31 +729,6 @@ export function MapaFormProvider({ children }) {
         enviarParaFeed(feedData); 
     }, [mapQD, mapFD, mapBonus, mapUsarProf, profGlobal, mapStat, fichaSegura, mapVantagens, mapDesvantagens, alvoSelecionado, dummies, meuNome, cenario]);
 
-    const tokenMap = useMemo(() => {
-        const map = {};
-        const nomes = Object.keys(jogadores);
-        for (let i = 0; i < nomes.length; i++) {
-            const nome = nomes[i];
-            const pos = jogadores[nome].posicao;
-            const pCena = pos?.cenaId || 'default'; 
-            if (pos && pos.x !== undefined && pCena === cenaRenderId) {
-                const key = `${pos.x},${pos.y}`;
-                if (!map[key]) map[key] = [];
-                map[key].push({ nome, ficha: jogadores[nome] });
-            }
-        }
-        return map;
-    }, [jogadores, cenaRenderId]);
-
-    const tokens3D = useMemo(() => {
-        return Object.entries(jogadores)
-            .filter(([nome, ficha]) => (ficha.posicao?.cenaId || 'default') === cenaRenderId)
-            .map(([nome, ficha]) => ({
-                nome, x: ficha.posicao?.x || 0, y: ficha.posicao?.y || 0, z: ficha.posicao?.z || 0, cor: corDoJogador(nome)
-            }));
-    }, [jogadores, cenaRenderId, corDoJogador]);
-
-    // Lê sempre o jogador da vez com base no índice sincronizado!
     const jogadorDaVez = ordemIniciativa.length > 0 ? ordemIniciativa[turnoAtualIndex % ordemIniciativa.length] : null;
     const infoDaVez = jogadorDaVez ? getAvatarInfo(jogadorDaVez.ficha) : null;
 
@@ -760,7 +736,7 @@ export function MapaFormProvider({ children }) {
         minhaFicha, meuNome, personagens, feedCombate, isMestre, dummies, alvoSelecionado, cenario, abaAtiva,
         fichaSegura, modo3D, setModo3D, tamanhoCelula, setTamanhoCelula,
         iniciativaInput, setIniciativaInput, altitudeInput, setAltitudeInput,
-        turnoAtualIndex, feedIndexTurnoAtual, setFeedIndexTurnoAtual, // setTurnoAtualIndex Removido (Agora é Firebase)
+        turnoAtualIndex, feedIndexTurnoAtual, setFeedIndexTurnoAtual,
         jogadorHistory, setJogadorHistory, mapQD, setMapQD, mapFD, setMapFD,
         mapBonus, setMapBonus, mapStat, setMapStat, mapUsarProf, setMapUsarProf,
         profGlobal, mapVantagens, setMapVantagens, mapDesvantagens, setMapDesvantagens,

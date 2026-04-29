@@ -20,7 +20,7 @@ const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Mapa provider não 
 // ============================================================================
 // 🔥 REPRODUTOR ANCORADO NO DOM (LIMPO E ANTI-BLOQUEIO) 🔥
 // ============================================================================
-function PlayerDeAudioRemoto({ stream, volume, surdo, nome, sinkId }) {
+export function PlayerDeAudioRemoto({ stream, volume, surdo, nome, sinkId }) {
     const audioRef = useRef(null);
 
     useEffect(() => {
@@ -69,7 +69,7 @@ function PlayerDeAudioRemoto({ stream, volume, surdo, nome, sinkId }) {
     );
 }
 
-function CalibradorDeVoz({ stream, sensibilidade, setSensibilidade }) {
+export function CalibradorDeVoz({ stream, sensibilidade, setSensibilidade }) {
     const barraRef = useRef(null);
     useEffect(() => {
         if (!stream) return;
@@ -227,7 +227,6 @@ export function MapaOlhoSextaFeira() {
     const [destinoLore, setDestinoLore] = useState('novo_capitulo');
     const [arcosCache, setArcosCache] = useState([]);
 
-    // 🔥 MÁSCARAS DO MESTRE & BANCO DE NPCs 🔥
     const [mascaraMestre, setMascaraMestre] = useState('narrador'); 
     const [nomeNpc, setNomeNpc] = useState('');
     const [npcSalvos, setNpcSalvos] = useState(() => {
@@ -909,23 +908,29 @@ export function MapaMestreGerenciadorZonas() {
     );
 }
 
+// ============================================================================
+// 🔥 AS FERRAMENTAS DO MAPA ALTERADAS E BLINDADAS 🔥
+// ============================================================================
 export function MapaRolagemRapida() {
     const ctx = useMapaForm();
     if (!ctx) return <div style={{ color: '#888', padding: 10 }}>Mapa provider não encontrado</div>;
     
+    // 🔥 Puxamos o 'cenaRenderId' daqui também
     const { 
         mapStat, setMapStat, mapQD, setMapQD, mapFD, setMapFD, mapBonus, setMapBonus, 
         mapVantagens, changeVantagem, mapDesvantagens, changeDesvantagem, mapUsarProf, 
-        setMapUsarProf, alvoSelecionado, dummies, fichaSegura, cenaAtual, rolarAcertoRapido, isModoRP
+        setMapUsarProf, alvoSelecionado, dummies, fichaSegura, cenaAtual, rolarAcertoRapido, isModoRP, cenaRenderId
     } = ctx;
 
     let dQuad = 0; let alcanceEf = 1; let maxArea = 0; let foraAlc = false;
     const alvoD = alvoSelecionado && dummies?.[alvoSelecionado] ? dummies[alvoSelecionado] : null;
 
     if (alvoD && !isModoRP) {
-        const dx = Math.abs((fichaSegura?.posicao?.x || 0) - (alvoD.posicao?.x || 0));
-        const dy = Math.abs((fichaSegura?.posicao?.y || 0) - (alvoD.posicao?.y || 0));
-        const dz = Math.abs((fichaSegura?.posicao?.z || 0) - (alvoD.posicao?.z || 0)) / (cenaAtual.escala || 1.5);
+        // 🔥 LÊ A DISTÂNCIA COM A NOVA POSIÇÃO DA CENA CORRETA
+        const posLocal = fichaSegura?.posicoes?.[cenaRenderId] || fichaSegura?.posicao;
+        const dx = Math.abs((posLocal?.x || 0) - (alvoD.posicao?.x || 0));
+        const dy = Math.abs((posLocal?.y || 0) - (alvoD.posicao?.y || 0));
+        const dz = Math.abs((posLocal?.z || 0) - (alvoD.posicao?.z || 0)) / (cenaAtual.escala || 1.5);
         dQuad = Math.max(dx, dy, Math.floor(dz));
         
         const armasEq = (fichaSegura?.inventario || []).filter(i => i.tipo === 'arma' && i.equipado);
@@ -940,7 +945,7 @@ export function MapaRolagemRapida() {
         const maxAlcMagias = magiasEq.length > 0 ? Math.max(...magiasEq.map(m => m.alcanceQuad || 1)) : 1;
         const maxAreaMagias = magiasEq.length > 0 ? Math.max(...magiasEq.map(m => m.areaQuad || 0)) : 0;
 
-        alcanceEf = Math.max(maxAlcArmas, maxAlcPoderes, maxMagias);
+        alcanceEf = Math.max(maxAlcArmas, maxAlcPoderes, maxAlcMagias);
         maxArea = Math.max(maxAreaArmas, maxAreaPoderes, maxAreaMagias);
         foraAlc = dQuad > alcanceEf;
     }
@@ -991,7 +996,6 @@ export function MapaRolagemRapida() {
     );
 }
 
-// 🔥 A NOSSA CAIXA MÁGICA FOI INJETADA AQUI! 🔥
 export function MapaAreaCentral() {
     const ctx = useMapaForm();
     if (!ctx) return FALLBACK;
@@ -1063,7 +1067,10 @@ export function MapaVisao() {
         <div id="combat-grid" style={{
             display: 'grid', gridTemplateColumns: `repeat(${MAP_SIZE}, ${tamanhoCelula}px)`, gap: 1,
             overflow: 'auto', maxHeight: '60vh', background: 'rgba(0,0,0,0.3)', padding: 5, borderRadius: 5,
-            backgroundImage: urlSeguraParaCss(cenaAtual.img), backgroundSize: 'cover', backgroundPosition: 'center',
+            backgroundImage: urlSeguraParaCss(cenaAtual.img), 
+            backgroundSize: '100% 100%',     /* 🔥 BLINDAGEM CSS AQUI 🔥 */
+            backgroundRepeat: 'no-repeat',   /* 🔥 MAPA NÃO SE CLONA MAIS 🔥 */
+            backgroundPosition: 'center',
             position: 'relative'
         }}>
             {zonasCena.map(z => (
@@ -1087,7 +1094,6 @@ export function MapaVisao() {
 
             {cells.map((cell) => {
                 const key = `${cell.x},${cell.y}`;
-                
                 const tokensNestaCelula = tokenMap[key] || [];
                 const visivelTokens = tokensNestaCelula.filter(tk => isMestre || !(cenario?.tokensOcultos?.includes(tk.nome)));
 
@@ -1111,8 +1117,12 @@ export function MapaVisao() {
                             const info = getAvatarInfo(tk.ficha);
                             const isMe = tk.nome === meuNome;
                             const isOculto = cenario?.tokensOcultos?.includes(tk.nome);
-                            const altitude = tk.ficha?.posicao?.z || 0;
+                            
+                            // LÊ A ALTITUDE NA CENA CORRETA
+                            const posLocal = tk.ficha?.posicoes?.[cenaRenderId] || tk.ficha?.posicao;
+                            const altitude = posLocal?.z || 0;
                             const isFlying = altitude > 0;
+                            
                             const tkMesa = tk.ficha?.bio?.mesa || 'presente';
                             let tkClass = tk.ficha?.bio?.classe;
                             if ((tkClass === 'pretender' || tkClass === 'alterego') && tk.ficha?.bio?.subClasse) tkClass = tk.ficha?.bio?.subClasse;
@@ -1145,6 +1155,10 @@ export function MapaVisao() {
         </div>
     );
 }
+
+// ============================================================================
+// 🔥 FUNÇÕES INTACTAS DA ECONOMIA E INICIATIVA 🔥
+// ============================================================================
 
 export function MapaEconomiaAcoes() {
     const ctx = useMapaForm();
