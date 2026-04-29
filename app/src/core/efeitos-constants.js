@@ -1,4 +1,4 @@
-// Constantes compartilhadas entre PoderesPanel e ArsenalPanel
+// Constantes compartilhadas entre PoderesPanel, ArsenalPanel e FormasEditor
 export const ATRIBUTOS_AGRUPADOS = [
     {
         label: 'STATUS BASE',
@@ -18,10 +18,10 @@ export const ATRIBUTOS_AGRUPADOS = [
     },
     {
         label: 'ESPECIAIS (GLOBAIS)',
-        options: ['todos_status', 'todas_energias', 'geral']
+        options: ['todos_status', 'todas_energias', 'geral', 'especial']
     }
 ];
 
 export const PROPRIEDADE_OPTIONS = [
-    'base', 'mbase', 'mgeral', 'mformas', 'mabs', 'munico', 'reducaocusto', 'regeneracao'
+    'base', 'mbase', 'mgeral', 'mformas', 'mabs', 'munico', 'furia_berserker', 'reducaocusto', 'regeneracao', 'elemento_inato'
 ];

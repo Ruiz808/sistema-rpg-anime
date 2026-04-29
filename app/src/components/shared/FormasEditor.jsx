@@ -20,8 +20,8 @@ export default function FormasEditor({ className, itemRaridade, formas, formaAti
                 descricao: '', 
                 imagemUrl: '', 
                 efeitos: [], efeitosPassivos: [],
-                tAtrA: 'forca', tPropA: 'base', tValA: '',
-                tAtrP: 'forca', tPropP: 'base', tValP: ''
+                tNomeA: '', tAtrA: 'forca', tPropA: 'base', tValA: '',
+                tNomeP: '', tAtrP: 'forca', tPropP: 'base', tValP: ''
             }]
         });
         setMostrarFormas(true);
@@ -39,8 +39,8 @@ export default function FormasEditor({ className, itemRaridade, formas, formaAti
             descricao: c.descricao || '',
             imagemUrl: c.imagemUrl || '',
             efeitos: c.efeitos || [], efeitosPassivos: c.efeitosPassivos || [],
-            tAtrA: c.tAtrA || 'forca', tPropA: c.tPropA || 'base', tValA: c.tValA || '',
-            tAtrP: c.tAtrP || 'forca', tPropP: c.tPropP || 'base', tValP: c.tValP || ''
+            tNomeA: c.tNomeA || '', tAtrA: c.tAtrA || 'forca', tPropA: c.tPropA || 'base', tValA: c.tValA || '',
+            tNomeP: c.tNomeP || '', tAtrP: c.tAtrP || 'forca', tPropP: c.tPropP || 'base', tValP: c.tValP || ''
         }));
         
         if (!copia.configs.length) {
@@ -49,7 +49,8 @@ export default function FormasEditor({ className, itemRaridade, formas, formaAti
                 descricao: '', imagemUrl: '',
                 efeitos: copia.efeitos || [], 
                 efeitosPassivos: copia.efeitosPassivos || [],
-                tAtrA: 'forca', tPropA: 'base', tValA: '', tAtrP: 'forca', tPropP: 'base', tValP: ''
+                tNomeA: '', tAtrA: 'forca', tPropA: 'base', tValA: '', 
+                tNomeP: '', tAtrP: 'forca', tPropP: 'base', tValP: ''
             });
         }
         setEditando(copia);
@@ -83,7 +84,8 @@ export default function FormasEditor({ className, itemRaridade, formas, formaAti
             ...editando,
             configs: [...(editando.configs || []), {
                 id: Date.now(), nome: 'Nova Configuração', descricao: '', imagemUrl: '', efeitos: [], efeitosPassivos: [],
-                tAtrA: 'forca', tPropA: 'base', tValA: '', tAtrP: 'forca', tPropP: 'base', tValP: ''
+                tNomeA: '', tAtrA: 'forca', tPropA: 'base', tValA: '', 
+                tNomeP: '', tAtrP: 'forca', tPropP: 'base', tValP: ''
             }]
         });
     };
@@ -105,15 +107,17 @@ export default function FormasEditor({ className, itemRaridade, formas, formaAti
         if (!cfg) return;
         
         if (isAtivo) {
-            if (!cfg.tValA) return alert('Preencha o valor do efeito!');
+            if (!cfg.tNomeA?.trim() || cfg.tValA === '') return alert('Preencha o nome e o valor do efeito! (Coloque 0 no valor se for uma habilidade mecânica/inata)');
             if (!cfg.efeitos) cfg.efeitos = [];
-            cfg.efeitos.push({ atributo: cfg.tAtrA || 'forca', propriedade: cfg.tPropA || 'base', valor: cfg.tValA });
+            cfg.efeitos.push({ nome: cfg.tNomeA.trim(), atributo: cfg.tAtrA || 'forca', propriedade: cfg.tPropA || 'base', valor: cfg.tValA });
             cfg.tValA = '';
+            cfg.tNomeA = '';
         } else {
-            if (!cfg.tValP) return alert('Preencha o valor do efeito passivo!');
+            if (!cfg.tNomeP?.trim() || cfg.tValP === '') return alert('Preencha o nome e o valor do efeito passivo! (Coloque 0 no valor se for uma habilidade mecânica/inata)');
             if (!cfg.efeitosPassivos) cfg.efeitosPassivos = [];
-            cfg.efeitosPassivos.push({ atributo: cfg.tAtrP || 'forca', propriedade: cfg.tPropP || 'base', valor: cfg.tValP });
+            cfg.efeitosPassivos.push({ nome: cfg.tNomeP.trim(), atributo: cfg.tAtrP || 'forca', propriedade: cfg.tPropP || 'base', valor: cfg.tValP });
             cfg.tValP = '';
+            cfg.tNomeP = '';
         }
         setEditando({ ...editando, configs: novas });
     };
@@ -135,8 +139,8 @@ export default function FormasEditor({ className, itemRaridade, formas, formaAti
         const formaLimpa = JSON.parse(JSON.stringify(editando));
         
         formaLimpa.configs = (formaLimpa.configs || []).map(c => {
-            delete c.tAtrA; delete c.tPropA; delete c.tValA;
-            delete c.tAtrP; delete c.tPropP; delete c.tValP;
+            delete c.tNomeA; delete c.tAtrA; delete c.tPropA; delete c.tValA;
+            delete c.tNomeP; delete c.tAtrP; delete c.tPropP; delete c.tValP;
             return c;
         });
         
@@ -233,7 +237,6 @@ export default function FormasEditor({ className, itemRaridade, formas, formaAti
                                     <label style={{ color: '#00ffcc', fontSize: '0.8em' }}>Nome da Forma</label>
                                     <input className="input-neon" value={editando.nome || ''} onChange={e => handleFormaChange('nome', e.target.value)} placeholder="Ex: Forma dos Pecados" style={{ width: '100%', borderColor: '#00ffcc' }} />
                                 </div>
-                                {/* 🔥 UPLOAD DA IMAGEM DA FORMA 🔥 */}
                                 <div>
                                     <label style={{ color: '#00ffcc', fontSize: '0.8em' }}>Anexar Imagem da Forma</label>
                                     <input type="file" accept="image/*" onChange={handleFormaImageUpload} style={{ display: 'block', color: '#fff', fontSize: '0.8em', marginTop: '5px' }} />
@@ -263,7 +266,6 @@ export default function FormasEditor({ className, itemRaridade, formas, formaAti
                                             <label style={{ color: '#ffaa00', fontSize: '0.8em' }}>Nome do Modo / Pecado</label>
                                             <input className="input-neon" value={cfg.nome || ''} onChange={e => handleConfigChange(cIdx, 'nome', e.target.value)} placeholder="Ex: Ganância, Tiamat Verde..." style={{ width: '100%', borderColor: '#ffaa00', color: '#ffaa00' }} />
                                         </div>
-                                        {/* 🔥 UPLOAD DA IMAGEM DA CONFIGURAÇÃO 🔥 */}
                                         <div>
                                             <label style={{ color: '#ffaa00', fontSize: '0.8em' }}>Anexar Imagem do Modo</label>
                                             <input type="file" accept="image/*" onChange={(e) => handleConfigImageUpload(cIdx, e)} style={{ display: 'block', color: '#fff', fontSize: '0.8em', marginTop: '5px' }} />
@@ -278,8 +280,9 @@ export default function FormasEditor({ className, itemRaridade, formas, formaAti
                                     <textarea className="input-neon" value={cfg.descricao || ''} onChange={e => handleConfigChange(cIdx, 'descricao', e.target.value)} placeholder="O que este modo faz mecanicamente ou na história? Ex: 'Área de 4.5m reduz a movimentação...'" style={{ width: '100%', minHeight: '60px', marginBottom: 15, whiteSpace: 'pre-wrap' }} />
 
                                     <h6 style={{ color: '#0ff', margin: '0 0 5px 0', fontSize: '0.85em' }}>Efeitos Ativos (Motor)</h6>
-                                    {/* Layout Grid Blindado */}
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 80px auto', gap: 6, marginBottom: 5 }}>
+                                    {/* 🔥 LAYOUT GRID ATUALIZADO: Com campo para o Nome do Efeito 🔥 */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 60px auto', gap: 6, marginBottom: 5 }}>
+                                        <input className="input-neon" type="text" placeholder="Nome (Ex: Vento)" style={{ padding: 4, fontSize: '0.8em' }} value={cfg.tNomeA || ''} onChange={e => handleConfigChange(cIdx, 'tNomeA', e.target.value)} />
                                         <select className="input-neon" style={{ padding: 4, fontSize: '0.8em' }} value={cfg.tAtrA || 'forca'} onChange={e => handleConfigChange(cIdx, 'tAtrA', e.target.value)}>
                                             {ATRIBUTOS_AGRUPADOS.map(g => <optgroup key={g.label} label={g.label}>{g.options.map(a => <option key={a} value={a}>{a.replace('_', ' ').toUpperCase()}</option>)}</optgroup>)}
                                         </select>
@@ -293,14 +296,15 @@ export default function FormasEditor({ className, itemRaridade, formas, formaAti
                                         if(!e) return null;
                                         return (
                                         <div key={eIdx} style={{ color: '#0ff', fontSize: '0.8em', display: 'flex', justifyContent: 'space-between', background: 'rgba(0,255,255,0.05)', padding: 4, marginBottom: 2 }}>
-                                            <span>[{(e.atributo || '').replace('_', ' ').toUpperCase()}] {(e.propriedade || '').toUpperCase()}: {e.valor}</span>
+                                            <span>{e.nome ? `[${e.nome}] ` : ''}[{(e.atributo || '').replace('_', ' ').toUpperCase()}] {(e.propriedade || '').toUpperCase()}: {e.valor}</span>
                                             <span style={{ color: '#f00', cursor: 'pointer' }} onClick={() => removeEfeitoFromConfig(cIdx, eIdx, true)}>X</span>
                                         </div>
                                     )})}
 
                                     <h6 style={{ color: '#f0f', margin: '15px 0 5px 0', fontSize: '0.85em' }}>Efeitos Passivos (Motor)</h6>
-                                    {/* Layout Grid Blindado */}
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 80px auto', gap: 6, marginBottom: 5 }}>
+                                    {/* 🔥 LAYOUT GRID ATUALIZADO 🔥 */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 60px auto', gap: 6, marginBottom: 5 }}>
+                                        <input className="input-neon" type="text" placeholder="Nome (Ex: Aura)" style={{ padding: 4, fontSize: '0.8em' }} value={cfg.tNomeP || ''} onChange={e => handleConfigChange(cIdx, 'tNomeP', e.target.value)} />
                                         <select className="input-neon" style={{ padding: 4, fontSize: '0.8em' }} value={cfg.tAtrP || 'forca'} onChange={e => handleConfigChange(cIdx, 'tAtrP', e.target.value)}>
                                             {ATRIBUTOS_AGRUPADOS.map(g => <optgroup key={g.label} label={g.label}>{g.options.map(a => <option key={a} value={a}>{a.replace('_', ' ').toUpperCase()}</option>)}</optgroup>)}
                                         </select>
@@ -314,7 +318,7 @@ export default function FormasEditor({ className, itemRaridade, formas, formaAti
                                         if(!e) return null;
                                         return (
                                         <div key={eIdx} style={{ color: '#f0f', fontSize: '0.8em', display: 'flex', justifyContent: 'space-between', background: 'rgba(255,0,255,0.05)', padding: 4, marginBottom: 2 }}>
-                                            <span>[{(e.atributo || '').replace('_', ' ').toUpperCase()}] {(e.propriedade || '').toUpperCase()}: {e.valor}</span>
+                                            <span>{e.nome ? `[${e.nome}] ` : ''}[{(e.atributo || '').replace('_', ' ').toUpperCase()}] {(e.propriedade || '').toUpperCase()}: {e.valor}</span>
                                             <span style={{ color: '#f00', cursor: 'pointer' }} onClick={() => removeEfeitoFromConfig(cIdx, eIdx, false)}>X</span>
                                         </div>
                                     )})}
