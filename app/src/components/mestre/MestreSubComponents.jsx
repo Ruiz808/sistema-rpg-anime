@@ -19,43 +19,123 @@ export function MestreAcessoNegado() {
     );
 }
 
+// 🔥 O NOVO VISOR COM SISTEMA DE PASTAS E ABAS 🔥
 export function MestreVisorJogadores() {
     const ctx = useMestreForm();
     if (!ctx) return FALLBACK;
     const { jogadoresComStats, meuNome, handleApagarJogador, fmt } = ctx;
 
+    // Estados para controlar o que está visível
+    const [abaVisor, setAbaVisor] = useState('jogadores');
+    const [pastasAbertas, setPastasAbertas] = useState({});
+
+    const togglePasta = (nomePasta) => setPastasAbertas(prev => ({...prev, [nomePasta]: !prev[nomePasta]}));
+
+    // 🛡️ SEPARAÇÃO INTELIGENTE (Heróis vs Ameaças)
+    const herois = jogadoresComStats.filter(j => !j.ficha?.isNPC && j.ficha?.bio?.mesa !== 'npc');
+    const npcs = jogadoresComStats.filter(j => j.ficha?.isNPC || j.ficha?.bio?.mesa === 'npc');
+
+    // 📁 AGRUPAMENTO POR FAMÍLIAS (Com IA de leitura de Lore)
+    const npcsPorFamilia = {};
+    npcs.forEach(npc => {
+        let familia = npc.ficha?.bio?.afiliacao;
+        
+        // Se não tiver afiliação salva (NPCs antigos), a nossa IA procura na descrição!
+        if (!familia || familia.trim() === '') {
+            const lorePoder = (npc.ficha?.poderes || []).find(p => p.nome === "📖 Linhagem & Lore");
+            if (lorePoder && lorePoder.descricao) {
+                const match = lorePoder.descricao.match(/Clã de Origem:\s*(.*)/);
+                if (match && match[1]) familia = match[1].trim();
+            }
+        }
+        
+        if (!familia || familia === 'Nenhum' || familia.trim() === '') {
+            familia = 'Sem Clã / Bestas Soltas';
+        }
+        
+        if (!npcsPorFamilia[familia]) npcsPorFamilia[familia] = [];
+        npcsPorFamilia[familia].push(npc);
+    });
+
+    const renderCard = (jogador) => {
+        const { nome, classId, hpAtual, hpMax, percHp, mpAtual, mpMax, evasiva, resistencia } = jogador;
+        return (
+            <div key={nome} style={{ background: 'rgba(0,0,0,0.6)', border: '1px solid #333', padding: '15px', borderRadius: '5px', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', top: 0, left: 0, height: '4px', width: `${percHp}%`, background: percHp > 50 ? '#0f0' : percHp > 20 ? '#ffcc00' : '#f00', transition: 'width 0.3s' }} />
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', marginTop: '5px' }}>
+                    <strong style={{ color: '#fff', fontSize: '1.2em' }}>{nome} {nome === meuNome && <span style={{color: '#ffcc00', fontSize: '0.6em'}}>(VOCÊ)</span>}</strong>
+                    <span style={{ color: '#aaa', fontSize: '0.8em', fontStyle: 'italic' }}>{classId ? classId.toUpperCase() : 'Mundano'}</span>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.85em', color: '#ccc', marginBottom: '10px' }}>
+                    <div style={{ background: 'rgba(255,0,0,0.1)', padding: '5px', borderRadius: '3px', borderLeft: '2px solid #f00' }}><span style={{ color: '#f00', fontWeight: 'bold' }}>HP:</span> {fmt(hpAtual)} / {fmt(hpMax)}</div>
+                    <div style={{ background: 'rgba(0,136,255,0.1)', padding: '5px', borderRadius: '3px', borderLeft: '2px solid #0088ff' }}><span style={{ color: '#0088ff', fontWeight: 'bold' }}>MP:</span> {fmt(mpAtual)} / {fmt(mpMax)}</div>
+                    <div style={{ background: 'rgba(0,255,204,0.1)', padding: '5px', borderRadius: '3px', borderLeft: '2px solid #00ffcc' }}><span style={{ color: '#00ffcc', fontWeight: 'bold' }}>EVA:</span> {evasiva}</div>
+                    <div style={{ background: 'rgba(255,204,0,0.1)', padding: '5px', borderRadius: '3px', borderLeft: '2px solid #ffcc00' }}><span style={{ color: '#ffcc00', fontWeight: 'bold' }}>RES:</span> {resistencia}</div>
+                </div>
+
+                <button
+                    className="btn-neon btn-red"
+                    style={{ width: '100%', padding: '4px', fontSize: '0.8em', margin: 0, opacity: nome === meuNome ? 0.3 : 1 }}
+                    onClick={() => handleApagarJogador(nome)}
+                    disabled={nome === meuNome}
+                >
+                    APAGAR PERSONAGEM
+                </button>
+            </div>
+        );
+    };
+
     return (
         <div className="def-box" style={{ flex: '1 1 60%', minWidth: '400px', borderLeft: '4px solid #0088ff' }}>
-            <h3 style={{ color: '#0088ff', margin: '0 0 15px 0' }}>Visor de Jogadores ({jogadoresComStats.length})</h3>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '15px' }}>
-                {jogadoresComStats.map(({ nome, classId, hpAtual, hpMax, percHp, mpAtual, mpMax, evasiva, resistencia }) => (
-                    <div key={nome} style={{ background: 'rgba(0,0,0,0.6)', border: '1px solid #333', padding: '15px', borderRadius: '5px', position: 'relative', overflow: 'hidden' }}>
-                        <div style={{ position: 'absolute', top: 0, left: 0, height: '4px', width: `${percHp}%`, background: percHp > 50 ? '#0f0' : percHp > 20 ? '#ffcc00' : '#f00', transition: 'width 0.3s' }} />
-
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', marginTop: '5px' }}>
-                            <strong style={{ color: '#fff', fontSize: '1.2em' }}>{nome} {nome === meuNome && <span style={{color: '#ffcc00', fontSize: '0.6em'}}>(VOCÊ)</span>}</strong>
-                            <span style={{ color: '#aaa', fontSize: '0.8em', fontStyle: 'italic' }}>{classId ? classId.toUpperCase() : 'Mundano'}</span>
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.85em', color: '#ccc', marginBottom: '10px' }}>
-                            <div style={{ background: 'rgba(255,0,0,0.1)', padding: '5px', borderRadius: '3px', borderLeft: '2px solid #f00' }}><span style={{ color: '#f00', fontWeight: 'bold' }}>HP:</span> {fmt(hpAtual)} / {fmt(hpMax)}</div>
-                            <div style={{ background: 'rgba(0,136,255,0.1)', padding: '5px', borderRadius: '3px', borderLeft: '2px solid #0088ff' }}><span style={{ color: '#0088ff', fontWeight: 'bold' }}>MP:</span> {fmt(mpAtual)} / {fmt(mpMax)}</div>
-                            <div style={{ background: 'rgba(0,255,204,0.1)', padding: '5px', borderRadius: '3px', borderLeft: '2px solid #00ffcc' }}><span style={{ color: '#00ffcc', fontWeight: 'bold' }}>EVA:</span> {evasiva}</div>
-                            <div style={{ background: 'rgba(255,204,0,0.1)', padding: '5px', borderRadius: '3px', borderLeft: '2px solid #ffcc00' }}><span style={{ color: '#ffcc00', fontWeight: 'bold' }}>RES:</span> {resistencia}</div>
-                        </div>
-
-                        <button
-                            className="btn-neon btn-red"
-                            style={{ width: '100%', padding: '4px', fontSize: '0.8em', margin: 0, opacity: nome === meuNome ? 0.3 : 1 }}
-                            onClick={() => handleApagarJogador(nome)}
-                            disabled={nome === meuNome}
-                        >
-                            APAGAR PERSONAGEM
-                        </button>
-                    </div>
-                ))}
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
+                <h3 style={{ color: '#0088ff', margin: 0 }}>Visor de Entidades ({jogadoresComStats.length})</h3>
+                <div style={{ display: 'flex', gap: '5px' }}>
+                    <button className={`btn-neon ${abaVisor === 'jogadores' ? 'btn-blue' : ''}`} onClick={() => setAbaVisor('jogadores')} style={{ margin: 0, padding: '5px 15px', fontSize: '0.9em' }}>🎭 JOGADORES ({herois.length})</button>
+                    <button className={`btn-neon ${abaVisor === 'npcs' ? 'btn-red' : ''}`} onClick={() => setAbaVisor('npcs')} style={{ margin: 0, padding: '5px 15px', fontSize: '0.9em' }}>👹 NPCs ({npcs.length})</button>
+                </div>
             </div>
+
+            {/* ABA DE JOGADORES REAIS */}
+            {abaVisor === 'jogadores' && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '15px' }}>
+                    {herois.map(renderCard)}
+                    {herois.length === 0 && <div style={{ color: '#aaa', fontStyle: 'italic' }}>Nenhum jogador encontrado.</div>}
+                </div>
+            )}
+
+            {/* ABA DE PASTAS DE NPCS */}
+            {abaVisor === 'npcs' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {Object.entries(npcsPorFamilia).map(([familia, lista]) => (
+                        <div key={familia} style={{ border: '1px solid #444', borderRadius: '5px', overflow: 'hidden' }}>
+                            <button 
+                                onClick={() => togglePasta(familia)}
+                                style={{ 
+                                    width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                                    padding: '12px 15px', background: pastasAbertas[familia] ? 'rgba(255, 0, 60, 0.2)' : 'rgba(0, 0, 0, 0.5)', 
+                                    border: 'none', borderLeft: '4px solid #ff003c', color: '#ffcc00', fontWeight: 'bold', 
+                                    cursor: 'pointer', textAlign: 'left', fontSize: '1.1em', transition: '0.3s'
+                                }}
+                            >
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    {pastasAbertas[familia] ? '📂' : '📁'} {familia.toUpperCase()}
+                                </span>
+                                <span style={{ color: '#fff', fontSize: '0.8em', background: '#ff003c', padding: '2px 8px', borderRadius: '12px' }}>{lista.length}</span>
+                            </button>
+                            
+                            {pastasAbertas[familia] && (
+                                <div style={{ padding: '15px', background: 'rgba(0,0,0,0.3)', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '15px' }}>
+                                    {lista.map(renderCard)}
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                    {npcs.length === 0 && <div style={{ color: '#aaa', fontStyle: 'italic' }}>Nenhum NPC ou Monstro encontrado.</div>}
+                </div>
+            )}
         </div>
     );
 }
@@ -64,7 +144,6 @@ export function MestreInjetorEntidades() {
     const ctx = useMestreForm();
     if (!ctx) return FALLBACK;
     
-    // Puxamos também o jogadoresComStats para ler a base de dados
     const { 
         dNome, setDNome, dHp, setDHp, dVit, setDVit, 
         dDefTipo, setDDefTipo, dDef, setDDef, 
@@ -72,7 +151,6 @@ export function MestreInjetorEntidades() {
         injetarDummie, jogadoresComStats 
     } = ctx;
 
-    // 🔥 O RADAR: Puxa a ficha e preenche tudo! 🔥
     const handleSelecionarEntidade = (e) => {
         const nomeSelecionado = e.target.value;
         if (!nomeSelecionado) return;
@@ -81,9 +159,9 @@ export function MestreInjetorEntidades() {
         if (entidade) {
             setDNome(entidade.nome);
             setDHp(entidade.hpMax || 100);
-            setDVit(0); // Reseta a vitalidade bónus
+            setDVit(0); 
             setDDefTipo('evasiva');
-            setDDef(entidade.evasiva || 10); // Puxa a CA calculada do monstro!
+            setDDef(entidade.evasiva || 10); 
         }
     };
 
@@ -92,8 +170,6 @@ export function MestreInjetorEntidades() {
             <h3 style={{ color: '#ff003c', margin: '0 0 15px 0' }}>👹 Injetor de Entidades (Mapa)</h3>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                
-                {/* 🔥 A NOVA CAIXA DE PESQUISA 🔥 */}
                 <div style={{ background: 'rgba(255, 0, 60, 0.1)', padding: '10px', borderRadius: '5px', border: '1px solid #ff003c' }}>
                     <label style={{ color: '#ff003c', fontSize: '0.85em', fontWeight: 'bold' }}>🔍 Carregar Ficha Salva (Auto-Preencher):</label>
                     <select 
@@ -147,7 +223,6 @@ export function MestreVozSistema() {
     );
 }
 
-// 🔥 NOVO COMPONENTE: FORJA DE NPCS 🔥
 export function MestreForjaNPC() {
     const [npc, setNpc] = useState({
         nome: '', avatar: '', hpMax: 100, manaMax: 50, forca: 1, destreza: 1, inteligencia: 1,
@@ -168,28 +243,24 @@ export function MestreForjaNPC() {
     const salvarNPC = async () => {
         if (!npc.nome) return alert("A entidade precisa ter um nome!");
         
-        // Estruturamos a ficha exatamente como o seu sistema gosta para não bugar o Visor
         const fichaCompleta = { 
-            bio: { classe: 'NPC - Ameaça', raca: 'Criatura', mesa: 'npc' }, 
+            bio: { classe: 'NPC - Ameaça', raca: 'Criatura', mesa: 'npc', afiliacao: 'Sem Clã / Bestas Soltas' }, 
             vida: { atual: Number(npc.hpMax), base: Number(npc.hpMax) },
             mana: { atual: Number(npc.manaMax), base: Number(npc.manaMax) },
             forca: { base: Number(npc.forca) },
             destreza: { base: Number(npc.destreza) },
             inteligencia: { base: Number(npc.inteligencia) },
             avatar: npc.avatar,
-            poderes: poderes, // Os poderes e ataques que você adicionou
-            formas: formas,   // As fases do Boss
+            poderes: poderes, 
+            formas: formas,   
             isNPC: true, 
             dataCriacao: Date.now() 
         };
         
         try {
-            // O comando mágico que cria a pasta do monstro no banco de dados!
             await set(ref(database, `personagens/${npc.nome}`), fichaCompleta);
-            
             alert(`🔥 Ameaça [${npc.nome}] forjada e enviada para o Firebase com sucesso!`);
             
-            // Limpa a forja para você poder criar o próximo lacaio
             setNpc({ nome: '', avatar: '', hpMax: 100, manaMax: 50, forca: 1, destreza: 1, inteligencia: 1 });
             setPoderes([]);
             setFormas([]);
