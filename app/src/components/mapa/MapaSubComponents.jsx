@@ -1015,21 +1015,50 @@ export function MapaAreaCentral() {
 
 export function MapaControlesSuperiores() {
     const ctx = useMapaForm();
-    if (!ctx) return FALLBACK;
-    const { modo3D, setModo3D, alterarZoom, tamanhoCelula, isMestre, cenaVisualizadaId, cenaAtivaIdGlobal, cenaAtual, altitudeInput, setAltitudeInput } = ctx;
+    if (!ctx) return <div style={{ color: '#888', padding: 10 }}>Mapa provider não encontrado</div>;
+    
+    const { 
+        modo3D, setModo3D, alterarZoom, tamanhoCelula, isMestre, 
+        cenaVisualizadaId, cenaAtivaIdGlobal, cenaAtual, 
+        altitudeInput, setAltitudeInput, cenario, ativarCena 
+    } = ctx;
     
     return (
-        <div style={{ display: 'flex', gap: 15, marginBottom: 10, alignItems: 'center', background: 'rgba(0,0,0,0.6)', padding: '6px 12px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', fontSize: '0.85em', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 15, marginBottom: 10, alignItems: 'center', background: 'rgba(0,0,0,0.6)', padding: '6px 12px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', fontSize: '0.85em', flexWrap: 'wrap', position: 'relative', zIndex: 100 }}>
             <div style={{ display: 'flex', gap: 5, alignItems: 'center', opacity: modo3D ? 0.3 : 1 }}>
                 <button className="btn-neon" onClick={() => alterarZoom(-1)} style={{ padding: '2px 8px', margin: 0 }} disabled={modo3D}>-</button>
                 <span style={{ color: '#aaa', minWidth: '80px', textAlign: 'center' }}>Zoom: {tamanhoCelula}px</span>
                 <button className="btn-neon" onClick={() => alterarZoom(1)} style={{ padding: '2px 8px', margin: 0 }} disabled={modo3D}>+</button>
             </div>
+            
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', borderLeft: '1px solid #444', paddingLeft: 15 }}>
                 <span style={{ color: isMestre && cenaVisualizadaId && cenaVisualizadaId !== cenaAtivaIdGlobal ? '#0088ff' : '#ffcc00', fontWeight: 'bold' }}>
                     {isMestre && cenaVisualizadaId && cenaVisualizadaId !== cenaAtivaIdGlobal ? '👁️ Previsão:' : 'Cena:'}
                 </span>
-                <span style={{ color: '#fff', fontWeight: 'bold' }}>{cenaAtual.nome} <span style={{color: '#888', fontWeight: 'normal'}}>(1Q = {cenaAtual.escala}{cenaAtual.unidade})</span></span>
+                
+                {/* 🔥 SELETOR RÁPIDO DE CENAS PARA O MESTRE 🔥 */}
+                {isMestre ? (
+                    <select 
+                        className="input-neon" 
+                        value={cenaAtivaIdGlobal} 
+                        onChange={(e) => ativarCena(e.target.value)}
+                        style={{ padding: '2px 5px', height: '26px', margin: 0, borderColor: '#ffcc00', color: '#ffcc00', fontWeight: 'bold', cursor: 'pointer' }}
+                    >
+                        {Object.entries(cenario?.lista || {}).map(([id, c]) => (
+                            <option key={id} value={id}>{c.nome}</option>
+                        ))}
+                    </select>
+                ) : (
+                    <span style={{ color: '#fff', fontWeight: 'bold' }}>{cenaAtual.nome}</span>
+                )}
+                
+                <span style={{color: '#888', fontWeight: 'normal'}}>(1Q = {cenaAtual.escala}{cenaAtual.unidade})</span>
+                
+                {isMestre && (
+                    <span style={{ color: '#00ccff', fontStyle: 'italic', marginLeft: '5px', fontSize: '0.85em' }}>
+                        (Abra a aba 🎬 Cenas acima para criar novas)
+                    </span>
+                )}
             </div>
 
             <div style={{ display: 'flex', gap: 5, alignItems: 'center', borderLeft: '1px solid #444', paddingLeft: 15, marginLeft: 'auto' }}>

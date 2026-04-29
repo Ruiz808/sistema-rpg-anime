@@ -21,7 +21,15 @@ export default function MapaMundi({ children }) {
     const [mapasSalvos, setMapasSalvos] = useState({
         'Freljord': ['Acampamento Glacinata', 'Passe da Montanha']
     });
-    const [mapasImagens, setMapasImagens] = useState({});
+   const [mapasImagens, setMapasImagens] = useState(() => {
+        const salvo = localStorage.getItem('rpg_mapas_mundi_custom');
+        return salvo ? JSON.parse(salvo) : {};
+    });
+
+    // Adicione este bloco logo abaixo do useState:
+    useEffect(() => {
+        localStorage.setItem('rpg_mapas_mundi_custom', JSON.stringify(mapasImagens));
+    }, [mapasImagens]);
     const [reinoSelecionado, setReinoSelecionado] = useState(null);
     const [modoEdicaoMapa, setModoEdicaoMapa] = useState(false);
     const [urlInput, setUrlInput] = useState('');
