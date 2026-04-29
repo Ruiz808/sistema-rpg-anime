@@ -26,7 +26,8 @@ export const ATRIBUTO_OPTIONS = [
     { value: 'todos_status', label: 'TODOS OS STATUS' },
     { value: 'todas_energias', label: 'TODAS AS ENERGIAS' },
     { value: 'geral', label: 'GERAL (Todos)' },
-    { value: 'dano', label: 'Dano (Apenas Mult)' }
+    { value: 'dano', label: 'Dano (Apenas Mult)' },
+    { value: 'especial', label: 'Especial / Mecânica' } // 🔥 NOVO ATRIBUTO
 ];
 
 export const CLASSES_OPTIONS = [
@@ -85,6 +86,7 @@ export function FichaFormProvider({ children }) {
     const [serDescricao, setSerDescricao] = useState('');
     const [serElemento, setSerElemento] = useState('');
     const [serClasse, setSerClasse] = useState('');
+    const [serZeraCusto, setSerZeraCusto] = useState(false); // 🔥 NOVA REGRA DE PACTO
     const [serEditandoId, setSerEditandoId] = useState(null);
     
     const [serEfeitos, setSerEfeitos] = useState([]);
@@ -318,7 +320,7 @@ export function FichaFormProvider({ children }) {
     }, [serEfeitosPassivos]);
 
     const cancelarEdicaoSer = useCallback(() => {
-        setSerEditandoId(null); setSerNome(''); setSerDescricao(''); setSerElemento(''); setSerClasse('');
+        setSerEditandoId(null); setSerNome(''); setSerDescricao(''); setSerElemento(''); setSerClasse(''); setSerZeraCusto(false);
         setSerEfeitos([]); setSerEfeitosPassivos([]);
     }, []);
 
@@ -329,25 +331,25 @@ export function FichaFormProvider({ children }) {
             if (serEditandoId) {
                 const s = f.seresSelados.find(x => x.id === serEditandoId);
                 if (s) { 
-                    s.nome = serNome; s.descricao = serDescricao; s.elemento = serElemento; s.classe = serClasse;
+                    s.nome = serNome; s.descricao = serDescricao; s.elemento = serElemento; s.classe = serClasse; s.zeraCusto = serZeraCusto;
                     s.efeitos = [...serEfeitos]; s.efeitosPassivos = [...serEfeitosPassivos];
                 }
             } else {
                 f.seresSelados.push({ 
-                    id: Date.now().toString(), nome: serNome, descricao: serDescricao, elemento: serElemento, classe: serClasse, ativo: false,
+                    id: Date.now().toString(), nome: serNome, descricao: serDescricao, elemento: serElemento, classe: serClasse, zeraCusto: serZeraCusto, ativo: false,
                     efeitos: [...serEfeitos], efeitosPassivos: [...serEfeitosPassivos], formas: [], formaAtivaId: null
                 });
             }
         });
         salvarFichaSilencioso();
         cancelarEdicaoSer();
-    }, [serNome, serDescricao, serElemento, serClasse, serEfeitos, serEfeitosPassivos, serEditandoId, updateFicha, cancelarEdicaoSer]);
+    }, [serNome, serDescricao, serElemento, serClasse, serZeraCusto, serEfeitos, serEfeitosPassivos, serEditandoId, updateFicha, cancelarEdicaoSer]);
 
     const editarSerSelado = useCallback((id) => {
         const s = (minhaFicha?.seresSelados || []).find(x => x.id === id);
         if (!s) return;
         if (s.ativo) { alert("Desative a sincronização do Ser antes de editá-lo!"); return; }
-        setSerEditandoId(s.id); setSerNome(s.nome); setSerDescricao(s.descricao || ''); setSerElemento(s.elemento || ''); setSerClasse(s.classe || '');
+        setSerEditandoId(s.id); setSerNome(s.nome); setSerDescricao(s.descricao || ''); setSerElemento(s.elemento || ''); setSerClasse(s.classe || ''); setSerZeraCusto(s.zeraCusto || false);
         setSerEfeitos([...(s.efeitos || [])]); setSerEfeitosPassivos([...(s.efeitosPassivos || [])]);
     }, [minhaFicha]);
 
@@ -544,9 +546,12 @@ export function FichaFormProvider({ children }) {
         copiasAtivas, novaCopiaNome, setNovaCopiaNome, novaCopiaEfeito, setNovaCopiaEfeito,
         addCopiaAtiva, removeCopiaAtiva, getAtualVital,
         seresSelados, serNome, setSerNome, serDescricao, setSerDescricao,
-        serElemento, setSerElemento, serClasse, setSerClasse, serEditandoId,
-        serEfeitos, serEfeitosPassivos, serNovoNomeEfeito, serNovoAtr, serNovoProp, serNovoVal,
-        serNovoNomeEfeitoPassivo, serNovoAtrPassivo, serNovoPropPassivo, serNovoValPassivo,
+        serElemento, setSerElemento, serClasse, setSerClasse, serEditandoId, serZeraCusto, setSerZeraCusto,
+        serEfeitos, serEfeitosPassivos, 
+        serNovoNomeEfeito, setSerNovoNomeEfeito, 
+        serNovoAtr, setSerNovoAtr, serNovoProp, setSerNovoProp, serNovoVal, setSerNovoVal,
+        serNovoNomeEfeitoPassivo, setSerNovoNomeEfeitoPassivo, 
+        serNovoAtrPassivo, setSerNovoAtrPassivo, serNovoPropPassivo, setSerNovoPropPassivo, serNovoValPassivo, setSerNovoValPassivo,
         addSerEfeito, removeSerEfeito, addSerEfeitoPassivo, removeSerEfeitoPassivo,
         addSerSelado, editarSerSelado, removeSerSelado, toggleSerSelado, cancelarEdicaoSer,
         salvarFormaSer, deletarFormaSer, ativarFormaSer
@@ -561,7 +566,7 @@ export function FichaFormProvider({ children }) {
         trackersCena, novoTrackerNome, novoTrackerValor, addTrackerCena, modTrackerCena, removeTrackerCena, resetarTrackersCena,
         valorInjecao, alvosInjecao, showAbsorverMsg, toggleAlvo, injetarAnomalia, leisCena, novaLeiNome, addLeiCena, removeLeiCena,
         copiasAtivas, novaCopiaNome, novaCopiaEfeito, addCopiaAtiva, removeCopiaAtiva, getAtualVital,
-        seresSelados, serNome, serDescricao, serElemento, serClasse, serEditandoId,
+        seresSelados, serNome, serDescricao, serElemento, serClasse, serEditandoId, serZeraCusto,
         serEfeitos, serEfeitosPassivos, serNovoNomeEfeito, serNovoAtr, serNovoProp, serNovoVal,
         serNovoNomeEfeitoPassivo, serNovoAtrPassivo, serNovoPropPassivo, serNovoValPassivo,
         addSerEfeito, removeSerEfeito, addSerEfeitoPassivo, removeSerEfeitoPassivo,

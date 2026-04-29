@@ -13,7 +13,8 @@ const PROPRIEDADE_OPTIONS = [
     { val: 'munico', lbl: 'Mult Único (x)' },
     { val: 'furia_berserker', lbl: 'Fúria Berserker (x)' },
     { val: 'reducaocusto', lbl: 'Redução Custo (%)' },
-    { val: 'regeneracao', lbl: 'Regeneração' }
+    { val: 'regeneracao', lbl: 'Regeneração' },
+    { val: 'elemento_inato', lbl: 'Inato (Zera Custo Elementos)' } // 🔥 NOVO: PROPRIEDADE MÁGICA
 ];
 
 function renderBuffHolograma(rawVal, buffVal, hasBuff, isMult = false) {
@@ -152,11 +153,12 @@ export function FichaSeresSelados() {
     if (!ctx) return null;
     const {
         seresSelados, serNome, setSerNome, serDescricao, setSerDescricao,
-        serElemento, setSerElemento, serClasse, setSerClasse, serEditandoId,
-        serEfeitos, serEfeitosPassivos, serNovoNomeEfeito, setSerNovoNomeEfeito,
+        serElemento, setSerElemento, serClasse, setSerClasse, serEditandoId, serZeraCusto, setSerZeraCusto,
+        serEfeitos, serEfeitosPassivos, 
+        serNovoNomeEfeito, setSerNovoNomeEfeito, 
         serNovoAtr, setSerNovoAtr, serNovoProp, setSerNovoProp, serNovoVal, setSerNovoVal,
-        serNovoNomeEfeitoPassivo, setSerNovoNomeEfeitoPassivo, serNovoAtrPassivo, setSerNovoAtrPassivo,
-        serNovoPropPassivo, setSerNovoPropPassivo, serNovoValPassivo, setSerNovoValPassivo,
+        serNovoNomeEfeitoPassivo, setSerNovoNomeEfeitoPassivo, 
+        serNovoAtrPassivo, setSerNovoAtrPassivo, serNovoPropPassivo, setSerNovoPropPassivo, serNovoValPassivo, setSerNovoValPassivo,
         addSerEfeito, removeSerEfeito, addSerEfeitoPassivo, removeSerEfeitoPassivo,
         addSerSelado, editarSerSelado, removeSerSelado, toggleSerSelado, cancelarEdicaoSer,
         salvarFormaSer, deletarFormaSer, ativarFormaSer
@@ -174,7 +176,7 @@ export function FichaSeresSelados() {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
                                 <div style={{ flex: 1 }}>
                                     <h4 style={{ margin: 0, color: ser.ativo ? '#00ffcc' : '#fff', textShadow: ser.ativo ? '0 0 10px #00ffcc' : 'none', fontSize: '1.2em' }}>{ser.nome}</h4>
-                                    <div style={{ color: '#8a2be2', fontSize: '0.8em', fontWeight: 'bold', marginTop: '4px' }}>Domínio (Zera Custo do Elemento): {ser.elemento || 'Nenhum'}</div>
+                                    <div style={{ color: '#8a2be2', fontSize: '0.8em', fontWeight: 'bold', marginTop: '4px' }}>Domínio: {ser.elemento || 'Nenhum'} {ser.zeraCusto && <span style={{ color: '#00ffcc' }}>(Zera Custo)</span>}</div>
                                     {ser.classe && <div style={{ color: '#00ffcc', fontSize: '0.8em', fontWeight: 'bold', marginTop: '2px' }}>Classe Herdada: {CLASSES_OPTIONS.find(o => o.value === ser.classe)?.label || ser.classe}</div>}
                                 </div>
                                 <div style={{ display: 'flex', gap: '5px' }}>
@@ -212,11 +214,17 @@ export function FichaSeresSelados() {
                 <h4 style={{ color: '#8a2be2', margin: '0 0 10px 0' }}>{serEditandoId ? '⚙️ Editar Entidade' : '🔗 Vincular Nova Entidade'}</h4>
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '10px' }}>
                     <input className="input-neon" type="text" placeholder="Nome da Entidade (Ex: Kurama, Sukuna)" value={serNome} onChange={e => setSerNome(e.target.value)} style={{ flex: '2 1 200px', margin: 0, borderColor: '#8a2be2', color: '#fff' }} />
-                    <input className="input-neon" type="text" placeholder="Elemento / Essência" value={serElemento} onChange={e => setSerElemento(e.target.value)} style={{ flex: '1 1 150px', margin: 0, borderColor: '#8a2be2', color: '#fff' }} />
-                    <select className="input-neon" value={serClasse} onChange={e => setSerClasse(e.target.value)} style={{ flex: '1 1 150px', margin: 0, borderColor: '#8a2be2', color: '#fff' }}>
+                    <input className="input-neon" type="text" placeholder="Elemento / Essência" value={serElemento} onChange={e => setSerElemento(e.target.value)} style={{ flex: '1 1 120px', margin: 0, borderColor: '#8a2be2', color: '#fff' }} />
+                    <select className="input-neon" value={serClasse} onChange={e => setSerClasse(e.target.value)} style={{ flex: '1 1 120px', margin: 0, borderColor: '#8a2be2', color: '#fff' }}>
                         <option value="">Classe (Opcional)</option>
                         {CLASSES_OPTIONS.filter(o => o.value !== '').map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
+                    
+                    {/* 🔥 O CHECKBOX QUE RESOLVE O PROBLEMA DA SYLPHIE 🔥 */}
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#00ffcc', fontSize: '0.85em', cursor: 'pointer', flex: '1 1 100%' }}>
+                        <input type="checkbox" checked={serZeraCusto} onChange={e => setSerZeraCusto(e.target.checked)} style={{ transform: 'scale(1.2)' }} />
+                        Zera custo do Elemento Base passivamente?
+                    </label>
                 </div>
                 <textarea className="input-neon" placeholder="História, condições do pacto, e narrativas do que acontece quando o poder dele transborda..." value={serDescricao} onChange={e => setSerDescricao(e.target.value)} style={{ width: '100%', minHeight: '60px', borderColor: '#8a2be2', color: '#ccc', resize: 'vertical', marginBottom: '15px' }} />
                 

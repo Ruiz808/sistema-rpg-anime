@@ -93,7 +93,7 @@ export function ElementosFormProvider({ children }) {
     const [abaAtual, setAbaAtual] = useState('elementos');
     const [elemSelecionado, setElemSelecionado] = useState('Neutro');
     const [nomeElem, setNomeElem] = useState('');
-    const [descricaoElem, setDescricaoElem] = useState(''); // 🔥 NOVO: Descrição para magias
+    const [descricaoElem, setDescricaoElem] = useState(''); 
     const [elementosAfetados, setElementosAfetados] = useState('');
     const [bonusTipo, setBonusTipo] = useState('nenhum');
     const [bonusValor, setBonusValor] = useState('');
@@ -120,21 +120,46 @@ export function ElementosFormProvider({ children }) {
         return parseInt(strVal.substring(0, 2), 10);
     }, []);
 
-    // 🔥 RADAR ATUALIZADO: Agora lê os poderes individuais E as categorias da aba Classificação 🔥
+    // 🔥 RADAR MÁXIMO: Lê Elementos Base e os "Efeitos Inatos" de Formas e Poderes 🔥
     const elementosInatos = useMemo(() => {
         if (!minhaFicha) return [];
         const inatos = [];
 
-        // 1. Lê a Aba de Poderes Normais
+        // Função que lê Efeitos procurando por "elemento_inato"
+        const lerInatosDosEfeitos = (efeitos) => {
+            if (!efeitos) return;
+            efeitos.forEach(ef => {
+                if (ef && ef.propriedade === 'elemento_inato' && ef.nome) {
+                    // Separa se o usuário escrever "Fogo, Vento Verdadeiro"
+                    ef.nome.split(',').forEach(n => inatos.push(n.toLowerCase().trim()));
+                }
+            });
+        };
+
+        // 1. Ler Aba de Poderes
         if (minhaFicha.poderes) {
             minhaFicha.poderes.forEach(p => {
-                if (p.ativa && (p.vertente || '').toLowerCase().includes('elemental') && p.elemento) {
-                    inatos.push(p.elemento.toLowerCase().trim());
+                if (p.ativa) {
+                    if ((p.vertente || '').toLowerCase().includes('elemental') && p.elemento) {
+                        inatos.push(p.elemento.toLowerCase().trim());
+                    }
+                    lerInatosDosEfeitos(p.efeitos);
+                    if (p.formaAtivaId && p.formas) {
+                        const f = p.formas.find(x => x.id === p.formaAtivaId);
+                        if (f) {
+                            lerInatosDosEfeitos(f.efeitos);
+                            if (f.configAtivaId && f.configs) {
+                                const c = f.configs.find(x => x.id === f.configAtivaId);
+                                if (c) lerInatosDosEfeitos(c.efeitos);
+                            }
+                        }
+                    }
                 }
+                lerInatosDosEfeitos(p.efeitosPassivos);
             });
         }
 
-        // 2. Lê a Aba de Classificação (O Chefe Supremo)
+        // 2. Classificação / Hierarquia
         const h = minhaFicha.hierarquia || {};
         if (h.poder && (h.poderVertente || '').toLowerCase().includes('elemental') && h.poderElemento) {
             inatos.push(h.poderElemento.toLowerCase().trim());
@@ -143,8 +168,41 @@ export function ElementosFormProvider({ children }) {
             inatos.push(h.infinityElemento.toLowerCase().trim());
         }
 
+        // 3. Seres Selados (O Pacto de Sylphie)
+        if (minhaFicha.seresSelados) {
+            minhaFicha.seresSelados.forEach(s => {
+                if (s.ativo) {
+                    if (s.elemento && s.zeraCusto) {
+                        inatos.push(s.elemento.toLowerCase().trim());
+                    }
+                    lerInatosDosEfeitos(s.efeitos);
+                    if (s.formaAtivaId && s.formas) {
+                        const f = s.formas.find(x => x.id === s.formaAtivaId);
+                        if (f) {
+                            lerInatosDosEfeitos(f.efeitos);
+                            if (f.configAtivaId && f.configs) {
+                                const c = f.configs.find(x => x.id === f.configAtivaId);
+                                if (c) lerInatosDosEfeitos(c.efeitos);
+                            }
+                        }
+                    }
+                }
+                lerInatosDosEfeitos(s.efeitosPassivos);
+            });
+        }
+        
+        // 4. Arsenal (Itens também podem dar elementos grátis!)
+        if (minhaFicha.inventario) {
+            minhaFicha.inventario.forEach(item => {
+                if (item.equipado) {
+                    lerInatosDosEfeitos(item.efeitos);
+                    lerInatosDosEfeitos(item.efeitosPassivos);
+                }
+            });
+        }
+
         return inatos;
-    }, [minhaFicha?.poderes, minhaFicha?.hierarquia]);
+    }, [minhaFicha?.poderes, minhaFicha?.hierarquia, minhaFicha?.seresSelados, minhaFicha?.inventario]);
 
     const allowedEnergies = useMemo(() => {
         let opts = [];
@@ -193,7 +251,7 @@ export function ElementosFormProvider({ children }) {
     }, [abaAtual]);
 
     const cancelarEdicaoElem = useCallback(() => {
-        setElemEditandoId(null); setNomeElem(''); setDescricaoElem(''); // 🔥 LIMPANDO DESCRIÇÃO
+        setElemEditandoId(null); setNomeElem(''); setDescricaoElem(''); 
         setElementosAfetados(''); 
         setEnergiaCombustao(abaAtual === 'elementos' || abaAtual === 'compostos' ? 'flexivel' : 'mana');
         setTipoMecanica('ataque'); setAlcanceQuad(1); setAreaQuad(0);
@@ -206,7 +264,7 @@ export function ElementosFormProvider({ children }) {
         updateFicha((ficha) => {
             if (!ficha.ataquesElementais) ficha.ataquesElementais = [];
             const novaMagia = {
-                nome: n, descricao: descricaoElem, elemento: elemSelecionado, elementosAfetados, // 🔥 SALVANDO DESCRIÇÃO
+                nome: n, descricao: descricaoElem, elemento: elemSelecionado, elementosAfetados, 
                 bonusTipo, bonusValor, custoValor: parseFloat(custoValor) || 0, 
                 dadosExtraQtd: parseInt(dadosQtd) || 0, dadosExtraFaces: parseInt(dadosFaces) || 20,
                 energiaCombustao, tipoMecanica, savingAttr, alcanceQuad: parseFloat(alcanceQuad) || 1, 
@@ -280,7 +338,6 @@ export function ElementosFormProvider({ children }) {
         setAbaAtiva('aba-ataque');
     }, [meuNome, setAbaAtiva]);
 
-    // 🔥 MOTOR IA PARA O GRIMÓRIO 🔥
     const injetarJsonDaIA = useCallback((jsonString) => {
         try {
             const dados = JSON.parse(jsonString);
@@ -294,7 +351,7 @@ export function ElementosFormProvider({ children }) {
                             id: 'ia_el_' + time + i,
                             nome: el.nome || 'Magia sem Nome',
                             descricao: el.descricao || '',
-                            elemento: el.elemento || elemSelecionado, // Tenta o da IA ou cai no elemento aberto
+                            elemento: el.elemento || elemSelecionado, 
                             elementosAfetados: el.elementosAfetados || '',
                             dadosExtraQtd: parseInt(el.danoQtd) || 0,
                             dadosExtraFaces: parseInt(el.danoFaces) || 0,
@@ -339,7 +396,7 @@ export function ElementosFormProvider({ children }) {
         formRef, profGlobal, getModificadorDoisDigitos, allowedEnergies,
         selecionarElemento, salvarNovoElem, editarElem, cancelarEdicaoElem, toggleEquiparElem,
         deletarElem, conjurarMagia, magiasDoGrupo, magiasConjuradasOutros, elemEditandoId, minhaFicha,
-        elementosInatos, injetarJsonDaIA // 🔥 Exportado aqui!
+        elementosInatos, injetarJsonDaIA 
     }), [
         abaAtual, elemSelecionado, nomeElem, descricaoElem, elementosAfetados, bonusTipo, bonusValor, custoValor, dadosQtd, dadosFaces,
         energiaCombustao, tipoMecanica, savingAttr, alcanceQuad, areaQuad, alvosAfetados, duracaoZona, profGlobal, getModificadorDoisDigitos, allowedEnergies,
