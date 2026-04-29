@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import useStore, { sanitizarNome } from '../../stores/useStore'; 
+import useStore, { sanitizarNome, fichaPadrao } from '../../stores/useStore'; // 🔥 ADICIONADO A FICHA PADRÃO AQUI
 import { ref, set } from 'firebase/database'; 
 import { database } from '../../services/firebase-config'; 
 
@@ -7,6 +7,7 @@ export default function AIArvoreGenealogica() {
     // 💾 CONEXÃO COM O ZUSTAND 
     const personagens = useStore(s => s.personagens);
     const setPersonagens = useStore(s => s.setPersonagens);
+    const mesaId = useStore(s => s.mesaId); // 🔥 ADICIONADO O MESA ID AQUI
 
     // 💾 CARREGA DO LOCALSTORAGE DA ÁRVORE (Ou inicia vazio)
     const [familias, setFamilias] = useState(() => {
@@ -129,6 +130,10 @@ export default function AIArvoreGenealogica() {
             return alert("O NPC precisa de um Nome Completo antes de ser enviado para a mesa!");
         }
 
+        if (!mesaId) {
+            return alert("Erro: Você não está conectado a nenhuma Mesa!");
+        }
+
         const nomeOriginal = npcSelecionado.nome.trim();
         const funcSanitizar = typeof sanitizarNome === 'function' ? sanitizarNome : (n) => n.replace(/[.#$\[\]\/]/g, '_');
         const nomePersonagem = funcSanitizar(nomeOriginal);
@@ -142,40 +147,50 @@ export default function AIArvoreGenealogica() {
         const hpValor = Number(npcSelecionado.hp) || 100000;
         const manaValor = Number(npcSelecionado.mana) || 100000;
 
-        // 🔥 A FORJA PERFEITA: Estrutura 100% igual ao seu MestreForjaNPC 🔥
-        const fichaParaServidor = {
-            bio: { 
-                classe: npcSelecionado.classe || 'NPC - Ameaça', 
-                raca: npcSelecionado.papel || 'Criatura', 
-                mesa: 'npc' // <-- A etiqueta que faz ele ir para a aba vermelha!
-            },
-            vida: { atual: hpValor, base: hpValor },
-            mana: { atual: manaValor, base: manaValor },
-            forca: { base: 1 },         
-            destreza: { base: 1 },      
-            inteligencia: { base: 1 },  
-            avatar: npcSelecionado.avatar ? npcSelecionado.avatar.trim() : "",
-            poderes: [
-                {
-                    nome: "📖 Linhagem & Lore",
-                    dano: "0",
-                    descricao: `Status: ${npcSelecionado.status || 'Vivo'}\nElemento Mágico: ${npcSelecionado.elemento || 'Nenhum'}\nClã de Origem: ${familiaAtiva}\n\nHistória: ${npcSelecionado.lore || 'Sem registos.'}`
-                }
-            ],
-            formas: [],
-            isNPC: true,
-            dataCriacao: Date.now()
+        // 🔥 A FORJA PERFEITA: Estrutura 100% igual ao seu MestreForjaNPC, baseada na fichaPadrao 🔥
+        let novaFicha = JSON.parse(JSON.stringify(fichaPadrao));
+
+        novaFicha.bio = { 
+            ...novaFicha.bio,
+            classe: npcSelecionado.classe || 'NPC - Ameaça', 
+            raca: npcSelecionado.papel || 'Criatura', 
+            mesa: 'npc' // <-- A etiqueta que faz ele ir para a aba vermelha!
         };
+        
+        novaFicha.vida = { ...novaFicha.vida, atual: hpValor, base: hpValor };
+        novaFicha.mana = { ...novaFicha.mana, atual: manaValor, base: manaValor };
+        novaFicha.forca = { ...novaFicha.forca, base: 1 };         
+        novaFicha.destreza = { ...novaFicha.destreza, base: 1 };      
+        novaFicha.inteligencia = { ...novaFicha.inteligencia, base: 1 };  
+        novaFicha.avatar = { base: npcSelecionado.avatar ? npcSelecionado.avatar.trim() : "" };
+
+        // 🔥 INJETA O ELEMENTO DA ÁRVORE NO NOVO SISTEMA DE DOMÍNIOS 🔥
+        if (npcSelecionado.elemento && npcSelecionado.elemento.trim() !== '') {
+            const elemNome = npcSelecionado.elemento.trim();
+            novaFicha.dominios.elementos[elemNome] = { nivel: 1, nome: "Básico" };
+        }
+
+        novaFicha.poderes = [
+            {
+                nome: "📖 Linhagem & Lore",
+                ativa: true,
+                dano: "0",
+                descricao: `Status: ${npcSelecionado.status || 'Vivo'}\nElemento Mágico: ${npcSelecionado.elemento || 'Nenhum'}\nClã de Origem: ${familiaAtiva}\n\nHistória: ${npcSelecionado.lore || 'Sem registos.'}`
+            }
+        ];
+
+        novaFicha.isNPC = true;
+        novaFicha.dataCriacao = Date.now();
 
         // Injeta localmente no ecrã para garantir que funciona imediatamente
-        const novosPersonagens = { ...personagens, [nomePersonagem]: fichaParaServidor };
+        const novosPersonagens = { ...personagens, [nomePersonagem]: novaFicha };
         if (setPersonagens) {
             setPersonagens(novosPersonagens);
         }
 
-        // Tenta enviar para o Firebase
+        // Tenta enviar para o Firebase no caminho correto da MESA
         try {
-            await set(ref(database, `personagens/${nomePersonagem}`), fichaParaServidor);
+            await set(ref(database, `mesas/${mesaId}/personagens/${nomePersonagem}`), novaFicha);
             alert(`✅ INJEÇÃO ABSOLUTA! O personagem [${nomePersonagem}] foi forjado!\n\n👉 Vá ao Painel do Mestre e CLIQUE NA ABA VERMELHA "NPCs" para o ver!`);
         } catch (erro) {
             console.warn("Erro Firebase:", erro);
