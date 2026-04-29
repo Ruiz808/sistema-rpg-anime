@@ -105,7 +105,7 @@ function getEnergiasSupremas(ficha) {
     return { vitais: { max: maxVitais, atual: atualVitais }, mortais: { max: maxMortais, atual: atualMortais } };
 }
 
-// // 🔥 PAINEL DO MESTRE 🔥
+// 🔥 PAINEL DO MESTRE ATUALIZADO (COM CORREÇÃO DE GRANDS) 🔥
 function MestrePanel() {
     const personagens = useStore(s => s.personagens)
     const meuNome = useStore(s => s.meuNome)
@@ -128,7 +128,7 @@ function MestrePanel() {
     const [dOculto, setDOculto] = useState(false)
     const [mesaVisor, setMesaVisor] = useState('presente')
     
-    // 🔥 NOVO: Controle das Pastas Sanfona de Famílias 🔥
+    // 📁 ESTADO PARA CONTROLAR QUAIS PASTAS ESTÃO ABERTAS 📁
     const [pastasAbertas, setPastasAbertas] = useState({});
     const togglePasta = (nomePasta) => setPastasAbertas(prev => ({...prev, [nomePasta]: !prev[nomePasta]}));
 
@@ -174,25 +174,24 @@ function MestrePanel() {
     };
 
     const handleClonarFicha = (nomeOriginal, fichaOriginal) => {
-        const novoNome = window.prompt(`🖨️ CLONAR ENTIDADE: ${nomeOriginal}\nNome do clone:`, `${nomeOriginal} (Futuro)`);
+        const novoNome = window.prompt(`🖨️ CLONAR ENTIDADE: ${nomeOriginal}\nNome do clone:`, `${nomeOriginal} (Clone)`);
         if (!novoNome || novoNome.trim() === '') return;
         const nomeSanitizado = sanitizarNome(novoNome);
         if (personagens[nomeSanitizado]) return alert('❌ Já existe uma entidade com esse nome!');
-        if (window.confirm(`Criar "${nomeSanitizado}" e controlar?`)) {
-            setMeuNome(nomeSanitizado);
-            localStorage.setItem('rpgNome', nomeSanitizado);
-            const fichaClone = JSON.parse(JSON.stringify(fichaOriginal));
-            carregarDadosFicha(fichaClone);
-            setAbaAtiva('aba-ficha'); 
-            setTimeout(() => alert(`✨ CLONE CRIADO! Clique em "SALVAR" na ficha para forjá-lo na Base de Dados!`), 600);
-        }
+        
+        setMeuNome(nomeSanitizado);
+        localStorage.setItem('rpgNome', nomeSanitizado);
+        const fichaClone = JSON.parse(JSON.stringify(fichaOriginal));
+        carregarDadosFicha(fichaClone);
+        setAbaAtiva('aba-ficha'); 
+        setTimeout(() => alert(`✨ CLONE CRIADO! Clique em "SALVAR" na ficha para forjá-lo!`), 600);
     };
 
     const handlePromover = async () => {
         if (!novoMestreNick.trim()) return;
-        if (window.confirm(`Tem a certeza que deseja dar os poderes de Mestre da mesa para a conta de ${novoMestreNick}?`)) {
+        if (window.confirm(`Promover ${novoMestreNick} a Mestre?`)) {
             await promoverAMestreFirebase(mesaId, novoMestreNick);
-            alert(`✨ Sucesso! ${novoMestreNick} agora é um Mestre desta mesa!`);
+            alert(`✨ Sucesso! ${novoMestreNick} agora é um Mestre!`);
             setNovoMestreNick('');
         }
     };
@@ -201,12 +200,12 @@ function MestrePanel() {
     const jogadoresFiltrados = todosJogadores.filter(([nome, ficha]) => (ficha?.bio?.mesa || 'presente') === mesaVisor);
     const fmt = (n) => Number(n || 0).toLocaleString('pt-BR');
 
-    // 🔥 AGRUPAMENTO INTELIGENTE POR FAMÍLIAS (Apenas na aba NPCs) 🔥
+    // 🧠 LÓGICA DE AGRUPAMENTO POR CLÃS/FAMÍLIAS 🧠
     const npcsPorFamilia = {};
     if (mesaVisor === 'npc') {
         jogadoresFiltrados.forEach(([nome, ficha]) => {
             let familia = ficha?.bio?.afiliacao;
-            // Lê a Lore para encontrar de onde o NPC veio
+            
             if (!familia || familia.trim() === '') {
                 const lorePoder = (ficha?.poderes || []).find(p => p.nome === "📖 Linhagem & Lore");
                 if (lorePoder && lorePoder.descricao) {
@@ -214,15 +213,17 @@ function MestrePanel() {
                     if (match && match[1]) familia = match[1].trim();
                 }
             }
+
             if (!familia || familia === 'Nenhum' || familia.trim() === '') {
                 familia = 'Sem Clã / Bestas Soltas';
             }
+
             if (!npcsPorFamilia[familia]) npcsPorFamilia[familia] = [];
             npcsPorFamilia[familia].push([nome, ficha]);
         });
     }
 
-    // 🎨 FUNÇÃO EXTRATIVA: Evita repetir o código da Carta 2 vezes!
+    // 🃏 GERADOR DA CARTA DE PERSONAGEM 🃏
     const renderCard = ([nome, ficha]) => {
         const vida = getStatusLimpo(ficha, 'vida', 8);
         const mana = getStatusLimpo(ficha, 'mana', 9);
@@ -232,20 +233,24 @@ function MestrePanel() {
         const supremas = getEnergiasSupremas(ficha);
         const percHp = vida.max > 0 ? (vida.atual / vida.max) * 100 : 0;
         
-        const mesaAtual = ficha?.bio?.mesa || 'presente';
         const classeReal = ficha?.bio?.classe || '';
         let classId = classeReal;
         if (classId === 'pretender' || classId === 'alterego') classId = ficha?.bio?.subClasse || classId;
 
-        const isGrand = classeReal && grandsGlobais[`${classeReal}_${mesaAtual}`] === nome;
-        const listaCandidatos = grandsGlobais[`${classeReal}_${mesaAtual}_candidatos`] || [];
-        const isCandidato = classeReal && !isGrand && listaCandidatos.includes(nome);
+        // 🔥 O NOVO RADAR ONISCIENTE DE GRANDS 🔥
+        // Procura se o nome do personagem está coroado no Compêndio, ignorando em qual aba ele mora!
+        const grandEntry = Object.entries(grandsGlobais).find(([key, val]) => val === nome && !key.includes('_candidatos'));
+        const isGrandManualmente = String(classId).toLowerCase().includes('grand ');
+        const isGrand = !!grandEntry || isGrandManualmente;
+
+        const candidatoEntry = Object.entries(grandsGlobais).find(([key, val]) => key.includes('_candidatos') && Array.isArray(val) && val.includes(nome));
+        const isCandidato = !isGrand && !!candidatoEntry;
 
         let boxBorder = `1px solid ${nome === meuNome ? '#0f0' : '#333'}`;
         let boxShadow = nome === meuNome ? '0 0 15px rgba(0,255,0,0.2)' : 'none';
         let titleColor = '#fff';
         let subColor = '#aaa';
-        let subText = classId ? String(classId).toUpperCase() : 'Mundano';
+        let subText = classId ? String(classId).toUpperCase() : 'MUNDANO';
         let gradOverlay = null;
 
         if (isGrand) {
@@ -253,14 +258,27 @@ function MestrePanel() {
             boxShadow = '0 0 20px rgba(255,0,60,0.4), inset 0 0 20px rgba(255,204,0,0.1)';
             titleColor = '#ffcc00';
             subColor = '#ffcc00';
-            subText = `👑 GRAND ${String(classeReal).toUpperCase()}`;
+            
+            // Corrige o texto: Se ele é Grand Ruler no compêndio, escreve "GRAND RULER" mesmo que a classe diga "Primordial"
+            let displayClass = classId;
+            if (grandEntry) {
+                displayClass = grandEntry[0].split('_')[0]; 
+            } else if (isGrandManualmente) {
+                displayClass = String(displayClass).replace(/grand /ig, '');
+            }
+            subText = `👑 GRAND ${String(displayClass).toUpperCase()}`;
             gradOverlay = 'linear-gradient(135deg, rgba(255,0,60,0.25) 0%, rgba(255,204,0,0.1) 50%, rgba(0,0,0,0) 100%)';
+            
         } else if (isCandidato) {
             boxBorder = '2px solid #00ccff';
             boxShadow = '0 0 15px rgba(0,136,255,0.4), inset 0 0 15px rgba(0,204,255,0.1)';
             titleColor = '#00ccff';
             subColor = '#00ccff';
-            subText = `🌟 CANDIDATO A ${String(classeReal).toUpperCase()}`;
+            
+            let displayClass = classId;
+            if (candidatoEntry) displayClass = candidatoEntry[0].split('_')[0];
+            
+            subText = `🌟 CANDIDATO A ${String(displayClass).toUpperCase()}`;
             gradOverlay = 'linear-gradient(135deg, rgba(0,136,255,0.2) 0%, rgba(0,204,255,0.1) 50%, rgba(0,0,0,0) 100%)';
         }
 
@@ -326,13 +344,13 @@ function MestrePanel() {
             <h2 style={{ color: '#ffcc00', textShadow: '0 0 10px #ffcc00', borderBottom: '2px solid #ffcc00', paddingBottom: 10, margin: 0 }}>👑 DOMÍNIO DO MESTRE</h2>
             <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
                 <div className="def-box" style={{ flex: '1 1 65%', minWidth: '400px', borderLeft: '4px solid #0088ff' }}>
+                    
                     <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '15px' }}>
                         <button className={`btn-neon ${mesaVisor === 'presente' ? 'btn-gold' : ''}`} onClick={() => setMesaVisor('presente')} style={{ flex: 1, padding: '8px', fontSize: '0.9em', margin: 0 }}>⚔️ Marcados (Presente)</button>
                         <button className={`btn-neon ${mesaVisor === 'futuro' ? 'btn-gold' : ''}`} onClick={() => setMesaVisor('futuro')} style={{ flex: 1, padding: '8px', fontSize: '0.9em', margin: 0 }}>🚀 Marcados (Futuro)</button>
                         <button className={`btn-neon ${mesaVisor === 'npc' ? 'btn-red' : ''}`} onClick={() => setMesaVisor('npc')} style={{ flex: 1, padding: '8px', fontSize: '0.9em', margin: 0 }}>👹 NPCs</button>
                     </div>
-                    
-                    {/* 🔥 O SEGREDO ESTÁ AQUI: RENDERIZAÇÃO INTELIGENTE 🔥 */}
+
                     {mesaVisor !== 'npc' ? (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '15px' }}>
                             {jogadoresFiltrados.map(data => renderCard(data))}
@@ -342,7 +360,6 @@ function MestrePanel() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             {Object.entries(npcsPorFamilia).map(([familia, lista]) => (
                                 <div key={familia} style={{ border: '1px solid #444', borderRadius: '5px', overflow: 'hidden' }}>
-                                    
                                     <button 
                                         onClick={() => togglePasta(familia)}
                                         style={{ 
@@ -355,7 +372,7 @@ function MestrePanel() {
                                         <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                             {pastasAbertas[familia] ? '📂' : '📁'} {familia.toUpperCase()}
                                         </span>
-                                        <span style={{ color: '#fff', fontSize: '0.8em', background: '#ff003c', padding: '2px 8px', borderRadius: '12px' }}>{lista.length} NPCs</span>
+                                        <span style={{ color: '#fff', fontSize: '0.8em', background: '#ff003c', padding: '2px 8px', borderRadius: '12px' }}>{lista.length}</span>
                                     </button>
                                     
                                     {pastasAbertas[familia] && (
@@ -363,7 +380,6 @@ function MestrePanel() {
                                             {lista.map(data => renderCard(data))}
                                         </div>
                                     )}
-
                                 </div>
                             ))}
                             {jogadoresFiltrados.length === 0 && <div style={{ color: '#aaa', fontStyle: 'italic', padding: '10px' }}>Nenhum monstro ou entidade foi invocado.</div>}
@@ -433,7 +449,6 @@ function MestrePanel() {
                     </div>
                 </div>
             </div>
-            <MestreForjaNPC />
         </div>
     );
 }
