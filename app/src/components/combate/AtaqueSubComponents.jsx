@@ -240,7 +240,6 @@ export function AtaqueDanoCustomizado() {
                         style={{ flex: '1 1 250px', fontSize: '1.1em', borderColor: '#ff00ff', color: '#fff', margin: 0 }}
                     />
                     
-                    {/* 🔥 O CAMPO DE LETALIDADE 🔥 */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#111', padding: '5px', borderRadius: 5, border: '1px solid #ff00ff' }}>
                         <span style={{ color: '#ffcc00', fontSize: '0.8em', fontWeight: 'bold' }}>+Letalidade:</span>
                         <input 
@@ -252,7 +251,7 @@ export function AtaqueDanoCustomizado() {
                         />
                     </div>
 
-                    {/* 🔥 DÉBITO DE ENERGIA MANUAL 🔥 */}
+                    {/* 🔥 DÉBITO DE ENERGIA MANUAL EM PERCENTUAL (%) 🔥 */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#111', padding: '5px', borderRadius: 5, border: '1px solid #00ffcc' }}>
                         <span style={{ color: '#00ffcc', fontSize: '0.8em', fontWeight: 'bold' }}>⚡ Débito:</span>
                         <select 
@@ -267,14 +266,17 @@ export function AtaqueDanoCustomizado() {
                             <option value="chakra">Chakra</option>
                             <option value="corpo">Corpo</option>
                         </select>
-                        <input 
-                            className="input-neon" 
-                            type="number" 
-                            placeholder="Custo"
-                            value={customEnergiaCusto} 
-                            onChange={e => setCustomEnergiaCusto(e.target.value)} 
-                            style={{ width: 70, margin: 0, padding: 4, borderColor: '#00ffcc' }} 
-                        />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <input 
+                                className="input-neon" 
+                                type="number" 
+                                placeholder="%"
+                                value={customEnergiaCusto} 
+                                onChange={e => setCustomEnergiaCusto(e.target.value)} 
+                                style={{ width: 55, margin: 0, padding: 4, borderColor: '#00ffcc', textAlign: 'center' }} 
+                            />
+                            <span style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold' }}>%</span>
+                        </div>
                     </div>
 
                     <button 
@@ -304,7 +306,7 @@ export function AtaqueDanoCustomizado() {
                             <button 
                                 onClick={() => rolarDanoCustomizado(f.formula, f.letalidade, f.energiaTipo, f.energiaCusto)}
                                 style={{ background: 'none', border: 'none', color: '#fff', padding: '4px 10px', fontSize: '0.85em', cursor: 'pointer', fontWeight: 'bold' }}
-                                title={`Fórmula: ${f.formula} | Letalidade: +${f.letalidade || 0}${f.energiaTipo && f.energiaTipo !== 'nenhum' && f.energiaCusto ? ` | Custo: ${f.energiaCusto} ${f.energiaTipo}` : ''}`}
+                                title={`Fórmula: ${f.formula} | Letalidade: +${f.letalidade || 0}${f.energiaTipo && f.energiaTipo !== 'nenhum' && f.energiaCusto ? ` | Custo: ${f.energiaCusto}% ${f.energiaTipo}` : ''}`}
                             >
                                 ▶ {f.nome}
                             </button>

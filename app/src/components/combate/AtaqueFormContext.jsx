@@ -52,7 +52,7 @@ export function AtaqueFormProvider({ children }) {
     const [podeRolarDano, setPodeRolarDano] = useState(true);
     const [furiaAcalmadaMsg, setFuriaAcalmadaMsg] = useState(false);
 
-    // 🔥 NOVOS ESTADOS: FÓRMULA MANUAL, LETALIDADE E DÉBITO DIRETO 🔥
+    // 🔥 NOVOS ESTADOS: FÓRMULA MANUAL, LETALIDADE E DÉBITO EM % 🔥
     const [customFormula, setCustomFormula] = useState('');
     const [customLetalidade, setCustomLetalidade] = useState(0);
     const [customEnergiaTipo, setCustomEnergiaTipo] = useState('nenhum');
@@ -209,7 +209,7 @@ export function AtaqueFormProvider({ children }) {
         salvarFichaSilencioso();
     }, [updateFicha, armaStatusUsados, armaEnergiaCombustao, armaPercEnergia, critNormalMin, critNormalMax, critFatalMin, critFatalMax, skillConfigs]);
 
-    // 🔥 SALVAR FÓRMULA COM TIPO E CUSTO DE ENERGIA 🔥
+    // 🔥 SALVAR FÓRMULA COM TIPO E CUSTO PERCENTUAL DE ENERGIA 🔥
     const salvarFormula = useCallback(() => {
         const nomeForm = window.prompt("Como deseja nomear esta fórmula de ataque?");
         if (!nomeForm || !nomeForm.trim()) return;
@@ -223,7 +223,7 @@ export function AtaqueFormProvider({ children }) {
                 formula: customFormula,
                 letalidade: parseInt(customLetalidade) || 0,
                 energiaTipo: customEnergiaTipo,
-                energiaCusto: parseInt(customEnergiaCusto) || 0
+                energiaCusto: parseFloat(customEnergiaCusto) || 0
             });
         });
         salvarFichaSilencioso();
@@ -289,17 +289,21 @@ export function AtaqueFormProvider({ children }) {
             const letalidadeCalculada = Math.max(0, digitosGerais - 8) + letalExtra;
             const danoReduzido = letalidadeCalculada > 0 ? Math.floor(resultadoFinal / Math.pow(10, letalidadeCalculada)) : Math.floor(resultadoFinal);
 
-            // 🔥 DÉBITO AUTOMÁTICO DE ENERGIA DA GAVETA 🔥
-            const custoNum = parseInt(custoAtiva) || 0;
+            // 🔥 DÉBITO AUTOMÁTICO DE ENERGIA DA GAVETA (EM PERCENTUAL %) 🔥
+            const percNum = parseFloat(custoAtiva) || 0;
             let logEnergia = '';
-            if (tipoAtiva && tipoAtiva !== 'nenhum' && custoNum > 0) {
+            if (tipoAtiva && tipoAtiva !== 'nenhum' && percNum > 0) {
+                // Descobre o máximo da energia usando a função nativa do sistema
+                const maxEnergia = getMaximo(minhaFicha, tipoAtiva) || 0;
+                const custoCalculado = Math.floor((maxEnergia * percNum) / 100);
+
                 updateFicha(ficha => {
                     if (ficha[tipoAtiva]) {
-                        ficha[tipoAtiva].atual = Math.max(0, (ficha[tipoAtiva].atual || 0) - custoNum);
+                        ficha[tipoAtiva].atual = Math.max(0, (ficha[tipoAtiva].atual || 0) - custoCalculado);
                     }
                 });
                 salvarFichaSilencioso();
-                logEnergia = `⚡ Consumiu ${custoNum.toLocaleString('pt-BR')} de ${tipoAtiva.toUpperCase()}`;
+                logEnergia = `⚡ Consumiu ${percNum}% de ${tipoAtiva.toUpperCase()} (${custoCalculado.toLocaleString('pt-BR')} pts)`;
             }
 
             let detalheConta = `<div style="margin-top: 15px; padding: 10px; background: rgba(0,0,0,0.4); border-radius: 5px; border-left: 4px solid #ff00ff; font-family: monospace; font-size: 0.95em; color: #ccc;">`;
@@ -347,7 +351,7 @@ export function AtaqueFormProvider({ children }) {
         } catch (e) {
             alert('Erro ao calcular a fórmula matemática. Verifique se os parênteses fecham corretamente.');
         }
-    }, [customFormula, customLetalidade, customEnergiaTipo, customEnergiaCusto, meuNome, dummieAlvo, alvoSelecionado, setAbaAtiva, updateFicha]);
+    }, [customFormula, customLetalidade, customEnergiaTipo, customEnergiaCusto, meuNome, dummieAlvo, alvoSelecionado, setAbaAtiva, updateFicha, minhaFicha]);
 
     const rolarDano = useCallback(() => {
         salvarConfigAtaque();
@@ -424,6 +428,58 @@ export function AtaqueFormProvider({ children }) {
             const novoHp = Math.max(0, hpAnterior - result.dano);
             salvarDummie(alvoSelecionado, { ...dummieAlvo, hpAtual: novoHp });
             extraFeed = { alvoNome: dummieAlvo.nome, alvoSobreviveu: novoHp > 0, overkill: result.dano > hpAnterior ? result.dano - hpAnterior : 0 };
+        }
+
+        if (meuUltimoAcerto && meuUltimoAcerto.zonaIdGerada) {
+            const cenarioAtual = useStore.getState().cenario;
+            if (cenarioAtual?.zonas) {
+                const novoCenario = JSON.parse(JSON.stringify(cenarioAtual));
+                const zRef = novoCenario.zonas.find(z => z.id === meuUltimoAcerto.zonaIdGerada);
+                if (zRef) {
+                    const buffsAtuais = getBuffs(minhaFicha);
+                    const furiaM = multiplicadorFuriaVisor > 0 ? multiplicadorFuriaVisor : 1;
+                    
+                    const multOrig = (buffsAtuais?.mbase || 1) * (buffsAtuais?.mgeral || 1) * (buffsAtuais?.mformas || 1) * (buffsAtuais?.mabs || 1) * furiaM;
+
+                    let keysUsadas = [];
+                    todasHabilidades.forEach(h => { if(h.statusUsados) keysUsadas.push(...h.statusUsados); });
+                    if (configArma?.statusUsados) keysUsadas.push(...configArma.statusUsados);
+                    keysUsadas = [...new Set(keysUsadas)];
+                    zRef.statusKeys = keysUsadas;
+
+                    let somaStatusOriginal = 0;
+                    keysUsadas.forEach(k => {
+                        const str = String(minhaFicha[k]?.base || '').replace(/[^0-9]/g, '');
+                        somaStatusOriginal += parseInt(str.substring(0, 2), 10) || 0;
+                    });
+                    zRef.somaStatusOriginal = somaStatusOriginal;
+
+                    let danoBrutoOrig = 0;
+                    let letalidadeBuffsOrig = 0;
+                    const scanBruto = (efs) => {
+                        (efs || []).forEach(e => {
+                            if (!e) return;
+                            const prop = (e.propriedade || '').toLowerCase().trim();
+                            if (prop === 'dano_bruto' || prop === 'dano_verdadeiro') danoBrutoOrig += parseFloat(e.valor) || 0;
+                            if (prop === 'letalidade') letalidadeBuffsOrig += parseFloat(e.valor) || 0;
+                        });
+                    };
+                    (minhaFicha.poderes || []).forEach(p => { if (p.ativa) scanBruto(p.efeitos); scanBruto(p.efeitosPassivos); });
+                    (minhaFicha.inventario || []).forEach(i => { if (i.equipado) { scanBruto(i.efeitos); scanBruto(i.efeitosPassivos); } });
+                    (minhaFicha.passivas || []).forEach(p => scanBruto(p.efeitos));
+                    
+                    zRef.danoBrutoOriginal = danoBrutoOrig;
+                    zRef.letalidadeOriginalBuffs = letalidadeBuffsOrig;
+
+                    zRef.danoOriginal = result.dano;
+                    zRef.letalidadeOriginal = result.letalidade || 0; 
+                    zRef.multiplicadorOriginal = multOrig === 0 ? 1 : multOrig;
+                    zRef.danoAplicado = result.dano;
+                    
+                    salvarCenarioCompleto(novoCenario);
+                    textoAlvos += `<br/><span style="color:#ff00ff; font-weight:bold;">🌪️ A Zona de Efeito absorveu o poder e castigará quem permanecer lá!</span>`;
+                }
+            }
         }
 
         const feedData = {
