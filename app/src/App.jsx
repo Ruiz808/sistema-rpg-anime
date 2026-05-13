@@ -105,44 +105,50 @@ function getEnergiasSupremas(ficha) {
     return { vitais: { max: maxVitais, atual: atualVitais }, mortais: { max: maxMortais, atual: atualMortais } };
 }
 
-// 🔥 PAINEL DO MESTRE ATUALIZADO (COM HUB DE CONVERGÊNCIA E CLASSE OCULTA) 🔥
+// 🔥 PAINEL DO MESTRE SUPREMO (COM INJEÇÃO AUTOMÁTICA DE NPCS NO HUB) 🔥
 function MestrePanel() {
-    const personagens = useStore(s => s.personagens)
-    const meuNome = useStore(s => s.meuNome)
-    const setPersonagemParaDeletar = useStore(s => s.setPersonagemParaDeletar)
-    const isMestre = useStore(s => s.isMestre)
-    const mesaId = useStore(s => s.mesaId)
+    const personagens = useStore(s => s.personagens);
+    const setPersonagens = useStore(s => s.setPersonagens); // 🔥 PUXADO PARA ATUALIZAR A STORE MESTRA 🔥
+    const meuNome = useStore(s => s.meuNome);
+    const setPersonagemParaDeletar = useStore(s => s.setPersonagemParaDeletar);
+    const isMestre = useStore(s => s.isMestre);
+    const mesaId = useStore(s => s.mesaId);
     const jogadoresOnline = useStore(s => s.jogadoresOnline);
 
-    const setMeuNome = useStore(s => s.setMeuNome)
-    const carregarDadosFicha = useStore(s => s.carregarDadosFicha)
-    const setAbaAtiva = useStore(s => s.setAbaAtiva)
+    const setMeuNome = useStore(s => s.setMeuNome);
+    const carregarDadosFicha = useStore(s => s.carregarDadosFicha);
+    const setAbaAtiva = useStore(s => s.setAbaAtiva);
     
-    const [msgSistema, setMsgSistema] = useState('')
-    const [dNome, setDNome] = useState('Goblin Espião')
-    const [dHp, setDHp] = useState(100)
-    const [dVit, setDVit] = useState(0)
-    const [dDefTipo, setDDefTipo] = useState('evasiva')
-    const [dDef, setDDef] = useState(10)
-    const [dVisivelHp, setDVisivelHp] = useState('todos')
-    const [dOculto, setDOculto] = useState(false)
-    const [mesaVisor, setMesaVisor] = useState('presente')
+    const [msgSistema, setMsgSistema] = useState('');
+    const [dNome, setDNome] = useState('Goblin Espião');
+    const [dHp, setDHp] = useState(100);
+    const [dVit, setDVit] = useState(0);
+    const [dDefTipo, setDDefTipo] = useState('evasiva');
+    const [dDef, setDDef] = useState(10);
+    const [dVisivelHp, setDVisivelHp] = useState('todos');
+    const [dOculto, setDOculto] = useState(false);
+    const [mesaVisor, setMesaVisor] = useState('presente');
     
-    // 📁 ESTADO PARA CONTROLAR QUAIS PASTAS ESTÃO ABERTAS 📁
     const [pastasAbertas, setPastasAbertas] = useState({});
     const togglePasta = (nomePasta) => setPastasAbertas(prev => ({...prev, [nomePasta]: !prev[nomePasta]}));
 
-    const [novoMestreNick, setNovoMestreNick] = useState('')
+    const [novoMestreNick, setNovoMestreNick] = useState('');
 
-    // 🔥 ESTADOS DO HUB DE CONVERGÊNCIA (MATRIZ E LORE ISOLADA) 🔥
+    // 🔥 ESTADOS DO HUB DE CONVERGÊNCIA: Lê o cofre da Matriz primeiro 🔥
     const [mesaMatriz, setMesaMatriz] = useState(() => localStorage.getItem('rpg_mesa_principal') || 'Nenhuma');
     const [capitulosGerais, setCapitulosGerais] = useState(() => {
-        try { return JSON.parse(localStorage.getItem('rpgSextaFeira_capitulos')) || []; }
-        catch(e) { return []; }
+        try { 
+            const backup = localStorage.getItem('rpgSextaFeira_capitulos_MatrizBackup');
+            if (backup) return JSON.parse(backup);
+            return JSON.parse(localStorage.getItem('rpgSextaFeira_capitulos')) || []; 
+        } catch(e) { return []; }
     });
     const [arvoresGerais, setArvoresGerais] = useState(() => {
-        try { return JSON.parse(localStorage.getItem('rpgSextaFeira_arvore')) || {}; }
-        catch(e) { return {}; }
+        try { 
+            const backup = localStorage.getItem('rpgSextaFeira_arvore_MatrizBackup');
+            if (backup) return JSON.parse(backup);
+            return JSON.parse(localStorage.getItem('rpgSextaFeira_arvore')) || {}; 
+        } catch(e) { return {}; }
     });
     const [capituloSelecionado, setCapituloSelecionado] = useState('');
     const [arvoreSelecionada, setArvoreSelecionada] = useState('');
@@ -215,8 +221,17 @@ function MestrePanel() {
         if (window.confirm(`👑 COROAR A MESA [${mesaId}] COMO A MATRIZ PRINCIPAL?\n\nToda a Lore legada e Árvores criadas até aqui serão seladas como a fundação intocável do seu Multiverso.`)) {
             localStorage.setItem('rpg_mesa_principal', mesaId);
             setMesaMatriz(mesaId);
-            localStorage.setItem('rpgSextaFeira_capitulos_MatrizBackup', JSON.stringify(capitulosGerais));
-            localStorage.setItem('rpgSextaFeira_arvore_MatrizBackup', JSON.stringify(arvoresGerais));
+            
+            // Puxa os dados reais atuais para selar com perfeição
+            const capsAtuais = localStorage.getItem('rpgSextaFeira_capitulos') || '[]';
+            const arvsAtuais = localStorage.getItem('rpgSextaFeira_arvore') || '{}';
+            
+            localStorage.setItem('rpgSextaFeira_capitulos_MatrizBackup', capsAtuais);
+            localStorage.setItem('rpgSextaFeira_arvore_MatrizBackup', arvsAtuais);
+            
+            setCapitulosGerais(JSON.parse(capsAtuais));
+            setArvoresGerais(JSON.parse(arvsAtuais));
+            
             alert("✨ ABSOLUTO! Esta mesa é agora reconhecida como a fundação original de todas as histórias.");
         }
     };
@@ -241,7 +256,8 @@ function MestrePanel() {
         alert(`📜 SUCESSO! O capítulo "${cap.titulo}" foi enxertado nos registos da mesa [${mesaId}].`);
     };
 
-    const importarArvoreCirurgica = () => {
+    // 🔥 ENXERTO DE ÁRVORE COM FORJA AUTOMÁTICA DE NPCS NA STORE E CLOUD 🔥
+    const importarArvoreCirurgica = async () => {
         if (!arvoreSelecionada) return alert("Selecione uma árvore/panteão da base original para importar!");
         const linhagem = arvoresGerais[arvoreSelecionada];
         if (!linhagem) return;
@@ -257,6 +273,57 @@ function MestrePanel() {
         arvoresMesa[arvoreSelecionada] = linhagem;
         localStorage.setItem(chaveMesa, JSON.stringify(arvoresMesa));
         localStorage.setItem('rpgSextaFeira_arvore', JSON.stringify(arvoresMesa));
+
+        // Pergunta se o Mestre quer injetar automaticamente as cartas na Aba Mestre
+        if (Array.isArray(linhagem) && window.confirm(`Deseja também forjar automaticamente todos os ${linhagem.length} membros desta linhagem como NPCs ativos no Painel do Mestre?`)) {
+            const funcSanitizar = typeof sanitizarNome === 'function' ? sanitizarNome : (n) => n.replace(/[.#$\[\]\/]/g, '_');
+            let novosPersonagens = { ...personagens };
+            
+            const baseFicha = {
+                bio: { mesa: 'npc', afiliacao: arvoreSelecionada },
+                vida: { base: 100000, atual: 100000 },
+                mana: { base: 100000, atual: 100000 },
+                forca: { base: 1 }, destreza: { base: 1 }, inteligencia: { base: 1 },
+                avatar: { base: "" },
+                dominios: { elementos: {} },
+                poderes: [],
+                isNPC: true
+            };
+
+            for (const npc of linhagem) {
+                if (!npc.nome) continue;
+                const nomePersonagem = funcSanitizar(npc.nome.trim());
+                const hpValor = Number(npc.hp) || 100000;
+                const manaValor = Number(npc.mana) || 100000;
+                
+                let novaFicha = JSON.parse(JSON.stringify(baseFicha));
+                novaFicha.bio.classe = npc.classe || 'NPC - Ameaça';
+                novaFicha.bio.raca = npc.papel || 'Criatura';
+                novaFicha.bio.afiliacao = npc.afiliacao || arvoreSelecionada;
+                novaFicha.vida.base = hpValor; novaFicha.vida.atual = hpValor;
+                novaFicha.mana.base = manaValor; novaFicha.mana.atual = manaValor;
+                if (npc.avatar) novaFicha.avatar.base = npc.avatar.trim();
+                
+                if (npc.elemento && npc.elemento.trim() !== '') {
+                    novaFicha.dominios.elementos[npc.elemento.trim()] = { nivel: 1, nome: "Básico" };
+                }
+                
+                novaFicha.poderes = [{
+                    nome: "📖 Linhagem & Lore",
+                    ativa: true, dano: "0",
+                    descricao: `Status: ${npc.status || 'Vivo'}\nElemento Mágico: ${npc.elemento || 'Nenhum'}\nClã / Panteão: ${npc.afiliacao || arvoreSelecionada}\n\nHistória: ${npc.lore || 'Sem registos.'}`
+                }];
+                novaFicha.dataCriacao = Date.now();
+
+                novosPersonagens[nomePersonagem] = novaFicha;
+                try {
+                    await set(ref(db, `mesas/${mesaId}/personagens/${nomePersonagem}`), novaFicha);
+                } catch(err) { console.warn("Erro ao injetar NPC na cloud:", err); }
+            }
+            // Sincroniza instantaneamente com o ecrã do Mestre
+            if (setPersonagens) setPersonagens(novosPersonagens);
+        }
+
         alert(`🌳 SUCESSO! A linhagem "${arvoreSelecionada}" foi enxertada na mesa [${mesaId}].`);
     };
 
@@ -640,7 +707,7 @@ function AuthScreen() {
     );
 }
 
-// 🏰 LOBBY DE MESAS (DESIGN ROBUSTO E SCANNER AUTOMÁTICO)
+// 🏰 LOBBY DE MESAS (DESIGN TOTALMENTE NOVO E ROBUSTO)
 function LobbyNeon() {
     const { setMesaId, userLogado } = useStore();
     const [codigoSala, setCodigoSala] = useState('');
