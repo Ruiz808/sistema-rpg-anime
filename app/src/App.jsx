@@ -105,7 +105,7 @@ function getEnergiasSupremas(ficha) {
     return { vitais: { max: maxVitais, atual: atualVitais }, mortais: { max: maxMortais, atual: atualMortais } };
 }
 
-// 🔥 PAINEL DO MESTRE ATUALIZADO (COM CORREÇÃO DE GRANDS) 🔥
+// 🔥 PAINEL DO MESTRE ATUALIZADO (COM HUB DE CONVERGÊNCIA E CLASSE OCULTA) 🔥
 function MestrePanel() {
     const personagens = useStore(s => s.personagens)
     const meuNome = useStore(s => s.meuNome)
@@ -133,6 +133,19 @@ function MestrePanel() {
     const togglePasta = (nomePasta) => setPastasAbertas(prev => ({...prev, [nomePasta]: !prev[nomePasta]}));
 
     const [novoMestreNick, setNovoMestreNick] = useState('')
+
+    // 🔥 ESTADOS DO HUB DE CONVERGÊNCIA (MATRIZ E LORE ISOLADA) 🔥
+    const [mesaMatriz, setMesaMatriz] = useState(() => localStorage.getItem('rpg_mesa_principal') || 'Nenhuma');
+    const [capitulosGerais, setCapitulosGerais] = useState(() => {
+        try { return JSON.parse(localStorage.getItem('rpgSextaFeira_capitulos')) || []; }
+        catch(e) { return []; }
+    });
+    const [arvoresGerais, setArvoresGerais] = useState(() => {
+        try { return JSON.parse(localStorage.getItem('rpgSextaFeira_arvore')) || {}; }
+        catch(e) { return {}; }
+    });
+    const [capituloSelecionado, setCapituloSelecionado] = useState('');
+    const [arvoreSelecionada, setArvoreSelecionada] = useState('');
 
     const grandsGlobais = useMemo(() => {
         let g = {};
@@ -196,6 +209,57 @@ function MestrePanel() {
         }
     };
 
+    // 🔥 FUNÇÕES DO HUB DE CONVERGÊNCIA 🔥
+    const coroarMesaMatriz = () => {
+        if (!mesaId) return alert("Erro: O Mestre precisa estar conectado a uma mesa ativa.");
+        if (window.confirm(`👑 COROAR A MESA [${mesaId}] COMO A MATRIZ PRINCIPAL?\n\nToda a Lore legada e Árvores criadas até aqui serão seladas como a fundação intocável do seu Multiverso.`)) {
+            localStorage.setItem('rpg_mesa_principal', mesaId);
+            setMesaMatriz(mesaId);
+            localStorage.setItem('rpgSextaFeira_capitulos_MatrizBackup', JSON.stringify(capitulosGerais));
+            localStorage.setItem('rpgSextaFeira_arvore_MatrizBackup', JSON.stringify(arvoresGerais));
+            alert("✨ ABSOLUTO! Esta mesa é agora reconhecida como a fundação original de todas as histórias.");
+        }
+    };
+
+    const importarCapituloCirurgico = () => {
+        if (!capituloSelecionado) return alert("Selecione um capítulo da base original para importar!");
+        const cap = capitulosGerais.find(c => String(c.id) === String(capituloSelecionado));
+        if (!cap) return;
+
+        const chaveMesa = `rpgSextaFeira_capitulos_${mesaId}`;
+        let listaMesa = [];
+        try { listaMesa = JSON.parse(localStorage.getItem(chaveMesa)) || []; } catch(e){}
+
+        if (listaMesa.some(c => String(c.id) === String(cap.id))) {
+            if (!window.confirm(`O capítulo "${cap.titulo}" já está na memória desta mesa. Deseja sobrescrever?`)) return;
+            listaMesa = listaMesa.filter(c => String(c.id) !== String(cap.id));
+        }
+
+        listaMesa.push(cap);
+        localStorage.setItem(chaveMesa, JSON.stringify(listaMesa));
+        localStorage.setItem('rpgSextaFeira_capitulos', JSON.stringify(listaMesa));
+        alert(`📜 SUCESSO! O capítulo "${cap.titulo}" foi enxertado nos registos da mesa [${mesaId}].`);
+    };
+
+    const importarArvoreCirurgica = () => {
+        if (!arvoreSelecionada) return alert("Selecione uma árvore/panteão da base original para importar!");
+        const linhagem = arvoresGerais[arvoreSelecionada];
+        if (!linhagem) return;
+
+        const chaveMesa = `rpgSextaFeira_arvore_${mesaId}`;
+        let arvoresMesa = {};
+        try { arvoresMesa = JSON.parse(localStorage.getItem(chaveMesa)) || {}; } catch(e){}
+
+        if (arvoresMesa[arvoreSelecionada]) {
+            if (!window.confirm(`A linhagem "${arvoreSelecionada}" já habita esta mesa. Sobrescrever com a versão original?`)) return;
+        }
+
+        arvoresMesa[arvoreSelecionada] = linhagem;
+        localStorage.setItem(chaveMesa, JSON.stringify(arvoresMesa));
+        localStorage.setItem('rpgSextaFeira_arvore', JSON.stringify(arvoresMesa));
+        alert(`🌳 SUCESSO! A linhagem "${arvoreSelecionada}" foi enxertada na mesa [${mesaId}].`);
+    };
+
     const todosJogadores = Object.entries(personagens || {});
     const jogadoresFiltrados = todosJogadores.filter(([nome, ficha]) => (ficha?.bio?.mesa || 'presente') === mesaVisor);
     const fmt = (n) => Number(n || 0).toLocaleString('pt-BR');
@@ -237,14 +301,15 @@ function MestrePanel() {
         let classId = classeReal;
         if (classId === 'pretender' || classId === 'alterego') classId = ficha?.bio?.subClasse || classId;
 
-        // 🔥 O NOVO RADAR ONISCIENTE DE GRANDS 🔥
-        // Procura se o nome do personagem está coroado no Compêndio, ignorando em qual aba ele mora!
         const grandEntry = Object.entries(grandsGlobais).find(([key, val]) => val === nome && !key.includes('_candidatos'));
         const isGrandManualmente = String(classId).toLowerCase().includes('grand ');
         const isGrand = !!grandEntry || isGrandManualmente;
 
         const candidatoEntry = Object.entries(grandsGlobais).find(([key, val]) => key.includes('_candidatos') && Array.isArray(val) && val.includes(nome));
         const isCandidato = !isGrand && !!candidatoEntry;
+
+        // 🔥 SUPORTE À CLASSE OCULTA (?) NO VISUAL 🔥
+        const isMisterio = classeReal === '?' || classeReal?.toLowerCase() === 'desconhecido';
 
         let boxBorder = `1px solid ${nome === meuNome ? '#0f0' : '#333'}`;
         let boxShadow = nome === meuNome ? '0 0 15px rgba(0,255,0,0.2)' : 'none';
@@ -253,13 +318,17 @@ function MestrePanel() {
         let subText = classId ? String(classId).toUpperCase() : 'MUNDANO';
         let gradOverlay = null;
 
-        if (isGrand) {
+        if (isMisterio) {
+            boxBorder = '2px dashed #666';
+            boxShadow = 'inset 0 0 15px rgba(255,255,255,0.05)';
+            titleColor = '#aaa'; subColor = '#666';
+            subText = '👤 CLASSE: ? (ENCOBERTO)';
+        } else if (isGrand) {
             boxBorder = '2px solid #ffcc00';
             boxShadow = '0 0 20px rgba(255,0,60,0.4), inset 0 0 20px rgba(255,204,0,0.1)';
             titleColor = '#ffcc00';
             subColor = '#ffcc00';
             
-            // Corrige o texto: Se ele é Grand Ruler no compêndio, escreve "GRAND RULER" mesmo que a classe diga "Primordial"
             let displayClass = classId;
             if (grandEntry) {
                 displayClass = grandEntry[0].split('_')[0]; 
@@ -291,7 +360,7 @@ function MestrePanel() {
                     <strong style={{ color: titleColor, fontSize: '1.2em', textShadow: isGrand ? '0 0 10px #ff003c' : (isCandidato ? '0 0 10px #0088ff' : 'none') }}>
                         {nome} {nome === meuNome && <span style={{color: '#0f0', fontSize: '0.6em', textShadow: 'none'}}>(VOCÊ)</span>}
                     </strong>
-                    <span style={{ color: subColor, fontSize: (isGrand || isCandidato) ? '0.85em' : '0.8em', fontStyle: 'italic', fontWeight: (isGrand || isCandidato) ? 'bold' : 'normal', textShadow: isGrand ? '0 0 5px #ff003c' : (isCandidato ? '0 0 5px #0088ff' : 'none'), letterSpacing: (isGrand || isCandidato) ? '1px' : 'normal' }}>
+                    <span style={{ color: subColor, fontSize: (isGrand || isCandidato) ? '0.85em' : '0.8em', fontStyle: isMisterio ? 'normal' : 'italic', fontWeight: (isGrand || isCandidato || isMisterio) ? 'bold' : 'normal', textShadow: isGrand ? '0 0 5px #ff003c' : (isCandidato ? '0 0 5px #0088ff' : 'none'), letterSpacing: (isGrand || isCandidato) ? '1px' : 'normal' }}>
                         {subText}
                     </span>
                 </div>
@@ -342,6 +411,74 @@ function MestrePanel() {
     return (
         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <h2 style={{ color: '#ffcc00', textShadow: '0 0 10px #ffcc00', borderBottom: '2px solid #ffcc00', paddingBottom: 10, margin: 0 }}>👑 DOMÍNIO DO MESTRE</h2>
+            
+            {/* 🔥 HUB DE CONVERGÊNCIA CÓSMICA (MATRIZ & HERANÇA) 🔥 */}
+            <div className="def-box fade-in" style={{ borderLeft: '4px solid #aa00ff', background: 'rgba(170, 0, 255, 0.05)', padding: '15px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', borderBottom: '1px solid #333', paddingBottom: '10px', marginBottom: '12px' }}>
+                    <div>
+                        <h3 style={{ color: '#aa00ff', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            🌌 Hub de Herança Cósmica <span style={{ fontSize: '0.6em', background: '#aa00ff', color: '#fff', padding: '2px 6px', borderRadius: '4px' }}>SELETOR MULTIVERSAL</span>
+                        </h3>
+                        <p style={{ color: '#aaa', fontSize: '0.8em', margin: '4px 0 0 0' }}>
+                            Evite misturar as histórias! Defina a fundação original e enxerte dados cirurgicamente para a mesa atual.
+                        </p>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#000', padding: '6px 12px', borderRadius: '6px', border: '1px solid #444' }}>
+                        <span style={{ color: '#888', fontSize: '0.85em' }}>Mesa Matriz:</span>
+                        <strong style={{ color: mesaMatriz === mesaId ? '#ffcc00' : '#00ffcc' }}>{mesaMatriz}</strong>
+                        {mesaMatriz !== mesaId && (
+                            <button className="btn-neon btn-gold" onClick={coroarMesaMatriz} style={{ padding: '2px 8px', fontSize: '0.75em', margin: 0 }}>
+                                👑 Coroar Atual
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '15px' }}>
+                    {/* ENXERTO DE CAPÍTULOS DE LORE */}
+                    <div style={{ background: 'rgba(0,0,0,0.4)', padding: '12px', borderRadius: '6px', border: '1px solid #444' }}>
+                        <strong style={{ color: '#00ccff', fontSize: '0.85em', display: 'block', marginBottom: '8px' }}>📜 Puxar Capítulo da Lore (Sexta-Feira)</strong>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                            <select 
+                                className="input-neon" 
+                                value={capituloSelecionado} 
+                                onChange={e => setCapituloSelecionado(e.target.value)}
+                                style={{ flex: 1, padding: '4px', fontSize: '0.85em', borderColor: '#00ccff', color: '#fff', margin: 0 }}
+                            >
+                                <option value="">-- Selecione o Capítulo da Matriz --</option>
+                                {capitulosGerais.map(c => (
+                                    <option key={c.id} value={c.id}>{c.titulo}</option>
+                                ))}
+                            </select>
+                            <button className="btn-neon btn-blue" onClick={importarCapituloCirurgico} style={{ padding: '0 12px', fontSize: '0.8em', margin: 0 }}>
+                                📥 Enxertar
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* ENXERTO DE ÁRVORES GENEALÓGICAS */}
+                    <div style={{ background: 'rgba(0,0,0,0.4)', padding: '12px', borderRadius: '6px', border: '1px solid #444' }}>
+                        <strong style={{ color: '#00ff88', fontSize: '0.85em', display: 'block', marginBottom: '8px' }}>🌳 Puxar Panteão / Clã (Árvore)</strong>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                            <select 
+                                className="input-neon" 
+                                value={arvoreSelecionada} 
+                                onChange={e => setArvoreSelecionada(e.target.value)}
+                                style={{ flex: 1, padding: '4px', fontSize: '0.85em', borderColor: '#00ff88', color: '#fff', margin: 0 }}
+                            >
+                                <option value="">-- Selecione o Clã da Matriz --</option>
+                                {Object.keys(arvoresGerais).map(fam => (
+                                    <option key={fam} value={fam}>{fam} ({arvoresGerais[fam]?.length || 0} membros)</option>
+                                ))}
+                            </select>
+                            <button className="btn-neon btn-green" onClick={importarArvoreCirurgica} style={{ padding: '0 12px', fontSize: '0.8em', margin: 0 }}>
+                                📥 Enxertar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
                 <div className="def-box" style={{ flex: '1 1 65%', minWidth: '400px', borderLeft: '4px solid #0088ff' }}>
                     
@@ -503,11 +640,11 @@ function AuthScreen() {
     );
 }
 
-// 🏰 LOBBY DE MESAS (DESIGN TOTALMENTE NOVO E ROBUSTO)
+// 🏰 LOBBY DE MESAS (DESIGN ROBUSTO E SCANNER AUTOMÁTICO)
 function LobbyNeon() {
     const { setMesaId, userLogado } = useStore();
     const [codigoSala, setCodigoSala] = useState('');
-    const [abaMesas, setAbaMesas] = useState('jogador'); // 'mestre' ou 'jogador'
+    const [abaMesas, setAbaMesas] = useState('jogador');
 
     const [minhasMesas, setMinhasMesas] = useState(() => {
         try { 
@@ -516,7 +653,6 @@ function LobbyNeon() {
         } catch(e) { return []; }
     });
 
-    // 🔥 O SCANNER AUTOMÁTICO: Lê as mesas invisivelmente e arruma a lista
     useEffect(() => {
         if (!userLogado || minhasMesas.length === 0) return;
         let mounted = true;
@@ -524,7 +660,7 @@ function LobbyNeon() {
         const checkMesas = async () => {
             let updated = false;
             const novasMesas = await Promise.all(minhasMesas.map(async (m) => {
-                const res = await verificarMesaExistente(m.id, ''); // Sem senha só pra ler os dados
+                const res = await verificarMesaExistente(m.id, '');
                 if (res.existe) {
                     const nickSanitizado = sanitizarNome(userLogado);
                     const isMestreReal = !!(res.mestres && res.mestres[nickSanitizado]);
