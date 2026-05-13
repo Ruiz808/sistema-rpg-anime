@@ -52,9 +52,11 @@ export function AtaqueFormProvider({ children }) {
     const [podeRolarDano, setPodeRolarDano] = useState(true);
     const [furiaAcalmadaMsg, setFuriaAcalmadaMsg] = useState(false);
 
-    // 🔥 NOVOS ESTADOS: FÓRMULA MANUAL E LETALIDADE 🔥
+    // 🔥 NOVOS ESTADOS: FÓRMULA MANUAL, LETALIDADE E DÉBITO DIRETO 🔥
     const [customFormula, setCustomFormula] = useState('');
     const [customLetalidade, setCustomLetalidade] = useState(0);
+    const [customEnergiaTipo, setCustomEnergiaTipo] = useState('nenhum');
+    const [customEnergiaCusto, setCustomEnergiaCusto] = useState(0);
 
     const multiplicadorFuriaClasse = useMemo(() => {
         let maxFuria = 0;
@@ -207,8 +209,7 @@ export function AtaqueFormProvider({ children }) {
         salvarFichaSilencioso();
     }, [updateFicha, armaStatusUsados, armaEnergiaCombustao, armaPercEnergia, critNormalMin, critNormalMax, critFatalMin, critFatalMax, skillConfigs]);
 
-
-    // 🔥 FUNÇÕES DO AVALIADOR DE DANO MANUAL (MATH ENGINE) 🔥
+    // 🔥 SALVAR FÓRMULA COM TIPO E CUSTO DE ENERGIA 🔥
     const salvarFormula = useCallback(() => {
         const nomeForm = window.prompt("Como deseja nomear esta fórmula de ataque?");
         if (!nomeForm || !nomeForm.trim()) return;
@@ -220,11 +221,13 @@ export function AtaqueFormProvider({ children }) {
                 id: Date.now(),
                 nome: nomeForm.trim(),
                 formula: customFormula,
-                letalidade: parseInt(customLetalidade) || 0
+                letalidade: parseInt(customLetalidade) || 0,
+                energiaTipo: customEnergiaTipo,
+                energiaCusto: parseInt(customEnergiaCusto) || 0
             });
         });
         salvarFichaSilencioso();
-    }, [customFormula, customLetalidade, updateFicha]);
+    }, [customFormula, customLetalidade, customEnergiaTipo, customEnergiaCusto, updateFicha]);
 
     const deletarFormula = useCallback((id) => {
         updateFicha(ficha => {
@@ -235,16 +238,16 @@ export function AtaqueFormProvider({ children }) {
         salvarFichaSilencioso();
     }, [updateFicha]);
 
-    const rolarDanoCustomizado = useCallback((formulaOverride, letalidadeOverride) => {
+    const rolarDanoCustomizado = useCallback((formulaOverride, letalidadeOverride, energiaTipoOverride, energiaCustoOverride) => {
         const formAtiva = formulaOverride !== undefined ? formulaOverride : customFormula;
         const letalAtiva = letalidadeOverride !== undefined ? letalidadeOverride : customLetalidade;
+        const tipoAtiva = energiaTipoOverride !== undefined ? energiaTipoOverride : customEnergiaTipo;
+        const custoAtiva = energiaCustoOverride !== undefined ? energiaCustoOverride : customEnergiaCusto;
 
         if (!formAtiva.trim()) return;
 
-        // Sanitiza a fórmula e troca 'x' por '*' para a conta matemática
         let expressao = formAtiva.toLowerCase().replace(/\s+/g, '').replace(/x/g, '*');
         
-        // Regex de segurança para evitar injeção de código na função
         if (/[^0-9d\*\+\-\/\(\)\.]/.test(expressao)) {
             alert('Fórmula inválida! Use apenas números, d, x, *, +, -, / e parênteses.\nEx: ((5d10x61000)x2)x20');
             return;
@@ -253,7 +256,6 @@ export function AtaqueFormProvider({ children }) {
         let rollsLog = [];
         let stringCalculo = expressao;
 
-        // Procura por todos os rolagens de dados (ex: 5d10) e rola nos bastidores
         expressao = expressao.replace(/(\d+)d(\d+)/g, (match, qtdStr, facesStr) => {
             const qtd = parseInt(qtdStr);
             const faces = parseInt(facesStr);
@@ -278,16 +280,27 @@ export function AtaqueFormProvider({ children }) {
         });
 
         try {
-            // Roda a conta matemática final com a string tratada
             const resultadoFinal = new Function('return ' + expressao)();
             
             if (isNaN(resultadoFinal) || !isFinite(resultadoFinal)) throw new Error("Cálculo infinito");
 
-            // CÁLCULO DE LETALIDADE (Pega a base automática + bônus do usuário)
             const letalExtra = parseInt(letalAtiva) || 0;
             const digitosGerais = String(Math.floor(Math.abs(resultadoFinal))).length;
             const letalidadeCalculada = Math.max(0, digitosGerais - 8) + letalExtra;
             const danoReduzido = letalidadeCalculada > 0 ? Math.floor(resultadoFinal / Math.pow(10, letalidadeCalculada)) : Math.floor(resultadoFinal);
+
+            // 🔥 DÉBITO AUTOMÁTICO DE ENERGIA DA GAVETA 🔥
+            const custoNum = parseInt(custoAtiva) || 0;
+            let logEnergia = '';
+            if (tipoAtiva && tipoAtiva !== 'nenhum' && custoNum > 0) {
+                updateFicha(ficha => {
+                    if (ficha[tipoAtiva]) {
+                        ficha[tipoAtiva].atual = Math.max(0, (ficha[tipoAtiva].atual || 0) - custoNum);
+                    }
+                });
+                salvarFichaSilencioso();
+                logEnergia = `⚡ Consumiu ${custoNum.toLocaleString('pt-BR')} de ${tipoAtiva.toUpperCase()}`;
+            }
 
             let detalheConta = `<div style="margin-top: 15px; padding: 10px; background: rgba(0,0,0,0.4); border-radius: 5px; border-left: 4px solid #ff00ff; font-family: monospace; font-size: 0.95em; color: #ccc;">`;
             detalheConta += `<strong style="color:#ff00ff; font-size:1.1em; letter-spacing:1px;">[ CÁLCULO MANUAL LIVRE ]</strong><br/><br/>`;
@@ -299,9 +312,11 @@ export function AtaqueFormProvider({ children }) {
             
             detalheConta += `<strong>Dano Bruto Calculado:</strong> ${resultadoFinal.toLocaleString('pt-BR')}<br/>`;
             detalheConta += `<strong>Cálculo:</strong> ${stringCalculo} = <strong style="color:#ff003c; font-size:1.2em;">${resultadoFinal.toLocaleString('pt-BR')}</strong>`;
+            if (logEnergia) {
+                detalheConta += `<br/><br/><span style="color:#00ffcc; font-weight:bold;">${logEnergia} debitado diretamente da ficha!</span>`;
+            }
             detalheConta += `</div>`;
 
-            // Aplica Dano no Dummie (se houver alvo selecionado)
             let extraFeed = {};
             if (dummieAlvo && alvoSelecionado) {
                 const hpAnterior = dummieAlvo.hpAtual;
@@ -314,11 +329,11 @@ export function AtaqueFormProvider({ children }) {
                 tipo: 'dano', 
                 nome: meuNome, 
                 dano: Math.floor(danoReduzido), 
-                letalidade: letalidadeCalculada, // A LETALIDADE ENTRA AQUI!
+                letalidade: letalidadeCalculada, 
                 rolagem: `${rollsLog.length > 0 ? rollsLog.length + ' rolagem(ns)' : 'Cálculo Direto'}`, 
                 rolagemMagica: "",
                 atributosUsados: 'Manual', 
-                detalheEnergia: '',
+                detalheEnergia: logEnergia ? `(${logEnergia})` : '',
                 armaStr: ' (Fórmula Livre)', 
                 detalheConta: detalheConta,
                 ...extraFeed
@@ -326,14 +341,13 @@ export function AtaqueFormProvider({ children }) {
 
             enviarParaFeed(feedData);
             setAbaAtiva('aba-log');
-            if(formulaOverride === undefined) {
-                setCustomFormula(''); // Limpa o campo depois de rolar se não for por botão salvo
+            if (formulaOverride === undefined) {
+                setCustomFormula(''); 
             }
         } catch (e) {
             alert('Erro ao calcular a fórmula matemática. Verifique se os parênteses fecham corretamente.');
         }
-    }, [customFormula, customLetalidade, meuNome, dummieAlvo, alvoSelecionado, setAbaAtiva]);
-
+    }, [customFormula, customLetalidade, customEnergiaTipo, customEnergiaCusto, meuNome, dummieAlvo, alvoSelecionado, setAbaAtiva, updateFicha]);
 
     const rolarDano = useCallback(() => {
         salvarConfigAtaque();
@@ -412,58 +426,6 @@ export function AtaqueFormProvider({ children }) {
             extraFeed = { alvoNome: dummieAlvo.nome, alvoSobreviveu: novoHp > 0, overkill: result.dano > hpAnterior ? result.dano - hpAnterior : 0 };
         }
 
-        if (meuUltimoAcerto && meuUltimoAcerto.zonaIdGerada) {
-            const cenarioAtual = useStore.getState().cenario;
-            if (cenarioAtual?.zonas) {
-                const novoCenario = JSON.parse(JSON.stringify(cenarioAtual));
-                const zRef = novoCenario.zonas.find(z => z.id === meuUltimoAcerto.zonaIdGerada);
-                if (zRef) {
-                    const buffsAtuais = getBuffs(minhaFicha);
-                    const furiaM = multiplicadorFuriaVisor > 0 ? multiplicadorFuriaVisor : 1;
-                    
-                    const multOrig = (buffsAtuais?.mbase || 1) * (buffsAtuais?.mgeral || 1) * (buffsAtuais?.mformas || 1) * (buffsAtuais?.mabs || 1) * furiaM;
-
-                    let keysUsadas = [];
-                    todasHabilidades.forEach(h => { if(h.statusUsados) keysUsadas.push(...h.statusUsados); });
-                    if (configArma?.statusUsados) keysUsadas.push(...configArma.statusUsados);
-                    keysUsadas = [...new Set(keysUsadas)];
-                    zRef.statusKeys = keysUsadas;
-
-                    let somaStatusOriginal = 0;
-                    keysUsadas.forEach(k => {
-                        const str = String(minhaFicha[k]?.base || '').replace(/[^0-9]/g, '');
-                        somaStatusOriginal += parseInt(str.substring(0, 2), 10) || 0;
-                    });
-                    zRef.somaStatusOriginal = somaStatusOriginal;
-
-                    let danoBrutoOrig = 0;
-                    let letalidadeBuffsOrig = 0;
-                    const scanBruto = (efs) => {
-                        (efs || []).forEach(e => {
-                            if (!e) return;
-                            const prop = (e.propriedade || '').toLowerCase().trim();
-                            if (prop === 'dano_bruto' || prop === 'dano_verdadeiro') danoBrutoOrig += parseFloat(e.valor) || 0;
-                            if (prop === 'letalidade') letalidadeBuffsOrig += parseFloat(e.valor) || 0;
-                        });
-                    };
-                    (minhaFicha.poderes || []).forEach(p => { if (p.ativa) scanBruto(p.efeitos); scanBruto(p.efeitosPassivos); });
-                    (minhaFicha.inventario || []).forEach(i => { if (i.equipado) { scanBruto(i.efeitos); scanBruto(i.efeitosPassivos); } });
-                    (minhaFicha.passivas || []).forEach(p => scanBruto(p.efeitos));
-                    
-                    zRef.danoBrutoOriginal = danoBrutoOrig;
-                    zRef.letalidadeOriginalBuffs = letalidadeBuffsOrig;
-
-                    zRef.danoOriginal = result.dano;
-                    zRef.letalidadeOriginal = result.letalidade || 0; 
-                    zRef.multiplicadorOriginal = multOrig === 0 ? 1 : multOrig;
-                    zRef.danoAplicado = result.dano;
-                    
-                    salvarCenarioCompleto(novoCenario);
-                    textoAlvos += `<br/><span style="color:#ff00ff; font-weight:bold;">🌪️ A Zona de Efeito absorveu o poder e castigará quem permanecer lá!</span>`;
-                }
-            }
-        }
-
         const feedData = {
             tipo: 'dano', nome: meuNome, dano: result.dano, letalidade: result.letalidade,
             rolagem: result.rolagem, rolagemMagica: result.rolagemMagica,
@@ -489,14 +451,16 @@ export function AtaqueFormProvider({ children }) {
         ignorarTravaAcerto, setIgnorarTravaAcerto, skillConfigs, podeRolarDano, furiaAcalmadaMsg,
         multiplicadorFuriaClasse, multiplicadorFuriaVisor, percAtualLostFloor, percEfetivoParaDisplay,
         dummieAlvo, armaEquipada, poderesAtivos, magiasOfensivas, minhaFicha,
-        customFormula, setCustomFormula, customLetalidade, setCustomLetalidade, rolarDanoCustomizado, salvarFormula, deletarFormula, // 🔥 FUNÇÕES EXPORTADAS
+        customFormula, setCustomFormula, customLetalidade, setCustomLetalidade, 
+        customEnergiaTipo, setCustomEnergiaTipo, customEnergiaCusto, setCustomEnergiaCusto,
+        rolarDanoCustomizado, salvarFormula, deletarFormula,
         acalmarFuria, updateSkillConfig, toggleSkillStat, toggleArmaStat, salvarConfigAtaque, rolarDano,
     }), [
         armaStatusUsados, armaEnergiaCombustao, armaPercEnergia, critNormalMin, critNormalMax, critFatalMin, critFatalMax,
         autoCritNormal, autoCritFatal, forcarCritNormal, forcarCritFatal, ignorarTravaAcerto, skillConfigs, podeRolarDano, furiaAcalmadaMsg,
         multiplicadorFuriaClasse, multiplicadorFuriaVisor, percAtualLostFloor, percEfetivoParaDisplay,
         dummieAlvo, armaEquipada, poderesAtivos, magiasOfensivas, minhaFicha,
-        customFormula, customLetalidade, rolarDanoCustomizado, salvarFormula, deletarFormula,
+        customFormula, customLetalidade, customEnergiaTipo, customEnergiaCusto, rolarDanoCustomizado, salvarFormula, deletarFormula,
         acalmarFuria, updateSkillConfig, toggleSkillStat, toggleArmaStat, salvarConfigAtaque, rolarDano,
     ]);
 

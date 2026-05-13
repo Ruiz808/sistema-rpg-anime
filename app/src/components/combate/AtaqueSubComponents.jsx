@@ -217,6 +217,8 @@ export function AtaqueDanoCustomizado() {
     const { 
         customFormula, setCustomFormula, 
         customLetalidade, setCustomLetalidade, 
+        customEnergiaTipo, setCustomEnergiaTipo,
+        customEnergiaCusto, setCustomEnergiaCusto,
         rolarDanoCustomizado, salvarFormula, deletarFormula, minhaFicha 
     } = ctx;
 
@@ -227,44 +229,71 @@ export function AtaqueDanoCustomizado() {
             <h3 style={{ color: '#ff00ff', margin: '0 0 5px 0' }}>🧩 Modo Deus (Fórmula Customizada)</h3>
             <p style={{ color: '#aaa', fontSize: '0.8em', margin: '0 0 10px 0' }}>Enquanto o sistema não automatiza sua ficha inteira, digite a matemática maluca aqui e deixe a engine rolar.</p>
             
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-                <input 
-                    className="input-neon" 
-                    type="text" 
-                    placeholder="Ex: ((5d10 x 61000) x 2) x 20" 
-                    value={customFormula} 
-                    onChange={e => setCustomFormula(e.target.value)} 
-                    style={{ flex: '1 1 250px', fontSize: '1.1em', borderColor: '#ff00ff', color: '#fff', margin: 0 }}
-                />
-                
-                {/* 🔥 O CAMPO DE LETALIDADE ENTRA AQUI 🔥 */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#111', padding: '5px', borderRadius: 5, border: '1px solid #ff00ff' }}>
-                    <span style={{ color: '#ffcc00', fontSize: '0.8em', fontWeight: 'bold' }}>+Letalidade:</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
                     <input 
                         className="input-neon" 
-                        type="number" 
-                        value={customLetalidade} 
-                        onChange={e => setCustomLetalidade(e.target.value)} 
-                        style={{ width: 60, margin: 0, padding: 4 }} 
+                        type="text" 
+                        placeholder="Ex: ((5d10 x 61000) x 2) x 20" 
+                        value={customFormula} 
+                        onChange={e => setCustomFormula(e.target.value)} 
+                        style={{ flex: '1 1 250px', fontSize: '1.1em', borderColor: '#ff00ff', color: '#fff', margin: 0 }}
                     />
+                    
+                    {/* 🔥 O CAMPO DE LETALIDADE 🔥 */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#111', padding: '5px', borderRadius: 5, border: '1px solid #ff00ff' }}>
+                        <span style={{ color: '#ffcc00', fontSize: '0.8em', fontWeight: 'bold' }}>+Letalidade:</span>
+                        <input 
+                            className="input-neon" 
+                            type="number" 
+                            value={customLetalidade} 
+                            onChange={e => setCustomLetalidade(e.target.value)} 
+                            style={{ width: 60, margin: 0, padding: 4 }} 
+                        />
+                    </div>
+
+                    {/* 🔥 DÉBITO DE ENERGIA MANUAL 🔥 */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#111', padding: '5px', borderRadius: 5, border: '1px solid #00ffcc' }}>
+                        <span style={{ color: '#00ffcc', fontSize: '0.8em', fontWeight: 'bold' }}>⚡ Débito:</span>
+                        <select 
+                            className="input-neon" 
+                            value={customEnergiaTipo} 
+                            onChange={e => setCustomEnergiaTipo(e.target.value)} 
+                            style={{ padding: '2px 4px', fontSize: '0.85em', borderColor: '#00ffcc', color: '#00ffcc', margin: 0 }}
+                        >
+                            <option value="nenhum">Nenhum</option>
+                            <option value="mana">Mana</option>
+                            <option value="aura">Aura</option>
+                            <option value="chakra">Chakra</option>
+                            <option value="corpo">Corpo</option>
+                        </select>
+                        <input 
+                            className="input-neon" 
+                            type="number" 
+                            placeholder="Custo"
+                            value={customEnergiaCusto} 
+                            onChange={e => setCustomEnergiaCusto(e.target.value)} 
+                            style={{ width: 70, margin: 0, padding: 4, borderColor: '#00ffcc' }} 
+                        />
+                    </div>
+
+                    <button 
+                        className="btn-neon btn-blue" 
+                        onClick={salvarFormula}
+                        title="Salvar esta fórmula na memória"
+                        style={{ padding: '0 15px', fontSize: '1.2em', margin: 0, height: '42px', borderColor: '#00aaff', color: '#00aaff' }}
+                    >
+                        💾
+                    </button>
+
+                    <button 
+                        className="btn-neon" 
+                        onClick={() => rolarDanoCustomizado()}
+                        style={{ flex: '1 1 120px', height: '42px', background: 'rgba(255,0,255,0.2)', borderColor: '#ff00ff', color: '#ff00ff', fontWeight: 'bold', margin: 0 }}
+                    >
+                        🎲 ROLAR
+                    </button>
                 </div>
-
-                <button 
-                    className="btn-neon btn-blue" 
-                    onClick={salvarFormula}
-                    title="Salvar esta fórmula na memória"
-                    style={{ padding: '0 15px', fontSize: '1.2em', margin: 0, height: '42px', borderColor: '#00aaff', color: '#00aaff' }}
-                >
-                    💾
-                </button>
-
-                <button 
-                    className="btn-neon" 
-                    onClick={() => rolarDanoCustomizado()}
-                    style={{ flex: '0 1 150px', height: '42px', background: 'rgba(255,0,255,0.2)', borderColor: '#ff00ff', color: '#ff00ff', fontWeight: 'bold', margin: 0 }}
-                >
-                    🎲 ROLAR
-                </button>
             </div>
 
             {/* 🔥 O BANCO DE MEMÓRIA (BOTÕES RÁPIDOS) 🔥 */}
@@ -273,14 +302,19 @@ export function AtaqueDanoCustomizado() {
                     {formulasSalvas.map(f => (
                         <div key={f.id} style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.5)', border: '1px solid #ff00ff', borderRadius: '20px', overflow: 'hidden' }}>
                             <button 
-                                onClick={() => rolarDanoCustomizado(f.formula, f.letalidade)}
+                                onClick={() => rolarDanoCustomizado(f.formula, f.letalidade, f.energiaTipo, f.energiaCusto)}
                                 style={{ background: 'none', border: 'none', color: '#fff', padding: '4px 10px', fontSize: '0.85em', cursor: 'pointer', fontWeight: 'bold' }}
-                                title={`Fórmula: ${f.formula} | Letalidade: +${f.letalidade || 0}`}
+                                title={`Fórmula: ${f.formula} | Letalidade: +${f.letalidade || 0}${f.energiaTipo && f.energiaTipo !== 'nenhum' && f.energiaCusto ? ` | Custo: ${f.energiaCusto} ${f.energiaTipo}` : ''}`}
                             >
                                 ▶ {f.nome}
                             </button>
                             <button 
-                                onClick={() => { setCustomFormula(f.formula); setCustomLetalidade(f.letalidade || 0); }}
+                                onClick={() => { 
+                                    setCustomFormula(f.formula); 
+                                    setCustomLetalidade(f.letalidade || 0); 
+                                    setCustomEnergiaTipo(f.energiaTipo || 'nenhum');
+                                    setCustomEnergiaCusto(f.energiaCusto || 0);
+                                }}
                                 style={{ background: 'none', border: 'none', borderLeft: '1px solid #444', color: '#ffcc00', padding: '4px 8px', fontSize: '0.85em', cursor: 'pointer' }}
                                 title="Editar"
                             >
