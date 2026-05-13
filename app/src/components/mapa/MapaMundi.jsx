@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
+import useStore from '../../stores/useStore';
 
 // 🔥 AS IMAGENS DO MUNDO MATERIAL 🔥
 import mapaClean from '../../assets/runeterra-clean.jpg';
@@ -15,21 +16,14 @@ import gabaritoIonia from '../../assets/gabarito-ionia.png';
 import mapaCosmologia from '../../assets/mapa-cosmologia.png';
 
 export default function MapaMundi({ children }) {
+    // 💡 A MÁGICA DE SINCRONIZAÇÃO ACONTECE AQUI:
+    // Puxamos a Cena Global para injetar os mapas e imagens direto na Base de Dados.
+    const cenario = useStore(s => s.cenario);
+    const setCenario = useStore(s => s.setCenario);
+
     const [nivelVisao, setNivelVisao] = useState('sistema_solar'); 
     const [localAtual, setLocalAtual] = useState({ continente: null, reino: null, mapaId: null, plano: 'Material' });
 
-    const [mapasSalvos, setMapasSalvos] = useState({
-        'Freljord': ['Acampamento Glacinata', 'Passe da Montanha']
-    });
-   const [mapasImagens, setMapasImagens] = useState(() => {
-        const salvo = localStorage.getItem('rpg_mapas_mundi_custom');
-        return salvo ? JSON.parse(salvo) : {};
-    });
-
-    // Adicione este bloco logo abaixo do useState:
-    useEffect(() => {
-        localStorage.setItem('rpg_mapas_mundi_custom', JSON.stringify(mapasImagens));
-    }, [mapasImagens]);
     const [reinoSelecionado, setReinoSelecionado] = useState(null);
     const [modoEdicaoMapa, setModoEdicaoMapa] = useState(false);
     const [urlInput, setUrlInput] = useState('');
@@ -306,20 +300,89 @@ export default function MapaMundi({ children }) {
         </div>
     );
 
+    // ==========================================
+    // 💡 AS NOVAS FUNÇÕES PARA CRIAR E ENTRAR NO MAPA
+    // ==========================================
+    
     const criarNovoMapa = () => {
         const nome = prompt("Escreva o nome do novo mapa para " + reinoSelecionado + ":");
-        if (nome && nome.trim() !== "") setMapasSalvos(prev => ({ ...prev, [reinoSelecionado]: [...(prev[reinoSelecionado] || []), nome] }));
+        if (nome && nome.trim() !== "") {
+            // Cria um ID único para este novo mapa
+            const novoMapa = { id: `mapa_${Date.now()}`, nome: nome.trim(), img: '' };
+            
+            // Vai buscar os mapas que já existem na store para este reino
+            const mapasAtuais = cenario.mapasMundi?.[reinoSelecionado] || [];
+            
+            // Grava o novo mapa na Store Global (que vai para o Firebase)
+            setCenario({ 
+                ...cenario, 
+                mapasMundi: { 
+                    ...(cenario.mapasMundi || {}), 
+                    [reinoSelecionado]: [...mapasAtuais, novoMapa] 
+                } 
+            });
+        }
     };
-    const entrarNoContinente = (nomeContinente) => {
-        setLocalAtual({ continente: nomeContinente, reino: null, mapaId: null, plano: 'Material' });
-        setNivelVisao('continente');
-    };
+
     const abrirMenuReino = (nomeReino) => setReinoSelecionado(nomeReino);
-    const entrarNoMapaDeBatalha = (mapaEscolhido) => {
-        setLocalAtual({ ...localAtual, reino: reinoSelecionado, mapaId: mapaEscolhido });
+
+    const entrarNoMapaDeBatalha = (mapa) => {
+        // Regista onde estamos
+        setLocalAtual({ ...localAtual, reino: reinoSelecionado, mapaId: mapa.id, mapaNome: mapa.nome });
         setReinoSelecionado(null);
         setNivelVisao('reino');
+        
+        // 🔥 A MÁGICA DE MUDAR A CENA ACONTECE AQUI 🔥
+        // Ao invés de o mapa usar a imagem da cena, o mapa VIRA a cena!
+        const cenasLista = { ...cenario.lista };
+        
+        // Se a Cena para este mapa ainda não existe no criador de Cenas, cria-se agora:
+        if (!cenasLista[mapa.id]) {
+            cenasLista[mapa.id] = { nome: `[${reinoSelecionado}] ${mapa.nome}`, img: mapa.img || '', escala: 1.5, unidade: 'm' };
+        } else {
+            // Se já existir, garante que usa a imagem correta
+            cenasLista[mapa.id].img = mapa.img || cenasLista[mapa.id].img;
+        }
+        
+        // Atualiza o Store para a Cena atual ser este Mapa que acabámos de abrir
+        setCenario({ ...cenario, ativa: mapa.id, lista: cenasLista });
     };
+
+    // Função para atualizar a imagem de Fundo via Upload ou URL
+    const atualizarImagemMapa = (base64Img) => {
+        const reino = localAtual.reino;
+        const id = localAtual.mapaId;
+        
+        const mapasAtuais = cenario.mapasMundi?.[reino] || [];
+        const novosMapas = mapasAtuais.map(m => m.id === id ? { ...m, img: base64Img } : m);
+        
+        // Atualiza a lista de Cenas também, para a grid de combate atualizar imediatamente
+        const novasCenas = { ...cenario.lista };
+        if (novasCenas[id]) novasCenas[id].img = base64Img;
+        
+        // Envia tudo para o Firebase
+        setCenario({ 
+            ...cenario, 
+            lista: novasCenas,
+            mapasMundi: { ...(cenario.mapasMundi || {}), [reino]: novosMapas }
+        });
+        setModoEdicaoMapa(false);
+    };
+
+    const handleImageUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => atualizarImagemMapa(reader.result);
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const salvarUrl = () => {
+        if(urlInput) atualizarImagemMapa(urlInput);
+        else setModoEdicaoMapa(false);
+    };
+
 
     // ==========================================
     // 🌌 TELA 0: SISTEMA SOLAR CÂMERA 3D
@@ -455,7 +518,6 @@ export default function MapaMundi({ children }) {
                     </div>
                 </div>
 
-                {/* 💥 O CLARÃO DE TRANSIÇÃO 💥 */}
                 <div style={{ position: 'absolute', inset: 0, background: '#fff', opacity: flashBranco ? 1 : 0, pointerEvents: 'none', zIndex: 999999, transition: 'opacity 0.2s ease-out' }} />
 
                 <style dangerouslySetInnerHTML={{__html: `
@@ -555,12 +617,16 @@ export default function MapaMundi({ children }) {
                 <div style={{ position: 'relative', width: '350px', height: '350px', perspective: '1000px' }}>
                     <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', backgroundColor: '#000814', border: '2px solid #0088ff', pointerEvents: 'none', boxShadow: '0 0 50px rgba(0, 136, 255, 0.2)', opacity: voandoPara ? 0 : 1, transition: 'opacity 1s' }}></div>
                     <div onMouseDown={handleGloboDragStart} onTouchStart={handleGloboDragStart} style={{ position: 'absolute', inset: 0, transformStyle: 'preserve-3d', transform: voandoPara === 'Runeterra' ? `scale(10)` : `rotateX(${rotacaoGlobo.y}deg) rotateY(${rotacaoGlobo.x}deg)`, cursor: isDragging ? 'grabbing' : 'grab', transition: voandoPara === 'Runeterra' ? 'transform 1.5s cubic-bezier(0.4, 0, 0.2, 1)' : (isDragging ? 'none' : 'transform 0.5s ease-out') }}>
-                        <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(0,255,204,0.15)', transform: 'rotateX(90deg)', opacity: voandoPara ? 0 : 1, transition: 'opacity 1s' }}></div><div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(0,255,204,0.15)', transform: 'rotateY(90deg)', opacity: voandoPara ? 0 : 1, transition: 'opacity 1s' }}></div><div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(0,255,204,0.15)', transform: 'rotateZ(45deg) rotateX(90deg)', opacity: voandoPara ? 0 : 1, transition: 'opacity 1s' }}></div>
+                        
+                        <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(0,255,204,0.15)', transform: 'rotateX(90deg)', opacity: voandoPara ? 0 : 1, transition: 'opacity 1s' }}></div>
+                        <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(0,255,204,0.15)', transform: 'rotateY(90deg)', opacity: voandoPara ? 0 : 1, transition: 'opacity 1s' }}></div>
+                        <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(0,255,204,0.15)', transform: 'rotateZ(45deg) rotateX(90deg)', opacity: voandoPara ? 0 : 1, transition: 'opacity 1s' }}></div>
+                        
                         <div style={{ position: 'absolute', inset: 0, transform: 'translateZ(160px)', backfaceVisibility: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
                             <svg viewBox="0 0 200 200" style={{ position: 'absolute', width: '140px', height: '140px', filter: 'drop-shadow(0 0 3px rgba(0,255,204,0.8))', opacity: voandoPara ? 0 : 1, transition: 'opacity 1s' }}><path d="M 12 55 L 18 45 L 30 38 L 42 35 L 55 30 L 70 28 L 85 25 L 100 28 L 115 32 L 125 30 L 135 38 L 142 42 L 140 52 L 132 58 L 122 56 L 115 65 L 105 72 L 95 68 L 82 72 L 68 80 L 52 75 L 40 82 L 25 72 L 15 75 Z" fill="rgba(0,255,204,0.08)" stroke="#00ffcc" strokeWidth="1" strokeLinejoin="round" /><path d="M 45 92 L 58 85 L 75 82 L 95 84 L 110 88 L 118 82 L 128 92 L 138 105 L 132 120 L 142 135 L 135 148 L 125 152 L 115 168 L 105 160 L 92 168 L 75 162 L 62 152 L 48 142 L 38 125 L 42 108 L 40 98 Z" fill="rgba(0,255,204,0.08)" stroke="#00ffcc" strokeWidth="1" strokeLinejoin="round" /><path d="M 152 28 L 162 20 L 175 18 L 182 25 L 185 38 L 178 50 L 182 62 L 172 72 L 160 75 L 150 65 L 148 50 L 145 38 Z" fill="rgba(0,255,204,0.08)" stroke="#00ffcc" strokeWidth="1" strokeLinejoin="round" /><circle cx="162" cy="85" r="2" fill="#00ffcc" /><line x1="105" y1="72" x2="110" y2="88" stroke="#ffcc00" strokeWidth="1.5" /></svg>
                             
                             {/* ✨ MAGIA DA ANIMAÇÃO DE VOO (Continente) ✨ */}
-                            <button onClick={() => iniciarViagem('Runeterra', 'continente')} style={{ pointerEvents: 'auto', background: 'rgba(0,255,204,0.1)', border: '2px solid #00ffcc', color: '#00ffcc', padding: '12px 24px', borderRadius: '30px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9em', letterSpacing: '2px', backdropFilter: 'blur(5px)', boxShadow: '0 0 20px rgba(0,255,204,0.4)', zIndex: 10, opacity: voandoPara ? 0 : 1, transition: 'opacity 1s' }}>🌍 ENTRAR EM RUNETERRA</button>
+                            <button onClick={() => iniciarViagem('Runeterra', () => { setLocalAtual({ continente: 'Runeterra', reino: null, mapaId: null, plano: 'Material' }); setNivelVisao('continente'); })} style={{ pointerEvents: 'auto', background: 'rgba(0,255,204,0.1)', border: '2px solid #00ffcc', color: '#00ffcc', padding: '12px 24px', borderRadius: '30px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9em', letterSpacing: '2px', backdropFilter: 'blur(5px)', boxShadow: '0 0 20px rgba(0,255,204,0.4)', zIndex: 10, opacity: voandoPara ? 0 : 1, transition: 'opacity 1s' }}>🌍 ENTRAR EM RUNETERRA</button>
                         </div>
                     </div>
                 </div>
@@ -571,6 +637,9 @@ export default function MapaMundi({ children }) {
     }
 
     if (nivelVisao === 'continente') {
+        // 🔥 PUXA OS MAPAS DO USESTORE 🔥
+        const mapasSalvosNoStore = (cenario.mapasMundi && cenario.mapasMundi[reinoSelecionado]) || [];
+
         return (
             <div className="fade-in" style={{ width: '100%', height: '85vh', background: '#050508', borderRadius: '10px', border: '1px solid #0088ff', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.85)', padding: '12px 25px', borderBottom: '1px solid #222', zIndex: 10, opacity: voandoPara ? 0 : 1, transition: 'opacity 1s' }}>
@@ -616,7 +685,6 @@ export default function MapaMundi({ children }) {
                                 onMouseLeave={() => setReinoHover(null)} 
                                 onClick={(e) => { 
                                     e.stopPropagation(); 
-                                    // Ação de viagem dispara a abertura do menu após o clarão!
                                     iniciarViagem(reino.nome, () => abrirMenuReino(reino.nome)); 
                                 }}
                             >
@@ -634,9 +702,12 @@ export default function MapaMundi({ children }) {
                             <button onClick={() => setReinoSelecionado(null)} style={{ position: 'absolute', top: '15px', right: '20px', background: 'none', border: 'none', color: '#ff4444', fontSize: '22px', cursor: 'pointer', fontWeight: 'bold' }}>X</button>
                             <h2 style={{ color: '#ffcc00', margin: '0 0 10px 0', textTransform: 'uppercase' }}>{reinoSelecionado}</h2>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '25px', maxHeight: '200px', overflowY: 'auto' }}>
-                                {(mapasSalvos[reinoSelecionado] || []).map(mapa => (
-                                    <button key={mapa} onClick={() => entrarNoMapaDeBatalha(mapa)} style={{ background: '#1a1a1a', border: '1px solid #333', color: '#fff', padding: '14px', borderRadius: '10px', cursor: 'pointer', textAlign: 'left' }}>🗺️ {mapa}</button>
+                                
+                                {/* 🔥 MAPAS AGORA VÊM DO USESTORE 🔥 */}
+                                {mapasSalvosNoStore.map(mapa => (
+                                    <button key={mapa.id} onClick={() => entrarNoMapaDeBatalha(mapa)} style={{ background: '#1a1a1a', border: '1px solid #333', color: '#fff', padding: '14px', borderRadius: '10px', cursor: 'pointer', textAlign: 'left' }}>🗺️ {mapa.nome}</button>
                                 ))}
+
                             </div>
                             <button onClick={criarNovoMapa} style={{ width: '100%', background: 'linear-gradient(to right, #0088ff, #00ffcc)', color: '#000', padding: '14px', borderRadius: '10px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>➕ CRIAR NOVO MAPA</button>
                         </div>
@@ -650,22 +721,39 @@ export default function MapaMundi({ children }) {
     }
 
     if (nivelVisao === 'reino') {
-        const backgroundUrl = mapasImagens[localAtual.mapaId];
+        const mapaAtivoObj = (cenario.mapasMundi && cenario.mapasMundi[localAtual.reino] || []).find(m => m.id === localAtual.mapaId);
+        const backgroundUrl = mapaAtivoObj ? mapaAtivoObj.img : '';
+
         return (
             <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', height: '85vh' }}>
                 <div style={{ background: '#111', padding: '12px 20px', borderRadius: '10px 10px 0 0', border: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
-                    <div style={{ display: 'flex', gap: '15px' }}><button onClick={voltarCamera} style={{ background: '#ff4444', color: '#fff', border: 'none', padding: '7px 18px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>⬅ SAIR</button><button onClick={() => { setUrlInput(backgroundUrl || ''); setModoEdicaoMapa(true); }} style={{ background: 'transparent', color: '#0088ff', border: '1px solid #0088ff', padding: '7px 18px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>⚙️ EDITAR CENÁRIO</button></div>
-                    <span style={{ color: '#ffcc00', fontWeight: 'bold', textTransform: 'uppercase' }}>{localAtual.reino} : {localAtual.mapaId}</span>
+                    <div style={{ display: 'flex', gap: '15px' }}>
+                        <button onClick={voltarCamera} style={{ background: '#ff4444', color: '#fff', border: 'none', padding: '7px 18px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>⬅ SAIR</button>
+                        <button onClick={() => { setUrlInput(backgroundUrl || ''); setModoEdicaoMapa(true); }} style={{ background: 'transparent', color: '#0088ff', border: '1px solid #0088ff', padding: '7px 18px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>⚙️ EDITAR CENÁRIO</button>
+                    </div>
+                    <span style={{ color: '#ffcc00', fontWeight: 'bold', textTransform: 'uppercase' }}>{localAtual.reino} : {localAtual.mapaNome}</span>
                 </div>
+                
                 <div className="fade-in" style={{ flex: 1, position: 'relative', backgroundColor: '#050508', backgroundImage: backgroundUrl ? `url("${backgroundUrl}")` : 'none', backgroundSize: 'cover', backgroundPosition: 'center', border: '1px solid #333', borderTop: 'none', borderRadius: '0 0 10px 10px', overflow: 'hidden' }}>
+                    
+                    {/* AQUI A GRELHA DE COMBATE (CHILDREN) APARECE EM CIMA DO MAPA */}
                     <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 5 }}>{children}</div>
+                    
                     {modoEdicaoMapa && (
                         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 25, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                             <div style={{ background: '#111', border: '2px solid #0088ff', borderRadius: '20px', padding: '30px', width: '420px', textAlign: 'center', position: 'relative' }}>
                                 <button onClick={() => setModoEdicaoMapa(false)} style={{ position: 'absolute', top: '15px', right: '20px', background: 'none', border: 'none', color: '#ff4444', fontSize: '20px', cursor: 'pointer' }}>X</button>
+                                
                                 <h3 style={{ color: '#0088ff', marginTop: 0 }}>Configurar Cenário</h3>
-                                <input type="text" value={urlInput} onChange={(e) => setUrlInput(e.target.value)} placeholder="URL da imagem" style={{ width: '100%', padding: '14px', borderRadius: '10px', border: '1px solid #444', background: '#1a1a1a', color: '#fff', marginBottom: '25px' }} />
-                                <button onClick={() => { setMapasImagens(prev => ({ ...prev, [localAtual.mapaId]: urlInput })); setModoEdicaoMapa(false); }} style={{ width: '100%', background: '#0088ff', color: '#fff', padding: '14px', borderRadius: '10px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>💾 SALVAR</button>
+                                <p style={{ color: '#aaa', fontSize: '0.85em', marginBottom: '15px' }}>Defina a imagem de fundo deste campo de batalha. Isso será atualizado para todos os jogadores.</p>
+                                
+                                <label style={{ display: 'block', textAlign: 'left', color: '#0088ff', fontSize: '0.8em', marginBottom: '5px' }}>1. Fazer Upload do PC:</label>
+                                <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'block', color: '#fff', marginBottom: '20px', width: '100%', background: '#1a1a1a', padding: '10px', borderRadius: '8px', border: '1px solid #444' }} />
+                                
+                                <label style={{ display: 'block', textAlign: 'left', color: '#0088ff', fontSize: '0.8em', marginBottom: '5px' }}>2. Ou colar URL de Imagem:</label>
+                                <input type="text" value={urlInput} onChange={(e) => setUrlInput(e.target.value)} placeholder="http://..." style={{ width: '100%', padding: '14px', borderRadius: '10px', border: '1px solid #444', background: '#1a1a1a', color: '#fff', marginBottom: '25px' }} />
+                                
+                                <button onClick={salvarUrl} style={{ width: '100%', background: '#0088ff', color: '#fff', padding: '14px', borderRadius: '10px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>💾 SALVAR CENÁRIO</button>
                             </div>
                         </div>
                     )}

@@ -25,21 +25,7 @@ export const fichaPadrao = {
     chakra: { base: 100000000, mBase: 1.0, mGeral: 1.0, mFormas: 1.0, mUnico: "1.0", mAbsoluto: 1.0, reducaoCusto: 0, regeneracao: 0, atual: 100000000 },
     corpo: { base: 100000000, mBase: 1.0, mGeral: 1.0, mFormas: 1.0, mUnico: "1.0", mAbsoluto: 1.0, reducaoCusto: 0, regeneracao: 0, atual: 100000000 },
     compendioOverrides: {}, cores: {},
-    
-    // 🔥 NOVA ADIÇÃO: O SISTEMA DE DOMÍNIOS TOTALMENTE BLINDADO 🔥
-    dominios: {
-        elementais: {},
-        elementos: {},
-        mana: {},
-        chakra: {},
-        aura: {},
-        astral: {},
-        primordiais: {},
-        marciais: {},
-        armas: {},
-        cura: {},
-        summons: {}
-    }
+    dominios: { elementais: {}, elementos: {}, mana: {}, chakra: {}, aura: {}, astral: {}, primordiais: {}, marciais: {}, armas: {}, cura: {}, summons: {} }
 };
 
 export function sanitizarNome(n) { return !n ? '' : n.replace(/[.#$\[\]\/]/g, '_').trim(); }
@@ -73,7 +59,13 @@ const useStore = create(
         efeitosTemp: [], efeitosTempPassivos: [], efeitosTempArsenal: [], efeitosTempPassivosArsenal: [], efeitosTempForma: [], efeitosTempPassivosForma: [],
         formaEditandoId: null, poderEditandoId: null, itemEditandoId: null, elemEditandoId: null, personagemParaDeletar: '',
         dummies: {}, alvoSelecionado: null,
-        cenario: { ativa: 'default', lista: { default: { nome: 'Cenário Inicial', img: '', escala: 1.5, unidade: 'm' } } },
+        
+        // 🔥 O SISTEMA DE CENÁRIO AGORA ARMAZENA OS MAPAS MUNDI GLOBALMENTE 🔥
+        cenario: { 
+            ativa: 'default', 
+            lista: { default: { nome: 'Cenário Inicial', img: '', escala: 1.5, unidade: 'm' } },
+            mapasMundi: {} // Onde o Atlas guarda as localizações!
+        },
 
         setMinhaFicha: (ficha) => set((state) => { state.minhaFicha = ficha; }),
         setMeuNome: (nome) => set((state) => { state.meuNome = nome; }),
@@ -120,7 +112,6 @@ const useStore = create(
             if (dados.hierarquia != null) state.minhaFicha.hierarquia = Object.assign({}, fichaPadrao.hierarquia, dados.hierarquia);
             if (dados.cores !== undefined) state.minhaFicha.cores = Object.assign({}, fichaPadrao.cores, dados.cores || {});
             
-            // 🔥 CARREGAMENTO DOS DOMÍNIOS CORRIGIDO E BLINDADO 🔥
             if (dados.dominios) {
                 state.minhaFicha.dominios = deepClone(fichaPadrao.dominios);
                 Object.assign(state.minhaFicha.dominios, dados.dominios);
