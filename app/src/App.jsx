@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import { ref, get, set, onValue } from 'firebase/database'
 import { db } from './services/firebase-config'
-import useStore, { sanitizarNome, fichaPadrao } from './stores/useStore'
+import useStore, { sanitizarNome } from './stores/useStore'
 import useFirebase from './hooks/useFirebase'
 
 // Import de Layout e Componentes
@@ -24,7 +24,6 @@ import Jukebox from './components/jukebox/Jukebox'
 import CompendioPanel from './components/compendio/CompendioPanel'
 import AIPanel from './components/ia/AIPanel'
 import GravadorPanel from './components/ia/GravadorPanel'
-import { MestreForjaNPC } from './components/mestre/MestreSubComponents'
 
 // Funções de Sync
 import { 
@@ -105,7 +104,7 @@ function getEnergiasSupremas(ficha) {
     return { vitais: { max: maxVitais, atual: atualVitais }, mortais: { max: maxMortais, atual: atualMortais } };
 }
 
-// 🔥 PAINEL DO MESTRE SUPREMO (COMPLETO E COM SUBPASTAS) 🔥
+// 🔥 PAINEL DO MESTRE SUPREMO (COM SUBPASTAS HIERÁRQUICAS E BUSCA DA MATRIZ) 🔥
 function MestrePanel() {
     const personagens = useStore(s => s.personagens);
     const setPersonagens = useStore(s => s.setPersonagens);
@@ -346,7 +345,7 @@ function MestrePanel() {
     const jogadoresFiltrados = todosJogadores.filter(([nome, ficha]) => (ficha?.bio?.mesa || 'presente') === mesaVisor);
     const fmt = (n) => Number(n || 0).toLocaleString('pt-BR');
 
-    // 🔥 AGRUPAMENTO EM DOIS NÍVEIS (CATEGORIA > SUBPASTA) 🔥
+    // 🔥 AGRUPAMENTO HIERÁRQUICO SEGURO (CATEGORIA > SUBPASTA) 🔥
     const npcsHierarquia = {};
     if (mesaVisor === 'npc') {
         jogadoresFiltrados.forEach(([nome, ficha]) => {
@@ -374,7 +373,7 @@ function MestrePanel() {
         });
     }
 
-    // 🃏 GERADOR DA CARTA DE PERSONAGEM SUPREMA 🃏
+    // 🃏 GERADOR DA CARTA DE PERSONAGEM COMPLETA E DETALHADA 🃏
     const renderCard = ([nome, ficha]) => {
         const vida = getStatusLimpo(ficha, 'vida', 8);
         const mana = getStatusLimpo(ficha, 'mana', 9);
@@ -1189,14 +1188,14 @@ export default function App() {
                     <button onClick={() => { if(window.confirm('Deseja sair desta ficha e escolher outro personagem?')) { localStorage.removeItem('rpgNome'); localStorage.removeItem('rpg_nome'); setMeuNome(''); setPronto(false); } }} style={{ background: 'none', border: 'none', color: '#ffcc00', cursor: 'pointer', fontSize: '0.8em', padding: '0', display: 'flex', alignItems: 'center', gap: '4px' }} title="Mudar o nome/ficha atual sem sair da mesa">✏️ Trocar</button>
                 </div>
 
-                {/* 🔥 BOTÃO RESGATAR ABSOLUTO: BUSCA TUDO DA MATRIZ, COM PONTE LOCAL ANTI-ERRO 🔥 */}
+                {/* 🔥 BOTÃO RESGATAR HÍBRIDO: TENTA A NUVEM, SE DER PERMISSION DENIED USA A PONTE LOCAL AUTOMATICAMENTE 🔥 */}
                 {isMestre && (
                     <button onClick={async () => {
                             const matrizId = localStorage.getItem('rpg_mesa_principal') || 'Nenhuma';
                             if (!matrizId || matrizId === 'Nenhuma') {
                                 return alert('⚠️ MESTRE: Defina primeiro o ID da sua Mesa Matriz usando o botão de lápis (✏️) no Hub Cósmico!');
                             }
-                            if(!window.confirm(`⚠️ MESTRE: Deseja copiar todas as fichas, NPCs e a ÁRVORE da nuvem da mesa matriz [${matrizId}] para a sala atual [${mesaId}]?`)) return;
+                            if(!window.confirm(`⚠️ MESTRE: Deseja copiar todas as fichas, NPCs e a ÁRVORE da mesa matriz [${matrizId}] para a sala atual [${mesaId}]?`)) return;
                             
                             // 1. FORJA DOS PERSONAGENS
                             try {
@@ -1207,7 +1206,7 @@ export default function App() {
                                         await set(ref(db, `mesas/${mesaId}/personagens/${key}`), data[key]); 
                                     }
                                 }
-                            } catch (err) { console.warn("Aviso na leitura de personagens:", err.message); }
+                            } catch (err) { console.warn("Aviso na leitura de personagens da matriz:", err.message); }
                             
                             // 2. FORJA DA ÁRVORE (PONTE ANTI-PERMISSION DENIED)
                             try {
@@ -1215,17 +1214,22 @@ export default function App() {
                                 if (oldArvore.exists()) {
                                     await set(ref(db, `mesas/${mesaId}/arvore`), oldArvore.val());
                                     localStorage.setItem('rpgSextaFeira_arvore', JSON.stringify(oldArvore.val()));
-                                } else { throw new Error("Vazio"); }
-                            } catch (err) {
-                                console.warn("Firebase negou/falhou acesso à árvore da matriz. Injetando Ponte Local...");
-                                const arvorePonte = localStorage.getItem('rpgSextaFeira_arvore_MatrizBackup');
+                                } else {
+                                    throw new Error("Bloqueado ou vazio");
+                                }
+                            } catch (err) { 
+                                console.warn("Firebase negou/falhou acesso à árvore da matriz. Injetando da Ponte Local...");
+                                // Usa o cache que o seu PC já tem guardado da mesa capital!
+                                const arvorePonte = localStorage.getItem('rpgSextaFeira_arvore_MatrizBackup') || localStorage.getItem('rpgSextaFeira_arvore');
                                 if (arvorePonte) {
                                     await set(ref(db, `mesas/${mesaId}/arvore`), JSON.parse(arvorePonte));
                                     localStorage.setItem('rpgSextaFeira_arvore', arvorePonte);
+                                } else {
+                                    return alert("❌ O Firebase bloqueou a leitura e não há cache local salvo da Matriz para forjar a ponte!");
                                 }
                             }
                             
-                            alert(`✅ INJEÇÃO SUPREMA! NPCs e Árvores de ${matrizId} foram forjados no ecrã atual! Atualize a página (F5) para ver as subpastas.`);
+                            alert(`✅ INJEÇÃO SUPREMA! NPCs e a Árvore Cósmica de ${matrizId} foram alinhados para a sala atual! Atualize a página (F5) para visualizar as subpastas.`);
                         }} style={{ marginLeft: '5px', background: '#0088ff', border: '1px solid #fff', color: '#fff', fontSize: '0.7em', padding: '4px 8px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>🧲 RESGATAR TUDO</button>
                 )}
                 
