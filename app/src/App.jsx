@@ -1127,21 +1127,21 @@ export default function App() {
                     <button onClick={() => { if(window.confirm('Deseja sair desta ficha e escolher outro personagem?')) { localStorage.removeItem('rpgNome'); localStorage.removeItem('rpg_nome'); setMeuNome(''); setPronto(false); } }} style={{ background: 'none', border: 'none', color: '#ffcc00', cursor: 'pointer', fontSize: '0.8em', padding: '0', display: 'flex', alignItems: 'center', gap: '4px' }} title="Mudar o nome/ficha atual sem sair da mesa">✏️ Trocar</button>
                 </div>
 
+                {/* 🔥 NOVO BOTÃO: RESGATA APENAS PERSONAGENS E NPCS DO LIMBO (SEM FLOODAR O CHAT) 🔥 */}
                 {isMestre && (
                     <button onClick={async () => {
-                            if(!window.confirm('⚠️ MESTRE: Deseja copiar TODOS os dados antigos do limbo para esta sala nova?')) return;
+                            if(!window.confirm('⚠️ MESTRE: Deseja resgatar APENAS as fichas de personagens e NPCs antigos para esta sala? (O feed de combate permanecerá limpo)')) return;
                             try {
                                 const oldPers = await get(ref(db, 'personagens'));
-                                if (oldPers.exists()) { const data = oldPers.val(); for (const key in data) await set(ref(db, `mesas/${mesaId}/personagens/${key}`), data[key]); }
-                                const oldFeed = await get(ref(db, 'feed_combate'));
-                                if (oldFeed.exists()) { const data = oldFeed.val(); for (const key in data) await set(ref(db, `mesas/${mesaId}/feed_combate/${key}`), data[key]); }
-                                const oldCen = await get(ref(db, 'cenario'));
-                                if (oldCen.exists()) await set(ref(db, `mesas/${mesaId}/cenario`), oldCen.val());
-                                const oldDum = await get(ref(db, 'dummies'));
-                                if (oldDum.exists()) await set(ref(db, `mesas/${mesaId}/dummies`), oldDum.val());
-                                alert('✅ Dados teletransportados com sucesso! Atualize a página (F5) para ver os resultados.');
+                                if (oldPers.exists()) { 
+                                    const data = oldPers.val(); 
+                                    for (const key in data) {
+                                        await set(ref(db, `mesas/${mesaId}/personagens/${key}`), data[key]); 
+                                    }
+                                }
+                                alert('✅ Personagens e NPCs resgatados com sucesso sem floodar o chat! Atualize a página (F5) para visualizar.');
                             } catch (err) { alert('❌ Erro: ' + err.message); }
-                        }} style={{ marginLeft: '5px', background: '#ff003c', border: '1px solid #fff', color: '#fff', cursor: 'pointer', fontSize: '0.75em', fontWeight: 'bold', padding: '4px 8px', borderRadius: '5px' }}>🧲 RESGATAR</button>
+                        }} style={{ marginLeft: '5px', background: '#0088ff', border: '1px solid #fff', color: '#fff', cursor: 'pointer', fontSize: '0.75em', fontWeight: 'bold', padding: '4px 8px', borderRadius: '5px' }}>🧲 RESGATAR NPCs</button>
                 )}
                 <button onClick={() => { if(window.confirm('Tem a certeza que deseja sair da mesa?')) { limparFeedStore(); setMesaId(''); } }} style={{ marginLeft: '10px', background: 'none', border: 'none', color: '#ff003c', cursor: 'pointer', fontSize: '0.9em', fontWeight: 'bold', padding: 0 }} title="Desconectar do Servidor da Mesa">Sair 🚪</button>
             </div>
