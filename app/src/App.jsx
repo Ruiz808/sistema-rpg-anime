@@ -1188,14 +1188,14 @@ export default function App() {
                     <button onClick={() => { if(window.confirm('Deseja sair desta ficha e escolher outro personagem?')) { localStorage.removeItem('rpgNome'); localStorage.removeItem('rpg_nome'); setMeuNome(''); setPronto(false); } }} style={{ background: 'none', border: 'none', color: '#ffcc00', cursor: 'pointer', fontSize: '0.8em', padding: '0', display: 'flex', alignItems: 'center', gap: '4px' }} title="Mudar o nome/ficha atual sem sair da mesa">✏️ Trocar</button>
                 </div>
 
-                {/* 🔥 BOTÃO RESGATAR HÍBRIDO: TENTA A NUVEM, SE DER PERMISSION DENIED USA A PONTE LOCAL AUTOMATICAMENTE 🔥 */}
+                {/* 🔥 BOTÃO RESGATAR BLINDADO: PROTEÇÃO TOTAL DE PERMISSÕES E SANDBOX 🔥 */}
                 {isMestre && (
                     <button onClick={async () => {
                             const matrizId = localStorage.getItem('rpg_mesa_principal') || 'Nenhuma';
                             if (!matrizId || matrizId === 'Nenhuma') {
                                 return alert('⚠️ MESTRE: Defina primeiro o ID da sua Mesa Matriz usando o botão de lápis (✏️) no Hub Cósmico!');
                             }
-                            if(!window.confirm(`⚠️ MESTRE: Deseja copiar todas as fichas, NPCs e a ÁRVORE da mesa matriz [${matrizId}] para a sala atual [${mesaId}]?`)) return;
+                            if(!window.confirm(`⚠️ MESTRE: Deseja tentar copiar as estruturas da mesa matriz [${matrizId}] para a sala atual [${mesaId}]?\n\nNota: Se não for o Mestre Criador da Matriz, o Firebase pode bloquear a importação por segurança.`)) return;
                             
                             // 1. FORJA DOS PERSONAGENS
                             try {
@@ -1203,33 +1203,40 @@ export default function App() {
                                 if (oldPers.exists()) { 
                                     const data = oldPers.val(); 
                                     for (const key in data) {
-                                        await set(ref(db, `mesas/${mesaId}/personagens/${key}`), data[key]); 
+                                        await set(ref(db, `mesas/${mesaId}/personagens/${key}`), data[key]).catch(() => {}); 
                                     }
                                 }
-                            } catch (err) { console.warn("Aviso na leitura de personagens da matriz:", err.message); }
+                            } catch (err) { 
+                                console.warn("Leitura de personagens bloqueada pelo sandbox:", err.message); 
+                            }
                             
-                            // 2. FORJA DA ÁRVORE (PONTE ANTI-PERMISSION DENIED)
+                            // 2. FORJA DA ÁRVORE (COM PROTEÇÃO TOTAL ANTI-CRASH)
                             try {
                                 const oldArvore = await get(ref(db, `mesas/${matrizId}/arvore`));
                                 if (oldArvore.exists()) {
                                     await set(ref(db, `mesas/${mesaId}/arvore`), oldArvore.val());
                                     localStorage.setItem('rpgSextaFeira_arvore', JSON.stringify(oldArvore.val()));
+                                    alert(`✅ SUCESSO SUPREMO! Dados copiados da nuvem da Matriz com sucesso! Atualize a página (F5).`);
                                 } else {
-                                    throw new Error("Bloqueado ou vazio");
+                                    throw new Error("Nó vazio");
                                 }
                             } catch (err) { 
-                                console.warn("Firebase negou/falhou acesso à árvore da matriz. Injetando da Ponte Local...");
-                                // Usa o cache que o seu PC já tem guardado da mesa capital!
-                                const arvorePonte = localStorage.getItem('rpgSextaFeira_arvore_MatrizBackup') || localStorage.getItem('rpgSextaFeira_arvore');
-                                if (arvorePonte) {
-                                    await set(ref(db, `mesas/${mesaId}/arvore`), JSON.parse(arvorePonte));
-                                    localStorage.setItem('rpgSextaFeira_arvore', arvorePonte);
+                                console.warn("Acesso à nuvem da matriz negado. Tentando cache local de segurança...");
+                                
+                                // Tenta usar a ponte local apenas se existir cache válido, tratando o erro de escrita
+                                const arvorePonte = localStorage.getItem('rpgSextaFeira_arvore_MatrizBackup');
+                                if (arvorePonte && arvorePonte !== '{}') {
+                                    try {
+                                        await set(ref(db, `mesas/${mesaId}/arvore`), JSON.parse(arvorePonte));
+                                        localStorage.setItem('rpgSextaFeira_arvore', arvorePonte);
+                                        alert(`✅ PONTE LOCAL ATIVADA! O Firebase bloqueou a leitura externa, mas a árvore foi forjada a partir do seu cache local de segurança! Atualize a página (F5).`);
+                                    } catch (writeErr) {
+                                        alert(`❌ ACESSO NEGADO: O Firebase bloqueou a gravação da árvore para a sua conta nesta sala.\n\nDica: Peça ao Mestre Criador da mesa (Matheus) para fazer o resgate e selar as permissões!`);
+                                    }
                                 } else {
-                                    return alert("❌ O Firebase bloqueou a leitura e não há cache local salvo da Matriz para forjar a ponte!");
+                                    alert(`❌ ACESSO BLOQUEADO: O Firebase protege salas externas contra leitura. Como o seu navegador não possui o cache original da Matriz, o resgate foi cancelado com segurança.\n\n👉 Peça ao dono da Matriz para fazer o resgate!`);
                                 }
                             }
-                            
-                            alert(`✅ INJEÇÃO SUPREMA! NPCs e a Árvore Cósmica de ${matrizId} foram alinhados para a sala atual! Atualize a página (F5) para visualizar as subpastas.`);
                         }} style={{ marginLeft: '5px', background: '#0088ff', border: '1px solid #fff', color: '#fff', fontSize: '0.7em', padding: '4px 8px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>🧲 RESGATAR TUDO</button>
                 )}
                 
