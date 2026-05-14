@@ -105,7 +105,7 @@ function getEnergiasSupremas(ficha) {
     return { vitais: { max: maxVitais, atual: atualVitais }, mortais: { max: maxMortais, atual: atualMortais } };
 }
 
-// 🔥 PAINEL DO MESTRE SUPREMO (COM HUB CÓSMICO E SINCRONIZAÇÃO NATIVA) 🔥
+// 🔥 PAINEL DO MESTRE SUPREMO (COM BUSCA DIRETA E ABSOLUTA DA NUVEM DA MATRIZ) 🔥
 function MestrePanel() {
     const personagens = useStore(s => s.personagens);
     const setPersonagens = useStore(s => s.setPersonagens);
@@ -132,23 +132,50 @@ function MestrePanel() {
     const [dOculto, setDOculto] = useState(false);
     const [novoMestreNick, setNovoMestreNick] = useState('');
 
-    // 🔥 HUB DE HERANÇA: Puxa da Matriz (Local) para enviar para a Mesa (Cloud) 🔥
+    // 🔥 ESTADOS DO HUB DE CONVERGÊNCIA 🔥
     const [mesaMatriz, setMesaMatriz] = useState(() => localStorage.getItem('rpg_mesa_principal') || 'Nenhuma');
-    const [capitulosGerais, setCapitulosGerais] = useState(() => {
-        try { 
-            const backup = localStorage.getItem('rpgSextaFeira_capitulos_MatrizBackup');
-            return backup ? JSON.parse(backup) : (JSON.parse(localStorage.getItem('rpgSextaFeira_capitulos')) || []); 
-        } catch(e) { return []; }
-    });
-    const [arvoresGerais, setArvoresGerais] = useState(() => {
-        try { 
-            const backup = localStorage.getItem('rpgSextaFeira_arvore_MatrizBackup');
-            return backup ? JSON.parse(backup) : (JSON.parse(localStorage.getItem('rpgSextaFeira_arvore')) || {}); 
-        } catch(e) { return {}; }
-    });
-    
+    const [capitulosGerais, setCapitulosGerais] = useState([]);
+    const [arvoresGerais, setArvoresGerais] = useState({});
     const [capituloSelecionado, setCapituloSelecionado] = useState('');
     const [arvoreSelecionada, setArvoreSelecionada] = useState('');
+
+    // 🔥 BUSCA ABSOLUTA DIRETO DA NUVEM DA MESA MATRIZ 🔥
+    useEffect(() => {
+        // Tenta preencher com o cache local primeiro para resposta imediata
+        try { 
+            const capBackup = localStorage.getItem('rpgSextaFeira_capitulos_MatrizBackup');
+            if (capBackup) setCapitulosGerais(JSON.parse(capBackup));
+            else {
+                const capLocal = localStorage.getItem('rpgSextaFeira_capitulos');
+                if (capLocal) setCapitulosGerais(JSON.parse(capLocal));
+            }
+            
+            const arvBackup = localStorage.getItem('rpgSextaFeira_arvore_MatrizBackup');
+            if (arvBackup) setArvoresGerais(JSON.parse(arvBackup));
+            else {
+                const arvLocal = localStorage.getItem('rpgSextaFeira_arvore');
+                if (arvLocal) setArvoresGerais(JSON.parse(arvLocal));
+            }
+        } catch(e) {}
+
+        if (!mesaMatriz || mesaMatriz === 'Nenhuma') return;
+
+        // Puxa a Lore oficial direto do Firebase da Matriz
+        get(ref(db, `mesas/${mesaMatriz}/lore`)).then(snap => {
+            if (snap.exists()) {
+                setCapitulosGerais(snap.val());
+                localStorage.setItem('rpgSextaFeira_capitulos_MatrizBackup', JSON.stringify(snap.val()));
+            }
+        }).catch(() => {});
+
+        // Puxa a Árvore oficial direto do Firebase da Matriz
+        get(ref(db, `mesas/${mesaMatriz}/arvore`)).then(snap => {
+            if (snap.exists()) {
+                setArvoresGerais(snap.val());
+                localStorage.setItem('rpgSextaFeira_arvore_MatrizBackup', JSON.stringify(snap.val()));
+            }
+        }).catch(() => {});
+    }, [mesaMatriz]);
 
     const grandsGlobais = useMemo(() => {
         let g = {};
@@ -194,6 +221,7 @@ function MestrePanel() {
         if (!novoNome || novoNome.trim() === '') return;
         const nomeSanitizado = sanitizarNome(novoNome);
         if (personagens[nomeSanitizado]) return alert('❌ Já existe uma entidade com esse nome!');
+        
         setMeuNome(nomeSanitizado);
         localStorage.setItem('rpgNome', nomeSanitizado);
         const fichaClone = JSON.parse(JSON.stringify(fichaOriginal));
@@ -213,16 +241,22 @@ function MestrePanel() {
 
     const coroarMesaMatriz = () => {
         if (!mesaId) return alert("Erro: O Mestre precisa estar conectado a uma mesa ativa.");
-        if (window.confirm(`👑 DEFINIR MESA [${mesaId}] COMO MATRIZ PRINCIPAL?\n\nToda a Lore e Árvores criadas serão seladas como a fundação intocável.`)) {
+        if (window.confirm(`👑 COROAR A MESA [${mesaId}] COMO A MATRIZ PRINCIPAL?\n\nToda a Lore legada e Árvores criadas até aqui serão seladas como a fundação intocável do seu Multiverso.`)) {
             localStorage.setItem('rpg_mesa_principal', mesaId);
             setMesaMatriz(mesaId);
+            
             const capsAtuais = localStorage.getItem('rpgSextaFeira_capitulos') || '[]';
             const arvsAtuais = localStorage.getItem('rpgSextaFeira_arvore') || '{}';
+            
             localStorage.setItem('rpgSextaFeira_capitulos_MatrizBackup', capsAtuais);
             localStorage.setItem('rpgSextaFeira_arvore_MatrizBackup', arvsAtuais);
-            setCapitulosGerais(JSON.parse(capsAtuais)); 
-            setArvoresGerais(JSON.parse(arvsAtuais));
-            alert("✨ MATRIZ LOCAL SELADA!");
+            
+            try {
+                setCapitulosGerais(JSON.parse(capsAtuais));
+                setArvoresGerais(JSON.parse(arvsAtuais));
+            } catch(e){}
+            
+            alert("✨ ABSOLUTO! Esta mesa é agora reconhecida como a fundação original de todas as histórias.");
         }
     };
 
@@ -231,7 +265,6 @@ function MestrePanel() {
         const cap = capitulosGerais.find(c => String(c.id) === String(capituloSelecionado));
         if (!cap) return;
 
-        // 🔥 SALVA NO FIREBASE PARA TODOS DA MESA VEREM 🔥
         try {
             const snap = await get(ref(db, `mesas/${mesaId}/lore`));
             let listaMesa = snap.exists() ? snap.val() : [];
@@ -248,63 +281,81 @@ function MestrePanel() {
         const linhagem = arvoresGerais[arvoreSelecionada];
         if (!linhagem) return;
 
-        // 🔥 SALVA A ESTRUTURA DA ÁRVORE NO FIREBASE 🔥
+        const chaveMesa = `rpgSextaFeira_arvore_${mesaId}`;
+        let arvoresMesa = {};
+        try { arvoresMesa = JSON.parse(localStorage.getItem(chaveMesa)) || {}; } catch(e){}
+
+        if (arvoresMesa[arvoreSelecionada]) {
+            if (!window.confirm(`A linhagem "${arvoreSelecionada}" já habita esta mesa. Sobrescrever com a versão original?`)) return;
+        }
+
+        arvoresMesa[arvoreSelecionada] = linhagem;
+        localStorage.setItem(chaveMesa, JSON.stringify(arvoresMesa));
+        localStorage.setItem('rpgSextaFeira_arvore', JSON.stringify(arvoresMesa));
+
+        // 🔥 SALVA A ESTRUTURA DA ÁRVORE NO FIREBASE DA MESA ATUAL PARA TODOS VEREM 🔥
         try {
-            const snap = await get(ref(db, `mesas/${mesaId}/arvore`));
-            let arvoresMesa = snap.exists() ? snap.val() : {};
-            arvoresMesa[arvoreSelecionada] = linhagem;
             await set(ref(db, `mesas/${mesaId}/arvore`), arvoresMesa);
-            localStorage.setItem('rpgSextaFeira_arvore', JSON.stringify(arvoresMesa));
+        } catch(e) { console.warn("Erro ao salvar árvore na nuvem:", e); }
 
-            if (Array.isArray(linhagem) && window.confirm(`Deseja forjar os ${linhagem.length} NPCs desta linhagem no mapa agora?`)) {
-                let novosPersonagens = { ...personagens };
-                const baseFicha = {
-                    bio: { mesa: 'npc', afiliacao: arvoreSelecionada },
-                    vida: { base: 100000, atual: 100000 },
-                    mana: { base: 100000, atual: 100000 },
-                    forca: { base: 1 }, destreza: { base: 1 }, inteligencia: { base: 1 },
-                    avatar: { base: "" }, dominios: { elementos: {} }, poderes: [], isNPC: true
-                };
+        if (Array.isArray(linhagem) && window.confirm(`Deseja também forjar automaticamente todos os ${linhagem.length} membros desta linhagem como NPCs ativos no Painel do Mestre?`)) {
+            const funcSanitizar = typeof sanitizarNome === 'function' ? sanitizarNome : (n) => n.replace(/[.#$\[\]\/]/g, '_');
+            let novosPersonagens = { ...personagens };
+            
+            const baseFicha = {
+                bio: { mesa: 'npc', afiliacao: arvoreSelecionada },
+                vida: { base: 100000, atual: 100000 },
+                mana: { base: 100000, atual: 100000 },
+                forca: { base: 1 }, destreza: { base: 1 }, inteligencia: { base: 1 },
+                avatar: { base: "" }, dominios: { elementos: {} }, poderes: [], isNPC: true
+            };
 
-                for (const npc of linhagem) {
-                    if (!npc.nome) continue;
-                    const nomePersonagem = sanitizarNome(npc.nome.trim());
-                    const hpValor = Number(npc.hp) || 100000;
-                    const manaValor = Number(npc.mana) || 100000;
-                    
-                    let novaFicha = JSON.parse(JSON.stringify(baseFicha || {}));
-                    novaFicha.bio.classe = npc.classe || 'NPC - Ameaça';
-                    novaFicha.bio.raca = npc.papel || 'Criatura';
-                    novaFicha.bio.afiliacao = npc.afiliacao || arvoreSelecionada;
-                    novaFicha.vida.base = hpValor; novaFicha.vida.atual = hpValor;
-                    novaFicha.mana.base = manaValor; novaFicha.mana.atual = manaValor;
-                    if (npc.avatar) novaFicha.avatar.base = npc.avatar.trim();
-                    if (npc.elemento && npc.elemento.trim() !== '') {
-                        novaFicha.dominios.elementos[npc.elemento.trim()] = { nivel: 1, nome: "Básico" };
-                    }
-                    novaFicha.poderes = [{
-                        nome: "📖 Linhagem & Lore", ativa: true, dano: "0",
-                        descricao: `Status: ${npc.status || 'Vivo'}\nElemento Mágico: ${npc.elemento || 'Nenhum'}\nClã / Panteão: ${npc.afiliacao || arvoreSelecionada}\n\nHistória: ${npc.lore || 'Sem registos.'}`
-                    }];
-                    novaFicha.dataCriacao = Date.now();
-                    novosPersonagens[nomePersonagem] = novaFicha;
-                    await set(ref(db, `mesas/${mesaId}/personagens/${nomePersonagem}`), novaFicha);
+            for (const npc of linhagem) {
+                if (!npc.nome) continue;
+                const nomePersonagem = funcSanitizar(npc.nome.trim());
+                const hpValor = Number(npc.hp) || 100000;
+                const manaValor = Number(npc.mana) || 100000;
+                
+                let novaFicha = JSON.parse(JSON.stringify(baseFicha));
+                novaFicha.bio.classe = npc.classe || 'NPC - Ameaça';
+                novaFicha.bio.raca = npc.papel || 'Criatura';
+                novaFicha.bio.afiliacao = npc.afiliacao || arvoreSelecionada;
+                novaFicha.vida.base = hpValor; novaFicha.vida.atual = hpValor;
+                novaFicha.mana.base = manaValor; novaFicha.mana.atual = manaValor;
+                if (npc.avatar) novaFicha.avatar.base = npc.avatar.trim();
+                
+                if (npc.elemento && npc.elemento.trim() !== '') {
+                    novaFicha.dominios.elementos[npc.elemento.trim()] = { nivel: 1, nome: "Básico" };
                 }
-                if (setPersonagens) setPersonagens(novosPersonagens);
+                
+                novaFicha.poderes = [{
+                    nome: "📖 Linhagem & Lore",
+                    ativa: true, dano: "0",
+                    descricao: `Status: ${npc.status || 'Vivo'}\nElemento Mágico: ${npc.elemento || 'Nenhum'}\nClã / Panteão: ${npc.afiliacao || arvoreSelecionada}\n\nHistória: ${npc.lore || 'Sem registos.'}`
+                }];
+                novaFicha.dataCriacao = Date.now();
+
+                novosPersonagens[nomePersonagem] = novaFicha;
+                try {
+                    await set(ref(db, `mesas/${mesaId}/personagens/${nomePersonagem}`), novaFicha);
+                } catch(err) { console.warn("Erro ao injetar NPC na cloud:", err); }
             }
-            alert(`🌳 Linhagem [${arvoreSelecionada}] sincronizada na Nuvem!`);
-        } catch(e) { alert("Erro ao sincronizar Árvore!"); }
+            if (setPersonagens) setPersonagens(novosPersonagens);
+        }
+
+        alert(`🌳 SUCESSO! A linhagem "${arvoreSelecionada}" foi enxertada na mesa [${mesaId}].`);
     };
 
     const todosJogadores = Object.entries(personagens || {});
     const jogadoresFiltrados = todosJogadores.filter(([nome, ficha]) => (ficha?.bio?.mesa || 'presente') === mesaVisor);
     const fmt = (n) => Number(n || 0).toLocaleString('pt-BR');
 
-    // 🧠 LÓGICA DE HIERARQUIA POR PASTAS E SUBPASTAS (Ex: Demônio / Família X) 🧠
+    // 🧠 LÓGICA DE AGRUPAMENTO POR CLÃS/FAMÍLIAS 🧠
     const npcsPorFamilia = {};
     if (mesaVisor === 'npc') {
         jogadoresFiltrados.forEach(([nome, ficha]) => {
             let familia = ficha?.bio?.afiliacao;
+            
             if (!familia || familia.trim() === '') {
                 const lorePoder = (ficha?.poderes || []).find(p => p.nome === "📖 Linhagem & Lore");
                 if (lorePoder && lorePoder.descricao) {
@@ -312,21 +363,17 @@ function MestrePanel() {
                     if (match && match[1]) familia = match[1].trim();
                 }
             }
+
             if (!familia || familia === 'Nenhum' || familia.trim() === '') {
                 familia = 'Sem Clã / Bestas Soltas';
             }
-            
-            const partes = familia.split('/').map(p => p.trim());
-            const catPrincipal = partes[0];
-            const subCat = partes.length > 1 ? partes[1] : '_geral';
 
-            if (!npcsPorFamilia[catPrincipal]) npcsPorFamilia[catPrincipal] = {};
-            if (!npcsPorFamilia[catPrincipal][subCat]) npcsPorFamilia[catPrincipal][subCat] = [];
-            npcsPorFamilia[catPrincipal][subCat].push([nome, ficha]);
+            if (!npcsPorFamilia[familia]) npcsPorFamilia[familia] = [];
+            npcsPorFamilia[familia].push([nome, ficha]);
         });
     }
 
-    // 🃏 GERADOR DA CARTA DE PERSONAGEM COMPLETA E DETALHADA 🃏
+    // 🃏 GERADOR DA CARTA DE PERSONAGEM 🃏
     const renderCard = ([nome, ficha]) => {
         const vida = getStatusLimpo(ficha, 'vida', 8);
         const mana = getStatusLimpo(ficha, 'mana', 9);
@@ -347,7 +394,6 @@ function MestrePanel() {
         const candidatoEntry = Object.entries(grandsGlobais).find(([key, val]) => key.includes('_candidatos') && Array.isArray(val) && val.includes(nome));
         const isCandidato = !isGrand && !!candidatoEntry;
 
-        // 🔥 SUPORTE À CLASSE OCULTA (?) NO VISUAL 🔥
         const isMisterio = classeReal === '?' || classeReal?.toLowerCase() === 'desconhecido';
 
         let boxBorder = `1px solid ${nome === meuNome ? '#0f0' : '#333'}`;
@@ -365,18 +411,27 @@ function MestrePanel() {
         } else if (isGrand) {
             boxBorder = '2px solid #ffcc00';
             boxShadow = '0 0 20px rgba(255,0,60,0.4), inset 0 0 20px rgba(255,204,0,0.1)';
-            titleColor = '#ffcc00'; subColor = '#ffcc00';
+            titleColor = '#ffcc00';
+            subColor = '#ffcc00';
+            
             let displayClass = classId;
-            if (grandEntry) displayClass = grandEntry[0].split('_')[0]; 
-            else if (isGrandManualmente) displayClass = String(displayClass).replace(/grand /ig, '');
+            if (grandEntry) {
+                displayClass = grandEntry[0].split('_')[0]; 
+            } else if (isGrandManualmente) {
+                displayClass = String(displayClass).replace(/grand /ig, '');
+            }
             subText = `👑 GRAND ${String(displayClass).toUpperCase()}`;
             gradOverlay = 'linear-gradient(135deg, rgba(255,0,60,0.25) 0%, rgba(255,204,0,0.1) 50%, rgba(0,0,0,0) 100%)';
+            
         } else if (isCandidato) {
             boxBorder = '2px solid #00ccff';
             boxShadow = '0 0 15px rgba(0,136,255,0.4), inset 0 0 15px rgba(0,204,255,0.1)';
-            titleColor = '#00ccff'; subColor = '#00ccff';
+            titleColor = '#00ccff';
+            subColor = '#00ccff';
+            
             let displayClass = classId;
             if (candidatoEntry) displayClass = candidatoEntry[0].split('_')[0];
+            
             subText = `🌟 CANDIDATO A ${String(displayClass).toUpperCase()}`;
             gradOverlay = 'linear-gradient(135deg, rgba(0,136,255,0.2) 0%, rgba(0,204,255,0.1) 50%, rgba(0,0,0,0) 100%)';
         }
@@ -453,9 +508,18 @@ function MestrePanel() {
                             Evite misturar as histórias! Defina a fundação original e enxerte dados cirurgicamente para a mesa atual.
                         </p>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#000', padding: '6px 12px', borderRadius: '6px', border: '1px solid #444' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#000', padding: '6px 12px', borderRadius: '6px', border: '1px solid #444' }}>
                         <span style={{ color: '#888', fontSize: '0.85em' }}>Mesa Matriz:</span>
                         <strong style={{ color: mesaMatriz === mesaId ? '#ffcc00' : '#00ffcc' }}>{mesaMatriz}</strong>
+                        <button className="btn-neon btn-small" onClick={() => {
+                            const manual = window.prompt("Digite o ID exato da Mesa Matriz de onde deseja puxar as árvores e os NPCs:", mesaMatriz);
+                            if (manual && manual.trim()) {
+                                const idLimpo = manual.trim().toUpperCase();
+                                localStorage.setItem('rpg_mesa_principal', idLimpo);
+                                setMesaMatriz(idLimpo);
+                                alert(`🔗 Conectado com sucesso à nuvem da matriz: ${idLimpo}`);
+                            }
+                        }} style={{ padding: '2px 6px', fontSize: '0.7em', margin: 0, borderColor: '#0088ff', color: '#0088ff' }} title="Definir ID da Matriz Manualmente">✏️</button>
                         {mesaMatriz !== mesaId && (
                             <button className="btn-neon btn-gold" onClick={coroarMesaMatriz} style={{ padding: '2px 8px', fontSize: '0.75em', margin: 0 }}>
                                 👑 Coroar Atual
@@ -525,68 +589,30 @@ function MestrePanel() {
                         </div>
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            {Object.entries(npcsPorFamilia).sort().map(([categoria, subs]) => {
-                                const isCatAberta = pastasAbertas[categoria];
-                                const totalCat = Object.values(subs).reduce((acc, curr) => acc + curr.length, 0);
-                                return (
-                                    <div key={categoria} style={{ border: '1px solid #444', borderRadius: '5px', overflow: 'hidden', background: 'rgba(0,0,0,0.4)' }}>
-                                        <button 
-                                            onClick={() => togglePasta(categoria)}
-                                            style={{ 
-                                                width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-                                                padding: '12px 15px', background: isCatAberta ? 'rgba(255, 0, 60, 0.2)' : 'rgba(0, 0, 0, 0.6)', 
-                                                border: 'none', borderLeft: '4px solid #ff003c', color: '#ffcc00', fontWeight: 'bold', 
-                                                cursor: 'pointer', textAlign: 'left', fontSize: '1.1em', transition: '0.3s'
-                                            }}
-                                        >
-                                            <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                {isCatAberta ? '📂' : '📁'} {categoria.toUpperCase()}
-                                            </span>
-                                            <span style={{ color: '#fff', fontSize: '0.8em', background: '#ff003c', padding: '2px 8px', borderRadius: '12px' }}>{totalCat}</span>
-                                        </button>
-                                        
-                                        {isCatAberta && (
-                                            <div style={{ padding: '15px', background: 'rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                                                {Object.entries(subs).sort().map(([sub, lista]) => {
-                                                    if (sub === '_geral') {
-                                                        return (
-                                                            <div key={sub} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '15px' }}>
-                                                                {lista.map(data => renderCard(data))}
-                                                            </div>
-                                                        );
-                                                    }
-                                                    const subId = `${categoria}|${sub}`;
-                                                    const isSubAberta = pastasAbertas[subId];
-                                                    return (
-                                                        <div key={sub} style={{ border: '1px solid #333', borderRadius: '5px', overflow: 'hidden', background: 'rgba(0,0,0,0.3)' }}>
-                                                            <button 
-                                                                onClick={() => togglePasta(subId)}
-                                                                style={{ 
-                                                                    width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-                                                                    padding: '8px 15px', background: isSubAberta ? 'rgba(0, 136, 255, 0.15)' : 'rgba(0, 0, 0, 0.4)', 
-                                                                    border: 'none', borderLeft: '3px solid #0088ff', color: '#00ccff', fontWeight: 'bold', 
-                                                                    cursor: 'pointer', textAlign: 'left', fontSize: '0.95em', transition: '0.2s'
-                                                                }}
-                                                            >
-                                                                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                                    {isSubAberta ? '📂' : '📁'} {sub}
-                                                                </span>
-                                                                <span style={{ fontSize: '0.8em', background: '#0088ff', padding: '2px 6px', borderRadius: '8px', color: '#fff' }}>{lista.length}</span>
-                                                            </button>
-                                                            
-                                                            {isSubAberta && (
-                                                                <div style={{ padding: '12px', background: 'rgba(0,0,0,0.4)', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '15px' }}>
-                                                                    {lista.map(data => renderCard(data))}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
+                            {Object.entries(npcsPorFamilia).map(([familia, lista]) => (
+                                <div key={familia} style={{ border: '1px solid #444', borderRadius: '5px', overflow: 'hidden' }}>
+                                    <button 
+                                        onClick={() => togglePasta(familia)}
+                                        style={{ 
+                                            width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                                            padding: '12px 15px', background: pastasAbertas[familia] ? 'rgba(255, 0, 60, 0.2)' : 'rgba(0, 0, 0, 0.5)', 
+                                            border: 'none', borderLeft: '4px solid #ff003c', color: '#ffcc00', fontWeight: 'bold', 
+                                            cursor: 'pointer', textAlign: 'left', fontSize: '1.1em', transition: '0.3s'
+                                        }}
+                                    >
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            {pastasAbertas[familia] ? '📂' : '📁'} {familia.toUpperCase()}
+                                        </span>
+                                        <span style={{ color: '#fff', fontSize: '0.8em', background: '#ff003c', padding: '2px 8px', borderRadius: '12px' }}>{lista.length}</span>
+                                    </button>
+                                    
+                                    {pastasAbertas[familia] && (
+                                        <div style={{ padding: '15px', background: 'rgba(0,0,0,0.3)', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '15px' }}>
+                                            {lista.map(data => renderCard(data))}
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
                             {jogadoresFiltrados.length === 0 && <div style={{ color: '#aaa', fontStyle: 'italic', padding: '10px' }}>Nenhum monstro ou entidade foi invocado.</div>}
                         </div>
                     )}
@@ -778,7 +804,7 @@ function LobbyNeon() {
     };
 
     const criarMesa = async () => {
-        const definirSenha = window.confirm("Deseja proteger a mesa com uma Senha?\n(Apenas pessoas com a senha poderão entrar)");
+        const definirSenha = window.confirm("Deseja proteger a mesa com uma Senha?\n(Apenas pessoas com a senha poderão entry)");
         let senha = '';
         if (definirSenha) {
             senha = window.prompt("Digite a senha para a sua mesa:");
@@ -794,7 +820,7 @@ function LobbyNeon() {
 
     const entrarMesa = async (idForcado = null) => {
         const id = (idForcado || codigoSala).trim().toUpperCase();
-        if (!id) return alert('Digite o código da mesa para entrar!');
+        if (!id) return alert('Digite o código da mesa para entry!');
         
         const resultado = await verificarMesaExistente(id);
         if (!resultado.existe) return alert('Mesa não encontrada! Verifique se o código está correto.');
@@ -1116,21 +1142,27 @@ export default function App() {
                     <button onClick={() => { if(window.confirm('Deseja sair desta ficha e escolher outro personagem?')) { localStorage.removeItem('rpgNome'); localStorage.removeItem('rpg_nome'); setMeuNome(''); setPronto(false); } }} style={{ background: 'none', border: 'none', color: '#ffcc00', cursor: 'pointer', fontSize: '0.8em', padding: '0', display: 'flex', alignItems: 'center', gap: '4px' }} title="Mudar o nome/ficha atual sem sair da mesa">✏️ Trocar</button>
                 </div>
 
-                {/* 🔥 BOTÃO RESGATAR REFINADO: RESGATA APENAS PERSONAGENS E NPCS SILENCIOSAMENTE 🔥 */}
+                {/* 🔥 BOTÃO RESGATAR ABSOLUTO: BUSCA DIRETO DA NUVEM DA MESA MATRIZ 🔥 */}
                 {isMestre && (
                     <button onClick={async () => {
-                            if(!window.confirm('⚠️ MESTRE: Deseja resgatar APENAS as fichas de personagens e NPCs antigos para esta sala? (O feed de combate permanecerá limpo)')) return;
+                            const matrizId = localStorage.getItem('rpg_mesa_principal') || 'Nenhuma';
+                            if (!matrizId || matrizId === 'Nenhuma') {
+                                return alert('⚠️ MESTRE: Defina primeiro o ID da sua Mesa Matriz usando o botão de lápis (✏️) no Hub Cósmico para o sistema saber de onde puxar os NPCs!');
+                            }
+                            if(!window.confirm(`⚠️ MESTRE: Deseja copiar todas as fichas e NPCs da nuvem da mesa matriz [${matrizId}] para a sala atual [${mesaId}]? (O feed continuará limpo)`)) return;
                             try {
-                                const oldPers = await get(ref(db, 'personagens'));
+                                const oldPers = await get(ref(db, `mesas/${matrizId}/personagens`));
                                 if (oldPers.exists()) { 
                                     const data = oldPers.val(); 
                                     for (const key in data) {
                                         await set(ref(db, `mesas/${mesaId}/personagens/${key}`), data[key]); 
                                     }
+                                    alert(`✅ INJEÇÃO SUPREMA! Todos os personagens e NPCs de ${matrizId} foram forjados no ecrã atual! Atualize a página (F5) para ver as pastas.`);
+                                } else {
+                                    alert(`⚠️ Nenhum personagem ou NPC encontrado na nuvem da mesa matriz [${matrizId}].`);
                                 }
-                                alert('✅ Personagens e NPCs resgatados com sucesso sem floodar o chat! Atualize a página (F5) para visualizar.');
-                            } catch (err) { alert('❌ Erro: ' + err.message); }
-                        }} style={{ marginLeft: '5px', background: '#0088ff', border: '1px solid #fff', color: '#fff', cursor: 'pointer', fontSize: '0.75em', fontWeight: 'bold', padding: '4px 8px', borderRadius: '5px' }}>🧲 RESGATAR NPCs</button>
+                            } catch (err) { alert('❌ Erro ao resgatar da nuvem: ' + err.message); }
+                        }} style={{ marginLeft: '5px', background: '#0088ff', border: '1px solid #fff', color: '#fff', fontSize: '0.7em', padding: '4px 8px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>🧲 RESGATAR NPCs</button>
                 )}
                 
                 <button onClick={() => { if(window.confirm('Tem a certeza que deseja sair da mesa?')) { limparFeedStore(); setMesaId(''); } }} style={{ marginLeft: '10px', background: 'none', border: 'none', color: '#ff003c', cursor: 'pointer', fontSize: '0.9em', fontWeight: 'bold', padding: 0 }} title="Desconectar do Servidor da Mesa">Sair 🚪</button>
