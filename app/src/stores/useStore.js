@@ -59,13 +59,7 @@ const useStore = create(
         efeitosTemp: [], efeitosTempPassivos: [], efeitosTempArsenal: [], efeitosTempPassivosArsenal: [], efeitosTempForma: [], efeitosTempPassivosForma: [],
         formaEditandoId: null, poderEditandoId: null, itemEditandoId: null, elemEditandoId: null, personagemParaDeletar: '',
         dummies: {}, alvoSelecionado: null,
-        
-        // 🔥 O SISTEMA DE CENÁRIO AGORA ARMAZENA OS MAPAS MUNDI GLOBALMENTE 🔥
-        cenario: { 
-            ativa: 'default', 
-            lista: { default: { nome: 'Cenário Inicial', img: '', escala: 1.5, unidade: 'm' } },
-            mapasMundi: {} // Onde o Atlas guarda as localizações!
-        },
+        cenario: { ativa: 'default', lista: { default: { nome: 'Cenário Inicial', img: '', escala: 1.5, unidade: 'm' } } },
 
         setMinhaFicha: (ficha) => set((state) => { state.minhaFicha = ficha; }),
         setMeuNome: (nome) => set((state) => { state.meuNome = nome; }),
