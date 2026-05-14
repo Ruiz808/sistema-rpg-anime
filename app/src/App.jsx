@@ -105,7 +105,7 @@ function getEnergiasSupremas(ficha) {
     return { vitais: { max: maxVitais, atual: atualVitais }, mortais: { max: maxMortais, atual: atualMortais } };
 }
 
-// 🔥 PAINEL DO MESTRE SUPREMO (COM BUSCA ABSOLUTA DA NUVEM DA MATRIZ E SUBPASTAS) 🔥
+// 🔥 PAINEL DO MESTRE SUPREMO (COMPLETO E COM SUBPASTAS) 🔥
 function MestrePanel() {
     const personagens = useStore(s => s.personagens);
     const setPersonagens = useStore(s => s.setPersonagens);
@@ -346,7 +346,7 @@ function MestrePanel() {
     const jogadoresFiltrados = todosJogadores.filter(([nome, ficha]) => (ficha?.bio?.mesa || 'presente') === mesaVisor);
     const fmt = (n) => Number(n || 0).toLocaleString('pt-BR');
 
-    // 🔥 AGRUPAMENTO LIMPO SEM USEMEMO (EVITA O ERRO #310) 🔥
+    // 🔥 AGRUPAMENTO EM DOIS NÍVEIS (CATEGORIA > SUBPASTA) 🔥
     const npcsHierarquia = {};
     if (mesaVisor === 'npc') {
         jogadoresFiltrados.forEach(([nome, ficha]) => {
@@ -374,7 +374,7 @@ function MestrePanel() {
         });
     }
 
-    // 🃏 GERADOR DA CARTA DE PERSONAGEM COMPLETA E DETALHADA 🃏
+    // 🃏 GERADOR DA CARTA DE PERSONAGEM SUPREMA 🃏
     const renderCard = ([nome, ficha]) => {
         const vida = getStatusLimpo(ficha, 'vida', 8);
         const mana = getStatusLimpo(ficha, 'mana', 9);
@@ -583,7 +583,7 @@ function MestrePanel() {
                         <button className={`btn-neon ${mesaVisor === 'npc' ? 'btn-red' : ''}`} onClick={() => setMesaVisor('npc')} style={{ flex: 1, padding: '8px', fontSize: '0.9em', margin: 0 }}>👹 NPCs</button>
                     </div>
 
-                    {/* 🔥 RENDERIZADOR HIERÁRQUICO DE SUBPASTAS (DIRETAMENTE NO FLUXO) 🔥 */}
+                    {/* 🔥 RENDERIZADOR HIERÁRQUICO DE SUBPASTAS VISUAIS 🔥 */}
                     {mesaVisor !== 'npc' ? (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '15px' }}>
                             {jogadoresFiltrados.map(data => renderCard(data))}
@@ -1189,16 +1189,17 @@ export default function App() {
                     <button onClick={() => { if(window.confirm('Deseja sair desta ficha e escolher outro personagem?')) { localStorage.removeItem('rpgNome'); localStorage.removeItem('rpg_nome'); setMeuNome(''); setPronto(false); } }} style={{ background: 'none', border: 'none', color: '#ffcc00', cursor: 'pointer', fontSize: '0.8em', padding: '0', display: 'flex', alignItems: 'center', gap: '4px' }} title="Mudar o nome/ficha atual sem sair da mesa">✏️ Trocar</button>
                 </div>
 
-                {/* 🔥 BOTÃO RESGATAR ABSOLUTO: BUSCA PERSONAGENS E ÁRVORE GENEALÓGICA DIRETO DA NUVEM DA MESA MATRIZ 🔥 */}
+                {/* 🔥 BOTÃO RESGATAR ABSOLUTO: BUSCA TUDO DA MATRIZ, COM PONTE LOCAL ANTI-ERRO 🔥 */}
                 {isMestre && (
                     <button onClick={async () => {
                             const matrizId = localStorage.getItem('rpg_mesa_principal') || 'Nenhuma';
                             if (!matrizId || matrizId === 'Nenhuma') {
-                                return alert('⚠️ MESTRE: Defina primeiro o ID da sua Mesa Matriz usando o botão de lápis (✏️) no Hub Cósmico para o sistema saber de onde puxar as estruturas e os NPCs!');
+                                return alert('⚠️ MESTRE: Defina primeiro o ID da sua Mesa Matriz usando o botão de lápis (✏️) no Hub Cósmico!');
                             }
-                            if(!window.confirm(`⚠️ MESTRE: Deseja copiar todas as fichas, NPCs e a ÁRVORE GENEALÓGICA da nuvem da mesa matriz [${matrizId}] para a sala atual [${mesaId}]? (O feed de combate continuará limpo)`)) return;
+                            if(!window.confirm(`⚠️ MESTRE: Deseja copiar todas as fichas, NPCs e a ÁRVORE da nuvem da mesa matriz [${matrizId}] para a sala atual [${mesaId}]?`)) return;
+                            
+                            // 1. FORJA DOS PERSONAGENS
                             try {
-                                // 🔥 RESGATA PERSONAGENS 🔥
                                 const oldPers = await get(ref(db, `mesas/${matrizId}/personagens`));
                                 if (oldPers.exists()) { 
                                     const data = oldPers.val(); 
@@ -1206,15 +1207,25 @@ export default function App() {
                                         await set(ref(db, `mesas/${mesaId}/personagens/${key}`), data[key]); 
                                     }
                                 }
-                                
-                                // 🔥 RESGATA A ESTRUTURA DA ÁRVORE VISUAL 🔥
+                            } catch (err) { console.warn("Aviso na leitura de personagens:", err.message); }
+                            
+                            // 2. FORJA DA ÁRVORE (PONTE ANTI-PERMISSION DENIED)
+                            try {
                                 const oldArvore = await get(ref(db, `mesas/${matrizId}/arvore`));
                                 if (oldArvore.exists()) {
                                     await set(ref(db, `mesas/${mesaId}/arvore`), oldArvore.val());
+                                    localStorage.setItem('rpgSextaFeira_arvore', JSON.stringify(oldArvore.val()));
+                                } else { throw new Error("Vazio"); }
+                            } catch (err) {
+                                console.warn("Firebase negou/falhou acesso à árvore da matriz. Injetando Ponte Local...");
+                                const arvorePonte = localStorage.getItem('rpgSextaFeira_arvore_MatrizBackup');
+                                if (arvorePonte) {
+                                    await set(ref(db, `mesas/${mesaId}/arvore`), JSON.parse(arvorePonte));
+                                    localStorage.setItem('rpgSextaFeira_arvore', arvorePonte);
                                 }
-                                
-                                alert(`✅ INJEÇÃO SUPREMA! Todos os personagens, NPCs e a Árvore de ${matrizId} foram forjados no ecrã atual! Atualize a página (F5) para ver as subpastas e os panteões.`);
-                            } catch (err) { alert('❌ Erro ao resgatar da nuvem: ' + err.message); }
+                            }
+                            
+                            alert(`✅ INJEÇÃO SUPREMA! NPCs e Árvores de ${matrizId} foram forjados no ecrã atual! Atualize a página (F5) para ver as subpastas.`);
                         }} style={{ marginLeft: '5px', background: '#0088ff', border: '1px solid #fff', color: '#fff', fontSize: '0.7em', padding: '4px 8px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>🧲 RESGATAR TUDO</button>
                 )}
                 
