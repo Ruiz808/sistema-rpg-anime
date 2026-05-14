@@ -105,10 +105,10 @@ function getEnergiasSupremas(ficha) {
     return { vitais: { max: maxVitais, atual: atualVitais }, mortais: { max: maxMortais, atual: atualMortais } };
 }
 
-// 🔥 PAINEL DO MESTRE SUPREMO (COM INJEÇÃO AUTOMÁTICA DE NPCS NO HUB) 🔥
+// 🔥 PAINEL DO MESTRE SUPREMO (COM HUB CÓSMICO E SUBPASTAS HIERÁRQUICAS) 🔥
 function MestrePanel() {
     const personagens = useStore(s => s.personagens);
-    const setPersonagens = useStore(s => s.setPersonagens); // 🔥 PUXADO PARA ATUALIZAR A STORE MESTRA 🔥
+    const setPersonagens = useStore(s => s.setPersonagens); 
     const meuNome = useStore(s => s.meuNome);
     const setPersonagemParaDeletar = useStore(s => s.setPersonagemParaDeletar);
     const isMestre = useStore(s => s.isMestre);
@@ -320,7 +320,6 @@ function MestrePanel() {
                     await set(ref(db, `mesas/${mesaId}/personagens/${nomePersonagem}`), novaFicha);
                 } catch(err) { console.warn("Erro ao injetar NPC na cloud:", err); }
             }
-            // Sincroniza instantaneamente com o ecrã do Mestre
             if (setPersonagens) setPersonagens(novosPersonagens);
         }
 
@@ -331,30 +330,7 @@ function MestrePanel() {
     const jogadoresFiltrados = todosJogadores.filter(([nome, ficha]) => (ficha?.bio?.mesa || 'presente') === mesaVisor);
     const fmt = (n) => Number(n || 0).toLocaleString('pt-BR');
 
-    // 🧠 LÓGICA DE AGRUPAMENTO POR CLÃS/FAMÍLIAS 🧠
-    const npcsPorFamilia = {};
-    if (mesaVisor === 'npc') {
-        jogadoresFiltrados.forEach(([nome, ficha]) => {
-            let familia = ficha?.bio?.afiliacao;
-            
-            if (!familia || familia.trim() === '') {
-                const lorePoder = (ficha?.poderes || []).find(p => p.nome === "📖 Linhagem & Lore");
-                if (lorePoder && lorePoder.descricao) {
-                    const match = lorePoder.descricao.match(/Clã de Origem:\s*(.*)/);
-                    if (match && match[1]) familia = match[1].trim();
-                }
-            }
-
-            if (!familia || familia === 'Nenhum' || familia.trim() === '') {
-                familia = 'Sem Clã / Bestas Soltas';
-            }
-
-            if (!npcsPorFamilia[familia]) npcsPorFamilia[familia] = [];
-            npcsPorFamilia[familia].push([nome, ficha]);
-        });
-    }
-
-    // 🃏 GERADOR DA CARTA DE PERSONAGEM 🃏
+    // 🃏 GERADOR DA CARTA DE PERSONAGEM COMPLETA E DETALHADA 🃏
     const renderCard = ([nome, ficha]) => {
         const vida = getStatusLimpo(ficha, 'vida', 8);
         const mana = getStatusLimpo(ficha, 'mana', 9);
@@ -475,6 +451,23 @@ function MestrePanel() {
         );
     };
 
+    // 🧠 LÓGICA DE HIERARQUIA POR PASTAS E SUBPASTAS (Ex: Demônio / Família X) 🧠
+    const hierarquiaNpcs = {};
+    if (mesaVisor === 'npc') {
+        jogadoresFiltrados.forEach(([nome, ficha]) => {
+            let afiliacao = (ficha?.bio?.afiliacao || 'Sem Clã / Bestas Soltas').trim();
+            if (afiliacao === '' || afiliacao === 'Nenhum') afiliacao = 'Sem Clã / Bestas Soltas';
+            
+            const partes = afiliacao.split('/').map(p => p.trim());
+            const catPrincipal = partes[0];
+            const subCat = partes.length > 1 ? partes[1] : '_geral';
+
+            if (!hierarquiaNpcs[catPrincipal]) hierarquiaNpcs[catPrincipal] = {};
+            if (!hierarquiaNpcs[catPrincipal][subCat]) hierarquiaNpcs[catPrincipal][subCat] = [];
+            hierarquiaNpcs[catPrincipal][subCat].push([nome, ficha]);
+        });
+    }
+
     return (
         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <h2 style={{ color: '#ffcc00', textShadow: '0 0 10px #ffcc00', borderBottom: '2px solid #ffcc00', paddingBottom: 10, margin: 0 }}>👑 DOMÍNIO DO MESTRE</h2>
@@ -562,30 +555,68 @@ function MestrePanel() {
                         </div>
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            {Object.entries(npcsPorFamilia).map(([familia, lista]) => (
-                                <div key={familia} style={{ border: '1px solid #444', borderRadius: '5px', overflow: 'hidden' }}>
-                                    <button 
-                                        onClick={() => togglePasta(familia)}
-                                        style={{ 
-                                            width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-                                            padding: '12px 15px', background: pastasAbertas[familia] ? 'rgba(255, 0, 60, 0.2)' : 'rgba(0, 0, 0, 0.5)', 
-                                            border: 'none', borderLeft: '4px solid #ff003c', color: '#ffcc00', fontWeight: 'bold', 
-                                            cursor: 'pointer', textAlign: 'left', fontSize: '1.1em', transition: '0.3s'
-                                        }}
-                                    >
-                                        <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                            {pastasAbertas[familia] ? '📂' : '📁'} {familia.toUpperCase()}
-                                        </span>
-                                        <span style={{ color: '#fff', fontSize: '0.8em', background: '#ff003c', padding: '2px 8px', borderRadius: '12px' }}>{lista.length}</span>
-                                    </button>
-                                    
-                                    {pastasAbertas[familia] && (
-                                        <div style={{ padding: '15px', background: 'rgba(0,0,0,0.3)', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '15px' }}>
-                                            {lista.map(data => renderCard(data))}
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
+                            {Object.entries(hierarquiaNpcs).sort().map(([categoria, subs]) => {
+                                const isCatAberta = pastasAbertas[categoria];
+                                const totalCat = Object.values(subs).reduce((acc, curr) => acc + curr.length, 0);
+                                return (
+                                    <div key={categoria} style={{ border: '1px solid #444', borderRadius: '5px', overflow: 'hidden', background: 'rgba(0,0,0,0.4)' }}>
+                                        <button 
+                                            onClick={() => togglePasta(categoria)}
+                                            style={{ 
+                                                width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                                                padding: '12px 15px', background: isCatAberta ? 'rgba(255, 0, 60, 0.2)' : 'rgba(0, 0, 0, 0.6)', 
+                                                border: 'none', borderLeft: '4px solid #ff003c', color: '#ffcc00', fontWeight: 'bold', 
+                                                cursor: 'pointer', textAlign: 'left', fontSize: '1.1em', transition: '0.3s'
+                                            }}
+                                        >
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                {isCatAberta ? '📂' : '📁'} {categoria.toUpperCase()}
+                                            </span>
+                                            <span style={{ color: '#fff', fontSize: '0.8em', background: '#ff003c', padding: '2px 8px', borderRadius: '12px' }}>{totalCat}</span>
+                                        </button>
+                                        
+                                        {isCatAberta && (
+                                            <div style={{ padding: '15px', background: 'rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                                {Object.entries(subs).sort().map(([sub, lista]) => {
+                                                    if (sub === '_geral') {
+                                                        return (
+                                                            <div key={sub} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '15px' }}>
+                                                                {lista.map(data => renderCard(data))}
+                                                            </div>
+                                                        );
+                                                    }
+                                                    const subId = `${categoria}|${sub}`;
+                                                    const isSubAberta = pastasAbertas[subId];
+                                                    return (
+                                                        <div key={sub} style={{ border: '1px solid #333', borderRadius: '5px', overflow: 'hidden', background: 'rgba(0,0,0,0.3)' }}>
+                                                            <button 
+                                                                onClick={() => togglePasta(subId)}
+                                                                style={{ 
+                                                                    width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                                                                    padding: '8px 15px', background: isSubAberta ? 'rgba(0, 136, 255, 0.15)' : 'rgba(0, 0, 0, 0.4)', 
+                                                                    border: 'none', borderLeft: '3px solid #0088ff', color: '#00ccff', fontWeight: 'bold', 
+                                                                    cursor: 'pointer', textAlign: 'left', fontSize: '0.95em', transition: '0.2s'
+                                                                }}
+                                                            >
+                                                                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                    {isSubAberta ? '📂' : '📁'} {sub}
+                                                                </span>
+                                                                <span style={{ fontSize: '0.8em', background: '#0088ff', padding: '2px 6px', borderRadius: '8px', color: '#fff' }}>{lista.length}</span>
+                                                            </button>
+                                                            
+                                                            {isSubAberta && (
+                                                                <div style={{ padding: '12px', background: 'rgba(0,0,0,0.4)', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '15px' }}>
+                                                                    {lista.map(data => renderCard(data))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
                             {jogadoresFiltrados.length === 0 && <div style={{ color: '#aaa', fontStyle: 'italic', padding: '10px' }}>Nenhum monstro ou entidade foi invocado.</div>}
                         </div>
                     )}
@@ -657,7 +688,7 @@ function MestrePanel() {
     );
 }
 
-// 🔐 TELA DE LOGIN (FALSO E-MAIL)
+// 🔐 TELA DE LOGIN (ORIGINAL RESTAURADA NA ÍNTEGRA)
 function AuthScreen() {
     const [isRegister, setIsRegister] = useState(false);
     const [nick, setNick] = useState('');
@@ -707,7 +738,7 @@ function AuthScreen() {
     );
 }
 
-// 🏰 LOBBY DE MESAS (DESIGN TOTALMENTE NOVO E ROBUSTO)
+// 🏰 LOBBY DE MESAS (ORIGINAL RESTAURADA NA ÍNTEGRA)
 function LobbyNeon() {
     const { setMesaId, userLogado } = useStore();
     const [codigoSala, setCodigoSala] = useState('');
@@ -914,7 +945,7 @@ function LobbyNeon() {
     );
 }
 
-// 👑 APLICAÇÃO PRINCIPAL (APP)
+// 👑 APLICAÇÃO PRINCIPAL (APP - TOTALMENTE RESTAURADA)
 export default function App() {
     const userLogado = useStore(s => s.userLogado);
     const setUserLogado = useStore(s => s.setUserLogado);
