@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import useStore, { sanitizarNome, fichaPadrao } from '../../stores/useStore'; 
-import { ref, set } from 'firebase/database'; 
+import { ref, set, onValue } from 'firebase/database'; // 🔥 INJETADO onValue PARA ESCUTA REAL-TIME 🔥
 import { database } from '../../services/firebase-config'; 
 
 export default function AIArvoreGenealogica() {
@@ -24,6 +24,23 @@ export default function AIArvoreGenealogica() {
     const [novaArvoreInput, setNovaArvoreInput] = useState('');
     const fileInputRef = useRef(null);
 
+    // 🔥 ESCUTA REAL-TIME DIRETA DO FIREBASE: O FIM DA "CEGUEIRA" DA ÁRVORE 🔥
+    useEffect(() => {
+        if (!mesaId) return;
+        const arvoreRef = ref(database, `mesas/${mesaId}/arvore`);
+        const unsub = onValue(arvoreRef, (snap) => {
+            if (snap.exists()) {
+                const dadosNuvem = snap.val();
+                setFamilias(dadosNuvem);
+                localStorage.setItem('rpgSextaFeira_arvore', JSON.stringify(dadosNuvem));
+                // Garante que a aba ativa continua válida
+                setFamiliaAtiva(prev => dadosNuvem[prev] ? prev : (Object.keys(dadosNuvem)[0] || null));
+            }
+        });
+        return () => unsub();
+    }, [mesaId]);
+
+    // Preserva a gravação local como backup de segurança secundário
     useEffect(() => {
         localStorage.setItem('rpgSextaFeira_arvore', JSON.stringify(familias));
     }, [familias]);
@@ -38,10 +55,12 @@ export default function AIArvoreGenealogica() {
 
     const criarFamilia = () => {
         if (novaArvoreInput.trim() !== '' && !familias[novaArvoreInput]) {
-            setFamilias({ ...familias, [novaArvoreInput]: [] });
+            const novasFams = { ...familias, [novaArvoreInput]: [] };
+            setFamilias(novasFams);
             setFamiliaAtiva(novaArvoreInput);
             setNovaArvoreInput('');
             setNpcSelecionado(null);
+            sincronizarArvoreNuvem(novasFams);
         }
     };
 
@@ -56,6 +75,7 @@ export default function AIArvoreGenealogica() {
 
         setFamilias(novasFamilias);
         if (familiaAtiva === nomeAtual) setFamiliaAtiva(novoNome);
+        sincronizarArvoreNuvem(novasFamilias);
     };
 
     const deletarFamilia = (nomeFam) => {
@@ -66,8 +86,17 @@ export default function AIArvoreGenealogica() {
             const chaves = Object.keys(novasFamilias);
             setFamiliaAtiva(chaves.length > 0 ? chaves[0] : null);
             setNpcSelecionado(null);
+            sincronizarArvoreNuvem(novasFamilias);
         }
-    }
+    };
+
+    // 🔥 AUTOMATIZAÇÃO: Envia qualquer alteração estrutural direto para a Nuvem 🔥
+    const sincronizarArvoreNuvem = (estadoAtualizado) => {
+        if (!mesaId) return;
+        set(ref(database, `mesas/${mesaId}/arvore`), estadoAtualizado).catch(e => {
+            console.warn("Aviso: Sincronização secundária com Firebase falhou.", e);
+        });
+    };
 
     const adicionarMembro = (parentId = null, genitor2 = "") => {
         if (!familiaAtiva) return alert("Crie ou selecione uma árvore primeiro!");
@@ -76,19 +105,19 @@ export default function AIArvoreGenealogica() {
         const novoNpc = { 
             id: novoId, 
             nome: parentId ? "Novo Herdeiro" : "Fundador(a)", 
-            avatar: "", 
-            parceiros: "", 
-            genitor2: genitor2, 
+            avatar: "", parceiros: "", genitor2: genitor2, 
             papel: "", classe: "", elemento: "", hp: "100000", mana: "100000", status: "Vivo", lore: "", 
             afiliacao: familiaAtiva, 
             parentId: parentId 
         };
         
-        setFamilias({
+        const novoEstado = {
             ...familias,
             [familiaAtiva]: [...(familias[familiaAtiva] || []), novoNpc]
-        });
-        setNpcSelecionado(novoNpc); 
+        };
+        setFamilias(novoEstado);
+        setNpcSelecionado(novoNpc);
+        sincronizarArvoreNuvem(novoEstado);
     };
 
     const atualizarNpc = (campo, valor) => {
@@ -101,7 +130,9 @@ export default function AIArvoreGenealogica() {
         const listaAtualizada = (familias[familiaAtiva] || []).map(npc => 
             npc.id === npcSelecionado.id ? npcAtualizado : npc
         );
-        setFamilias({ ...familias, [familiaAtiva]: listaAtualizada });
+        const novoEstado = { ...familias, [familiaAtiva]: listaAtualizada };
+        setFamilias(novoEstado);
+        sincronizarArvoreNuvem(novoEstado);
     };
 
     const deletarNpc = (id) => {
@@ -111,8 +142,10 @@ export default function AIArvoreGenealogica() {
                 .filter(npc => npc.id !== id)
                 .map(npc => npc.parentId === id ? { ...npc, parentId: null } : npc);
             
-            setFamilias({ ...familias, [familiaAtiva]: listaAtualizada });
+            const novoEstado = { ...familias, [familiaAtiva]: listaAtualizada };
+            setFamilias(novoEstado);
             if (npcSelecionado && npcSelecionado.id === id) setNpcSelecionado(null);
+            sincronizarArvoreNuvem(novoEstado);
         }
     };
 
@@ -160,8 +193,7 @@ export default function AIArvoreGenealogica() {
         novaFicha.poderes = [
             {
                 nome: "📖 Linhagem & Lore",
-                ativa: true,
-                dano: "0",
+                ativa: true, dano: "0",
                 descricao: `Status: ${npcSelecionado.status || 'Vivo'}\nElemento Mágico: ${npcSelecionado.elemento || 'Nenhum'}\nClã / Panteão: ${npcSelecionado.afiliacao || familiaAtiva}\n\nHistória: ${npcSelecionado.lore || 'Sem registos.'}`
             }
         ];
@@ -200,6 +232,7 @@ export default function AIArvoreGenealogica() {
                 setFamilias(dados);
                 setFamiliaAtiva(Object.keys(dados)[0] || null);
                 setNpcSelecionado(null);
+                sincronizarArvoreNuvem(dados);
                 alert("✅ Backup das Árvores carregado com sucesso!");
             } catch (err) { alert("❌ Erro ao ler o ficheiro JSON."); }
         };
@@ -215,7 +248,6 @@ export default function AIArvoreGenealogica() {
         const parceirosSet = new Set(parceirosRaw.split(',').map(s => s.trim()).filter(Boolean));
         
         const filhos = (familias[familiaAtiva] || []).filter(n => n.parentId === npc.id);
-        
         filhos.forEach(f => { if (f.genitor2 && f.genitor2.trim()) parceirosSet.add(f.genitor2.trim()); });
         const parceirosUnicos = Array.from(parceirosSet);
 
@@ -223,7 +255,7 @@ export default function AIArvoreGenealogica() {
 
         return (
             <li key={npc.id}>
-                {/* 🔥 LARGURA CRAVADA COM PERFEIÇÃO PARA EVITAR ZOOM HORIZONTAL 🔥 */}
+                {/* 🔥 LARGURA PADRONIZADA (width: 180px) ANTI-ESMAGAMENTO HORIZONTAL 🔥 */}
                 <div className="arvore-node-container" style={{ borderColor: isSelecionado ? '#00ffcc' : (isMorto ? '#ff4444' : '#333'), boxShadow: isSelecionado ? '0 0 15px rgba(0, 255, 204, 0.3)' : 'none' }} onClick={() => setNpcSelecionado(npc)}>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '-5px' }}>
                         <button onClick={(e) => { e.stopPropagation(); deletarNpc(npc.id); }} style={{ background: 'none', border: 'none', color: '#ff4444', fontSize: '14px', cursor: 'pointer' }}>✖</button>
@@ -300,7 +332,7 @@ export default function AIArvoreGenealogica() {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', minHeight: '75vh', position: 'relative' }}>
             
-            {/* 🔥 BARRA SUPERIOR DE CONTROLO DE ÁRVORES 🔥 */}
+            {/* 🔥 BARRA SUPERIOR (NAVBAR) DE GESTÃO DA ÁRVORE 🔥 */}
             <div className="def-box" style={{ padding: '15px 20px', marginBottom: '15px', display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 5 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
                     <h3 style={{ color: '#00ffcc', margin: 0, textShadow: '0 0 10px rgba(0,255,204,0.4)', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -328,7 +360,7 @@ export default function AIArvoreGenealogica() {
                 </div>
             </div>
 
-            {/* 🔥 CANVAS PRINCIPAL OCUPANDO 100% DA TELA 🔥 */}
+            {/* 🔥 O CANVAS PRINCIPAL DOMINANDO 100% DA TELA HORIZONTAL E VERTICAL 🔥 */}
             {familiaAtiva && (
                 <div style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid #1a2333', borderRadius: '10px', padding: '30px', flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', position: 'relative' }}>
                     <div style={{ alignSelf: 'center', marginBottom: '30px' }}>
@@ -347,23 +379,15 @@ export default function AIArvoreGenealogica() {
                 </div>
             )}
 
-            {/* 🔥 GAVETA FLUTUANTE RETRÁTIL (SLIDING DRAWER) 🔥 */}
+            {/* 🔥 EDITOR DE FICHA FLUTUANTE RETRÁTIL (GAVETA FLUTUANTE) 🔥 */}
             {npcSelecionado && (
                 <div className="def-box fade-in" style={{ 
-                    position: 'absolute', 
-                    top: '90px', 
-                    right: '20px', 
-                    width: '380px', 
-                    maxHeight: 'calc(100% - 110px)', 
-                    overflowY: 'auto', 
-                    background: 'rgba(7, 10, 15, 0.95)', 
-                    border: '2px solid #00ffcc', 
+                    position: 'absolute', top: '90px', right: '20px', width: '380px', 
+                    maxHeight: 'calc(100% - 110px)', overflowY: 'auto', 
+                    background: 'rgba(7, 10, 15, 0.95)', border: '2px solid #00ffcc', 
                     boxShadow: '-10px 10px 30px rgba(0,0,0,0.8), inset 0 0 15px rgba(0,255,204,0.1)', 
-                    zIndex: 100,
-                    padding: '20px',
-                    borderRadius: '12px',
-                    display: 'flex', 
-                    flexDirection: 'column'
+                    zIndex: 100, padding: '20px', borderRadius: '12px',
+                    display: 'flex', flexDirection: 'column'
                 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #00ffcc', paddingBottom: '10px', marginBottom: '15px' }}>
                         <h3 style={{ color: '#00ffcc', margin: 0 }}>📋 Editor de Ficha</h3>
@@ -374,7 +398,6 @@ export default function AIArvoreGenealogica() {
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                        
                         <div style={{ display: 'flex', gap: '15px', alignItems: 'center', background: 'rgba(0, 255, 204, 0.05)', padding: '10px', borderRadius: '8px', border: '1px dashed #00ffcc' }}>
                             <div style={{ width: '50px', height: '50px', borderRadius: '8px', border: '1px solid #00ffcc', background: '#05070a', display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', flexShr: 0 }}>
                                 {npcSelecionado.avatar && npcSelecionado.avatar.trim() !== '' ? (<img src={npcSelecionado.avatar} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />) : null}
