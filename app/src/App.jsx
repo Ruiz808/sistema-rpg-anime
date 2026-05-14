@@ -105,7 +105,7 @@ function getEnergiasSupremas(ficha) {
     return { vitais: { max: maxVitais, atual: atualVitais }, mortais: { max: maxMortais, atual: atualMortais } };
 }
 
-// 🔥 PAINEL DO MESTRE SUPREMO (COM BUSCA DIRETA E ABSOLUTA DA NUVEM DA MATRIZ) 🔥
+// 🔥 PAINEL DO MESTRE SUPREMO (COM HIERARQUIA VISUAL DE SUBPASTAS ATIVADA) 🔥
 function MestrePanel() {
     const personagens = useStore(s => s.personagens);
     const setPersonagens = useStore(s => s.setPersonagens);
@@ -141,7 +141,6 @@ function MestrePanel() {
 
     // 🔥 BUSCA ABSOLUTA DIRETO DA NUVEM DA MESA MATRIZ 🔥
     useEffect(() => {
-        // Tenta preencher com o cache local primeiro para resposta imediata
         try { 
             const capBackup = localStorage.getItem('rpgSextaFeira_capitulos_MatrizBackup');
             if (capBackup) setCapitulosGerais(JSON.parse(capBackup));
@@ -160,7 +159,6 @@ function MestrePanel() {
 
         if (!mesaMatriz || mesaMatriz === 'Nenhuma') return;
 
-        // Puxa a Lore oficial direto do Firebase da Matriz
         get(ref(db, `mesas/${mesaMatriz}/lore`)).then(snap => {
             if (snap.exists()) {
                 setCapitulosGerais(snap.val());
@@ -168,7 +166,6 @@ function MestrePanel() {
             }
         }).catch(() => {});
 
-        // Puxa a Árvore oficial direto do Firebase da Matriz
         get(ref(db, `mesas/${mesaMatriz}/arvore`)).then(snap => {
             if (snap.exists()) {
                 setArvoresGerais(snap.val());
@@ -293,7 +290,6 @@ function MestrePanel() {
         localStorage.setItem(chaveMesa, JSON.stringify(arvoresMesa));
         localStorage.setItem('rpgSextaFeira_arvore', JSON.stringify(arvoresMesa));
 
-        // 🔥 SALVA A ESTRUTURA DA ÁRVORE NO FIREBASE DA MESA ATUAL PARA TODOS VEREM 🔥
         try {
             await set(ref(db, `mesas/${mesaId}/arvore`), arvoresMesa);
         } catch(e) { console.warn("Erro ao salvar árvore na nuvem:", e); }
@@ -350,28 +346,36 @@ function MestrePanel() {
     const jogadoresFiltrados = todosJogadores.filter(([nome, ficha]) => (ficha?.bio?.mesa || 'presente') === mesaVisor);
     const fmt = (n) => Number(n || 0).toLocaleString('pt-BR');
 
-    // 🧠 LÓGICA DE AGRUPAMENTO POR CLÃS/FAMÍLIAS 🧠
-    const npcsPorFamilia = {};
-    if (mesaVisor === 'npc') {
-        jogadoresFiltrados.forEach(([nome, ficha]) => {
-            let familia = ficha?.bio?.afiliacao;
-            
-            if (!familia || familia.trim() === '') {
-                const lorePoder = (ficha?.poderes || []).find(p => p.nome === "📖 Linhagem & Lore");
-                if (lorePoder && lorePoder.descricao) {
-                    const match = lorePoder.descricao.match(/Clã de Origem:\s*(.*)/);
-                    if (match && match[1]) familia = match[1].trim();
+    // 🔥 LÓGICA DE AGRUPAMENTO HIERÁRQUICO REFINADA (CATEGORIA > SUBPASTA) 🔥
+    const npcsHierarquia = useMemo(() => {
+        const arvore = {};
+        if (mesaVisor === 'npc') {
+            jogadoresFiltrados.forEach(([nome, ficha]) => {
+                let stringPasta = ficha?.bio?.afiliacao;
+                
+                if (!stringPasta || stringPasta.trim() === '') {
+                    const lorePoder = (ficha?.poderes || []).find(p => p.nome === "📖 Linhagem & Lore");
+                    if (lorePoder && lorePoder.descricao) {
+                        const match = lorePoder.descricao.match(/Clã /);
+                        if (match) stringPasta = lorePoder.descricao.split('\n').find(l => l.includes('Clã')).replace('Clã / Panteão:', '').trim();
+                    }
                 }
-            }
 
-            if (!familia || familia === 'Nenhum' || familia.trim() === '') {
-                familia = 'Sem Clã / Bestas Soltas';
-            }
+                if (!stringPasta || stringPasta === 'Nenhum' || stringPasta.trim() === '') {
+                    stringPasta = 'Sem Clã / Bestas Soltas';
+                }
 
-            if (!npcsPorFamilia[familia]) npcsPorFamilia[familia] = [];
-            npcsPorFamilia[familia].push([nome, ficha]);
-        });
-    }
+                const partes = stringPasta.split('/').map(p => p.trim()).filter(Boolean);
+                const catRaiz = partes[0] || 'Sem Clã';
+                const subPasta = partes.length > 1 ? partes.slice(1).join(' / ') : '_geral';
+
+                if (!arvore[catRaiz]) arvore[catRaiz] = {};
+                if (!arvore[catRaiz][subPasta]) arvore[catRaiz][subPasta] = [];
+                arvore[catRaiz][subPasta].push([nome, ficha]);
+            });
+        }
+        return arvore;
+    }, [jogadoresFiltrados, mesaVisor]);
 
     // 🃏 GERADOR DA CARTA DE PERSONAGEM 🃏
     const renderCard = ([nome, ficha]) => {
@@ -582,6 +586,7 @@ function MestrePanel() {
                         <button className={`btn-neon ${mesaVisor === 'npc' ? 'btn-red' : ''}`} onClick={() => setMesaVisor('npc')} style={{ flex: 1, padding: '8px', fontSize: '0.9em', margin: 0 }}>👹 NPCs</button>
                     </div>
 
+                    {/* 🔥 RENDERIZADOR HIERÁRQUICO DE SUBPASTAS VISUAIS 🔥 */}
                     {mesaVisor !== 'npc' ? (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '15px' }}>
                             {jogadoresFiltrados.map(data => renderCard(data))}
@@ -589,30 +594,75 @@ function MestrePanel() {
                         </div>
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            {Object.entries(npcsPorFamilia).map(([familia, lista]) => (
-                                <div key={familia} style={{ border: '1px solid #444', borderRadius: '5px', overflow: 'hidden' }}>
-                                    <button 
-                                        onClick={() => togglePasta(familia)}
-                                        style={{ 
-                                            width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-                                            padding: '12px 15px', background: pastasAbertas[familia] ? 'rgba(255, 0, 60, 0.2)' : 'rgba(0, 0, 0, 0.5)', 
-                                            border: 'none', borderLeft: '4px solid #ff003c', color: '#ffcc00', fontWeight: 'bold', 
-                                            cursor: 'pointer', textAlign: 'left', fontSize: '1.1em', transition: '0.3s'
-                                        }}
-                                    >
-                                        <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                            {pastasAbertas[familia] ? '📂' : '📁'} {familia.toUpperCase()}
-                                        </span>
-                                        <span style={{ color: '#fff', fontSize: '0.8em', background: '#ff003c', padding: '2px 8px', borderRadius: '12px' }}>{lista.length}</span>
-                                    </button>
-                                    
-                                    {pastasAbertas[familia] && (
-                                        <div style={{ padding: '15px', background: 'rgba(0,0,0,0.3)', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '15px' }}>
-                                            {lista.map(data => renderCard(data))}
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
+                            {Object.entries(npcsHierarquia).sort().map(([catRaiz, subPastasObj]) => {
+                                const isCatAberta = pastasAbertas[catRaiz];
+                                const totalCat = Object.values(subPastasObj).reduce((acc, curr) => acc + curr.length, 0);
+                                
+                                return (
+                                    <div key={catRaiz} style={{ border: '1px solid #444', borderRadius: '5px', overflow: 'hidden', background: 'rgba(0,0,0,0.4)' }}>
+                                        {/* BOTÃO DA CATEGORIA PRINCIPAL */}
+                                        <button 
+                                            onClick={() => togglePasta(catRaiz)}
+                                            style={{ 
+                                                width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                                                padding: '12px 15px', background: isCatAberta ? 'rgba(255, 0, 60, 0.2)' : 'rgba(0, 0, 0, 0.6)', 
+                                                border: 'none', borderLeft: '4px solid #ff003c', color: '#ffcc00', fontWeight: 'bold', 
+                                                cursor: 'pointer', textAlign: 'left', fontSize: '1.1em', transition: '0.3s'
+                                            }}
+                                        >
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                {isCatAberta ? '📂' : '📁'} {catRaiz.toUpperCase()}
+                                            </span>
+                                            <span style={{ color: '#fff', fontSize: '0.8em', background: '#ff003c', padding: '2px 8px', borderRadius: '12px' }}>{totalCat}</span>
+                                        </button>
+                                        
+                                        {/* CONTEÚDO DA CATEGORIA (LISTA DE SUBPASTAS) */}
+                                        {isCatAberta && (
+                                            <div style={{ padding: '15px', background: 'rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                                {Object.entries(subPastasObj).sort().map(([subNome, listaCards]) => {
+                                                    // Se for geral, renderiza solto sem criar sub-botão
+                                                    if (subNome === '_geral') {
+                                                        return (
+                                                            <div key={subNome} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '15px' }}>
+                                                                {listaCards.map(data => renderCard(data))}
+                                                            </div>
+                                                        );
+                                                    }
+
+                                                    // Se for uma subpasta real com barra
+                                                    const subId = `${catRaiz}|${subNome}`;
+                                                    const isSubAberta = pastasAbertas[subId];
+
+                                                    return (
+                                                        <div key={subNome} style={{ border: '1px solid #333', borderRadius: '5px', overflow: 'hidden', background: 'rgba(0,0,0,0.4)', marginLeft: '10px' }}>
+                                                            <button 
+                                                                onClick={() => togglePasta(subId)}
+                                                                style={{ 
+                                                                    width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                                                                    padding: '8px 15px', background: isSubAberta ? 'rgba(0, 136, 255, 0.15)' : 'rgba(0, 0, 0, 0.4)', 
+                                                                    border: 'none', borderLeft: '3px solid #0088ff', color: '#00ccff', fontWeight: 'bold', 
+                                                                    cursor: 'pointer', textAlign: 'left', fontSize: '0.95em', transition: '0.2s'
+                                                                }}
+                                                            >
+                                                                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                    ↳ {isSubAberta ? '📂' : '📁'} {subNome}
+                                                                </span>
+                                                                <span style={{ fontSize: '0.8em', background: '#0088ff', padding: '2px 6px', borderRadius: '8px', color: '#fff' }}>{listaCards.length}</span>
+                                                            </button>
+                                                            
+                                                            {isSubAberta && (
+                                                                <div style={{ padding: '12px', background: 'rgba(0,0,0,0.5)', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '15px' }}>
+                                                                    {listaCards.map(data => renderCard(data))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
                             {jogadoresFiltrados.length === 0 && <div style={{ color: '#aaa', fontStyle: 'italic', padding: '10px' }}>Nenhum monstro ou entidade foi invocado.</div>}
                         </div>
                     )}
@@ -1142,7 +1192,7 @@ export default function App() {
                     <button onClick={() => { if(window.confirm('Deseja sair desta ficha e escolher outro personagem?')) { localStorage.removeItem('rpgNome'); localStorage.removeItem('rpg_nome'); setMeuNome(''); setPronto(false); } }} style={{ background: 'none', border: 'none', color: '#ffcc00', cursor: 'pointer', fontSize: '0.8em', padding: '0', display: 'flex', alignItems: 'center', gap: '4px' }} title="Mudar o nome/ficha atual sem sair da mesa">✏️ Trocar</button>
                 </div>
 
-                {/* 🔥 BOTÃO RESGATAR ABSOLUTO: BUSCA DIRETO DA NUVEM DA MESA MATRIZ 🔥 */}
+                {/* 🔥 BOTÃO RESGATAR REFINADO: RESGATA APENAS PERSONAGENS E NPCS DA MATRIZ SILENCIOSAMENTE 🔥 */}
                 {isMestre && (
                     <button onClick={async () => {
                             const matrizId = localStorage.getItem('rpg_mesa_principal') || 'Nenhuma';
@@ -1157,7 +1207,7 @@ export default function App() {
                                     for (const key in data) {
                                         await set(ref(db, `mesas/${mesaId}/personagens/${key}`), data[key]); 
                                     }
-                                    alert(`✅ INJEÇÃO SUPREMA! Todos os personagens e NPCs de ${matrizId} foram forjados no ecrã atual! Atualize a página (F5) para ver as pastas.`);
+                                    alert(`✅ INJEÇÃO SUPREMA! Todos os personagens e NPCs de ${matrizId} foram forjados no ecrã atual! Atualize a página (F5) para ver as subpastas.`);
                                 } else {
                                     alert(`⚠️ Nenhum personagem ou NPC encontrado na nuvem da mesa matriz [${matrizId}].`);
                                 }
