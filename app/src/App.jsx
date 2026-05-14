@@ -105,7 +105,7 @@ function getEnergiasSupremas(ficha) {
     return { vitais: { max: maxVitais, atual: atualVitais }, mortais: { max: maxMortais, atual: atualMortais } };
 }
 
-// // 🔥 PAINEL DO MESTRE SUPREMO (CORRIGIDO: ANTI-ERRO #310 E COM SUBPASTAS) 🔥
+// 🔥 PAINEL DO MESTRE SUPREMO (COM BUSCA ABSOLUTA DA NUVEM DA MATRIZ E SUBPASTAS) 🔥
 function MestrePanel() {
     const personagens = useStore(s => s.personagens);
     const setPersonagens = useStore(s => s.setPersonagens);
@@ -153,7 +153,7 @@ function MestrePanel() {
             if (arvBackup) setArvoresGerais(JSON.parse(arvBackup));
             else {
                 const arvLocal = localStorage.getItem('rpgSextaFeira_arvore');
-                if (arLocal) setArvoresGerais(JSON.parse(arLocal));
+                if (arvLocal) setArvoresGerais(JSON.parse(arvLocal));
             }
         } catch(e) {}
 
@@ -174,7 +174,6 @@ function MestrePanel() {
         }).catch(() => {});
     }, [mesaMatriz]);
 
-    // Deixamos os grands simples e diretos
     const grandsGlobais = useMemo(() => {
         let g = {};
         if (personagens) Object.values(personagens).forEach(p => { if (p?.compendioOverrides?.grands) g = { ...g, ...p.compendioOverrides.grands }; });
@@ -375,7 +374,7 @@ function MestrePanel() {
         });
     }
 
-    // 🃏 GERADOR DA CARTA DE PERSONAGEM 🃏
+    // 🃏 GERADOR DA CARTA DE PERSONAGEM COMPLETA E DETALHADA 🃏
     const renderCard = ([nome, ficha]) => {
         const vida = getStatusLimpo(ficha, 'vida', 8);
         const mana = getStatusLimpo(ficha, 'mana', 9);
@@ -584,7 +583,7 @@ function MestrePanel() {
                         <button className={`btn-neon ${mesaVisor === 'npc' ? 'btn-red' : ''}`} onClick={() => setMesaVisor('npc')} style={{ flex: 1, padding: '8px', fontSize: '0.9em', margin: 0 }}>👹 NPCs</button>
                     </div>
 
-                    {/* 🔥 RENDERIZADOR HIERÁRQUICO DE SUBPASTAS (AGORA DIRETAMENTE NO FLUXO) 🔥 */}
+                    {/* 🔥 RENDERIZADOR HIERÁRQUICO DE SUBPASTAS (DIRETAMENTE NO FLUXO) 🔥 */}
                     {mesaVisor !== 'npc' ? (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '15px' }}>
                             {jogadoresFiltrados.map(data => renderCard(data))}
@@ -1190,27 +1189,33 @@ export default function App() {
                     <button onClick={() => { if(window.confirm('Deseja sair desta ficha e escolher outro personagem?')) { localStorage.removeItem('rpgNome'); localStorage.removeItem('rpg_nome'); setMeuNome(''); setPronto(false); } }} style={{ background: 'none', border: 'none', color: '#ffcc00', cursor: 'pointer', fontSize: '0.8em', padding: '0', display: 'flex', alignItems: 'center', gap: '4px' }} title="Mudar o nome/ficha atual sem sair da mesa">✏️ Trocar</button>
                 </div>
 
-                {/* 🔥 BOTÃO RESGATAR REFINADO: RESGATA APENAS PERSONAGENS E NPCS DA MATRIZ SILENCIOSAMENTE 🔥 */}
+                {/* 🔥 BOTÃO RESGATAR ABSOLUTO: BUSCA PERSONAGENS E ÁRVORE GENEALÓGICA DIRETO DA NUVEM DA MESA MATRIZ 🔥 */}
                 {isMestre && (
                     <button onClick={async () => {
                             const matrizId = localStorage.getItem('rpg_mesa_principal') || 'Nenhuma';
                             if (!matrizId || matrizId === 'Nenhuma') {
-                                return alert('⚠️ MESTRE: Defina primeiro o ID da sua Mesa Matriz usando o botão de lápis (✏️) no Hub Cósmico para o sistema saber de onde puxar os NPCs!');
+                                return alert('⚠️ MESTRE: Defina primeiro o ID da sua Mesa Matriz usando o botão de lápis (✏️) no Hub Cósmico para o sistema saber de onde puxar as estruturas e os NPCs!');
                             }
-                            if(!window.confirm(`⚠️ MESTRE: Deseja copiar todas as fichas e NPCs da nuvem da mesa matriz [${matrizId}] para a sala atual [${mesaId}]? (O feed continuará limpo)`)) return;
+                            if(!window.confirm(`⚠️ MESTRE: Deseja copiar todas as fichas, NPCs e a ÁRVORE GENEALÓGICA da nuvem da mesa matriz [${matrizId}] para a sala atual [${mesaId}]? (O feed de combate continuará limpo)`)) return;
                             try {
+                                // 🔥 RESGATA PERSONAGENS 🔥
                                 const oldPers = await get(ref(db, `mesas/${matrizId}/personagens`));
                                 if (oldPers.exists()) { 
                                     const data = oldPers.val(); 
                                     for (const key in data) {
                                         await set(ref(db, `mesas/${mesaId}/personagens/${key}`), data[key]); 
                                     }
-                                    alert(`✅ INJEÇÃO SUPREMA! Todos os personagens e NPCs de ${matrizId} foram forjados no ecrã atual! Atualize a página (F5) para ver as subpastas.`);
-                                } else {
-                                    alert(`⚠️ Nenhum personagem ou NPC encontrado na nuvem da mesa matriz [${matrizId}].`);
                                 }
+                                
+                                // 🔥 RESGATA A ESTRUTURA DA ÁRVORE VISUAL 🔥
+                                const oldArvore = await get(ref(db, `mesas/${matrizId}/arvore`));
+                                if (oldArvore.exists()) {
+                                    await set(ref(db, `mesas/${mesaId}/arvore`), oldArvore.val());
+                                }
+                                
+                                alert(`✅ INJEÇÃO SUPREMA! Todos os personagens, NPCs e a Árvore de ${matrizId} foram forjados no ecrã atual! Atualize a página (F5) para ver as subpastas e os panteões.`);
                             } catch (err) { alert('❌ Erro ao resgatar da nuvem: ' + err.message); }
-                        }} style={{ marginLeft: '5px', background: '#0088ff', border: '1px solid #fff', color: '#fff', fontSize: '0.7em', padding: '4px 8px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>🧲 RESGATAR NPCs</button>
+                        }} style={{ marginLeft: '5px', background: '#0088ff', border: '1px solid #fff', color: '#fff', fontSize: '0.7em', padding: '4px 8px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>🧲 RESGATAR TUDO</button>
                 )}
                 
                 <button onClick={() => { if(window.confirm('Tem a certeza que deseja sair da mesa?')) { limparFeedStore(); setMesaId(''); } }} style={{ marginLeft: '10px', background: 'none', border: 'none', color: '#ff003c', cursor: 'pointer', fontSize: '0.9em', fontWeight: 'bold', padding: 0 }} title="Desconectar do Servidor da Mesa">Sair 🚪</button>
