@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react'
-import { ref, get, set } from 'firebase/database'
+import { ref, get, set, onValue } from 'firebase/database'
 import { db } from './services/firebase-config'
-import useStore, { sanitizarNome } from './stores/useStore'
+import useStore, { sanitizarNome, fichaPadrao } from './stores/useStore'
 import useFirebase from './hooks/useFirebase'
 
 // Import de Layout e Componentes
@@ -105,51 +105,48 @@ function getEnergiasSupremas(ficha) {
     return { vitais: { max: maxVitais, atual: atualVitais }, mortais: { max: maxMortais, atual: atualMortais } };
 }
 
-// 🔥 PAINEL DO MESTRE SUPREMO (COM HUB CÓSMICO E SUBPASTAS HIERÁRQUICAS) 🔥
+// 🔥 PAINEL DO MESTRE SUPREMO (COM HUB CÓSMICO E SINCRONIZAÇÃO NATIVA) 🔥
 function MestrePanel() {
     const personagens = useStore(s => s.personagens);
-    const setPersonagens = useStore(s => s.setPersonagens); 
+    const setPersonagens = useStore(s => s.setPersonagens);
     const meuNome = useStore(s => s.meuNome);
-    const setPersonagemParaDeletar = useStore(s => s.setPersonagemParaDeletar);
     const isMestre = useStore(s => s.isMestre);
     const mesaId = useStore(s => s.mesaId);
     const jogadoresOnline = useStore(s => s.jogadoresOnline);
-
     const setMeuNome = useStore(s => s.setMeuNome);
     const carregarDadosFicha = useStore(s => s.carregarDadosFicha);
     const setAbaAtiva = useStore(s => s.setAbaAtiva);
-    
+    const setPersonagemParaDeletar = useStore(s => s.setPersonagemParaDeletar);
+
+    const [mesaVisor, setMesaVisor] = useState('presente');
+    const [pastasAbertas, setPastasAbertas] = useState({});
+    const togglePasta = (nomePasta) => setPastasAbertas(prev => ({...prev, [nomePasta]: !prev[nomePasta]}));
+
     const [msgSistema, setMsgSistema] = useState('');
-    const [dNome, setDNome] = useState('Goblin Espião');
+    const [dNome, setDNome] = useState('Entidade');
     const [dHp, setDHp] = useState(100);
     const [dVit, setDVit] = useState(0);
     const [dDefTipo, setDDefTipo] = useState('evasiva');
     const [dDef, setDDef] = useState(10);
     const [dVisivelHp, setDVisivelHp] = useState('todos');
     const [dOculto, setDOculto] = useState(false);
-    const [mesaVisor, setMesaVisor] = useState('presente');
-    
-    const [pastasAbertas, setPastasAbertas] = useState({});
-    const togglePasta = (nomePasta) => setPastasAbertas(prev => ({...prev, [nomePasta]: !prev[nomePasta]}));
-
     const [novoMestreNick, setNovoMestreNick] = useState('');
 
-    // 🔥 ESTADOS DO HUB DE CONVERGÊNCIA: Lê o cofre da Matriz primeiro 🔥
+    // 🔥 HUB DE HERANÇA: Puxa da Matriz (Local) para enviar para a Mesa (Cloud) 🔥
     const [mesaMatriz, setMesaMatriz] = useState(() => localStorage.getItem('rpg_mesa_principal') || 'Nenhuma');
     const [capitulosGerais, setCapitulosGerais] = useState(() => {
         try { 
             const backup = localStorage.getItem('rpgSextaFeira_capitulos_MatrizBackup');
-            if (backup) return JSON.parse(backup);
-            return JSON.parse(localStorage.getItem('rpgSextaFeira_capitulos')) || []; 
+            return backup ? JSON.parse(backup) : (JSON.parse(localStorage.getItem('rpgSextaFeira_capitulos')) || []); 
         } catch(e) { return []; }
     });
     const [arvoresGerais, setArvoresGerais] = useState(() => {
         try { 
             const backup = localStorage.getItem('rpgSextaFeira_arvore_MatrizBackup');
-            if (backup) return JSON.parse(backup);
-            return JSON.parse(localStorage.getItem('rpgSextaFeira_arvore')) || {}; 
+            return backup ? JSON.parse(backup) : (JSON.parse(localStorage.getItem('rpgSextaFeira_arvore')) || {}); 
         } catch(e) { return {}; }
     });
+    
     const [capituloSelecionado, setCapituloSelecionado] = useState('');
     const [arvoreSelecionada, setArvoreSelecionada] = useState('');
 
@@ -197,7 +194,6 @@ function MestrePanel() {
         if (!novoNome || novoNome.trim() === '') return;
         const nomeSanitizado = sanitizarNome(novoNome);
         if (personagens[nomeSanitizado]) return alert('❌ Já existe uma entidade com esse nome!');
-        
         setMeuNome(nomeSanitizado);
         localStorage.setItem('rpgNome', nomeSanitizado);
         const fichaClone = JSON.parse(JSON.stringify(fichaOriginal));
@@ -215,120 +211,120 @@ function MestrePanel() {
         }
     };
 
-    // 🔥 FUNÇÕES DO HUB DE CONVERGÊNCIA 🔥
     const coroarMesaMatriz = () => {
         if (!mesaId) return alert("Erro: O Mestre precisa estar conectado a uma mesa ativa.");
-        if (window.confirm(`👑 COROAR A MESA [${mesaId}] COMO A MATRIZ PRINCIPAL?\n\nToda a Lore legada e Árvores criadas até aqui serão seladas como a fundação intocável do seu Multiverso.`)) {
+        if (window.confirm(`👑 DEFINIR MESA [${mesaId}] COMO MATRIZ PRINCIPAL?\n\nToda a Lore e Árvores criadas serão seladas como a fundação intocável.`)) {
             localStorage.setItem('rpg_mesa_principal', mesaId);
             setMesaMatriz(mesaId);
-            
-            // Puxa os dados reais atuais para selar com perfeição
             const capsAtuais = localStorage.getItem('rpgSextaFeira_capitulos') || '[]';
             const arvsAtuais = localStorage.getItem('rpgSextaFeira_arvore') || '{}';
-            
             localStorage.setItem('rpgSextaFeira_capitulos_MatrizBackup', capsAtuais);
             localStorage.setItem('rpgSextaFeira_arvore_MatrizBackup', arvsAtuais);
-            
-            setCapitulosGerais(JSON.parse(capsAtuais));
+            setCapitulosGerais(JSON.parse(capsAtuais)); 
             setArvoresGerais(JSON.parse(arvsAtuais));
-            
-            alert("✨ ABSOLUTO! Esta mesa é agora reconhecida como a fundação original de todas as histórias.");
+            alert("✨ MATRIZ LOCAL SELADA!");
         }
     };
 
-    const importarCapituloCirurgico = () => {
+    const importarCapituloCirurgico = async () => {
         if (!capituloSelecionado) return alert("Selecione um capítulo da base original para importar!");
         const cap = capitulosGerais.find(c => String(c.id) === String(capituloSelecionado));
         if (!cap) return;
 
-        const chaveMesa = `rpgSextaFeira_capitulos_${mesaId}`;
-        let listaMesa = [];
-        try { listaMesa = JSON.parse(localStorage.getItem(chaveMesa)) || []; } catch(e){}
-
-        if (listaMesa.some(c => String(c.id) === String(cap.id))) {
-            if (!window.confirm(`O capítulo "${cap.titulo}" já está na memória desta mesa. Deseja sobrescrever?`)) return;
+        // 🔥 SALVA NO FIREBASE PARA TODOS DA MESA VEREM 🔥
+        try {
+            const snap = await get(ref(db, `mesas/${mesaId}/lore`));
+            let listaMesa = snap.exists() ? snap.val() : [];
             listaMesa = listaMesa.filter(c => String(c.id) !== String(cap.id));
-        }
-
-        listaMesa.push(cap);
-        localStorage.setItem(chaveMesa, JSON.stringify(listaMesa));
-        localStorage.setItem('rpgSextaFeira_capitulos', JSON.stringify(listaMesa));
-        alert(`📜 SUCESSO! O capítulo "${cap.titulo}" foi enxertado nos registos da mesa [${mesaId}].`);
+            listaMesa.push(cap);
+            await set(ref(db, `mesas/${mesaId}/lore`), listaMesa);
+            localStorage.setItem('rpgSextaFeira_capitulos', JSON.stringify(listaMesa));
+            alert(`📜 Lore [${cap.titulo}] enviada para a Nuvem da Mesa!`);
+        } catch(e) { alert("Erro ao sincronizar com Firebase!"); }
     };
 
-    // 🔥 ENXERTO DE ÁRVORE COM FORJA AUTOMÁTICA DE NPCS NA STORE E CLOUD 🔥
     const importarArvoreCirurgica = async () => {
         if (!arvoreSelecionada) return alert("Selecione uma árvore/panteão da base original para importar!");
         const linhagem = arvoresGerais[arvoreSelecionada];
         if (!linhagem) return;
 
-        const chaveMesa = `rpgSextaFeira_arvore_${mesaId}`;
-        let arvoresMesa = {};
-        try { arvoresMesa = JSON.parse(localStorage.getItem(chaveMesa)) || {}; } catch(e){}
+        // 🔥 SALVA A ESTRUTURA DA ÁRVORE NO FIREBASE 🔥
+        try {
+            const snap = await get(ref(db, `mesas/${mesaId}/arvore`));
+            let arvoresMesa = snap.exists() ? snap.val() : {};
+            arvoresMesa[arvoreSelecionada] = linhagem;
+            await set(ref(db, `mesas/${mesaId}/arvore`), arvoresMesa);
+            localStorage.setItem('rpgSextaFeira_arvore', JSON.stringify(arvoresMesa));
 
-        if (arvoresMesa[arvoreSelecionada]) {
-            if (!window.confirm(`A linhagem "${arvoreSelecionada}" já habita esta mesa. Sobrescrever com a versão original?`)) return;
-        }
+            if (Array.isArray(linhagem) && window.confirm(`Deseja forjar os ${linhagem.length} NPCs desta linhagem no mapa agora?`)) {
+                let novosPersonagens = { ...personagens };
+                const baseFicha = {
+                    bio: { mesa: 'npc', afiliacao: arvoreSelecionada },
+                    vida: { base: 100000, atual: 100000 },
+                    mana: { base: 100000, atual: 100000 },
+                    forca: { base: 1 }, destreza: { base: 1 }, inteligencia: { base: 1 },
+                    avatar: { base: "" }, dominios: { elementos: {} }, poderes: [], isNPC: true
+                };
 
-        arvoresMesa[arvoreSelecionada] = linhagem;
-        localStorage.setItem(chaveMesa, JSON.stringify(arvoresMesa));
-        localStorage.setItem('rpgSextaFeira_arvore', JSON.stringify(arvoresMesa));
-
-        // Pergunta se o Mestre quer injetar automaticamente as cartas na Aba Mestre
-        if (Array.isArray(linhagem) && window.confirm(`Deseja também forjar automaticamente todos os ${linhagem.length} membros desta linhagem como NPCs ativos no Painel do Mestre?`)) {
-            const funcSanitizar = typeof sanitizarNome === 'function' ? sanitizarNome : (n) => n.replace(/[.#$\[\]\/]/g, '_');
-            let novosPersonagens = { ...personagens };
-            
-            const baseFicha = {
-                bio: { mesa: 'npc', afiliacao: arvoreSelecionada },
-                vida: { base: 100000, atual: 100000 },
-                mana: { base: 100000, atual: 100000 },
-                forca: { base: 1 }, destreza: { base: 1 }, inteligencia: { base: 1 },
-                avatar: { base: "" },
-                dominios: { elementos: {} },
-                poderes: [],
-                isNPC: true
-            };
-
-            for (const npc of linhagem) {
-                if (!npc.nome) continue;
-                const nomePersonagem = funcSanitizar(npc.nome.trim());
-                const hpValor = Number(npc.hp) || 100000;
-                const manaValor = Number(npc.mana) || 100000;
-                
-                let novaFicha = JSON.parse(JSON.stringify(baseFicha));
-                novaFicha.bio.classe = npc.classe || 'NPC - Ameaça';
-                novaFicha.bio.raca = npc.papel || 'Criatura';
-                novaFicha.bio.afiliacao = npc.afiliacao || arvoreSelecionada;
-                novaFicha.vida.base = hpValor; novaFicha.vida.atual = hpValor;
-                novaFicha.mana.base = manaValor; novaFicha.mana.atual = manaValor;
-                if (npc.avatar) novaFicha.avatar.base = npc.avatar.trim();
-                
-                if (npc.elemento && npc.elemento.trim() !== '') {
-                    novaFicha.dominios.elementos[npc.elemento.trim()] = { nivel: 1, nome: "Básico" };
-                }
-                
-                novaFicha.poderes = [{
-                    nome: "📖 Linhagem & Lore",
-                    ativa: true, dano: "0",
-                    descricao: `Status: ${npc.status || 'Vivo'}\nElemento Mágico: ${npc.elemento || 'Nenhum'}\nClã / Panteão: ${npc.afiliacao || arvoreSelecionada}\n\nHistória: ${npc.lore || 'Sem registos.'}`
-                }];
-                novaFicha.dataCriacao = Date.now();
-
-                novosPersonagens[nomePersonagem] = novaFicha;
-                try {
+                for (const npc of linhagem) {
+                    if (!npc.nome) continue;
+                    const nomePersonagem = sanitizarNome(npc.nome.trim());
+                    const hpValor = Number(npc.hp) || 100000;
+                    const manaValor = Number(npc.mana) || 100000;
+                    
+                    let novaFicha = JSON.parse(JSON.stringify(baseFicha || {}));
+                    novaFicha.bio.classe = npc.classe || 'NPC - Ameaça';
+                    novaFicha.bio.raca = npc.papel || 'Criatura';
+                    novaFicha.bio.afiliacao = npc.afiliacao || arvoreSelecionada;
+                    novaFicha.vida.base = hpValor; novaFicha.vida.atual = hpValor;
+                    novaFicha.mana.base = manaValor; novaFicha.mana.atual = manaValor;
+                    if (npc.avatar) novaFicha.avatar.base = npc.avatar.trim();
+                    if (npc.elemento && npc.elemento.trim() !== '') {
+                        novaFicha.dominios.elementos[npc.elemento.trim()] = { nivel: 1, nome: "Básico" };
+                    }
+                    novaFicha.poderes = [{
+                        nome: "📖 Linhagem & Lore", ativa: true, dano: "0",
+                        descricao: `Status: ${npc.status || 'Vivo'}\nElemento Mágico: ${npc.elemento || 'Nenhum'}\nClã / Panteão: ${npc.afiliacao || arvoreSelecionada}\n\nHistória: ${npc.lore || 'Sem registos.'}`
+                    }];
+                    novaFicha.dataCriacao = Date.now();
+                    novosPersonagens[nomePersonagem] = novaFicha;
                     await set(ref(db, `mesas/${mesaId}/personagens/${nomePersonagem}`), novaFicha);
-                } catch(err) { console.warn("Erro ao injetar NPC na cloud:", err); }
+                }
+                if (setPersonagens) setPersonagens(novosPersonagens);
             }
-            if (setPersonagens) setPersonagens(novosPersonagens);
-        }
-
-        alert(`🌳 SUCESSO! A linhagem "${arvoreSelecionada}" foi enxertada na mesa [${mesaId}].`);
+            alert(`🌳 Linhagem [${arvoreSelecionada}] sincronizada na Nuvem!`);
+        } catch(e) { alert("Erro ao sincronizar Árvore!"); }
     };
 
     const todosJogadores = Object.entries(personagens || {});
     const jogadoresFiltrados = todosJogadores.filter(([nome, ficha]) => (ficha?.bio?.mesa || 'presente') === mesaVisor);
     const fmt = (n) => Number(n || 0).toLocaleString('pt-BR');
+
+    // 🧠 LÓGICA DE HIERARQUIA POR PASTAS E SUBPASTAS (Ex: Demônio / Família X) 🧠
+    const npcsPorFamilia = {};
+    if (mesaVisor === 'npc') {
+        jogadoresFiltrados.forEach(([nome, ficha]) => {
+            let familia = ficha?.bio?.afiliacao;
+            if (!familia || familia.trim() === '') {
+                const lorePoder = (ficha?.poderes || []).find(p => p.nome === "📖 Linhagem & Lore");
+                if (lorePoder && lorePoder.descricao) {
+                    const match = lorePoder.descricao.match(/Clã de Origem:\s*(.*)/);
+                    if (match && match[1]) familia = match[1].trim();
+                }
+            }
+            if (!familia || familia === 'Nenhum' || familia.trim() === '') {
+                familia = 'Sem Clã / Bestas Soltas';
+            }
+            
+            const partes = familia.split('/').map(p => p.trim());
+            const catPrincipal = partes[0];
+            const subCat = partes.length > 1 ? partes[1] : '_geral';
+
+            if (!npcsPorFamilia[catPrincipal]) npcsPorFamilia[catPrincipal] = {};
+            if (!npcsPorFamilia[catPrincipal][subCat]) npcsPorFamilia[catPrincipal][subCat] = [];
+            npcsPorFamilia[catPrincipal][subCat].push([nome, ficha]);
+        });
+    }
 
     // 🃏 GERADOR DA CARTA DE PERSONAGEM COMPLETA E DETALHADA 🃏
     const renderCard = ([nome, ficha]) => {
@@ -369,27 +365,18 @@ function MestrePanel() {
         } else if (isGrand) {
             boxBorder = '2px solid #ffcc00';
             boxShadow = '0 0 20px rgba(255,0,60,0.4), inset 0 0 20px rgba(255,204,0,0.1)';
-            titleColor = '#ffcc00';
-            subColor = '#ffcc00';
-            
+            titleColor = '#ffcc00'; subColor = '#ffcc00';
             let displayClass = classId;
-            if (grandEntry) {
-                displayClass = grandEntry[0].split('_')[0]; 
-            } else if (isGrandManualmente) {
-                displayClass = String(displayClass).replace(/grand /ig, '');
-            }
+            if (grandEntry) displayClass = grandEntry[0].split('_')[0]; 
+            else if (isGrandManualmente) displayClass = String(displayClass).replace(/grand /ig, '');
             subText = `👑 GRAND ${String(displayClass).toUpperCase()}`;
             gradOverlay = 'linear-gradient(135deg, rgba(255,0,60,0.25) 0%, rgba(255,204,0,0.1) 50%, rgba(0,0,0,0) 100%)';
-            
         } else if (isCandidato) {
             boxBorder = '2px solid #00ccff';
             boxShadow = '0 0 15px rgba(0,136,255,0.4), inset 0 0 15px rgba(0,204,255,0.1)';
-            titleColor = '#00ccff';
-            subColor = '#00ccff';
-            
+            titleColor = '#00ccff'; subColor = '#00ccff';
             let displayClass = classId;
             if (candidatoEntry) displayClass = candidatoEntry[0].split('_')[0];
-            
             subText = `🌟 CANDIDATO A ${String(displayClass).toUpperCase()}`;
             gradOverlay = 'linear-gradient(135deg, rgba(0,136,255,0.2) 0%, rgba(0,204,255,0.1) 50%, rgba(0,0,0,0) 100%)';
         }
@@ -450,23 +437,6 @@ function MestrePanel() {
             </div>
         );
     };
-
-    // 🧠 LÓGICA DE HIERARQUIA POR PASTAS E SUBPASTAS (Ex: Demônio / Família X) 🧠
-    const hierarquiaNpcs = {};
-    if (mesaVisor === 'npc') {
-        jogadoresFiltrados.forEach(([nome, ficha]) => {
-            let afiliacao = (ficha?.bio?.afiliacao || 'Sem Clã / Bestas Soltas').trim();
-            if (afiliacao === '' || afiliacao === 'Nenhum') afiliacao = 'Sem Clã / Bestas Soltas';
-            
-            const partes = afiliacao.split('/').map(p => p.trim());
-            const catPrincipal = partes[0];
-            const subCat = partes.length > 1 ? partes[1] : '_geral';
-
-            if (!hierarquiaNpcs[catPrincipal]) hierarquiaNpcs[catPrincipal] = {};
-            if (!hierarquiaNpcs[catPrincipal][subCat]) hierarquiaNpcs[catPrincipal][subCat] = [];
-            hierarquiaNpcs[catPrincipal][subCat].push([nome, ficha]);
-        });
-    }
 
     return (
         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -555,7 +525,7 @@ function MestrePanel() {
                         </div>
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            {Object.entries(hierarquiaNpcs).sort().map(([categoria, subs]) => {
+                            {Object.entries(npcsPorFamilia).sort().map(([categoria, subs]) => {
                                 const isCatAberta = pastasAbertas[categoria];
                                 const totalCat = Object.values(subs).reduce((acc, curr) => acc + curr.length, 0);
                                 return (
@@ -688,7 +658,7 @@ function MestrePanel() {
     );
 }
 
-// 🔐 TELA DE LOGIN (ORIGINAL RESTAURADA NA ÍNTEGRA)
+// 🔐 TELA DE LOGIN (FALSO E-MAIL)
 function AuthScreen() {
     const [isRegister, setIsRegister] = useState(false);
     const [nick, setNick] = useState('');
@@ -738,7 +708,7 @@ function AuthScreen() {
     );
 }
 
-// 🏰 LOBBY DE MESAS (ORIGINAL RESTAURADA NA ÍNTEGRA)
+// 🏰 LOBBY DE MESAS (DESIGN TOTALMENTE NOVO E ROBUSTO)
 function LobbyNeon() {
     const { setMesaId, userLogado } = useStore();
     const [codigoSala, setCodigoSala] = useState('');
@@ -945,7 +915,7 @@ function LobbyNeon() {
     );
 }
 
-// 👑 APLICAÇÃO PRINCIPAL (APP - TOTALMENTE RESTAURADA)
+// 👑 APLICAÇÃO PRINCIPAL (APP)
 export default function App() {
     const userLogado = useStore(s => s.userLogado);
     const setUserLogado = useStore(s => s.setUserLogado);
@@ -1005,6 +975,25 @@ export default function App() {
         });
         return () => unsub();
     }, [mesaId, userLogado, setIsMestre, setMesaInfo]);
+
+    // 🔥 SYNC CLOUD REAL-TIME: LORE E ÁRVORE GENEALÓGICA 🔥
+    useEffect(() => {
+        if (!mesaId || !isMestre) return;
+        const unsubLore = onValue(ref(db, `mesas/${mesaId}/lore`), (snap) => {
+            if (snap.exists()) {
+                localStorage.setItem('rpgSextaFeira_capitulos', JSON.stringify(snap.val()));
+            }
+        });
+        const unsubArvore = onValue(ref(db, `mesas/${mesaId}/arvore`), (snap) => {
+            if (snap.exists()) {
+                localStorage.setItem('rpgSextaFeira_arvore', JSON.stringify(snap.val()));
+            }
+        });
+        return () => {
+            unsubLore();
+            unsubArvore();
+        };
+    }, [mesaId, isMestre]);
 
     useEffect(() => {
         let nomeLocal = localStorage.getItem('rpgNome') || localStorage.getItem('rpg_nome');
@@ -1127,7 +1116,7 @@ export default function App() {
                     <button onClick={() => { if(window.confirm('Deseja sair desta ficha e escolher outro personagem?')) { localStorage.removeItem('rpgNome'); localStorage.removeItem('rpg_nome'); setMeuNome(''); setPronto(false); } }} style={{ background: 'none', border: 'none', color: '#ffcc00', cursor: 'pointer', fontSize: '0.8em', padding: '0', display: 'flex', alignItems: 'center', gap: '4px' }} title="Mudar o nome/ficha atual sem sair da mesa">✏️ Trocar</button>
                 </div>
 
-                {/* 🔥 NOVO BOTÃO: RESGATA APENAS PERSONAGENS E NPCS DO LIMBO (SEM FLOODAR O CHAT) 🔥 */}
+                {/* 🔥 BOTÃO RESGATAR REFINADO: RESGATA APENAS PERSONAGENS E NPCS SILENCIOSAMENTE 🔥 */}
                 {isMestre && (
                     <button onClick={async () => {
                             if(!window.confirm('⚠️ MESTRE: Deseja resgatar APENAS as fichas de personagens e NPCs antigos para esta sala? (O feed de combate permanecerá limpo)')) return;
@@ -1143,6 +1132,7 @@ export default function App() {
                             } catch (err) { alert('❌ Erro: ' + err.message); }
                         }} style={{ marginLeft: '5px', background: '#0088ff', border: '1px solid #fff', color: '#fff', cursor: 'pointer', fontSize: '0.75em', fontWeight: 'bold', padding: '4px 8px', borderRadius: '5px' }}>🧲 RESGATAR NPCs</button>
                 )}
+                
                 <button onClick={() => { if(window.confirm('Tem a certeza que deseja sair da mesa?')) { limparFeedStore(); setMesaId(''); } }} style={{ marginLeft: '10px', background: 'none', border: 'none', color: '#ff003c', cursor: 'pointer', fontSize: '0.9em', fontWeight: 'bold', padding: 0 }} title="Desconectar do Servidor da Mesa">Sair 🚪</button>
             </div>
 
