@@ -105,7 +105,7 @@ function getEnergiasSupremas(ficha) {
     return { vitais: { max: maxVitais, atual: atualVitais }, mortais: { max: maxMortais, atual: atualMortais } };
 }
 
-// 🔥 PAINEL DO MESTRE SUPREMO (COM HIERARQUIA VISUAL DE SUBPASTAS ATIVADA) 🔥
+// // 🔥 PAINEL DO MESTRE SUPREMO (CORRIGIDO: ANTI-ERRO #310 E COM SUBPASTAS) 🔥
 function MestrePanel() {
     const personagens = useStore(s => s.personagens);
     const setPersonagens = useStore(s => s.setPersonagens);
@@ -153,7 +153,7 @@ function MestrePanel() {
             if (arvBackup) setArvoresGerais(JSON.parse(arvBackup));
             else {
                 const arvLocal = localStorage.getItem('rpgSextaFeira_arvore');
-                if (arvLocal) setArvoresGerais(JSON.parse(arvLocal));
+                if (arLocal) setArvoresGerais(JSON.parse(arLocal));
             }
         } catch(e) {}
 
@@ -174,6 +174,7 @@ function MestrePanel() {
         }).catch(() => {});
     }, [mesaMatriz]);
 
+    // Deixamos os grands simples e diretos
     const grandsGlobais = useMemo(() => {
         let g = {};
         if (personagens) Object.values(personagens).forEach(p => { if (p?.compendioOverrides?.grands) g = { ...g, ...p.compendioOverrides.grands }; });
@@ -346,36 +347,33 @@ function MestrePanel() {
     const jogadoresFiltrados = todosJogadores.filter(([nome, ficha]) => (ficha?.bio?.mesa || 'presente') === mesaVisor);
     const fmt = (n) => Number(n || 0).toLocaleString('pt-BR');
 
-    // 🔥 LÓGICA DE AGRUPAMENTO HIERÁRQUICO REFINADA (CATEGORIA > SUBPASTA) 🔥
-    const npcsHierarquia = useMemo(() => {
-        const arvore = {};
-        if (mesaVisor === 'npc') {
-            jogadoresFiltrados.forEach(([nome, ficha]) => {
-                let stringPasta = ficha?.bio?.afiliacao;
-                
-                if (!stringPasta || stringPasta.trim() === '') {
-                    const lorePoder = (ficha?.poderes || []).find(p => p.nome === "📖 Linhagem & Lore");
-                    if (lorePoder && lorePoder.descricao) {
-                        const match = lorePoder.descricao.match(/Clã /);
-                        if (match) stringPasta = lorePoder.descricao.split('\n').find(l => l.includes('Clã')).replace('Clã / Panteão:', '').trim();
-                    }
+    // 🔥 AGRUPAMENTO LIMPO SEM USEMEMO (EVITA O ERRO #310) 🔥
+    const npcsHierarquia = {};
+    if (mesaVisor === 'npc') {
+        jogadoresFiltrados.forEach(([nome, ficha]) => {
+            let stringPasta = ficha?.bio?.afiliacao;
+            
+            if (!stringPasta || stringPasta.trim() === '') {
+                const lorePoder = (ficha?.poderes || []).find(p => p.nome === "📖 Linhagem & Lore");
+                if (lorePoder && lorePoder.descricao) {
+                    const match = lorePoder.descricao.match(/Clã /);
+                    if (match) stringPasta = lorePoder.descricao.split('\n').find(l => l.includes('Clã')).replace('Clã / Panteão:', '').trim();
                 }
+            }
 
-                if (!stringPasta || stringPasta === 'Nenhum' || stringPasta.trim() === '') {
-                    stringPasta = 'Sem Clã / Bestas Soltas';
-                }
+            if (!stringPasta || stringPasta === 'Nenhum' || stringPasta.trim() === '') {
+                stringPasta = 'Sem Clã / Bestas Soltas';
+            }
 
-                const partes = stringPasta.split('/').map(p => p.trim()).filter(Boolean);
-                const catRaiz = partes[0] || 'Sem Clã';
-                const subPasta = partes.length > 1 ? partes.slice(1).join(' / ') : '_geral';
+            const partes = stringPasta.split('/').map(p => p.trim()).filter(Boolean);
+            const catRaiz = partes[0] || 'Sem Clã';
+            const subPasta = partes.length > 1 ? partes.slice(1).join(' / ') : '_geral';
 
-                if (!arvore[catRaiz]) arvore[catRaiz] = {};
-                if (!arvore[catRaiz][subPasta]) arvore[catRaiz][subPasta] = [];
-                arvore[catRaiz][subPasta].push([nome, ficha]);
-            });
-        }
-        return arvore;
-    }, [jogadoresFiltrados, mesaVisor]);
+            if (!npcsHierarquia[catRaiz]) npcsHierarquia[catRaiz] = {};
+            if (!npcsHierarquia[catRaiz][subPasta]) npcsHierarquia[catRaiz][subPasta] = [];
+            npcsHierarquia[catRaiz][subPasta].push([nome, ficha]);
+        });
+    }
 
     // 🃏 GERADOR DA CARTA DE PERSONAGEM 🃏
     const renderCard = ([nome, ficha]) => {
@@ -586,7 +584,7 @@ function MestrePanel() {
                         <button className={`btn-neon ${mesaVisor === 'npc' ? 'btn-red' : ''}`} onClick={() => setMesaVisor('npc')} style={{ flex: 1, padding: '8px', fontSize: '0.9em', margin: 0 }}>👹 NPCs</button>
                     </div>
 
-                    {/* 🔥 RENDERIZADOR HIERÁRQUICO DE SUBPASTAS VISUAIS 🔥 */}
+                    {/* 🔥 RENDERIZADOR HIERÁRQUICO DE SUBPASTAS (AGORA DIRETAMENTE NO FLUXO) 🔥 */}
                     {mesaVisor !== 'npc' ? (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '15px' }}>
                             {jogadoresFiltrados.map(data => renderCard(data))}
