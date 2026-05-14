@@ -80,7 +80,7 @@ export default function AIArvoreGenealogica() {
             parceiros: "", 
             genitor2: genitor2, 
             papel: "", classe: "", elemento: "", hp: "100000", mana: "100000", status: "Vivo", lore: "", 
-            afiliacao: familiaAtiva, // 🔥 JÁ NASCE COM O NOME DA ÁRVORE COMO AFILIAÇÃO 🔥
+            afiliacao: familiaAtiva, 
             parentId: parentId 
         };
         
@@ -137,7 +137,7 @@ export default function AIArvoreGenealogica() {
 
         let novaFicha = JSON.parse(JSON.stringify(fichaPadrao));
 
-        // 🔥 O SEGREDO ESTÁ AQUI: Enviamos a "afiliacao" que você escolheu direto pro Firebase 🔥
+        // 🔥 O CAMPO DE AFILIAÇÃO SUPORTA DIRETAMENTE CAMINHOS COM '/' 🔥
         novaFicha.bio = { 
             ...novaFicha.bio,
             classe: npcSelecionado.classe || 'NPC - Ameaça', 
@@ -208,6 +208,7 @@ export default function AIArvoreGenealogica() {
         e.target.value = ''; 
     };
 
+    // 🌳 RENDERIZADOR COLOSSAL DE NODES 🌳
     const renderNPC = (npc) => {
         const isMorto = npc.status === 'Morto';
         const isSelecionado = npcSelecionado?.id === npc.id;
@@ -224,37 +225,38 @@ export default function AIArvoreGenealogica() {
 
         return (
             <li key={npc.id}>
-                <div className="arvore-node-container" style={{ borderColor: isSelecionado ? '#00ffcc' : (isMorto ? '#ff4444' : '#333'), boxShadow: isSelecionado ? '0 0 15px rgba(0, 255, 204, 0.3)' : 'none' }} onClick={() => setNpcSelecionado(npc)}>
+                <div className="arvore-node-container" style={{ borderColor: isSelecionado ? '#00ffcc' : (isMorto ? '#ff4444' : '#333'), boxShadow: isSelecionado ? '0 0 20px rgba(0, 255, 204, 0.4)' : 'none' }} onClick={() => setNpcSelecionado(npc)}>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '-5px' }}>
-                        <button onClick={(e) => { e.stopPropagation(); deletarNpc(npc.id); }} style={{ background: 'none', border: 'none', color: '#ff4444', fontSize: '14px', cursor: 'pointer' }}>✖</button>
+                        <button onClick={(e) => { e.stopPropagation(); deletarNpc(npc.id); }} style={{ background: 'none', border: 'none', color: '#ff4444', fontSize: '15px', cursor: 'pointer' }}>✖</button>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
                         <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                            <div style={{ width: '45px', height: '45px', borderRadius: '50%', background: '#1a2333', border: `2px solid ${corBordaAvatar}`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '8px', overflow: 'hidden', boxShadow: isSelecionado ? '0 0 10px rgba(0,255,204,0.5)' : 'none' }}>
+                            {/* 🔥 AVATAR E CONTORNOS AUMENTADOS 🔥 */}
+                            <div style={{ width: '55px', height: '55px', borderRadius: '50%', background: '#1a2333', border: `2px solid ${corBordaAvatar}`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px', overflow: 'hidden', boxShadow: isSelecionado ? '0 0 12px rgba(0,255,204,0.6)' : 'none' }}>
                                 {npc.avatar && npc.avatar.trim() !== '' ? (
                                     <img src={npc.avatar} alt={npc.nome} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
                                 ) : null}
-                                <span style={{ color: '#aaa', fontSize: '16px', fontWeight: 'bold', display: (npc.avatar && npc.avatar.trim() !== '') ? 'none' : 'block' }}>{getIniciais(npc.nome)}</span>
+                                <span style={{ color: '#aaa', fontSize: '18px', fontWeight: 'bold', display: (npc.avatar && npc.avatar.trim() !== '') ? 'none' : 'block' }}>{getIniciais(npc.nome)}</span>
                             </div>
 
-                            <div style={{ fontWeight: 'bold', color: isMorto ? '#ff4444' : (isSelecionado ? '#00ffcc' : '#fff'), fontSize: '15px' }}>{npc.nome || 'Desconhecido'}</div>
-                            <div style={{ color: '#888', fontSize: '11px', marginTop: '2px' }}>{npc.papel || 'NPC'}</div>
+                            <div style={{ fontWeight: 'bold', color: isMorto ? '#ff4444' : (isSelecionado ? '#00ffcc' : '#fff'), fontSize: '16px', letterSpacing: '0.5px' }}>{npc.nome || 'Desconhecido'}</div>
+                            <div style={{ color: '#888', fontSize: '12px', marginTop: '3px' }}>{npc.papel || 'NPC'}</div>
                         </div>
 
                         {parceirosUnicos.length === 1 && (
                             <>
-                                <div style={{ color: '#ffcc00', fontSize: '12px' }}>💍</div>
-                                <div style={{ textAlign: 'center', paddingLeft: '5px', borderLeft: '1px dashed #555' }}>
-                                    <div style={{ fontWeight: 'bold', color: '#ccc', fontSize: '13px' }}>{parceirosUnicos[0]}</div>
-                                    <div style={{ color: '#666', fontSize: '10px', marginTop: '2px' }}>Parceiro(a)</div>
+                                <div style={{ color: '#ffcc00', fontSize: '14px' }}>💍</div>
+                                <div style={{ textAlign: 'center', paddingLeft: '8px', borderLeft: '1px dashed #555' }}>
+                                    <div style={{ fontWeight: 'bold', color: '#ccc', fontSize: '14px' }}>{parceirosUnicos[0]}</div>
+                                    <div style={{ color: '#666', fontSize: '11px', marginTop: '2px' }}>Parceiro(a)</div>
                                 </div>
                             </>
                         )}
                     </div>
 
-                    <div style={{ marginTop: '10px', borderTop: '1px solid #333', paddingTop: '8px' }}>
-                        <button className="btn-neon" onClick={(e) => { e.stopPropagation(); adicionarMembro(npc.id, parceirosUnicos.length === 1 ? parceirosUnicos[0] : ""); }} style={{ padding: '2px 8px', fontSize: '11px', margin: 0, borderColor: '#0088ff', color: '#0088ff' }}>➕ {parceirosUnicos.length > 1 ? 'Herdeiro Geral' : 'Gerar Herdeiro'}</button>
+                    <div style={{ marginTop: '12px', borderTop: '1px solid #333', paddingTop: '10px' }}>
+                        <button className="btn-neon" onClick={(e) => { e.stopPropagation(); adicionarMembro(npc.id, parceirosUnicos.length === 1 ? parceirosUnicos[0] : ""); }} style={{ padding: '4px 10px', fontSize: '11px', margin: 0, borderColor: '#0088ff', color: '#0088ff', fontWeight: 'bold' }}>➕ {parceirosUnicos.length > 1 ? 'Herdeiro Geral' : 'Gerar Herdeiro'}</button>
                     </div>
                 </div>
 
@@ -266,11 +268,11 @@ export default function AIArvoreGenealogica() {
                             const filhosDesteParceiro = filhos.filter(f => (f.genitor2 || "").trim() === parceiroNome);
                             return (
                                 <li key={parceiroNome}>
-                                    <div className="arvore-node-container" style={{ borderColor: '#ffcc00', padding: '8px 15px', background: 'rgba(255, 204, 0, 0.05)', minWidth: '120px' }}>
-                                        <div style={{ color: '#ffcc00', fontSize: '12px', marginBottom: '5px' }}>💍 União com:</div>
-                                        <div style={{ fontWeight: 'bold', color: '#fff', fontSize: '14px' }}>{parceiroNome}</div>
-                                        <div style={{ marginTop: '8px', borderTop: '1px solid #555', paddingTop: '8px' }}>
-                                            <button className="btn-neon" onClick={(e) => { e.stopPropagation(); adicionarMembro(npc.id, parceiroNome); }} style={{ padding: '2px 8px', fontSize: '10px', margin: 0, borderColor: '#ffcc00', color: '#ffcc00' }}>➕ Filho(a)</button>
+                                    <div className="arvore-node-container" style={{ borderColor: '#ffcc00', padding: '10px 18px', background: 'rgba(255, 204, 0, 0.05)', minWidth: '140px' }}>
+                                        <div style={{ color: '#ffcc00', fontSize: '13px', marginBottom: '5px' }}>💍 União com:</div>
+                                        <div style={{ fontWeight: 'bold', color: '#fff', fontSize: '15px' }}>{parceiroNome}</div>
+                                        <div style={{ marginTop: '10px', borderTop: '1px solid #555', paddingTop: '10px' }}>
+                                            <button className="btn-neon" onClick={(e) => { e.stopPropagation(); adicionarMembro(npc.id, parceiroNome); }} style={{ padding: '3px 10px', fontSize: '11px', margin: 0, borderColor: '#ffcc00', color: '#ffcc00', fontWeight: 'bold' }}>➕ Filho(a)</button>
                                         </div>
                                     </div>
                                     {filhosDesteParceiro.length > 0 && (<ul>{filhosDesteParceiro.map(f => renderNPC(f))}</ul>)}
@@ -279,10 +281,10 @@ export default function AIArvoreGenealogica() {
                         })}
                         {filhos.filter(f => !(f.genitor2||"").trim()).length > 0 && (
                             <li key="desconhecido">
-                                <div className="arvore-node-container" style={{ borderColor: '#888', padding: '8px 15px', background: 'rgba(255, 255, 255, 0.05)' }}>
-                                    <div style={{ color: '#aaa', fontSize: '12px', marginBottom: '5px' }}>🧬 Outras Linhagens</div>
-                                    <div style={{ marginTop: '8px', borderTop: '1px solid #555', paddingTop: '8px' }}>
-                                        <button className="btn-neon" onClick={(e) => { e.stopPropagation(); adicionarMembro(npc.id, ""); }} style={{ padding: '2px 8px', fontSize: '10px', margin: 0, borderColor: '#aaa', color: '#aaa' }}>➕ Adicionar</button>
+                                <div className="arvore-node-container" style={{ borderColor: '#888', padding: '10px 18px', background: 'rgba(255, 255, 255, 0.05)' }}>
+                                    <div style={{ color: '#aaa', fontSize: '13px', marginBottom: '5px' }}>🧬 Outras Linhagens</div>
+                                    <div style={{ marginTop: '10px', borderTop: '1px solid #555', paddingTop: '10px' }}>
+                                        <button className="btn-neon" onClick={(e) => { e.stopPropagation(); adicionarMembro(npc.id, ""); }} style={{ padding: '3px 10px', fontSize: '11px', margin: 0, borderColor: '#aaa', color: '#aaa', fontWeight: 'bold' }}>➕ Adicionar</button>
                                     </div>
                                 </div>
                                 <ul>{filhos.filter(f => !(f.genitor2||"").trim()).map(f => renderNPC(f))}</ul>
@@ -377,10 +379,11 @@ export default function AIArvoreGenealogica() {
                                 <input type="text" className="input-neon" value={npcSelecionado.nome} onChange={(e) => atualizarNpc('nome', e.target.value)} style={{ width: '100%', padding: '10px', borderColor: '#333', color: '#fff', marginTop: '5px', boxSizing: 'border-box' }} />
                             </div>
                             
-                            {/* 🔥 A NOVA CAIXA DE AFILIAÇÃO / PANTEÃO 🔥 */}
+                            {/* 🔥 A NOVA CAIXA COM INSTRUÇÕES EXPLÍCITAS DE SUBPASTAS 🔥 */}
                             <div style={{ flex: 1 }}>
-                                <label style={{ color: '#ff00ff', fontSize: '0.8em', textTransform: 'uppercase', fontWeight: 'bold' }}>Afiliação / Panteão</label>
-                                <input type="text" className="input-neon" placeholder="Ex: Vazio" value={npcSelecionado.afiliacao || ''} onChange={(e) => atualizarNpc('afiliacao', e.target.value)} style={{ width: '100%', padding: '10px', borderColor: '#ff00ff', color: '#ff00ff', marginTop: '5px', boxSizing: 'border-box', background: 'rgba(255, 0, 255, 0.05)' }} title="Esta será a pasta onde o NPC vai morar no Painel do Mestre!" />
+                                <label style={{ color: '#ff00ff', fontSize: '0.8em', textTransform: 'uppercase', fontWeight: 'bold' }}>📁 Pasta Mestre (Afiliação)</label>
+                                <input type="text" className="input-neon" placeholder="Ex: Demônio / Ackermann" value={npcSelecionado.afiliacao || ''} onChange={(e) => atualizarNpc('afiliacao', e.target.value)} style={{ width: '100%', padding: '10px', borderColor: '#ff00ff', color: '#ff00ff', marginTop: '5px', boxSizing: 'border-box', background: 'rgba(255, 0, 255, 0.05)' }} title="Use a barra ( / ) para criar subpastas no Painel do Mestre!" />
+                                <span style={{ fontSize: '10px', color: '#ff00ff', display: 'block', marginTop: '4px' }}>Dica: Digite <strong>Categoria / Clã</strong> para subpastas.</span>
                             </div>
                         </div>
 
@@ -447,21 +450,22 @@ export default function AIArvoreGenealogica() {
                 )}
             </div>
 
+            {/* 🔥 CSS REFINADO PARA ESCALA MONUMENTAL 🔥 */}
             <style dangerouslySetInnerHTML={{__html: `
                 .genealogy-tree { display: flex; justify-content: center; }
-                .genealogy-tree ul { padding-top: 20px; position: relative; display: flex; justify-content: center; padding-left: 0; margin: 0; }
-                .genealogy-tree li { text-align: center; list-style-type: none; position: relative; padding: 20px 10px 0 10px; }
-                .genealogy-tree li::before, .genealogy-tree li::after { content: ''; position: absolute; top: 0; right: 50%; border-top: 2px solid #334455; width: 50%; height: 20px; }
+                .genealogy-tree ul { padding-top: 25px; position: relative; display: flex; justify-content: center; padding-left: 0; margin: 0; }
+                .genealogy-tree li { text-align: center; list-style-type: none; position: relative; padding: 25px 12px 0 12px; }
+                .genealogy-tree li::before, .genealogy-tree li::after { content: ''; position: absolute; top: 0; right: 50%; border-top: 2px solid #334455; width: 50%; height: 25px; }
                 .genealogy-tree li::after { right: auto; left: 50%; border-left: 2px solid #334455; }
                 .genealogy-tree li:only-child::after, .genealogy-tree li:only-child::before { display: none; }
                 .genealogy-tree li:only-child { padding-top: 0; }
                 .genealogy-tree li:first-child::before, .genealogy-tree li:last-child::after { border: 0 none; }
                 .genealogy-tree li:last-child::before { border-right: 2px solid #334455; border-radius: 0 5px 0 0; }
                 .genealogy-tree li:first-child::after { border-radius: 5px 0 0 0; }
-                .genealogy-tree ul::before { content: ''; position: absolute; top: 0; left: 50%; border-left: 2px solid #334455; width: 0; height: 20px; transform: translateX(-50%); }
+                .genealogy-tree ul::before { content: ''; position: absolute; top: 0; left: 50%; border-left: 2px solid #334455; width: 0; height: 25px; transform: translateX(-50%); }
                 .genealogy-tree > ul::before { display: none; }
-                .arvore-node-container { background: rgba(0,0,0,0.7); border: 1px solid #333; padding: 10px 15px; text-decoration: none; display: inline-block; border-radius: 8px; transition: all 0.3s; min-width: 140px; cursor: pointer; position: relative; }
-                .arvore-node-container:hover { background: rgba(0, 255, 204, 0.1) !important; border-color: rgba(0, 255, 204, 0.6) !important; }
+                .arvore-node-container { background: rgba(0,0,0,0.8); border: 1px solid #333; padding: 12px 18px; text-decoration: none; display: inline-block; border-radius: 10px; transition: all 0.3s; min-width: 180px; cursor: pointer; position: relative; }
+                .arvore-node-container:hover { background: rgba(0, 255, 204, 0.15) !important; border-color: rgba(0, 255, 204, 0.8) !important; box-shadow: 0 0 15px rgba(0,255,204,0.3); }
                 .genealogy-tree li:hover > .arvore-node-container { border-color: #00ffcc; }
             `}} />
         </div>
