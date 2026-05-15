@@ -5,7 +5,6 @@ const PROVIDER_FALLBACK = (
     <div style={{ color: '#888', padding: 10 }}>Ataque provider nao encontrado</div>
 );
 
-// 🔥 NOVO: SELETOR DE TIPO DE DANO ELEMENTAR (AGORA DINÂMICO) 🔥
 export function AtaqueElementoSelector() {
     const ctx = useAtaqueForm();
     if (!ctx) return null;

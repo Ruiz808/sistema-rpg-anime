@@ -79,7 +79,6 @@ export function CompendioFormProvider({ children }) {
     const [editandoId, setEditandoId] = useState(null);
     const [mesaGrand, setMesaGrand] = useState('presente');
 
-    // Estados Temporários Gerais para as Classes
     const [tempNome, setTempNome] = useState('');
     const [tempTitulo, setTempTitulo] = useState('');
     const [tempPassiva, setTempPassiva] = useState('');
@@ -88,23 +87,36 @@ export function CompendioFormProvider({ children }) {
     const [tempIconeUrl, setTempIconeUrl] = useState('');
     const [tempEfeitosMat, setTempEfeitosMat] = useState([]);
 
-    // 🔥 NOVOS ESTADOS: Edição Genérica de Itens (Condições, Elementos, Regras)
-    const [editandoItemTipo, setEditandoItemTipo] = useState(null); // 'condicoes', 'elementos', 'regras'
+    const [editandoItemTipo, setEditandoItemTipo] = useState(null);
     const [tempItem, setTempItem] = useState({});
 
+    // 🔥 NOVO MOTOR DE LEITURA DO COMPÊNDIO (AGORA VARRE TODA A MESA) 🔥
     const overridesCompendio = useMemo(() => {
-        if (!minhaFicha) return {};
-        if (isMestre && minhaFicha.compendioOverrides) return minhaFicha.compendioOverrides;
-        if (personagens) {
-            const chaves = Object.keys(personagens);
-            for (let k of chaves) {
-                if (personagens[k]?.compendioOverrides) return personagens[k].compendioOverrides;
-            }
-        }
-        return {};
-    }, [isMestre, minhaFicha, personagens]);
+        let globais = { classes: {}, grands: {}, condicoes: {}, elementos: {}, regras: {} };
 
-    // Mesclagem Dinâmica
+        if (personagens) {
+            Object.values(personagens).forEach(p => {
+                if (p && p.compendioOverrides) {
+                    if (p.compendioOverrides.classes) Object.assign(globais.classes, p.compendioOverrides.classes);
+                    if (p.compendioOverrides.grands) Object.assign(globais.grands, p.compendioOverrides.grands);
+                    if (p.compendioOverrides.condicoes) Object.assign(globais.condicoes, p.compendioOverrides.condicoes);
+                    if (p.compendioOverrides.elementos) Object.assign(globais.elementos, p.compendioOverrides.elementos);
+                    if (p.compendioOverrides.regras) Object.assign(globais.regras, p.compendioOverrides.regras);
+                }
+            });
+        }
+
+        if (minhaFicha && minhaFicha.compendioOverrides) {
+            if (minhaFicha.compendioOverrides.classes) Object.assign(globais.classes, minhaFicha.compendioOverrides.classes);
+            if (minhaFicha.compendioOverrides.grands) Object.assign(globais.grands, minhaFicha.compendioOverrides.grands);
+            if (minhaFicha.compendioOverrides.condicoes) Object.assign(globais.condicoes, minhaFicha.compendioOverrides.condicoes);
+            if (minhaFicha.compendioOverrides.elementos) Object.assign(globais.elementos, minhaFicha.compendioOverrides.elementos);
+            if (minhaFicha.compendioOverrides.regras) Object.assign(globais.regras, minhaFicha.compendioOverrides.regras);
+        }
+
+        return globais;
+    }, [minhaFicha, personagens]);
+
     const mesclarComOverrides = useCallback((baseArray, tipo) => {
         const overridesObj = overridesCompendio[tipo] || {};
         const map = {};
@@ -115,7 +127,7 @@ export function CompendioFormProvider({ children }) {
             } else if (map[k]) {
                 map[k] = { ...map[k], ...overridesObj[k] };
             } else {
-                map[k] = overridesObj[k]; // É um novo item criado pelo Mestre
+                map[k] = overridesObj[k];
             }
         });
         return Object.values(map);
@@ -241,7 +253,6 @@ export function CompendioFormProvider({ children }) {
         }
     }, []);
 
-    // 🔥 GESTÃO DINÂMICA DE REGRAS, ELEMENTOS E CONDIÇÕES 🔥
     const iniciarEdicaoItem = useCallback((tipo, item) => {
         setEditandoItemTipo(tipo);
         setEditandoId(item.id);
@@ -290,7 +301,7 @@ export function CompendioFormProvider({ children }) {
         tempPassiva, setTempPassiva, tempDesc, setTempDesc, tempEfeito, setTempEfeito, tempIconeUrl, setTempIconeUrl,
         tempEfeitosMat, setTempEfeitosMat, mesaGrand, setMesaGrand, isMestre,
         regulares, extras, todasClasses, grands, overridesCompendio, opcoesPersonagensPorMesa,
-        condicoes, elementos, regras, // 🔥 ARRAYS DINÂMICOS
+        condicoes, elementos, regras, 
         editandoItemTipo, tempItem, iniciarEdicaoItem, cancelarEdicaoItem, updateTempItem, salvarItem, deletarItem,
         handleDefinirGrand, handleAdicionarCandidato, handleRemoverCandidato, handleDefinirIconeGrand,
         limparIconeGrand, iniciarEdicao, salvarEdicao, cancelarEdicao, handleEfMat, addEfMat, removeEfMat, handleImageUpload

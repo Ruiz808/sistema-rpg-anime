@@ -3,8 +3,14 @@ import { useCompendioForm } from './CompendioFormContext';
 
 const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Compendio provider nao encontrado</div>;
 
-/* ── Sidebar de Navegacao ── */
+// 🔥 TABELA PRÉ-PRONTA DE EMOJIS 🔥
+const PRESET_EMOJIS = [
+    '⚔️', '🔥', '💧', '⚡', '❄️', '☀️', '🌑', '🩸', '🤢', '🐢', '⛓️', '☠️', 
+    '🛡️', '👻', '🌀', '💀', '🙈', '🗿', '💖', '💢', '✨', '🔮', '🏹', '🗡️', 
+    '🌟', '👁️', '🎭', '🐙', '⚖️', '🏇', '💨', '🌿', '🍄', '🦠', '🧬'
+];
 
+/* ── Sidebar de Navegacao ── */
 export function CompendioSidebar() {
     const ctx = useCompendioForm();
     if (!ctx) return FALLBACK;
@@ -15,17 +21,16 @@ export function CompendioSidebar() {
             <h3 style={{ color: '#00ffcc', marginTop: 0, textAlign: 'center', borderBottom: '1px solid #00ffcc', paddingBottom: '15px', letterSpacing: '2px' }}>📖 GRIMÓRIO</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '20px' }}>
                 <button className={`btn-neon ${secaoAtiva === 'grands' ? 'btn-gold' : ''}`} onClick={() => setSecaoAtiva('grands')} style={{ textAlign: 'left', paddingLeft: '15px', fontWeight: 'bold' }}>🏛️ Trono dos Heróis</button>
-                <button className={`btn-neon ${secaoAtiva === 'classes' ? 'btn-blue' : ''}`} onClick={() => setSecaoAtiva('classes')} style={{ textAlign: 'left', paddingLeft: '15px', fontWeight: 'bold' }}>🛡️ Classes & Origens</button>
-                <button className={`btn-neon ${secaoAtiva === 'condicoes' ? 'btn-red' : ''}`} onClick={() => setSecaoAtiva('condicoes')} style={{ textAlign: 'left', paddingLeft: '15px', fontWeight: 'bold' }}>🩸 Condições (Debuffs)</button>
-                <button className={`btn-neon ${secaoAtiva === 'elementos' ? 'btn-green' : ''}`} onClick={() => setSecaoAtiva('elementos')} style={{ textAlign: 'left', paddingLeft: '15px', fontWeight: 'bold' }}>🔥 Tipos de Dano</button>
-                <button className={`btn-neon ${secaoAtiva === 'regras' ? '' : ''}`} onClick={() => setSecaoAtiva('regras')} style={{ textAlign: 'left', paddingLeft: '15px', fontWeight: 'bold', borderColor: '#ff00ff', color: secaoAtiva === 'regras' ? '#fff' : '#ff00ff', background: secaoAtiva === 'regras' ? 'rgba(255,0,255,0.2)' : 'transparent' }}>⚖️ Regras da Casa</button>
+                <button className={`btn-neon ${secaoAtiva === 'classes' ? 'btn-gold' : ''}`} onClick={() => setSecaoAtiva('classes')} style={{ textAlign: 'left', paddingLeft: '15px' }}>🛡️ Classes Regulares</button>
+                <button className={`btn-neon ${secaoAtiva === 'condicoes' ? 'btn-gold' : ''}`} onClick={() => setSecaoAtiva('condicoes')} style={{ textAlign: 'left', paddingLeft: '15px' }}>🩸 Condições</button>
+                <button className={`btn-neon ${secaoAtiva === 'elementos' ? 'btn-gold' : ''}`} onClick={() => setSecaoAtiva('elementos')} style={{ textAlign: 'left', paddingLeft: '15px' }}>⚔️ Tipos de Dano</button>
+                <button className={`btn-neon ${secaoAtiva === 'regras' ? 'btn-gold' : ''}`} onClick={() => setSecaoAtiva('regras')} style={{ textAlign: 'left', paddingLeft: '15px' }}>📜 Regras da Casa</button>
             </div>
         </div>
     );
 }
 
 /* ── Card de Classe (com edicao inline) ── */
-
 export function CompendioClasseCard({ classe }) {
     const ctx = useCompendioForm();
     if (!ctx) return FALLBACK;
@@ -40,11 +45,7 @@ export function CompendioClasseCard({ classe }) {
     const isEditando = editandoId === classe.id && editandoItemTipo == null;
 
     return (
-        <div style={{
-            background: 'rgba(0,0,0,0.5)', border: `1px solid ${classe.cor}50`, borderLeft: `4px solid ${classe.cor}`,
-            borderRadius: '5px', padding: '15px', boxShadow: '0 4px 10px rgba(0,0,0,0.5)',
-            display: 'flex', flexDirection: 'column', gap: '10px'
-        }}>
+        <div style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid ${classe.cor}50`, borderLeft: `4px solid ${classe.cor}`, borderRadius: '5px', padding: '15px', boxShadow: '0 4px 10px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div style={{ width: '50px', height: '50px', background: `${classe.cor}20`, borderRadius: '50%', border: `1px solid ${classe.cor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
@@ -73,6 +74,7 @@ export function CompendioClasseCard({ classe }) {
                         </div>
                     </div>
 
+                    {/* Motor Matematico */}
                     <div style={{ background: 'rgba(0, 255, 204, 0.05)', padding: '15px', borderRadius: '5px', border: '1px solid rgba(0, 255, 204, 0.3)' }}>
                         <h4 style={{ color: '#00ffcc', margin: '0 0 15px 0', fontSize: '0.9em', borderBottom: '1px solid #00ffcc40', paddingBottom: '5px' }}>⚙️ Motor Matemático (Efeitos Base)</h4>
                         {tempEfeitosMat.map((ef, idx) => (
@@ -178,7 +180,7 @@ export function CompendioClassesGrid() {
         <div className="fade-in">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid #ffcc00', paddingBottom: '10px', marginBottom: '30px' }}>
                 <h2 style={{ color: '#ffcc00', margin: 0, textShadow: '0 0 10px #ffcc00' }}>🛡️ O Trono dos Heróis: Classes</h2>
-                {isMestre && <span style={{ color: '#888', fontStyle: 'italic', fontSize: '0.8em' }}>Modo de Edição Ativo 👑</span>}
+                {isMestre && <span style={{ color: '#888', fontStyle: 'italic', fontSize: '0.8em' }}>Modo de Edição de Mestre Ativo 👑</span>}
             </div>
             <h3 style={{ color: '#0088ff', borderBottom: '1px dotted #0088ff', paddingBottom: '5px' }}>🌟 Classes Regulares</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px', marginBottom: '40px' }}>
@@ -286,7 +288,7 @@ export function CompendioGrandsSecao() {
     );
 }
 
-/* ── Secao Dinamica de Edicao Generica ── */
+/* ── Secao Dinamica de Edicao Generica (COM COLOR PICKER E EMOJIS) ── */
 export function CompendioEditorItem({ tituloForm }) {
     const ctx = useCompendioForm();
     if (!ctx) return null;
@@ -295,32 +297,51 @@ export function CompendioEditorItem({ tituloForm }) {
     return (
         <div className="def-box fade-in" style={{ padding: '20px', border: '1px solid #00ffcc', background: 'rgba(20,20,30,0.9)', gridColumn: '1 / -1', marginBottom: 20 }}>
             <h3 style={{ color: '#00ffcc', marginTop: 0 }}>✏️ Forjando: {tituloForm}</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                     <div>
-                        <label style={{ fontSize: '0.8em', color: '#aaa' }}>Nome / Título:</label>
-                        <input type="text" className="input-neon" value={tempItem.nome || tempItem.titulo || ''} onChange={(e) => updateTempItem(tempItem.nome !== undefined ? 'nome' : 'titulo', e.target.value)} style={{ width: '100%', padding: '5px' }} />
+                        <label style={{ fontSize: '0.8em', color: '#aaa', marginBottom: 5, display: 'block' }}>Nome / Título:</label>
+                        <input type="text" className="input-neon" value={tempItem.nome || tempItem.titulo || ''} onChange={(e) => updateTempItem(tempItem.nome !== undefined ? 'nome' : 'titulo', e.target.value)} style={{ width: '100%', padding: '8px' }} />
                     </div>
                     {tempItem.cor !== undefined && (
                         <div>
-                            <label style={{ fontSize: '0.8em', color: '#aaa' }}>Cor (Hexadecimal, ex: #ff0000):</label>
-                            <input type="text" className="input-neon" value={tempItem.cor || '#ffffff'} onChange={(e) => updateTempItem('cor', e.target.value)} style={{ width: '100%', padding: '5px', color: tempItem.cor || '#fff', borderColor: tempItem.cor || '#fff' }} />
-                        </div>
-                    )}
-                    {tempItem.icone !== undefined && (
-                        <div>
-                            <label style={{ fontSize: '0.8em', color: '#aaa' }}>Ícone (Emoji):</label>
-                            <input type="text" className="input-neon" value={tempItem.icone || ''} onChange={(e) => updateTempItem('icone', e.target.value)} style={{ width: '100%', padding: '5px' }} />
+                            <label style={{ fontSize: '0.8em', color: '#aaa', marginBottom: 5, display: 'block' }}>Cor Temática:</label>
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                {/* 🔥 O NOVO COLOR PICKER MÁGICO 🔥 */}
+                                <div style={{ position: 'relative', width: '40px', height: '36px', borderRadius: '4px', overflow: 'hidden', border: `1px solid ${tempItem.cor || '#fff'}` }}>
+                                    <input type="color" value={tempItem.cor || '#ffffff'} onChange={(e) => updateTempItem('cor', e.target.value)} style={{ position: 'absolute', top: '-10px', left: '-10px', width: '60px', height: '60px', cursor: 'pointer', border: 'none' }} title="Clique para escolher a cor"/>
+                                </div>
+                                <input type="text" className="input-neon" value={tempItem.cor || '#ffffff'} onChange={(e) => updateTempItem('cor', e.target.value)} style={{ flex: 1, padding: '8px', color: tempItem.cor || '#fff', borderColor: tempItem.cor || '#fff' }} placeholder="#ffffff" />
+                            </div>
                         </div>
                     )}
                 </div>
+
+                {tempItem.icone !== undefined && (
+                    <div style={{ background: 'rgba(0,0,0,0.4)', padding: '10px', borderRadius: '5px', border: '1px dashed #555' }}>
+                        <label style={{ fontSize: '0.8em', color: '#00ffcc', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                            <span>Ícone (Emoji):</span>
+                            <input type="text" className="input-neon" value={tempItem.icone || ''} onChange={(e) => updateTempItem('icone', e.target.value)} style={{ width: '60px', padding: '4px', textAlign: 'center', fontSize: '1.2em' }} placeholder="❔" />
+                        </label>
+                        {/* 🔥 A TABELA PRÉ-PRONTA DE EMOJIS 🔥 */}
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', background: 'rgba(0,0,0,0.5)', padding: '10px', borderRadius: '5px', maxHeight: '100px', overflowY: 'auto' }}>
+                            {PRESET_EMOJIS.map(emj => (
+                                <button key={emj} onClick={() => updateTempItem('icone', emj)} style={{ background: tempItem.icone === emj ? 'rgba(0, 255, 204, 0.3)' : 'transparent', border: `1px solid ${tempItem.icone === emj ? '#00ffcc' : '#444'}`, borderRadius: '4px', cursor: 'pointer', fontSize: '1.3em', padding: '4px 8px', transition: '0.2s' }} title={`Selecionar ${emj}`}>
+                                    {emj}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 <div>
-                    <label style={{ fontSize: '0.8em', color: '#aaa' }}>Descrição:</label>
-                    <textarea className="input-neon" value={tempItem.desc || ''} onChange={(e) => updateTempItem('desc', e.target.value)} style={{ width: '100%', padding: '5px', minHeight: '60px', resize: 'vertical' }} />
+                    <label style={{ fontSize: '0.8em', color: '#aaa', marginBottom: 5, display: 'block' }}>Descrição das Mecânicas:</label>
+                    <textarea className="input-neon" value={tempItem.desc || ''} onChange={(e) => updateTempItem('desc', e.target.value)} style={{ width: '100%', padding: '10px', minHeight: '80px', resize: 'vertical' }} placeholder="Descreva aqui o que essa condição/elemento/regra faz na mesa..." />
                 </div>
+
                 <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '10px' }}>
-                    <button className="btn-neon btn-red btn-small" onClick={cancelarEdicaoItem} style={{ margin: 0 }}>Cancelar</button>
-                    <button className="btn-neon btn-green btn-small" onClick={salvarItem} style={{ margin: 0 }}>💾 Salvar Alterações</button>
+                    <button className="btn-neon btn-red" onClick={cancelarEdicaoItem} style={{ margin: 0, padding: '8px 20px' }}>Cancelar</button>
+                    <button className="btn-neon btn-green" onClick={salvarItem} style={{ margin: 0, padding: '8px 20px', fontWeight: 'bold' }}>💾 Salvar Alterações</button>
                 </div>
             </div>
         </div>
@@ -419,9 +440,9 @@ export function CompendioRegras() {
                     {regras.map(reg => (
                         <li key={reg.id} style={{ marginBottom: '10px', position: 'relative' }}>
                             {isMestre && (
-                                <span style={{ position: 'absolute', left: '-20px', display: 'flex', gap: '5px' }}>
-                                    <button onClick={() => iniciarEdicaoItem('regras', reg)} style={{ background: 'none', border: 'none', color: '#ffcc00', cursor: 'pointer', fontSize: '1em' }}>✏️</button>
-                                    <button onClick={() => deletarItem('regras', reg.id)} style={{ background: 'none', border: 'none', color: '#ff003c', cursor: 'pointer', fontSize: '1em' }}>✖</button>
+                                <span style={{ position: 'absolute', left: '-45px', display: 'flex', gap: '5px' }}>
+                                    <button onClick={() => iniciarEdicaoItem('regras', reg)} style={{ background: 'none', border: 'none', color: '#ffcc00', cursor: 'pointer', fontSize: '1em', padding: 0 }} title="Editar">✏️</button>
+                                    <button onClick={() => deletarItem('regras', reg.id)} style={{ background: 'none', border: 'none', color: '#ff003c', cursor: 'pointer', fontSize: '1em', padding: 0 }} title="Deletar">✖</button>
                                 </span>
                             )}
                             <strong style={{color: reg.cor || '#00ffcc'}}>{reg.titulo}:</strong> {reg.desc}

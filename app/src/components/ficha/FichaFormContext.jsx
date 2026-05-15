@@ -26,7 +26,6 @@ export const CLASSES_OPTIONS = [
     { value: 'beast', label: '👹 Beast' }, { value: 'savior', label: '☀️ Savior' }
 ];
 
-// 🔥 MATRIZES BASE PARA GARANTIR OS ÍCONES E CORES (SERÃO MESCLADAS COM AS SUAS CRIAÇÕES) 🔥
 export const CONDICOES_BASE = [
     { id: 'sangrando', icone: '🩸', cor: '#ff003c' }, { id: 'queimado', icone: '🔥', cor: '#ff4400' },
     { id: 'exausto', icone: '😮‍💨', cor: '#aaaaaa' }, { id: 'envenenado', icone: '🤢', cor: '#00ff00' },
@@ -97,7 +96,6 @@ export function FichaFormProvider({ children }) {
     const [serNovoPropPassivo, setSerNovoPropPassivo] = useState('base');
     const [serNovoValPassivo, setSerNovoValPassivo] = useState('');
 
-    // 🔥 GESTÃO DE CONDIÇÕES E AFINIDADES 🔥
     const modificarCondicao = useCallback((condId, delta) => {
         updateFicha(f => {
             if (!f.condicoes) f.condicoes = [];
@@ -129,17 +127,31 @@ export function FichaFormProvider({ children }) {
         salvarFichaSilencioso();
     }, [updateFicha]);
 
-    // 🔥 LEITURA DINÂMICA DO COMPÊNDIO 🔥
+    // 🔥 LEITURA DINÂMICA DO COMPÊNDIO COM CORREÇÃO DE VARREDURA 🔥
     const overridesCompendio = useMemo(() => {
-        if (!minhaFicha) return {};
-        if (minhaFicha.compendioOverrides) return minhaFicha.compendioOverrides;
+        let globais = { classes: {}, grands: {}, condicoes: {}, elementos: {}, regras: {} };
+
         if (personagens) {
-            const chaves = Object.keys(personagens);
-            for (let k of chaves) {
-                if (personagens[k]?.compendioOverrides) return personagens[k].compendioOverrides;
-            }
+            Object.values(personagens).forEach(p => {
+                if (p && p.compendioOverrides) {
+                    if (p.compendioOverrides.classes) Object.assign(globais.classes, p.compendioOverrides.classes);
+                    if (p.compendioOverrides.grands) Object.assign(globais.grands, p.compendioOverrides.grands);
+                    if (p.compendioOverrides.condicoes) Object.assign(globais.condicoes, p.compendioOverrides.condicoes);
+                    if (p.compendioOverrides.elementos) Object.assign(globais.elementos, p.compendioOverrides.elementos);
+                    if (p.compendioOverrides.regras) Object.assign(globais.regras, p.compendioOverrides.regras);
+                }
+            });
         }
-        return {};
+
+        if (minhaFicha && minhaFicha.compendioOverrides) {
+            if (minhaFicha.compendioOverrides.classes) Object.assign(globais.classes, minhaFicha.compendioOverrides.classes);
+            if (minhaFicha.compendioOverrides.grands) Object.assign(globais.grands, minhaFicha.compendioOverrides.grands);
+            if (minhaFicha.compendioOverrides.condicoes) Object.assign(globais.condicoes, minhaFicha.compendioOverrides.condicoes);
+            if (minhaFicha.compendioOverrides.elementos) Object.assign(globais.elementos, minhaFicha.compendioOverrides.elementos);
+            if (minhaFicha.compendioOverrides.regras) Object.assign(globais.regras, minhaFicha.compendioOverrides.regras);
+        }
+
+        return globais;
     }, [minhaFicha, personagens]);
 
     const mesclarComOverrides = useCallback((baseArray, tipo) => {
@@ -149,7 +161,7 @@ export function FichaFormProvider({ children }) {
         Object.keys(overridesObj).forEach(k => {
             if (overridesObj[k].deletado) delete map[k];
             else if (map[k]) map[k] = { ...map[k], ...overridesObj[k] };
-            else map[k] = overridesObj[k]; // Novos itens criados no Compêndio
+            else map[k] = overridesObj[k];
         });
         return Object.values(map);
     }, [overridesCompendio]);
@@ -598,7 +610,7 @@ export function FichaFormProvider({ children }) {
         addSerEfeito, removeSerEfeito, addSerEfeitoPassivo, removeSerEfeitoPassivo,
         addSerSelado, editarSerSelado, removeSerSelado, toggleSerSelado, cancelarEdicaoSer,
         salvarFormaSer, deletarFormaSer, ativarFormaSer,
-        modificarCondicao, toggleAfinidade, condicoesDinamicas, elementosDinamicos // 🔥 EXPOSTO AQUI
+        modificarCondicao, toggleAfinidade, condicoesDinamicas, elementosDinamicos
     }), [
         minhaFicha, updateFicha, personagens, meuNome, mesa, raca, classe, subClasse, alterEgoSlot1, alterEgoSerId, classesMemorizadas,
         idade, fisico, sangue, alinhamento, afiliacao, dinheiro, salvandoBio, painelForcado, overridesCompendio, grands, isGrand, grandIcone,

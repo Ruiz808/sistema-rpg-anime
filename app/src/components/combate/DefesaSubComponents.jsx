@@ -3,7 +3,6 @@ import { useDefesaForm } from './DefesaFormContext';
 
 const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Defesa provider não encontrado</div>;
 
-// 🔥 COMPONENTE: SOFRER DANO BRUTO (AGORA DINÂMICO) 🔥
 export function DefesaSofrerDanoBox() {
     const ctx = useDefesaForm();
     if (!ctx) return FALLBACK;

@@ -25,7 +25,7 @@ export function useAtaqueForm() {
 export function AtaqueFormProvider({ children }) {
     const minhaFicha = useStore(s => s.minhaFicha);
     const meuNome = useStore(s => s.meuNome);
-    const personagens = useStore(s => s.personagens); // 🔥 NOVO: Para leitura global
+    const personagens = useStore(s => s.personagens); // 🔥 Lê toda a mesa
     const updateFicha = useStore(s => s.updateFicha);
     const setAbaAtiva = useStore(s => s.setAbaAtiva);
     const feedCombate = useStore(s => s.feedCombate);
@@ -60,17 +60,31 @@ export function AtaqueFormProvider({ children }) {
     const [customEnergiaTipo, setCustomEnergiaTipo] = useState('nenhum');
     const [customEnergiaCusto, setCustomEnergiaCusto] = useState(0);
 
-    // 🔥 LEITURA DINÂMICA DOS ELEMENTOS DO COMPÊNDIO 🔥
+    // 🔥 LEITURA DINÂMICA DO COMPÊNDIO (VARREDURA GLOBAL) 🔥
     const overridesCompendio = useMemo(() => {
-        if (!minhaFicha) return {};
-        if (minhaFicha.compendioOverrides) return minhaFicha.compendioOverrides;
+        let globais = { classes: {}, grands: {}, condicoes: {}, elementos: {}, regras: {} };
+
         if (personagens) {
-            const chaves = Object.keys(personagens);
-            for (let k of chaves) {
-                if (personagens[k]?.compendioOverrides) return personagens[k].compendioOverrides;
-            }
+            Object.values(personagens).forEach(p => {
+                if (p && p.compendioOverrides) {
+                    if (p.compendioOverrides.classes) Object.assign(globais.classes, p.compendioOverrides.classes);
+                    if (p.compendioOverrides.grands) Object.assign(globais.grands, p.compendioOverrides.grands);
+                    if (p.compendioOverrides.condicoes) Object.assign(globais.condicoes, p.compendioOverrides.condicoes);
+                    if (p.compendioOverrides.elementos) Object.assign(globais.elementos, p.compendioOverrides.elementos);
+                    if (p.compendioOverrides.regras) Object.assign(globais.regras, p.compendioOverrides.regras);
+                }
+            });
         }
-        return {};
+
+        if (minhaFicha && minhaFicha.compendioOverrides) {
+            if (minhaFicha.compendioOverrides.classes) Object.assign(globais.classes, minhaFicha.compendioOverrides.classes);
+            if (minhaFicha.compendioOverrides.grands) Object.assign(globais.grands, minhaFicha.compendioOverrides.grands);
+            if (minhaFicha.compendioOverrides.condicoes) Object.assign(globais.condicoes, minhaFicha.compendioOverrides.condicoes);
+            if (minhaFicha.compendioOverrides.elementos) Object.assign(globais.elementos, minhaFicha.compendioOverrides.elementos);
+            if (minhaFicha.compendioOverrides.regras) Object.assign(globais.regras, minhaFicha.compendioOverrides.regras);
+        }
+
+        return globais;
     }, [minhaFicha, personagens]);
 
     const elementosDinamicos = useMemo(() => {
@@ -296,7 +310,6 @@ export function AtaqueFormProvider({ children }) {
             const faces = parseInt(facesStr);
             let soma = 0;
             let resultados = [];
-            
             const qtdSegura = Math.min(qtd, 1000); 
             
             for (let i = 0; i < qtdSegura; i++) {
@@ -532,7 +545,7 @@ export function AtaqueFormProvider({ children }) {
         ignorarTravaAcerto, setIgnorarTravaAcerto, skillConfigs, podeRolarDano, furiaAcalmadaMsg,
         multiplicadorFuriaClasse, multiplicadorFuriaVisor, percAtualLostFloor, percEfetivoParaDisplay,
         dummieAlvo, armaEquipada, poderesAtivos, magiasOfensivas, minhaFicha,
-        elementoAtivo, setElementoAtivo, elementosDinamicos, // 🔥 DINÂMICA
+        elementoAtivo, setElementoAtivo, elementosDinamicos, 
         customFormula, setCustomFormula, customLetalidade, setCustomLetalidade, 
         customEnergiaTipo, setCustomEnergiaTipo, customEnergiaCusto, setCustomEnergiaCusto,
         rolarDanoCustomizado, salvarFormula, deletarFormula,

@@ -2,8 +2,6 @@ import React, { createContext, useContext, useState, useCallback, useMemo } from
 import useStore from '../../stores/useStore';
 import { calcularReducao, calcularCA } from '../../core/engine';
 import { salvarFichaSilencioso, enviarParaFeed } from '../../services/firebase-sync';
-
-// 🔥 IMPORTAÇÃO DA FUNÇÃO DO MOTOR MATEMÁTICO 🔥
 import { calcularMultiplicadorElemental } from '../../core/engine'; 
 
 const DefesaFormContext = createContext(null);
@@ -17,7 +15,7 @@ export function useDefesaForm() {
 export function DefesaFormProvider({ children }) {
     const minhaFicha = useStore(s => s.minhaFicha);
     const meuNome = useStore(s => s.meuNome);
-    const personagens = useStore(s => s.personagens); // 🔥 NOVO: Para ler o compêndio global
+    const personagens = useStore(s => s.personagens); // 🔥 VARREDURA GLOBAL DE PERSONAGENS DA MESA
     const updateFicha = useStore(s => s.updateFicha);
     const setAbaAtiva = useStore(s => s.setAbaAtiva);
 
@@ -41,17 +39,23 @@ export function DefesaFormProvider({ children }) {
     const [elementoInc, setElementoInc] = useState('fisico'); 
     const [danoRecebidoInc, setDanoRecebidoInc] = useState('');
 
-    // 🔥 LEITURA DINÂMICA DOS ELEMENTOS DO COMPÊNDIO 🔥
+    // 🔥 LEITURA DINÂMICA DO COMPÊNDIO COM CORREÇÃO DE VARREDURA 🔥
     const overridesCompendio = useMemo(() => {
-        if (!minhaFicha) return {};
-        if (minhaFicha.compendioOverrides) return minhaFicha.compendioOverrides;
+        let globais = { elementos: {} };
+
         if (personagens) {
-            const chaves = Object.keys(personagens);
-            for (let k of chaves) {
-                if (personagens[k]?.compendioOverrides) return personagens[k].compendioOverrides;
-            }
+            Object.values(personagens).forEach(p => {
+                if (p && p.compendioOverrides && p.compendioOverrides.elementos) {
+                    Object.assign(globais.elementos, p.compendioOverrides.elementos);
+                }
+            });
         }
-        return {};
+
+        if (minhaFicha && minhaFicha.compendioOverrides && minhaFicha.compendioOverrides.elementos) {
+            Object.assign(globais.elementos, minhaFicha.compendioOverrides.elementos);
+        }
+
+        return globais;
     }, [minhaFicha, personagens]);
 
     const elementosDinamicos = useMemo(() => {
@@ -174,7 +178,6 @@ export function DefesaFormProvider({ children }) {
         else if (mult === 0.5) mensagemElemental = ' [RESISTIU: Dano /2]';
         else if (mult === 0.0) mensagemElemental = ' [IMUNE: 0 Dano!]';
 
-        // Pega o nome customizado do elemento a partir da lista gerada pelo compêndio
         const nomeElemento = elementosDinamicos.find(e => e.id === elementoInc)?.nome || elementoInc;
 
         const texto = `Recebeu ${danoFinal} de dano! (Original: ${dano} de ${nomeElemento.toUpperCase()})${mensagemElemental}`;
@@ -193,7 +196,7 @@ export function DefesaFormProvider({ children }) {
         redEnergia, setRedEnergia, redPerc, setRedPerc, redMult, setRedMult,
         elementoInc, setElementoInc, danoRecebidoInc, setDanoRecebidoInc,
         caEvasiva, caResistencia,
-        elementosDinamicos, // 🔥 EXPOSTO
+        elementosDinamicos, 
         declararEvasiva, declararResistencia, declararReducao, sofrerDanoBruto
     }), [
         evaDados, evaFaces, evaProf, evaBonus, resDados, resFaces, resProf, resBonus,
