@@ -24,6 +24,7 @@ import Jukebox from './components/jukebox/Jukebox'
 import CompendioPanel from './components/compendio/CompendioPanel'
 import AIPanel from './components/ia/AIPanel'
 import GravadorPanel from './components/ia/GravadorPanel'
+import PainelMestreSandbox from './components/mestre/PainelMestreSandbox' // 🔥 INJEÇÃO AQUI
 
 // Funções de Sync
 import { 
@@ -489,6 +490,8 @@ function MestrePanel() {
                     <button className="btn-neon btn-blue" style={{ flex: 1, padding: '4px', fontSize: '0.8em', margin: 0 }} onClick={() => handleClonarFicha(nome, ficha)}>🖨️ CLONAR</button>
                     <button className="btn-neon btn-red" style={{ flex: 1, padding: '4px', fontSize: '0.8em', margin: 0, opacity: nome === meuNome ? 0.3 : 1 }} onClick={() => handleApagarJogador(nome)} disabled={nome === meuNome}>❌ APAGAR</button>
                 </div>
+                {/* 🔥 INJEÇÃO DO SANDBOX AQUI 🔥 */}
+                <PainelMestreSandbox personagemId={nome} ficha={ficha} />
             </div>
         );
     };
