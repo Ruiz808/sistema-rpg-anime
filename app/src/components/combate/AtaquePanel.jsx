@@ -3,11 +3,12 @@ import { AtaqueFormProvider } from './AtaqueFormContext';
 import {
     AtaqueFuriaDisplay,
     AtaqueCriticoConfig,
+    AtaqueElementoSelector, // 🔥 IMPORTADO AQUI
     AtaqueArmaEquipada,
     AtaqueArmaVazia,
     AtaqueHabilidadesAtivas,
     AtaqueMagiasPreparadas,
-    AtaqueDanoCustomizado, // 🔥 IMPORTADO AQUI
+    AtaqueDanoCustomizado,
     AtaqueBotoesAcao
 } from './AtaqueSubComponents';
 
@@ -19,15 +20,16 @@ export default function AtaquePanel({ className, children }) {
                 {hasChildren ? children : (
                     <>
                         <AtaqueFuriaDisplay />
+                        
+                        {/* 🔥 SELETOR DE ELEMENTO NO TOPO 🔥 */}
+                        <AtaqueElementoSelector /> 
+
                         <AtaqueCriticoConfig />
                         <AtaqueArmaEquipada />
                         <AtaqueArmaVazia />
                         <AtaqueHabilidadesAtivas />
                         <AtaqueMagiasPreparadas />
-                        
-                        {/* 🔥 MODO DEUS INJETADO ANTES DOS BOTÕES 🔥 */}
                         <AtaqueDanoCustomizado />
-                        
                         <AtaqueBotoesAcao />
                     </>
                 )}

@@ -1,9 +1,39 @@
 import React from 'react';
-import { useAtaqueForm, STATS_LIST, ENERGIA_LIST } from './AtaqueFormContext';
+import { useAtaqueForm, STATS_LIST, ENERGIA_LIST, ELEMENTOS_ATAQUE } from './AtaqueFormContext';
 
 const PROVIDER_FALLBACK = (
     <div style={{ color: '#888', padding: 10 }}>Ataque provider nao encontrado</div>
 );
+
+// 🔥 NOVO: SELETOR DE TIPO DE DANO ELEMENTAR
+export function AtaqueElementoSelector() {
+    const ctx = useAtaqueForm();
+    if (!ctx) return null;
+    const { elementoAtivo, setElementoAtivo } = ctx;
+
+    return (
+        <div className="def-box fade-in" style={{ marginBottom: 15, borderLeft: '4px solid #00ffcc' }}>
+            <h4 style={{ color: '#00ffcc', margin: '0 0 10px 0', fontSize: '0.85em', textTransform: 'uppercase' }}>⚡ Infusão Elemental do Ataque</h4>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                {ELEMENTOS_ATAQUE.map(el => (
+                    <button 
+                        key={el.id}
+                        onClick={() => setElementoAtivo(el.id)}
+                        className={`btn-neon ${elementoAtivo === el.id ? 'btn-green' : ''}`}
+                        style={{ 
+                            flex: '1 1 80px', padding: '6px', fontSize: '0.75em', margin: 0,
+                            borderColor: elementoAtivo === el.id ? el.cor : '#444',
+                            color: elementoAtivo === el.id ? '#fff' : '#888',
+                            background: elementoAtivo === el.id ? `${el.cor}30` : 'transparent'
+                        }}
+                    >
+                        {el.icone} {el.nome}
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+}
 
 export function AtaqueFuriaDisplay() {
     const ctx = useAtaqueForm();

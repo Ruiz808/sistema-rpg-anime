@@ -27,7 +27,7 @@ export const ATRIBUTO_OPTIONS = [
     { value: 'todas_energias', label: 'TODAS AS ENERGIAS' },
     { value: 'geral', label: 'GERAL (Todos)' },
     { value: 'dano', label: 'Dano (Apenas Mult)' },
-    { value: 'especial', label: 'Especial / Mecânica' } // 🔥 NOVO ATRIBUTO
+    { value: 'especial', label: 'Especial / Mecânica' }
 ];
 
 export const CLASSES_OPTIONS = [
@@ -86,7 +86,7 @@ export function FichaFormProvider({ children }) {
     const [serDescricao, setSerDescricao] = useState('');
     const [serElemento, setSerElemento] = useState('');
     const [serClasse, setSerClasse] = useState('');
-    const [serZeraCusto, setSerZeraCusto] = useState(false); // 🔥 NOVA REGRA DE PACTO
+    const [serZeraCusto, setSerZeraCusto] = useState(false);
     const [serEditandoId, setSerEditandoId] = useState(null);
     
     const [serEfeitos, setSerEfeitos] = useState([]);
@@ -101,6 +101,38 @@ export function FichaFormProvider({ children }) {
     const [serNovoAtrPassivo, setSerNovoAtrPassivo] = useState('forca');
     const [serNovoPropPassivo, setSerNovoPropPassivo] = useState('base');
     const [serNovoValPassivo, setSerNovoValPassivo] = useState('');
+
+    // 🔥 NOVAS FUNÇÕES: GESTÃO DE CONDIÇÕES E AFINIDADES 🔥
+    const modificarCondicao = useCallback((condId, delta) => {
+        updateFicha(f => {
+            if (!f.condicoes) f.condicoes = [];
+            const index = f.condicoes.findIndex(c => c.id === condId);
+            if (index > -1) {
+                f.condicoes[index].stacks += delta;
+                if (f.condicoes[index].stacks <= 0) f.condicoes.splice(index, 1);
+                else if (f.condicoes[index].stacks > 6) f.condicoes[index].stacks = 6; 
+            } else if (delta > 0) {
+                f.condicoes.push({ id: condId, stacks: 1 });
+            }
+        });
+        salvarFichaSilencioso();
+    }, [updateFicha]);
+
+    const toggleAfinidade = useCallback((categoria, elementoId) => {
+        updateFicha(f => {
+            if (!f.afinidades) f.afinidades = { resistencias: [], vulnerabilidades: [], imunidades: [], absorcoes: [] };
+            const lista = f.afinidades[categoria] || [];
+            if (lista.includes(elementoId)) {
+                f.afinidades[categoria] = lista.filter(e => e !== elementoId);
+            } else {
+                Object.keys(f.afinidades).forEach(cat => {
+                    f.afinidades[cat] = (f.afinidades[cat] || []).filter(e => e !== elementoId);
+                });
+                f.afinidades[categoria].push(elementoId);
+            }
+        });
+        salvarFichaSilencioso();
+    }, [updateFicha]);
 
     const overridesCompendio = useMemo(() => {
         if (!minhaFicha) return {};
@@ -554,7 +586,8 @@ export function FichaFormProvider({ children }) {
         serNovoAtrPassivo, setSerNovoAtrPassivo, serNovoPropPassivo, setSerNovoPropPassivo, serNovoValPassivo, setSerNovoValPassivo,
         addSerEfeito, removeSerEfeito, addSerEfeitoPassivo, removeSerEfeitoPassivo,
         addSerSelado, editarSerSelado, removeSerSelado, toggleSerSelado, cancelarEdicaoSer,
-        salvarFormaSer, deletarFormaSer, ativarFormaSer
+        salvarFormaSer, deletarFormaSer, ativarFormaSer,
+        modificarCondicao, toggleAfinidade // 🔥 FUNÇÕES PASSADAS NO CONTEXTO AQUI
     }), [
         minhaFicha, updateFicha, personagens, meuNome, mesa, raca, classe, subClasse, alterEgoSlot1, alterEgoSerId, classesMemorizadas,
         idade, fisico, sangue, alinhamento, afiliacao, dinheiro, salvandoBio, painelForcado, overridesCompendio, grands, isGrand, grandIcone,
@@ -571,7 +604,7 @@ export function FichaFormProvider({ children }) {
         serNovoNomeEfeitoPassivo, serNovoAtrPassivo, serNovoPropPassivo, serNovoValPassivo,
         addSerEfeito, removeSerEfeito, addSerEfeitoPassivo, removeSerEfeitoPassivo,
         addSerSelado, editarSerSelado, removeSerSelado, toggleSerSelado, cancelarEdicaoSer,
-        salvarFormaSer, deletarFormaSer, ativarFormaSer
+        salvarFormaSer, deletarFormaSer, ativarFormaSer, modificarCondicao, toggleAfinidade
     ]);
 
     return (

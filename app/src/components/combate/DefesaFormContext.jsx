@@ -3,6 +3,9 @@ import useStore from '../../stores/useStore';
 import { calcularReducao, calcularCA } from '../../core/engine';
 import { salvarFichaSilencioso, enviarParaFeed } from '../../services/firebase-sync';
 
+// 🔥 IMPORTAÇÃO DA FUNÇÃO QUE INJETÁMOS NO ENGINE.JS 🔥
+import { calcularMultiplicadorElemental } from '../../core/engine'; 
+
 const DefesaFormContext = createContext(null);
 
 export function useDefesaForm() {
@@ -33,6 +36,10 @@ export function DefesaFormProvider({ children }) {
     const [redEnergia, setRedEnergia] = useState('mana');
     const [redPerc, setRedPerc] = useState(0);
     const [redMult, setRedMult] = useState(1);
+    
+    // 🔥 NOVO: Elemento do Ataque Que Vou Receber 🔥
+    const [elementoInc, setElementoInc] = useState('fisico'); 
+    const [danoRecebidoInc, setDanoRecebidoInc] = useState('');
 
     const rolar = useCallback((qtd, faces) => {
         let sum = 0;
@@ -114,6 +121,37 @@ export function DefesaFormProvider({ children }) {
         setAbaAtiva('aba-log');
     }, [redEnergia, redPerc, redMult, minhaFicha, meuNome, updateFicha, setAbaAtiva]);
 
+    // 🔥 NOVA FUNÇÃO: SOFRER DANO BRUTO (COM CÁLCULO ELEMENTAR) 🔥
+    const sofrerDanoBruto = useCallback(() => {
+        const dano = parseInt(danoRecebidoInc) || 0;
+        if (dano <= 0) return alert('Digite um valor de dano válido para receber.');
+
+        const mult = calcularMultiplicadorElemental(minhaFicha, elementoInc);
+        const danoFinal = Math.floor(dano * mult);
+
+        // Subtrair o HP
+        updateFicha((ficha) => {
+            if (ficha.vida) {
+                ficha.vida.atual = Math.max(0, (ficha.vida.atual || 0) - danoFinal);
+            }
+        });
+        salvarFichaSilencioso();
+
+        let mensagemElemental = '';
+        if (mult === 2.0) mensagemElemental = ' [VULNERÁVEL: Dano x2!]';
+        else if (mult === 0.5) mensagemElemental = ' [RESISTIU: Dano /2]';
+        else if (mult === 0.0) mensagemElemental = ' [IMUNE: 0 Dano!]';
+
+        const texto = `Recebeu ${danoFinal} de dano! (Original: ${dano} de ${elementoInc.toUpperCase()})${mensagemElemental}`;
+
+        const feedData = { tipo: 'sistema', nome: meuNome, texto: texto };
+        enviarParaFeed(feedData);
+        
+        setDanoRecebidoInc('');
+        setElementoInc('fisico');
+        setAbaAtiva('aba-log');
+    }, [danoRecebidoInc, elementoInc, minhaFicha, meuNome, updateFicha, setAbaAtiva]);
+
     const value = useMemo(() => ({
         evaDados, setEvaDados,
         evaFaces, setEvaFaces,
@@ -126,17 +164,21 @@ export function DefesaFormProvider({ children }) {
         redEnergia, setRedEnergia,
         redPerc, setRedPerc,
         redMult, setRedMult,
+        elementoInc, setElementoInc, // 🔥 EXPOSTO
+        danoRecebidoInc, setDanoRecebidoInc, // 🔥 EXPOSTO
         caEvasiva,
         caResistencia,
         declararEvasiva,
         declararResistencia,
         declararReducao,
+        sofrerDanoBruto // 🔥 EXPOSTO
     }), [
         evaDados, evaFaces, evaProf, evaBonus,
         resDados, resFaces, resProf, resBonus,
         redEnergia, redPerc, redMult,
+        elementoInc, danoRecebidoInc,
         caEvasiva, caResistencia,
-        declararEvasiva, declararResistencia, declararReducao,
+        declararEvasiva, declararResistencia, declararReducao, sofrerDanoBruto
     ]);
 
     return (

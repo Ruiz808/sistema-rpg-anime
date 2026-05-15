@@ -15,10 +15,10 @@ export function CompendioSidebar() {
             <h3 style={{ color: '#00ffcc', marginTop: 0, textAlign: 'center', borderBottom: '1px solid #00ffcc', paddingBottom: '15px', letterSpacing: '2px' }}>📖 GRIMÓRIO</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '20px' }}>
                 <button className={`btn-neon ${secaoAtiva === 'grands' ? 'btn-gold' : ''}`} onClick={() => setSecaoAtiva('grands')} style={{ textAlign: 'left', paddingLeft: '15px', fontWeight: 'bold' }}>🏛️ Trono dos Heróis</button>
-                <button className={`btn-neon ${secaoAtiva === 'classes' ? 'btn-gold' : ''}`} onClick={() => setSecaoAtiva('classes')} style={{ textAlign: 'left', paddingLeft: '15px' }}>🛡️ Classes Regulares</button>
-                <button className={`btn-neon ${secaoAtiva === 'condicoes' ? 'btn-gold' : ''}`} onClick={() => setSecaoAtiva('condicoes')} style={{ textAlign: 'left', paddingLeft: '15px' }}>🩸 Condições</button>
-                <button className={`btn-neon ${secaoAtiva === 'danos' ? 'btn-gold' : ''}`} onClick={() => setSecaoAtiva('danos')} style={{ textAlign: 'left', paddingLeft: '15px' }}>⚔️ Tipos de Dano</button>
-                <button className={`btn-neon ${secaoAtiva === 'regras' ? 'btn-gold' : ''}`} onClick={() => setSecaoAtiva('regras')} style={{ textAlign: 'left', paddingLeft: '15px' }}>📜 Regras da Casa</button>
+                <button className={`btn-neon ${secaoAtiva === 'classes' ? 'btn-blue' : ''}`} onClick={() => setSecaoAtiva('classes')} style={{ textAlign: 'left', paddingLeft: '15px', fontWeight: 'bold' }}>🛡️ Classes & Origens</button>
+                <button className={`btn-neon ${secaoAtiva === 'condicoes' ? 'btn-red' : ''}`} onClick={() => setSecaoAtiva('condicoes')} style={{ textAlign: 'left', paddingLeft: '15px', fontWeight: 'bold' }}>🩸 Condições</button>
+                <button className={`btn-neon ${secaoAtiva === 'elementos' ? 'btn-green' : ''}`} onClick={() => setSecaoAtiva('elementos')} style={{ textAlign: 'left', paddingLeft: '15px', fontWeight: 'bold' }}>🔥 Tipos de Dano</button>
+                <button className={`btn-neon ${secaoAtiva === 'regras' ? '' : ''}`} onClick={() => setSecaoAtiva('regras')} style={{ textAlign: 'left', paddingLeft: '15px', fontWeight: 'bold', borderColor: '#ff00ff', color: secaoAtiva === 'regras' ? '#fff' : '#ff00ff', background: secaoAtiva === 'regras' ? 'rgba(255,0,255,0.2)' : 'transparent' }}>⚖️ Regras da Casa</button>
             </div>
         </div>
     );
@@ -323,6 +323,85 @@ export function CompendioGrandsSecao() {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '25px' }}>
                 {todasClasses.map((classe) => <CompendioGrandCard key={classe.id} classe={classe} />)}
+            </div>
+        </div>
+    );
+}
+
+/* ── Secao Condicoes (NOVA - Baseada na sua print) ── */
+export function CompendioCondicoes() {
+    const ctx = useCompendioForm();
+    if (!ctx) return FALLBACK;
+    const { condicoes } = ctx;
+
+    return (
+        <div className="fade-in">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '2px solid #ff4444', paddingBottom: '10px' }}>
+                <h2 style={{ color: '#ff4444', margin: 0, textShadow: '0 0 15px rgba(255,68,68,0.5)', letterSpacing: '2px' }}>🩸 CONDIÇÕES & DEBUFFS</h2>
+            </div>
+            <p style={{ color: '#ccc', fontSize: '0.9em', lineHeight: '1.6', margin: '0 0 25px 0' }}>
+                Regras oficiais de penalização do sistema. Condições acumulam <strong style={{color: '#ffcc00'}}>Stacks</strong>. As mecânicas com "X" são adaptáveis pelo Mestre dependendo do nível de poder da campanha.
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '20px' }}>
+                {condicoes.map(cond => (
+                    <div key={cond.id} className="def-box" style={{ padding: '20px', borderLeft: `4px solid ${cond.cor}`, background: 'rgba(0,0,0,0.5)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '15px' }}>
+                            <div style={{ fontSize: '2.5em' }}>{cond.icone}</div>
+                            <div>
+                                <h3 style={{ color: cond.cor, margin: '0 0 5px 0', textTransform: 'uppercase', textShadow: `0 0 5px ${cond.cor}80` }}>{cond.nome}</h3>
+                            </div>
+                        </div>
+                        <div style={{ color: '#ccc', fontSize: '0.85em', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{cond.desc}</div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+/* ── Secao Elementos (NOVA) ── */
+export function CompendioElementos() {
+    const ctx = useCompendioForm();
+    if (!ctx) return FALLBACK;
+    const { elementos } = ctx;
+
+    return (
+        <div className="fade-in">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '2px solid #00ffcc', paddingBottom: '10px' }}>
+                <h2 style={{ color: '#00ffcc', margin: 0, textShadow: '0 0 15px rgba(0,255,204,0.5)', letterSpacing: '2px' }}>🔥 TIPOS DE DANO & AFINIDADES</h2>
+            </div>
+            <p style={{ color: '#ccc', fontSize: '0.9em', lineHeight: '1.6', margin: '0 0 25px 0' }}>
+                No Multiverso, os ataques puros colidem com a afinidade da entidade atingida. Cada elemento possui vantagens inerentes na narrativa.
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+                {elementos.map(el => (
+                    <div key={el.id} className="def-box" style={{ padding: '20px', borderTop: `4px solid ${el.cor}`, background: 'rgba(0,0,0,0.5)' }}>
+                        <h3 style={{ color: el.cor, margin: '0 0 5px 0', textShadow: `0 0 10px ${el.cor}` }}>{el.nome}</h3>
+                        <p style={{ color: '#aaa', fontSize: '0.85em', margin: 0 }}>{el.desc}</p>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+/* ── Secao Regras Customizadas (NOVA) ── */
+export function CompendioRegras() {
+    return (
+        <div className="fade-in">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '2px solid #ff00ff', paddingBottom: '10px' }}>
+                <h2 style={{ color: '#ff00ff', margin: 0, textShadow: '0 0 15px rgba(255,0,255,0.5)', letterSpacing: '2px' }}>⚖️ REGRAS DA CASA</h2>
+            </div>
+            <div className="def-box" style={{ padding: '20px', background: 'rgba(255,0,255,0.05)', border: '1px solid #ff00ff' }}>
+                <h3 style={{ color: '#ff00ff', margin: '0 0 15px 0' }}>O Tratado do Multiverso</h3>
+                <ul style={{ color: '#ccc', fontSize: '0.9em', lineHeight: '1.8', margin: 0, paddingLeft: '20px' }}>
+                    <li><strong style={{color: '#00ffcc'}}>Limites Físicos:</strong> Nenhuma entidade mundana pode passar de 99 num status base sem ascender para Grand ou usar equipamentos lendários.</li>
+                    <li><strong style={{color: '#ffcc00'}}>Sobrecarga de Energia:</strong> Gastar mais da metade da reserva máxima de Mana ou Aura num único turno aplica 1 stack de <i>Exaustão</i> automaticamente no final do turno.</li>
+                    <li><strong style={{color: '#ff4444'}}>Ataques Oportunos:</strong> Atacar uma entidade com <i>Exaustão Nível 2 (Imobilizado)</i> garante vantagem dupla nos dados de acerto.</li>
+                    <li><strong style={{color: '#0088ff'}}>Blindagem de Boss:</strong> Ameaças marcadas como [Boss] ou [Beast] limpam 1 stack de todas as condições no início do seu turno naturalmente.</li>
+                </ul>
             </div>
         </div>
     );

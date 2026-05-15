@@ -1,12 +1,24 @@
 import React from 'react';
 import { CompendioFormProvider, useCompendioForm } from './CompendioFormContext';
-import { CompendioSidebar, CompendioClassesGrid, CompendioGrandsSecao } from './CompendioSubComponents';
+import { 
+    CompendioSidebar, 
+    CompendioClassesGrid, 
+    CompendioGrandsSecao,
+    CompendioCondicoes,   // 🔥 IMPORTAÇÕES DAS NOVAS TELAS
+    CompendioElementos,
+    CompendioRegras
+} from './CompendioSubComponents';
 
 function CompendioAreaCentral() {
     const ctx = useCompendioForm();
     if (!ctx) return null;
+    
     if (ctx.secaoAtiva === 'grands') return <CompendioGrandsSecao />;
     if (ctx.secaoAtiva === 'classes') return <CompendioClassesGrid />;
+    if (ctx.secaoAtiva === 'condicoes') return <CompendioCondicoes />;
+    if (ctx.secaoAtiva === 'elementos') return <CompendioElementos />;
+    if (ctx.secaoAtiva === 'regras') return <CompendioRegras />;
+    
     return null;
 }
 

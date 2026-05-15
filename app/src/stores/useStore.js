@@ -6,6 +6,11 @@ export const fichaPadrao = {
     hierarquia: { poder: false, infinity: false, singularidade: '', poderNome: '', poderDesc: '', infinityNome: '', infinityDesc: '', singularidadeNome: '', singularidadeDesc: '' },
     proficienciaBase: 2, proficiencias: {}, avatar: { base: "" },
     bio: { raca: "", classe: "", idade: "", fisico: "", sangue: "", alinhamento: "", afiliacao: "", dinheiro: "" },
+    
+    // 🔥 NOVO: Matriz de Afinidades Elementais e Condições (Stacks)
+    afinidades: { resistencias: [], vulnerabilidades: [], imunidades: [], absorcoes: [] },
+    condicoes: [], 
+    
     notas: { base: "", geral: "", abs: "" }, posicao: { x: 0, y: 0, z: 0 }, iniciativa: 0,
     acoes: { padrao: { max: 1, atual: 1 }, bonus: { max: 1, atual: 1 }, reacao: { max: 1, atual: 1 } },
     ataqueConfig: { armaStatusUsados: ['forca'], armaEnergiaCombustao: 'mana', armaPercEnergia: 0, criticoNormalMin: 16, criticoNormalMax: 18, criticoFatalMin: 19, criticoFatalMax: 20, vantagens: 0, desvantagens: 0 },
@@ -96,6 +101,11 @@ const useStore = create(
             if (dados.avatar) state.minhaFicha.avatar = Object.assign({}, fichaPadrao.avatar, dados.avatar);
             else state.minhaFicha.avatar = { base: "" };
             if (dados.bio) state.minhaFicha.bio = Object.assign({}, fichaPadrao.bio, dados.bio);
+            
+            // 🔥 NOVO: Carregar Afinidades e Condições do Firebase
+            if (dados.afinidades) state.minhaFicha.afinidades = Object.assign({}, fichaPadrao.afinidades, dados.afinidades);
+            if (dados.condicoes) state.minhaFicha.condicoes = dados.condicoes || [];
+
             if (dados.notas) state.minhaFicha.notas = Object.assign({}, fichaPadrao.notas, dados.notas);
             if (dados.posicao) state.minhaFicha.posicao = Object.assign({}, fichaPadrao.posicao, dados.posicao);
             state.minhaFicha.inventario = dados.inventario || [];
@@ -123,7 +133,8 @@ const useStore = create(
 
             for (let i = 0; i < chaves.length; i++) {
                 const ch = chaves[i];
-                if (dados[ch] !== undefined && ch !== 'ascensaoBase' && ch !== 'poderes' && ch !== 'divisores' && ch !== 'inventario' && ch !== 'ataquesElementais' && ch !== 'ataqueConfig' && ch !== 'avatar' && ch !== 'bio' && ch !== 'notas' && ch !== 'passivas' && ch !== 'seresSelados' && ch !== 'posicao' && ch !== 'iniciativa' && ch !== 'acoes' && ch !== 'proficienciaBase' && ch !== 'proficiencias' && ch !== 'cores' && ch !== 'hierarquia' && ch !== 'dominios') {
+                // 🔥 NOVO: Ignorar afinidades e condicoes no loop genérico para não sobrescrever a lógica de cima
+                if (dados[ch] !== undefined && ch !== 'ascensaoBase' && ch !== 'poderes' && ch !== 'divisores' && ch !== 'inventario' && ch !== 'ataquesElementais' && ch !== 'ataqueConfig' && ch !== 'avatar' && ch !== 'bio' && ch !== 'afinidades' && ch !== 'condicoes' && ch !== 'notas' && ch !== 'passivas' && ch !== 'seresSelados' && ch !== 'posicao' && ch !== 'iniciativa' && ch !== 'acoes' && ch !== 'proficienciaBase' && ch !== 'proficiencias' && ch !== 'cores' && ch !== 'hierarquia' && ch !== 'dominios') {
                     if (typeof fichaPadrao[ch] === 'object' && !Array.isArray(fichaPadrao[ch])) {
                         state.minhaFicha[ch] = Object.assign({}, fichaPadrao[ch], dados[ch]);
                         const numF = ['base', 'mBase', 'mGeral', 'mFormas', 'mAbsoluto', 'reducaoCusto', 'regeneracao', 'atual'];

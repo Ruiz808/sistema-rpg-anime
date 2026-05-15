@@ -3,6 +3,67 @@ import { useDefesaForm } from './DefesaFormContext';
 
 const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Defesa provider não encontrado</div>;
 
+// 🔥 IMPORT DOS ELEMENTOS PARA OS BOTOES 🔥
+const ELEMENTOS = [
+    { id: 'fisico', nome: 'Cinético', cor: '#ccc' },
+    { id: 'fogo', nome: 'Fogo', cor: '#ff4444' },
+    { id: 'agua', nome: 'Água', cor: '#0088ff' },
+    { id: 'raio', nome: 'Raio', cor: '#ffcc00' },
+    { id: 'gelo', nome: 'Gelo', cor: '#00ffff' },
+    { id: 'luz', nome: 'Luz', cor: '#fffbd6' },
+    { id: 'trevas', nome: 'Trevas', cor: '#8800ff' }
+];
+
+// 🔥 NOVO COMPONENTE: SOFRER DANO BRUTO 🔥
+export function DefesaSofrerDanoBox() {
+    const ctx = useDefesaForm();
+    if (!ctx) return FALLBACK;
+
+    const { elementoInc, setElementoInc, danoRecebidoInc, setDanoRecebidoInc, sofrerDanoBruto } = ctx;
+
+    return (
+        <div className="def-box fade-in" style={{ marginBottom: 15, borderLeft: '4px solid #ff4444', background: 'rgba(255, 68, 68, 0.05)' }}>
+            <h3 style={{ color: '#ff4444', marginBottom: 10, marginTop: 0 }}>🩸 Sofrer Dano (Redução de HP)</h3>
+            <p style={{ color: '#aaa', fontSize: '0.85em', marginTop: 0 }}>Se falhou na esquiva/bloqueio, digite o dano que o inimigo mandou e selecione o elemento do ataque. O sistema calculará as suas vulnerabilidades automaticamente!</p>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginBottom: '15px' }}>
+                {ELEMENTOS.map(el => (
+                    <button 
+                        key={el.id}
+                        onClick={() => setElementoInc(el.id)}
+                        className={`btn-neon ${elementoInc === el.id ? 'btn-red' : ''}`}
+                        style={{ 
+                            flex: '1 1 60px', padding: '4px', fontSize: '0.7em', margin: 0,
+                            borderColor: elementoInc === el.id ? el.cor : '#444',
+                            color: elementoInc === el.id ? '#fff' : '#888',
+                        }}
+                    >
+                        {el.nome}
+                    </button>
+                ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+                <input 
+                    className="input-neon" 
+                    type="number" 
+                    placeholder="Valor do Dano Bruto (Ex: 25000)" 
+                    value={danoRecebidoInc} 
+                    onChange={e => setDanoRecebidoInc(e.target.value)} 
+                    style={{ flex: '1 1 200px', margin: 0, fontSize: '1.2em' }} 
+                />
+                <button 
+                    className="btn-neon btn-red" 
+                    onClick={sofrerDanoBruto} 
+                    style={{ flex: '0 1 150px', margin: 0, padding: '10px', fontWeight: 'bold' }}
+                >
+                    SUBTRAIR HP
+                </button>
+            </div>
+        </div>
+    );
+}
+
 export function DefesaEvasaoBox() {
     const ctx = useDefesaForm();
     if (!ctx) return FALLBACK;

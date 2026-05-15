@@ -16,6 +16,17 @@ export const ENERGIA_LIST = [
     { value: 'mana', label: 'Mana' }, { value: 'aura', label: 'Aura' }, { value: 'chakra', label: 'Chakra' }, { value: 'corpo', label: 'Corpo' },
 ];
 
+// 🔥 LISTA DE ELEMENTOS PARA O ATAQUE
+export const ELEMENTOS_ATAQUE = [
+    { id: 'fisico', nome: 'Cinético', icone: '⚔️', cor: '#ccc' },
+    { id: 'fogo', nome: 'Fogo', icone: '🔥', cor: '#ff4444' },
+    { id: 'agua', nome: 'Água', icone: '💧', cor: '#0088ff' },
+    { id: 'raio', nome: 'Raio', icone: '⚡', cor: '#ffcc00' },
+    { id: 'gelo', nome: 'Gelo', icone: '❄️', cor: '#00ffff' },
+    { id: 'luz', nome: 'Luz', icone: '☀️', cor: '#fffbd6' },
+    { id: 'trevas', nome: 'Trevas', icone: '🌑', cor: '#8800ff' }
+];
+
 export function useAtaqueForm() {
     const ctx = useContext(AtaqueFormContext);
     if (!ctx) return null;
@@ -47,6 +58,9 @@ export function AtaqueFormProvider({ children }) {
     const [forcarCritNormal, setForcarCritNormal] = useState(false);
     const [forcarCritFatal, setForcarCritFatal] = useState(false);
     
+    // 🔥 NOVO: ESTADO DO ELEMENTO SELECIONADO
+    const [elementoAtivo, setElementoAtivo] = useState('fisico');
+
     const [ignorarTravaAcerto, setIgnorarTravaAcerto] = useState(false);
     const [skillConfigs, setSkillConfigs] = useState({});
     const [podeRolarDano, setPodeRolarDano] = useState(true);
@@ -340,6 +354,7 @@ export function AtaqueFormProvider({ children }) {
                 detalheEnergia: logEnergia ? `(${logEnergia})` : '',
                 armaStr: ' (Fórmula Livre)', 
                 detalheConta: detalheConta,
+                elemento: elementoAtivo, // 🔥 ADICIONA ELEMENTO
                 ...extraFeed
             };
 
@@ -351,7 +366,7 @@ export function AtaqueFormProvider({ children }) {
         } catch (e) {
             alert('Erro ao calcular a fórmula matemática. Verifique se os parênteses fecham corretamente.');
         }
-    }, [customFormula, customLetalidade, customEnergiaTipo, customEnergiaCusto, meuNome, dummieAlvo, alvoSelecionado, setAbaAtiva, updateFicha, minhaFicha]);
+    }, [customFormula, customLetalidade, customEnergiaTipo, customEnergiaCusto, meuNome, dummieAlvo, alvoSelecionado, setAbaAtiva, updateFicha, minhaFicha, elementoAtivo]);
 
     const rolarDano = useCallback(() => {
         salvarConfigAtaque();
@@ -487,6 +502,7 @@ export function AtaqueFormProvider({ children }) {
             rolagem: result.rolagem, rolagemMagica: result.rolagemMagica,
             atributosUsados: result.atributosUsados, detalheEnergia: result.detalheEnergia,
             armaStr: result.armaStr, detalheConta: result.detalheConta + textoAlvos,
+            elemento: elementoAtivo, // 🔥 ADICIONA ELEMENTO
             ...extraFeed
         };
 
@@ -496,7 +512,7 @@ export function AtaqueFormProvider({ children }) {
         updateFicha, armaStatusUsados, armaEnergiaCombustao, armaPercEnergia,
         critNormalMin, critNormalMax, critFatalMin, critFatalMax, skillConfigs,
         minhaFicha, forcarCritNormal, autoCritNormal, forcarCritFatal, autoCritFatal,
-        dummieAlvo, alvoSelecionado, meuNome, setAbaAtiva, poderesAtivos, magiasOfensivas, feedCombate, dummies, multiplicadorFuriaVisor
+        dummieAlvo, alvoSelecionado, meuNome, setAbaAtiva, poderesAtivos, magiasOfensivas, feedCombate, dummies, multiplicadorFuriaVisor, elementoAtivo
     ]);
 
     const value = useMemo(() => ({
@@ -507,6 +523,7 @@ export function AtaqueFormProvider({ children }) {
         ignorarTravaAcerto, setIgnorarTravaAcerto, skillConfigs, podeRolarDano, furiaAcalmadaMsg,
         multiplicadorFuriaClasse, multiplicadorFuriaVisor, percAtualLostFloor, percEfetivoParaDisplay,
         dummieAlvo, armaEquipada, poderesAtivos, magiasOfensivas, minhaFicha,
+        elementoAtivo, setElementoAtivo, // 🔥 PASSADO NO CONTEXTO
         customFormula, setCustomFormula, customLetalidade, setCustomLetalidade, 
         customEnergiaTipo, setCustomEnergiaTipo, customEnergiaCusto, setCustomEnergiaCusto,
         rolarDanoCustomizado, salvarFormula, deletarFormula,
@@ -515,7 +532,7 @@ export function AtaqueFormProvider({ children }) {
         armaStatusUsados, armaEnergiaCombustao, armaPercEnergia, critNormalMin, critNormalMax, critFatalMin, critFatalMax,
         autoCritNormal, autoCritFatal, forcarCritNormal, forcarCritFatal, ignorarTravaAcerto, skillConfigs, podeRolarDano, furiaAcalmadaMsg,
         multiplicadorFuriaClasse, multiplicadorFuriaVisor, percAtualLostFloor, percEfetivoParaDisplay,
-        dummieAlvo, armaEquipada, poderesAtivos, magiasOfensivas, minhaFicha,
+        dummieAlvo, armaEquipada, poderesAtivos, magiasOfensivas, minhaFicha, elementoAtivo,
         customFormula, customLetalidade, customEnergiaTipo, customEnergiaCusto, rolarDanoCustomizado, salvarFormula, deletarFormula,
         acalmarFuria, updateSkillConfig, toggleSkillStat, toggleArmaStat, salvarConfigAtaque, rolarDano,
     ]);

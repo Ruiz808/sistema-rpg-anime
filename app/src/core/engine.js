@@ -36,7 +36,9 @@ export function calcularCA(ficha, tipo) {
         somarBonus(resolved.efeitosPassivos);
     });
 
-    return Math.floor(base + bonus);
+    // 🔥 NOSSA INJEÇÃO ENTRA AQUI 🔥
+    let totalBruto = Math.floor(base + bonus);
+    return processarDefesaComCondicoes(ficha, tipo, totalBruto);
 }
 
 export function rolarDadosComVantagem(qD, fD, vantagens = 0, desvantagens = 0) {
@@ -635,4 +637,51 @@ function formatElemSpan(elemento) {
         .replace(/[úùûü]/g, 'u').replace(/ç/g, 'c')
         .replace(/[\s\/]+/g, '-');
     return `<span class="${cls}">${elemento.toUpperCase()}</span>`;
+}
+// ==========================================
+// 🔥 MOTOR DE CONDIÇÕES E AFINIDADES (INJEÇÃO) 🔥
+// ==========================================
+
+export function processarDefesaComCondicoes(ficha, tipoDefesa, caBaseCalculado) {
+    if (!ficha || !ficha.condicoes) return caBaseCalculado;
+    let caFinal = caBaseCalculado;
+    const tem = (id) => ficha.condicoes.some(c => c.id === id);
+    const stacks = (id) => { const c = ficha.condicoes.find(x => x.id === id); return c ? c.stacks : 0; };
+
+    if (tipoDefesa === 'evasiva') {
+        // Exaustão Nível 5, Imobilizado, Incapacitado ou Petrificado zeram a Evasiva
+        if (tem('imobilizado') || tem('incapacitado') || tem('petrificado') || stacks('exausto') >= 5) return 0;
+        // Exaustão Nível 2 ou Lento cortam Evasiva pela metade
+        if (tem('lento') || stacks('exausto') >= 2 || stacks('criogenia') >= 3) caFinal = Math.floor(caFinal / 2);
+    }
+    if (tipoDefesa === 'resistencia') {
+        // Vulnerável ou muito Queimado cortam a Resistência
+        if (tem('vulneravel') || stacks('queimado') >= 4) caFinal = Math.floor(caFinal / 2);
+    }
+    return caFinal;
+}
+
+export function calcularMultiplicadorElemental(ficha, elementoAtaque) {
+    if (!ficha || !ficha.afinidades || !elementoAtaque || elementoAtaque === 'fisico') return 1.0;
+    const af = ficha.afinidades;
+    if (af.imunidades && af.imunidades.includes(elementoAtaque)) return 0.0;
+    if (af.vulnerabilidades && af.vulnerabilidades.includes(elementoAtaque)) return 2.0;
+    if (af.resistencias && af.resistencias.includes(elementoAtaque)) return 0.5;
+    return 1.0;
+}
+
+export function calcularCortaCura(ficha) {
+    if (!ficha || !ficha.condicoes) return 0; 
+    let cortaCuraTotal = 0;
+    ficha.condicoes.forEach(c => {
+        // Sangramento, Queimadura e Criogenia aplicam 50% de corta cura POR STACK!
+        if (c.id === 'sangrando' || c.id === 'queimado' || c.id === 'criogenia') {
+            cortaCuraTotal += (c.stacks * 50); 
+        }
+        // Exaustão Nível 4 também corta cura
+        if (c.id === 'exausto' && c.stacks >= 4) {
+            cortaCuraTotal += 50;
+        }
+    });
+    return Math.min(cortaCuraTotal, 100); // O máximo que pode cortar é 100% da cura
 }

@@ -2,6 +2,7 @@ import React from 'react';
 import { FichaFormProvider } from './FichaFormContext';
 import { 
     FichaBioGroup, 
+    FichaCondicoesEElementais, // 🔥 IMPORTAÇÃO DO NOVO PAINEL 🔥
     FichaSeresSelados, 
     FichaEditorAtributos, 
     FichaReatorElemental, 
@@ -13,7 +14,7 @@ import {
     FichaMultiplicadoresDano 
 } from './FichaSubComponents';
 import TabelaPrestigio from './TabelaPrestigio';
-import AbaDominios from './AbaDominios'; // 🔥 IMPORTAÇÃO DA NOSSA NOVA ABA AQUI 🔥
+import AbaDominios from './AbaDominios';
 
 export default function FichaPanel({ className, children }) {
     const hasChildren = React.Children.count(children) > 0
@@ -23,6 +24,10 @@ export default function FichaPanel({ className, children }) {
                 {hasChildren ? children : (
                     <>
                         <FichaBioGroup />
+                        
+                        {/* 🔥 O PAINEL DE SANGRAMENTOS E RESISTÊNCIAS FICA AQUI, BEM VISÍVEL 🔥 */}
+                        <FichaCondicoesEElementais /> 
+                        
                         <FichaSeresSelados />
                         <FichaEditorAtributos />
                         <FichaReatorElemental />
@@ -33,7 +38,6 @@ export default function FichaPanel({ className, children }) {
                         <FichaForjaCalamidade />
                         <FichaMultiplicadoresDano />
                         
-                        {/* 🔥 A NOSSA NOVA ABA RENDERIZADA AQUI 🔥 */}
                         <AbaDominios /> 
 
                         <TabelaPrestigio />

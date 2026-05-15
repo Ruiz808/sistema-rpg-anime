@@ -14,7 +14,7 @@ const PROPRIEDADE_OPTIONS = [
     { val: 'furia_berserker', lbl: 'Fúria Berserker (x)' },
     { val: 'reducaocusto', lbl: 'Redução Custo (%)' },
     { val: 'regeneracao', lbl: 'Regeneração' },
-    { val: 'elemento_inato', lbl: 'Inato (Zera Custo Elementos)' } // 🔥 NOVO: PROPRIEDADE MÁGICA
+    { val: 'elemento_inato', lbl: 'Inato (Zera Custo Elementos)' } 
 ];
 
 function renderBuffHolograma(rawVal, buffVal, hasBuff, isMult = false) {
@@ -148,6 +148,120 @@ export function FichaBioGroup() {
     );
 }
 
+// 🔥 NOVO COMPONENTE: GESTOR DE ESTADOS NEGATIVOS E RESISTÊNCIAS 🔥
+export function FichaCondicoesEElementais() {
+    const ctx = useFichaForm();
+    if (!ctx) return null;
+
+    const { minhaFicha, modificarCondicao, toggleAfinidade } = ctx;
+
+    const COND_LIST = [
+        { id: 'sangrando', icone: '🩸', cor: '#ff003c' },
+        { id: 'queimado', icone: '🔥', cor: '#ff4400' },
+        { id: 'exausto', icone: '😮‍💨', cor: '#aaaaaa' },
+        { id: 'envenenado', icone: '🤢', cor: '#00ff00' },
+        { id: 'criogenia', icone: '❄️', cor: '#00ffff' },
+        { id: 'lento', icone: '🐢', cor: '#aadd00' },
+        { id: 'imobilizado', icone: '⛓️', cor: '#888888' },
+        { id: 'incapacitado', icone: '☠️', cor: '#444444' },
+        { id: 'vulneravel', icone: '🛡️', cor: '#ffaa00' },
+        { id: 'amedrontado', icone: '👻', cor: '#8a2be2' },
+        { id: 'enlouquecido', icone: '🌀', cor: '#ff00ff' },
+        { id: 'necrosado', icone: '💀', cor: '#222222' },
+        { id: 'cegosurdo', icone: '🙈', cor: '#dddddd' },
+        { id: 'petrificado', icone: '🗿', cor: '#555555' },
+        { id: 'charmado', icone: '💖', cor: '#ff66b2' },
+        { id: 'provocado', icone: '💢', cor: '#ff5500' }
+    ];
+
+    const ELEM_LIST = [
+        { id: 'fogo', icone: '🔥', cor: '#ff4444' },
+        { id: 'agua', icone: '💧', cor: '#0088ff' },
+        { id: 'raio', icone: '⚡', cor: '#ffcc00' },
+        { id: 'gelo', icone: '❄️', cor: '#00ffff' },
+        { id: 'luz', icone: '☀️', cor: '#fffbd6' },
+        { id: 'trevas', icone: '🌑', cor: '#8800ff' },
+        { id: 'fisico', icone: '⚔️', cor: '#cccccc' }
+    ];
+
+    const afinidades = minhaFicha.afinidades || { resistencias: [], vulnerabilidades: [], imunidades: [], absorcoes: [] };
+    const condicoesAtivas = minhaFicha.condicoes || [];
+
+    return (
+        <div className="def-box fade-in" style={{ marginTop: 15, borderLeft: '4px solid #ff4444' }}>
+            <h3 style={{ color: '#ff4444', margin: '0 0 15px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                🩸 ESTADOS & AFINIDADES ELEMENTAIS
+            </h3>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+                
+                {/* COLUNA 1: CONDIÇÕES (STACKS) */}
+                <div style={{ background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '8px', border: '1px solid #333' }}>
+                    <strong style={{ color: '#aaa', fontSize: '0.75em', textTransform: 'uppercase', display: 'block', marginBottom: '10px' }}>Debuffs Ativos (Stacks)</strong>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                        {COND_LIST.map(c => {
+                            const ativa = condicoesAtivas.find(ca => ca.id === c.id);
+                            return (
+                                <div key={c.id} title={c.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: ativa ? `${c.cor}15` : 'rgba(255,255,255,0.02)', border: `1px solid ${ativa ? c.cor : '#444'}`, padding: '5px', borderRadius: '6px', minWidth: '60px' }}>
+                                    <span style={{ fontSize: '1.2em' }}>{c.icone}</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '4px' }}>
+                                        <button onClick={() => modificarCondicao(c.id, -1)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '0 5px' }}>-</button>
+                                        <strong style={{ color: ativa ? c.cor : '#666', fontSize: '0.9em' }}>{ativa ? ativa.stacks : 0}</strong>
+                                        <button onClick={() => modificarCondicao(c.id, 1)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '0 5px' }}>+</button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* COLUNA 2: RESISTÊNCIAS ELEMENTAIS */}
+                <div style={{ background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '8px', border: '1px solid #333' }}>
+                    <strong style={{ color: '#aaa', fontSize: '0.75em', textTransform: 'uppercase', display: 'block', marginBottom: '10px' }}>Afinidades (Clique p/ Alternar)</strong>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                        {ELEM_LIST.map(e => {
+                            const isRes = afinidades.resistencias?.includes(e.id);
+                            const isVul = afinidades.vulnerabilidades?.includes(e.id);
+                            const isImu = afinidades.imunidades?.includes(e.id);
+                            
+                            let bColor = '#444'; let shadow = 'none';
+                            if (isRes) bColor = '#00ffcc';
+                            if (isVul) bColor = '#ffaa00';
+                            if (isImu) { bColor = '#ffffff'; shadow = '0 0 10px #fff'; }
+
+                            return (
+                                <button 
+                                    key={e.id}
+                                    onClick={() => {
+                                        if (!isRes && !isVul && !isImu) toggleAfinidade('resistencias', e.id);
+                                        else if (isRes) toggleAfinidade('vulnerabilidades', e.id);
+                                        else if (isVul) toggleAfinidade('imunidades', e.id);
+                                        else toggleAfinidade('imunidades', e.id); 
+                                    }}
+                                    title={`${e.id.toUpperCase()}: Neutro -> Resistente -> Vulnerável -> Imune`}
+                                    style={{ 
+                                        width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                                        background: 'rgba(0,0,0,0.5)', border: `2px solid ${bColor}`, borderRadius: '4px',
+                                        cursor: 'pointer', fontSize: '1.2em', boxShadow: shadow
+                                    }}
+                                >
+                                    {e.icone}
+                                </button>
+                            );
+                        })}
+                    </div>
+                    <div style={{ marginTop: '10px', fontSize: '0.7em', display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                        <span style={{ color: '#00ffcc' }}>● Resistente</span>
+                        <span style={{ color: '#ffaa00' }}>● Vulnerável</span>
+                        <span style={{ color: '#ffffff' }}>● Imune</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    );
+}
+
 export function FichaSeresSelados() {
     const ctx = useFichaForm();
     if (!ctx) return null;
@@ -194,7 +308,6 @@ export function FichaSeresSelados() {
                                 </div>
                             )}
 
-                            {/* 🔥 EDITOR DE FORMAS DESTACADO 🔥 */}
                             <div style={{ marginTop: '15px', paddingTop: '10px', borderTop: '1px solid #444' }}>
                                 <h5 style={{ color: '#0ff', margin: '0 0 10px 0', textTransform: 'uppercase', letterSpacing: '1px' }}>🎭 Formas / Modos de Sincronização</h5>
                                 <FormasEditor
@@ -220,7 +333,6 @@ export function FichaSeresSelados() {
                         {CLASSES_OPTIONS.filter(o => o.value !== '').map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
                     
-                    {/* 🔥 O CHECKBOX QUE RESOLVE O PROBLEMA DA SYLPHIE 🔥 */}
                     <label style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#00ffcc', fontSize: '0.85em', cursor: 'pointer', flex: '1 1 100%' }}>
                         <input type="checkbox" checked={serZeraCusto} onChange={e => setSerZeraCusto(e.target.checked)} style={{ transform: 'scale(1.2)' }} />
                         Zera custo do Elemento Base passivamente?
