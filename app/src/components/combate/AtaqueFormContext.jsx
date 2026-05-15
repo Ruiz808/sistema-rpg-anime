@@ -16,17 +16,6 @@ export const ENERGIA_LIST = [
     { value: 'mana', label: 'Mana' }, { value: 'aura', label: 'Aura' }, { value: 'chakra', label: 'Chakra' }, { value: 'corpo', label: 'Corpo' },
 ];
 
-// 🔥 LISTA DE ELEMENTOS PARA O ATAQUE
-export const ELEMENTOS_ATAQUE = [
-    { id: 'fisico', nome: 'Cinético', icone: '⚔️', cor: '#ccc' },
-    { id: 'fogo', nome: 'Fogo', icone: '🔥', cor: '#ff4444' },
-    { id: 'agua', nome: 'Água', icone: '💧', cor: '#0088ff' },
-    { id: 'raio', nome: 'Raio', icone: '⚡', cor: '#ffcc00' },
-    { id: 'gelo', nome: 'Gelo', icone: '❄️', cor: '#00ffff' },
-    { id: 'luz', nome: 'Luz', icone: '☀️', cor: '#fffbd6' },
-    { id: 'trevas', nome: 'Trevas', icone: '🌑', cor: '#8800ff' }
-];
-
 export function useAtaqueForm() {
     const ctx = useContext(AtaqueFormContext);
     if (!ctx) return null;
@@ -36,6 +25,7 @@ export function useAtaqueForm() {
 export function AtaqueFormProvider({ children }) {
     const minhaFicha = useStore(s => s.minhaFicha);
     const meuNome = useStore(s => s.meuNome);
+    const personagens = useStore(s => s.personagens); // 🔥 NOVO: Para leitura global
     const updateFicha = useStore(s => s.updateFicha);
     const setAbaAtiva = useStore(s => s.setAbaAtiva);
     const feedCombate = useStore(s => s.feedCombate);
@@ -58,7 +48,6 @@ export function AtaqueFormProvider({ children }) {
     const [forcarCritNormal, setForcarCritNormal] = useState(false);
     const [forcarCritFatal, setForcarCritFatal] = useState(false);
     
-    // 🔥 NOVO: ESTADO DO ELEMENTO SELECIONADO
     const [elementoAtivo, setElementoAtivo] = useState('fisico');
 
     const [ignorarTravaAcerto, setIgnorarTravaAcerto] = useState(false);
@@ -66,11 +55,44 @@ export function AtaqueFormProvider({ children }) {
     const [podeRolarDano, setPodeRolarDano] = useState(true);
     const [furiaAcalmadaMsg, setFuriaAcalmadaMsg] = useState(false);
 
-    // 🔥 NOVOS ESTADOS: FÓRMULA MANUAL, LETALIDADE E DÉBITO EM % 🔥
     const [customFormula, setCustomFormula] = useState('');
     const [customLetalidade, setCustomLetalidade] = useState(0);
     const [customEnergiaTipo, setCustomEnergiaTipo] = useState('nenhum');
     const [customEnergiaCusto, setCustomEnergiaCusto] = useState(0);
+
+    // 🔥 LEITURA DINÂMICA DOS ELEMENTOS DO COMPÊNDIO 🔥
+    const overridesCompendio = useMemo(() => {
+        if (!minhaFicha) return {};
+        if (minhaFicha.compendioOverrides) return minhaFicha.compendioOverrides;
+        if (personagens) {
+            const chaves = Object.keys(personagens);
+            for (let k of chaves) {
+                if (personagens[k]?.compendioOverrides) return personagens[k].compendioOverrides;
+            }
+        }
+        return {};
+    }, [minhaFicha, personagens]);
+
+    const elementosDinamicos = useMemo(() => {
+        const baseArray = [
+            { id: 'fisico', nome: 'Cinético', icone: '⚔️', cor: '#cccccc' },
+            { id: 'fogo', nome: 'Fogo', icone: '🔥', cor: '#ff4444' },
+            { id: 'agua', nome: 'Água', icone: '💧', cor: '#0088ff' },
+            { id: 'raio', nome: 'Raio', icone: '⚡', cor: '#ffcc00' },
+            { id: 'gelo', nome: 'Gelo', icone: '❄️', cor: '#00ffff' },
+            { id: 'luz', nome: 'Luz', icone: '☀️', cor: '#fffbd6' },
+            { id: 'trevas', nome: 'Trevas', icone: '🌑', cor: '#8800ff' }
+        ];
+        const overridesObj = overridesCompendio['elementos'] || {};
+        const map = {};
+        baseArray.forEach(item => map[item.id] = { ...item });
+        Object.keys(overridesObj).forEach(k => {
+            if (overridesObj[k].deletado) delete map[k];
+            else if (map[k]) map[k] = { ...map[k], ...overridesObj[k] };
+            else map[k] = overridesObj[k];
+        });
+        return Object.values(map);
+    }, [overridesCompendio]);
 
     const multiplicadorFuriaClasse = useMemo(() => {
         let maxFuria = 0;
@@ -223,7 +245,6 @@ export function AtaqueFormProvider({ children }) {
         salvarFichaSilencioso();
     }, [updateFicha, armaStatusUsados, armaEnergiaCombustao, armaPercEnergia, critNormalMin, critNormalMax, critFatalMin, critFatalMax, skillConfigs]);
 
-    // 🔥 SALVAR FÓRMULA COM TIPO E CUSTO PERCENTUAL DE ENERGIA 🔥
     const salvarFormula = useCallback(() => {
         const nomeForm = window.prompt("Como deseja nomear esta fórmula de ataque?");
         if (!nomeForm || !nomeForm.trim()) return;
@@ -303,11 +324,9 @@ export function AtaqueFormProvider({ children }) {
             const letalidadeCalculada = Math.max(0, digitosGerais - 8) + letalExtra;
             const danoReduzido = letalidadeCalculada > 0 ? Math.floor(resultadoFinal / Math.pow(10, letalidadeCalculada)) : Math.floor(resultadoFinal);
 
-            // 🔥 DÉBITO AUTOMÁTICO DE ENERGIA DA GAVETA (EM PERCENTUAL %) 🔥
             const percNum = parseFloat(custoAtiva) || 0;
             let logEnergia = '';
             if (tipoAtiva && tipoAtiva !== 'nenhum' && percNum > 0) {
-                // Descobre o máximo da energia usando a função nativa do sistema
                 const maxEnergia = getMaximo(minhaFicha, tipoAtiva) || 0;
                 const custoCalculado = Math.floor((maxEnergia * percNum) / 100);
 
@@ -344,25 +363,17 @@ export function AtaqueFormProvider({ children }) {
             }
 
             const feedData = {
-                tipo: 'dano', 
-                nome: meuNome, 
-                dano: Math.floor(danoReduzido), 
-                letalidade: letalidadeCalculada, 
-                rolagem: `${rollsLog.length > 0 ? rollsLog.length + ' rolagem(ns)' : 'Cálculo Direto'}`, 
-                rolagemMagica: "",
-                atributosUsados: 'Manual', 
-                detalheEnergia: logEnergia ? `(${logEnergia})` : '',
-                armaStr: ' (Fórmula Livre)', 
-                detalheConta: detalheConta,
-                elemento: elementoAtivo, // 🔥 ADICIONA ELEMENTO
+                tipo: 'dano', nome: meuNome, dano: Math.floor(danoReduzido), letalidade: letalidadeCalculada, 
+                rolagem: `${rollsLog.length > 0 ? rollsLog.length + ' rolagem(ns)' : 'Cálculo Direto'}`, rolagemMagica: "",
+                atributosUsados: 'Manual', detalheEnergia: logEnergia ? `(${logEnergia})` : '',
+                armaStr: ' (Fórmula Livre)', detalheConta: detalheConta,
+                elemento: elementoAtivo,
                 ...extraFeed
             };
 
             enviarParaFeed(feedData);
             setAbaAtiva('aba-log');
-            if (formulaOverride === undefined) {
-                setCustomFormula(''); 
-            }
+            if (formulaOverride === undefined) { setCustomFormula(''); }
         } catch (e) {
             alert('Erro ao calcular a fórmula matemática. Verifique se os parênteses fecham corretamente.');
         }
@@ -401,8 +412,7 @@ export function AtaqueFormProvider({ children }) {
                 id: m.id, nome: m.nome, dadosQtd: m.dadosExtraQtd || 0, dadosFaces: m.dadosExtraFaces || 20, custoPercentual: m.custoValor || 0,
                 armaVinculada: '', statusUsados: skillConfigs[m.id]?.statusUsados || m.statusUsados || ['inteligencia'],
                 energiaCombustao: skillConfigs[m.id]?.energiaCombustao || m.energiaCombustao || 'mana', efeitos: efs,
-                vertente: isInato ? 'elemental' : 'magia', 
-                elemento: m.elemento || 'Neutro'
+                vertente: isInato ? 'elemental' : 'magia', elemento: m.elemento || 'Neutro'
             };
         });
 
@@ -453,7 +463,6 @@ export function AtaqueFormProvider({ children }) {
                 if (zRef) {
                     const buffsAtuais = getBuffs(minhaFicha);
                     const furiaM = multiplicadorFuriaVisor > 0 ? multiplicadorFuriaVisor : 1;
-                    
                     const multOrig = (buffsAtuais?.mbase || 1) * (buffsAtuais?.mgeral || 1) * (buffsAtuais?.mformas || 1) * (buffsAtuais?.mabs || 1) * furiaM;
 
                     let keysUsadas = [];
@@ -502,7 +511,7 @@ export function AtaqueFormProvider({ children }) {
             rolagem: result.rolagem, rolagemMagica: result.rolagemMagica,
             atributosUsados: result.atributosUsados, detalheEnergia: result.detalheEnergia,
             armaStr: result.armaStr, detalheConta: result.detalheConta + textoAlvos,
-            elemento: elementoAtivo, // 🔥 ADICIONA ELEMENTO
+            elemento: elementoAtivo, 
             ...extraFeed
         };
 
@@ -523,7 +532,7 @@ export function AtaqueFormProvider({ children }) {
         ignorarTravaAcerto, setIgnorarTravaAcerto, skillConfigs, podeRolarDano, furiaAcalmadaMsg,
         multiplicadorFuriaClasse, multiplicadorFuriaVisor, percAtualLostFloor, percEfetivoParaDisplay,
         dummieAlvo, armaEquipada, poderesAtivos, magiasOfensivas, minhaFicha,
-        elementoAtivo, setElementoAtivo, // 🔥 PASSADO NO CONTEXTO
+        elementoAtivo, setElementoAtivo, elementosDinamicos, // 🔥 DINÂMICA
         customFormula, setCustomFormula, customLetalidade, setCustomLetalidade, 
         customEnergiaTipo, setCustomEnergiaTipo, customEnergiaCusto, setCustomEnergiaCusto,
         rolarDanoCustomizado, salvarFormula, deletarFormula,
@@ -532,7 +541,7 @@ export function AtaqueFormProvider({ children }) {
         armaStatusUsados, armaEnergiaCombustao, armaPercEnergia, critNormalMin, critNormalMax, critFatalMin, critFatalMax,
         autoCritNormal, autoCritFatal, forcarCritNormal, forcarCritFatal, ignorarTravaAcerto, skillConfigs, podeRolarDano, furiaAcalmadaMsg,
         multiplicadorFuriaClasse, multiplicadorFuriaVisor, percAtualLostFloor, percEfetivoParaDisplay,
-        dummieAlvo, armaEquipada, poderesAtivos, magiasOfensivas, minhaFicha, elementoAtivo,
+        dummieAlvo, armaEquipada, poderesAtivos, magiasOfensivas, minhaFicha, elementoAtivo, elementosDinamicos,
         customFormula, customLetalidade, customEnergiaTipo, customEnergiaCusto, rolarDanoCustomizado, salvarFormula, deletarFormula,
         acalmarFuria, updateSkillConfig, toggleSkillStat, toggleArmaStat, salvarConfigAtaque, rolarDano,
     ]);

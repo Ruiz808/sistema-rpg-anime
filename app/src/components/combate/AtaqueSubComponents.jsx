@@ -1,30 +1,30 @@
 import React from 'react';
-import { useAtaqueForm, STATS_LIST, ENERGIA_LIST, ELEMENTOS_ATAQUE } from './AtaqueFormContext';
+import { useAtaqueForm, STATS_LIST, ENERGIA_LIST } from './AtaqueFormContext';
 
 const PROVIDER_FALLBACK = (
     <div style={{ color: '#888', padding: 10 }}>Ataque provider nao encontrado</div>
 );
 
-// 🔥 NOVO: SELETOR DE TIPO DE DANO ELEMENTAR
+// 🔥 NOVO: SELETOR DE TIPO DE DANO ELEMENTAR (AGORA DINÂMICO) 🔥
 export function AtaqueElementoSelector() {
     const ctx = useAtaqueForm();
     if (!ctx) return null;
-    const { elementoAtivo, setElementoAtivo } = ctx;
+    const { elementoAtivo, setElementoAtivo, elementosDinamicos } = ctx;
 
     return (
         <div className="def-box fade-in" style={{ marginBottom: 15, borderLeft: '4px solid #00ffcc' }}>
             <h4 style={{ color: '#00ffcc', margin: '0 0 10px 0', fontSize: '0.85em', textTransform: 'uppercase' }}>⚡ Infusão Elemental do Ataque</h4>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-                {ELEMENTOS_ATAQUE.map(el => (
+                {elementosDinamicos.map(el => (
                     <button 
                         key={el.id}
                         onClick={() => setElementoAtivo(el.id)}
                         className={`btn-neon ${elementoAtivo === el.id ? 'btn-green' : ''}`}
                         style={{ 
                             flex: '1 1 80px', padding: '6px', fontSize: '0.75em', margin: 0,
-                            borderColor: elementoAtivo === el.id ? el.cor : '#444',
+                            borderColor: elementoAtivo === el.id ? (el.cor || '#444') : '#444',
                             color: elementoAtivo === el.id ? '#fff' : '#888',
-                            background: elementoAtivo === el.id ? `${el.cor}30` : 'transparent'
+                            background: elementoAtivo === el.id ? `${el.cor || '#00ffcc'}30` : 'transparent'
                         }}
                     >
                         {el.icone} {el.nome}
@@ -281,7 +281,6 @@ export function AtaqueDanoCustomizado() {
                         />
                     </div>
 
-                    {/* 🔥 DÉBITO DE ENERGIA MANUAL EM PERCENTUAL (%) 🔥 */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#111', padding: '5px', borderRadius: 5, border: '1px solid #00ffcc' }}>
                         <span style={{ color: '#00ffcc', fontSize: '0.8em', fontWeight: 'bold' }}>⚡ Débito:</span>
                         <select 
@@ -328,7 +327,6 @@ export function AtaqueDanoCustomizado() {
                 </div>
             </div>
 
-            {/* 🔥 O BANCO DE MEMÓRIA (BOTÕES RÁPIDOS) 🔥 */}
             {formulasSalvas.length > 0 && (
                 <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px dashed rgba(255,0,255,0.3)', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                     {formulasSalvas.map(f => (

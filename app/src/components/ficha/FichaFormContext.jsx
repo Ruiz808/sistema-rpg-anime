@@ -8,46 +8,41 @@ export const STATS = ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energia
 export const ENERGIAS = ['mana', 'aura', 'chakra', 'corpo', 'pontosVitais', 'pontosMortais'];
 
 export const ATRIBUTO_OPTIONS = [
-    { value: 'forca', label: 'Forca' },
-    { value: 'destreza', label: 'Destreza' },
-    { value: 'inteligencia', label: 'Inteligencia' },
-    { value: 'sabedoria', label: 'Sabedoria' },
-    { value: 'energiaEsp', label: 'Energia Espiritual' },
-    { value: 'carisma', label: 'Carisma' },
-    { value: 'stamina', label: 'Stamina' },
-    { value: 'constituicao', label: 'Constituicao' },
-    { value: 'vida', label: 'Vida' },
-    { value: 'mana', label: 'Mana' },
-    { value: 'aura', label: 'Aura' },
-    { value: 'chakra', label: 'Chakra' },
-    { value: 'corpo', label: 'Corpo' },
-    { value: 'pontosVitais', label: 'Pontos Vitais' },
-    { value: 'pontosMortais', label: 'Pontos Mortais' },
-    { value: 'todos_status', label: 'TODOS OS STATUS' },
-    { value: 'todas_energias', label: 'TODAS AS ENERGIAS' },
-    { value: 'geral', label: 'GERAL (Todos)' },
-    { value: 'dano', label: 'Dano (Apenas Mult)' },
-    { value: 'especial', label: 'Especial / Mecânica' }
+    { value: 'forca', label: 'Forca' }, { value: 'destreza', label: 'Destreza' }, { value: 'inteligencia', label: 'Inteligencia' },
+    { value: 'sabedoria', label: 'Sabedoria' }, { value: 'energiaEsp', label: 'Energia Espiritual' }, { value: 'carisma', label: 'Carisma' },
+    { value: 'stamina', label: 'Stamina' }, { value: 'constituicao', label: 'Constituicao' }, { value: 'vida', label: 'Vida' },
+    { value: 'mana', label: 'Mana' }, { value: 'aura', label: 'Aura' }, { value: 'chakra', label: 'Chakra' }, { value: 'corpo', label: 'Corpo' },
+    { value: 'pontosVitais', label: 'Pontos Vitais' }, { value: 'pontosMortais', label: 'Pontos Mortais' },
+    { value: 'todos_status', label: 'TODOS OS STATUS' }, { value: 'todas_energias', label: 'TODAS AS ENERGIAS' },
+    { value: 'geral', label: 'GERAL (Todos)' }, { value: 'dano', label: 'Dano (Apenas Mult)' }, { value: 'especial', label: 'Especial / Mecânica' }
 ];
 
 export const CLASSES_OPTIONS = [
-    { value: '', label: 'Nenhuma / Mundano' },
-    { value: 'saber', label: '⚔️ Saber' },
-    { value: 'archer', label: '🏹 Archer' },
-    { value: 'lancer', label: '🗡️ Lancer' },
-    { value: 'rider', label: '🏇 Rider' },
-    { value: 'caster', label: '🧙‍♂️ Caster' },
-    { value: 'assassin', label: '🔪 Assassin' },
-    { value: 'berserker', label: '狂 Berserker' },
-    { value: 'shielder', label: '🛡️ Shielder' },
-    { value: 'ruler', label: '⚖️ Ruler' },
-    { value: 'avenger', label: '⛓️ Avenger' },
-    { value: 'alterego', label: '🎭 Alter Ego' },
-    { value: 'foreigner', label: '🐙 Foreigner' },
-    { value: 'mooncancer', label: '🌕 Moon Cancer' },
-    { value: 'pretender', label: '🤥 Pretender' },
-    { value: 'beast', label: '👹 Beast' },
-    { value: 'savior', label: '☀️ Savior' }
+    { value: '', label: 'Nenhuma / Mundano' }, { value: 'saber', label: '⚔️ Saber' }, { value: 'archer', label: '🏹 Archer' },
+    { value: 'lancer', label: '🗡️ Lancer' }, { value: 'rider', label: '🏇 Rider' }, { value: 'caster', label: '🧙‍♂️ Caster' },
+    { value: 'assassin', label: '🔪 Assassin' }, { value: 'berserker', label: '狂 Berserker' }, { value: 'shielder', label: '🛡️ Shielder' },
+    { value: 'ruler', label: '⚖️ Ruler' }, { value: 'avenger', label: '⛓️ Avenger' }, { value: 'alterego', label: '🎭 Alter Ego' },
+    { value: 'foreigner', label: '🐙 Foreigner' }, { value: 'mooncancer', label: '🌕 Moon Cancer' }, { value: 'pretender', label: '🤥 Pretender' },
+    { value: 'beast', label: '👹 Beast' }, { value: 'savior', label: '☀️ Savior' }
+];
+
+// 🔥 MATRIZES BASE PARA GARANTIR OS ÍCONES E CORES (SERÃO MESCLADAS COM AS SUAS CRIAÇÕES) 🔥
+export const CONDICOES_BASE = [
+    { id: 'sangrando', icone: '🩸', cor: '#ff003c' }, { id: 'queimado', icone: '🔥', cor: '#ff4400' },
+    { id: 'exausto', icone: '😮‍💨', cor: '#aaaaaa' }, { id: 'envenenado', icone: '🤢', cor: '#00ff00' },
+    { id: 'criogenia', icone: '❄️', cor: '#00ffff' }, { id: 'lento', icone: '🐢', cor: '#aadd00' },
+    { id: 'imobilizado', icone: '⛓️', cor: '#888888' }, { id: 'incapacitado', icone: '☠️', cor: '#444444' },
+    { id: 'vulneravel', icone: '🛡️', cor: '#ffaa00' }, { id: 'amedrontado', icone: '👻', cor: '#8a2be2' },
+    { id: 'enlouquecido', icone: '🌀', cor: '#ff00ff' }, { id: 'necrosado', icone: '💀', cor: '#222222' },
+    { id: 'cegosurdo', icone: '🙈', cor: '#dddddd' }, { id: 'petrificado', icone: '🗿', cor: '#555555' },
+    { id: 'charmado', icone: '💖', cor: '#ff66b2' }, { id: 'provocado', icone: '💢', cor: '#ff5500' }
+];
+
+export const ELEMENTOS_BASE = [
+    { id: 'fisico', nome: 'Cinético', icone: '⚔️', cor: '#cccccc' }, { id: 'fogo', nome: 'Fogo', icone: '🔥', cor: '#ff4444' },
+    { id: 'agua', nome: 'Água', icone: '💧', cor: '#0088ff' }, { id: 'raio', nome: 'Raio', icone: '⚡', cor: '#ffcc00' },
+    { id: 'gelo', nome: 'Gelo', icone: '❄️', cor: '#00ffff' }, { id: 'luz', nome: 'Luz', icone: '☀️', cor: '#fffbd6' },
+    { id: 'trevas', nome: 'Trevas', icone: '🌑', cor: '#8800ff' }
 ];
 
 const FichaFormContext = createContext(null);
@@ -102,7 +97,7 @@ export function FichaFormProvider({ children }) {
     const [serNovoPropPassivo, setSerNovoPropPassivo] = useState('base');
     const [serNovoValPassivo, setSerNovoValPassivo] = useState('');
 
-    // 🔥 NOVAS FUNÇÕES: GESTÃO DE CONDIÇÕES E AFINIDADES 🔥
+    // 🔥 GESTÃO DE CONDIÇÕES E AFINIDADES 🔥
     const modificarCondicao = useCallback((condId, delta) => {
         updateFicha(f => {
             if (!f.condicoes) f.condicoes = [];
@@ -134,6 +129,7 @@ export function FichaFormProvider({ children }) {
         salvarFichaSilencioso();
     }, [updateFicha]);
 
+    // 🔥 LEITURA DINÂMICA DO COMPÊNDIO 🔥
     const overridesCompendio = useMemo(() => {
         if (!minhaFicha) return {};
         if (minhaFicha.compendioOverrides) return minhaFicha.compendioOverrides;
@@ -145,6 +141,21 @@ export function FichaFormProvider({ children }) {
         }
         return {};
     }, [minhaFicha, personagens]);
+
+    const mesclarComOverrides = useCallback((baseArray, tipo) => {
+        const overridesObj = overridesCompendio[tipo] || {};
+        const map = {};
+        baseArray.forEach(item => map[item.id] = { ...item });
+        Object.keys(overridesObj).forEach(k => {
+            if (overridesObj[k].deletado) delete map[k];
+            else if (map[k]) map[k] = { ...map[k], ...overridesObj[k] };
+            else map[k] = overridesObj[k]; // Novos itens criados no Compêndio
+        });
+        return Object.values(map);
+    }, [overridesCompendio]);
+
+    const condicoesDinamicas = useMemo(() => mesclarComOverrides(CONDICOES_BASE, 'condicoes'), [mesclarComOverrides]);
+    const elementosDinamicos = useMemo(() => mesclarComOverrides(ELEMENTOS_BASE, 'elementos'), [mesclarComOverrides]);
 
     const grands = overridesCompendio.grands || {};
     const isGrand = classe && grands[`${classe}_${mesa}`] === meuNome;
@@ -587,7 +598,7 @@ export function FichaFormProvider({ children }) {
         addSerEfeito, removeSerEfeito, addSerEfeitoPassivo, removeSerEfeitoPassivo,
         addSerSelado, editarSerSelado, removeSerSelado, toggleSerSelado, cancelarEdicaoSer,
         salvarFormaSer, deletarFormaSer, ativarFormaSer,
-        modificarCondicao, toggleAfinidade // 🔥 FUNÇÕES PASSADAS NO CONTEXTO AQUI
+        modificarCondicao, toggleAfinidade, condicoesDinamicas, elementosDinamicos // 🔥 EXPOSTO AQUI
     }), [
         minhaFicha, updateFicha, personagens, meuNome, mesa, raca, classe, subClasse, alterEgoSlot1, alterEgoSerId, classesMemorizadas,
         idade, fisico, sangue, alinhamento, afiliacao, dinheiro, salvandoBio, painelForcado, overridesCompendio, grands, isGrand, grandIcone,
@@ -604,7 +615,7 @@ export function FichaFormProvider({ children }) {
         serNovoNomeEfeitoPassivo, serNovoAtrPassivo, serNovoPropPassivo, serNovoValPassivo,
         addSerEfeito, removeSerEfeito, addSerEfeitoPassivo, removeSerEfeitoPassivo,
         addSerSelado, editarSerSelado, removeSerSelado, toggleSerSelado, cancelarEdicaoSer,
-        salvarFormaSer, deletarFormaSer, ativarFormaSer, modificarCondicao, toggleAfinidade
+        salvarFormaSer, deletarFormaSer, ativarFormaSer, modificarCondicao, toggleAfinidade, condicoesDinamicas, elementosDinamicos
     ]);
 
     return (

@@ -148,41 +148,12 @@ export function FichaBioGroup() {
     );
 }
 
-// 🔥 NOVO COMPONENTE: GESTOR DE ESTADOS NEGATIVOS E RESISTÊNCIAS 🔥
+// 🔥 NOVO COMPONENTE: GESTOR DE ESTADOS NEGATIVOS E RESISTÊNCIAS (AGORA LÊ DO COMPÊNDIO!) 🔥
 export function FichaCondicoesEElementais() {
     const ctx = useFichaForm();
     if (!ctx) return null;
 
-    const { minhaFicha, modificarCondicao, toggleAfinidade } = ctx;
-
-    const COND_LIST = [
-        { id: 'sangrando', icone: '🩸', cor: '#ff003c' },
-        { id: 'queimado', icone: '🔥', cor: '#ff4400' },
-        { id: 'exausto', icone: '😮‍💨', cor: '#aaaaaa' },
-        { id: 'envenenado', icone: '🤢', cor: '#00ff00' },
-        { id: 'criogenia', icone: '❄️', cor: '#00ffff' },
-        { id: 'lento', icone: '🐢', cor: '#aadd00' },
-        { id: 'imobilizado', icone: '⛓️', cor: '#888888' },
-        { id: 'incapacitado', icone: '☠️', cor: '#444444' },
-        { id: 'vulneravel', icone: '🛡️', cor: '#ffaa00' },
-        { id: 'amedrontado', icone: '👻', cor: '#8a2be2' },
-        { id: 'enlouquecido', icone: '🌀', cor: '#ff00ff' },
-        { id: 'necrosado', icone: '💀', cor: '#222222' },
-        { id: 'cegosurdo', icone: '🙈', cor: '#dddddd' },
-        { id: 'petrificado', icone: '🗿', cor: '#555555' },
-        { id: 'charmado', icone: '💖', cor: '#ff66b2' },
-        { id: 'provocado', icone: '💢', cor: '#ff5500' }
-    ];
-
-    const ELEM_LIST = [
-        { id: 'fogo', icone: '🔥', cor: '#ff4444' },
-        { id: 'agua', icone: '💧', cor: '#0088ff' },
-        { id: 'raio', icone: '⚡', cor: '#ffcc00' },
-        { id: 'gelo', icone: '❄️', cor: '#00ffff' },
-        { id: 'luz', icone: '☀️', cor: '#fffbd6' },
-        { id: 'trevas', icone: '🌑', cor: '#8800ff' },
-        { id: 'fisico', icone: '⚔️', cor: '#cccccc' }
-    ];
+    const { minhaFicha, modificarCondicao, toggleAfinidade, condicoesDinamicas, elementosDinamicos } = ctx;
 
     const afinidades = minhaFicha.afinidades || { resistencias: [], vulnerabilidades: [], imunidades: [], absorcoes: [] };
     const condicoesAtivas = minhaFicha.condicoes || [];
@@ -195,18 +166,19 @@ export function FichaCondicoesEElementais() {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
                 
-                {/* COLUNA 1: CONDIÇÕES (STACKS) */}
+                {/* COLUNA 1: CONDIÇÕES DINÂMICAS */}
                 <div style={{ background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '8px', border: '1px solid #333' }}>
                     <strong style={{ color: '#aaa', fontSize: '0.75em', textTransform: 'uppercase', display: 'block', marginBottom: '10px' }}>Debuffs Ativos (Stacks)</strong>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                        {COND_LIST.map(c => {
+                        {condicoesDinamicas.map(c => {
                             const ativa = condicoesAtivas.find(ca => ca.id === c.id);
+                            const corDefault = c.cor || '#ff4444';
                             return (
-                                <div key={c.id} title={c.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: ativa ? `${c.cor}15` : 'rgba(255,255,255,0.02)', border: `1px solid ${ativa ? c.cor : '#444'}`, padding: '5px', borderRadius: '6px', minWidth: '60px' }}>
+                                <div key={c.id} title={c.nome} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: ativa ? `${corDefault}15` : 'rgba(255,255,255,0.02)', border: `1px solid ${ativa ? corDefault : '#444'}`, padding: '5px', borderRadius: '6px', minWidth: '60px' }}>
                                     <span style={{ fontSize: '1.2em' }}>{c.icone}</span>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '4px' }}>
                                         <button onClick={() => modificarCondicao(c.id, -1)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '0 5px' }}>-</button>
-                                        <strong style={{ color: ativa ? c.cor : '#666', fontSize: '0.9em' }}>{ativa ? ativa.stacks : 0}</strong>
+                                        <strong style={{ color: ativa ? corDefault : '#666', fontSize: '0.9em' }}>{ativa ? ativa.stacks : 0}</strong>
                                         <button onClick={() => modificarCondicao(c.id, 1)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '0 5px' }}>+</button>
                                     </div>
                                 </div>
@@ -215,11 +187,11 @@ export function FichaCondicoesEElementais() {
                     </div>
                 </div>
 
-                {/* COLUNA 2: RESISTÊNCIAS ELEMENTAIS */}
+                {/* COLUNA 2: RESISTÊNCIAS DINÂMICAS */}
                 <div style={{ background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '8px', border: '1px solid #333' }}>
                     <strong style={{ color: '#aaa', fontSize: '0.75em', textTransform: 'uppercase', display: 'block', marginBottom: '10px' }}>Afinidades (Clique p/ Alternar)</strong>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-                        {ELEM_LIST.map(e => {
+                        {elementosDinamicos.map(e => {
                             const isRes = afinidades.resistencias?.includes(e.id);
                             const isVul = afinidades.vulnerabilidades?.includes(e.id);
                             const isImu = afinidades.imunidades?.includes(e.id);
@@ -238,7 +210,7 @@ export function FichaCondicoesEElementais() {
                                         else if (isVul) toggleAfinidade('imunidades', e.id);
                                         else toggleAfinidade('imunidades', e.id); 
                                     }}
-                                    title={`${e.id.toUpperCase()}: Neutro -> Resistente -> Vulnerável -> Imune`}
+                                    title={`${e.nome.toUpperCase()}: Neutro -> Resistente -> Vulnerável -> Imune`}
                                     style={{ 
                                         width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', 
                                         background: 'rgba(0,0,0,0.5)', border: `2px solid ${bColor}`, borderRadius: '4px',

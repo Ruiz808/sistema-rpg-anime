@@ -16,7 +16,7 @@ export function CompendioSidebar() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '20px' }}>
                 <button className={`btn-neon ${secaoAtiva === 'grands' ? 'btn-gold' : ''}`} onClick={() => setSecaoAtiva('grands')} style={{ textAlign: 'left', paddingLeft: '15px', fontWeight: 'bold' }}>🏛️ Trono dos Heróis</button>
                 <button className={`btn-neon ${secaoAtiva === 'classes' ? 'btn-blue' : ''}`} onClick={() => setSecaoAtiva('classes')} style={{ textAlign: 'left', paddingLeft: '15px', fontWeight: 'bold' }}>🛡️ Classes & Origens</button>
-                <button className={`btn-neon ${secaoAtiva === 'condicoes' ? 'btn-red' : ''}`} onClick={() => setSecaoAtiva('condicoes')} style={{ textAlign: 'left', paddingLeft: '15px', fontWeight: 'bold' }}>🩸 Condições</button>
+                <button className={`btn-neon ${secaoAtiva === 'condicoes' ? 'btn-red' : ''}`} onClick={() => setSecaoAtiva('condicoes')} style={{ textAlign: 'left', paddingLeft: '15px', fontWeight: 'bold' }}>🩸 Condições (Debuffs)</button>
                 <button className={`btn-neon ${secaoAtiva === 'elementos' ? 'btn-green' : ''}`} onClick={() => setSecaoAtiva('elementos')} style={{ textAlign: 'left', paddingLeft: '15px', fontWeight: 'bold' }}>🔥 Tipos de Dano</button>
                 <button className={`btn-neon ${secaoAtiva === 'regras' ? '' : ''}`} onClick={() => setSecaoAtiva('regras')} style={{ textAlign: 'left', paddingLeft: '15px', fontWeight: 'bold', borderColor: '#ff00ff', color: secaoAtiva === 'regras' ? '#fff' : '#ff00ff', background: secaoAtiva === 'regras' ? 'rgba(255,0,255,0.2)' : 'transparent' }}>⚖️ Regras da Casa</button>
             </div>
@@ -34,10 +34,10 @@ export function CompendioClasseCard({ classe }) {
         tempNome, setTempNome, tempTitulo, setTempTitulo,
         tempPassiva, setTempPassiva, tempDesc, setTempDesc,
         tempEfeito, setTempEfeito, tempIconeUrl,
-        tempEfeitosMat, handleEfMat, addEfMat, removeEfMat, handleImageUpload,
+        tempEfeitosMat, handleEfMat, addEfMat, removeEfMat, handleImageUpload, editandoItemTipo
     } = ctx;
 
-    const isEditando = editandoId === classe.id;
+    const isEditando = editandoId === classe.id && editandoItemTipo == null;
 
     return (
         <div style={{
@@ -73,7 +73,6 @@ export function CompendioClasseCard({ classe }) {
                         </div>
                     </div>
 
-                    {/* Motor Matematico */}
                     <div style={{ background: 'rgba(0, 255, 204, 0.05)', padding: '15px', borderRadius: '5px', border: '1px solid rgba(0, 255, 204, 0.3)' }}>
                         <h4 style={{ color: '#00ffcc', margin: '0 0 15px 0', fontSize: '0.9em', borderBottom: '1px solid #00ffcc40', paddingBottom: '5px' }}>⚙️ Motor Matemático (Efeitos Base)</h4>
                         {tempEfeitosMat.map((ef, idx) => (
@@ -170,8 +169,6 @@ export function CompendioClasseCard({ classe }) {
     );
 }
 
-/* ── Grid de Classes (Regulares + Extra) ── */
-
 export function CompendioClassesGrid() {
     const ctx = useCompendioForm();
     if (!ctx) return FALLBACK;
@@ -181,7 +178,7 @@ export function CompendioClassesGrid() {
         <div className="fade-in">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid #ffcc00', paddingBottom: '10px', marginBottom: '30px' }}>
                 <h2 style={{ color: '#ffcc00', margin: 0, textShadow: '0 0 10px #ffcc00' }}>🛡️ O Trono dos Heróis: Classes</h2>
-                {isMestre && <span style={{ color: '#888', fontStyle: 'italic', fontSize: '0.8em' }}>Modo de Edição de Mestre Ativo 👑</span>}
+                {isMestre && <span style={{ color: '#888', fontStyle: 'italic', fontSize: '0.8em' }}>Modo de Edição Ativo 👑</span>}
             </div>
             <h3 style={{ color: '#0088ff', borderBottom: '1px dotted #0088ff', paddingBottom: '5px' }}>🌟 Classes Regulares</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px', marginBottom: '40px' }}>
@@ -195,16 +192,10 @@ export function CompendioClassesGrid() {
     );
 }
 
-/* ── Card de Grand Class ── */
-
 export function CompendioGrandCard({ classe }) {
     const ctx = useCompendioForm();
     if (!ctx) return FALLBACK;
-    const {
-        isMestre, grands, mesaGrand, opcoesPersonagensPorMesa,
-        handleDefinirGrand, handleAdicionarCandidato, handleRemoverCandidato,
-        handleDefinirIconeGrand, limparIconeGrand,
-    } = ctx;
+    const { isMestre, grands, mesaGrand, opcoesPersonagensPorMesa, handleDefinirGrand, handleAdicionarCandidato, handleRemoverCandidato, handleDefinirIconeGrand, limparIconeGrand } = ctx;
 
     const titular = grands[`${classe.id}_${mesaGrand}`] || '';
     const customIcon = grands[`${classe.id}_${mesaGrand}_icone`];
@@ -220,31 +211,19 @@ export function CompendioGrandCard({ classe }) {
     const disponiveisCandidatos = opcoesPersonagensPorMesa.filter(n => n !== titular && !candidatos.includes(n));
 
     return (
-        <div style={{
-            background: isVago ? 'rgba(0,0,0,0.8)' : 'linear-gradient(135deg, rgba(255,204,0,0.15), rgba(0,0,0,0.9))',
-            border: `1px solid ${isVago ? '#444' : '#ffcc00'}`,
-            padding: '20px', borderRadius: '10px', textAlign: 'center',
-            boxShadow: isVago ? 'none' : '0 0 20px rgba(255,204,0,0.2)',
-            transition: 'all 0.3s', display: 'flex', flexDirection: 'column', position: 'relative'
-        }}>
+        <div style={{ background: isVago ? 'rgba(0,0,0,0.8)' : 'linear-gradient(135deg, rgba(255,204,0,0.15), rgba(0,0,0,0.9))', border: `1px solid ${isVago ? '#444' : '#ffcc00'}`, padding: '20px', borderRadius: '10px', textAlign: 'center', boxShadow: isVago ? 'none' : '0 0 20px rgba(255,204,0,0.2)', transition: 'all 0.3s', display: 'flex', flexDirection: 'column', position: 'relative' }}>
             {isMestre && (
                 <div style={{ position: 'absolute', top: '10px', right: '10px', display: 'flex', gap: '5px' }}>
-                    {customIcon && (
-                        <button className="btn-neon btn-red btn-small" onClick={() => limparIconeGrand(classe.id)} style={{ padding: '4px', margin: 0, fontSize: '0.6em' }} title="Remover Imagem">❌</button>
-                    )}
-                    <label className="btn-neon btn-gold btn-small" style={{ cursor: 'pointer', padding: '4px 8px', margin: 0, fontSize: '0.7em' }} title="Mudar Imagem da Classe">
-                        📸
-                        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleDefinirIconeGrand(classe.id, e)} />
+                    {customIcon && <button className="btn-neon btn-red btn-small" onClick={() => limparIconeGrand(classe.id)} style={{ padding: '4px', margin: 0, fontSize: '0.6em' }}>❌</button>}
+                    <label className="btn-neon btn-gold btn-small" style={{ cursor: 'pointer', padding: '4px 8px', margin: 0, fontSize: '0.7em' }}>
+                        📸 <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleDefinirIconeGrand(classe.id, e)} />
                     </label>
                 </div>
             )}
-
             <div style={{ fontSize: '3em', textShadow: isVago ? 'none' : `0 0 15px ${classe.cor}`, filter: isVago && !customIcon ? 'grayscale(100%) opacity(50%)' : 'none', minHeight: '90px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {iconDisplay}
             </div>
-            <h3 style={{ color: isVago ? '#888' : '#ffcc00', margin: '15px 0 5px 0', letterSpacing: '2px', textShadow: isVago ? 'none' : '0 0 10px rgba(255,204,0,0.5)' }}>
-                GRAND {classe.nome.toUpperCase()}
-            </h3>
+            <h3 style={{ color: isVago ? '#888' : '#ffcc00', margin: '15px 0 5px 0', letterSpacing: '2px', textShadow: isVago ? 'none' : '0 0 10px rgba(255,204,0,0.5)' }}>GRAND {classe.nome.toUpperCase()}</h3>
             <div style={{ color: '#aaa', fontSize: '0.75em', fontStyle: 'italic', marginBottom: '15px', flex: 1 }}>{classe.titulo}</div>
 
             <div style={{ padding: '15px 10px', background: 'rgba(0,0,0,0.5)', borderRadius: '5px', borderTop: `2px solid ${isVago ? '#333' : '#ffcc00'}` }}>
@@ -255,13 +234,10 @@ export function CompendioGrandCard({ classe }) {
                         {opcoesPersonagensPorMesa.map(n => <option key={n} value={n}>{n}</option>)}
                     </select>
                 ) : (
-                    <div style={{ fontSize: '1.4em', fontWeight: 'bold', color: isVago ? '#555' : '#fff', textShadow: isVago ? 'none' : '0 0 10px #ffcc00', letterSpacing: '1px' }}>
-                        {isVago ? 'VAGO' : titular}
-                    </div>
+                    <div style={{ fontSize: '1.4em', fontWeight: 'bold', color: isVago ? '#555' : '#fff', textShadow: isVago ? 'none' : '0 0 10px #ffcc00', letterSpacing: '1px' }}>{isVago ? 'VAGO' : titular}</div>
                 )}
             </div>
 
-            {/* Candidatos */}
             <div style={{ marginTop: '10px', padding: '10px', background: 'rgba(0, 136, 255, 0.1)', borderRadius: '5px', borderTop: '2px solid #0088ff' }}>
                 <div style={{ fontSize: '0.7em', color: '#0088ff', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px', fontWeight: 'bold' }}>🌟 Candidatos ao Trono</div>
                 {candidatos.length === 0 ? (
@@ -270,10 +246,7 @@ export function CompendioGrandCard({ classe }) {
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', justifyContent: 'center' }}>
                         {candidatos.map(c => (
                             <div key={c} style={{ background: 'rgba(0,0,0,0.6)', border: '1px solid #0088ff', color: '#00ccff', padding: '2px 8px', borderRadius: '12px', fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                {c}
-                                {isMestre && (
-                                    <span style={{ cursor: 'pointer', color: '#ff003c', fontWeight: 'bold', marginLeft: '3px' }} onClick={() => handleRemoverCandidato(classe.id, c)} title="Remover Candidatura">×</span>
-                                )}
+                                {c} {isMestre && <span style={{ cursor: 'pointer', color: '#ff003c', fontWeight: 'bold', marginLeft: '3px' }} onClick={() => handleRemoverCandidato(classe.id, c)}>×</span>}
                             </div>
                         ))}
                     </div>
@@ -289,8 +262,6 @@ export function CompendioGrandCard({ classe }) {
     );
 }
 
-/* ── Secao Grands (Tronos + Filtro de Mesa) ── */
-
 export function CompendioGrandsSecao() {
     const ctx = useCompendioForm();
     if (!ctx) return FALLBACK;
@@ -303,22 +274,9 @@ export function CompendioGrandsSecao() {
                 {isMestre && <span style={{ color: '#ffcc00', fontStyle: 'italic', fontSize: '0.8em' }}>O Árbitro do Destino 👑</span>}
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '30px' }}>
-                <p style={{ color: '#ccc', fontSize: '0.95em', lineHeight: '1.6', margin: 0, background: 'rgba(255,204,0,0.05)', padding: '15px', borderRadius: '5px', borderLeft: '3px solid #ffcc00' }}>
-                    <strong style={{ color: '#ffcc00' }}>👑 A Regra Absoluta do Trono dos Heróis:</strong> Apenas um receptáculo em toda a existência tem o direito de se sentar no Trono de cada classe, alcançando o auge do seu Caminho Místico. Para que uma nova lenda possa ascender e reivindicar o título de "Grand", o detentor atual tem primeiro de cair... ou abdicar.
-                </p>
-                <p style={{ color: '#ccc', fontSize: '0.95em', lineHeight: '1.6', margin: 0, background: 'rgba(0, 136, 255, 0.05)', padding: '15px', borderRadius: '5px', borderLeft: '3px solid #0088ff' }}>
-                    <strong style={{ color: '#0088ff', textShadow: '0 0 5px #0088ff' }}>🌟 Candidatos a Grand Class:</strong> Entidades que atingiram o pináculo mortal da sua classe. Eles possuem a centelha divina, mas ainda não superaram a lenda que ocupa o Trono (ou aguardam que ele fique vago). Ao contrário dos Grands, podem existir múltiplos Candidatos simultaneamente, gerando rivalidades brutais pela coroa.
-                </p>
-            </div>
-
             <div style={{ display: 'flex', gap: '10px', marginBottom: '30px' }}>
-                <button className={`btn-neon ${mesaGrand === 'presente' ? 'btn-gold' : ''}`} onClick={() => setMesaGrand('presente')} style={{ flex: 1, padding: '10px', fontSize: '1em', margin: 0 }}>
-                    ⚔️ Lendas do Presente
-                </button>
-                <button className={`btn-neon ${mesaGrand === 'futuro' ? 'btn-gold' : ''}`} onClick={() => setMesaGrand('futuro')} style={{ flex: 1, padding: '10px', fontSize: '1em', margin: 0 }}>
-                    🚀 Lendas do Futuro
-                </button>
+                <button className={`btn-neon ${mesaGrand === 'presente' ? 'btn-gold' : ''}`} onClick={() => setMesaGrand('presente')} style={{ flex: 1, padding: '10px', fontSize: '1em', margin: 0 }}>⚔️ Lendas do Presente</button>
+                <button className={`btn-neon ${mesaGrand === 'futuro' ? 'btn-gold' : ''}`} onClick={() => setMesaGrand('futuro')} style={{ flex: 1, padding: '10px', fontSize: '1em', margin: 0 }}>🚀 Lendas do Futuro</button>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '25px' }}>
@@ -328,24 +286,73 @@ export function CompendioGrandsSecao() {
     );
 }
 
-/* ── Secao Condicoes (NOVA - Baseada na sua print) ── */
+/* ── Secao Dinamica de Edicao Generica ── */
+export function CompendioEditorItem({ tituloForm }) {
+    const ctx = useCompendioForm();
+    if (!ctx) return null;
+    const { tempItem, updateTempItem, salvarItem, cancelarEdicaoItem } = ctx;
+
+    return (
+        <div className="def-box fade-in" style={{ padding: '20px', border: '1px solid #00ffcc', background: 'rgba(20,20,30,0.9)', gridColumn: '1 / -1', marginBottom: 20 }}>
+            <h3 style={{ color: '#00ffcc', marginTop: 0 }}>✏️ Forjando: {tituloForm}</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div>
+                        <label style={{ fontSize: '0.8em', color: '#aaa' }}>Nome / Título:</label>
+                        <input type="text" className="input-neon" value={tempItem.nome || tempItem.titulo || ''} onChange={(e) => updateTempItem(tempItem.nome !== undefined ? 'nome' : 'titulo', e.target.value)} style={{ width: '100%', padding: '5px' }} />
+                    </div>
+                    {tempItem.cor !== undefined && (
+                        <div>
+                            <label style={{ fontSize: '0.8em', color: '#aaa' }}>Cor (Hexadecimal, ex: #ff0000):</label>
+                            <input type="text" className="input-neon" value={tempItem.cor || '#ffffff'} onChange={(e) => updateTempItem('cor', e.target.value)} style={{ width: '100%', padding: '5px', color: tempItem.cor || '#fff', borderColor: tempItem.cor || '#fff' }} />
+                        </div>
+                    )}
+                    {tempItem.icone !== undefined && (
+                        <div>
+                            <label style={{ fontSize: '0.8em', color: '#aaa' }}>Ícone (Emoji):</label>
+                            <input type="text" className="input-neon" value={tempItem.icone || ''} onChange={(e) => updateTempItem('icone', e.target.value)} style={{ width: '100%', padding: '5px' }} />
+                        </div>
+                    )}
+                </div>
+                <div>
+                    <label style={{ fontSize: '0.8em', color: '#aaa' }}>Descrição:</label>
+                    <textarea className="input-neon" value={tempItem.desc || ''} onChange={(e) => updateTempItem('desc', e.target.value)} style={{ width: '100%', padding: '5px', minHeight: '60px', resize: 'vertical' }} />
+                </div>
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '10px' }}>
+                    <button className="btn-neon btn-red btn-small" onClick={cancelarEdicaoItem} style={{ margin: 0 }}>Cancelar</button>
+                    <button className="btn-neon btn-green btn-small" onClick={salvarItem} style={{ margin: 0 }}>💾 Salvar Alterações</button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+
+/* ── Secoes Dinamicas Mapeadas ── */
+
 export function CompendioCondicoes() {
     const ctx = useCompendioForm();
     if (!ctx) return FALLBACK;
-    const { condicoes } = ctx;
+    const { condicoes, isMestre, editandoItemTipo, iniciarEdicaoItem, deletarItem } = ctx;
 
     return (
         <div className="fade-in">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '2px solid #ff4444', paddingBottom: '10px' }}>
                 <h2 style={{ color: '#ff4444', margin: 0, textShadow: '0 0 15px rgba(255,68,68,0.5)', letterSpacing: '2px' }}>🩸 CONDIÇÕES & DEBUFFS</h2>
+                {isMestre && <button className="btn-neon btn-red btn-small" onClick={() => iniciarEdicaoItem('condicoes', { id: `cond_${Date.now()}`, nome: 'Nova Condição', icone: '❔', cor: '#ffffff', desc: 'Descrição da condição' })} style={{ margin: 0 }}>+ CRIAR CONDIÇÃO</button>}
             </div>
-            <p style={{ color: '#ccc', fontSize: '0.9em', lineHeight: '1.6', margin: '0 0 25px 0' }}>
-                Regras oficiais de penalização do sistema. Condições acumulam <strong style={{color: '#ffcc00'}}>Stacks</strong>. As mecânicas com "X" são adaptáveis pelo Mestre dependendo do nível de poder da campanha.
-            </p>
+
+            {editandoItemTipo === 'condicoes' && <CompendioEditorItem tituloForm="Condição de Status" />}
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '20px' }}>
                 {condicoes.map(cond => (
-                    <div key={cond.id} className="def-box" style={{ padding: '20px', borderLeft: `4px solid ${cond.cor}`, background: 'rgba(0,0,0,0.5)' }}>
+                    <div key={cond.id} className="def-box" style={{ padding: '20px', borderLeft: `4px solid ${cond.cor}`, background: 'rgba(0,0,0,0.5)', position: 'relative' }}>
+                        {isMestre && (
+                            <div style={{ position: 'absolute', top: 5, right: 5, display: 'flex', gap: 5 }}>
+                                <button onClick={() => iniciarEdicaoItem('condicoes', cond)} style={{ background: 'none', border: 'none', color: '#ffcc00', cursor: 'pointer' }}>✏️</button>
+                                <button onClick={() => deletarItem('condicoes', cond.id)} style={{ background: 'none', border: 'none', color: '#ff003c', cursor: 'pointer' }}>✖</button>
+                            </div>
+                        )}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '15px' }}>
                             <div style={{ fontSize: '2.5em' }}>{cond.icone}</div>
                             <div>
@@ -360,26 +367,31 @@ export function CompendioCondicoes() {
     );
 }
 
-/* ── Secao Elementos (NOVA) ── */
 export function CompendioElementos() {
     const ctx = useCompendioForm();
     if (!ctx) return FALLBACK;
-    const { elementos } = ctx;
+    const { elementos, isMestre, editandoItemTipo, iniciarEdicaoItem, deletarItem } = ctx;
 
     return (
         <div className="fade-in">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '2px solid #00ffcc', paddingBottom: '10px' }}>
                 <h2 style={{ color: '#00ffcc', margin: 0, textShadow: '0 0 15px rgba(0,255,204,0.5)', letterSpacing: '2px' }}>🔥 TIPOS DE DANO & AFINIDADES</h2>
+                {isMestre && <button className="btn-neon btn-green btn-small" onClick={() => iniciarEdicaoItem('elementos', { id: `elem_${Date.now()}`, nome: 'Novo Elemento', icone: '✨', cor: '#ffffff', desc: 'Descrição elemental' })} style={{ margin: 0 }}>+ CRIAR ELEMENTO</button>}
             </div>
-            <p style={{ color: '#ccc', fontSize: '0.9em', lineHeight: '1.6', margin: '0 0 25px 0' }}>
-                No Multiverso, os ataques puros colidem com a afinidade da entidade atingida. Cada elemento possui vantagens inerentes na narrativa.
-            </p>
+
+            {editandoItemTipo === 'elementos' && <CompendioEditorItem tituloForm="Tipo de Dano Elemental" />}
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
                 {elementos.map(el => (
-                    <div key={el.id} className="def-box" style={{ padding: '20px', borderTop: `4px solid ${el.cor}`, background: 'rgba(0,0,0,0.5)' }}>
-                        <h3 style={{ color: el.cor, margin: '0 0 5px 0', textShadow: `0 0 10px ${el.cor}` }}>{el.nome}</h3>
-                        <p style={{ color: '#aaa', fontSize: '0.85em', margin: 0 }}>{el.desc}</p>
+                    <div key={el.id} className="def-box" style={{ padding: '20px', borderTop: `4px solid ${el.cor}`, background: 'rgba(0,0,0,0.5)', position: 'relative' }}>
+                        {isMestre && (
+                            <div style={{ position: 'absolute', top: 5, right: 5, display: 'flex', gap: 5 }}>
+                                <button onClick={() => iniciarEdicaoItem('elementos', el)} style={{ background: 'none', border: 'none', color: '#ffcc00', cursor: 'pointer' }}>✏️</button>
+                                <button onClick={() => deletarItem('elementos', el.id)} style={{ background: 'none', border: 'none', color: '#ff003c', cursor: 'pointer' }}>✖</button>
+                            </div>
+                        )}
+                        <h3 style={{ color: el.cor, margin: '0 0 5px 0', textShadow: `0 0 10px ${el.cor}80` }}>{el.icone} {el.nome}</h3>
+                        <p style={{ color: '#aaa', fontSize: '0.85em', margin: 0, whiteSpace: 'pre-wrap' }}>{el.desc}</p>
                     </div>
                 ))}
             </div>
@@ -387,20 +399,34 @@ export function CompendioElementos() {
     );
 }
 
-/* ── Secao Regras Customizadas (NOVA) ── */
 export function CompendioRegras() {
+    const ctx = useCompendioForm();
+    if (!ctx) return FALLBACK;
+    const { regras, isMestre, editandoItemTipo, iniciarEdicaoItem, deletarItem } = ctx;
+
     return (
         <div className="fade-in">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '2px solid #ff00ff', paddingBottom: '10px' }}>
                 <h2 style={{ color: '#ff00ff', margin: 0, textShadow: '0 0 15px rgba(255,0,255,0.5)', letterSpacing: '2px' }}>⚖️ REGRAS DA CASA</h2>
+                {isMestre && <button className="btn-neon btn-small" onClick={() => iniciarEdicaoItem('regras', { id: `regra_${Date.now()}`, titulo: 'Nova Lei', cor: '#ffffff', desc: 'Regra de funcionamento' })} style={{ margin: 0, borderColor: '#ff00ff', color: '#ff00ff' }}>+ DECRETAR REGRA</button>}
             </div>
+
+            {editandoItemTipo === 'regras' && <CompendioEditorItem tituloForm="Regra da Casa" />}
+
             <div className="def-box" style={{ padding: '20px', background: 'rgba(255,0,255,0.05)', border: '1px solid #ff00ff' }}>
                 <h3 style={{ color: '#ff00ff', margin: '0 0 15px 0' }}>O Tratado do Multiverso</h3>
                 <ul style={{ color: '#ccc', fontSize: '0.9em', lineHeight: '1.8', margin: 0, paddingLeft: '20px' }}>
-                    <li><strong style={{color: '#00ffcc'}}>Limites Físicos:</strong> Nenhuma entidade mundana pode passar de 99 num status base sem ascender para Grand ou usar equipamentos lendários.</li>
-                    <li><strong style={{color: '#ffcc00'}}>Sobrecarga de Energia:</strong> Gastar mais da metade da reserva máxima de Mana ou Aura num único turno aplica 1 stack de <i>Exaustão</i> automaticamente no final do turno.</li>
-                    <li><strong style={{color: '#ff4444'}}>Ataques Oportunos:</strong> Atacar uma entidade com <i>Exaustão Nível 2 (Imobilizado)</i> garante vantagem dupla nos dados de acerto.</li>
-                    <li><strong style={{color: '#0088ff'}}>Blindagem de Boss:</strong> Ameaças marcadas como [Boss] ou [Beast] limpam 1 stack de todas as condições no início do seu turno naturalmente.</li>
+                    {regras.map(reg => (
+                        <li key={reg.id} style={{ marginBottom: '10px', position: 'relative' }}>
+                            {isMestre && (
+                                <span style={{ position: 'absolute', left: '-20px', display: 'flex', gap: '5px' }}>
+                                    <button onClick={() => iniciarEdicaoItem('regras', reg)} style={{ background: 'none', border: 'none', color: '#ffcc00', cursor: 'pointer', fontSize: '1em' }}>✏️</button>
+                                    <button onClick={() => deletarItem('regras', reg.id)} style={{ background: 'none', border: 'none', color: '#ff003c', cursor: 'pointer', fontSize: '1em' }}>✖</button>
+                                </span>
+                            )}
+                            <strong style={{color: reg.cor || '#00ffcc'}}>{reg.titulo}:</strong> {reg.desc}
+                        </li>
+                    ))}
                 </ul>
             </div>
         </div>

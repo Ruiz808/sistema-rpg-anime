@@ -3,7 +3,7 @@ import useStore from '../../stores/useStore';
 import { calcularReducao, calcularCA } from '../../core/engine';
 import { salvarFichaSilencioso, enviarParaFeed } from '../../services/firebase-sync';
 
-// 🔥 IMPORTAÇÃO DA FUNÇÃO QUE INJETÁMOS NO ENGINE.JS 🔥
+// 🔥 IMPORTAÇÃO DA FUNÇÃO DO MOTOR MATEMÁTICO 🔥
 import { calcularMultiplicadorElemental } from '../../core/engine'; 
 
 const DefesaFormContext = createContext(null);
@@ -17,6 +17,7 @@ export function useDefesaForm() {
 export function DefesaFormProvider({ children }) {
     const minhaFicha = useStore(s => s.minhaFicha);
     const meuNome = useStore(s => s.meuNome);
+    const personagens = useStore(s => s.personagens); // 🔥 NOVO: Para ler o compêndio global
     const updateFicha = useStore(s => s.updateFicha);
     const setAbaAtiva = useStore(s => s.setAbaAtiva);
 
@@ -37,9 +38,42 @@ export function DefesaFormProvider({ children }) {
     const [redPerc, setRedPerc] = useState(0);
     const [redMult, setRedMult] = useState(1);
     
-    // 🔥 NOVO: Elemento do Ataque Que Vou Receber 🔥
     const [elementoInc, setElementoInc] = useState('fisico'); 
     const [danoRecebidoInc, setDanoRecebidoInc] = useState('');
+
+    // 🔥 LEITURA DINÂMICA DOS ELEMENTOS DO COMPÊNDIO 🔥
+    const overridesCompendio = useMemo(() => {
+        if (!minhaFicha) return {};
+        if (minhaFicha.compendioOverrides) return minhaFicha.compendioOverrides;
+        if (personagens) {
+            const chaves = Object.keys(personagens);
+            for (let k of chaves) {
+                if (personagens[k]?.compendioOverrides) return personagens[k].compendioOverrides;
+            }
+        }
+        return {};
+    }, [minhaFicha, personagens]);
+
+    const elementosDinamicos = useMemo(() => {
+        const baseArray = [
+            { id: 'fisico', nome: 'Cinético', icone: '⚔️', cor: '#cccccc' },
+            { id: 'fogo', nome: 'Fogo', icone: '🔥', cor: '#ff4444' },
+            { id: 'agua', nome: 'Água', icone: '💧', cor: '#0088ff' },
+            { id: 'raio', nome: 'Raio', icone: '⚡', cor: '#ffcc00' },
+            { id: 'gelo', nome: 'Gelo', icone: '❄️', cor: '#00ffff' },
+            { id: 'luz', nome: 'Luz', icone: '☀️', cor: '#fffbd6' },
+            { id: 'trevas', nome: 'Trevas', icone: '🌑', cor: '#8800ff' }
+        ];
+        const overridesObj = overridesCompendio['elementos'] || {};
+        const map = {};
+        baseArray.forEach(item => map[item.id] = { ...item });
+        Object.keys(overridesObj).forEach(k => {
+            if (overridesObj[k].deletado) delete map[k];
+            else if (map[k]) map[k] = { ...map[k], ...overridesObj[k] };
+            else map[k] = overridesObj[k];
+        });
+        return Object.values(map);
+    }, [overridesCompendio]);
 
     const rolar = useCallback((qtd, faces) => {
         let sum = 0;
@@ -121,7 +155,6 @@ export function DefesaFormProvider({ children }) {
         setAbaAtiva('aba-log');
     }, [redEnergia, redPerc, redMult, minhaFicha, meuNome, updateFicha, setAbaAtiva]);
 
-    // 🔥 NOVA FUNÇÃO: SOFRER DANO BRUTO (COM CÁLCULO ELEMENTAR) 🔥
     const sofrerDanoBruto = useCallback(() => {
         const dano = parseInt(danoRecebidoInc) || 0;
         if (dano <= 0) return alert('Digite um valor de dano válido para receber.');
@@ -129,7 +162,6 @@ export function DefesaFormProvider({ children }) {
         const mult = calcularMultiplicadorElemental(minhaFicha, elementoInc);
         const danoFinal = Math.floor(dano * mult);
 
-        // Subtrair o HP
         updateFicha((ficha) => {
             if (ficha.vida) {
                 ficha.vida.atual = Math.max(0, (ficha.vida.atual || 0) - danoFinal);
@@ -142,7 +174,10 @@ export function DefesaFormProvider({ children }) {
         else if (mult === 0.5) mensagemElemental = ' [RESISTIU: Dano /2]';
         else if (mult === 0.0) mensagemElemental = ' [IMUNE: 0 Dano!]';
 
-        const texto = `Recebeu ${danoFinal} de dano! (Original: ${dano} de ${elementoInc.toUpperCase()})${mensagemElemental}`;
+        // Pega o nome customizado do elemento a partir da lista gerada pelo compêndio
+        const nomeElemento = elementosDinamicos.find(e => e.id === elementoInc)?.nome || elementoInc;
+
+        const texto = `Recebeu ${danoFinal} de dano! (Original: ${dano} de ${nomeElemento.toUpperCase()})${mensagemElemental}`;
 
         const feedData = { tipo: 'sistema', nome: meuNome, texto: texto };
         enviarParaFeed(feedData);
@@ -150,35 +185,20 @@ export function DefesaFormProvider({ children }) {
         setDanoRecebidoInc('');
         setElementoInc('fisico');
         setAbaAtiva('aba-log');
-    }, [danoRecebidoInc, elementoInc, minhaFicha, meuNome, updateFicha, setAbaAtiva]);
+    }, [danoRecebidoInc, elementoInc, minhaFicha, meuNome, updateFicha, setAbaAtiva, elementosDinamicos]);
 
     const value = useMemo(() => ({
-        evaDados, setEvaDados,
-        evaFaces, setEvaFaces,
-        evaProf, setEvaProf,
-        evaBonus, setEvaBonus,
-        resDados, setResDados,
-        resFaces, setResFaces,
-        resProf, setResProf,
-        resBonus, setResBonus,
-        redEnergia, setRedEnergia,
-        redPerc, setRedPerc,
-        redMult, setRedMult,
-        elementoInc, setElementoInc, // 🔥 EXPOSTO
-        danoRecebidoInc, setDanoRecebidoInc, // 🔥 EXPOSTO
-        caEvasiva,
-        caResistencia,
-        declararEvasiva,
-        declararResistencia,
-        declararReducao,
-        sofrerDanoBruto // 🔥 EXPOSTO
-    }), [
-        evaDados, evaFaces, evaProf, evaBonus,
-        resDados, resFaces, resProf, resBonus,
-        redEnergia, redPerc, redMult,
-        elementoInc, danoRecebidoInc,
+        evaDados, setEvaDados, evaFaces, setEvaFaces, evaProf, setEvaProf, evaBonus, setEvaBonus,
+        resDados, setResDados, resFaces, setResFaces, resProf, setResProf, resBonus, setResBonus,
+        redEnergia, setRedEnergia, redPerc, setRedPerc, redMult, setRedMult,
+        elementoInc, setElementoInc, danoRecebidoInc, setDanoRecebidoInc,
         caEvasiva, caResistencia,
+        elementosDinamicos, // 🔥 EXPOSTO
         declararEvasiva, declararResistencia, declararReducao, sofrerDanoBruto
+    }), [
+        evaDados, evaFaces, evaProf, evaBonus, resDados, resFaces, resProf, resBonus,
+        redEnergia, redPerc, redMult, elementoInc, danoRecebidoInc, caEvasiva, caResistencia,
+        elementosDinamicos, declararEvasiva, declararResistencia, declararReducao, sofrerDanoBruto
     ]);
 
     return (
