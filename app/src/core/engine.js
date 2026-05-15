@@ -670,18 +670,39 @@ export function calcularMultiplicadorElemental(ficha, elementoAtaque) {
     return 1.0;
 }
 
-export function calcularCortaCura(ficha) {
-    if (!ficha || !ficha.condicoes) return 0; 
-    let cortaCuraTotal = 0;
-    ficha.condicoes.forEach(c => {
-        // Sangramento, Queimadura e Criogenia aplicam 50% de corta cura POR STACK!
-        if (c.id === 'sangrando' || c.id === 'queimado' || c.id === 'criogenia') {
-            cortaCuraTotal += (c.stacks * 50); 
-        }
-        // Exaustão Nível 4 também corta cura
-        if (c.id === 'exausto' && c.stacks >= 4) {
-            cortaCuraTotal += 50;
-        }
-    });
-    return Math.min(cortaCuraTotal, 100); // O máximo que pode cortar é 100% da cura
+// 🔥 MOTOR DE EFICÁCIA DA CURA (COLE NO FINAL DO engine.js) 🔥
+export function calcularEficaciaCura(ficha) {
+    if (!ficha) return 1.0;
+    
+    let multFinal = 1.0; // 100% de eficácia base
+
+    // 1. APLICAR DEBUFFS (Corta-Cura Multiplicativo)
+    if (ficha.condicoes) {
+        ficha.condicoes.forEach(c => {
+            if (c.id === 'sangrando' || c.id === 'queimado' || c.id === 'criogenia') {
+                for(let i = 0; i < c.stacks; i++) {
+                    multFinal *= 0.5; // Cada stack corta metade do que sobrou
+                }
+            }
+            if (c.id === 'exausto' && c.stacks >= 4) {
+                multFinal *= 0.5;
+            }
+        });
+    }
+
+    // 2. APLICAR BUFFS (Poderes, Itens e Classes que aumentam a cura)
+    let bonusBuffs = 0;
+    const scanCura = (efeitos) => {
+        (efeitos || []).forEach(e => {
+            if (e && e.propriedade === 'efetividade_cura') {
+                bonusBuffs += parseFloat(e.valor) || 0;
+            }
+        });
+    };
+
+    (ficha.poderes || []).forEach(p => { if(p.ativa) scanCura(p.efeitos); scanCura(p.efeitosPassivos); });
+    (ficha.inventario || []).forEach(i => { if(i.equipado) { scanCura(i.efeitos); scanCura(i.efeitosPassivos); } });
+    (ficha.passivas || []).forEach(p => scanCura(p.efeitos));
+
+    return multFinal * (1 + bonusBuffs);
 }
