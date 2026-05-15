@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import useStore from '../../stores/useStore';
 import { getDatabase, ref, update } from 'firebase/database';
+import { calcularEficaciaCura } from '../../core/engine'; // 🔥 IMPORT DA NOVA FUNÇÃO DA ENGINE
 
 const TODAS_CONDICOES_BASE = [
     { id: 'sangrando', icone: '🩸', cor: '#ff003c', nome: 'Sangrando' },
@@ -56,22 +57,36 @@ export default function PainelMestreSandbox({ personagemId, ficha }) {
         return Object.values(map);
     }, [personagens, minhaFicha]);
 
-    // 🔥 1. MOTOR DE RECURSOS (ATUALIZAÇÃO INSTANTÂNEA)
+    // 🔥 1. MOTOR DE RECURSOS (COM O CONTRA-CORTA-CURA)
     const aplicarCuraDano = (tipo) => {
-        const val = parseInt(valorRapido);
+        let val = parseInt(valorRapido);
         if (!val || isNaN(val) || val <= 0) return;
+
+        // 🔥 CÁLCULO DE EFICÁCIA DA CURA (Debuffs vs Buffs)
+        if (tipo === 'cura' && energiaAlvo === 'vida') {
+            const eficacia = calcularEficaciaCura(ficha); 
+            const valOriginal = val;
+            val = Math.floor(val * eficacia);
+
+            // Só avisa se houver alteração na eficácia
+            if (eficacia < 1.0) {
+                alert(`🩸 Ferimentos Graves! Eficácia de cura reduzida para ${Math.round(eficacia * 100)}%.\nValor original: ${valOriginal} ➔ Curou apenas: ${val}`);
+            } else if (eficacia > 1.0) {
+                alert(`✨ SOBRECURA! Eficácia de cura aumentada para ${Math.round(eficacia * 100)}%!\nValor original: ${valOriginal} ➔ Curou monstruosos: ${val}`);
+            }
+        }
 
         let valorAtual = ficha?.[energiaAlvo]?.atual !== undefined ? ficha[energiaAlvo].atual : 0;
         let novoValor = tipo === 'dano' ? valorAtual - val : valorAtual + val;
         
         if (novoValor < 0) novoValor = 0; 
 
-        // Atualiza a Firebase (Background)
+        // Atualiza a Firebase
         update(ref(db, `mesas/${mesaId}/personagens/${personagemId}/${energiaAlvo}`), {
             atual: novoValor
         }).catch(err => alert("Erro ao atualizar recursos: " + err.message));
 
-        // Atualiza a Memória Local Instantaneamente para Feedback Visual Rápido
+        // Atualiza a Memória Local Instantaneamente
         setPersonagens({
             ...personagens,
             [personagemId]: {
@@ -83,7 +98,6 @@ export default function PainelMestreSandbox({ personagemId, ficha }) {
             }
         });
 
-        // Se o mestre estiver a editar a própria ficha no painel
         if (personagemId === meuNome) {
             updateFicha(f => {
                 if (!f[energiaAlvo]) f[energiaAlvo] = {};
@@ -96,13 +110,11 @@ export default function PainelMestreSandbox({ personagemId, ficha }) {
 
     // 🔥 2. MOTOR DE CONDIÇÕES (STACKS INFINITOS)
     const modificarCondicaoSandbox = (condId, delta) => {
-        // Clonagem profunda para que o React force a renderização
         let condicoesAtuais = ficha?.condicoes ? JSON.parse(JSON.stringify(ficha.condicoes)) : [];
         const index = condicoesAtuais.findIndex(c => c.id === condId);
 
         if (index > -1) {
             condicoesAtuais[index].stacks += delta;
-            // Se zerar ou ficar negativo, remove o debuff. Mas o limite máximo não existe mais!
             if (condicoesAtuais[index].stacks <= 0) {
                 condicoesAtuais.splice(index, 1);
             }
@@ -110,12 +122,10 @@ export default function PainelMestreSandbox({ personagemId, ficha }) {
             condicoesAtuais.push({ id: condId, stacks: 1 });
         }
 
-        // Atualiza a Firebase (Background)
         update(ref(db, `mesas/${mesaId}/personagens/${personagemId}`), {
             condicoes: condicoesAtuais
         }).catch(e => console.error(e));
 
-        // Atualiza a Memória Local Instantaneamente
         setPersonagens({
             ...personagens,
             [personagemId]: {
@@ -124,7 +134,6 @@ export default function PainelMestreSandbox({ personagemId, ficha }) {
             }
         });
 
-        // Se for a própria ficha do Mestre
         if (personagemId === meuNome) {
             updateFicha(f => {
                 f.condicoes = condicoesAtuais;
