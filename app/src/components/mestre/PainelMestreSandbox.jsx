@@ -25,13 +25,16 @@ export default function PainelMestreSandbox({ personagemId, ficha }) {
     const mesaId = useStore(s => s.mesaId);
     const personagens = useStore(s => s.personagens);
     const minhaFicha = useStore(s => s.minhaFicha);
+    const meuNome = useStore(s => s.meuNome);
+    const setPersonagens = useStore(s => s.setPersonagens);
+    const updateFicha = useStore(s => s.updateFicha);
     const db = getDatabase();
     
     const [expandido, setExpandido] = useState(false);
     const [valorRapido, setValorRapido] = useState('');
-    const [energiaAlvo, setEnergiaAlvo] = useState('vida'); // Define qual barra será afetada
+    const [energiaAlvo, setEnergiaAlvo] = useState('vida'); 
 
-    // 🔥 LEITURA GLOBAL DE CONDIÇÕES (Para incluir as criadas pelo Mestre no Compêndio)
+    // 🔥 LEITURA GLOBAL DE CONDIÇÕES
     const condicoesDinamicas = useMemo(() => {
         const overrides = {};
         if (personagens) {
@@ -53,28 +56,48 @@ export default function PainelMestreSandbox({ personagemId, ficha }) {
         return Object.values(map);
     }, [personagens, minhaFicha]);
 
-    // 🔥 1. MOTOR DE RECURSOS (DANO / CURA EM QUALQUER BARRA)
+    // 🔥 1. MOTOR DE RECURSOS (ATUALIZAÇÃO INSTANTÂNEA)
     const aplicarCuraDano = (tipo) => {
         const val = parseInt(valorRapido);
         if (!val || isNaN(val) || val <= 0) return;
 
-        // Tenta achar o valor atual da energia selecionada, se não existir, assume 0
         let valorAtual = ficha?.[energiaAlvo]?.atual !== undefined ? ficha[energiaAlvo].atual : 0;
         let novoValor = tipo === 'dano' ? valorAtual - val : valorAtual + val;
         
-        if (novoValor < 0) novoValor = 0; // Impede números negativos
+        if (novoValor < 0) novoValor = 0; 
 
-        // Atualiza diretamente no Firebase do jogador
+        // Atualiza a Firebase (Background)
         update(ref(db, `mesas/${mesaId}/personagens/${personagemId}/${energiaAlvo}`), {
             atual: novoValor
-        }).then(() => {
-            setValorRapido('');
-        }).catch(err => alert("Erro ao atualizar os recursos: " + err.message));
+        }).catch(err => alert("Erro ao atualizar recursos: " + err.message));
+
+        // Atualiza a Memória Local Instantaneamente para Feedback Visual Rápido
+        setPersonagens({
+            ...personagens,
+            [personagemId]: {
+                ...ficha,
+                [energiaAlvo]: {
+                    ...ficha[energiaAlvo],
+                    atual: novoValor
+                }
+            }
+        });
+
+        // Se o mestre estiver a editar a própria ficha no painel
+        if (personagemId === meuNome) {
+            updateFicha(f => {
+                if (!f[energiaAlvo]) f[energiaAlvo] = {};
+                f[energiaAlvo].atual = novoValor;
+            });
+        }
+
+        setValorRapido('');
     };
 
     // 🔥 2. MOTOR DE CONDIÇÕES (STACKS INSTANTÂNEOS)
     const modificarCondicaoSandbox = (condId, delta) => {
-        let condicoesAtuais = ficha?.condicoes ? [...ficha.condicoes] : [];
+        // Clonagem profunda para que o React force a renderização
+        let condicoesAtuais = ficha?.condicoes ? JSON.parse(JSON.stringify(ficha.condicoes)) : [];
         const index = condicoesAtuais.findIndex(c => c.id === condId);
 
         if (index > -1) {
@@ -82,15 +105,32 @@ export default function PainelMestreSandbox({ personagemId, ficha }) {
             if (condicoesAtuais[index].stacks <= 0) {
                 condicoesAtuais.splice(index, 1);
             } else if (condicoesAtuais[index].stacks > 6) {
-                condicoesAtuais[index].stacks = 6;
+                condicoesAtuais[index].stacks = 6; // Limite de Exaustão/Máximo
             }
         } else if (delta > 0) {
             condicoesAtuais.push({ id: condId, stacks: 1 });
         }
 
+        // Atualiza a Firebase (Background)
         update(ref(db, `mesas/${mesaId}/personagens/${personagemId}`), {
             condicoes: condicoesAtuais
+        }).catch(e => console.error(e));
+
+        // Atualiza a Memória Local Instantaneamente
+        setPersonagens({
+            ...personagens,
+            [personagemId]: {
+                ...ficha,
+                condicoes: condicoesAtuais
+            }
         });
+
+        // Se for a própria ficha do Mestre
+        if (personagemId === meuNome) {
+            updateFicha(f => {
+                f.condicoes = condicoesAtuais;
+            });
+        }
     };
 
     const condicoesDaFicha = ficha?.condicoes || [];
