@@ -94,7 +94,7 @@ export default function PainelMestreSandbox({ personagemId, ficha }) {
         setValorRapido('');
     };
 
-    // 🔥 2. MOTOR DE CONDIÇÕES (STACKS INSTANTÂNEOS)
+    // 🔥 2. MOTOR DE CONDIÇÕES (STACKS INFINITOS)
     const modificarCondicaoSandbox = (condId, delta) => {
         // Clonagem profunda para que o React force a renderização
         let condicoesAtuais = ficha?.condicoes ? JSON.parse(JSON.stringify(ficha.condicoes)) : [];
@@ -102,10 +102,9 @@ export default function PainelMestreSandbox({ personagemId, ficha }) {
 
         if (index > -1) {
             condicoesAtuais[index].stacks += delta;
+            // Se zerar ou ficar negativo, remove o debuff. Mas o limite máximo não existe mais!
             if (condicoesAtuais[index].stacks <= 0) {
                 condicoesAtuais.splice(index, 1);
-            } else if (condicoesAtuais[index].stacks > 6) {
-                condicoesAtuais[index].stacks = 6; // Limite de Exaustão/Máximo
             }
         } else if (delta > 0) {
             condicoesAtuais.push({ id: condId, stacks: 1 });
