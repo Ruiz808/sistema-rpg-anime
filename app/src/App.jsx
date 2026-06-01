@@ -24,7 +24,7 @@ import Jukebox from './components/jukebox/Jukebox'
 import CompendioPanel from './components/compendio/CompendioPanel'
 import AIPanel from './components/ia/AIPanel'
 import GravadorPanel from './components/ia/GravadorPanel'
-import PainelMestreSandbox from './components/mestre/PainelMestreSandbox' // 🔥 INJEÇÃO AQUI
+import PainelMestreSandbox from './components/mestre/PainelMestreSandbox'
 
 // Funções de Sync
 import { 
@@ -37,6 +37,14 @@ import {
 
 import { getMaximo } from './core/attributes'
 import { calcularCA } from './core/engine'
+
+// 🔥 INTERCETOR PWA: ESCUTA SE O NAVEGADOR PODE INSTALAR O APP 🔥
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    window.dispatchEvent(new Event('pwa-ready'));
+});
 
 function getStatusLimpo(ficha, chave, threshold) {
     if (!ficha) return { max: 0, atual: 0, pVit: 0 };
@@ -105,7 +113,6 @@ function getEnergiasSupremas(ficha) {
     return { vitais: { max: maxVitais, atual: atualVitais }, mortais: { max: maxMortais, atual: atualMortais } };
 }
 
-// 🔥 PAINEL DO MESTRE SUPREMO (COM SUBPASTAS HIERÁRQUICAS E BUSCA DA MATRIZ) 🔥
 function MestrePanel() {
     const personagens = useStore(s => s.personagens);
     const setPersonagens = useStore(s => s.setPersonagens);
@@ -132,14 +139,12 @@ function MestrePanel() {
     const [dOculto, setDOculto] = useState(false);
     const [novoMestreNick, setNovoMestreNick] = useState('');
 
-    // 🔥 ESTADOS DO HUB DE CONVERGÊNCIA 🔥
     const [mesaMatriz, setMesaMatriz] = useState(() => localStorage.getItem('rpg_mesa_principal') || 'Nenhuma');
     const [capitulosGerais, setCapitulosGerais] = useState([]);
     const [arvoresGerais, setArvoresGerais] = useState({});
     const [capituloSelecionado, setCapituloSelecionado] = useState('');
     const [arvoreSelecionada, setArvoreSelecionada] = useState('');
 
-    // 🔥 BUSCA ABSOLUTA DIRETO DA NUVEM DA MESA MATRIZ 🔥
     useEffect(() => {
         try { 
             const capBackup = localStorage.getItem('rpgSextaFeira_capitulos_MatrizBackup');
@@ -346,7 +351,6 @@ function MestrePanel() {
     const jogadoresFiltrados = todosJogadores.filter(([nome, ficha]) => (ficha?.bio?.mesa || 'presente') === mesaVisor);
     const fmt = (n) => Number(n || 0).toLocaleString('pt-BR');
 
-    // 🔥 AGRUPAMENTO HIERÁRQUICO SEGURO (CATEGORIA > SUBPASTA) 🔥
     const npcsHierarquia = {};
     if (mesaVisor === 'npc') {
         jogadoresFiltrados.forEach(([nome, ficha]) => {
@@ -374,7 +378,6 @@ function MestrePanel() {
         });
     }
 
-    // 🃏 GERADOR DA CARTA DE PERSONAGEM COMPLETA E DETALHADA 🃏
     const renderCard = ([nome, ficha]) => {
         const vida = getStatusLimpo(ficha, 'vida', 8);
         const mana = getStatusLimpo(ficha, 'mana', 9);
@@ -490,7 +493,6 @@ function MestrePanel() {
                     <button className="btn-neon btn-blue" style={{ flex: 1, padding: '4px', fontSize: '0.8em', margin: 0 }} onClick={() => handleClonarFicha(nome, ficha)}>🖨️ CLONAR</button>
                     <button className="btn-neon btn-red" style={{ flex: 1, padding: '4px', fontSize: '0.8em', margin: 0, opacity: nome === meuNome ? 0.3 : 1 }} onClick={() => handleApagarJogador(nome)} disabled={nome === meuNome}>❌ APAGAR</button>
                 </div>
-                {/* 🔥 INJEÇÃO DO SANDBOX AQUI 🔥 */}
                 <PainelMestreSandbox personagemId={nome} ficha={ficha} />
             </div>
         );
@@ -500,7 +502,6 @@ function MestrePanel() {
         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <h2 style={{ color: '#ffcc00', textShadow: '0 0 10px #ffcc00', borderBottom: '2px solid #ffcc00', paddingBottom: 10, margin: 0 }}>👑 DOMÍNIO DO MESTRE</h2>
             
-            {/* 🔥 HUB DE CONVERGÊNCIA CÓSMICA (MATRIZ & HERANÇA) 🔥 */}
             <div className="def-box fade-in" style={{ borderLeft: '4px solid #aa00ff', background: 'rgba(170, 0, 255, 0.05)', padding: '15px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', borderBottom: '1px solid #333', paddingBottom: '10px', marginBottom: '12px' }}>
                     <div>
@@ -532,7 +533,6 @@ function MestrePanel() {
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '15px' }}>
-                    {/* ENXERTO DE CAPÍTULOS DE LORE */}
                     <div style={{ background: 'rgba(0,0,0,0.4)', padding: '12px', borderRadius: '6px', border: '1px solid #444' }}>
                         <strong style={{ color: '#00ccff', fontSize: '0.85em', display: 'block', marginBottom: '8px' }}>📜 Puxar Capítulo da Lore (Sexta-Feira)</strong>
                         <div style={{ display: 'flex', gap: '6px' }}>
@@ -553,7 +553,6 @@ function MestrePanel() {
                         </div>
                     </div>
 
-                    {/* ENXERTO DE ÁRVORES GENEALÓGICAS */}
                     <div style={{ background: 'rgba(0,0,0,0.4)', padding: '12px', borderRadius: '6px', border: '1px solid #444' }}>
                         <strong style={{ color: '#00ff88', fontSize: '0.85em', display: 'block', marginBottom: '8px' }}>🌳 Puxar Panteão / Clã (Árvore)</strong>
                         <div style={{ display: 'flex', gap: '6px' }}>
@@ -585,7 +584,6 @@ function MestrePanel() {
                         <button className={`btn-neon ${mesaVisor === 'npc' ? 'btn-red' : ''}`} onClick={() => setMesaVisor('npc')} style={{ flex: 1, padding: '8px', fontSize: '0.9em', margin: 0 }}>👹 NPCs</button>
                     </div>
 
-                    {/* 🔥 RENDERIZADOR HIERÁRQUICO DE SUBPASTAS VISUAIS 🔥 */}
                     {mesaVisor !== 'npc' ? (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '15px' }}>
                             {jogadoresFiltrados.map(data => renderCard(data))}
@@ -599,7 +597,6 @@ function MestrePanel() {
                                 
                                 return (
                                     <div key={catRaiz} style={{ border: '1px solid #444', borderRadius: '5px', overflow: 'hidden', background: 'rgba(0,0,0,0.4)' }}>
-                                        {/* BOTÃO DA CATEGORIA PRINCIPAL */}
                                         <button 
                                             onClick={() => togglePasta(catRaiz)}
                                             style={{ 
@@ -615,11 +612,9 @@ function MestrePanel() {
                                             <span style={{ color: '#fff', fontSize: '0.8em', background: '#ff003c', padding: '2px 8px', borderRadius: '12px' }}>{totalCat}</span>
                                         </button>
                                         
-                                        {/* CONTEÚDO DA CATEGORIA (LISTA DE SUBPASTAS) */}
                                         {isCatAberta && (
                                             <div style={{ padding: '15px', background: 'rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                                 {Object.entries(subPastasObj).sort().map(([subNome, listaCards]) => {
-                                                    // Se for geral, renderiza solto sem criar sub-botão
                                                     if (subNome === '_geral') {
                                                         return (
                                                             <div key={subNome} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '15px' }}>
@@ -628,7 +623,6 @@ function MestrePanel() {
                                                         );
                                                     }
 
-                                                    // Se for uma subpasta real com barra
                                                     const subId = `${catRaiz}|${subNome}`;
                                                     const isSubAberta = pastasAbertas[subId];
 
@@ -733,12 +727,29 @@ function MestrePanel() {
     );
 }
 
-// 🔐 TELA DE LOGIN (FALSO E-MAIL)
 function AuthScreen() {
     const [isRegister, setIsRegister] = useState(false);
     const [nick, setNick] = useState('');
     const [senha, setSenha] = useState('');
     const [loadingAuth, setLoadingAuth] = useState(false);
+
+    // 🔥 ESTADO E FUNÇÃO DE INSTALAÇÃO PWA 🔥
+    const [canInstall, setCanInstall] = useState(!!deferredPrompt);
+    useEffect(() => {
+        const handleReady = () => setCanInstall(true);
+        window.addEventListener('pwa-ready', handleReady);
+        return () => window.removeEventListener('pwa-ready', handleReady);
+    }, []);
+
+    const handleInstallClick = async () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+            deferredPrompt = null;
+            setCanInstall(false);
+        }
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -766,6 +777,14 @@ function AuthScreen() {
             <div className="def-box fade-in" style={{ padding: '40px', maxWidth: '400px', width: '100%', textAlign: 'center', background: 'rgba(10, 10, 15, 0.95)', border: '2px solid #00ffcc', boxShadow: '0 0 30px rgba(0, 255, 204, 0.2)', borderRadius: '15px' }}>
                 <h1 style={{ color: '#00ffcc', textShadow: '0 0 10px #00ffcc', margin: '0 0 10px 0', textTransform: 'uppercase', letterSpacing: '3px' }}>Multiverso RPG</h1>
                 <p style={{ color: '#aaa', fontSize: '0.9em', marginBottom: '30px' }}>{isRegister ? 'Forje o seu destino no sistema.' : 'Identifique-se para acessar as mesas.'}</p>
+                
+                {/* 🔥 BOTÃO DOURADO DE INSTALAÇÃO (SÓ APARECE SE PUDER INSTALAR) 🔥 */}
+                {canInstall && (
+                    <button type="button" onClick={handleInstallClick} className="btn-neon btn-gold" style={{ width: '100%', padding: '15px', fontSize: '1.2em', fontWeight: 'bold', marginBottom: '25px', boxShadow: '0 0 15px rgba(255, 204, 0, 0.5)', animation: 'pulse 2s infinite' }}>
+                        📥 INSTALAR APLICATIVO
+                    </button>
+                )}
+
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                     <input className="input-neon" type="text" placeholder="Seu Nickname Único" value={nick} onChange={e => setNick(e.target.value)} style={{ padding: '15px', fontSize: '1.1em', textAlign: 'center', textTransform: 'uppercase' }} />
                     <input className="input-neon" type="password" placeholder="Sua Senha Mestra" value={senha} onChange={e => setSenha(e.target.value)} style={{ padding: '15px', fontSize: '1.1em', textAlign: 'center' }} />
@@ -783,11 +802,28 @@ function AuthScreen() {
     );
 }
 
-// 🏰 LOBBY DE MESAS (DESIGN TOTALMENTE NOVO E ROBUSTO)
 function LobbyNeon() {
     const { setMesaId, userLogado } = useStore();
     const [codigoSala, setCodigoSala] = useState('');
     const [abaMesas, setAbaMesas] = useState('jogador');
+
+    // 🔥 ESTADO E FUNÇÃO DE INSTALAÇÃO PWA 🔥
+    const [canInstall, setCanInstall] = useState(!!deferredPrompt);
+    useEffect(() => {
+        const handleReady = () => setCanInstall(true);
+        window.addEventListener('pwa-ready', handleReady);
+        return () => window.removeEventListener('pwa-ready', handleReady);
+    }, []);
+
+    const handleInstallClick = async () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+            deferredPrompt = null;
+            setCanInstall(false);
+        }
+    };
 
     const [minhasMesas, setMinhasMesas] = useState(() => {
         try { 
@@ -823,7 +859,7 @@ function LobbyNeon() {
 
         checkMesas();
         return () => { mounted = false; };
-    }, [userLogado]); // eslint-disable-line
+    }, [userLogado]); 
 
     const salvarNoHistorico = (id, nomePersonalizado = id, isMestreTable = false) => {
         let existing = minhasMesas.find(m => m.id === id);
@@ -928,6 +964,13 @@ function LobbyNeon() {
 
                 <h1 style={{ color: '#00ffcc', textShadow: '0 0 10px #00ffcc', margin: '0 0 20px 0', textTransform: 'uppercase', letterSpacing: '3px' }}>Multiverso RPG</h1>
                 
+                {/* 🔥 BOTÃO DOURADO DE INSTALAÇÃO (SÓ APARECE SE PUDER INSTALAR) 🔥 */}
+                {canInstall && (
+                    <button type="button" onClick={handleInstallClick} className="btn-neon btn-gold" style={{ width: '100%', padding: '15px', fontSize: '1.2em', fontWeight: 'bold', marginBottom: '25px', borderRadius: '10px', boxShadow: '0 0 15px rgba(255, 204, 0, 0.5)', animation: 'pulse 2s infinite' }}>
+                        📥 INSTALAR APLICATIVO
+                    </button>
+                )}
+
                 <button className="btn-neon btn-green" onClick={criarMesa} style={{ width: '100%', padding: '15px', fontSize: '1.2em', fontWeight: 'bold', marginBottom: '25px', borderRadius: '10px' }}>🌌 CRIAR NOVA MESA (Mestre)</button>
                 
                 {minhasMesas.length > 0 && (
@@ -990,7 +1033,6 @@ function LobbyNeon() {
     );
 }
 
-// 👑 APLICAÇÃO PRINCIPAL (APP)
 export default function App() {
     const userLogado = useStore(s => s.userLogado);
     const setUserLogado = useStore(s => s.setUserLogado);
@@ -1051,7 +1093,6 @@ export default function App() {
         return () => unsub();
     }, [mesaId, userLogado, setIsMestre, setMesaInfo]);
 
-    // 🔥 SYNC CLOUD REAL-TIME: LORE E ÁRVORE GENEALÓGICA 🔥
     useEffect(() => {
         if (!mesaId || !isMestre) return;
         const unsubLore = onValue(ref(db, `mesas/${mesaId}/lore`), (snap) => {
@@ -1191,7 +1232,6 @@ export default function App() {
                     <button onClick={() => { if(window.confirm('Deseja sair desta ficha e escolher outro personagem?')) { localStorage.removeItem('rpgNome'); localStorage.removeItem('rpg_nome'); setMeuNome(''); setPronto(false); } }} style={{ background: 'none', border: 'none', color: '#ffcc00', cursor: 'pointer', fontSize: '0.8em', padding: '0', display: 'flex', alignItems: 'center', gap: '4px' }} title="Mudar o nome/ficha atual sem sair da mesa">✏️ Trocar</button>
                 </div>
 
-                {/* 🔥 BOTÃO RESGATAR BLINDADO: PROTEÇÃO TOTAL DE PERMISSÕES E SANDBOX 🔥 */}
                 {isMestre && (
                     <button onClick={async () => {
                             const matrizId = localStorage.getItem('rpg_mesa_principal') || 'Nenhuma';
@@ -1200,7 +1240,6 @@ export default function App() {
                             }
                             if(!window.confirm(`⚠️ MESTRE: Deseja tentar copiar as estruturas da mesa matriz [${matrizId}] para a sala atual [${mesaId}]?\n\nNota: Se não for o Mestre Criador da Matriz, o Firebase pode bloquear a importação por segurança.`)) return;
                             
-                            // 1. FORJA DOS PERSONAGENS
                             try {
                                 const oldPers = await get(ref(db, `mesas/${matrizId}/personagens`));
                                 if (oldPers.exists()) { 
@@ -1213,7 +1252,6 @@ export default function App() {
                                 console.warn("Leitura de personagens bloqueada pelo sandbox:", err.message); 
                             }
                             
-                            // 2. FORJA DA ÁRVORE (COM PROTEÇÃO TOTAL ANTI-CRASH)
                             try {
                                 const oldArvore = await get(ref(db, `mesas/${matrizId}/arvore`));
                                 if (oldArvore.exists()) {
@@ -1226,7 +1264,6 @@ export default function App() {
                             } catch (err) { 
                                 console.warn("Acesso à nuvem da matriz negado. Tentando cache local de segurança...");
                                 
-                                // Tenta usar a ponte local apenas se existir cache válido, tratando o erro de escrita
                                 const arvorePonte = localStorage.getItem('rpgSextaFeira_arvore_MatrizBackup');
                                 if (arvorePonte && arvorePonte !== '{}') {
                                     try {
