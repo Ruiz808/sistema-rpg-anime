@@ -15,7 +15,9 @@ const tabs = [
     { id: 'aba-elementos',  emoji: '\u{1F525}', label: 'Grimório Elemental' },
     { id: 'aba-log',        emoji: '\u{1F4DC}', label: 'Feed de Combate' },
     { id: 'aba-mapa',       emoji: '\u{1F5FA}\uFE0F', label: 'Mapa de Combate' },
+    { id: 'aba-compendio',  emoji: '📖', label: 'Compêndio e Regras' },
     { id: 'aba-musica',     emoji: '🎵', label: 'Mesa de Som' },
+    // 🧠 A IA PESSOAL DO CHEFE FOI INJETADA AQUI 🧠
     { id: 'aba-oraculo',    emoji: '🤖', label: 'Sexta-Feira (IA)' }
 ];
 
@@ -24,7 +26,7 @@ export default function Sidebar({ className }) {
     const setAbaAtiva = useStore((s) => s.setAbaAtiva);
     const isMestre = useStore((s) => s.isMestre);
 
-    // Motor de Multitemas
+    // Motor de Multitemas (Lê da memória, padrão é cyber)
     const [tema, setTema] = useState(localStorage.getItem('rpg_tema') || 'theme-cyber');
 
     const trocarTema = () => {
@@ -35,19 +37,34 @@ export default function Sidebar({ className }) {
         localStorage.setItem('rpg_tema', proximoTema);
     };
 
+    // Injeta a classe do tema diretamente no 'body' da página
     useEffect(() => {
-        document.body.className = tema;
+        // Limpa os temas antigos antes de adicionar o novo
+        document.body.classList.remove('theme-cyber', 'theme-blood', 'theme-glass');
+        document.body.classList.add(tema);
     }, [tema]);
 
     return (
-        <nav className={['sidebar', 'sidebar-multitema', className].filter(Boolean).join(' ')}>
+        <nav className={['sidebar', className].filter(Boolean).join(' ')}>
             {tabs.map((tab) => {
-                if (tab.mestreOnly && !isMestre) return null;
+                if (tab.mestreOnly && !isMestre) {
+                    return (
+                        <button
+                            key={tab.id}
+                            className="nav-btn btn-coroa hidden"
+                            title={tab.label}
+                            onClick={() => setAbaAtiva(tab.id)}
+                            style={{ display: 'none' }} // Garante que fica invisível
+                        >
+                            {tab.emoji}
+                        </button>
+                    );
+                }
 
                 return (
                     <button
                         key={tab.id}
-                        className={`btn-sidebar ${abaAtiva === tab.id ? 'ativo' : ''}`}
+                        className={`nav-btn${tab.mestreOnly ? ' btn-coroa' : ''}${abaAtiva === tab.id ? ' ativo' : ''}`}
                         title={tab.label}
                         onClick={() => setAbaAtiva(tab.id)}
                     >
@@ -55,7 +72,9 @@ export default function Sidebar({ className }) {
                     </button>
                 );
             })}
-            <button className="btn-mudar-tema" onClick={trocarTema} title="Alternar Estilo Visual">⚙️</button>
+            
+            {/* O Símbolo de Transmutação */}
+            <button className="btn-mudar-tema" onClick={trocarTema} title="Alternar Visual da Forja">⚙️</button>
         </nav>
     );
 }
