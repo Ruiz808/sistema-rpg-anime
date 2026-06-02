@@ -43,3 +43,5 @@ desktop.ini
 # Editor
 *.suo
 *.user
+
+release/

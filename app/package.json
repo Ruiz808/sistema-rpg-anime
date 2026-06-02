@@ -2,11 +2,15 @@
   "name": "rpg-anime-system",
   "private": true,
   "version": "1.0.0",
-  "main": "electron.js",
+  "main": "electron.cjs",
+  "type": "module",
+  "description": "Launcher do Multiverso RPG",
+  "author": "Matheus",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "test": "vitest run",
     "app:testar": "electron .",
     "app:forjar": "electron-builder --win"
   },
@@ -18,15 +22,8 @@
     },
     "win": {
       "target": "nsis",
-      "icon": "public/pwa-512x512.png"
+      "icon": "public/pwa-192x192.png"
     }
-  },
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "test": "vitest run"
   },
   "dependencies": {
     "@plasmicapp/host": "^2.0.0",
@@ -48,6 +45,8 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^42.3.0",
+    "electron-builder": "^26.8.1",
     "jsdom": "^29.0.1",
     "vite": "^5.4.11",
     "vite-plugin-pwa": "^0.19.8",
