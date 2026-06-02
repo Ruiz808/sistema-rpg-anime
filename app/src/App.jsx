@@ -3,6 +3,7 @@ import { ref, get, set, onValue } from 'firebase/database'
 import { db } from './services/firebase-config'
 import useStore, { sanitizarNome } from './stores/useStore'
 import useFirebase from './hooks/useFirebase'
+import Swal from 'sweetalert2'
 
 // Import de Layout e Componentes
 import Sidebar from './components/layout/Sidebar'
@@ -889,12 +890,37 @@ function LobbyNeon() {
     };
 
     const criarMesa = async () => {
-        const definirSenha = window.confirm("Deseja proteger a mesa com uma Senha?\n(Apenas pessoas com a senha poderão entry)");
+        // Substituindo o confirm e o prompt nativos pelo SweetAlert2
+        const decisao = await Swal.fire({
+            title: 'Proteger com Senha?',
+            text: 'Deseja colocar uma senha na sua mesa?',
+            showDenyButton: true,
+            showCancelButton: true,
+            confirmButtonText: 'Sim (Com Senha)',
+            denyButtonText: 'Não (Pública)',
+            cancelButtonText: 'Cancelar',
+            background: '#0a0a0a', 
+            color: '#fff',
+            confirmButtonColor: '#00ffcc', 
+            denyButtonColor: '#333'
+        });
+
+        if (decisao.isDismissed) return; // Cancelou a criação
+
         let senha = '';
-        if (definirSenha) {
-            senha = window.prompt("Digite a senha para a sua mesa:");
-            if (!senha) return alert("Criação cancelada porque a senha estava vazia.");
+        if (decisao.isConfirmed) {
+            const { value: senhaDigitada } = await Swal.fire({
+                title: 'Digite a Senha',
+                input: 'password',
+                inputPlaceholder: 'Senha secreta...',
+                background: '#0a0a0a', 
+                color: '#fff',
+                confirmButtonColor: '#00ffcc'
+            });
+            if (!senhaDigitada) return Swal.fire({ title: 'Cancelado', text: 'A senha estava vazia.', background: '#0a0a0a', color: '#fff' });
+            senha = senhaDigitada;
         }
+
         const novoCodigo = 'MESA-' + Math.random().toString(36).substring(2, 7).toUpperCase();
         try {
             await registrarNovaMesa(novoCodigo, userLogado, senha);
@@ -912,13 +938,25 @@ function LobbyNeon() {
         
         let checkFinal = resultado;
 
+        // 👇 BLOCO SUBSTITUÍDO:
         if (!resultado.senhaCorreta) {
-            const senhaDigitada = window.prompt(`A sala ${id} é protegida!\nDigite a senha de acesso:`);
-            if (!senhaDigitada) return;
+            const { value: senhaDigitada } = await Swal.fire({
+                title: 'Sala Protegida!',
+                text: `A sala ${id} exige uma senha de acesso:`,
+                input: 'password',
+                background: '#0a0a0a', 
+                color: '#fff',
+                confirmButtonColor: '#0088ff',
+                showCancelButton: true
+            });
+            
+            if (!senhaDigitada) return; // Jogador cancelou
+            
             const reCheck = await verificarMesaExistente(id, senhaDigitada);
-            if (!reCheck.senhaCorreta) return alert('Senha Incorreta! Acesso negado.');
+            if (!reCheck.senhaCorreta) return Swal.fire({ title: 'Acesso Negado', text: 'Senha Incorreta!', icon: 'error', background: '#0a0a0a', color: '#fff' });
             checkFinal = reCheck;
         }
+        // 👆 FIM DO BLOCO SUBSTITUÍDO
 
         const nickSanitizado = sanitizarNome(userLogado);
         const souMestre = !!(checkFinal.mestres && checkFinal.mestres[nickSanitizado]);
