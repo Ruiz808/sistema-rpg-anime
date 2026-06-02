@@ -2,6 +2,25 @@
   "name": "rpg-anime-system",
   "private": true,
   "version": "1.0.0",
+  "main": "electron.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "app:testar": "electron .",
+    "app:forjar": "electron-builder --win"
+  },
+  "build": {
+    "appId": "com.multiverso.rpg",
+    "productName": "Multiverso RPG",
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "public/pwa-512x512.png"
+    }
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",
