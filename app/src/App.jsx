@@ -844,22 +844,28 @@ function LobbyNeon() {
     };
 
     // 🌟 NOVO EFEITO: Puxa da nuvem ao logar ou migra o que já existia no PC!
+    // 🌟 NOVO EFEITO: Ouve a nuvem em TEMPO REAL!
     useEffect(() => {
         if (!userLogado) return;
         const nickSanitizado = sanitizarNome(userLogado);
-        get(ref(db, `usuarios/${nickSanitizado}/historicoMesas`)).then((snap) => {
+        
+        // Trocámos o "get" por "onValue". Qualquer mudança no site reflete aqui no mesmo segundo!
+        const unsub = onValue(ref(db, `usuarios/${nickSanitizado}/historicoMesas`), (snap) => {
             if (snap.exists()) {
                 const dadosNuvem = snap.val();
                 setMinhasMesas(dadosNuvem);
                 localStorage.setItem('rpg_historico_mesas', JSON.stringify(dadosNuvem));
             } else {
-                // Se a nuvem estiver vazia, sobe as mesas que o jogador já tinha salvas localmente
+                // Se a nuvem estiver vazia, sobe as mesas locais
                 const local = localStorage.getItem('rpg_historico_mesas');
                 if (local) {
                     set(ref(db, `usuarios/${nickSanitizado}/historicoMesas`), JSON.parse(local));
                 }
             }
         });
+
+        // Desfaz a ligação telepática se o jogador fechar o jogo
+        return () => unsub();
     }, [userLogado]);
 
     useEffect(() => {

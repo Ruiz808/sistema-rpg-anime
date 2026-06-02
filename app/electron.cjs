@@ -15,7 +15,10 @@ function createWindow() {
       contextIsolation: true
     }
   });
-
+// 👇 O FEITIÇO ANTI-CACHE (Adicione estas 2 linhas aqui) 👇
+  // Limpa os fantasmas do Vite, mas mantém o Login do Firebase intacto!
+  win.webContents.session.clearCache();
+  win.webContents.session.clearStorageData({ storages: ['serviceworkers'] });
   // 👇 O SEGREDO ESTÁ AQUI 👇
   // Apague o link de exemplo e coloque o link do seu site no ar!
   win.loadURL('https://databaserpg-5595b.web.app');
