@@ -826,12 +826,41 @@ function LobbyNeon() {
         }
     };
 
-    const [minhasMesas, setMinhasMesas] = useState(() => {
+const [minhasMesas, setMinhasMesas] = useState(() => {
         try { 
             const stored = JSON.parse(localStorage.getItem('rpg_historico_mesas')) || []; 
             return stored.map(m => typeof m === 'string' ? { id: m, nome: m, isMestre: false } : { ...m, isMestre: m.isMestre || false });
         } catch(e) { return []; }
     });
+
+    // 🌟 NOVA FUNÇÃO: Salva no PC e no Firebase ao mesmo tempo!
+    const atualizarHistoricoNuvem = async (novaLista) => {
+        setMinhasMesas(novaLista);
+        localStorage.setItem('rpg_historico_mesas', JSON.stringify(novaLista));
+        if (userLogado) {
+            const nickSanitizado = sanitizarNome(userLogado);
+            try { await set(ref(db, `usuarios/${nickSanitizado}/historicoMesas`), novaLista); } catch(e){}
+        }
+    };
+
+    // 🌟 NOVO EFEITO: Puxa da nuvem ao logar ou migra o que já existia no PC!
+    useEffect(() => {
+        if (!userLogado) return;
+        const nickSanitizado = sanitizarNome(userLogado);
+        get(ref(db, `usuarios/${nickSanitizado}/historicoMesas`)).then((snap) => {
+            if (snap.exists()) {
+                const dadosNuvem = snap.val();
+                setMinhasMesas(dadosNuvem);
+                localStorage.setItem('rpg_historico_mesas', JSON.stringify(dadosNuvem));
+            } else {
+                // Se a nuvem estiver vazia, sobe as mesas que o jogador já tinha salvas localmente
+                const local = localStorage.getItem('rpg_historico_mesas');
+                if (local) {
+                    set(ref(db, `usuarios/${nickSanitizado}/historicoMesas`), JSON.parse(local));
+                }
+            }
+        });
+    }, [userLogado]);
 
     useEffect(() => {
         if (!userLogado || minhasMesas.length === 0) return;
@@ -853,8 +882,7 @@ function LobbyNeon() {
             }));
             
             if (mounted && updated) {
-                setMinhasMesas(novasMesas);
-                localStorage.setItem('rpg_historico_mesas', JSON.stringify(novasMesas));
+                atualizarHistoricoNuvem(novasMesas);
             }
         };
 
@@ -868,8 +896,22 @@ function LobbyNeon() {
         
         const filtrado = minhasMesas.filter(m => m.id !== id);
         const novaLista = [{ id, nome: finalName, isMestre: isMestreTable }, ...filtrado].slice(0, 5);
-        setMinhasMesas(novaLista);
-        localStorage.setItem('rpg_historico_mesas', JSON.stringify(novaLista));
+        atualizarHistoricoNuvem(novaLista);
+    };
+
+    const editarNomeMesa = (id, e) => {
+        e.stopPropagation();
+        const mesa = minhasMesas.find(m => m.id === id);
+        const novoNome = window.prompt("Como deseja apelidar esta mesa no seu histórico pessoal?", mesa?.nome || id);
+        if (!novoNome || !novoNome.trim()) return;
+        const novaLista = minhasMesas.map(m => m.id === id ? { ...m, nome: novoNome.trim() } : m);
+        atualizarHistoricoNuvem(novaLista);
+    };
+
+    const removerDoHistorico = (idParaRemover, e) => {
+        e.stopPropagation();
+        const novaLista = minhasMesas.filter(m => m.id !== idParaRemover);
+        atualizarHistoricoNuvem(novaLista);
     };
 
     const editarNomeMesa = (id, e) => {
