@@ -5,14 +5,11 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
     height: 720,
-    minWidth: 800,
-    minHeight: 600,
-    autoHideMenuBar: true,
-    icon: path.join(__dirname, 'public', 'pwa-192x192.ico'),
+    // 👇 O feitiço direto e absoluto 👇
+    icon: path.join(__dirname, 'logo.ico'), 
     webPreferences: {
-      // Quando carregamos da internet, a segurança tem de ser alta:
-      nodeIntegration: false, 
-      contextIsolation: true
+      nodeIntegration: true,
+      // ...
     }
   });
 // 👇 O FEITIÇO ANTI-CACHE (Adicione estas 2 linhas aqui) 👇
