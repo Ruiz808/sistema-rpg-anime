@@ -734,13 +734,16 @@ function AuthScreen() {
     const [senha, setSenha] = useState('');
     const [loadingAuth, setLoadingAuth] = useState(false);
 
-    // 🔥 ESTADO E FUNÇÃO DE INSTALAÇÃO PWA 🔥
-    const [canInstall, setCanInstall] = useState(!!deferredPrompt);
-    useEffect(() => {
-        const handleReady = () => setCanInstall(true);
-        window.addEventListener('pwa-ready', handleReady);
-        return () => window.removeEventListener('pwa-ready', handleReady);
-    }, []);
+    {/* 🔥 O BOTÃO DE DOWNLOAD MULTIVERSAL COORDENADO 🔥 */}
+                <a 
+                    href="https://drive.google.com/drive/u/1/folders/1EkDLtwaV2ldOEpn15zq2-bGvg3RB0PQL" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="btn-neon btn-blue" 
+                    style={{ display: 'block', width: '100%', padding: '15px', fontSize: '1.1em', fontWeight: 'bold', marginBottom: '25px', textDecoration: 'none', boxSizing: 'border-box' }}
+                >
+                    🖥️ BAIXAR PARA WINDOWS (.exe)
+                </a>
 
     const handleInstallClick = async () => {
         if (!deferredPrompt) return;
