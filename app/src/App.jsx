@@ -1043,7 +1043,7 @@ function LobbyNeon() {
                 <button className="btn-neon btn-green" onClick={criarMesa} style={{ width: '100%', padding: '15px', fontSize: '1.2em', fontWeight: 'bold', marginBottom: '25px', borderRadius: '10px' }}>🌌 CRIAR NOVA MESA (Mestre)</button>
                 {/* 👇 COLE O BOTÃO AQUI, BEM DEBAIXO DO BOTÃO VERDE 👇 */}
                 <a 
-                    href="COLOQUE_AQUI_O_LINK_COMPARTILHADO_DO_DRIVE" 
+                    href="https://drive.google.com/drive/u/1/folders/1EkDLtwaV2ldOEpn15zq2-bGvg3RB0PQL" 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="btn-neon btn-blue" 

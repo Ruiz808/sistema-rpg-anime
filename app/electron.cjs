@@ -8,7 +8,7 @@ function createWindow() {
     minWidth: 800,
     minHeight: 600,
     autoHideMenuBar: true,
-    icon: path.join(__dirname, 'public', 'pwa-192x192.png'),
+    icon: path.join(__dirname, 'public', 'pwa-192x192.ico'),
     webPreferences: {
       // Quando carregamos da internet, a segurança tem de ser alta:
       nodeIntegration: false, 
