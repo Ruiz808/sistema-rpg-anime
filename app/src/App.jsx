@@ -1041,7 +1041,16 @@ function LobbyNeon() {
                 )}
 
                 <button className="btn-neon btn-green" onClick={criarMesa} style={{ width: '100%', padding: '15px', fontSize: '1.2em', fontWeight: 'bold', marginBottom: '25px', borderRadius: '10px' }}>🌌 CRIAR NOVA MESA (Mestre)</button>
-                
+                {/* 👇 COLE O BOTÃO AQUI, BEM DEBAIXO DO BOTÃO VERDE 👇 */}
+                <a 
+                    href="COLOQUE_AQUI_O_LINK_COMPARTILHADO_DO_DRIVE" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="btn-neon btn-blue" 
+                    style={{ display: 'block', width: '100%', padding: '15px', fontSize: '1.2em', fontWeight: 'bold', marginBottom: '25px', textDecoration: 'none', boxSizing: 'border-box', textAlign: 'center', borderRadius: '10px' }}
+                >
+                    🖥️ BAIXAR APLICATIVO PARA WINDOWS
+                </a>
                 {minhasMesas.length > 0 && (
                     <div style={{ marginBottom: '25px' }}>
                         <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
