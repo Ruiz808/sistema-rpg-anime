@@ -1191,3 +1191,104 @@ input:focus, select:focus {
     color: #fff;
     text-shadow: 0 0 10px #fff;
 }
+/* =========================================
+   🌍 EXPANSÃO GLOBAL DOS MULTITEMAS
+   ========================================= */
+
+/* 🟢 TEMA 1: CYBER-NEON (Padrão) */
+/* (O sistema já usa o seu código normal do App.jsx para este tema, não precisamos forçar nada) */
+
+
+/* 🩸 TEMA 2: OCULTO (Sangue, Sombras e Grimórios) */
+body.theme-blood, 
+body.theme-blood #root > div,
+body.theme-blood .app-layout {
+    background-color: #030000 !important;
+    background-image: radial-gradient(circle, #1a0000 0%, #000000 100%) !important;
+}
+
+/* Transmuta as caixas e painéis principais */
+.theme-blood .def-box {
+    background: rgba(15, 0, 0, 0.85) !important;
+    border: 1px solid #5a0000 !important;
+    box-shadow: inset 0 0 20px rgba(255, 0, 0, 0.05), 0 0 15px rgba(255, 0, 0, 0.15) !important;
+}
+
+/* Títulos macabros */
+.theme-blood h1, .theme-blood h2, .theme-blood h3 {
+    color: #ff3333 !important;
+    text-shadow: 0 0 15px #ff003c !important;
+    font-family: 'Courier New', Courier, monospace !important;
+}
+
+/* Inputs de texto estilo sangue escuro */
+.theme-blood .input-neon {
+    background: rgba(20, 0, 0, 0.6) !important;
+    border-color: #660000 !important;
+    color: #ff8888 !important;
+}
+
+/* Todos os botões ganham a cor do ferro e sangue */
+.theme-blood .btn-neon {
+    background: rgba(30, 0, 0, 0.8) !important;
+    border-color: #ff003c !important;
+    color: #ff3333 !important;
+    box-shadow: none !important;
+    font-family: 'Courier New', Courier, monospace !important;
+    text-transform: uppercase !important;
+}
+.theme-blood .btn-neon:hover {
+    background: rgba(255, 0, 60, 0.2) !important;
+    box-shadow: 0 0 20px #ff003c !important;
+    text-shadow: 0 0 10px #ff003c !important;
+    letter-spacing: 2px !important;
+}
+
+
+/* ⚙️ TEMA 3: AÇO NEGRO E VIDRO ESTILHAÇADO */
+body.theme-glass, 
+body.theme-glass #root > div,
+body.theme-glass .app-layout {
+    background-color: #05070a !important;
+    background-image: linear-gradient(135deg, #0f172a 0%, #000000 100%) !important;
+}
+
+/* Caixas estilo vidro fosco */
+.theme-glass .def-box {
+    background: rgba(255, 255, 255, 0.03) !important;
+    backdrop-filter: blur(12px) !important; /* Efeito de vidro */
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5) !important;
+    border-radius: 0px !important; /* Bordas duras como aço */
+}
+
+/* Títulos metálicos */
+.theme-glass h1, .theme-glass h2, .theme-glass h3 {
+    color: #ffffff !important;
+    text-shadow: 0 0 15px rgba(255, 255, 255, 0.3) !important;
+    letter-spacing: 2px !important;
+}
+
+/* Inputs minimalistas */
+.theme-glass .input-neon {
+    background: rgba(0, 0, 0, 0.4) !important;
+    border-color: #444 !important;
+    color: #fff !important;
+    border-radius: 0px !important;
+}
+
+/* O feitiço cortante nas bordas dos botões */
+.theme-glass .btn-neon {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-color: #888 !important;
+    color: #fff !important;
+    /* Faz o corte diagonal nas pontas */
+    clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px) !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+}
+.theme-glass .btn-neon:hover {
+    background: rgba(255, 255, 255, 0.15) !important;
+    border-color: #ffffff !important;
+    text-shadow: 0 0 10px #ffffff !important;
+}
