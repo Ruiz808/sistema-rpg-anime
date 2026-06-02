@@ -19,6 +19,7 @@ function createWindow() {
   // 👇 O SEGREDO ESTÁ AQUI 👇
   // Apague o link de exemplo e coloque o link do seu site no ar!
   win.loadURL('https://databaserpg-5595b.web.app');
+  win.webContents.openDevTools();
   
   // (Opcional) Se quiser que o fundo fique preto enquanto a internet carrega o jogo:
   win.setBackgroundColor('#000000');
