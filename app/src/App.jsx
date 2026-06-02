@@ -914,14 +914,11 @@ const [minhasMesas, setMinhasMesas] = useState(() => {
         atualizarHistoricoNuvem(novaLista);
     };
 
-    const editarNomeMesa = (id, e) => {
+
+    const removerDoHistorico = (idParaRemover, e) => {
         e.stopPropagation();
-        const mesa = minhasMesas.find(m => m.id === id);
-        const novoNome = window.prompt("Como deseja apelidar esta mesa no seu histórico pessoal?", mesa?.nome || id);
-        if (!novoNome || !novoNome.trim()) return;
-        const novaLista = minhasMesas.map(m => m.id === id ? { ...m, nome: novoNome.trim() } : m);
-        setMinhasMesas(novaLista);
-        localStorage.setItem('rpg_historico_mesas', JSON.stringify(novaLista));
+        const novaLista = minhasMesas.filter(m => m.id !== idParaRemover);
+        atualizarHistoricoNuvem(novaLista); // <-- A versão correta termina assim!
     };
 
     const removerDoHistorico = (idParaRemover, e) => {
