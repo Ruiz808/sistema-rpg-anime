@@ -1105,3 +1105,79 @@ input:focus, select:focus {
     height: 50px;
   }
 }
+/* =========================================
+   🔮 MOTOR DE MULTITEMAS (SIDEBAR)
+   ========================================= */
+.sidebar-multitema {
+    transition: all 0.4s ease-in-out;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* 🟢 TEMA 1: CYBER-NEON (Minimalismo de Alto Contraste) */
+.theme-cyber .btn-sidebar {
+    background: transparent;
+    border: 1px solid #00ffcc;
+    color: #00ffcc;
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+.theme-cyber .btn-sidebar:hover, 
+.theme-cyber .btn-sidebar.ativo {
+    background: rgba(0, 255, 204, 0.1);
+    box-shadow: 0 0 15px #00ffcc, inset 0 0 10px #00ffcc;
+    text-shadow: 0 0 8px #00ffcc;
+    transform: scale(1.05);
+}
+
+/* 🩸 TEMA 2: OCULTO (Marcas e Sangue) */
+.theme-blood .btn-sidebar {
+    background: #050000;
+    border: 1px solid #4a0000;
+    color: #ff3333;
+    border-radius: 2px;
+    font-family: 'Courier New', monospace; /* Toque macabro e documental */
+    text-transform: uppercase;
+    transition: all 0.3s;
+}
+.theme-blood .btn-sidebar:hover, 
+.theme-blood .btn-sidebar.ativo {
+    background: #1a0000;
+    border-color: #ff003c;
+    box-shadow: 0 0 20px #ff003c;
+    text-shadow: 0 0 10px #ff003c;
+    letter-spacing: 2px;
+}
+
+/* ⚙️ TEMA 3: AÇO NEGRO E VIDRO ESTILHAÇADO */
+.theme-glass .btn-sidebar {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #aaaaaa;
+    /* O feitiço do corte na borda (Anime/Sci-Fi) */
+    clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px);
+    transition: all 0.2s;
+}
+.theme-glass .btn-sidebar:hover, 
+.theme-glass .btn-sidebar.ativo {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid #ffffff;
+    color: #ffffff;
+    text-shadow: 0 0 10px #ffffff;
+}
+
+/* Botão de Trocar Tema no fundo */
+.btn-mudar-tema {
+    margin-top: auto; /* Empurra para o fundo */
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.5em;
+    padding: 15px;
+    transition: transform 0.5s;
+}
+.btn-mudar-tema:hover {
+    transform: rotate(180deg); /* Roda ao passar o rato */
+}
