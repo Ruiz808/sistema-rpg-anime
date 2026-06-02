@@ -3,6 +3,10 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import '../css/styles.css'
 
+// 👇 INJEÇÃO DO PWA (A Ignição do Motor) 👇
+import { registerSW } from 'virtual:pwa-register'
+registerSW({ immediate: true })
+
 const LazyPlasmicHostPage = React.lazy(() => import('./plasmic-host'))
 
 function RootRouter() {
