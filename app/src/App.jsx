@@ -826,7 +826,7 @@ function LobbyNeon() {
         }
     };
 
-const [minhasMesas, setMinhasMesas] = useState(() => {
+    const [minhasMesas, setMinhasMesas] = useState(() => {
         try { 
             const stored = JSON.parse(localStorage.getItem('rpg_historico_mesas')) || []; 
             return stored.map(m => typeof m === 'string' ? { id: m, nome: m, isMestre: false } : { ...m, isMestre: m.isMestre || false });
@@ -914,22 +914,7 @@ const [minhasMesas, setMinhasMesas] = useState(() => {
         atualizarHistoricoNuvem(novaLista);
     };
 
-
-    const removerDoHistorico = (idParaRemover, e) => {
-        e.stopPropagation();
-        const novaLista = minhasMesas.filter(m => m.id !== idParaRemover);
-        atualizarHistoricoNuvem(novaLista); // <-- A versão correta termina assim!
-    };
-
-    const removerDoHistorico = (idParaRemover, e) => {
-        e.stopPropagation();
-        const novaLista = minhasMesas.filter(m => m.id !== idParaRemover);
-        setMinhasMesas(novaLista);
-        localStorage.setItem('rpg_historico_mesas', JSON.stringify(novaLista));
-    };
-
     const criarMesa = async () => {
-        // Substituindo o confirm e o prompt nativos pelo SweetAlert2
         const decisao = await Swal.fire({
             title: 'Proteger com Senha?',
             text: 'Deseja colocar uma senha na sua mesa?',
@@ -977,7 +962,6 @@ const [minhasMesas, setMinhasMesas] = useState(() => {
         
         let checkFinal = resultado;
 
-        // 👇 BLOCO SUBSTITUÍDO:
         if (!resultado.senhaCorreta) {
             const { value: senhaDigitada } = await Swal.fire({
                 title: 'Sala Protegida!',
@@ -995,7 +979,6 @@ const [minhasMesas, setMinhasMesas] = useState(() => {
             if (!reCheck.senhaCorreta) return Swal.fire({ title: 'Acesso Negado', text: 'Senha Incorreta!', icon: 'error', background: '#0a0a0a', color: '#fff' });
             checkFinal = reCheck;
         }
-        // 👆 FIM DO BLOCO SUBSTITUÍDO
 
         const nickSanitizado = sanitizarNome(userLogado);
         const souMestre = !!(checkFinal.mestres && checkFinal.mestres[nickSanitizado]);
