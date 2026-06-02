@@ -1,28 +1,26 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
 
+// 👇 FORÇA O WINDOWS A RECONHECER O SEU NOME, NÃO O DO ELECTRON 👇
+app.setAppUserModelId("RPG Anime System");
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
     height: 720,
-    // 👇 O feitiço direto e absoluto 👇
+    title: "RPG Anime System - Forja Definitiva", // 👈 Força o título da janela
     icon: path.join(__dirname, 'logo.ico'), 
     webPreferences: {
       nodeIntegration: true,
-      // ...
+      contextIsolation: false,
+      enableRemoteModule: true,
     }
   });
-// 👇 O FEITIÇO ANTI-CACHE (Adicione estas 2 linhas aqui) 👇
-  // Limpa os fantasmas do Vite, mas mantém o Login do Firebase intacto!
+
   win.webContents.session.clearCache();
   win.webContents.session.clearStorageData({ storages: ['serviceworkers'] });
-  // 👇 O SEGREDO ESTÁ AQUI 👇
-  // Apague o link de exemplo e coloque o link do seu site no ar!
-  win.loadURL('https://databaserpg-5595b.web.app');
-  win.webContents.openDevTools();
-  
-  // (Opcional) Se quiser que o fundo fique preto enquanto a internet carrega o jogo:
-  win.setBackgroundColor('#000000');
+
+  win.loadURL('https://COLOQUE-SEU-LINK.web.app');
 }
 
 app.whenReady().then(createWindow);
