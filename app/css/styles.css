@@ -1354,3 +1354,52 @@ body.theme-glass ::-webkit-scrollbar-thumb:hover { background: #ccd6f6 !importan
     color: #ffffff !important;
     text-shadow: 0 0 10px #ffffff !important;
 }
+/* =========================================
+   🌌 TEMA 4: VAZIO ARCANO (Roxo & Magia)
+   ========================================= */
+body.theme-arcane, body.theme-arcane .app-layout {
+    background-color: #0a001a !important;
+    font-family: 'Georgia', serif !important;
+}
+/* Scrollbar Cósmica */
+body.theme-arcane ::-webkit-scrollbar-thumb { background: #aa00ff !important; border-radius: 10px !important; }
+body.theme-arcane ::-webkit-scrollbar-thumb:hover { background: #e040fb !important; }
+
+/* Caixas estilo grimório estelar */
+.theme-arcane .def-box {
+    background: rgba(15, 0, 30, 0.85) !important;
+    border: 1px solid #7b1fa2 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 0 30px rgba(170, 0, 255, 0.15), inset 0 0 20px rgba(224, 64, 251, 0.05) !important;
+}
+
+/* Títulos Arcanos */
+.theme-arcane h1, .theme-arcane h2, .theme-arcane h3, .theme-arcane .title {
+    color: #e040fb !important;
+    text-shadow: 0 0 15px #aa00ff !important;
+    letter-spacing: 2px !important;
+}
+
+/* Inputs mágicos */
+.theme-arcane .input-neon {
+    background: rgba(30, 0, 60, 0.6) !important;
+    border: 1px solid #7b1fa2 !important;
+    color: #ea80fc !important;
+    border-radius: 8px !important;
+}
+.theme-arcane .input-neon:focus { border-color: #e040fb !important; box-shadow: 0 0 15px rgba(224, 64, 251, 0.4) !important; }
+
+/* Botões Arcanos */
+.theme-arcane .nav-btn, .theme-arcane .btn-neon {
+    background: rgba(40, 0, 80, 0.5) !important;
+    border: 1px solid #aa00ff !important;
+    color: #e040fb !important;
+    border-radius: 8px !important;
+}
+.theme-arcane .nav-btn:hover, .theme-arcane .nav-btn.ativo, .theme-arcane .btn-neon:hover {
+    background: rgba(170, 0, 255, 0.3) !important;
+    border-color: #e040fb !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 20px #aa00ff, inset 0 0 10px #e040fb !important;
+    transform: translateY(-2px);
+}
