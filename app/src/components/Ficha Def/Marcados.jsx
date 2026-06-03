@@ -4,6 +4,9 @@ import { uploadImagem, salvarFichaSilencioso, salvarFirebaseImediato } from '../
 import { getMaximo, getRawBase, getBuffs } from '../../core/attributes';
 import { getRank } from '../../core/prestige';
 
+// 🔥 AQUI IMPORTAMOS O SEU SISTEMA DE PODERES! (Ajuste o caminho se necessário)
+import PoderesPanel from '../Poderes/PoderesPanel';
+
 // ==========================================
 // 🛡️ FUNÇÕES SEGURAS DA ENGINE E MATEMÁTICA PURA
 // ==========================================
@@ -11,7 +14,6 @@ const safeGetRawBase = (f, k) => typeof getRawBase === 'function' ? getRawBase(f
 const safeGetRank = (prest, asc) => typeof getRank === 'function' ? getRank(prest, asc) : { l: 'F', c: '#ffffff', a: asc };
 const safeGetBuffs = (f, k, t) => typeof getBuffs === 'function' ? getBuffs(f, k, t) : {};
 
-// 🔥 LÊ A BASE REAL (Sem fantasmas, matemática absoluta!)
 const getBasePFor = (ficha, k) => {
     const mults = { vida: 1000000, mana: 10000000, aura: 10000000, chakra: 10000000, corpo: 10000000, status: 1000 };
     const div = parseFloat(ficha?.divisores?.[k]) || 1;
@@ -168,7 +170,6 @@ export default function MarcadosPanel() {
     const [paginaAtual, setPaginaAtual] = useState(1);
     const [salvando, setSalvando] = useState(false);
 
-    // 🔥 ESTADOS PARA MANTER AS CORES SUAVES ANTES DO FIREBASE
     const [localCorFundo, setLocalCorFundo] = useState('#bba9d8');
     const [localCorTinta, setLocalCorTinta] = useState('#000000');
 
@@ -195,7 +196,6 @@ export default function MarcadosPanel() {
         callSave();
     };
 
-    // 🔥 MOTOR DE SALVAR CORES APÓS SOLTAR O RATO (0.8s)
     const handleColorChange = (key, val) => {
         if (key === 'diarioCor') setLocalCorFundo(val);
         else setLocalCorTinta(val);
@@ -206,11 +206,12 @@ export default function MarcadosPanel() {
                 if (!f.estetica) f.estetica = {};
                 f.estetica[key] = val;
             });
-            callSave();
+            if (typeof salvarFirebaseImediato === 'function') salvarFirebaseImediato();
+            else salvarFichaSilencioso();
         }, 800);
     };
 
-    // 🔥 TABELA QUE RECALCULA DIRETAMENTE A BASE DA FICHA (Mata o Fantasma!)
+    // 🔥 SALVAMENTO IMEDIATO SEM FANTASMAS!
     const handleTabelaChange = (k, tipo, valor) => {
         let numVal = Number(valor);
         if (isNaN(numVal)) numVal = 0;
@@ -226,8 +227,6 @@ export default function MarcadosPanel() {
         const novaBase = Math.floor((novoP / novoDiv) * mult);
 
         updateFicha(f => {
-            if (f.overridePrestigio) f.overridePrestigio = null; // Exorciza o fantasma!
-
             if (tipo === 'divisor') {
                 if (!f.divisores) f.divisores = {};
                 f.divisores[k] = novoDiv;
@@ -244,7 +243,10 @@ export default function MarcadosPanel() {
                 }
             }
         });
-        callSave();
+        
+        // Força a Firebase a engolir a alteração imediatamente
+        if (typeof salvarFirebaseImediato === 'function') salvarFirebaseImediato();
+        else salvarFichaSilencioso();
     };
 
     const handleSalvarTudo = async () => {
@@ -298,7 +300,8 @@ export default function MarcadosPanel() {
                 f.acoes[tipo].atual = f.acoes[tipo].max;
             });
         });
-        callSave();
+        if (typeof salvarFirebaseImediato === 'function') salvarFirebaseImediato();
+        else salvarFichaSilencioso();
     };
 
     const LinhaVital = ({ labelKey, fallbackLabel, vitalKey, subItens, corBarra, corTextoBarra = '#fff' }) => {
@@ -308,6 +311,7 @@ export default function MarcadosPanel() {
         if (isNaN(rawMaximo)) rawMaximo = 0;
         
         const { mxDisplay, pVit } = calcularEscala(rawMaximo, vitalKey);
+        
         let atual = minhaFicha[vitalKey]?.atual;
         if (atual === undefined || atual === null || atual === '') atual = mxDisplay; else atual = Number(atual);
         if (isNaN(atual)) atual = mxDisplay;
@@ -356,7 +360,7 @@ export default function MarcadosPanel() {
         try {
             const url = await uploadImagem(file, `avatars/${meuNome || 'desconhecido'}`);
             updateFicha(f => { if (!f.avatar) f.avatar = { base: "" }; f.avatar.base = url; });
-            callSave();
+            if (typeof salvarFirebaseImediato === 'function') await salvarFirebaseImediato();
         } catch (err) { alert('Erro ao pintar o avatar!'); } 
         finally { setUploadingImg(false); }
     };
@@ -400,7 +404,7 @@ export default function MarcadosPanel() {
                                 style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} 
                             />
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Fonte da Letra:</label>
-                            <select value={fonteDiario} onChange={(e) => salvar('estetica.diarioFonte', e.target.value)} style={{ width: '100%', padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', fontFamily: 'inherit' }}>
+                            <select value={fonteDiario} onChange={(e) => { salvar('estetica.diarioFonte', e.target.value); callSave(); }} style={{ width: '100%', padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', fontFamily: 'inherit' }}>
                                 <option value='"Comic Sans MS", "Chalkboard SE", "Marker Felt", cursive'>✏️ Escrito à Mão</option>
                                 <option value="'Courier New', Courier, monospace">🖨️ Máquina de Escrever</option>
                                 <option value="'Times New Roman', Times, serif">📖 Grimório Clássico</option>
@@ -420,7 +424,7 @@ export default function MarcadosPanel() {
             </div>
 
             {/* 📖 CONTEÚDO DO LIVRO */}
-            <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '40px' }}>
+            <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '40px', paddingBottom: '30px' }}>
                 
                 {/* ======================= PÁGINA 1 ======================= */}
                 {paginaAtual === 1 && (
@@ -436,8 +440,8 @@ export default function MarcadosPanel() {
                                 <CampoMagico valor={minhaFicha.bio?.nivel} onChange={(v) => salvar('bio.nivel', v)} styleExtra={{ width: '60px', borderBottom: 'none', marginLeft: '10px' }} isNumber={true} type="number" />
                             </h2>
 
-                            {/* 🔥 LAYOUT DA BIO 100% IDÊNTICO À SUA IMAGEM (GRID) */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '120px 10px 1fr', gap: '8px', fontSize: '1.2em', alignItems: 'center' }}>
+                            {/* 🔥 LAYOUT CLÁSSICO E ALINHADO DA BIO RESTAURADO NA PERFEIÇÃO! */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '1.2em' }}>
                                 {[
                                     { k: 'idade', lbl: 'Idade' },
                                     { k: 'aniversario', lbl: 'Aniversário' },
@@ -447,25 +451,22 @@ export default function MarcadosPanel() {
                                     { k: 'afiliacao', lbl: 'Afiliação' },
                                     { k: 'classe', lbl: 'Classe' }
                                 ].map(item => (
-                                    <React.Fragment key={item.k}>
-                                        <div style={{ fontWeight: 'bold' }}>
+                                    <div key={item.k} style={{ display: 'flex' }}>
+                                        <div style={{ width: '140px', fontWeight: 'bold' }}>
                                             <LabelMagico valor={getLabel(`bio_${item.k}`, item.lbl)} onChange={(v) => setLabel(`bio_${item.k}`, v)} />
                                         </div>
-                                        <div style={{ fontWeight: 'bold', textAlign: 'center' }}>:</div>
-                                        <div>
-                                            <CampoMagico valor={minhaFicha.bio?.[item.k]} onChange={(v) => salvar(`bio.${item.k}`, v)} styleExtra={{ width: '100%', borderBottom: '1px dotted rgba(0,0,0,0.3)' }} />
-                                        </div>
-                                    </React.Fragment>
+                                        <span style={{ fontWeight: 'bold', marginRight: '8px' }}>:</span>
+                                        <CampoMagico valor={minhaFicha.bio?.[item.k]} onChange={(v) => salvar(`bio.${item.k}`, v)} styleExtra={{ flex: 1, borderBottom: '1px dotted rgba(0,0,0,0.3)' }} />
+                                    </div>
                                 ))}
                             </div>
 
-                            {/* FOTOGRAFIA ENCOSTADA À ESQUERDA ABAIXO DA BIO */}
-                            <div style={{ marginTop: '20px', width: 'fit-content', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                            <div style={{ marginTop: '20px', position: 'relative', width: 'fit-content', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                 <label style={{ cursor: 'pointer', display: 'block' }}>
                                     <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} disabled={uploadingImg} />
                                     {uploadingImg ? <div style={{ width: '320px', height: '480px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed #000' }}>✍️...</div> : minhaFicha.avatar?.base ? <img src={minhaFicha.avatar.base} alt="Avatar" style={{ width: '320px', height: 'auto', objectFit: 'cover', border: '2px solid rgba(0,0,0,0.8)', boxShadow: '8px 8px 0px rgba(0,0,0,0.2)' }} /> : <div style={{ width: '320px', height: '480px', border: '2px dashed #000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', background: 'rgba(255,255,255,0.1)' }}>Colar Fotografia Aqui 📸</div>}
                                 </label>
-                                {minhaFicha.avatar?.base && <button onClick={() => {if(window.confirm('Apagar?')) { updateFicha(f => {f.avatar.base = ""}); callSave(); } }} style={{ background: 'transparent', border: '1px dashed #ff003c', color: '#ff003c', marginTop: '10px', padding: '5px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'inherit', width: 'fit-content' }}>🗑️ Remover Foto</button>}
+                                {minhaFicha.avatar?.base && <button onClick={() => {if(window.confirm('Apagar?')) { updateFicha(f => {f.avatar.base = ""}); callSave(); } }} style={{ background: 'transparent', border: '1px dashed #ff003c', color: '#ff003c', marginTop: '10px', padding: '5px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'inherit' }}>🗑️ Remover Foto</button>}
                             </div>
                         </div>
 
@@ -622,12 +623,25 @@ export default function MarcadosPanel() {
                     </>
                 )}
 
+                {/* ======================= PÁGINA 3 ======================= */}
+                {paginaAtual === 3 && (
+                    <div className="fade-in" style={{ width: '100%', background: 'rgba(0,0,0,0.5)', padding: '20px', borderRadius: '12px' }}>
+                        <div style={{ textAlign: 'center', borderBottom: '2px solid rgba(255,255,255,0.2)', paddingBottom: '10px', marginBottom: '20px' }}>
+                            <h1 style={{ fontSize: '2.5em', fontStyle: 'italic', fontWeight: 'bold', margin: 0, color: '#fff' }}>
+                                <LabelMagico valor={getLabel('tituloPg3', 'O Grimório Místico')} onChange={(v) => setLabel('tituloPg3', v)} />
+                            </h1>
+                        </div>
+                        {/* INJEÇÃO DO SISTEMA DE PODERES COMPLETO! */}
+                        <PoderesPanel />
+                    </div>
+                )}
+
             </div>
 
             <div style={{ position: 'absolute', bottom: '20px', left: '0', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px', fontFamily: 'inherit' }}>
-                <button onClick={() => setPaginaAtual(1)} disabled={paginaAtual === 1} style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 1 ? 'default' : 'pointer', opacity: paginaAtual === 1 ? 0.3 : 1, fontFamily: 'inherit' }}>⮜ Identidade e Status</button>
-                <span style={{ fontSize: '1.1em', fontWeight: 'bold', borderBottom: '2px solid rgba(0,0,0,0.5)', padding: '0 10px' }}>Página {paginaAtual} de 2</span>
-                <button onClick={() => setPaginaAtual(2)} disabled={paginaAtual === 2} style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 2 ? 'default' : 'pointer', opacity: paginaAtual === 2 ? 0.3 : 1, fontFamily: 'inherit' }}>Análise de Poder ⮞</button>
+                <button onClick={() => setPaginaAtual(p => Math.max(1, p - 1))} disabled={paginaAtual === 1} style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 1 ? 'default' : 'pointer', opacity: paginaAtual === 1 ? 0.3 : 1, fontFamily: 'inherit' }}>⮜ Anterior</button>
+                <span style={{ fontSize: '1.1em', fontWeight: 'bold', borderBottom: '2px solid rgba(0,0,0,0.5)', padding: '0 10px' }}>Página {paginaAtual} de 3</span>
+                <button onClick={() => setPaginaAtual(p => Math.min(3, p + 1))} disabled={paginaAtual === 3} style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 3 ? 'default' : 'pointer', opacity: paginaAtual === 3 ? 0.3 : 1, fontFamily: 'inherit' }}>Próxima ⮞</button>
             </div>
 
         </div>

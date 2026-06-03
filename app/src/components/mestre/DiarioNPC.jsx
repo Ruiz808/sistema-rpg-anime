@@ -55,6 +55,13 @@ const CampoMagicoNPC = ({ valor, onChange, placeholder, styleExtra = {}, type = 
     );
 };
 
+const AreaMagicaNPC = ({ valor, onChange, placeholder, styleExtra = {} }) => (
+    <textarea 
+        value={valor || ''} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+        style={{ width: '100%', minHeight: '60px', background: 'rgba(0,0,0,0.1)', border: '1px solid rgba(0,0,0,0.3)', borderRadius: '5px', color: 'inherit', fontFamily: 'inherit', padding: '8px', outline: 'none', resize: 'vertical', ...styleExtra }}
+    />
+);
+
 const LabelMagicoNPC = ({ valor, onChange, fallback }) => (
     <input 
         type="text" value={valor !== undefined ? valor : fallback} onChange={(e) => onChange(e.target.value)} 
@@ -157,6 +164,8 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
         }
     }, [npcData?.estetica?.diarioCor, npcData?.estetica?.corTintaRadar]);
 
+    if (!npcData) return <div style={{ color: '#fff', padding: 20 }}>Conectando à Entidade...</div>;
+
     const salvar = (caminho, valor) => {
         const valFinal = (valor === undefined || (isNaN(valor) && typeof valor === 'number')) ? null : valor;
         const novoNpc = JSON.parse(JSON.stringify(npcData)); 
@@ -216,11 +225,17 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                 novoNpc[k].base = novaBase;
             }
         }
-        
-        if (window.timerSaveNPCTable) clearTimeout(window.timerSaveNPCTable);
-        window.timerSaveNPCTable = setTimeout(() => {
-            onSaveNpc(novoNpc);
-        }, 300);
+        onSaveNpc(novoNpc);
+    };
+
+    // 🔥 MOTORES DE ARRAY PARA A PÁGINA 3 DOS NPCS
+    const handleArrayItem = (chave, acao, index, campo, valor) => {
+        const novoNpc = JSON.parse(JSON.stringify(npcData));
+        if (!novoNpc[chave]) novoNpc[chave] = [];
+        if (acao === 'add') novoNpc[chave].push({ nome: '', custo: '', dano: '', descricao: '' });
+        else if (acao === 'remove') novoNpc[chave].splice(index, 1);
+        else if (acao === 'update') novoNpc[chave][index][campo] = valor;
+        onSaveNpc(novoNpc);
     };
 
     const getLabel = (key, fallback) => npcData.labels?.[key] !== undefined ? npcData.labels[key] : fallback;
@@ -365,8 +380,9 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
             </div>
 
             {/* 📖 CONTEÚDO DO LIVRO DO NPC */}
-            <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '40px' }}>
+            <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '40px', paddingBottom: '30px' }}>
                 
+                {/* ======================= PÁGINA 1 ======================= */}
                 {paginaAtual === 1 && (
                     <>
                         <div className="fade-in" style={{ flex: '1 1 450px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
@@ -380,8 +396,8 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                 <CampoMagicoNPC valor={npcData.bio?.nivel} onChange={(v) => salvar('bio.nivel', v)} styleExtra={{ width: '60px', borderBottom: 'none', marginLeft: '10px' }} isNumber={true} type="number" />
                             </h2>
 
-                            {/* 🔥 LAYOUT DA BIO 100% IDÊNTICO À SUA IMAGEM (GRID) */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '120px 10px 1fr', gap: '8px', fontSize: '1.2em', alignItems: 'center' }}>
+                            {/* 🔥 LAYOUT CLÁSSICO E ALINHADO DA BIO RESTAURADO NA PERFEIÇÃO! */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '1.2em' }}>
                                 {[
                                     { k: 'idade', lbl: 'Idade' },
                                     { k: 'aniversario', lbl: 'Aniversário' },
@@ -391,15 +407,13 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                     { k: 'afiliacao', lbl: 'Afiliação', foraDaBio: true },
                                     { k: 'classe', lbl: 'Classe' }
                                 ].map(item => (
-                                    <React.Fragment key={item.k}>
-                                        <div style={{ fontWeight: 'bold' }}>
+                                    <div key={item.k} style={{ display: 'flex' }}>
+                                        <div style={{ width: '140px', fontWeight: 'bold' }}>
                                             <LabelMagicoNPC valor={getLabel(`bio_${item.k}`, item.lbl)} onChange={(v) => setLabel(`bio_${item.k}`, v)} />
                                         </div>
-                                        <div style={{ fontWeight: 'bold', textAlign: 'center' }}>:</div>
-                                        <div>
-                                            <CampoMagicoNPC valor={item.foraDaBio ? npcData[item.k] : npcData.bio?.[item.k]} onChange={(v) => salvar(item.foraDaBio ? item.k : `bio.${item.k}`, v)} styleExtra={{ width: '100%', borderBottom: '1px dotted rgba(0,0,0,0.3)' }} />
-                                        </div>
-                                    </React.Fragment>
+                                        <span style={{ fontWeight: 'bold', marginRight: '8px' }}>:</span>
+                                        <CampoMagicoNPC valor={item.foraDaBio ? npcData[item.k] : npcData.bio?.[item.k]} onChange={(v) => salvar(item.foraDaBio ? item.k : `bio.${item.k}`, v)} styleExtra={{ flex: 1, borderBottom: '1px dotted rgba(0,0,0,0.3)' }} />
+                                    </div>
                                 ))}
                             </div>
 
@@ -556,12 +570,83 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                     </>
                 )}
 
+                {/* ======================= PÁGINA 3 ======================= */}
+                {paginaAtual === 3 && (
+                    <div className="fade-in" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '30px' }}>
+                        <div style={{ textAlign: 'center', borderBottom: '2px solid rgba(0,0,0,0.8)', paddingBottom: '10px' }}>
+                            <h1 style={{ fontSize: '3em', fontStyle: 'italic', fontWeight: 'bold', margin: 0 }}><LabelMagicoNPC valor={getLabel('tituloPg3', 'Arsenal & Singularidades')} onChange={(v) => setLabel('tituloPg3', v)} /></h1>
+                        </div>
+
+                        {/* 🌀 ARSENAL DE PODERES */}
+                        <div style={{ background: 'rgba(0,255,204,0.05)', border: '2px solid #00ffcc', borderRadius: '10px', padding: '20px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                                <h2 style={{ color: '#006655', margin: 0, textShadow: '0 0 5px rgba(0,255,204,0.5)' }}>🌀 Arsenal de Poderes</h2>
+                                <button onClick={() => handleArrayItem('poderes', 'add')} style={{ background: '#00ffcc', color: '#000', border: 'none', padding: '5px 15px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>+ Novo Poder</button>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                {(npcData.poderes || []).map((pod, i) => (
+                                    <div key={i} style={{ background: 'rgba(0,0,0,0.4)', borderRadius: '8px', padding: '10px', borderLeft: '4px solid #00ffcc', position: 'relative' }}>
+                                        <button onClick={() => { if(window.confirm('Apagar Poder?')) handleArrayItem('poderes', 'remove', i); }} style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', color: '#ff003c', fontSize: '1.2em', cursor: 'pointer' }}>✖</button>
+                                        <div style={{ display: 'flex', gap: '10px', marginBottom: '10px', flexWrap: 'wrap', paddingRight: '30px' }}>
+                                            <CampoMagicoNPC valor={pod.nome} onChange={v => handleArrayItem('poderes', 'update', i, 'nome', v)} placeholder="Nome do Poder" styleExtra={{ flex: '1 1 200px', color: '#00ffcc', fontSize: '1.2em', fontWeight: 'bold' }} />
+                                            <CampoMagicoNPC valor={pod.custo} onChange={v => handleArrayItem('poderes', 'update', i, 'custo', v)} placeholder="Custo (ex: 50 MP)" styleExtra={{ flex: '1 1 100px', color: '#fff' }} />
+                                            <CampoMagicoNPC valor={pod.dano} onChange={v => handleArrayItem('poderes', 'update', i, 'dano', v)} placeholder="Dano/Efeito" styleExtra={{ flex: '1 1 100px', color: '#ff5555' }} />
+                                        </div>
+                                        <AreaMagicaNPC valor={pod.descricao} onChange={v => handleArrayItem('poderes', 'update', i, 'descricao', v)} placeholder="Descreva os efeitos mágicos deste poder..." />
+                                    </div>
+                                ))}
+                                {(!npcData.poderes || npcData.poderes.length === 0) && <span style={{ fontStyle: 'italic', opacity: 0.6 }}>Nenhum poder forjado ainda...</span>}
+                            </div>
+                        </div>
+
+                        {/* ♾️ O INFINITY */}
+                        <div style={{ background: 'rgba(170,0,255,0.05)', border: '2px solid #aa00ff', borderRadius: '10px', padding: '20px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                                <h2 style={{ color: '#440066', margin: 0, textShadow: '0 0 5px rgba(170,0,255,0.5)' }}>♾️ O Infinity</h2>
+                                <button onClick={() => handleArrayItem('infinitys', 'add')} style={{ background: '#aa00ff', color: '#fff', border: 'none', padding: '5px 15px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>+ Novo Infinity</button>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                {(npcData.infinitys || []).map((inf, i) => (
+                                    <div key={i} style={{ background: 'rgba(0,0,0,0.4)', borderRadius: '8px', padding: '10px', borderLeft: '4px solid #aa00ff', position: 'relative' }}>
+                                        <button onClick={() => { if(window.confirm('Apagar Infinity?')) handleArrayItem('infinitys', 'remove', i); }} style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', color: '#ff003c', fontSize: '1.2em', cursor: 'pointer' }}>✖</button>
+                                        <div style={{ display: 'flex', gap: '10px', marginBottom: '10px', flexWrap: 'wrap', paddingRight: '30px' }}>
+                                            <CampoMagicoNPC valor={inf.nome} onChange={v => handleArrayItem('infinitys', 'update', i, 'nome', v)} placeholder="Nome do Domínio" styleExtra={{ flex: '1 1 200px', color: '#ea80fc', fontSize: '1.2em', fontWeight: 'bold' }} />
+                                            <CampoMagicoNPC valor={inf.custo} onChange={v => handleArrayItem('infinitys', 'update', i, 'custo', v)} placeholder="Gatilho/Custo" styleExtra={{ flex: '1 1 100px', color: '#fff' }} />
+                                        </div>
+                                        <AreaMagicaNPC valor={inf.descricao} onChange={v => handleArrayItem('infinitys', 'update', i, 'descricao', v)} placeholder="Descreva as regras absolutas deste domínio..." />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* ✨ SINGULARIDADE */}
+                        <div style={{ background: 'rgba(255,204,0,0.05)', border: '2px solid #ffcc00', borderRadius: '10px', padding: '20px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                                <h2 style={{ color: '#886600', margin: 0, textShadow: '0 0 5px rgba(255,204,0,0.5)' }}>✨ Singularidade</h2>
+                                <button onClick={() => handleArrayItem('singularidades', 'add')} style={{ background: '#ffcc00', color: '#000', border: 'none', padding: '5px 15px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>+ Singularidade</button>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                {(npcData.singularidades || []).map((sing, i) => (
+                                    <div key={i} style={{ background: 'rgba(0,0,0,0.4)', borderRadius: '8px', padding: '10px', borderLeft: '4px solid #ffcc00', position: 'relative' }}>
+                                        <button onClick={() => { if(window.confirm('Apagar Singularidade?')) handleArrayItem('singularidades', 'remove', i); }} style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', color: '#ff003c', fontSize: '1.2em', cursor: 'pointer' }}>✖</button>
+                                        <div style={{ display: 'flex', gap: '10px', marginBottom: '10px', flexWrap: 'wrap', paddingRight: '30px' }}>
+                                            <CampoMagicoNPC valor={sing.nome} onChange={v => handleArrayItem('singularidades', 'update', i, 'nome', v)} placeholder="Essência Única" styleExtra={{ flex: '1 1 200px', color: '#ffcc00', fontSize: '1.2em', fontWeight: 'bold' }} />
+                                            <CampoMagicoNPC valor={sing.custo} onChange={v => handleArrayItem('singularidades', 'update', i, 'custo', v)} placeholder="Passiva / Ativa" styleExtra={{ flex: '1 1 100px', color: '#fff' }} />
+                                        </div>
+                                        <AreaMagicaNPC valor={sing.descricao} onChange={v => handleArrayItem('singularidades', 'update', i, 'descricao', v)} placeholder="O poder que quebra as regras do universo..." />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
             </div>
 
             <div style={{ position: 'absolute', bottom: '20px', left: '0', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px', fontFamily: 'inherit' }}>
-                <button onClick={() => setPaginaAtual(1)} disabled={paginaAtual === 1} style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 1 ? 'default' : 'pointer', opacity: paginaAtual === 1 ? 0.3 : 1, fontFamily: 'inherit' }}>⮜ Identidade e Status</button>
-                <span style={{ fontSize: '1.1em', fontWeight: 'bold', borderBottom: '2px solid rgba(0,0,0,0.5)', padding: '0 10px' }}>Página {paginaAtual} de 2</span>
-                <button onClick={() => setPaginaAtual(2)} disabled={paginaAtual === 2} style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 2 ? 'default' : 'pointer', opacity: paginaAtual === 2 ? 0.3 : 1, fontFamily: 'inherit' }}>Análise de Poder ⮞</button>
+                <button onClick={() => setPaginaAtual(p => Math.max(1, p - 1))} disabled={paginaAtual === 1} style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 1 ? 'default' : 'pointer', opacity: paginaAtual === 1 ? 0.3 : 1, fontFamily: 'inherit' }}>⮜ Anterior</button>
+                <span style={{ fontSize: '1.1em', fontWeight: 'bold', borderBottom: '2px solid rgba(0,0,0,0.5)', padding: '0 10px' }}>Página {paginaAtual} de 3</span>
+                <button onClick={() => setPaginaAtual(p => Math.min(3, p + 1))} disabled={paginaAtual === 3} style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 3 ? 'default' : 'pointer', opacity: paginaAtual === 3 ? 0.3 : 1, fontFamily: 'inherit' }}>Próxima ⮞</button>
             </div>
 
         </div>
