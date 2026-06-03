@@ -4,7 +4,7 @@ import { uploadImagem, salvarFichaSilencioso, salvarFirebaseImediato } from '../
 import { getMaximo, getRawBase, getBuffs } from '../../core/attributes';
 import { getRank } from '../../core/prestige';
 
-// 🔥 AQUI IMPORTAMOS O SEU SISTEMA DE PODERES! (Ajuste o caminho se necessário)
+// 🔥 IMPORTAMOS O SEU SISTEMA DE PODERES (Mantenha o caminho que funcionou para si!)
 import PoderesPanel from '../poderes/PoderesPanel';
 
 // ==========================================
@@ -211,7 +211,6 @@ export default function MarcadosPanel() {
         }, 800);
     };
 
-    // 🔥 SALVAMENTO IMEDIATO SEM FANTASMAS!
     const handleTabelaChange = (k, tipo, valor) => {
         let numVal = Number(valor);
         if (isNaN(numVal)) numVal = 0;
@@ -227,6 +226,8 @@ export default function MarcadosPanel() {
         const novaBase = Math.floor((novoP / novoDiv) * mult);
 
         updateFicha(f => {
+            if (f.overridePrestigio) f.overridePrestigio = null;
+
             if (tipo === 'divisor') {
                 if (!f.divisores) f.divisores = {};
                 f.divisores[k] = novoDiv;
@@ -243,8 +244,6 @@ export default function MarcadosPanel() {
                 }
             }
         });
-        
-        // Força a Firebase a engolir a alteração imediatamente
         if (typeof salvarFirebaseImediato === 'function') salvarFirebaseImediato();
         else salvarFichaSilencioso();
     };
@@ -461,12 +460,12 @@ export default function MarcadosPanel() {
                                 ))}
                             </div>
 
-                            <div style={{ marginTop: '20px', position: 'relative', width: 'fit-content', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <div style={{ marginTop: '20px', position: 'relative', width: 'fit-content', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                                 <label style={{ cursor: 'pointer', display: 'block' }}>
                                     <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} disabled={uploadingImg} />
                                     {uploadingImg ? <div style={{ width: '320px', height: '480px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed #000' }}>✍️...</div> : minhaFicha.avatar?.base ? <img src={minhaFicha.avatar.base} alt="Avatar" style={{ width: '320px', height: 'auto', objectFit: 'cover', border: '2px solid rgba(0,0,0,0.8)', boxShadow: '8px 8px 0px rgba(0,0,0,0.2)' }} /> : <div style={{ width: '320px', height: '480px', border: '2px dashed #000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', background: 'rgba(255,255,255,0.1)' }}>Colar Fotografia Aqui 📸</div>}
                                 </label>
-                                {minhaFicha.avatar?.base && <button onClick={() => {if(window.confirm('Apagar?')) { updateFicha(f => {f.avatar.base = ""}); callSave(); } }} style={{ background: 'transparent', border: '1px dashed #ff003c', color: '#ff003c', marginTop: '10px', padding: '5px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'inherit' }}>🗑️ Remover Foto</button>}
+                                {minhaFicha.avatar?.base && <button onClick={() => {if(window.confirm('Apagar?')) { updateFicha(f => {f.avatar.base = ""}); callSave(); } }} style={{ background: 'transparent', border: '1px dashed #ff003c', color: '#ff003c', marginTop: '10px', padding: '5px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'inherit', width: 'fit-content' }}>🗑️ Remover Foto</button>}
                             </div>
                         </div>
 
@@ -625,13 +624,83 @@ export default function MarcadosPanel() {
 
                 {/* ======================= PÁGINA 3 ======================= */}
                 {paginaAtual === 3 && (
-                    <div className="fade-in" style={{ width: '100%', background: 'rgba(0,0,0,0.5)', padding: '20px', borderRadius: '12px' }}>
-                        <div style={{ textAlign: 'center', borderBottom: '2px solid rgba(255,255,255,0.2)', paddingBottom: '10px', marginBottom: '20px' }}>
-                            <h1 style={{ fontSize: '2.5em', fontStyle: 'italic', fontWeight: 'bold', margin: 0, color: '#fff' }}>
+                    <div className="fade-in grimorio-estilo-papel" style={{ width: '100%', padding: '20px', borderRadius: '12px' }}>
+                        
+                        {/* 🌟 A MAGIA DA ILUSÃO CSS: Transforma Cyberpunk em Papel Antigo! */}
+                        <style>{`
+                            .grimorio-estilo-papel {
+                                --tinta: ${localCorTinta};
+                                --fundo: ${localCorFundo};
+                                color: var(--tinta) !important;
+                            }
+                            
+                            .grimorio-estilo-papel * {
+                                font-family: ${fonteDiario} !important;
+                                text-shadow: none !important;
+                                box-shadow: none !important;
+                            }
+
+                            .grimorio-estilo-papel .def-box {
+                                background: rgba(0,0,0,0.02) !important;
+                                border: 2px dashed rgba(0,0,0,0.2) !important;
+                                border-radius: 8px !important;
+                                padding: 15px !important;
+                            }
+
+                            .grimorio-estilo-papel h1, .grimorio-estilo-papel h2, .grimorio-estilo-papel h3, .grimorio-estilo-papel h4, 
+                            .grimorio-estilo-papel p, .grimorio-estilo-papel span, .grimorio-estilo-papel div, 
+                            .grimorio-estilo-papel strong, .grimorio-estilo-papel label {
+                                color: var(--tinta) !important;
+                            }
+
+                            .grimorio-estilo-papel button {
+                                background: transparent !important;
+                                border: 1px solid var(--tinta) !important;
+                                color: var(--tinta) !important;
+                                border-radius: 4px !important;
+                                padding: 8px 15px !important;
+                                font-weight: bold !important;
+                                transition: all 0.3s ease !important;
+                            }
+                            .grimorio-estilo-papel button:hover {
+                                background: var(--tinta) !important;
+                                color: var(--fundo) !important;
+                            }
+                            .grimorio-estilo-papel button.btn-gold, .grimorio-estilo-papel button.btn-blue {
+                                background: var(--tinta) !important;
+                                color: var(--fundo) !important;
+                                border: 2px solid var(--tinta) !important;
+                            }
+
+                            .grimorio-estilo-papel input, 
+                            .grimorio-estilo-papel textarea, 
+                            .grimorio-estilo-papel select {
+                                background: rgba(0,0,0,0.03) !important;
+                                border: none !important;
+                                border-bottom: 1px dotted var(--tinta) !important;
+                                color: var(--tinta) !important;
+                                border-radius: 0 !important;
+                            }
+                            .grimorio-estilo-papel input::placeholder, 
+                            .grimorio-estilo-papel textarea::placeholder {
+                                color: var(--tinta) !important;
+                                opacity: 0.5 !important;
+                            }
+
+                            .grimorio-estilo-papel div[style*="background: rgba"],
+                            .grimorio-estilo-papel div[style*="background-color: rgba"] {
+                                background: rgba(0,0,0,0.04) !important;
+                                border-color: rgba(0,0,0,0.2) !important;
+                            }
+                        `}</style>
+                        
+                        <div style={{ textAlign: 'center', borderBottom: `2px solid ${localCorTinta}`, paddingBottom: '10px', marginBottom: '20px' }}>
+                            <h1 style={{ fontSize: '2.5em', fontStyle: 'italic', fontWeight: 'bold', margin: 0, color: localCorTinta }}>
                                 <LabelMagico valor={getLabel('tituloPg3', 'O Grimório Místico')} onChange={(v) => setLabel('tituloPg3', v)} />
                             </h1>
                         </div>
-                        {/* INJEÇÃO DO SISTEMA DE PODERES COMPLETO! */}
+                        
+                        {/* INJEÇÃO DO SEU SISTEMA DE PODERES COMPLETO! */}
                         <PoderesPanel />
                     </div>
                 )}
