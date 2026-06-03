@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { uploadImagem } from '../../services/firebase-sync';
 import { getMaximo, getRawBase, getBuffs } from '../../core/attributes';
 import { getRank } from '../../core/prestige';
@@ -150,6 +150,17 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
     const [modalEstilo, setModalEstilo] = useState(false);
     const [paginaAtual, setPaginaAtual] = useState(1);
 
+    // 🔥 ESTADOS LOCAIS PARA EVITAR SPAM DE CORES NO FIREBASE
+    const [localCorFundo, setLocalCorFundo] = useState('#ffe6cc');
+    const [localCorTinta, setLocalCorTinta] = useState('#000000');
+
+    useEffect(() => {
+        if (npcData) {
+            setLocalCorFundo(npcData.estetica?.diarioCor || '#ffe6cc');
+            setLocalCorTinta(npcData.estetica?.corTintaRadar || '#000000');
+        }
+    }, [npcData?.estetica?.diarioCor, npcData?.estetica?.corTintaRadar]);
+
     if (!npcData) return <div style={{ color: '#fff', padding: 20 }}>Conectando à Entidade...</div>;
 
     const salvar = (caminho, valor) => {
@@ -168,21 +179,18 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
     const handleTabelaChange = (k, tipo, valor) => {
         let novoP = tipo === 'prestigio' ? Number(valor) : getBasePFor(npcData, k);
         let novoDiv = tipo === 'divisor' ? Number(valor) : (npcData.divisores?.[k] || 1);
-        
         if (isNaN(novoP)) novoP = 0;
         if (isNaN(novoDiv) || novoDiv <= 0) novoDiv = 1;
         
         const mults = { vida: 1000000, mana: 10000000, aura: 10000000, chakra: 10000000, corpo: 10000000, status: 1000 };
         const mult = mults[k] || 1;
-        
         const novaBase = Math.floor((novoP / novoDiv) * mult);
-        const novoNpc = JSON.parse(JSON.stringify(npcData));
         
+        const novoNpc = JSON.parse(JSON.stringify(npcData));
         if (tipo === 'divisor') {
             if (!novoNpc.divisores) novoNpc.divisores = {};
             novoNpc.divisores[k] = novoDiv;
         }
-        
         if (k === 'status') {
             ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'].forEach(s => {
                 if (!novoNpc[s]) novoNpc[s] = {};
@@ -197,12 +205,8 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
 
     const getLabel = (key, fallback) => npcData.labels?.[key] !== undefined ? npcData.labels[key] : fallback;
     const setLabel = (key, val) => salvar(`labels.${key}`, val);
-
-    const corFundo = npcData.estetica?.diarioCor || '#ffe6cc'; 
-    const corTintaRadar = npcData.estetica?.corTintaRadar || '#000000';
     const fonteDiario = npcData.estetica?.diarioFonte || '"Comic Sans MS", "Chalkboard SE", "Marker Felt", cursive';
 
-    // 🔥 CÁLCULO PV/PM CORRIGIDO: Agora usa a base real do Prestígio sem falhas!
     const getSupremas = () => {
         const pVida = getBasePFor(npcData, 'vida');
         const pChakra = getBasePFor(npcData, 'chakra');
@@ -244,16 +248,6 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
             novoNpc.acoes[tipo].atual = novoNpc.acoes[tipo].max;
         });
         onSaveNpc(novoNpc);
-    };
-
-    const handleImageUpload = async (e) => {
-        const file = e.target.files[0]; if (!file) return;
-        setUploadingImg(true);
-        try {
-            const url = await uploadImagem(file, `avatars_npcs/${npcData.id || 'desconhecido'}`);
-            salvar('avatar.base', url);
-        } catch (err) { alert('Erro ao pintar o avatar da Entidade!'); } 
-        finally { setUploadingImg(false); }
     };
 
     const LinhaVital = ({ labelKey, fallbackLabel, vitalKey, overrideMax, subItens, corBarra, corTextoBarra = '#fff' }) => {
@@ -304,10 +298,20 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
         );
     };
 
+    const handleImageUpload = async (e) => {
+        const file = e.target.files[0]; if (!file) return;
+        setUploadingImg(true);
+        try {
+            const url = await uploadImagem(file, `avatars_npcs/${npcData.id || 'desconhecido'}`);
+            salvar('avatar.base', url);
+        } catch (err) { alert('Erro ao pintar o avatar da Entidade!'); } 
+        finally { setUploadingImg(false); }
+    };
+
     return (
         <div style={{ 
-            width: '100%', minHeight: '85vh', background: corFundo, color: '#000', fontFamily: fonteDiario, 
-            padding: '40px 40px 80px 40px', borderRadius: '12px', position: 'relative', transition: 'background 0.5s ease',
+            width: '100%', minHeight: '85vh', background: localCorFundo, color: '#000', fontFamily: fonteDiario, 
+            padding: '40px 40px 80px 40px', borderRadius: '12px', position: 'relative', transition: 'background 0.2s ease',
             boxShadow: 'inset 0 0 40px rgba(0,0,0,0.1), 0 10px 30px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column',
             marginTop: '20px'
         }}>
@@ -318,9 +322,20 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                     {modalEstilo && (
                         <div className="fade-in" style={{ position: 'absolute', top: '50px', right: '0', background: '#ffe4f0', padding: '15px', border: '1px solid #ccc', boxShadow: '5px 5px 15px rgba(0,0,0,0.3)', width: '250px', zIndex: 20 }}>
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Cor do Papel:</label>
-                            <input type="color" value={corFundo} onChange={(e) => salvar('estetica.diarioCor', e.target.value)} style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} />
+                            {/* 🔥 CORES AGORA USAM ONBLUR PARA SALVAR NA NUVEM! */}
+                            <input 
+                                type="color" value={localCorFundo} 
+                                onChange={(e) => setLocalCorFundo(e.target.value)} 
+                                onBlur={() => salvar('estetica.diarioCor', localCorFundo)}
+                                style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} 
+                            />
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Cor da Tinta (Radar):</label>
-                            <input type="color" value={corTintaRadar} onChange={(e) => salvar('estetica.corTintaRadar', e.target.value)} style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} />
+                            <input 
+                                type="color" value={localCorTinta} 
+                                onChange={(e) => setLocalCorTinta(e.target.value)} 
+                                onBlur={() => salvar('estetica.corTintaRadar', localCorTinta)}
+                                style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} 
+                            />
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Fonte da Letra:</label>
                             <select value={fonteDiario} onChange={(e) => salvar('estetica.diarioFonte', e.target.value)} style={{ width: '100%', padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', fontFamily: 'inherit' }}>
                                 <option value='"Comic Sans MS", "Chalkboard SE", "Marker Felt", cursive'>✏️ Escrito à Mão</option>
@@ -348,38 +363,25 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                 <CampoMagicoNPC valor={npcData.bio?.nivel} onChange={(v) => salvar('bio.nivel', v)} styleExtra={{ width: '60px', borderBottom: 'none', marginLeft: '10px' }} isNumber={true} type="number" />
                             </h2>
 
-                            {/* 🔥 NOVA ÁREA DA BIO: Centralizada e Clean com CSS Grid! */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '130px 15px 1fr', gap: '8px', fontSize: '1.2em', alignItems: 'center' }}>
-                                <LabelMagicoNPC valor={getLabel('bio1', 'Idade')} onChange={(v) => setLabel('bio1', v)} />
-                                <span style={{ fontWeight: 'bold', textAlign: 'center' }}>:</span>
-                                <CampoMagicoNPC valor={npcData.bio?.idade} onChange={(v) => salvar('bio.idade', v)} styleExtra={{ width: '100%' }} />
-
-                                <LabelMagicoNPC valor={getLabel('bio2', 'Aniversário')} onChange={(v) => setLabel('bio2', v)} />
-                                <span style={{ fontWeight: 'bold', textAlign: 'center' }}>:</span>
-                                <CampoMagicoNPC valor={npcData.bio?.aniversario} onChange={(v) => salvar('bio.aniversario', v)} styleExtra={{ width: '100%' }} />
-
-                                <LabelMagicoNPC valor={getLabel('bio3', 'Altura / Peso')} onChange={(v) => setLabel('bio3', v)} />
-                                <span style={{ fontWeight: 'bold', textAlign: 'center' }}>:</span>
-                                <CampoMagicoNPC valor={npcData.bio?.alturaPeso} onChange={(v) => salvar('bio.alturaPeso', v)} styleExtra={{ width: '100%' }} />
-
-                                <LabelMagicoNPC valor={getLabel('bio4', 'Raça')} onChange={(v) => setLabel('bio4', v)} />
-                                <span style={{ fontWeight: 'bold', textAlign: 'center' }}>:</span>
-                                <CampoMagicoNPC valor={npcData.bio?.raca} onChange={(v) => salvar('bio.raca', v)} styleExtra={{ width: '100%' }} />
-
-                                <LabelMagicoNPC valor={getLabel('bio6', 'Alinhamento')} onChange={(v) => setLabel('bio6', v)} />
-                                <span style={{ fontWeight: 'bold', textAlign: 'center' }}>:</span>
-                                <CampoMagicoNPC valor={npcData.bio?.alinhamento} onChange={(v) => salvar('bio.alinhamento', v)} styleExtra={{ width: '100%' }} />
-
-                                <LabelMagicoNPC valor={getLabel('bio7', 'Afiliação')} onChange={(v) => setLabel('bio7', v)} />
-                                <span style={{ fontWeight: 'bold', textAlign: 'center' }}>:</span>
-                                <CampoMagicoNPC valor={npcData.afiliacao} onChange={(v) => salvar('afiliacao', v)} styleExtra={{ width: '100%' }} />
-
-                                <LabelMagicoNPC valor={getLabel('bio8', 'Classe')} onChange={(v) => setLabel('bio8', v)} />
-                                <span style={{ fontWeight: 'bold', textAlign: 'center' }}>:</span>
-                                <CampoMagicoNPC valor={npcData.bio?.classe} onChange={(v) => salvar('bio.classe', v)} styleExtra={{ width: '100%' }} />
+                            {/* 🔥 NOVA ÁREA DA BIO DO NPC (Igual aos Jogadores) */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '1.3em', width: '100%', maxWidth: '420px', margin: '0 auto', marginTop: '10px' }}>
+                                {[
+                                    { k: 'idade', lbl: 'Idade' },
+                                    { k: 'raca', lbl: 'Raça' },
+                                    { k: 'alinhamento', lbl: 'Alinhamento' },
+                                    { k: 'afiliacao', lbl: 'Afiliação', foraDaBio: true },
+                                    { k: 'classe', lbl: 'Classe' }
+                                ].map(item => (
+                                    <div key={item.k} style={{ display: 'flex', alignItems: 'baseline', borderBottom: '1px dotted rgba(0,0,0,0.2)', paddingBottom: '4px' }}>
+                                        <div style={{ width: '150px', textAlign: 'right', paddingRight: '10px', fontWeight: 'bold' }}>
+                                            <LabelMagicoNPC valor={getLabel(`bio_${item.k}`, item.lbl)} onChange={(v) => setLabel(`bio_${item.k}`, v)} />:
+                                        </div>
+                                        <CampoMagicoNPC valor={item.foraDaBio ? npcData[item.k] : npcData.bio?.[item.k]} onChange={(v) => salvar(item.foraDaBio ? item.k : `bio.${item.k}`, v)} styleExtra={{ flex: 1, minWidth: 0, fontSize: '1.1em' }} />
+                                    </div>
+                                ))}
                             </div>
 
-                            <div style={{ marginTop: '20px', position: 'relative', width: 'fit-content', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <div style={{ marginTop: '20px', position: 'relative', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                 <label style={{ cursor: 'pointer', display: 'block' }}>
                                     <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} disabled={uploadingImg} />
                                     {uploadingImg ? <div style={{ width: '320px', height: '480px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed #000' }}>✍️...</div> : npcData.avatar?.base ? <img src={npcData.avatar.base} alt="Avatar" style={{ width: '320px', height: 'auto', objectFit: 'cover', border: '2px solid rgba(0,0,0,0.8)', boxShadow: '8px 8px 0px rgba(0,0,0,0.2)' }} /> : <div style={{ width: '320px', height: '480px', border: '2px dashed #000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', background: 'rgba(255,255,255,0.1)' }}>Colar Fotografia do Alvo 📸</div>}
@@ -426,7 +428,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                             </div>
 
                             <div style={{ marginTop: '30px', border: '2px dashed rgba(0,0,0,0.5)', padding: '20px', borderRadius: '10px', position: 'relative' }}>
-                                <span style={{ position: 'absolute', top: '-15px', left: '20px', background: corFundo, padding: '0 10px', fontSize: '1.2em', transition: 'background 0.5s ease' }}><LabelMagicoNPC valor={getLabel('tituloTurno', 'Ações de Turno')} onChange={(v) => setLabel('tituloTurno', v)} /></span>
+                                <span style={{ position: 'absolute', top: '-15px', left: '20px', background: localCorFundo, padding: '0 10px', fontSize: '1.2em', transition: 'background 0.2s ease' }}><LabelMagicoNPC valor={getLabel('tituloTurno', 'Ações de Turno')} onChange={(v) => setLabel('tituloTurno', v)} /></span>
                                 <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', marginTop: '10px' }}>
                                     {['padrao', 'bonus', 'reacao'].map(tipo => {
                                         const acao = npcData.acoes?.[tipo] || { max: 1, atual: 1 };
@@ -459,7 +461,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
 
                         <div className="fade-in" style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(0,0,0,0.03)', padding: '20px', borderRadius: '15px', border: '1px dashed rgba(0,0,0,0.2)' }}>
                             <h2 style={{ fontSize: '2em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 20px 0' }}><LabelMagicoNPC valor={getLabel('tituloAnaliseBase', 'Status (Rank Base)')} onChange={(v) => setLabel('tituloAnaliseBase', v)} /></h2>
-                            <RadarDesenhadoNPC ficha={npcData} isAtual={false} corTinta={corTintaRadar} />
+                            <RadarDesenhadoNPC ficha={npcData} isAtual={false} corTinta={localCorTinta} />
                             
                             <div style={{ width: '100%', maxWidth: '300px', marginTop: '30px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                 <LinhaAtributoCru labelKey="lblFor" fallbackLabel="Força" attrKey="forca" isAtual={false} />
@@ -475,7 +477,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
 
                         <div className="fade-in" style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(0,0,0,0.05)', padding: '20px', borderRadius: '15px', border: '2px solid rgba(0,0,0,0.8)' }}>
                             <h2 style={{ fontSize: '2em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 20px 0' }}><LabelMagicoNPC valor={getLabel('tituloAnaliseAtual', 'Poder Atual (c/ Formas)')} onChange={(v) => setLabel('tituloAnaliseAtual', v)} /></h2>
-                            <RadarDesenhadoNPC ficha={npcData} isAtual={true} corTinta={corTintaRadar} />
+                            <RadarDesenhadoNPC ficha={npcData} isAtual={true} corTinta={localCorTinta} />
                             
                             <div style={{ width: '100%', maxWidth: '300px', marginTop: '30px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                 <LinhaAtributoCru labelKey="lblFor" fallbackLabel="Força" attrKey="forca" isAtual={true} />
@@ -489,7 +491,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                             </div>
                         </div>
 
-                        {/* 🔥 TABELA SUPREMA PARA OS NPCs */}
+                        {/* 🔥 TABELA DE OVERRIDES PARA O NPC */}
                         <div className="fade-in" style={{ width: '100%', marginTop: '30px', background: 'rgba(0,0,0,0.03)', padding: '20px', borderRadius: '15px', border: '1px dashed rgba(0,0,0,0.2)' }}>
                             <h2 style={{ fontSize: '1.8em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 20px 0', textAlign: 'center' }}>Mecânicas de Ascensão e Divisores</h2>
 

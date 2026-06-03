@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import useStore from '../../stores/useStore';
 import { uploadImagem, salvarFichaSilencioso, salvarFirebaseImediato } from '../../services/firebase-sync';
 import { getMaximo, getRawBase, getBuffs } from '../../core/attributes';
 import { getRank } from '../../core/prestige';
 
 // ==========================================
-// 🛡️ FUNÇÕES SEGURAS DA ENGINE E MATEMÁTICA PURA
+// 🛡️ FUNÇÕES SEGURAS DA ENGINE E MATEMÁTICA
 // ==========================================
 const safeGetRawBase = (f, k) => typeof getRawBase === 'function' ? getRawBase(f, k) : parseFloat(f[k]?.base) || 0;
 const safeGetRank = (prest, asc) => typeof getRank === 'function' ? getRank(prest, asc) : { l: 'F', c: '#ffffff', a: asc };
@@ -56,9 +56,7 @@ const CampoMagico = ({ valor, onChange, placeholder, styleExtra = {}, type = "te
     };
     return (
         <input 
-            type={type} 
-            value={valor !== undefined && valor !== null ? valor : ''} 
-            onChange={handleChange}
+            type={type} value={valor !== undefined && valor !== null ? valor : ''} onChange={handleChange}
             onBlur={() => { if (typeof salvarFirebaseImediato === 'function') salvarFirebaseImediato(); else salvarFichaSilencioso(); }}
             placeholder={placeholder}
             style={{ background: 'transparent', border: 'none', borderBottom: '1px dashed rgba(0,0,0,0.3)', fontFamily: 'inherit', fontSize: 'inherit', color: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', outline: 'none', padding: '0 5px', width: '100px', ...styleExtra }} 
@@ -68,14 +66,8 @@ const CampoMagico = ({ valor, onChange, placeholder, styleExtra = {}, type = "te
 
 const LabelMagico = ({ valor, onChange, fallback }) => (
     <input 
-        type="text" 
-        value={valor !== undefined ? valor : fallback} 
-        onChange={(e) => onChange(e.target.value)} 
-        onBlur={(e) => { 
-            e.target.style.borderBottom = '1px solid transparent'; 
-            if (typeof salvarFirebaseImediato === 'function') salvarFirebaseImediato(); 
-            else salvarFichaSilencioso(); 
-        }}
+        type="text" value={valor !== undefined ? valor : fallback} onChange={(e) => onChange(e.target.value)} 
+        onBlur={(e) => { e.target.style.borderBottom = '1px solid transparent'; if (typeof salvarFirebaseImediato === 'function') salvarFirebaseImediato(); else salvarFichaSilencioso(); }}
         size={Math.max(String(valor !== undefined ? valor : fallback).length, 3)}
         style={{ background: 'transparent', border: 'none', borderBottom: '1px solid transparent', fontFamily: 'inherit', fontSize: 'inherit', color: 'inherit', fontWeight: 'bold', fontStyle: 'italic', outline: 'none', padding: '0', cursor: 'text', transition: '0.2s' }}
         onFocus={(e) => e.target.style.borderBottom = '1px dashed rgba(0,0,0,0.5)'} 
@@ -97,7 +89,9 @@ const BarraVital = ({ atual, maximo, pVit, cor, corTexto = "#fff", onChangeAtual
     return (
         <div style={{ position: 'relative', width: '100%', height: '35px', border: '2px solid rgba(0,0,0,0.8)', borderRadius: '6px', background: 'rgba(255,255,255,0.2)', overflow: 'hidden', marginTop: '5px', boxShadow: 'inset 0 0 10px rgba(0,0,0,0.5)', display: 'flex' }}>
             {pVit > 0 && (
-                <div style={{ width: '35px', height: '100%', background: 'rgba(0,0,0,0.9)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.2em', borderRight: '2px solid rgba(0,0,0,0.8)', zIndex: 5, boxShadow: `inset 0 0 10px ${cor}` }}>{pVit}</div>
+                <div style={{ width: '35px', height: '100%', background: 'rgba(0,0,0,0.9)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.2em', borderRight: '2px solid rgba(0,0,0,0.8)', zIndex: 5, boxShadow: `inset 0 0 10px ${cor}` }}>
+                    {pVit}
+                </div>
             )}
             <div style={{ flex: 1, position: 'relative' }}>
                 <div style={{ width: `${pct}%`, height: '100%', background: cor, transition: 'width 0.3s ease' }} />
@@ -157,8 +151,6 @@ const RadarDesenhado = ({ ficha, isAtual, corTinta = "#000000" }) => {
     );
 };
 
-let timeoutSaveCor = null;
-
 // ==========================================
 // 📖 PAINEL PRINCIPAL (O GRIMÓRIO)
 // ==========================================
@@ -170,10 +162,21 @@ export default function MarcadosPanel() {
 
     const [uploadingImg, setUploadingImg] = useState(false);
     const [modalImport, setModalImport] = useState(false);
-    const [textoImport, setTextoImport] = useState('');
     const [modalEstilo, setModalEstilo] = useState(false);
     const [paginaAtual, setPaginaAtual] = useState(1);
     const [salvando, setSalvando] = useState(false);
+    const [textoImport, setTextoImport] = useState('');
+
+    // 🔥 ESTADOS LOCAIS DAS CORES PARA NÃO TRAVAR O FIREBASE AO ARRASTAR
+    const [localCorFundo, setLocalCorFundo] = useState('#bba9d8');
+    const [localCorTinta, setLocalCorTinta] = useState('#000000');
+
+    useEffect(() => {
+        if (minhaFicha) {
+            setLocalCorFundo(minhaFicha.estetica?.diarioCor || '#bba9d8');
+            setLocalCorTinta(minhaFicha.estetica?.corTintaRadar || '#000000');
+        }
+    }, [minhaFicha?.estetica?.diarioCor, minhaFicha?.estetica?.corTintaRadar]);
 
     if (!minhaFicha) return <div style={{ color: '#000', padding: 20, fontFamily: 'cursive' }}>Abrindo o Diário...</div>;
 
@@ -190,19 +193,9 @@ export default function MarcadosPanel() {
         });
     };
 
-    const salvarCor = (caminho, valor) => {
-        salvar(caminho, valor);
-        if (timeoutSaveCor) clearTimeout(timeoutSaveCor);
-        timeoutSaveCor = setTimeout(() => {
-            if (typeof salvarFirebaseImediato === 'function') salvarFirebaseImediato();
-            else salvarFichaSilencioso();
-        }, 500); 
-    };
-
     const handleTabelaChange = (k, tipo, valor) => {
         let novoP = tipo === 'prestigio' ? Number(valor) : getBasePFor(minhaFicha, k);
         let novoDiv = tipo === 'divisor' ? Number(valor) : (minhaFicha.divisores?.[k] || 1);
-        
         if (isNaN(novoP)) novoP = 0;
         if (isNaN(novoDiv) || novoDiv <= 0) novoDiv = 1;
         
@@ -237,12 +230,8 @@ export default function MarcadosPanel() {
 
     const getLabel = (key, fallback) => minhaFicha.labels?.[key] !== undefined ? minhaFicha.labels[key] : fallback;
     const setLabel = (key, val) => salvar(`labels.${key}`, val);
-
-    const corFundo = minhaFicha.estetica?.diarioCor || '#bba9d8';
-    const corTintaRadar = minhaFicha.estetica?.corTintaRadar || '#000000';
     const fonteDiario = minhaFicha.estetica?.diarioFonte || '"Comic Sans MS", "Chalkboard SE", "Marker Felt", cursive';
 
-    // 🔥 CÁLCULO PV/PM CORRIGIDO: Agora usa a base real do Prestígio sem falhas!
     const getSupremas = () => {
         const pVida = getBasePFor(minhaFicha, 'vida');
         const pChakra = getBasePFor(minhaFicha, 'chakra');
@@ -350,18 +339,10 @@ export default function MarcadosPanel() {
         finally { setUploadingImg(false); }
     };
 
-    const executarImportacao = () => {
-        if (!textoImport.trim()) return alert("Cole o texto do Google Docs primeiro!");
-        importarDaAbaStatus(textoImport);
-        setModalImport(false);
-        setTextoImport('');
-        alert("O seu diário foi sincronizado!");
-    };
-
     return (
         <div style={{ 
-            width: '100%', minHeight: '85vh', background: corFundo, color: '#000', fontFamily: fonteDiario, 
-            padding: '40px 40px 80px 40px', borderRadius: '12px', position: 'relative', transition: 'background 0.5s ease',
+            width: '100%', minHeight: '85vh', background: localCorFundo, color: '#000', fontFamily: fonteDiario, 
+            padding: '40px 40px 80px 40px', borderRadius: '12px', position: 'relative', transition: 'background 0.2s ease',
             boxShadow: 'inset 0 0 40px rgba(0,0,0,0.1), 0 10px 30px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column'
         }}>
             
@@ -377,10 +358,21 @@ export default function MarcadosPanel() {
                     {modalEstilo && (
                         <div className="fade-in" style={{ position: 'absolute', top: '50px', right: '0', background: '#ffe4f0', padding: '15px', border: '1px solid #ccc', boxShadow: '5px 5px 15px rgba(0,0,0,0.3)', width: '250px', zIndex: 20 }}>
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Cor do Papel:</label>
-                            <input type="color" value={corFundo} onChange={(e) => salvarCor('estetica.diarioCor', e.target.value)} style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} />
+                            {/* 🔥 A COR AGORA SÓ SALVA NA NUVEM AO PERDER O FOCO (onBlur) */}
+                            <input 
+                                type="color" value={localCorFundo} 
+                                onChange={(e) => setLocalCorFundo(e.target.value)} 
+                                onBlur={() => { salvar('estetica.diarioCor', localCorFundo); if (typeof salvarFirebaseImediato === 'function') salvarFirebaseImediato(); else salvarFichaSilencioso(); }}
+                                style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} 
+                            />
                             
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Cor da Tinta (Radar):</label>
-                            <input type="color" value={corTintaRadar} onChange={(e) => salvarCor('estetica.corTintaRadar', e.target.value)} style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} />
+                            <input 
+                                type="color" value={localCorTinta} 
+                                onChange={(e) => setLocalCorTinta(e.target.value)} 
+                                onBlur={() => { salvar('estetica.corTintaRadar', localCorTinta); if (typeof salvarFirebaseImediato === 'function') salvarFirebaseImediato(); else salvarFichaSilencioso(); }}
+                                style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} 
+                            />
                             
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Fonte da Letra:</label>
                             <select value={fonteDiario} onChange={(e) => { salvar('estetica.diarioFonte', e.target.value); if (typeof salvarFirebaseImediato === 'function') salvarFirebaseImediato(); else salvarFichaSilencioso(); }} style={{ width: '100%', padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', fontFamily: 'inherit' }}>
@@ -388,15 +380,6 @@ export default function MarcadosPanel() {
                                 <option value="'Courier New', Courier, monospace">🖨️ Máquina de Escrever</option>
                                 <option value="'Times New Roman', Times, serif">📖 Grimório Clássico</option>
                             </select>
-                        </div>
-                    )}
-                </div>
-                <div style={{ position: 'relative' }}>
-                    <button onClick={() => { setModalImport(!modalImport); setModalEstilo(false); }} style={{ background: '#ffeb3b', border: 'none', padding: '10px 20px', fontFamily: 'inherit', fontWeight: 'bold', fontSize: '1.1em', cursor: 'pointer', boxShadow: '3px 3px 10px rgba(0,0,0,0.2)', transform: 'rotate(2deg)' }}>📌 Importar</button>
-                    {modalImport && (
-                        <div className="fade-in" style={{ position: 'absolute', top: '50px', right: '0', background: '#fff9c4', padding: '15px', border: '1px solid #ccc', boxShadow: '5px 5px 15px rgba(0,0,0,0.3)', width: '300px', zIndex: 20 }}>
-                            <textarea value={textoImport} onChange={e => setTextoImport(e.target.value)} placeholder="Cole do Docs..." style={{ width: '100%', height: '100px', background: 'transparent', border: '1px solid rgba(0,0,0,0.2)', fontFamily: 'inherit', resize: 'none', boxSizing: 'border-box' }} />
-                            <button onClick={executarImportacao} style={{ width: '100%', background: '#000', color: '#fff', border: 'none', padding: '8px', marginTop: '10px', fontFamily: 'inherit', cursor: 'pointer' }}>Sincronizar ✍️</button>
                         </div>
                     )}
                 </div>
@@ -417,40 +400,29 @@ export default function MarcadosPanel() {
                             <h2 style={{ fontSize: '2.2em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 20px 0', display: 'flex', alignItems: 'center' }}>
                                 <LabelMagico valor={getLabel('tituloLv', '- Limite quebrado - LV')} onChange={(v) => setLabel('tituloLv', v)} />
                                 <CampoMagico valor={minhaFicha.bio?.nivel} onChange={(v) => salvar('bio.nivel', v)} styleExtra={{ width: '60px', borderBottom: 'none', marginLeft: '10px' }} isNumber={true} type="number" />
+                                <span style={{ marginLeft: '15px', borderLeft: '2px solid rgba(0,0,0,0.5)', paddingLeft: '15px' }}>
+                                    ASC <CampoMagico valor={minhaFicha.ascensaoBase || 1} onChange={(v) => salvar('ascensaoBase', v)} styleExtra={{ width: '50px', borderBottom: 'none' }} type="number" isNumber={true} />
+                                </span>
                             </h2>
 
-                            {/* 🔥 NOVA ÁREA DA BIO: Centralizada e Clean com CSS Grid! */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '130px 15px 1fr', gap: '8px', fontSize: '1.2em', alignItems: 'center' }}>
-                                <LabelMagico valor={getLabel('bio1', 'Idade')} onChange={(v) => setLabel('bio1', v)} />
-                                <span style={{ fontWeight: 'bold', textAlign: 'center' }}>:</span>
-                                <CampoMagico valor={minhaFicha.bio?.idade} onChange={(v) => salvar('bio.idade', v)} styleExtra={{ width: '100%' }} />
-
-                                <LabelMagico valor={getLabel('bio2', 'Aniversário')} onChange={(v) => setLabel('bio2', v)} />
-                                <span style={{ fontWeight: 'bold', textAlign: 'center' }}>:</span>
-                                <CampoMagico valor={minhaFicha.bio?.aniversario} onChange={(v) => salvar('bio.aniversario', v)} styleExtra={{ width: '100%' }} />
-
-                                <LabelMagico valor={getLabel('bio3', 'Altura / Peso')} onChange={(v) => setLabel('bio3', v)} />
-                                <span style={{ fontWeight: 'bold', textAlign: 'center' }}>:</span>
-                                <CampoMagico valor={minhaFicha.bio?.alturaPeso} onChange={(v) => salvar('bio.alturaPeso', v)} styleExtra={{ width: '100%' }} />
-
-                                <LabelMagico valor={getLabel('bio4', 'Raça')} onChange={(v) => setLabel('bio4', v)} />
-                                <span style={{ fontWeight: 'bold', textAlign: 'center' }}>:</span>
-                                <CampoMagico valor={minhaFicha.bio?.raca} onChange={(v) => salvar('bio.raca', v)} styleExtra={{ width: '100%' }} />
-
-                                <LabelMagico valor={getLabel('bio6', 'Alinhamento')} onChange={(v) => setLabel('bio6', v)} />
-                                <span style={{ fontWeight: 'bold', textAlign: 'center' }}>:</span>
-                                <CampoMagico valor={minhaFicha.bio?.alinhamento} onChange={(v) => salvar('bio.alinhamento', v)} styleExtra={{ width: '100%' }} />
-
-                                <LabelMagico valor={getLabel('bio7', 'Afiliação')} onChange={(v) => setLabel('bio7', v)} />
-                                <span style={{ fontWeight: 'bold', textAlign: 'center' }}>:</span>
-                                <CampoMagico valor={minhaFicha.bio?.afiliacao} onChange={(v) => salvar('bio.afiliacao', v)} styleExtra={{ width: '100%' }} />
-
-                                <LabelMagico valor={getLabel('bio8', 'Classe')} onChange={(v) => setLabel('bio8', v)} />
-                                <span style={{ fontWeight: 'bold', textAlign: 'center' }}>:</span>
-                                <CampoMagico valor={minhaFicha.bio?.classe} onChange={(v) => salvar('bio.classe', v)} styleExtra={{ width: '100%' }} />
+                            {/* 🔥 NOVA ÁREA DA BIO: 100% Centralizada e Gigante! */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '1.3em', width: '100%', maxWidth: '420px', margin: '0 auto', marginTop: '10px' }}>
+                                {[
+                                    { k: 'idade', lbl: 'Idade' }, { k: 'aniversario', lbl: 'Aniversário' },
+                                    { k: 'alturaPeso', lbl: 'Altura/Peso' }, { k: 'raca', lbl: 'Raça' },
+                                    { k: 'alinhamento', lbl: 'Alinhamento' }, { k: 'afiliacao', lbl: 'Afiliação' },
+                                    { k: 'classe', lbl: 'Classe' }
+                                ].map(item => (
+                                    <div key={item.k} style={{ display: 'flex', alignItems: 'baseline', borderBottom: '1px dotted rgba(0,0,0,0.2)', paddingBottom: '4px' }}>
+                                        <div style={{ width: '150px', textAlign: 'right', paddingRight: '10px', fontWeight: 'bold' }}>
+                                            <LabelMagico valor={getLabel(`bio_${item.k}`, item.lbl)} onChange={(v) => setLabel(`bio_${item.k}`, v)} />:
+                                        </div>
+                                        <CampoMagico valor={minhaFicha.bio?.[item.k]} onChange={(v) => salvar(`bio.${item.k}`, v)} styleExtra={{ flex: 1, minWidth: 0, fontSize: '1.1em' }} />
+                                    </div>
+                                ))}
                             </div>
 
-                            <div style={{ marginTop: '20px', position: 'relative', width: 'fit-content', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <div style={{ marginTop: '20px', position: 'relative', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                 <label style={{ cursor: 'pointer', display: 'block' }}>
                                     <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} disabled={uploadingImg} />
                                     {uploadingImg ? <div style={{ width: '320px', height: '480px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed #000' }}>✍️...</div> : minhaFicha.avatar?.base ? <img src={minhaFicha.avatar.base} alt="Avatar" style={{ width: '320px', height: 'auto', objectFit: 'cover', border: '2px solid rgba(0,0,0,0.8)', boxShadow: '8px 8px 0px rgba(0,0,0,0.2)' }} /> : <div style={{ width: '320px', height: '480px', border: '2px dashed #000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', background: 'rgba(255,255,255,0.1)' }}>Colar Fotografia Aqui 📸</div>}
@@ -503,7 +475,7 @@ export default function MarcadosPanel() {
                             </div>
 
                             <div style={{ marginTop: '30px', border: '2px dashed rgba(0,0,0,0.5)', padding: '20px', borderRadius: '10px', position: 'relative' }}>
-                                <span style={{ position: 'absolute', top: '-15px', left: '20px', background: corFundo, padding: '0 10px', fontSize: '1.2em', transition: 'background 0.5s ease' }}>
+                                <span style={{ position: 'absolute', top: '-15px', left: '20px', background: localCorFundo, padding: '0 10px', fontSize: '1.2em', transition: 'background 0.2s ease' }}>
                                     <LabelMagico valor={getLabel('tituloTurno', 'Ações de Turno')} onChange={(v) => setLabel('tituloTurno', v)} />
                                 </span>
                                 <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', marginTop: '10px' }}>
@@ -540,7 +512,7 @@ export default function MarcadosPanel() {
 
                         <div className="fade-in" style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(0,0,0,0.03)', padding: '20px', borderRadius: '15px', border: '1px dashed rgba(0,0,0,0.2)' }}>
                             <h2 style={{ fontSize: '2em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 20px 0' }}><LabelMagico valor={getLabel('tituloAnaliseBase', 'Status (Rank Base)')} onChange={(v) => setLabel('tituloAnaliseBase', v)} /></h2>
-                            <RadarDesenhado ficha={minhaFicha} isAtual={false} corTinta={corTintaRadar} />
+                            <RadarDesenhado ficha={minhaFicha} isAtual={false} corTinta={localCorTinta} />
                             
                             <div style={{ width: '100%', maxWidth: '300px', marginTop: '30px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                 <LinhaAtributoCru labelKey="lblFor" fallbackLabel="Força" attrKey="forca" isAtual={false} />
@@ -556,7 +528,7 @@ export default function MarcadosPanel() {
 
                         <div className="fade-in" style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(0,0,0,0.05)', padding: '20px', borderRadius: '15px', border: '2px solid rgba(0,0,0,0.8)' }}>
                             <h2 style={{ fontSize: '2em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 20px 0' }}><LabelMagico valor={getLabel('tituloAnaliseAtual', 'Poder Atual (c/ Formas)')} onChange={(v) => setLabel('tituloAnaliseAtual', v)} /></h2>
-                            <RadarDesenhado ficha={minhaFicha} isAtual={true} corTinta={corTintaRadar} />
+                            <RadarDesenhado ficha={minhaFicha} isAtual={true} corTinta={localCorTinta} />
                             
                             <div style={{ width: '100%', maxWidth: '300px', marginTop: '30px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                 <LinhaAtributoCru labelKey="lblFor" fallbackLabel="Força" attrKey="forca" isAtual={true} />
