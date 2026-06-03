@@ -5,7 +5,7 @@ import { getMaximo, getRawBase, getBuffs } from '../../core/attributes';
 import { getPrestigioReal, getRank } from '../../core/prestige';
 
 // ==========================================
-// 🛡️ FUNÇÕES SEGURAS DA ENGINE CORE
+// 🛡️ FUNÇÕES SEGURAS DA ENGINE CORE E MATEMÁTICA
 // ==========================================
 const safeGetRawBase = (f, k) => typeof getRawBase === 'function' ? getRawBase(f, k) : parseFloat(f[k]?.base) || 0;
 const safeGetPrestigioReal = (k, val) => typeof getPrestigioReal === 'function' ? getPrestigioReal(k, val) : Math.floor(val / 1000000);
@@ -52,7 +52,7 @@ const CampoMagico = ({ valor, onChange, placeholder, styleExtra = {}, type = "te
             type={type} 
             value={valor !== undefined && valor !== null ? valor : ''} 
             onChange={handleChange}
-            onBlur={() => salvarFichaSilencioso()} // Salva a escrita normal ao clicar fora
+            onBlur={() => salvarFichaSilencioso()} // Auto-Save ao tirar o rato!
             placeholder={placeholder}
             style={{ background: 'transparent', border: 'none', borderBottom: '1px dashed rgba(0,0,0,0.3)', fontFamily: 'inherit', fontSize: 'inherit', color: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', outline: 'none', padding: '0 5px', width: '100px', ...styleExtra }} 
         />
@@ -71,7 +71,6 @@ const LabelMagico = ({ valor, onChange, fallback }) => (
     />
 );
 
-// 🔥 A NOVA FUNÇÃO DE ESCALA CORRIGIDA (Lê a diferença entre limite 8 ou 9)
 const calcularEscala = (rawMax, key) => {
     if (!rawMax || isNaN(rawMax) || rawMax <= 0) return { mxDisplay: 0, pVit: 0 };
     const limit = (key === 'vida' || key === 'pv' || key === 'pm') ? 8 : 9;
@@ -154,6 +153,9 @@ const RadarDesenhado = ({ ficha, isAtual, corTinta = "#000000" }) => {
     );
 };
 
+// Variável Global Segura para o Temporizador de Cores
+let timeoutSaveCor = null;
+
 // ==========================================
 // 📖 PAINEL PRINCIPAL (O GRIMÓRIO)
 // ==========================================
@@ -172,8 +174,7 @@ export default function MarcadosPanel() {
 
     if (!minhaFicha) return <div style={{ color: '#000', padding: 20, fontFamily: 'cursive' }}>Abrindo o Diário...</div>;
 
-    // 🔥 O "salvar" agora aceita um comando "imediato" para caixas de seleção e cores!
-    const salvar = (caminho, valor, imediato = false) => {
+    const salvar = (caminho, valor) => {
         updateFicha(f => {
             const chaves = caminho.split('.');
             let atual = f;
@@ -185,9 +186,16 @@ export default function MarcadosPanel() {
             }
             atual[chaves[chaves.length - 1]] = valor;
         });
-        if (imediato) {
-            setTimeout(() => salvarFichaSilencioso(), 50);
-        }
+    };
+
+    // 🔥 O Feitiço Infalível de Salvar Cores
+    const salvarCor = (caminho, valor) => {
+        salvar(caminho, valor);
+        if (timeoutSaveCor) clearTimeout(timeoutSaveCor);
+        timeoutSaveCor = setTimeout(() => {
+            if (typeof salvarFirebaseImediato === 'function') salvarFirebaseImediato();
+            else salvarFichaSilencioso();
+        }, 1000); // 1 segundo após você escolher a cor, salva na nuvem!
     };
 
     const handleSalvarTudo = async () => {
@@ -223,32 +231,30 @@ export default function MarcadosPanel() {
         alert("O seu diário foi sincronizado!");
     };
 
-    // 🧮 CÁLCULO DE PV E PM CORRIGIDO (Matemática + Ascensão)
+    // 🧮 A MATEMÁTICA PURA DA ASCENSÃO
     const getSupremas = () => {
         const bV = getBasePFor(minhaFicha, 'vida');
         const bCh = getBasePFor(minhaFicha, 'chakra');
         const bC = getBasePFor(minhaFicha, 'corpo');
         const mPV = parseFloat(minhaFicha.multiplicadorVida) || 1;
-        const pvBaseRaw = Math.floor(((bV + bCh + bC) / 3) * mPV);
-
+        
         const bM = getBasePFor(minhaFicha, 'mana');
         const bA = getBasePFor(minhaFicha, 'aura');
         const bS = getBasePFor(minhaFicha, 'status');
         const mPM = parseFloat(minhaFicha.multiplicadorMorte) || 1;
-        const pmBaseRaw = Math.floor(((bM + bA + bS) / 3) * mPM);
         
-        // 🔥 A MECÂNICA DE ASCENSÃO (+100 Por nível acima de 1)
+        // 🔮 Ascensão: +100 Pontos por cada nível acima de 1
         const ascensao = parseInt(minhaFicha.ascensaoBase) || 1;
         const bonusAscensao = (ascensao - 1) * 100;
         
-        return { 
-            pvMax: pvBaseRaw + bonusAscensao, 
-            pmMax: pmBaseRaw + bonusAscensao 
-        };
+        const pvCalculado = Math.floor(((bV + bCh + bC) / 3) * mPV) + bonusAscensao;
+        const pmCalculado = Math.floor(((bM + bA + bS) / 3) * mPM) + bonusAscensao;
+
+        return { pvMax: pvCalculado, pmMax: pmCalculado };
     };
     const { pvMax, pmMax } = getSupremas();
 
-    // 💖 O BOTÃO MÁGICO DE DESCANSAR
+    // 💖 DESCANSAR: ENCHE TUDO ATÉ AO NOVO MÁXIMO
     const handleRegenerarTudo = () => {
         if (!window.confirm('Recuperar toda a Vida, Energias, Pontos e Ações de Turno?')) return;
         
@@ -269,23 +275,23 @@ export default function MarcadosPanel() {
                 f.acoes[tipo].atual = f.acoes[tipo].max;
             });
         });
-        setTimeout(() => salvarFichaSilencioso(), 100);
+        setTimeout(() => {
+            if (typeof salvarFirebaseImediato === 'function') salvarFirebaseImediato();
+            else salvarFichaSilencioso();
+        }, 100);
     };
 
-    const LinhaVital = ({ labelKey, fallbackLabel, vitalKey, overrideMax, subItens, corBarra, corTextoBarra = '#fff' }) => {
+    const LinhaVital = ({ labelKey, fallbackLabel, vitalKey, subItens, corBarra, corTextoBarra = '#fff' }) => {
         const [aberto, setAberta] = useState(false);
-        
-        // Lê a propriedade "crua" para as principais, ou usa o PV/PM que foi injetado (overrideMax)
-        let rawMaximo = overrideMax !== undefined ? overrideMax : 0;
-        if (overrideMax === undefined) {
-            try { rawMaximo = getMaximo(minhaFicha, vitalKey); } catch(e) { rawMaximo = minhaFicha[vitalKey]?.base || 0; }
-        }
+        let rawMaximo = 0;
+        try { rawMaximo = getMaximo(minhaFicha, vitalKey); } catch(e) { rawMaximo = minhaFicha[vitalKey]?.base || 0; }
         
         const { mxDisplay, pVit } = calcularEscala(rawMaximo, vitalKey);
         
-        let atual = minhaFicha[vitalKey]?.atual !== undefined ? parseFloat(minhaFicha[vitalKey].atual) : mxDisplay;
-        if (pVit > 0 && atual > mxDisplay * 5) atual = Math.floor(atual / Math.pow(10, pVit));
-        if (atual > mxDisplay) atual = mxDisplay; // Limite de Segurança Visual
+        // Proteção contra "Gastos Inesperados"
+        let atual = minhaFicha[vitalKey]?.atual;
+        if (atual === undefined || atual === null || atual === '') atual = mxDisplay;
+        else atual = Number(atual);
 
         return (
             <div style={{ marginBottom: '15px' }}>
@@ -343,14 +349,14 @@ export default function MarcadosPanel() {
                     {modalEstilo && (
                         <div className="fade-in" style={{ position: 'absolute', top: '50px', right: '0', background: '#ffe4f0', padding: '15px', border: '1px solid #ccc', boxShadow: '5px 5px 15px rgba(0,0,0,0.3)', width: '250px', zIndex: 20 }}>
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Cor do Papel:</label>
-                            {/* 🔥 O SEGREDO DO SALVAR IMEDIATO ESTÁ NO TERCEIRO PARÂMETRO 'true' */}
-                            <input type="color" value={corFundo} onChange={(e) => salvar('estetica.diarioCor', e.target.value, true)} style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} />
+                            {/* 🔥 A COR AGORA USA A FUNÇÃO DE DEBOUNCE SEGURA */}
+                            <input type="color" value={corFundo} onChange={(e) => salvarCor('estetica.diarioCor', e.target.value)} style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} />
                             
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Cor da Tinta (Radar):</label>
-                            <input type="color" value={corTintaRadar} onChange={(e) => salvar('estetica.corTintaRadar', e.target.value, true)} style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} />
+                            <input type="color" value={corTintaRadar} onChange={(e) => salvarCor('estetica.corTintaRadar', e.target.value)} style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} />
                             
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Fonte da Letra:</label>
-                            <select value={fonteDiario} onChange={(e) => salvar('estetica.diarioFonte', e.target.value, true)} style={{ width: '100%', padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', fontFamily: 'inherit' }}>
+                            <select value={fonteDiario} onChange={(e) => { salvar('estetica.diarioFonte', e.target.value); salvarFichaSilencioso(); }} style={{ width: '100%', padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', fontFamily: 'inherit' }}>
                                 <option value='"Comic Sans MS", "Chalkboard SE", "Marker Felt", cursive'>✏️ Escrito à Mão</option>
                                 <option value="'Courier New', Courier, monospace">🖨️ Máquina de Escrever</option>
                                 <option value="'Times New Roman', Times, serif">📖 Grimório Clássico</option>
@@ -414,7 +420,6 @@ export default function MarcadosPanel() {
                                 <h2 style={{ fontSize: '2em', fontStyle: 'italic', fontWeight: 'bold', margin: 0, display: 'flex' }}>
                                     <LabelMagico valor={getLabel('tituloBase', '> STATUS PRINCIPAIS')} onChange={(v) => setLabel('tituloBase', v)} />
                                 </h2>
-                                {/* 💖 BOTÃO DESCANSAR */}
                                 <button onClick={handleRegenerarTudo} style={{ background: 'rgba(255,255,255,0.4)', border: '2px solid rgba(0,0,0,0.8)', padding: '5px 15px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'inherit', fontSize: '0.9em', display: 'flex', alignItems: 'center', gap: '5px', boxShadow: '2px 2px 5px rgba(0,0,0,0.2)' }} title="Recuperar toda a Vida, Energias e Ações">
                                     <span>💖</span> Descansar
                                 </button>
@@ -434,11 +439,12 @@ export default function MarcadosPanel() {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                                 <div style={{ marginBottom: '5px' }}>
                                     <LabelMagico valor={getLabel('lblPV', 'Pontos Vitais (PV)')} onChange={(v) => setLabel('lblPV', v)} />
-                                    <BarraVital atual={minhaFicha.pv?.atual ?? pvMax} maximo={pvMax} pVit={0} cor="#ffffff" corTexto="#000" onChangeAtual={(v) => salvar('pv.atual', v)} />
+                                    {/* 🔥 ATUALIZADO: LÊ CORRETAMENTE O pv.atual DA MEMÓRIA OU USA O pvMax */}
+                                    <BarraVital atual={minhaFicha.pv?.atual !== undefined && minhaFicha.pv?.atual !== '' ? Number(minhaFicha.pv.atual) : pvMax} maximo={pvMax} pVit={0} cor="#ffffff" corTexto="#000" onChangeAtual={(v) => salvar('pv.atual', v)} />
                                 </div>
                                 <div style={{ marginBottom: '15px' }}>
                                     <LabelMagico valor={getLabel('lblPM', 'Pontos Mortais (PM)')} onChange={(v) => setLabel('lblPM', v)} />
-                                    <BarraVital atual={minhaFicha.pm?.atual ?? pmMax} maximo={pmMax} pVit={0} cor="#000000" corTexto="#fff" onChangeAtual={(v) => salvar('pm.atual', v)} />
+                                    <BarraVital atual={minhaFicha.pm?.atual !== undefined && minhaFicha.pm?.atual !== '' ? Number(minhaFicha.pm.atual) : pmMax} maximo={pmMax} pVit={0} cor="#000000" corTexto="#fff" onChangeAtual={(v) => salvar('pm.atual', v)} />
                                 </div>
 
                                 <div style={{ display: 'flex', gap: '15px', marginTop: '5px' }}>
@@ -465,7 +471,7 @@ export default function MarcadosPanel() {
                                                 <span style={{ fontSize: '1.1em' }}><LabelMagico valor={getLabel(`acao_${tipo}`, tipo.toUpperCase())} onChange={(v) => setLabel(`acao_${tipo}`, v)} /></span>
                                                 <div style={{ display: 'flex', gap: '8px' }}>
                                                     {Array.from({ length: acao.max }).map((_, i) => (
-                                                        <div key={i} onClick={() => { salvar(`acoes.${tipo}.atual`, i >= acao.atual ? acao.atual + 1 : acao.atual - 1, true); }}
+                                                        <div key={i} onClick={() => { salvar(`acoes.${tipo}.atual`, i >= acao.atual ? acao.atual + 1 : acao.atual - 1); salvarFichaSilencioso(); }}
                                                             style={{ width: '25px', height: '25px', border: '2px solid #000', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '1.2em', color: '#ff003c', background: 'rgba(255,255,255,0.2)' }}>
                                                             {i >= acao.atual ? 'X' : ''}
                                                         </div>
