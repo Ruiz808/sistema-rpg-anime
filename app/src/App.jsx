@@ -24,6 +24,7 @@ import Jukebox from './components/jukebox/Jukebox';
 import CompendioPanel from './components/compendio/CompendioPanel';
 import AIPanel from './components/ia/AIPanel';
 import GravadorPanel from './components/ia/GravadorPanel';
+import MarcadosPanel from './components/Ficha Def/MarcadosPanel';
 
 // 👑 Imports Extensivos Isolados
 import MestrePanel from './components/mestre/MestrePanel';
@@ -320,6 +321,7 @@ export default function App() {
                 <TabPanel id="aba-compendio"><CompendioPanel /></TabPanel>
                 <TabPanel id="aba-oraculo"><AIPanel /></TabPanel>
                 <TabPanel id="aba-gravador"><GravadorPanel /></TabPanel>
+                <TabPanel id="aba-Ficha Def"><MarcadosPanel /></TabPanel>
             </div>
             
             <ModalConfirm isOpen={modalAberto} onClose={() => setModalAberto(false)} />
