@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import useStore from '../../stores/useStore';
 import { getDatabase, ref, update } from 'firebase/database';
-import { calcularEficaciaCura } from '../../core/engine'; // 🔥 IMPORT DA NOVA FUNÇÃO DA ENGINE
+import { calcularEficaciaCura } from '../../core/engine'; 
+import DiarioNPC from './DiarioNPC'; // 🔥 O NOSSO GRIMÓRIO IMPORTADO AQUI!
 
 const TODAS_CONDICOES_BASE = [
     { id: 'sangrando', icone: '🩸', cor: '#ff003c', nome: 'Sangrando' },
@@ -62,13 +63,11 @@ export default function PainelMestreSandbox({ personagemId, ficha }) {
         let val = parseInt(valorRapido);
         if (!val || isNaN(val) || val <= 0) return;
 
-        // 🔥 CÁLCULO DE EFICÁCIA DA CURA (Debuffs vs Buffs)
         if (tipo === 'cura' && energiaAlvo === 'vida') {
             const eficacia = calcularEficaciaCura(ficha); 
             const valOriginal = val;
             val = Math.floor(val * eficacia);
 
-            // Só avisa se houver alteração na eficácia
             if (eficacia < 1.0) {
                 alert(`🩸 Ferimentos Graves! Eficácia de cura reduzida para ${Math.round(eficacia * 100)}%.\nValor original: ${valOriginal} ➔ Curou apenas: ${val}`);
             } else if (eficacia > 1.0) {
@@ -160,9 +159,29 @@ export default function PainelMestreSandbox({ personagemId, ficha }) {
             {expandido && (
                 <div className="fade-in" style={{ background: 'rgba(10,10,15,0.95)', border: '2px solid #ffcc00', borderTop: 'none', padding: '15px', borderRadius: '0 0 8px 8px', boxShadow: '0 5px 15px rgba(0,0,0,0.8)' }}>
                     
-                    {/* MODIFICADOR DE RECURSOS (VIDA, MANA, ETC) */}
+                    {/* 👑 AQUI ENTRA O GRIMÓRIO DO NPC INJETADO! */}
+                    <div style={{ marginBottom: '20px' }}>
+                        <DiarioNPC 
+                            npcData={{ ...ficha, nome: personagemId }} 
+                            onSaveNpc={(novosDados) => {
+                                const fichaAtualizada = { ...novosDados };
+                                delete fichaAtualizada.nome; // Remove o nome injetado visualmente para não sujar a Firebase
+                                
+                                // Salva na raíz global de personagens (Igual à MestreForjaNPC)
+                                update(ref(db, `personagens/${personagemId}`), fichaAtualizada).catch(err => alert("Erro ao salvar NPC: " + err.message));
+
+                                // Atualiza a memória local para não ser preciso F5
+                                setPersonagens({
+                                    ...personagens,
+                                    [personagemId]: fichaAtualizada
+                                });
+                            }} 
+                        />
+                    </div>
+
+                    {/* MODIFICADOR DE RECURSOS RÁPIDO (MANTIDO) */}
                     <div style={{ background: 'rgba(0,0,0,0.4)', padding: '12px', borderRadius: '6px', border: '1px solid #333', marginBottom: '15px' }}>
-                        <div style={{ fontSize: '0.8em', color: '#ffcc00', fontWeight: 'bold', marginBottom: '10px', textTransform: 'uppercase' }}>Manipulação de Recursos</div>
+                        <div style={{ fontSize: '0.8em', color: '#ffcc00', fontWeight: 'bold', marginBottom: '10px', textTransform: 'uppercase' }}>Manipulação Rápida de Recursos</div>
                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                             <select 
                                 value={energiaAlvo} 
@@ -199,7 +218,7 @@ export default function PainelMestreSandbox({ personagemId, ficha }) {
                         </div>
                     </div>
 
-                    {/* MODIFICADOR DE CONDIÇÕES GERAIS */}
+                    {/* MODIFICADOR DE CONDIÇÕES GERAIS (MANTIDO) */}
                     <div style={{ background: 'rgba(0,0,0,0.4)', padding: '12px', borderRadius: '6px', border: '1px solid #333' }}>
                         <div style={{ fontSize: '0.8em', color: '#ff003c', fontWeight: 'bold', marginBottom: '10px', textTransform: 'uppercase' }}>Injeção de Condições</div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(75px, 1fr))', gap: '8px', maxHeight: '200px', overflowY: 'auto', paddingRight: '5px' }}>
