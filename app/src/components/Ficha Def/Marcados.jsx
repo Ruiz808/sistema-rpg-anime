@@ -11,8 +11,10 @@ const safeGetRawBase = (f, k) => typeof getRawBase === 'function' ? getRawBase(f
 const safeGetRank = (prest, asc) => typeof getRank === 'function' ? getRank(prest, asc) : { l: 'F', c: '#ffffff', a: asc };
 const safeGetBuffs = (f, k, t) => typeof getBuffs === 'function' ? getBuffs(f, k, t) : {};
 
-// 🔥 LÊ O PRESTÍGIO EXATO (Usado pelo Radar e Tabela)
 const getBasePFor = (ficha, k) => {
+    if (ficha?.overridePrestigio?.[k] !== undefined && ficha.overridePrestigio[k] !== null && ficha.overridePrestigio[k] !== '') {
+        return Number(ficha.overridePrestigio[k]);
+    }
     const mults = { vida: 1000000, mana: 10000000, aura: 10000000, chakra: 10000000, corpo: 10000000, status: 1000 };
     const div = parseFloat(ficha?.divisores?.[k]) || 1;
     if (k === 'status') {
@@ -95,9 +97,7 @@ const BarraVital = ({ atual, maximo, pVit, cor, corTexto = "#fff", onChangeAtual
     return (
         <div style={{ position: 'relative', width: '100%', height: '35px', border: '2px solid rgba(0,0,0,0.8)', borderRadius: '6px', background: 'rgba(255,255,255,0.2)', overflow: 'hidden', marginTop: '5px', boxShadow: 'inset 0 0 10px rgba(0,0,0,0.5)', display: 'flex' }}>
             {pVit > 0 && (
-                <div style={{ width: '35px', height: '100%', background: 'rgba(0,0,0,0.9)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.2em', borderRight: '2px solid rgba(0,0,0,0.8)', zIndex: 5, boxShadow: `inset 0 0 10px ${cor}` }}>
-                    {pVit}
-                </div>
+                <div style={{ width: '35px', height: '100%', background: 'rgba(0,0,0,0.9)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.2em', borderRight: '2px solid rgba(0,0,0,0.8)', zIndex: 5, boxShadow: `inset 0 0 10px ${cor}` }}>{pVit}</div>
             )}
             <div style={{ flex: 1, position: 'relative' }}>
                 <div style={{ width: `${pct}%`, height: '100%', background: cor, transition: 'width 0.3s ease' }} />
@@ -110,9 +110,6 @@ const BarraVital = ({ atual, maximo, pVit, cor, corTexto = "#fff", onChangeAtual
     );
 };
 
-// ==========================================
-// 🕸️ GRÁFICO DE RADAR DESENHADO À MÃO
-// ==========================================
 const RadarDesenhado = ({ ficha, isAtual, corTinta = "#000000" }) => {
     const eixos = [
         { label: 'VIDA', key: 'vida' }, { label: 'MANA', key: 'mana' }, { label: 'AURA', key: 'aura' },
@@ -202,7 +199,6 @@ export default function MarcadosPanel() {
         }, 500); 
     };
 
-    // 🔥 O FEITIÇO QUE LIGA A TABELA DIRETAMENTE AOS ATRIBUTOS BASE!
     const handleTabelaChange = (k, tipo, valor) => {
         let novoP = tipo === 'prestigio' ? Number(valor) : getBasePFor(minhaFicha, k);
         let novoDiv = tipo === 'divisor' ? Number(valor) : (minhaFicha.divisores?.[k] || 1);
@@ -212,8 +208,6 @@ export default function MarcadosPanel() {
         
         const mults = { vida: 1000000, mana: 10000000, aura: 10000000, chakra: 10000000, corpo: 10000000, status: 1000 };
         const mult = mults[k] || 1;
-        
-        // A magia que recalcula a base real para o banco de dados
         const novaBase = Math.floor((novoP / novoDiv) * mult);
         
         updateFicha(f => {
@@ -221,7 +215,6 @@ export default function MarcadosPanel() {
                 if (!f.divisores) f.divisores = {};
                 f.divisores[k] = novoDiv;
             }
-            
             if (k === 'status') {
                 ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'].forEach(s => {
                     if (!f[s]) f[s] = {};
@@ -249,14 +242,14 @@ export default function MarcadosPanel() {
     const corTintaRadar = minhaFicha.estetica?.corTintaRadar || '#000000';
     const fonteDiario = minhaFicha.estetica?.diarioFonte || '"Comic Sans MS", "Chalkboard SE", "Marker Felt", cursive';
 
+    // 🔥 CÁLCULO PV/PM CORRIGIDO: Agora usa a base real do Prestígio sem falhas!
     const getSupremas = () => {
-        const getP = (k) => { let mx = 0; try { mx = getMaximo(minhaFicha, k); } catch(e) { mx = minhaFicha[k]?.base || 0; } return calcularEscala(mx, k).pVit || 0; };
-        const pVida = getP('vida'), pChakra = getP('chakra'), pCorpo = getP('corpo');
-        const pMana = getP('mana'), pAura = getP('aura');
-        
-        let statusBase = 0;
-        ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'].forEach(s => { statusBase += safeGetRawBase(minhaFicha, s); });
-        const pStatus = calcularEscala(statusBase, 'status').pVit || 0;
+        const pVida = getBasePFor(minhaFicha, 'vida');
+        const pChakra = getBasePFor(minhaFicha, 'chakra');
+        const pCorpo = getBasePFor(minhaFicha, 'corpo');
+        const pMana = getBasePFor(minhaFicha, 'mana');
+        const pAura = getBasePFor(minhaFicha, 'aura');
+        const pStatus = getBasePFor(minhaFicha, 'status');
         
         const mPV = parseFloat(minhaFicha.multiplicadorVida) || 1;
         const mPM = parseFloat(minhaFicha.multiplicadorMorte) || 1;
@@ -356,6 +349,7 @@ export default function MarcadosPanel() {
         } catch (err) { alert('Erro ao pintar o avatar!'); } 
         finally { setUploadingImg(false); }
     };
+
     const executarImportacao = () => {
         if (!textoImport.trim()) return alert("Cole o texto do Google Docs primeiro!");
         importarDaAbaStatus(textoImport);
@@ -425,14 +419,35 @@ export default function MarcadosPanel() {
                                 <CampoMagico valor={minhaFicha.bio?.nivel} onChange={(v) => salvar('bio.nivel', v)} styleExtra={{ width: '60px', borderBottom: 'none', marginLeft: '10px' }} isNumber={true} type="number" />
                             </h2>
 
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '1.2em' }}>
-                                <div style={{ display: 'flex' }}><LabelMagico valor={getLabel('bio1', 'Idade')} onChange={(v) => setLabel('bio1', v)} />: <CampoMagico valor={minhaFicha.bio?.idade} onChange={(v) => salvar('bio.idade', v)} styleExtra={{ flex: 1 }} /></div>
-                                <div style={{ display: 'flex' }}><LabelMagico valor={getLabel('bio2', 'Aniversário')} onChange={(v) => setLabel('bio2', v)} />: <CampoMagico valor={minhaFicha.bio?.aniversario} onChange={(v) => salvar('bio.aniversario', v)} styleExtra={{ flex: 1 }} /></div>
-                                <div style={{ display: 'flex' }}><LabelMagico valor={getLabel('bio3', 'Altura / Peso')} onChange={(v) => setLabel('bio3', v)} />: <CampoMagico valor={minhaFicha.bio?.alturaPeso} onChange={(v) => salvar('bio.alturaPeso', v)} styleExtra={{ flex: 1 }} /></div>
-                                <div style={{ display: 'flex' }}><LabelMagico valor={getLabel('bio4', 'Raça')} onChange={(v) => setLabel('bio4', v)} />: <CampoMagico valor={minhaFicha.bio?.raca} onChange={(v) => salvar('bio.raca', v)} styleExtra={{ flex: 1 }} /></div>
-                                <div style={{ display: 'flex' }}><LabelMagico valor={getLabel('bio6', 'Alinhamento')} onChange={(v) => setLabel('bio6', v)} />: <CampoMagico valor={minhaFicha.bio?.alinhamento} onChange={(v) => salvar('bio.alinhamento', v)} styleExtra={{ flex: 1 }} /></div>
-                                <div style={{ display: 'flex' }}><LabelMagico valor={getLabel('bio7', 'Afiliação')} onChange={(v) => setLabel('bio7', v)} />: <CampoMagico valor={minhaFicha.bio?.afiliacao} onChange={(v) => salvar('bio.afiliacao', v)} styleExtra={{ flex: 1 }} /></div>
-                                <div style={{ display: 'flex' }}><LabelMagico valor={getLabel('bio8', 'Classe')} onChange={(v) => setLabel('bio8', v)} />: <CampoMagico valor={minhaFicha.bio?.classe} onChange={(v) => salvar('bio.classe', v)} styleExtra={{ flex: 1 }} /></div>
+                            {/* 🔥 NOVA ÁREA DA BIO: Centralizada e Clean com CSS Grid! */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '130px 15px 1fr', gap: '8px', fontSize: '1.2em', alignItems: 'center' }}>
+                                <LabelMagico valor={getLabel('bio1', 'Idade')} onChange={(v) => setLabel('bio1', v)} />
+                                <span style={{ fontWeight: 'bold', textAlign: 'center' }}>:</span>
+                                <CampoMagico valor={minhaFicha.bio?.idade} onChange={(v) => salvar('bio.idade', v)} styleExtra={{ width: '100%' }} />
+
+                                <LabelMagico valor={getLabel('bio2', 'Aniversário')} onChange={(v) => setLabel('bio2', v)} />
+                                <span style={{ fontWeight: 'bold', textAlign: 'center' }}>:</span>
+                                <CampoMagico valor={minhaFicha.bio?.aniversario} onChange={(v) => salvar('bio.aniversario', v)} styleExtra={{ width: '100%' }} />
+
+                                <LabelMagico valor={getLabel('bio3', 'Altura / Peso')} onChange={(v) => setLabel('bio3', v)} />
+                                <span style={{ fontWeight: 'bold', textAlign: 'center' }}>:</span>
+                                <CampoMagico valor={minhaFicha.bio?.alturaPeso} onChange={(v) => salvar('bio.alturaPeso', v)} styleExtra={{ width: '100%' }} />
+
+                                <LabelMagico valor={getLabel('bio4', 'Raça')} onChange={(v) => setLabel('bio4', v)} />
+                                <span style={{ fontWeight: 'bold', textAlign: 'center' }}>:</span>
+                                <CampoMagico valor={minhaFicha.bio?.raca} onChange={(v) => salvar('bio.raca', v)} styleExtra={{ width: '100%' }} />
+
+                                <LabelMagico valor={getLabel('bio6', 'Alinhamento')} onChange={(v) => setLabel('bio6', v)} />
+                                <span style={{ fontWeight: 'bold', textAlign: 'center' }}>:</span>
+                                <CampoMagico valor={minhaFicha.bio?.alinhamento} onChange={(v) => salvar('bio.alinhamento', v)} styleExtra={{ width: '100%' }} />
+
+                                <LabelMagico valor={getLabel('bio7', 'Afiliação')} onChange={(v) => setLabel('bio7', v)} />
+                                <span style={{ fontWeight: 'bold', textAlign: 'center' }}>:</span>
+                                <CampoMagico valor={minhaFicha.bio?.afiliacao} onChange={(v) => salvar('bio.afiliacao', v)} styleExtra={{ width: '100%' }} />
+
+                                <LabelMagico valor={getLabel('bio8', 'Classe')} onChange={(v) => setLabel('bio8', v)} />
+                                <span style={{ fontWeight: 'bold', textAlign: 'center' }}>:</span>
+                                <CampoMagico valor={minhaFicha.bio?.classe} onChange={(v) => salvar('bio.classe', v)} styleExtra={{ width: '100%' }} />
                             </div>
 
                             <div style={{ marginTop: '20px', position: 'relative', width: 'fit-content', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>

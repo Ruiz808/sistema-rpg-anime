@@ -11,6 +11,9 @@ const safeGetRank = (prest, asc) => typeof getRank === 'function' ? getRank(pres
 const safeGetBuffs = (f, k, t) => typeof getBuffs === 'function' ? getBuffs(f, k, t) : {};
 
 const getBasePFor = (ficha, k) => {
+    if (ficha?.overridePrestigio?.[k] !== undefined && ficha.overridePrestigio[k] !== null && ficha.overridePrestigio[k] !== '') {
+        return Number(ficha.overridePrestigio[k]);
+    }
     const mults = { vida: 1000000, mana: 10000000, aura: 10000000, chakra: 10000000, corpo: 10000000, status: 1000 };
     const div = parseFloat(ficha?.divisores?.[k]) || 1;
     if (k === 'status') {
@@ -162,7 +165,6 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
         onSaveNpc(novoNpc);
     };
 
-    // 🔥 O FEITIÇO QUE LIGA A TABELA DIRETAMENTE AOS ATRIBUTOS DOS VILÕES
     const handleTabelaChange = (k, tipo, valor) => {
         let novoP = tipo === 'prestigio' ? Number(valor) : getBasePFor(npcData, k);
         let novoDiv = tipo === 'divisor' ? Number(valor) : (npcData.divisores?.[k] || 1);
@@ -200,24 +202,14 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
     const corTintaRadar = npcData.estetica?.corTintaRadar || '#000000';
     const fonteDiario = npcData.estetica?.diarioFonte || '"Comic Sans MS", "Chalkboard SE", "Marker Felt", cursive';
 
-    const handleImageUpload = async (e) => {
-        const file = e.target.files[0]; if (!file) return;
-        setUploadingImg(true);
-        try {
-            const url = await uploadImagem(file, `avatars_npcs/${npcData.id || 'desconhecido'}`);
-            salvar('avatar.base', url);
-        } catch (err) { alert('Erro ao pintar o avatar da Entidade!'); } 
-        finally { setUploadingImg(false); }
-    };
-
+    // 🔥 CÁLCULO PV/PM CORRIGIDO: Agora usa a base real do Prestígio sem falhas!
     const getSupremas = () => {
-        const getP = (k) => { let mx = 0; try { mx = getMaximo(npcData, k); } catch(e) { mx = npcData[k]?.base || 0; } return calcularEscala(mx, k).pVit || 0; };
-        const pVida = getP('vida'), pChakra = getP('chakra'), pCorpo = getP('corpo');
-        const pMana = getP('mana'), pAura = getP('aura');
-        
-        let statusBase = 0;
-        ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'].forEach(s => { statusBase += safeGetRawBase(npcData, s); });
-        const pStatus = calcularEscala(statusBase, 'status').pVit || 0;
+        const pVida = getBasePFor(npcData, 'vida');
+        const pChakra = getBasePFor(npcData, 'chakra');
+        const pCorpo = getBasePFor(npcData, 'corpo');
+        const pMana = getBasePFor(npcData, 'mana');
+        const pAura = getBasePFor(npcData, 'aura');
+        const pStatus = getBasePFor(npcData, 'status');
         
         const mPV = parseFloat(npcData.multiplicadorVida) || 1;
         const mPM = parseFloat(npcData.multiplicadorMorte) || 1;
@@ -252,6 +244,16 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
             novoNpc.acoes[tipo].atual = novoNpc.acoes[tipo].max;
         });
         onSaveNpc(novoNpc);
+    };
+
+    const handleImageUpload = async (e) => {
+        const file = e.target.files[0]; if (!file) return;
+        setUploadingImg(true);
+        try {
+            const url = await uploadImagem(file, `avatars_npcs/${npcData.id || 'desconhecido'}`);
+            salvar('avatar.base', url);
+        } catch (err) { alert('Erro ao pintar o avatar da Entidade!'); } 
+        finally { setUploadingImg(false); }
     };
 
     const LinhaVital = ({ labelKey, fallbackLabel, vitalKey, overrideMax, subItens, corBarra, corTextoBarra = '#fff' }) => {
@@ -344,17 +346,37 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                             <h2 style={{ fontSize: '2.2em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 20px 0', display: 'flex', alignItems: 'center' }}>
                                 <LabelMagicoNPC valor={getLabel('tituloLv', '- Limite quebrado - LV')} onChange={(v) => setLabel('tituloLv', v)} />
                                 <CampoMagicoNPC valor={npcData.bio?.nivel} onChange={(v) => salvar('bio.nivel', v)} styleExtra={{ width: '60px', borderBottom: 'none', marginLeft: '10px' }} isNumber={true} type="number" />
-                                <span style={{ marginLeft: '15px', borderLeft: '2px solid rgba(0,0,0,0.5)', paddingLeft: '15px' }}>
-                                    ASC <CampoMagicoNPC valor={npcData.ascensaoBase || 1} onChange={(v) => salvar('ascensaoBase', v)} styleExtra={{ width: '50px', borderBottom: 'none' }} type="number" isNumber={true} />
-                                </span>
                             </h2>
 
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '1.2em' }}>
-                                <div style={{ display: 'flex' }}><LabelMagicoNPC valor={getLabel('bio1', 'Idade')} onChange={(v) => setLabel('bio1', v)} />: <CampoMagicoNPC valor={npcData.bio?.idade} onChange={(v) => salvar('bio.idade', v)} styleExtra={{ flex: 1 }} /></div>
-                                <div style={{ display: 'flex' }}><LabelMagicoNPC valor={getLabel('bio4', 'Raça')} onChange={(v) => setLabel('bio4', v)} />: <CampoMagicoNPC valor={npcData.bio?.raca} onChange={(v) => salvar('bio.raca', v)} styleExtra={{ flex: 1 }} /></div>
-                                <div style={{ display: 'flex' }}><LabelMagicoNPC valor={getLabel('bio6', 'Alinhamento')} onChange={(v) => setLabel('bio6', v)} />: <CampoMagicoNPC valor={npcData.bio?.alinhamento} onChange={(v) => salvar('bio.alinhamento', v)} styleExtra={{ flex: 1 }} /></div>
-                                <div style={{ display: 'flex' }}><LabelMagicoNPC valor={getLabel('bio7', 'Afiliação')} onChange={(v) => setLabel('bio7', v)} />: <CampoMagicoNPC valor={npcData.afiliacao} onChange={(v) => salvar('afiliacao', v)} styleExtra={{ flex: 1 }} /></div>
-                                <div style={{ display: 'flex' }}><LabelMagicoNPC valor={getLabel('bio8', 'Classe')} onChange={(v) => setLabel('bio8', v)} />: <CampoMagicoNPC valor={npcData.bio?.classe} onChange={(v) => salvar('bio.classe', v)} styleExtra={{ flex: 1 }} /></div>
+                            {/* 🔥 NOVA ÁREA DA BIO: Centralizada e Clean com CSS Grid! */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '130px 15px 1fr', gap: '8px', fontSize: '1.2em', alignItems: 'center' }}>
+                                <LabelMagicoNPC valor={getLabel('bio1', 'Idade')} onChange={(v) => setLabel('bio1', v)} />
+                                <span style={{ fontWeight: 'bold', textAlign: 'center' }}>:</span>
+                                <CampoMagicoNPC valor={npcData.bio?.idade} onChange={(v) => salvar('bio.idade', v)} styleExtra={{ width: '100%' }} />
+
+                                <LabelMagicoNPC valor={getLabel('bio2', 'Aniversário')} onChange={(v) => setLabel('bio2', v)} />
+                                <span style={{ fontWeight: 'bold', textAlign: 'center' }}>:</span>
+                                <CampoMagicoNPC valor={npcData.bio?.aniversario} onChange={(v) => salvar('bio.aniversario', v)} styleExtra={{ width: '100%' }} />
+
+                                <LabelMagicoNPC valor={getLabel('bio3', 'Altura / Peso')} onChange={(v) => setLabel('bio3', v)} />
+                                <span style={{ fontWeight: 'bold', textAlign: 'center' }}>:</span>
+                                <CampoMagicoNPC valor={npcData.bio?.alturaPeso} onChange={(v) => salvar('bio.alturaPeso', v)} styleExtra={{ width: '100%' }} />
+
+                                <LabelMagicoNPC valor={getLabel('bio4', 'Raça')} onChange={(v) => setLabel('bio4', v)} />
+                                <span style={{ fontWeight: 'bold', textAlign: 'center' }}>:</span>
+                                <CampoMagicoNPC valor={npcData.bio?.raca} onChange={(v) => salvar('bio.raca', v)} styleExtra={{ width: '100%' }} />
+
+                                <LabelMagicoNPC valor={getLabel('bio6', 'Alinhamento')} onChange={(v) => setLabel('bio6', v)} />
+                                <span style={{ fontWeight: 'bold', textAlign: 'center' }}>:</span>
+                                <CampoMagicoNPC valor={npcData.bio?.alinhamento} onChange={(v) => salvar('bio.alinhamento', v)} styleExtra={{ width: '100%' }} />
+
+                                <LabelMagicoNPC valor={getLabel('bio7', 'Afiliação')} onChange={(v) => setLabel('bio7', v)} />
+                                <span style={{ fontWeight: 'bold', textAlign: 'center' }}>:</span>
+                                <CampoMagicoNPC valor={npcData.afiliacao} onChange={(v) => salvar('afiliacao', v)} styleExtra={{ width: '100%' }} />
+
+                                <LabelMagicoNPC valor={getLabel('bio8', 'Classe')} onChange={(v) => setLabel('bio8', v)} />
+                                <span style={{ fontWeight: 'bold', textAlign: 'center' }}>:</span>
+                                <CampoMagicoNPC valor={npcData.bio?.classe} onChange={(v) => salvar('bio.classe', v)} styleExtra={{ width: '100%' }} />
                             </div>
 
                             <div style={{ marginTop: '20px', position: 'relative', width: 'fit-content', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
