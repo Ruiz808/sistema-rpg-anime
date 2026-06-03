@@ -39,7 +39,7 @@ const calcularPrestAtual = (ficha, attrKey, baseP) => {
 };
 
 // ==========================================
-// 🖋️ INPUTS E BARRAS MÁGICAS (COM AUTO-SAVE NO BLUR)
+// 🖋️ INPUTS E BARRAS MÁGICAS
 // ==========================================
 const CampoMagico = ({ valor, onChange, placeholder, styleExtra = {}, type = "text", isNumber = false }) => {
     const handleChange = (e) => {
@@ -52,7 +52,7 @@ const CampoMagico = ({ valor, onChange, placeholder, styleExtra = {}, type = "te
             type={type} 
             value={valor !== undefined && valor !== null ? valor : ''} 
             onChange={handleChange}
-            onBlur={() => salvarFichaSilencioso()} // 🔥 O SEGREDO DO SALVAMENTO PERFEITO!
+            onBlur={() => salvarFichaSilencioso()} // Salva a escrita normal ao clicar fora
             placeholder={placeholder}
             style={{ background: 'transparent', border: 'none', borderBottom: '1px dashed rgba(0,0,0,0.3)', fontFamily: 'inherit', fontSize: 'inherit', color: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', outline: 'none', padding: '0 5px', width: '100px', ...styleExtra }} 
         />
@@ -71,10 +71,12 @@ const LabelMagico = ({ valor, onChange, fallback }) => (
     />
 );
 
-const calcularEscala = (rawMax) => {
+// 🔥 A NOVA FUNÇÃO DE ESCALA CORRIGIDA (Lê a diferença entre limite 8 ou 9)
+const calcularEscala = (rawMax, key) => {
     if (!rawMax || isNaN(rawMax) || rawMax <= 0) return { mxDisplay: 0, pVit: 0 };
+    const limit = (key === 'vida' || key === 'pv' || key === 'pm') ? 8 : 9;
     const strVal = String(Math.floor(rawMax));
-    const pVit = Math.max(0, strVal.length - 8); 
+    const pVit = Math.max(0, strVal.length - limit); 
     const mxDisplay = pVit > 0 ? Math.floor(rawMax / Math.pow(10, pVit)) : Math.floor(rawMax);
     return { mxDisplay, pVit };
 };
@@ -170,8 +172,8 @@ export default function MarcadosPanel() {
 
     if (!minhaFicha) return <div style={{ color: '#000', padding: 20, fontFamily: 'cursive' }}>Abrindo o Diário...</div>;
 
-    // 🔥 O "salvar" agora apenas atualiza a memória. O envio pra Cloud é no Blur!
-    const salvar = (caminho, valor) => {
+    // 🔥 O "salvar" agora aceita um comando "imediato" para caixas de seleção e cores!
+    const salvar = (caminho, valor, imediato = false) => {
         updateFicha(f => {
             const chaves = caminho.split('.');
             let atual = f;
@@ -183,6 +185,9 @@ export default function MarcadosPanel() {
             }
             atual[chaves[chaves.length - 1]] = valor;
         });
+        if (imediato) {
+            setTimeout(() => salvarFichaSilencioso(), 50);
+        }
     };
 
     const handleSalvarTudo = async () => {
@@ -218,28 +223,28 @@ export default function MarcadosPanel() {
         alert("O seu diário foi sincronizado!");
     };
 
-    // 🧮 CÁLCULO DE PV E PM COM ASCENSÃO
+    // 🧮 CÁLCULO DE PV E PM CORRIGIDO (Matemática + Ascensão)
     const getSupremas = () => {
-        const getP = (k) => { let mx = 0; try { mx = getMaximo(minhaFicha, k); } catch(e) { mx = minhaFicha[k]?.base || 0; } return calcularEscala(mx).pVit; };
-        const pVida = getP('vida'), pChakra = getP('chakra'), pCorpo = getP('corpo');
-        const pMana = getP('mana'), pAura = getP('aura');
-        
-        let statusBase = 0;
-        ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'].forEach(s => {
-            statusBase += safeGetRawBase(minhaFicha, s);
-        });
-        const pStatus = calcularEscala(statusBase).pVit;
-        
+        const bV = getBasePFor(minhaFicha, 'vida');
+        const bCh = getBasePFor(minhaFicha, 'chakra');
+        const bC = getBasePFor(minhaFicha, 'corpo');
         const mPV = parseFloat(minhaFicha.multiplicadorVida) || 1;
+        const pvBaseRaw = Math.floor(((bV + bCh + bC) / 3) * mPV);
+
+        const bM = getBasePFor(minhaFicha, 'mana');
+        const bA = getBasePFor(minhaFicha, 'aura');
+        const bS = getBasePFor(minhaFicha, 'status');
         const mPM = parseFloat(minhaFicha.multiplicadorMorte) || 1;
+        const pmBaseRaw = Math.floor(((bM + bA + bS) / 3) * mPM);
         
+        // 🔥 A MECÂNICA DE ASCENSÃO (+100 Por nível acima de 1)
         const ascensao = parseInt(minhaFicha.ascensaoBase) || 1;
         const bonusAscensao = (ascensao - 1) * 100;
         
-        const pvCalculado = Math.floor(((pVida + pChakra + pCorpo) / 3) * mPV) + bonusAscensao;
-        const pmCalculado = Math.floor(((pMana + pAura + pStatus) / 3) * mPM) + bonusAscensao;
-
-        return { pvMax: pvCalculado, pmMax: pmCalculado };
+        return { 
+            pvMax: pvBaseRaw + bonusAscensao, 
+            pmMax: pmBaseRaw + bonusAscensao 
+        };
     };
     const { pvMax, pmMax } = getSupremas();
 
@@ -248,39 +253,39 @@ export default function MarcadosPanel() {
         if (!window.confirm('Recuperar toda a Vida, Energias, Pontos e Ações de Turno?')) return;
         
         updateFicha(f => {
-            // Cura Energias Base
             ['vida', 'mana', 'aura', 'chakra', 'corpo'].forEach(k => {
                 let mx = 0;
                 try { mx = getMaximo(minhaFicha, k); } catch(e) { mx = minhaFicha[k]?.base || 0; }
-                const { mxDisplay } = calcularEscala(mx);
+                const { mxDisplay } = calcularEscala(mx, k);
                 if (!f[k]) f[k] = {};
                 f[k].atual = mxDisplay;
             });
-            
-            // Cura PV e PM
             if (!f.pv) f.pv = {}; f.pv.atual = pvMax;
             if (!f.pm) f.pm = {}; f.pm.atual = pmMax;
             
-            // Restaura Ações
             ['padrao', 'bonus', 'reacao'].forEach(tipo => {
                 if (!f.acoes) f.acoes = {};
                 if (!f.acoes[tipo]) f.acoes[tipo] = { max: 1, atual: 1 };
                 f.acoes[tipo].atual = f.acoes[tipo].max;
             });
         });
-        
-        // Dispara o salvamento para a nuvem
         setTimeout(() => salvarFichaSilencioso(), 100);
     };
 
-    const LinhaVital = ({ labelKey, fallbackLabel, vitalKey, subItens, corBarra, corTextoBarra = '#fff' }) => {
+    const LinhaVital = ({ labelKey, fallbackLabel, vitalKey, overrideMax, subItens, corBarra, corTextoBarra = '#fff' }) => {
         const [aberto, setAberta] = useState(false);
-        let rawMaximo = 0;
-        try { rawMaximo = getMaximo(minhaFicha, vitalKey); } catch(e) { rawMaximo = minhaFicha[vitalKey]?.base || 0; }
         
-        const { mxDisplay, pVit } = calcularEscala(rawMaximo);
+        // Lê a propriedade "crua" para as principais, ou usa o PV/PM que foi injetado (overrideMax)
+        let rawMaximo = overrideMax !== undefined ? overrideMax : 0;
+        if (overrideMax === undefined) {
+            try { rawMaximo = getMaximo(minhaFicha, vitalKey); } catch(e) { rawMaximo = minhaFicha[vitalKey]?.base || 0; }
+        }
+        
+        const { mxDisplay, pVit } = calcularEscala(rawMaximo, vitalKey);
+        
         let atual = minhaFicha[vitalKey]?.atual !== undefined ? parseFloat(minhaFicha[vitalKey].atual) : mxDisplay;
-        if (pVit > 0 && atual > mxDisplay * 10) atual = Math.floor(atual / Math.pow(10, pVit));
+        if (pVit > 0 && atual > mxDisplay * 5) atual = Math.floor(atual / Math.pow(10, pVit));
+        if (atual > mxDisplay) atual = mxDisplay; // Limite de Segurança Visual
 
         return (
             <div style={{ marginBottom: '15px' }}>
@@ -338,13 +343,14 @@ export default function MarcadosPanel() {
                     {modalEstilo && (
                         <div className="fade-in" style={{ position: 'absolute', top: '50px', right: '0', background: '#ffe4f0', padding: '15px', border: '1px solid #ccc', boxShadow: '5px 5px 15px rgba(0,0,0,0.3)', width: '250px', zIndex: 20 }}>
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Cor do Papel:</label>
-                            <input type="color" value={corFundo} onChange={(e) => salvar('estetica.diarioCor', e.target.value)} onBlur={() => salvarFichaSilencioso()} style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} />
+                            {/* 🔥 O SEGREDO DO SALVAR IMEDIATO ESTÁ NO TERCEIRO PARÂMETRO 'true' */}
+                            <input type="color" value={corFundo} onChange={(e) => salvar('estetica.diarioCor', e.target.value, true)} style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} />
                             
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Cor da Tinta (Radar):</label>
-                            <input type="color" value={corTintaRadar} onChange={(e) => salvar('estetica.corTintaRadar', e.target.value)} onBlur={() => salvarFichaSilencioso()} style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} />
+                            <input type="color" value={corTintaRadar} onChange={(e) => salvar('estetica.corTintaRadar', e.target.value, true)} style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} />
                             
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Fonte da Letra:</label>
-                            <select value={fonteDiario} onChange={(e) => { salvar('estetica.diarioFonte', e.target.value); salvarFichaSilencioso(); }} style={{ width: '100%', padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', fontFamily: 'inherit' }}>
+                            <select value={fonteDiario} onChange={(e) => salvar('estetica.diarioFonte', e.target.value, true)} style={{ width: '100%', padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', fontFamily: 'inherit' }}>
                                 <option value='"Comic Sans MS", "Chalkboard SE", "Marker Felt", cursive'>✏️ Escrito à Mão</option>
                                 <option value="'Courier New', Courier, monospace">🖨️ Máquina de Escrever</option>
                                 <option value="'Times New Roman', Times, serif">📖 Grimório Clássico</option>
@@ -408,7 +414,7 @@ export default function MarcadosPanel() {
                                 <h2 style={{ fontSize: '2em', fontStyle: 'italic', fontWeight: 'bold', margin: 0, display: 'flex' }}>
                                     <LabelMagico valor={getLabel('tituloBase', '> STATUS PRINCIPAIS')} onChange={(v) => setLabel('tituloBase', v)} />
                                 </h2>
-                                {/* 💖 NOVO BOTÃO DE DESCANSAR (REGENERAR) */}
+                                {/* 💖 BOTÃO DESCANSAR */}
                                 <button onClick={handleRegenerarTudo} style={{ background: 'rgba(255,255,255,0.4)', border: '2px solid rgba(0,0,0,0.8)', padding: '5px 15px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'inherit', fontSize: '0.9em', display: 'flex', alignItems: 'center', gap: '5px', boxShadow: '2px 2px 5px rgba(0,0,0,0.2)' }} title="Recuperar toda a Vida, Energias e Ações">
                                     <span>💖</span> Descansar
                                 </button>
@@ -459,7 +465,7 @@ export default function MarcadosPanel() {
                                                 <span style={{ fontSize: '1.1em' }}><LabelMagico valor={getLabel(`acao_${tipo}`, tipo.toUpperCase())} onChange={(v) => setLabel(`acao_${tipo}`, v)} /></span>
                                                 <div style={{ display: 'flex', gap: '8px' }}>
                                                     {Array.from({ length: acao.max }).map((_, i) => (
-                                                        <div key={i} onClick={() => { salvar(`acoes.${tipo}.atual`, i >= acao.atual ? acao.atual + 1 : acao.atual - 1); salvarFichaSilencioso(); }}
+                                                        <div key={i} onClick={() => { salvar(`acoes.${tipo}.atual`, i >= acao.atual ? acao.atual + 1 : acao.atual - 1, true); }}
                                                             style={{ width: '25px', height: '25px', border: '2px solid #000', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '1.2em', color: '#ff003c', background: 'rgba(255,255,255,0.2)' }}>
                                                             {i >= acao.atual ? 'X' : ''}
                                                         </div>
