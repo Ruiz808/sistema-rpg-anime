@@ -1,77 +1,110 @@
 import React, { useState } from 'react';
 import useStore from '../../stores/useStore';
 import { uploadImagem, salvarFichaSilencioso, salvarFirebaseImediato } from '../../services/firebase-sync';
-import { getMaximo } from '../../core/attributes';
+import { getMaximo, getRawBase } from '../../core/attributes';
 
-// 🖋️ INPUT INVISÍVEL PARA VALORES
+// ==========================================
+// 🖋️ INPUTS E BARRAS MÁGICAS (ESTILO PAPEL)
+// ==========================================
 const CampoMagico = ({ valor, onChange, placeholder, styleExtra = {}, type = "text" }) => (
-    <input 
-        type={type}
-        value={valor || ''} 
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        style={{ 
-            background: 'transparent', border: 'none', borderBottom: '1px dashed rgba(0,0,0,0.3)', 
-            fontFamily: 'inherit', fontSize: 'inherit', color: 'inherit', 
-            fontWeight: 'inherit', fontStyle: 'inherit', outline: 'none', 
-            padding: '0 5px', width: '100px', ...styleExtra 
-        }} 
+    <input type={type} value={valor || ''} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
+        style={{ background: 'transparent', border: 'none', borderBottom: '1px dashed rgba(0,0,0,0.3)', fontFamily: 'inherit', fontSize: 'inherit', color: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', outline: 'none', padding: '0 5px', width: '100px', ...styleExtra }} 
     />
 );
 
-// 🏷️ INPUT INVISÍVEL PARA RÓTULOS (Parece texto normal)
 const LabelMagico = ({ valor, onChange, fallback }) => (
-    <input 
-        type="text"
-        value={valor !== undefined ? valor : fallback} 
-        onChange={(e) => onChange(e.target.value)}
-        size={Math.max((valor !== undefined ? valor : fallback).length, 3)}
-        style={{ 
-            background: 'transparent', border: 'none', borderBottom: '1px solid transparent', 
-            fontFamily: 'inherit', fontSize: 'inherit', color: 'inherit', 
-            fontWeight: 'bold', fontStyle: 'italic', outline: 'none', 
-            padding: '0', cursor: 'text', transition: '0.2s'
-        }}
-        onFocus={(e) => e.target.style.borderBottom = '1px dashed rgba(0,0,0,0.5)'}
-        onBlur={(e) => e.target.style.borderBottom = '1px solid transparent'}
+    <input type="text" value={valor !== undefined ? valor : fallback} onChange={(e) => onChange(e.target.value)} size={Math.max((valor !== undefined ? valor : fallback).length, 3)}
+        style={{ background: 'transparent', border: 'none', borderBottom: '1px solid transparent', fontFamily: 'inherit', fontSize: 'inherit', color: 'inherit', fontWeight: 'bold', fontStyle: 'italic', outline: 'none', padding: '0', cursor: 'text', transition: '0.2s' }}
+        onFocus={(e) => e.target.style.borderBottom = '1px dashed rgba(0,0,0,0.5)'} onBlur={(e) => e.target.style.borderBottom = '1px solid transparent'}
     />
 );
 
-// 📊 NOVA BARRA DE VITALIDADE (Colorida e Editável!)
 const BarraVital = ({ atual, maximo, cor, corTexto = "#fff", onChangeAtual }) => {
     const pct = maximo > 0 ? Math.min(100, Math.max(0, (atual / maximo) * 100)) : 0;
     const isDark = corTexto === '#fff';
-    
     return (
-        <div style={{ 
-            position: 'relative', width: '100%', height: '35px', 
-            border: '2px solid rgba(0,0,0,0.8)', borderRadius: '6px', 
-            background: 'rgba(255,255,255,0.2)', overflow: 'hidden', marginTop: '5px',
-            boxShadow: 'inset 0 0 10px rgba(0,0,0,0.5)'
-        }}>
+        <div style={{ position: 'relative', width: '100%', height: '35px', border: '2px solid rgba(0,0,0,0.8)', borderRadius: '6px', background: 'rgba(255,255,255,0.2)', overflow: 'hidden', marginTop: '5px', boxShadow: 'inset 0 0 10px rgba(0,0,0,0.5)' }}>
             <div style={{ width: `${pct}%`, height: '100%', background: cor, transition: 'width 0.3s ease' }} />
-            
-            <div style={{ 
-                position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', 
-                display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                fontWeight: 'bold', fontSize: '1.2em', color: corTexto,
-                textShadow: isDark ? '1px 1px 3px #000, -1px -1px 3px #000' : 'none'
-            }}>
-                <CampoMagico 
-                    valor={atual} 
-                    onChange={onChangeAtual} 
-                    styleExtra={{ 
-                        width: '120px', textAlign: 'right', color: corTexto, 
-                        textShadow: 'inherit', borderBottom: `1px dashed ${isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)'}` 
-                    }} 
-                />
-                <span style={{ margin: '0 8px' }}>/</span>
-                <span>{Number(maximo).toLocaleString('pt-BR')}</span>
+            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.2em', color: corTexto, textShadow: isDark ? '1px 1px 3px #000, -1px -1px 3px #000' : 'none' }}>
+                <CampoMagico valor={atual} onChange={onChangeAtual} styleExtra={{ width: '120px', textAlign: 'right', color: corTexto, textShadow: 'inherit', borderBottom: `1px dashed ${isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)'}` }} />
+                <span style={{ margin: '0 8px' }}>/</span><span>{Number(maximo).toLocaleString('pt-BR')}</span>
             </div>
         </div>
     );
 };
 
+// ==========================================
+// 🕸️ GRÁFICO DE RADAR DESENHADO À MÃO
+// ==========================================
+const RadarDesenhado = ({ ficha, isAtual }) => {
+    const eixos = [
+        { label: 'VIDA', key: 'vida' }, { label: 'MANA', key: 'mana' }, { label: 'AURA', key: 'aura' },
+        { label: 'CHAKRA', key: 'chakra' }, { label: 'CORPO', key: 'corpo' }, { label: 'STATUS', key: 'status' }
+    ];
+    
+    // Matemática Básica do Radar (Raio de 75px)
+    const angulos = Array.from({length: 6}).map((_, i) => Math.PI * 2 * i / 6 - Math.PI / 2);
+    
+    const calcularPrestigioSimplificado = (attrKey) => {
+        let valorCru = 0;
+        try {
+            if (attrKey === 'status') {
+                ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'].forEach(k => {
+                    valorCru += (parseFloat(ficha[k]?.base) || 0);
+                });
+                valorCru = Math.floor((valorCru / 8) / 1000);
+            } else {
+                valorCru = parseFloat(ficha[attrKey]?.base) || 0;
+            }
+        } catch(e) {}
+        
+        let prest = valorCru; // Aqui idealmente entraria o getPrestigioReal, simplificamos para o gráfico
+        if (isAtual) {
+            const mFormas = parseFloat(ficha[attrKey === 'status' ? 'forca' : attrKey]?.mFormas) || 1;
+            prest = Math.floor(prest * (mFormas >= 10 ? mFormas / 10 : 1));
+        }
+        return prest;
+    };
+
+    const valores = eixos.map(e => calcularPrestigioSimplificado(e.key));
+    const limiteRadar = 100; // Normaliza até 100 para visualização
+    
+    const dataPoints = valores.map((v, i) => {
+        let valNorm = v > 0 ? (v % limiteRadar) : 0;
+        if (valNorm === 0 && v > 0) valNorm = limiteRadar;
+        const frac = Math.min(valNorm / limiteRadar, 1);
+        return `${100 + 75 * frac * Math.cos(angulos[i])},${100 + 75 * frac * Math.sin(angulos[i])}`;
+    }).join(' ');
+
+    return (
+        <svg viewBox="0 0 200 200" style={{ width: '100%', maxWidth: '280px', height: 'auto', overflow: 'visible', dropShadow: '2px 2px 2px rgba(0,0,0,0.2)' }}>
+            {/* Grelha de Fundo (A Tinta) */}
+            {[0.33, 0.66, 1.0].map((scale, i) => (
+                <polygon key={i} fill="none" stroke="rgba(0,0,0,0.15)" strokeWidth="1" strokeDasharray="3"
+                    points={angulos.map(a => `${100 + 75 * scale * Math.cos(a)},${100 + 75 * scale * Math.sin(a)}`).join(' ')} 
+                />
+            ))}
+            {angulos.map((a, i) => (
+                <line key={i} x1="100" y1="100" x2={100 + 75 * Math.cos(a)} y2={100 + 75 * Math.sin(a)} stroke="rgba(0,0,0,0.15)" strokeWidth="1" strokeDasharray="3" />
+            ))}
+            
+            {/* Polígono de Tinta */}
+            <polygon points={dataPoints} fill="rgba(0,0,0,0.1)" stroke="rgba(0,0,0,0.8)" strokeWidth="2" strokeLinejoin="round" />
+            
+            {/* Rótulos */}
+            {eixos.map((e, i) => (
+                <text key={i} x={100 + 95 * Math.cos(angulos[i])} y={100 + 95 * Math.sin(angulos[i])} textAnchor="middle" dominantBaseline="central" fill="rgba(0,0,0,0.8)" fontSize="11" fontWeight="bold" style={{ fontStyle: 'italic' }}>
+                    {e.label}
+                </text>
+            ))}
+        </svg>
+    );
+};
+
+
+// ==========================================
+// 📖 PAINEL PRINCIPAL (O GRIMÓRIO)
+// ==========================================
 export default function MarcadosPanel() {
     const minhaFicha = useStore(s => s.minhaFicha);
     const updateFicha = useStore(s => s.updateFicha);
@@ -82,8 +115,11 @@ export default function MarcadosPanel() {
     const [modalImport, setModalImport] = useState(false);
     const [textoImport, setTextoImport] = useState('');
     const [modalEstilo, setModalEstilo] = useState(false);
+    
+    // 📖 ESTADO DE PAGINAÇÃO DO LIVRO
+    const [paginaAtual, setPaginaAtual] = useState(1);
 
-    if (!minhaFicha) return <div style={{ color: '#000', padding: 20, fontFamily: 'cursive' }}>Lendo a Membrana...</div>;
+    if (!minhaFicha) return <div style={{ color: '#000', padding: 20, fontFamily: 'cursive' }}>Abrindo o Diário...</div>;
 
     const salvar = (caminho, valor) => {
         updateFicha(f => {
@@ -111,15 +147,8 @@ export default function MarcadosPanel() {
             const url = await uploadImagem(file, `avatars/${meuNome || 'desconhecido'}`);
             updateFicha(f => { if (!f.avatar) f.avatar = { base: "" }; f.avatar.base = url; });
             await salvarFirebaseImediato();
-        } catch (err) { alert('Ocorreu uma falha ao pintar o avatar!'); } 
+        } catch (err) { alert('Erro ao pintar o avatar!'); } 
         finally { setUploadingImg(false); }
-    };
-
-    const removerAvatar = () => {
-        if(window.confirm('Apagar imagem atual?')) {
-            updateFicha(f => { if (f.avatar) f.avatar.base = ""; });
-            salvarFichaSilencioso();
-        }
     };
 
     const executarImportacao = () => {
@@ -127,9 +156,10 @@ export default function MarcadosPanel() {
         importarDaAbaStatus(textoImport);
         setModalImport(false);
         setTextoImport('');
-        alert("O seu diário foi sincronizado com as nuvens!");
+        alert("O seu diário foi sincronizado!");
     };
 
+    // Componente de Linha Vital
     const LinhaVital = ({ labelKey, fallbackLabel, vitalKey, subItens, corBarra, corTextoBarra = '#fff' }) => {
         const [aberto, setAberta] = useState(false);
         const atual = minhaFicha[vitalKey]?.atual || '';
@@ -139,37 +169,39 @@ export default function MarcadosPanel() {
         return (
             <div style={{ marginBottom: '15px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', fontSize: '1.2em' }}>
-                    {subItens && (
-                        <span onClick={() => setAberta(!aberto)} style={{ cursor: 'pointer', width: '20px', display: 'inline-block', userSelect: 'none', fontWeight: 'bold' }}>
-                            {aberto ? 'v ' : '> '}
-                        </span>
-                    )}
+                    {subItens && <span onClick={() => setAberta(!aberto)} style={{ cursor: 'pointer', width: '20px', display: 'inline-block', userSelect: 'none', fontWeight: 'bold' }}>{aberto ? 'v ' : '> '}</span>}
                     <LabelMagico valor={getLabel(labelKey, fallbackLabel)} onChange={(v) => setLabel(labelKey, v)} />
                 </div>
-                
-                {/* 📊 A NOVA BARRA ESTÁ AQUI */}
-                <BarraVital 
-                    atual={atual} 
-                    maximo={maximo} 
-                    cor={corBarra} 
-                    corTexto={corTextoBarra} 
-                    onChangeAtual={(v) => salvar(`${vitalKey}.atual`, v)} 
-                />
-                
+                <BarraVital atual={atual} maximo={maximo} cor={corBarra} corTexto={corTextoBarra} onChangeAtual={(v) => salvar(`${vitalKey}.atual`, v)} />
                 {aberto && subItens && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginLeft: '35px', marginTop: '12px' }}>
-                        {subItens.map(sub => {
-                            const valBase = minhaFicha[sub.key]?.base || '';
-                            return (
-                                <div key={sub.labelKey} style={{ fontSize: '1.05em', display: 'flex', alignItems: 'center' }}>
-                                    <LabelMagico valor={getLabel(sub.labelKey, sub.fallbackLabel)} onChange={(v) => setLabel(sub.labelKey, v)} />
-                                    <span style={{ fontWeight: 'bold', fontStyle: 'italic', margin: '0 5px' }}>: (</span>
-                                    <CampoMagico valor={valBase} onChange={(v) => salvar(`${sub.key}.base`, v)} styleExtra={{ width: '90px' }} />
-                                    <span style={{ fontWeight: 'bold', fontStyle: 'italic' }}>)</span>
-                                </div>
-                            );
-                        })}
+                        {subItens.map(sub => (
+                            <div key={sub.labelKey} style={{ fontSize: '1.05em', display: 'flex', alignItems: 'center' }}>
+                                <LabelMagico valor={getLabel(sub.labelKey, sub.fallbackLabel)} onChange={(v) => setLabel(sub.labelKey, v)} />
+                                <span style={{ fontWeight: 'bold', fontStyle: 'italic', margin: '0 5px' }}>: (</span>
+                                <CampoMagico valor={minhaFicha[sub.key]?.base || ''} onChange={(v) => salvar(`${sub.key}.base`, v)} styleExtra={{ width: '90px' }} />
+                                <span style={{ fontWeight: 'bold', fontStyle: 'italic' }}>)</span>
+                            </div>
+                        ))}
                     </div>
+                )}
+            </div>
+        );
+    };
+
+    // Componente para Atributos Crus na Página 2
+    const LinhaAtributoCru = ({ labelKey, fallbackLabel, attrKey, isAtual }) => {
+        const baseVal = minhaFicha[attrKey]?.base || '';
+        let maxVal = 0;
+        try { maxVal = getMaximo(minhaFicha, attrKey); } catch(e) { maxVal = baseVal; }
+        
+        return (
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted rgba(0,0,0,0.2)', padding: '6px 0', fontSize: '1.1em' }}>
+                <LabelMagico valor={getLabel(labelKey, fallbackLabel)} onChange={(v) => setLabel(labelKey, v)} />
+                {isAtual ? (
+                    <span style={{ fontWeight: 'bold' }}>{Number(maxVal).toLocaleString('pt-BR')}</span>
+                ) : (
+                    <CampoMagico valor={baseVal} onChange={(v) => salvar(`${attrKey}.base`, v)} styleExtra={{ width: '100px', textAlign: 'right', fontWeight: 'bold' }} isNumber={true} />
                 )}
             </div>
         );
@@ -177,20 +209,17 @@ export default function MarcadosPanel() {
 
     return (
         <div style={{ 
-            width: '100%', minHeight: '85vh', background: corFundo, 
-            color: '#000', fontFamily: fonteDiario, padding: '40px', 
-            borderRadius: '12px', display: 'flex', flexWrap: 'wrap', gap: '40px',
-            boxShadow: 'inset 0 0 40px rgba(0,0,0,0.1), 0 10px 30px rgba(0,0,0,0.5)',
-            position: 'relative', transition: 'background 0.5s ease'
+            width: '100%', minHeight: '85vh', background: corFundo, color: '#000', fontFamily: fonteDiario, 
+            padding: '40px 40px 80px 40px', borderRadius: '12px', position: 'relative', transition: 'background 0.5s ease',
+            boxShadow: 'inset 0 0 40px rgba(0,0,0,0.1), 0 10px 30px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column'
         }}>
             
-            {/* 📌 PAINEL DE POST-ITS */}
+            {/* 📌 CONTROLES DE PAPELARIA */}
             <div style={{ position: 'absolute', top: '-15px', right: '30px', zIndex: 10, display: 'flex', gap: '10px' }}>
                 <div style={{ position: 'relative' }}>
                     <button onClick={() => { setModalEstilo(!modalEstilo); setModalImport(false); }} style={{ background: '#ff94c2', border: 'none', padding: '10px 20px', fontFamily: 'inherit', fontWeight: 'bold', fontSize: '1.1em', cursor: 'pointer', boxShadow: '3px 3px 10px rgba(0,0,0,0.2)', transform: 'rotate(-2deg)' }}>🎨 Estilo</button>
                     {modalEstilo && (
                         <div className="fade-in" style={{ position: 'absolute', top: '50px', right: '0', background: '#ffe4f0', padding: '15px', border: '1px solid #ccc', boxShadow: '5px 5px 15px rgba(0,0,0,0.3)', width: '250px', zIndex: 20 }}>
-                            <p style={{ margin: '0 0 10px 0', fontSize: '1em', fontWeight: 'bold' }}>Personalizar Diário</p>
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Cor do Papel:</label>
                             <input type="color" value={corFundo} onChange={(e) => salvar('estetica.diarioCor', e.target.value)} style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} />
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Fonte da Letra:</label>
@@ -198,142 +227,182 @@ export default function MarcadosPanel() {
                                 <option value='"Comic Sans MS", "Chalkboard SE", "Marker Felt", cursive'>✏️ Escrito à Mão</option>
                                 <option value="'Courier New', Courier, monospace">🖨️ Máquina de Escrever</option>
                                 <option value="'Times New Roman', Times, serif">📖 Grimório Clássico</option>
-                                <option value="'Trebuchet MS', sans-serif">📝 Moderno & Limpo</option>
                             </select>
                         </div>
                     )}
                 </div>
                 <div style={{ position: 'relative' }}>
-                    <button onClick={() => { setModalImport(!modalImport); setModalEstilo(false); }} style={{ background: '#ffeb3b', border: 'none', padding: '10px 20px', fontFamily: 'inherit', fontWeight: 'bold', fontSize: '1.1em', cursor: 'pointer', boxShadow: '3px 3px 10px rgba(0,0,0,0.2)', transform: 'rotate(2deg)' }}>📌 Importar Docs</button>
+                    <button onClick={() => { setModalImport(!modalImport); setModalEstilo(false); }} style={{ background: '#ffeb3b', border: 'none', padding: '10px 20px', fontFamily: 'inherit', fontWeight: 'bold', fontSize: '1.1em', cursor: 'pointer', boxShadow: '3px 3px 10px rgba(0,0,0,0.2)', transform: 'rotate(2deg)' }}>📌 Importar</button>
                     {modalImport && (
                         <div className="fade-in" style={{ position: 'absolute', top: '50px', right: '0', background: '#fff9c4', padding: '15px', border: '1px solid #ccc', boxShadow: '5px 5px 15px rgba(0,0,0,0.3)', width: '300px', zIndex: 20 }}>
-                            <p style={{ margin: '0 0 10px 0', fontSize: '0.9em' }}>Cole os status aqui:</p>
-                            <textarea value={textoImport} onChange={e => setTextoImport(e.target.value)} style={{ width: '100%', height: '100px', background: 'transparent', border: '1px solid rgba(0,0,0,0.2)', fontFamily: 'inherit', resize: 'none', boxSizing: 'border-box' }} />
+                            <textarea value={textoImport} onChange={e => setTextoImport(e.target.value)} placeholder="Cole do Docs..." style={{ width: '100%', height: '100px', background: 'transparent', border: '1px solid rgba(0,0,0,0.2)', fontFamily: 'inherit', resize: 'none', boxSizing: 'border-box' }} />
                             <button onClick={executarImportacao} style={{ width: '100%', background: '#000', color: '#fff', border: 'none', padding: '8px', marginTop: '10px', fontFamily: 'inherit', cursor: 'pointer' }}>Sincronizar ✍️</button>
                         </div>
                     )}
                 </div>
             </div>
 
-            {/* 📜 COLUNA ESQUERDA: PERFIL E AVATAR */}
-            <div style={{ flex: '1 1 450px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+            {/* 📖 CONTEÚDO DO LIVRO */}
+            <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '40px' }}>
                 
-                {/* 🆔 Título Editável (Substitui o Natsu) */}
-                <div style={{ display: 'flex', alignItems: 'baseline', borderBottom: '2px solid rgba(0,0,0,0.8)', paddingBottom: '5px', marginBottom: '10px', width: 'fit-content' }}>
-                    <span style={{ fontSize: '3.5em', fontStyle: 'italic', fontWeight: 'bold', margin: 0 }}>/</span>
-                    <CampoMagico 
-                        valor={minhaFicha.bio?.apelido !== undefined ? minhaFicha.bio.apelido : meuNome} 
-                        onChange={(v) => salvar('bio.apelido', v)} 
-                        placeholder="Nome do Herói"
-                        styleExtra={{ fontSize: '3.5em', fontStyle: 'italic', fontWeight: 'bold', minWidth: '300px', width: 'auto', borderBottom: 'none' }} 
-                    />
-                    <span style={{ fontSize: '3.5em', fontStyle: 'italic', fontWeight: 'bold', margin: 0 }}>©</span>
-                </div>
-                
-                <h2 style={{ fontSize: '2.2em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 20px 0', display: 'flex', alignItems: 'center' }}>
-                    <LabelMagico valor={getLabel('tituloLv', '- Limite quebrado - LV')} onChange={(v) => setLabel('tituloLv', v)} />
-                    <CampoMagico valor={minhaFicha.bio?.nivel} onChange={(v) => salvar('bio.nivel', v)} styleExtra={{ width: '60px', borderBottom: 'none', marginLeft: '10px' }} />
-                </h2>
+                {/* ======================= PÁGINA 1: PERFIL ======================= */}
+                {paginaAtual === 1 && (
+                    <>
+                        {/* COLUNA ESQUERDA */}
+                        <div className="fade-in" style={{ flex: '1 1 450px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                            <div style={{ display: 'flex', alignItems: 'baseline', borderBottom: '2px solid rgba(0,0,0,0.8)', paddingBottom: '5px', marginBottom: '10px', width: 'fit-content' }}>
+                                <span style={{ fontSize: '3.5em', fontStyle: 'italic', fontWeight: 'bold', margin: 0 }}>/</span>
+                                <CampoMagico valor={minhaFicha.bio?.apelido !== undefined ? minhaFicha.bio.apelido : meuNome} onChange={(v) => salvar('bio.apelido', v)} placeholder="Nome" styleExtra={{ fontSize: '3.5em', fontStyle: 'italic', fontWeight: 'bold', minWidth: '300px', width: 'auto', borderBottom: 'none' }} />
+                                <span style={{ fontSize: '3.5em', fontStyle: 'italic', fontWeight: 'bold', margin: 0 }}>©</span>
+                            </div>
+                            <h2 style={{ fontSize: '2.2em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 20px 0', display: 'flex', alignItems: 'center' }}>
+                                <LabelMagico valor={getLabel('tituloLv', '- Limite quebrado - LV')} onChange={(v) => setLabel('tituloLv', v)} />
+                                <CampoMagico valor={minhaFicha.bio?.nivel} onChange={(v) => salvar('bio.nivel', v)} styleExtra={{ width: '60px', borderBottom: 'none', marginLeft: '10px' }} />
+                            </h2>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '1.2em' }}>
-                    <div style={{ display: 'flex' }}><LabelMagico valor={getLabel('bio1', 'Idade')} onChange={(v) => setLabel('bio1', v)} />: <CampoMagico valor={minhaFicha.bio?.idade} onChange={(v) => salvar('bio.idade', v)} styleExtra={{ flex: 1 }} /></div>
-                    <div style={{ display: 'flex' }}><LabelMagico valor={getLabel('bio2', 'Aniversário')} onChange={(v) => setLabel('bio2', v)} />: <CampoMagico valor={minhaFicha.bio?.aniversario} onChange={(v) => salvar('bio.aniversario', v)} styleExtra={{ flex: 1 }} /></div>
-                    <div style={{ display: 'flex' }}><LabelMagico valor={getLabel('bio3', 'Altura / Peso')} onChange={(v) => setLabel('bio3', v)} />: <CampoMagico valor={minhaFicha.bio?.alturaPeso} onChange={(v) => salvar('bio.alturaPeso', v)} styleExtra={{ flex: 1 }} /></div>
-                    <div style={{ display: 'flex' }}><LabelMagico valor={getLabel('bio4', 'Raça')} onChange={(v) => setLabel('bio4', v)} />: <CampoMagico valor={minhaFicha.bio?.raca} onChange={(v) => salvar('bio.raca', v)} styleExtra={{ flex: 1 }} /></div>
-                    <div style={{ display: 'flex' }}><LabelMagico valor={getLabel('bio5', 'Tipo Sanguíneo')} onChange={(v) => setLabel('bio5', v)} />: <CampoMagico valor={minhaFicha.bio?.tipoSanguineo} onChange={(v) => salvar('bio.tipoSanguineo', v)} styleExtra={{ flex: 1 }} /></div>
-                    <div style={{ display: 'flex' }}><LabelMagico valor={getLabel('bio6', 'Alinhamento')} onChange={(v) => setLabel('bio6', v)} />: <CampoMagico valor={minhaFicha.bio?.alinhamento} onChange={(v) => salvar('bio.alinhamento', v)} styleExtra={{ flex: 1 }} /></div>
-                    <div style={{ display: 'flex' }}><LabelMagico valor={getLabel('bio7', 'Afiliação')} onChange={(v) => setLabel('bio7', v)} />: <CampoMagico valor={minhaFicha.bio?.afiliacao} onChange={(v) => salvar('bio.afiliacao', v)} styleExtra={{ flex: 1 }} /></div>
-                    <div style={{ display: 'flex' }}><LabelMagico valor={getLabel('bio8', 'Classe')} onChange={(v) => setLabel('bio8', v)} />: <CampoMagico valor={minhaFicha.bio?.classe} onChange={(v) => salvar('bio.classe', v)} styleExtra={{ flex: 1 }} /></div>
-                    <div style={{ display: 'flex' }}><LabelMagico valor={getLabel('bio9', 'Dinheiro')} onChange={(v) => setLabel('bio9', v)} />: <CampoMagico valor={minhaFicha.inventario?.dinheiroText} onChange={(v) => salvar('inventario.dinheiroText', v)} placeholder="PO - 5600 PP - 5000" styleExtra={{ flex: 1 }} /></div>
-                </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '1.2em' }}>
+                                <div style={{ display: 'flex' }}><LabelMagico valor={getLabel('bio1', 'Idade')} onChange={(v) => setLabel('bio1', v)} />: <CampoMagico valor={minhaFicha.bio?.idade} onChange={(v) => salvar('bio.idade', v)} styleExtra={{ flex: 1 }} /></div>
+                                <div style={{ display: 'flex' }}><LabelMagico valor={getLabel('bio2', 'Aniversário')} onChange={(v) => setLabel('bio2', v)} />: <CampoMagico valor={minhaFicha.bio?.aniversario} onChange={(v) => salvar('bio.aniversario', v)} styleExtra={{ flex: 1 }} /></div>
+                                <div style={{ display: 'flex' }}><LabelMagico valor={getLabel('bio3', 'Altura / Peso')} onChange={(v) => setLabel('bio3', v)} />: <CampoMagico valor={minhaFicha.bio?.alturaPeso} onChange={(v) => salvar('bio.alturaPeso', v)} styleExtra={{ flex: 1 }} /></div>
+                                <div style={{ display: 'flex' }}><LabelMagico valor={getLabel('bio4', 'Raça')} onChange={(v) => setLabel('bio4', v)} />: <CampoMagico valor={minhaFicha.bio?.raca} onChange={(v) => salvar('bio.raca', v)} styleExtra={{ flex: 1 }} /></div>
+                                <div style={{ display: 'flex' }}><LabelMagico valor={getLabel('bio6', 'Alinhamento')} onChange={(v) => setLabel('bio6', v)} />: <CampoMagico valor={minhaFicha.bio?.alinhamento} onChange={(v) => salvar('bio.alinhamento', v)} styleExtra={{ flex: 1 }} /></div>
+                                <div style={{ display: 'flex' }}><LabelMagico valor={getLabel('bio7', 'Afiliação')} onChange={(v) => setLabel('bio7', v)} />: <CampoMagico valor={minhaFicha.bio?.afiliacao} onChange={(v) => salvar('bio.afiliacao', v)} styleExtra={{ flex: 1 }} /></div>
+                                <div style={{ display: 'flex' }}><LabelMagico valor={getLabel('bio8', 'Classe')} onChange={(v) => setLabel('bio8', v)} />: <CampoMagico valor={minhaFicha.bio?.classe} onChange={(v) => salvar('bio.classe', v)} styleExtra={{ flex: 1 }} /></div>
+                            </div>
 
-                {/* 📸 Avatar c/ Botão de Remover */}
-                <div style={{ marginTop: '30px', position: 'relative', width: 'fit-content', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-                    <label style={{ cursor: 'pointer', display: 'block' }} title="Clique para alterar a imagem do personagem">
-                        <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} disabled={uploadingImg} />
-                        {uploadingImg ? (
-                            <div style={{ width: '320px', height: '480px', background: 'rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed #000' }}>Desenhando... ✍️</div>
-                        ) : minhaFicha.avatar?.base ? (
-                            <img src={minhaFicha.avatar.base} alt="Avatar" style={{ width: '320px', height: 'auto', objectFit: 'cover', border: '2px solid rgba(0,0,0,0.8)', boxShadow: '8px 8px 0px rgba(0,0,0,0.2)' }} />
-                        ) : (
-                            <div style={{ width: '320px', height: '480px', border: '2px dashed #000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', background: 'rgba(255,255,255,0.1)' }}>Colar Fotografia Aqui 📸</div>
-                        )}
-                    </label>
-                    {minhaFicha.avatar?.base && (
-                        <button onClick={removerAvatar} style={{ background: 'transparent', border: '1px dashed #ff003c', color: '#ff003c', padding: '5px 15px', borderRadius: '5px', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 'bold' }}>🗑️ Remover Imagem</button>
-                    )}
-                </div>
-            </div>
+                            <div style={{ marginTop: '20px', position: 'relative', width: 'fit-content' }}>
+                                <label style={{ cursor: 'pointer', display: 'block' }}>
+                                    <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} disabled={uploadingImg} />
+                                    {uploadingImg ? <div style={{ width: '320px', height: '480px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed #000' }}>✍️...</div> : minhaFicha.avatar?.base ? <img src={minhaFicha.avatar.base} alt="Avatar" style={{ width: '320px', height: 'auto', objectFit: 'cover', border: '2px solid rgba(0,0,0,0.8)', boxShadow: '8px 8px 0px rgba(0,0,0,0.2)' }} /> : <div style={{ width: '320px', height: '480px', border: '2px dashed #000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555' }}>Colar Fotografia 📸</div>}
+                                </label>
+                                {minhaFicha.avatar?.base && <button onClick={() => {if(window.confirm('Apagar?')) updateFicha(f => {f.avatar.base = ""}); salvarFichaSilencioso();}} style={{ background: 'transparent', border: 'none', color: '#ff003c', marginTop: '5px', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'inherit' }}>🗑️ Remover Foto</button>}
+                            </div>
+                        </div>
 
-            {/* ⚔️ COLUNA DIREITA: ESTATÍSTICAS BASE E BARRAS */}
-            <div style={{ flex: '1 1 450px', display: 'flex', flexDirection: 'column' }}>
-                <h2 style={{ fontSize: '2.5em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 20px 20px', display: 'flex' }}>
-                    <LabelMagico valor={getLabel('tituloBase', 'Base')} onChange={(v) => setLabel('tituloBase', v)} />
-                </h2>
+                        {/* COLUNA DIREITA */}
+                        <div className="fade-in" style={{ flex: '1 1 450px', display: 'flex', flexDirection: 'column' }}>
+                            <h2 style={{ fontSize: '2.5em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 20px 20px', display: 'flex' }}>
+                                <LabelMagico valor={getLabel('tituloBase', 'Base')} onChange={(v) => setLabel('tituloBase', v)} />
+                            </h2>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                <LinhaVital labelKey="lblVida" fallbackLabel="Vida" vitalKey="vida" corBarra="#ff0000" />
+                                <LinhaVital labelKey="lblMana" fallbackLabel="Mana" vitalKey="mana" corBarra="#0000ff" subItens={[ { labelKey: 'lblInt', fallbackLabel: 'Inteligência', key: 'inteligencia' }, { labelKey: 'lblSab', fallbackLabel: 'Sabedoria', key: 'sabedoria' } ]} />
+                                <LinhaVital labelKey="lblAura" fallbackLabel="Aura" vitalKey="aura" corBarra="#aa00ff" subItens={[ { labelKey: 'lblEsp', fallbackLabel: 'Energia Espiritual', key: 'energiaEsp' }, { labelKey: 'lblCar', fallbackLabel: 'Carisma', key: 'carisma' } ]} />
+                                <LinhaVital labelKey="lblChakra" fallbackLabel="Chakra" vitalKey="chakra" corBarra="#00cc00" subItens={[ { labelKey: 'lblSta', fallbackLabel: 'Stamina', key: 'stamina' }, { labelKey: 'lblCon', fallbackLabel: 'Constituição', key: 'constituicao' } ]} />
+                                <LinhaVital labelKey="lblCorpo" fallbackLabel="Corpo" vitalKey="corpo" corBarra="#222222" subItens={[ { labelKey: 'lblDes', fallbackLabel: 'Destreza', key: 'destreza' }, { labelKey: 'lblFor', fallbackLabel: 'Força', key: 'forca' } ]} />
+                            </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                    <LinhaVital labelKey="lblVida" fallbackLabel="Vida" vitalKey="vida" corBarra="#ff0000" />
-                    <LinhaVital labelKey="lblMana" fallbackLabel="Mana" vitalKey="mana" corBarra="#0000ff" subItens={[ { labelKey: 'lblInt', fallbackLabel: 'Inteligência', key: 'inteligencia' }, { labelKey: 'lblSab', fallbackLabel: 'Sabedoria', key: 'sabedoria' } ]} />
-                    <LinhaVital labelKey="lblAura" fallbackLabel="Aura" vitalKey="aura" corBarra="#aa00ff" subItens={[ { labelKey: 'lblEsp', fallbackLabel: 'Energia Espiritual', key: 'energiaEsp' }, { labelKey: 'lblCar', fallbackLabel: 'Carisma', key: 'carisma' } ]} />
-                    <LinhaVital labelKey="lblChakra" fallbackLabel="Chakra" vitalKey="chakra" corBarra="#00cc00" subItens={[ { labelKey: 'lblSta', fallbackLabel: 'Stamina', key: 'stamina' }, { labelKey: 'lblCon', fallbackLabel: 'Constituição', key: 'constituicao' } ]} />
-                    <LinhaVital labelKey="lblCorpo" fallbackLabel="Corpo" vitalKey="corpo" corBarra="#222222" subItens={[ { labelKey: 'lblDes', fallbackLabel: 'Destreza', key: 'destreza' }, { labelKey: 'lblFor', fallbackLabel: 'Força', key: 'forca' } ]} />
-                    
-                    <div style={{ fontStyle: 'italic', fontSize: '1.2em', marginLeft: '20px', marginTop: '10px', display: 'flex', alignItems: 'center' }}>
-                        <LabelMagico valor={getLabel('lblCa', 'CA')} onChange={(v) => setLabel('lblCa', v)} /><span style={{fontWeight:'bold', margin:'0 5px'}}>:</span>
-                        <CampoMagico valor={minhaFicha.ca?.base} onChange={(v) => salvar('ca.base', v)} />
-                    </div>
-                    <div style={{ fontStyle: 'italic', fontSize: '1.2em', marginLeft: '20px', display: 'flex', alignItems: 'center' }}>
-                        <LabelMagico valor={getLabel('lblCd', 'CD')} onChange={(v) => setLabel('lblCd', v)} /><span style={{fontWeight:'bold', margin:'0 5px'}}>:</span>
-                        <CampoMagico valor={minhaFicha.cd?.base} onChange={(v) => salvar('cd.base', v)} />
-                    </div>
-                </div>
+                            <h2 style={{ fontSize: '1.8em', fontStyle: 'italic', fontWeight: 'bold', margin: '30px 0 10px 20px', display: 'flex' }}>
+                                <LabelMagico valor={getLabel('tituloPrimordial', 'Energias Primordiais')} onChange={(v) => setLabel('tituloPrimordial', v)} />
+                            </h2>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                <LinhaVital labelKey="lblPV" fallbackLabel="Pontos Vitais (PV)" vitalKey="pv" corBarra="#ffffff" corTextoBarra="#000" />
+                                <LinhaVital labelKey="lblPM" fallbackLabel="Pontos Mortais (PM)" vitalKey="pm" corBarra="#000000" />
+                            </div>
 
-                {/* 💀 ENERGIAS PRIMORDIAIS (PV e PM) */}
-                <h2 style={{ fontSize: '1.8em', fontStyle: 'italic', fontWeight: 'bold', margin: '30px 0 10px 20px', display: 'flex' }}>
-                    <LabelMagico valor={getLabel('tituloPrimordial', 'Energias Primordiais')} onChange={(v) => setLabel('tituloPrimordial', v)} />
-                </h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                    <LinhaVital labelKey="lblPV" fallbackLabel="Pontos Vitais (PV)" vitalKey="pv" corBarra="#ffffff" corTextoBarra="#000" />
-                    <LinhaVital labelKey="lblPM" fallbackLabel="Pontos Mortais (PM)" vitalKey="pm" corBarra="#000000" />
-                </div>
-
-                {/* ⌛ ECONOMIA DE AÇÕES */}
-                <div style={{ marginTop: '50px', border: '2px dashed rgba(0,0,0,0.5)', padding: '20px', borderRadius: '10px', position: 'relative' }}>
-                    <span style={{ position: 'absolute', top: '-15px', left: '20px', background: corFundo, padding: '0 10px', fontSize: '1.2em', transition: 'background 0.5s ease' }}>
-                        <LabelMagico valor={getLabel('tituloTurno', 'Ações de Turno')} onChange={(v) => setLabel('tituloTurno', v)} />
-                    </span>
-                    
-                    <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', marginTop: '10px' }}>
-                        {['padrao', 'bonus', 'reacao'].map(tipo => {
-                            const acao = minhaFicha.acoes?.[tipo] || { max: 1, atual: 1 };
-                            const fallbackName = tipo === 'padrao' ? 'Ação Padrão' : tipo === 'bonus' ? 'Ação Bônus' : 'Reação';
-                            
-                            return (
-                                <div key={tipo} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-                                    <span style={{ fontSize: '1.1em' }}>
-                                        <LabelMagico valor={getLabel(`acao_${tipo}`, fallbackName)} onChange={(v) => setLabel(`acao_${tipo}`, v)} />
-                                    </span>
-                                    <div style={{ display: 'flex', gap: '8px' }}>
-                                        {Array.from({ length: acao.max }).map((_, i) => {
-                                            const gasto = i >= acao.atual;
-                                            return (
-                                                <div 
-                                                    key={i} 
-                                                    onClick={() => salvar(`acoes.${tipo}.atual`, gasto ? acao.atual + 1 : acao.atual - 1)}
-                                                    style={{ width: '25px', height: '25px', border: '2px solid #000', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '1.2em', color: '#ff003c' }}
-                                                >
-                                                    {gasto ? 'X' : ''}
+                            {/* Ações */}
+                            <div style={{ marginTop: '40px', border: '2px dashed rgba(0,0,0,0.5)', padding: '20px', borderRadius: '10px', position: 'relative' }}>
+                                <span style={{ position: 'absolute', top: '-15px', left: '20px', background: corFundo, padding: '0 10px', fontSize: '1.2em', transition: 'background 0.5s ease' }}>
+                                    <LabelMagico valor={getLabel('tituloTurno', 'Ações de Turno')} onChange={(v) => setLabel('tituloTurno', v)} />
+                                </span>
+                                <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', marginTop: '10px' }}>
+                                    {['padrao', 'bonus', 'reacao'].map(tipo => {
+                                        const acao = minhaFicha.acoes?.[tipo] || { max: 1, atual: 1 };
+                                        return (
+                                            <div key={tipo} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                                                <span style={{ fontSize: '1.1em' }}><LabelMagico valor={getLabel(`acao_${tipo}`, tipo.toUpperCase())} onChange={(v) => setLabel(`acao_${tipo}`, v)} /></span>
+                                                <div style={{ display: 'flex', gap: '8px' }}>
+                                                    {Array.from({ length: acao.max }).map((_, i) => (
+                                                        <div key={i} onClick={() => salvar(`acoes.${tipo}.atual`, i >= acao.atual ? acao.atual + 1 : acao.atual - 1)}
+                                                            style={{ width: '25px', height: '25px', border: '2px solid #000', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '1.2em', color: '#ff003c' }}>
+                                                            {i >= acao.atual ? 'X' : ''}
+                                                        </div>
+                                                    ))}
                                                 </div>
-                                            );
-                                        })}
-                                    </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
-                            );
-                        })}
-                    </div>
-                </div>
+                            </div>
+                        </div>
+                    </>
+                )}
+
+
+                {/* ======================= PÁGINA 2: ANÁLISE DE PODER ======================= */}
+                {paginaAtual === 2 && (
+                    <>
+                        <div className="fade-in" style={{ width: '100%', textAlign: 'center', borderBottom: '2px solid rgba(0,0,0,0.8)', paddingBottom: '10px', marginBottom: '20px' }}>
+                            <h1 style={{ fontSize: '3em', fontStyle: 'italic', fontWeight: 'bold', margin: 0, letterSpacing: '-1px' }}>
+                                <LabelMagico valor={getLabel('tituloAnalise', 'Análise de Poder')} onChange={(v) => setLabel('tituloAnalise', v)} />
+                            </h1>
+                        </div>
+
+                        {/* COLUNA ESQUERDA: BASE */}
+                        <div className="fade-in" style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(0,0,0,0.03)', padding: '20px', borderRadius: '15px', border: '1px dashed rgba(0,0,0,0.2)' }}>
+                            <h2 style={{ fontSize: '2em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 20px 0' }}>
+                                <LabelMagico valor={getLabel('tituloAnaliseBase', 'Status (Rank Base)')} onChange={(v) => setLabel('tituloAnaliseBase', v)} />
+                            </h2>
+                            <RadarDesenhado ficha={minhaFicha} isAtual={false} />
+                            
+                            <div style={{ width: '100%', maxWidth: '300px', marginTop: '30px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <LinhaAtributoCru labelKey="lblFor" fallbackLabel="Força" attrKey="forca" isAtual={false} />
+                                <LinhaAtributoCru labelKey="lblDes" fallbackLabel="Destreza" attrKey="destreza" isAtual={false} />
+                                <LinhaAtributoCru labelKey="lblInt" fallbackLabel="Inteligência" attrKey="inteligencia" isAtual={false} />
+                                <LinhaAtributoCru labelKey="lblSab" fallbackLabel="Sabedoria" attrKey="sabedoria" isAtual={false} />
+                                <LinhaAtributoCru labelKey="lblEsp" fallbackLabel="Energia Espiritual" attrKey="energiaEsp" isAtual={false} />
+                                <LinhaAtributoCru labelKey="lblCar" fallbackLabel="Carisma" attrKey="carisma" isAtual={false} />
+                                <LinhaAtributoCru labelKey="lblSta" fallbackLabel="Stamina" attrKey="stamina" isAtual={false} />
+                                <LinhaAtributoCru labelKey="lblCon" fallbackLabel="Constituição" attrKey="constituicao" isAtual={false} />
+                            </div>
+                        </div>
+
+                        {/* COLUNA DIREITA: ATUAL (COM FORMAS) */}
+                        <div className="fade-in" style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(0,0,0,0.05)', padding: '20px', borderRadius: '15px', border: '2px solid rgba(0,0,0,0.8)' }}>
+                            <h2 style={{ fontSize: '2em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 20px 0' }}>
+                                <LabelMagico valor={getLabel('tituloAnaliseAtual', 'Poder Atual (c/ Formas)')} onChange={(v) => setLabel('tituloAnaliseAtual', v)} />
+                            </h2>
+                            <RadarDesenhado ficha={minhaFicha} isAtual={true} />
+                            
+                            <div style={{ width: '100%', maxWidth: '300px', marginTop: '30px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <LinhaAtributoCru labelKey="lblFor" fallbackLabel="Força" attrKey="forca" isAtual={true} />
+                                <LinhaAtributoCru labelKey="lblDes" fallbackLabel="Destreza" attrKey="destreza" isAtual={true} />
+                                <LinhaAtributoCru labelKey="lblInt" fallbackLabel="Inteligência" attrKey="inteligencia" isAtual={true} />
+                                <LinhaAtributoCru labelKey="lblSab" fallbackLabel="Sabedoria" attrKey="sabedoria" isAtual={true} />
+                                <LinhaAtributoCru labelKey="lblEsp" fallbackLabel="Energia Espiritual" attrKey="energiaEsp" isAtual={true} />
+                                <LinhaAtributoCru labelKey="lblCar" fallbackLabel="Carisma" attrKey="carisma" isAtual={true} />
+                                <LinhaAtributoCru labelKey="lblSta" fallbackLabel="Stamina" attrKey="stamina" isAtual={true} />
+                                <LinhaAtributoCru labelKey="lblCon" fallbackLabel="Constituição" attrKey="constituicao" isAtual={true} />
+                            </div>
+                        </div>
+                    </>
+                )}
 
             </div>
+
+            {/* 🔽 BOTÕES DE NAVEGAÇÃO DO LIVRO (NO RODAPÉ) */}
+            <div style={{ position: 'absolute', bottom: '20px', left: '0', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px', fontFamily: 'inherit' }}>
+                <button 
+                    onClick={() => setPaginaAtual(1)} 
+                    disabled={paginaAtual === 1}
+                    style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 1 ? 'default' : 'pointer', opacity: paginaAtual === 1 ? 0.3 : 1, fontFamily: 'inherit' }}
+                >
+                    ⮜ Identidade
+                </button>
+                
+                <span style={{ fontSize: '1.1em', fontWeight: 'bold', borderBottom: '2px solid rgba(0,0,0,0.5)', padding: '0 10px' }}>
+                    Página {paginaAtual} de 2
+                </span>
+                
+                <button 
+                    onClick={() => setPaginaAtual(2)} 
+                    disabled={paginaAtual === 2}
+                    style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 2 ? 'default' : 'pointer', opacity: paginaAtual === 2 ? 0.3 : 1, fontFamily: 'inherit' }}
+                >
+                    Análise de Poder ⮞
+                </button>
+            </div>
+
         </div>
     );
 }
