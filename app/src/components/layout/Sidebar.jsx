@@ -18,8 +18,12 @@ export default function Sidebar({ onResetClick }) {
                 { id: 'aba-status', icone: '❤️', nome: 'Status' },
                 { id: 'aba-ficha', icone: '📋', nome: 'Ficha' },
                 { id: 'aba-perfil', icone: '🆔', nome: 'Perfil' },
+                { id: 'aba-Ficha Def', icone: '📋', nome: 'Ficha Completa' },
+                
+                
             ]
         },
+       
         {
             id: 'combate', icone: '⚔️', nome: 'Combate', cor: '#ff003c', bg: 'rgba(255,0,60,0.15)',
             abas: [

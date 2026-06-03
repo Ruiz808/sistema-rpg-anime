@@ -24,7 +24,7 @@ import Jukebox from './components/jukebox/Jukebox';
 import CompendioPanel from './components/compendio/CompendioPanel';
 import AIPanel from './components/ia/AIPanel';
 import GravadorPanel from './components/ia/GravadorPanel';
-import MarcadosPanel from './components/Ficha Def/MarcadosPanel';
+import MarcadosPanel from './components/Ficha Def/Marcados';
 
 // 👑 Imports Extensivos Isolados
 import MestrePanel from './components/mestre/MestrePanel';

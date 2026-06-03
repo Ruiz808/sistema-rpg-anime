@@ -3,7 +3,7 @@ import useStore from '../../stores/useStore';
 import { uploadImagem, salvarFichaSilencioso, salvarFirebaseImediato } from '../../services/firebase-sync';
 import { getMaximo } from '../../core/attributes';
 
-// 🖋️ INPUT INVISÍVEL (Parece texto à mão, mas é editável)
+// 🖋️ INPUT INVISÍVEL
 const CampoMagico = ({ valor, onChange, placeholder, styleExtra = {}, type = "text" }) => (
     <input 
         type={type}
@@ -19,7 +19,7 @@ const CampoMagico = ({ valor, onChange, placeholder, styleExtra = {}, type = "te
     />
 );
 
-export default function EntidadePanel() {
+export default function MarcadosPanel() {
     const minhaFicha = useStore(s => s.minhaFicha);
     const updateFicha = useStore(s => s.updateFicha);
     const meuNome = useStore(s => s.meuNome);
@@ -31,7 +31,6 @@ export default function EntidadePanel() {
 
     if (!minhaFicha) return <div style={{ color: '#000', padding: 20, fontFamily: 'cursive' }}>Lendo a Membrana...</div>;
 
-    // 💾 Função central para guardar dados
     const salvar = (caminho, valor) => {
         updateFicha(f => {
             const chaves = caminho.split('.');
@@ -45,7 +44,6 @@ export default function EntidadePanel() {
         salvarFichaSilencioso();
     };
 
-    // 📸 Upload de Avatar Oculto
     const handleImageUpload = async (e) => {
         const file = e.target.files[0]; if (!file) return;
         setUploadingImg(true);
@@ -57,7 +55,6 @@ export default function EntidadePanel() {
         finally { setUploadingImg(false); }
     };
 
-    // 📥 Importador do Google Docs
     const executarImportacao = () => {
         if (!textoImport.trim()) return alert("Cole o texto do Google Docs primeiro!");
         importarDaAbaStatus(textoImport);
@@ -66,11 +63,9 @@ export default function EntidadePanel() {
         alert("O seu diário foi sincronizado com as nuvens!");
     };
 
-    // 🩸 Linha de Atributos Base (Estilo Caderno)
     const LinhaVital = ({ titulo, vitalKey, subItens }) => {
         const [aberto, setAberta] = useState(false);
         const atual = minhaFicha[vitalKey]?.atual || '';
-        // Tenta buscar a função getMaximo do seu motor, senão usa o valor cru
         let maximo = 0;
         try { maximo = getMaximo(minhaFicha, vitalKey); } catch(e) { maximo = minhaFicha[vitalKey]?.base || 0; }
 
@@ -113,7 +108,6 @@ export default function EntidadePanel() {
             position: 'relative'
         }}>
             
-            {/* 📌 POST-IT MAGICO (Importador do Docs) */}
             <div style={{ position: 'absolute', top: '-15px', right: '30px', zIndex: 10 }}>
                 <button onClick={() => setModalImport(!modalImport)} style={{ background: '#ffeb3b', border: 'none', padding: '10px 20px', fontFamily: 'inherit', fontWeight: 'bold', fontSize: '1.1em', cursor: 'pointer', boxShadow: '3px 3px 10px rgba(0,0,0,0.2)', transform: 'rotate(2deg)', transition: 'transform 0.2s' }} onMouseEnter={e => e.target.style.transform = 'rotate(0deg) scale(1.05)'} onMouseLeave={e => e.target.style.transform = 'rotate(2deg) scale(1)'}>
                     📌 Importar Docs
@@ -127,10 +121,7 @@ export default function EntidadePanel() {
                 )}
             </div>
 
-            {/* 📜 COLUNA ESQUERDA: PERFIL E AVATAR */}
             <div style={{ flex: '1 1 450px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                
-                {/* Títulos Hand-Written */}
                 <div style={{ display: 'flex', alignItems: 'baseline', borderBottom: '2px solid rgba(0,0,0,0.8)', paddingBottom: '5px', marginBottom: '10px', width: 'fit-content' }}>
                     <h1 style={{ fontSize: '3.5em', fontStyle: 'italic', fontWeight: 'bold', margin: 0, letterSpacing: '-1px' }}>
                         /{meuNome}©
@@ -140,7 +131,6 @@ export default function EntidadePanel() {
                     - Limite quebrado - LV <CampoMagico valor={minhaFicha.bio?.nivel} onChange={(v) => salvar('bio.nivel', v)} styleExtra={{ width: '50px', borderBottom: 'none' }} />
                 </h2>
 
-                {/* Lista de Bio Estilizada */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '1.2em' }}>
                     <div>Idade: <CampoMagico valor={minhaFicha.bio?.idade} onChange={(v) => salvar('bio.idade', v)} /></div>
                     <div>Aniversário: <CampoMagico valor={minhaFicha.bio?.aniversario} onChange={(v) => salvar('bio.aniversario', v)} /></div>
@@ -155,7 +145,6 @@ export default function EntidadePanel() {
                     <div>Dinheiro: <CampoMagico valor={minhaFicha.inventario?.dinheiroText} onChange={(v) => salvar('inventario.dinheiroText', v)} placeholder="PO - 5600 PP - 5000" styleExtra={{ width: '300px' }} /></div>
                 </div>
 
-                {/* Avatar (Com botão invisível de upload) */}
                 <div style={{ marginTop: '30px', position: 'relative', width: 'fit-content' }}>
                     <label style={{ cursor: 'pointer', display: 'block' }} title="Clique para alterar a imagem do personagem">
                         <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} disabled={uploadingImg} />
@@ -170,7 +159,6 @@ export default function EntidadePanel() {
                 </div>
             </div>
 
-            {/* ⚔️ COLUNA DIREITA: ESTATÍSTICAS BASE E COMBATE */}
             <div style={{ flex: '1 1 450px', display: 'flex', flexDirection: 'column' }}>
                 <h2 style={{ fontSize: '2.5em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 30px 20px' }}>Base</h2>
 
@@ -189,7 +177,6 @@ export default function EntidadePanel() {
                     </div>
                 </div>
 
-                {/* ⌛ ECONOMIA DE AÇÕES ESTILO DESENHADO */}
                 <div style={{ marginTop: '50px', border: '2px dashed rgba(0,0,0,0.5)', padding: '20px', borderRadius: '10px', position: 'relative' }}>
                     <span style={{ position: 'absolute', top: '-15px', left: '20px', background: '#bba9d8', padding: '0 10px', fontStyle: 'italic', fontWeight: 'bold', fontSize: '1.2em' }}>Ações de Turno</span>
                     
