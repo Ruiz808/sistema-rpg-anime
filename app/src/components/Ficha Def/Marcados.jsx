@@ -2,31 +2,27 @@ import React, { useState } from 'react';
 import useStore from '../../stores/useStore';
 import { uploadImagem, salvarFichaSilencioso, salvarFirebaseImediato } from '../../services/firebase-sync';
 import { getMaximo, getRawBase, getBuffs } from '../../core/attributes';
-import { getPrestigioReal, getRank } from '../../core/prestige';
+import { getRank } from '../../core/prestige';
 
 // ==========================================
-// 🛡️ FUNÇÕES SEGURAS DA ENGINE CORE E MATEMÁTICA
+// 🛡️ FUNÇÕES SEGURAS DA ENGINE E MATEMÁTICA PURA
 // ==========================================
 const safeGetRawBase = (f, k) => typeof getRawBase === 'function' ? getRawBase(f, k) : parseFloat(f[k]?.base) || 0;
-const safeGetPrestigioReal = (k, val) => typeof getPrestigioReal === 'function' ? getPrestigioReal(k, val) : Math.floor((val||0) / 1000000);
 const safeGetRank = (prest, asc) => typeof getRank === 'function' ? getRank(prest, asc) : { l: 'F', c: '#ffffff', a: asc };
 const safeGetBuffs = (f, k, t) => typeof getBuffs === 'function' ? getBuffs(f, k, t) : {};
 
-// 🔥 ATUALIZADO: Agora obedece à nova Tabela de Divisores/Overrides!
+// 🔥 LÊ O PRESTÍGIO EXATO (Usado pelo Radar e Tabela)
 const getBasePFor = (ficha, k) => {
-    // Se o Mestre/Jogador forçou um valor na tabela de baixo, usamos esse valor absoluto!
-    if (ficha?.overridePrestigio?.[k] !== undefined && ficha.overridePrestigio[k] !== null && ficha.overridePrestigio[k] !== '') {
-        return Number(ficha.overridePrestigio[k]);
-    }
-
+    const mults = { vida: 1000000, mana: 10000000, aura: 10000000, chakra: 10000000, corpo: 10000000, status: 1000 };
+    const div = parseFloat(ficha?.divisores?.[k]) || 1;
     if (k === 'status') {
         let m = 0;
         ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'].forEach(s => {
             m += safeGetRawBase(ficha, s);
         });
-        return Math.floor((m / 8) / 1000) || 0;
+        return Math.round(((m / 8) / mults.status) * div) || 0;
     }
-    return safeGetPrestigioReal(k, safeGetRawBase(ficha, k)) || 0;
+    return Math.round((safeGetRawBase(ficha, k) / (mults[k] || 1)) * div) || 0;
 };
 
 const getEfetivoMFormas = (ficha, k) => {
@@ -185,7 +181,7 @@ export default function MarcadosPanel() {
     if (!minhaFicha) return <div style={{ color: '#000', padding: 20, fontFamily: 'cursive' }}>Abrindo o Diário...</div>;
 
     const salvar = (caminho, valor) => {
-        const valFinal = (valor === undefined || isNaN(valor) && typeof valor === 'number') ? null : valor;
+        const valFinal = (valor === undefined || (isNaN(valor) && typeof valor === 'number')) ? null : valor;
         updateFicha(f => {
             const chaves = caminho.split('.');
             let atual = f;
@@ -206,6 +202,39 @@ export default function MarcadosPanel() {
         }, 500); 
     };
 
+    // 🔥 O FEITIÇO QUE LIGA A TABELA DIRETAMENTE AOS ATRIBUTOS BASE!
+    const handleTabelaChange = (k, tipo, valor) => {
+        let novoP = tipo === 'prestigio' ? Number(valor) : getBasePFor(minhaFicha, k);
+        let novoDiv = tipo === 'divisor' ? Number(valor) : (minhaFicha.divisores?.[k] || 1);
+        
+        if (isNaN(novoP)) novoP = 0;
+        if (isNaN(novoDiv) || novoDiv <= 0) novoDiv = 1;
+        
+        const mults = { vida: 1000000, mana: 10000000, aura: 10000000, chakra: 10000000, corpo: 10000000, status: 1000 };
+        const mult = mults[k] || 1;
+        
+        // A magia que recalcula a base real para o banco de dados
+        const novaBase = Math.floor((novoP / novoDiv) * mult);
+        
+        updateFicha(f => {
+            if (tipo === 'divisor') {
+                if (!f.divisores) f.divisores = {};
+                f.divisores[k] = novoDiv;
+            }
+            
+            if (k === 'status') {
+                ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'].forEach(s => {
+                    if (!f[s]) f[s] = {};
+                    f[s].base = novaBase;
+                });
+            } else {
+                if (!f[k]) f[k] = {};
+                f[k].base = novaBase;
+            }
+        });
+        setTimeout(() => salvarFichaSilencioso(), 50);
+    };
+
     const handleSalvarTudo = async () => {
         setSalvando(true);
         salvarFichaSilencioso();
@@ -219,25 +248,6 @@ export default function MarcadosPanel() {
     const corFundo = minhaFicha.estetica?.diarioCor || '#bba9d8';
     const corTintaRadar = minhaFicha.estetica?.corTintaRadar || '#000000';
     const fonteDiario = minhaFicha.estetica?.diarioFonte || '"Comic Sans MS", "Chalkboard SE", "Marker Felt", cursive';
-
-    const handleImageUpload = async (e) => {
-        const file = e.target.files[0]; if (!file) return;
-        setUploadingImg(true);
-        try {
-            const url = await uploadImagem(file, `avatars/${meuNome || 'desconhecido'}`);
-            updateFicha(f => { if (!f.avatar) f.avatar = { base: "" }; f.avatar.base = url; });
-            await salvarFirebaseImediato();
-        } catch (err) { alert('Erro ao pintar o avatar!'); } 
-        finally { setUploadingImg(false); }
-    };
-
-    const executarImportacao = () => {
-        if (!textoImport.trim()) return alert("Cole o texto do Google Docs primeiro!");
-        importarDaAbaStatus(textoImport);
-        setModalImport(false);
-        setTextoImport('');
-        alert("O seu diário foi sincronizado!");
-    };
 
     const getSupremas = () => {
         const getP = (k) => { let mx = 0; try { mx = getMaximo(minhaFicha, k); } catch(e) { mx = minhaFicha[k]?.base || 0; } return calcularEscala(mx, k).pVit || 0; };
@@ -286,10 +296,10 @@ export default function MarcadosPanel() {
         }, 100);
     };
 
-    const LinhaVital = ({ labelKey, fallbackLabel, vitalKey, overrideMax, subItens, corBarra, corTextoBarra = '#fff' }) => {
+    const LinhaVital = ({ labelKey, fallbackLabel, vitalKey, subItens, corBarra, corTextoBarra = '#fff' }) => {
         const [aberto, setAberta] = useState(false);
-        let rawMaximo = overrideMax !== undefined ? overrideMax : 0;
-        if (overrideMax === undefined) { try { rawMaximo = getMaximo(minhaFicha, vitalKey); } catch(e) { rawMaximo = minhaFicha[vitalKey]?.base || 0; } }
+        let rawMaximo = 0;
+        try { rawMaximo = getMaximo(minhaFicha, vitalKey); } catch(e) { rawMaximo = minhaFicha[vitalKey]?.base || 0; }
         if (isNaN(rawMaximo)) rawMaximo = 0;
         
         const { mxDisplay, pVit } = calcularEscala(rawMaximo, vitalKey);
@@ -327,12 +337,31 @@ export default function MarcadosPanel() {
         let maxVal = 0;
         try { maxVal = getMaximo(minhaFicha, attrKey); } catch(e) { maxVal = baseVal; }
         if (isNaN(maxVal)) maxVal = 0;
+
         return (
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted rgba(0,0,0,0.2)', padding: '6px 0', fontSize: '1.1em' }}>
                 <LabelMagico valor={getLabel(labelKey, fallbackLabel)} onChange={(v) => setLabel(labelKey, v)} />
                 {isAtual ? <span style={{ fontWeight: 'bold' }}>{Number(maxVal).toLocaleString('pt-BR')}</span> : <CampoMagico valor={baseVal} onChange={(v) => salvar(`${attrKey}.base`, v)} styleExtra={{ width: '100px', textAlign: 'right', fontWeight: 'bold' }} type="number" isNumber={true} />}
             </div>
         );
+    };
+
+    const handleImageUpload = async (e) => {
+        const file = e.target.files[0]; if (!file) return;
+        setUploadingImg(true);
+        try {
+            const url = await uploadImagem(file, `avatars/${meuNome || 'desconhecido'}`);
+            updateFicha(f => { if (!f.avatar) f.avatar = { base: "" }; f.avatar.base = url; });
+            await salvarFirebaseImediato();
+        } catch (err) { alert('Erro ao pintar o avatar!'); } 
+        finally { setUploadingImg(false); }
+    };
+    const executarImportacao = () => {
+        if (!textoImport.trim()) return alert("Cole o texto do Google Docs primeiro!");
+        importarDaAbaStatus(textoImport);
+        setModalImport(false);
+        setTextoImport('');
+        alert("O seu diário foi sincronizado!");
     };
 
     return (
@@ -526,7 +555,7 @@ export default function MarcadosPanel() {
                             </div>
                         </div>
 
-                        {/* 🔥 NOVA TABELA DE ASCENSÃO E DIVISORES */}
+                        {/* 🔥 TABELA SUPREMA DE ASCENSÃO E DIVISORES */}
                         <div className="fade-in" style={{ width: '100%', marginTop: '30px', background: 'rgba(0,0,0,0.03)', padding: '20px', borderRadius: '15px', border: '1px dashed rgba(0,0,0,0.2)' }}>
                             <h2 style={{ fontSize: '1.8em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 20px 0', textAlign: 'center' }}>Mecânicas de Ascensão e Divisores</h2>
 
@@ -539,31 +568,24 @@ export default function MarcadosPanel() {
 
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
                                 {['vida', 'mana', 'aura', 'chakra', 'corpo', 'status'].map(k => {
-                                    const label = k.toUpperCase();
-                                    
-                                    // Mostra o valor calculado a menos que o Mestre tenha digitado um override
-                                    const calculatedP = getBasePFor({ ...minhaFicha, overridePrestigio: { ...minhaFicha.overridePrestigio, [k]: undefined } }, k);
-                                    const overrideP = minhaFicha.overridePrestigio?.[k];
-                                    const displayP = overrideP !== undefined && overrideP !== null && overrideP !== '' ? overrideP : calculatedP;
+                                    const displayP = getBasePFor(minhaFicha, k);
                                     const divisor = minhaFicha.divisores?.[k] || 1;
 
                                     return (
                                         <div key={k} style={{ background: 'rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.2)', borderRadius: '8px', padding: '10px', display: 'flex', flexDirection: 'column', gap: '8px', boxShadow: 'inset 0 0 10px rgba(0,0,0,0.05)' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ fontWeight: 'bold', color: '#000', fontSize: '1.1em' }}>{label}</span>
+                                                <span style={{ fontWeight: 'bold', color: '#000', fontSize: '1.1em' }}>{k.toUpperCase()}</span>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.9em' }}>
                                                     <span style={{ fontStyle: 'italic', fontWeight: 'bold' }}>Divisor:</span>
-                                                    <CampoMagico valor={divisor} onChange={v => salvar(`divisores.${k}`, v)} type="number" isNumber={true} styleExtra={{ width: '50px', textAlign: 'center', border: '1px solid rgba(0,0,0,0.3)', borderRadius: '4px', background: 'rgba(255,255,255,0.5)' }} />
+                                                    <CampoMagico valor={divisor} onChange={v => handleTabelaChange(k, 'divisor', v)} type="number" isNumber={true} styleExtra={{ width: '50px', textAlign: 'center', border: '1px solid rgba(0,0,0,0.3)', borderRadius: '4px', background: 'rgba(255,255,255,0.5)' }} />
                                                 </div>
                                             </div>
-                                            {/* CAIXA GIGANTE DO PRESTÍGIO (Editável!) */}
                                             <div style={{ width: '100%', background: 'rgba(0,0,0,0.85)', borderRadius: '6px', padding: '5px', boxShadow: '0 4px 10px rgba(0,0,0,0.3)' }}>
                                                 <CampoMagico 
                                                     valor={displayP} 
-                                                    onChange={v => salvar(`overridePrestigio.${k}`, v)} 
+                                                    onChange={v => handleTabelaChange(k, 'prestigio', v)} 
                                                     type="number" 
                                                     isNumber={true} 
-                                                    placeholder={calculatedP} 
                                                     styleExtra={{ width: '100%', textAlign: 'center', color: '#fff', borderBottom: 'none', fontSize: '1.4em', fontWeight: 'bold' }} 
                                                 />
                                             </div>
