@@ -11,9 +11,6 @@ const safeGetRank = (prest, asc) => typeof getRank === 'function' ? getRank(pres
 const safeGetBuffs = (f, k, t) => typeof getBuffs === 'function' ? getBuffs(f, k, t) : {};
 
 const getBasePFor = (ficha, k) => {
-    if (ficha?.overridePrestigio?.[k] !== undefined && ficha.overridePrestigio[k] !== null && ficha.overridePrestigio[k] !== '') {
-        return Number(ficha.overridePrestigio[k]);
-    }
     const mults = { vida: 1000000, mana: 10000000, aura: 10000000, chakra: 10000000, corpo: 10000000, status: 1000 };
     const div = parseFloat(ficha?.divisores?.[k]) || 1;
     if (k === 'status') {
@@ -21,9 +18,9 @@ const getBasePFor = (ficha, k) => {
         ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'].forEach(s => {
             m += safeGetRawBase(ficha, s);
         });
-        return Math.round(((m / 8) / mults.status) * div) || 0;
+        return Math.floor(((m / 8) / mults.status) * div) || 0;
     }
-    return Math.round((safeGetRawBase(ficha, k) / (mults[k] || 1)) * div) || 0;
+    return Math.floor((safeGetRawBase(ficha, k) / (mults[k] || 1)) * div) || 0;
 };
 
 const getEfetivoMFormas = (ficha, k) => {
@@ -150,7 +147,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
     const [modalEstilo, setModalEstilo] = useState(false);
     const [paginaAtual, setPaginaAtual] = useState(1);
 
-    // 🔥 ESTADOS LOCAIS PARA EVITAR SPAM DE CORES NO FIREBASE
+    // 🔥 TEMPORIZADOR FANTASMA PARA SALVAR CORES DOS NPCS
     const [localCorFundo, setLocalCorFundo] = useState('#ffe6cc');
     const [localCorTinta, setLocalCorTinta] = useState('#000000');
 
@@ -160,6 +157,19 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
             setLocalCorTinta(npcData.estetica?.corTintaRadar || '#000000');
         }
     }, [npcData?.estetica?.diarioCor, npcData?.estetica?.corTintaRadar]);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (npcData && (localCorFundo !== npcData.estetica?.diarioCor || localCorTinta !== npcData.estetica?.corTintaRadar)) {
+                const novoNpc = JSON.parse(JSON.stringify(npcData));
+                if (!novoNpc.estetica) novoNpc.estetica = {};
+                novoNpc.estetica.diarioCor = localCorFundo;
+                novoNpc.estetica.corTintaRadar = localCorTinta;
+                onSaveNpc(novoNpc);
+            }
+        }, 800);
+        return () => clearTimeout(timer);
+    }, [localCorFundo, localCorTinta]);
 
     if (!npcData) return <div style={{ color: '#fff', padding: 20 }}>Conectando à Entidade...</div>;
 
@@ -177,20 +187,26 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
     };
 
     const handleTabelaChange = (k, tipo, valor) => {
-        let novoP = tipo === 'prestigio' ? Number(valor) : getBasePFor(npcData, k);
-        let novoDiv = tipo === 'divisor' ? Number(valor) : (npcData.divisores?.[k] || 1);
-        if (isNaN(novoP)) novoP = 0;
-        if (isNaN(novoDiv) || novoDiv <= 0) novoDiv = 1;
+        let numVal = Number(valor);
+        if (isNaN(numVal)) numVal = 0;
+
+        const divAtual = parseFloat(npcData.divisores?.[k]) || 1;
+        const prestAtual = getBasePFor(npcData, k);
+
+        let novoP = tipo === 'prestigio' ? numVal : prestAtual;
+        let novoDiv = tipo === 'divisor' ? (numVal > 0 ? numVal : 1) : divAtual;
         
         const mults = { vida: 1000000, mana: 10000000, aura: 10000000, chakra: 10000000, corpo: 10000000, status: 1000 };
         const mult = mults[k] || 1;
-        const novaBase = Math.floor((novoP / novoDiv) * mult);
         
+        const novaBase = Math.floor((novoP / novoDiv) * mult);
         const novoNpc = JSON.parse(JSON.stringify(npcData));
+        
         if (tipo === 'divisor') {
             if (!novoNpc.divisores) novoNpc.divisores = {};
             novoNpc.divisores[k] = novoDiv;
         }
+        
         if (k === 'status') {
             ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'].forEach(s => {
                 if (!novoNpc[s]) novoNpc[s] = {};
@@ -250,6 +266,16 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
         onSaveNpc(novoNpc);
     };
 
+    const handleImageUpload = async (e) => {
+        const file = e.target.files[0]; if (!file) return;
+        setUploadingImg(true);
+        try {
+            const url = await uploadImagem(file, `avatars_npcs/${npcData.id || 'desconhecido'}`);
+            salvar('avatar.base', url);
+        } catch (err) { alert('Erro ao pintar o avatar da Entidade!'); } 
+        finally { setUploadingImg(false); }
+    };
+
     const LinhaVital = ({ labelKey, fallbackLabel, vitalKey, overrideMax, subItens, corBarra, corTextoBarra = '#fff' }) => {
         const [aberto, setAberta] = useState(false);
         let rawMaximo = overrideMax !== undefined ? overrideMax : 0;
@@ -298,20 +324,10 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
         );
     };
 
-    const handleImageUpload = async (e) => {
-        const file = e.target.files[0]; if (!file) return;
-        setUploadingImg(true);
-        try {
-            const url = await uploadImagem(file, `avatars_npcs/${npcData.id || 'desconhecido'}`);
-            salvar('avatar.base', url);
-        } catch (err) { alert('Erro ao pintar o avatar da Entidade!'); } 
-        finally { setUploadingImg(false); }
-    };
-
     return (
         <div style={{ 
             width: '100%', minHeight: '85vh', background: localCorFundo, color: '#000', fontFamily: fonteDiario, 
-            padding: '40px 40px 80px 40px', borderRadius: '12px', position: 'relative', transition: 'background 0.2s ease',
+            padding: '40px 40px 80px 40px', borderRadius: '12px', position: 'relative', transition: 'background 0.3s ease',
             boxShadow: 'inset 0 0 40px rgba(0,0,0,0.1), 0 10px 30px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column',
             marginTop: '20px'
         }}>
@@ -322,18 +338,15 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                     {modalEstilo && (
                         <div className="fade-in" style={{ position: 'absolute', top: '50px', right: '0', background: '#ffe4f0', padding: '15px', border: '1px solid #ccc', boxShadow: '5px 5px 15px rgba(0,0,0,0.3)', width: '250px', zIndex: 20 }}>
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Cor do Papel:</label>
-                            {/* 🔥 CORES AGORA USAM ONBLUR PARA SALVAR NA NUVEM! */}
                             <input 
                                 type="color" value={localCorFundo} 
                                 onChange={(e) => setLocalCorFundo(e.target.value)} 
-                                onBlur={() => salvar('estetica.diarioCor', localCorFundo)}
                                 style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} 
                             />
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Cor da Tinta (Radar):</label>
                             <input 
                                 type="color" value={localCorTinta} 
                                 onChange={(e) => setLocalCorTinta(e.target.value)} 
-                                onBlur={() => salvar('estetica.corTintaRadar', localCorTinta)}
                                 style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} 
                             />
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Fonte da Letra:</label>
@@ -363,8 +376,8 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                 <CampoMagicoNPC valor={npcData.bio?.nivel} onChange={(v) => salvar('bio.nivel', v)} styleExtra={{ width: '60px', borderBottom: 'none', marginLeft: '10px' }} isNumber={true} type="number" />
                             </h2>
 
-                            {/* 🔥 NOVA ÁREA DA BIO DO NPC (Igual aos Jogadores) */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '1.3em', width: '100%', maxWidth: '420px', margin: '0 auto', marginTop: '10px' }}>
+                            {/* 🔥 LAYOUT CLÁSSICO E ALINHADO DA BIO RESTAURADO! */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '1.2em' }}>
                                 {[
                                     { k: 'idade', lbl: 'Idade' },
                                     { k: 'raca', lbl: 'Raça' },
@@ -372,21 +385,22 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                     { k: 'afiliacao', lbl: 'Afiliação', foraDaBio: true },
                                     { k: 'classe', lbl: 'Classe' }
                                 ].map(item => (
-                                    <div key={item.k} style={{ display: 'flex', alignItems: 'baseline', borderBottom: '1px dotted rgba(0,0,0,0.2)', paddingBottom: '4px' }}>
-                                        <div style={{ width: '150px', textAlign: 'right', paddingRight: '10px', fontWeight: 'bold' }}>
-                                            <LabelMagicoNPC valor={getLabel(`bio_${item.k}`, item.lbl)} onChange={(v) => setLabel(`bio_${item.k}`, v)} />:
+                                    <div key={item.k} style={{ display: 'flex', alignItems: 'baseline' }}>
+                                        <div style={{ width: '150px', fontWeight: 'bold' }}>
+                                            <LabelMagicoNPC valor={getLabel(`bio_${item.k}`, item.lbl)} onChange={(v) => setLabel(`bio_${item.k}`, v)} />
                                         </div>
-                                        <CampoMagicoNPC valor={item.foraDaBio ? npcData[item.k] : npcData.bio?.[item.k]} onChange={(v) => salvar(item.foraDaBio ? item.k : `bio.${item.k}`, v)} styleExtra={{ flex: 1, minWidth: 0, fontSize: '1.1em' }} />
+                                        <span style={{ fontWeight: 'bold', marginRight: '10px' }}>:</span>
+                                        <CampoMagicoNPC valor={item.foraDaBio ? npcData[item.k] : npcData.bio?.[item.k]} onChange={(v) => salvar(item.foraDaBio ? item.k : `bio.${item.k}`, v)} styleExtra={{ flex: 1, borderBottom: '1px dotted rgba(0,0,0,0.3)' }} />
                                     </div>
                                 ))}
                             </div>
 
-                            <div style={{ marginTop: '20px', position: 'relative', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <div style={{ marginTop: '20px', width: 'fit-content', display: 'flex', flexDirection: 'column' }}>
                                 <label style={{ cursor: 'pointer', display: 'block' }}>
                                     <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} disabled={uploadingImg} />
                                     {uploadingImg ? <div style={{ width: '320px', height: '480px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed #000' }}>✍️...</div> : npcData.avatar?.base ? <img src={npcData.avatar.base} alt="Avatar" style={{ width: '320px', height: 'auto', objectFit: 'cover', border: '2px solid rgba(0,0,0,0.8)', boxShadow: '8px 8px 0px rgba(0,0,0,0.2)' }} /> : <div style={{ width: '320px', height: '480px', border: '2px dashed #000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', background: 'rgba(255,255,255,0.1)' }}>Colar Fotografia do Alvo 📸</div>}
                                 </label>
-                                {npcData.avatar?.base && <button onClick={() => {if(window.confirm('Apagar?')) salvar('avatar.base', '');}} style={{ background: 'transparent', border: '1px dashed #ff003c', color: '#ff003c', marginTop: '10px', padding: '5px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'inherit' }}>🗑️ Remover Foto</button>}
+                                {npcData.avatar?.base && <button onClick={() => {if(window.confirm('Apagar?')) salvar('avatar.base', '');}} style={{ background: 'transparent', border: '1px dashed #ff003c', color: '#ff003c', marginTop: '10px', padding: '5px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'inherit', width: 'fit-content' }}>🗑️ Remover Foto</button>}
                             </div>
                         </div>
 
@@ -491,7 +505,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                             </div>
                         </div>
 
-                        {/* 🔥 TABELA DE OVERRIDES PARA O NPC */}
+                        {/* 🔥 TABELA SUPREMA PARA OS NPCs */}
                         <div className="fade-in" style={{ width: '100%', marginTop: '30px', background: 'rgba(0,0,0,0.03)', padding: '20px', borderRadius: '15px', border: '1px dashed rgba(0,0,0,0.2)' }}>
                             <h2 style={{ fontSize: '1.8em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 20px 0', textAlign: 'center' }}>Mecânicas de Ascensão e Divisores</h2>
 
