@@ -19,11 +19,9 @@ const LabelMagico = ({ valor, onChange, fallback }) => (
     />
 );
 
-// 🧮 FUNÇÃO DE ESCALA PARA OS 100 MILHÕES (8 ZEROS)
 const calcularEscala = (rawMax) => {
     if (!rawMax || isNaN(rawMax) || rawMax <= 0) return { mxDisplay: 0, pVit: 0 };
     const strVal = String(Math.floor(rawMax));
-    // Se passar de 100.000.000 (9 casas decimais no total), 9 - 8 = 1 PV.
     const pVit = Math.max(0, strVal.length - 8); 
     const mxDisplay = pVit > 0 ? Math.floor(rawMax / Math.pow(10, pVit)) : Math.floor(rawMax);
     return { mxDisplay, pVit };
@@ -34,14 +32,11 @@ const BarraVital = ({ atual, maximo, pVit, cor, corTexto = "#fff", onChangeAtual
     const isDark = corTexto === '#fff';
     return (
         <div style={{ position: 'relative', width: '100%', height: '35px', border: '2px solid rgba(0,0,0,0.8)', borderRadius: '6px', background: 'rgba(255,255,255,0.2)', overflow: 'hidden', marginTop: '5px', boxShadow: 'inset 0 0 10px rgba(0,0,0,0.5)', display: 'flex' }}>
-            
-            {/* 🏅 DISTINTIVO DE PONTO DE VITALIDADE / PRESTÍGIO */}
             {pVit > 0 && (
                 <div style={{ width: '35px', height: '100%', background: 'rgba(0,0,0,0.9)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.2em', borderRight: '2px solid rgba(0,0,0,0.8)', zIndex: 5, boxShadow: `inset 0 0 10px ${cor}` }}>
                     {pVit}
                 </div>
             )}
-
             <div style={{ flex: 1, position: 'relative' }}>
                 <div style={{ width: `${pct}%`, height: '100%', background: cor, transition: 'width 0.3s ease' }} />
                 <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.2em', color: corTexto, textShadow: isDark ? '1px 1px 3px #000, -1px -1px 3px #000' : 'none' }}>
@@ -56,7 +51,7 @@ const BarraVital = ({ atual, maximo, pVit, cor, corTexto = "#fff", onChangeAtual
 // ==========================================
 // 🕸️ GRÁFICO DE RADAR DESENHADO À MÃO
 // ==========================================
-const RadarDesenhado = ({ ficha, isAtual }) => {
+const RadarDesenhado = ({ ficha, isAtual, corTinta = "#000000" }) => {
     const eixos = [
         { label: 'VIDA', key: 'vida' }, { label: 'MANA', key: 'mana' }, { label: 'AURA', key: 'aura' },
         { label: 'CHAKRA', key: 'chakra' }, { label: 'CORPO', key: 'corpo' }, { label: 'STATUS', key: 'status' }
@@ -64,37 +59,54 @@ const RadarDesenhado = ({ ficha, isAtual }) => {
     const angulos = Array.from({length: 6}).map((_, i) => Math.PI * 2 * i / 6 - Math.PI / 2);
     
     const calcularPrestigioSimplificado = (attrKey) => {
-        let valorCru = 0;
+        let baseP = 0;
         try {
             if (attrKey === 'status') {
-                ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'].forEach(k => { valorCru += (parseFloat(ficha[k]?.base) || 0); });
-                valorCru = Math.floor((valorCru / 8) / 1000);
-            } else { valorCru = parseFloat(ficha[attrKey]?.base) || 0; }
+                let m = 0;
+                ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'].forEach(k => { m += (parseFloat(ficha[k]?.base) || 0); });
+                baseP = Math.floor((m / 8) / 1000);
+            } else {
+                const raw = parseFloat(ficha[attrKey]?.base) || 0;
+                const mults = { vida: 1000000, mana: 10000000, aura: 10000000, chakra: 10000000, corpo: 10000000 };
+                baseP = Math.floor(raw / (mults[attrKey] || 1));
+            }
         } catch(e) {}
         
-        let prest = valorCru;
+        let prest = baseP;
         if (isAtual) {
-            const mFormas = parseFloat(ficha[attrKey === 'status' ? 'forca' : attrKey]?.mFormas) || 1;
-            prest = Math.floor(prest * (mFormas >= 10 ? mFormas / 10 : 1));
+            const anchor = attrKey === 'status' ? 'forca' : attrKey;
+            const mFormas = parseFloat(ficha[anchor]?.mFormas) || 1.0;
+            const multForma = mFormas >= 10 ? (mFormas / 10) : (mFormas > 1 ? mFormas : 1);
+            prest = Math.floor(baseP * multForma);
         }
         return prest;
     };
 
     const valores = eixos.map(e => calcularPrestigioSimplificado(e.key));
-    const limiteRadar = 100; 
+    const limiteRadar = 100; // Define que 100 de prestígio toca na borda do gráfico
+    
     const dataPoints = valores.map((v, i) => {
-        let valNorm = v > 0 ? (v % limiteRadar) : 0;
-        if (valNorm === 0 && v > 0) valNorm = limiteRadar;
-        const frac = Math.min(valNorm / limiteRadar, 1);
+        // Estica o gráfico em direção às bordas (Mínimo de 5% para nunca desaparecer do centro)
+        const frac = Math.min(Math.max(v / limiteRadar, 0.05), 1);
         return `${100 + 75 * frac * Math.cos(angulos[i])},${100 + 75 * frac * Math.sin(angulos[i])}`;
     }).join(' ');
 
+    // Hex para RGBA para fazer o fundo transparente baseado na cor da tinta
+    const hexToRgba = (hex, alpha) => {
+        const r = parseInt(hex.slice(1, 3), 16) || 0;
+        const g = parseInt(hex.slice(3, 5), 16) || 0;
+        const b = parseInt(hex.slice(5, 7), 16) || 0;
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    };
+
     return (
         <svg viewBox="0 0 200 200" style={{ width: '100%', maxWidth: '280px', height: 'auto', overflow: 'visible', dropShadow: '2px 2px 2px rgba(0,0,0,0.2)' }}>
-            {[0.33, 0.66, 1.0].map((scale, i) => <polygon key={i} fill="none" stroke="rgba(0,0,0,0.15)" strokeWidth="1" strokeDasharray="3" points={angulos.map(a => `${100 + 75 * scale * Math.cos(a)},${100 + 75 * scale * Math.sin(a)}`).join(' ')} />)}
-            {angulos.map((a, i) => <line key={i} x1="100" y1="100" x2={100 + 75 * Math.cos(a)} y2={100 + 75 * Math.sin(a)} stroke="rgba(0,0,0,0.15)" strokeWidth="1" strokeDasharray="3" />)}
-            <polygon points={dataPoints} fill="rgba(0,0,0,0.1)" stroke="rgba(0,0,0,0.8)" strokeWidth="2" strokeLinejoin="round" />
-            {eixos.map((e, i) => <text key={i} x={100 + 95 * Math.cos(angulos[i])} y={100 + 95 * Math.sin(angulos[i])} textAnchor="middle" dominantBaseline="central" fill="rgba(0,0,0,0.8)" fontSize="11" fontWeight="bold" style={{ fontStyle: 'italic' }}>{e.label}</text>)}
+            {[0.33, 0.66, 1.0].map((scale, i) => <polygon key={i} fill="none" stroke={hexToRgba(corTinta, 0.2)} strokeWidth="1" strokeDasharray="3" points={angulos.map(a => `${100 + 75 * scale * Math.cos(a)},${100 + 75 * scale * Math.sin(a)}`).join(' ')} />)}
+            {angulos.map((a, i) => <line key={i} x1="100" y1="100" x2={100 + 75 * Math.cos(a)} y2={100 + 75 * Math.sin(a)} stroke={hexToRgba(corTinta, 0.2)} strokeWidth="1" strokeDasharray="3" />)}
+            
+            <polygon points={dataPoints} fill={hexToRgba(corTinta, isAtual ? 0.3 : 0.1)} stroke={corTinta} strokeWidth="2" strokeLinejoin="round" style={{ transition: 'all 0.5s ease-out' }} />
+            
+            {eixos.map((e, i) => <text key={i} x={100 + 95 * Math.cos(angulos[i])} y={100 + 95 * Math.sin(angulos[i])} textAnchor="middle" dominantBaseline="central" fill={corTinta} fontSize="11" fontWeight="bold" style={{ fontStyle: 'italic' }}>{e.label}</text>)}
         </svg>
     );
 };
@@ -113,6 +125,7 @@ export default function MarcadosPanel() {
     const [textoImport, setTextoImport] = useState('');
     const [modalEstilo, setModalEstilo] = useState(false);
     const [paginaAtual, setPaginaAtual] = useState(1);
+    const [salvando, setSalvando] = useState(false); // 💾 ESTADO DO BOTÃO DE SALVAR
 
     if (!minhaFicha) return <div style={{ color: '#000', padding: 20, fontFamily: 'cursive' }}>Abrindo o Diário...</div>;
 
@@ -129,10 +142,18 @@ export default function MarcadosPanel() {
         salvarFichaSilencioso();
     };
 
+    const handleSalvarTudo = async () => {
+        setSalvando(true);
+        await salvarFirebaseImediato();
+        setTimeout(() => setSalvando(false), 2000);
+    };
+
     const getLabel = (key, fallback) => minhaFicha.labels?.[key] !== undefined ? minhaFicha.labels[key] : fallback;
     const setLabel = (key, val) => salvar(`labels.${key}`, val);
 
+    // Variáveis de Estilo Salvas na Ficha
     const corFundo = minhaFicha.estetica?.diarioCor || '#bba9d8';
+    const corTintaRadar = minhaFicha.estetica?.corTintaRadar || '#000000';
     const fonteDiario = minhaFicha.estetica?.diarioFonte || '"Comic Sans MS", "Chalkboard SE", "Marker Felt", cursive';
 
     const handleImageUpload = async (e) => {
@@ -154,10 +175,8 @@ export default function MarcadosPanel() {
         alert("O seu diário foi sincronizado!");
     };
 
-    // 🧮 CÁLCULOS GERAIS PARA PV E PM
     const getSupremas = () => {
         const getP = (k) => { let mx = 0; try { mx = getMaximo(minhaFicha, k); } catch(e) { mx = minhaFicha[k]?.base || 0; } return calcularEscala(mx).pVit; };
-        
         const pVida = getP('vida'), pChakra = getP('chakra'), pCorpo = getP('corpo');
         const pMana = getP('mana'), pAura = getP('aura');
         
@@ -168,10 +187,7 @@ export default function MarcadosPanel() {
         const mPV = parseFloat(minhaFicha.multiplicadorVida) || 1;
         const mPM = parseFloat(minhaFicha.multiplicadorMorte) || 1;
         
-        const pv = Math.floor(((pVida + pChakra + pCorpo) / 3) * mPV);
-        const pm = Math.floor(((pMana + pAura + pStatus) / 3) * mPM);
-        
-        return { pvMax: pv, pmMax: pm };
+        return { pvMax: Math.floor(((pVida + pChakra + pCorpo) / 3) * mPV), pmMax: Math.floor(((pMana + pAura + pStatus) / 3) * mPM) };
     };
     const { pvMax, pmMax } = getSupremas();
 
@@ -181,8 +197,6 @@ export default function MarcadosPanel() {
         try { rawMaximo = getMaximo(minhaFicha, vitalKey); } catch(e) { rawMaximo = minhaFicha[vitalKey]?.base || 0; }
         
         const { mxDisplay, pVit } = calcularEscala(rawMaximo);
-        
-        // Garante que o número atual escala para baixo caso o máximo também escale
         let atual = minhaFicha[vitalKey]?.atual !== undefined ? parseFloat(minhaFicha[vitalKey].atual) : mxDisplay;
         if (pVit > 0 && atual > mxDisplay * 10) atual = Math.floor(atual / Math.pow(10, pVit));
 
@@ -215,7 +229,6 @@ export default function MarcadosPanel() {
         const baseVal = minhaFicha[attrKey]?.base || '';
         let maxVal = 0;
         try { maxVal = getMaximo(minhaFicha, attrKey); } catch(e) { maxVal = baseVal; }
-        
         return (
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted rgba(0,0,0,0.2)', padding: '6px 0', fontSize: '1.1em' }}>
                 <LabelMagico valor={getLabel(labelKey, fallbackLabel)} onChange={(v) => setLabel(labelKey, v)} />
@@ -231,13 +244,26 @@ export default function MarcadosPanel() {
             boxShadow: 'inset 0 0 40px rgba(0,0,0,0.1), 0 10px 30px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column'
         }}>
             
+            {/* 📌 CONTROLES SUPERIORES (POST-ITS) */}
             <div style={{ position: 'absolute', top: '-15px', right: '30px', zIndex: 10, display: 'flex', gap: '10px' }}>
+                
+                {/* 💾 Botão Salvar Global */}
+                <div style={{ position: 'relative' }}>
+                    <button onClick={handleSalvarTudo} style={{ background: salvando ? '#a5d6a7' : '#4caf50', color: '#fff', border: 'none', padding: '10px 20px', fontFamily: 'inherit', fontWeight: 'bold', fontSize: '1.1em', cursor: 'pointer', boxShadow: '3px 3px 10px rgba(0,0,0,0.2)', transform: 'rotate(1deg)' }}>
+                        {salvando ? '✅ Guardado!' : '💾 Guardar Diário'}
+                    </button>
+                </div>
+
                 <div style={{ position: 'relative' }}>
                     <button onClick={() => { setModalEstilo(!modalEstilo); setModalImport(false); }} style={{ background: '#ff94c2', border: 'none', padding: '10px 20px', fontFamily: 'inherit', fontWeight: 'bold', fontSize: '1.1em', cursor: 'pointer', boxShadow: '3px 3px 10px rgba(0,0,0,0.2)', transform: 'rotate(-2deg)' }}>🎨 Estilo</button>
                     {modalEstilo && (
                         <div className="fade-in" style={{ position: 'absolute', top: '50px', right: '0', background: '#ffe4f0', padding: '15px', border: '1px solid #ccc', boxShadow: '5px 5px 15px rgba(0,0,0,0.3)', width: '250px', zIndex: 20 }}>
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Cor do Papel:</label>
                             <input type="color" value={corFundo} onChange={(e) => salvar('estetica.diarioCor', e.target.value)} style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} />
+                            
+                            <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Cor da Tinta (Radar):</label>
+                            <input type="color" value={corTintaRadar} onChange={(e) => salvar('estetica.corTintaRadar', e.target.value)} style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} />
+                            
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Fonte da Letra:</label>
                             <select value={fonteDiario} onChange={(e) => salvar('estetica.diarioFonte', e.target.value)} style={{ width: '100%', padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', fontFamily: 'inherit' }}>
                                 <option value='"Comic Sans MS", "Chalkboard SE", "Marker Felt", cursive'>✏️ Escrito à Mão</option>
@@ -258,6 +284,7 @@ export default function MarcadosPanel() {
                 </div>
             </div>
 
+            {/* 📖 CONTEÚDO DO LIVRO */}
             <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '40px' }}>
                 
                 {/* ======================= PÁGINA 1 ======================= */}
@@ -287,9 +314,9 @@ export default function MarcadosPanel() {
                             <div style={{ marginTop: '20px', position: 'relative', width: 'fit-content', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                 <label style={{ cursor: 'pointer', display: 'block' }}>
                                     <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} disabled={uploadingImg} />
-                                    {uploadingImg ? <div style={{ width: '320px', height: '480px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed #000' }}>✍️...</div> : minhaFicha.avatar?.base ? <img src={minhaFicha.avatar.base} alt="Avatar" style={{ width: '320px', height: 'auto', objectFit: 'cover', border: '2px solid rgba(0,0,0,0.8)', boxShadow: '8px 8px 0px rgba(0,0,0,0.2)' }} /> : <div style={{ width: '320px', height: '480px', border: '2px dashed #000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555' }}>Colar Fotografia 📸</div>}
+                                    {uploadingImg ? <div style={{ width: '320px', height: '480px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed #000' }}>✍️...</div> : minhaFicha.avatar?.base ? <img src={minhaFicha.avatar.base} alt="Avatar" style={{ width: '320px', height: 'auto', objectFit: 'cover', border: '2px solid rgba(0,0,0,0.8)', boxShadow: '8px 8px 0px rgba(0,0,0,0.2)' }} /> : <div style={{ width: '320px', height: '480px', border: '2px dashed #000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', background: 'rgba(255,255,255,0.1)' }}>Colar Fotografia Aqui 📸</div>}
                                 </label>
-                                {minhaFicha.avatar?.base && <button onClick={() => {if(window.confirm('Apagar?')) updateFicha(f => {f.avatar.base = ""}); salvarFichaSilencioso();}} style={{ background: 'transparent', border: '1px dashed #ff003c', color: '#ff003c', marginTop: '10px', padding: '5px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'inherit' }}>🗑️ Remover Foto</button>}
+                                {minhaFicha.avatar?.base && <button onClick={() => {if(window.confirm('Apagar?')) updateFicha(f => {f.avatar.base = ""}); salvarFichaSilencioso();}} style={{ background: 'transparent', border: '1px dashed #ff003c', color: '#ff003c', marginTop: '5px', padding: '5px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'inherit' }}>🗑️ Remover Foto</button>}
                             </div>
                         </div>
 
@@ -318,7 +345,6 @@ export default function MarcadosPanel() {
                                     <BarraVital atual={minhaFicha.pm?.atual ?? pmMax} maximo={pmMax} pVit={0} cor="#000000" corTexto="#fff" onChangeAtual={(v) => salvar('pm.atual', v)} />
                                 </div>
 
-                                {/* MULTIPLICADORES EDITÁVEIS NA TELA */}
                                 <div style={{ display: 'flex', gap: '15px', marginTop: '5px' }}>
                                     <div style={{ flex: 1, border: '2px solid rgba(0,0,0,0.8)', padding: '10px', borderRadius: '6px', background: 'rgba(255,255,255,0.2)' }}>
                                         <div style={{ fontSize: '0.8em', fontWeight: 'bold', textTransform: 'uppercase' }}><LabelMagico valor={getLabel('lblMultV', 'Mult. de Vida (PV)')} onChange={(v) => setLabel('lblMultV', v)} /></div>
@@ -370,7 +396,7 @@ export default function MarcadosPanel() {
 
                         <div className="fade-in" style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(0,0,0,0.03)', padding: '20px', borderRadius: '15px', border: '1px dashed rgba(0,0,0,0.2)' }}>
                             <h2 style={{ fontSize: '2em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 20px 0' }}><LabelMagico valor={getLabel('tituloAnaliseBase', 'Status (Rank Base)')} onChange={(v) => setLabel('tituloAnaliseBase', v)} /></h2>
-                            <RadarDesenhado ficha={minhaFicha} isAtual={false} />
+                            <RadarDesenhado ficha={minhaFicha} isAtual={false} corTinta={corTintaRadar} />
                             
                             <div style={{ width: '100%', maxWidth: '300px', marginTop: '30px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                 <LinhaAtributoCru labelKey="lblFor" fallbackLabel="Força" attrKey="forca" isAtual={false} />
@@ -386,7 +412,7 @@ export default function MarcadosPanel() {
 
                         <div className="fade-in" style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(0,0,0,0.05)', padding: '20px', borderRadius: '15px', border: '2px solid rgba(0,0,0,0.8)' }}>
                             <h2 style={{ fontSize: '2em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 20px 0' }}><LabelMagico valor={getLabel('tituloAnaliseAtual', 'Poder Atual (c/ Formas)')} onChange={(v) => setLabel('tituloAnaliseAtual', v)} /></h2>
-                            <RadarDesenhado ficha={minhaFicha} isAtual={true} />
+                            <RadarDesenhado ficha={minhaFicha} isAtual={true} corTinta={corTintaRadar} />
                             
                             <div style={{ width: '100%', maxWidth: '300px', marginTop: '30px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                 <LinhaAtributoCru labelKey="lblFor" fallbackLabel="Força" attrKey="forca" isAtual={true} />
