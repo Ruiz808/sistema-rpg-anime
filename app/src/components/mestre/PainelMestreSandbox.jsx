@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import useStore from '../../stores/useStore';
 import { getDatabase, ref, update } from 'firebase/database';
 import { calcularEficaciaCura } from '../../core/engine'; 
-import DiarioNPC from './DiarioNPC'; // 🔥 O NOSSO GRIMÓRIO IMPORTADO AQUI!
+import DiarioNPC from './DiarioNPC';
 
 const TODAS_CONDICOES_BASE = [
     { id: 'sangrando', icone: '🩸', cor: '#ff003c', nome: 'Sangrando' },
@@ -35,8 +35,10 @@ export default function PainelMestreSandbox({ personagemId, ficha }) {
     const [expandido, setExpandido] = useState(false);
     const [valorRapido, setValorRapido] = useState('');
     const [energiaAlvo, setEnergiaAlvo] = useState('vida'); 
+    
+    // 🔥 ESTADO DO MODAL DE TELA CHEIA PARA O GRIMÓRIO
+    const [grimorioAberto, setGrimorioAberto] = useState(false);
 
-    // 🔥 LEITURA GLOBAL DE CONDIÇÕES
     const condicoesDinamicas = useMemo(() => {
         const overrides = {};
         if (personagens) {
@@ -58,7 +60,6 @@ export default function PainelMestreSandbox({ personagemId, ficha }) {
         return Object.values(map);
     }, [personagens, minhaFicha]);
 
-    // 🔥 1. MOTOR DE RECURSOS (COM O CONTRA-CORTA-CURA)
     const aplicarCuraDano = (tipo) => {
         let val = parseInt(valorRapido);
         if (!val || isNaN(val) || val <= 0) return;
@@ -80,12 +81,10 @@ export default function PainelMestreSandbox({ personagemId, ficha }) {
         
         if (novoValor < 0) novoValor = 0; 
 
-        // Atualiza a Firebase
         update(ref(db, `mesas/${mesaId}/personagens/${personagemId}/${energiaAlvo}`), {
             atual: novoValor
         }).catch(err => alert("Erro ao atualizar recursos: " + err.message));
 
-        // Atualiza a Memória Local Instantaneamente
         setPersonagens({
             ...personagens,
             [personagemId]: {
@@ -107,7 +106,6 @@ export default function PainelMestreSandbox({ personagemId, ficha }) {
         setValorRapido('');
     };
 
-    // 🔥 2. MOTOR DE CONDIÇÕES (STACKS INFINITOS)
     const modificarCondicaoSandbox = (condId, delta) => {
         let condicoesAtuais = ficha?.condicoes ? JSON.parse(JSON.stringify(ficha.condicoes)) : [];
         const index = condicoesAtuais.findIndex(c => c.id === condId);
@@ -144,6 +142,37 @@ export default function PainelMestreSandbox({ personagemId, ficha }) {
 
     return (
         <div style={{ marginTop: '15px', width: '100%' }}>
+            
+            {/* 👑 MODAL DE TELA CHEIA DO GRIMÓRIO */}
+            {grimorioAberto && (
+                <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.92)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px', backdropFilter: 'blur(5px)' }}>
+                    <div className="fade-in" style={{ width: '100%', maxWidth: '1400px', height: '95vh', overflowY: 'auto', position: 'relative' }}>
+                        
+                        <button 
+                            onClick={() => setGrimorioAberto(false)} 
+                            style={{ position: 'absolute', top: '10px', right: '30px', background: '#ff003c', color: '#fff', border: '3px solid #000', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', fontSize: '1.2em', cursor: 'pointer', zIndex: 100, boxShadow: '4px 4px 0px rgba(0,0,0,0.5)', transition: 'transform 0.2s' }}
+                            onMouseEnter={e => e.target.style.transform = 'scale(1.05)'}
+                            onMouseLeave={e => e.target.style.transform = 'scale(1)'}
+                        >
+                            ❌ FECHAR LIVRO
+                        </button>
+                        
+                        <DiarioNPC 
+                            npcData={{ ...ficha, nome: personagemId }} 
+                            onSaveNpc={(novosDados) => {
+                                const fichaAtualizada = { ...novosDados };
+                                delete fichaAtualizada.nome;
+                                update(ref(db, `personagens/${personagemId}`), fichaAtualizada).catch(err => alert("Erro ao salvar NPC: " + err.message));
+                                setPersonagens({
+                                    ...personagens,
+                                    [personagemId]: fichaAtualizada
+                                });
+                            }} 
+                        />
+                    </div>
+                </div>
+            )}
+
             <button 
                 onClick={() => setExpandido(!expandido)}
                 style={{ 
@@ -159,27 +188,15 @@ export default function PainelMestreSandbox({ personagemId, ficha }) {
             {expandido && (
                 <div className="fade-in" style={{ background: 'rgba(10,10,15,0.95)', border: '2px solid #ffcc00', borderTop: 'none', padding: '15px', borderRadius: '0 0 8px 8px', boxShadow: '0 5px 15px rgba(0,0,0,0.8)' }}>
                     
-                    {/* 👑 AQUI ENTRA O GRIMÓRIO DO NPC INJETADO! */}
-                    <div style={{ marginBottom: '20px' }}>
-                        <DiarioNPC 
-                            npcData={{ ...ficha, nome: personagemId }} 
-                            onSaveNpc={(novosDados) => {
-                                const fichaAtualizada = { ...novosDados };
-                                delete fichaAtualizada.nome; // Remove o nome injetado visualmente para não sujar a Firebase
-                                
-                                // Salva na raíz global de personagens (Igual à MestreForjaNPC)
-                                update(ref(db, `personagens/${personagemId}`), fichaAtualizada).catch(err => alert("Erro ao salvar NPC: " + err.message));
+                    {/* BOTÃO PARA ABRIR O GRIMÓRIO (TELA CHEIA) */}
+                    <button 
+                        onClick={() => setGrimorioAberto(true)}
+                        style={{ width: '100%', background: 'linear-gradient(45deg, #aa00ff, #ff007f)', border: 'none', color: '#fff', padding: '15px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.2em', marginBottom: '20px', boxShadow: '0 4px 15px rgba(170,0,255,0.4)', textShadow: '1px 1px 2px #000' }}
+                    >
+                        📖 ABRIR GRIMÓRIO DA ENTIDADE
+                    </button>
 
-                                // Atualiza a memória local para não ser preciso F5
-                                setPersonagens({
-                                    ...personagens,
-                                    [personagemId]: fichaAtualizada
-                                });
-                            }} 
-                        />
-                    </div>
-
-                    {/* MODIFICADOR DE RECURSOS RÁPIDO (MANTIDO) */}
+                    {/* MODIFICADOR DE RECURSOS RÁPIDO */}
                     <div style={{ background: 'rgba(0,0,0,0.4)', padding: '12px', borderRadius: '6px', border: '1px solid #333', marginBottom: '15px' }}>
                         <div style={{ fontSize: '0.8em', color: '#ffcc00', fontWeight: 'bold', marginBottom: '10px', textTransform: 'uppercase' }}>Manipulação Rápida de Recursos</div>
                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -218,7 +235,7 @@ export default function PainelMestreSandbox({ personagemId, ficha }) {
                         </div>
                     </div>
 
-                    {/* MODIFICADOR DE CONDIÇÕES GERAIS (MANTIDO) */}
+                    {/* MODIFICADOR DE CONDIÇÕES GERAIS */}
                     <div style={{ background: 'rgba(0,0,0,0.4)', padding: '12px', borderRadius: '6px', border: '1px solid #333' }}>
                         <div style={{ fontSize: '0.8em', color: '#ff003c', fontWeight: 'bold', marginBottom: '10px', textTransform: 'uppercase' }}>Injeção de Condições</div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(75px, 1fr))', gap: '8px', maxHeight: '200px', overflowY: 'auto', paddingRight: '5px' }}>
