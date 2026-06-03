@@ -5,13 +5,13 @@ import { getMaximo, getRawBase, getBuffs } from '../../core/attributes';
 import { getRank } from '../../core/prestige';
 
 // ==========================================
-// 🛡️ FUNÇÕES SEGURAS DA ENGINE E MATEMÁTICA
+// 🛡️ FUNÇÕES SEGURAS DA ENGINE E MATEMÁTICA PURA
 // ==========================================
 const safeGetRawBase = (f, k) => typeof getRawBase === 'function' ? getRawBase(f, k) : parseFloat(f[k]?.base) || 0;
 const safeGetRank = (prest, asc) => typeof getRank === 'function' ? getRank(prest, asc) : { l: 'F', c: '#ffffff', a: asc };
 const safeGetBuffs = (f, k, t) => typeof getBuffs === 'function' ? getBuffs(f, k, t) : {};
 
-// 🔥 LÊ A BASE REAL DIRETAMENTE DA FICHA (Sem máscaras!)
+// 🔥 LÊ A BASE REAL (Sem fantasmas, matemática absoluta!)
 const getBasePFor = (ficha, k) => {
     const mults = { vida: 1000000, mana: 10000000, aura: 10000000, chakra: 10000000, corpo: 10000000, status: 1000 };
     const div = parseFloat(ficha?.divisores?.[k]) || 1;
@@ -43,7 +43,14 @@ const calcularPrestAtual = (ficha, attrKey, baseP) => {
 // ==========================================
 // 🖋️ INPUTS E BARRAS MÁGICAS (COM AUTO-SAVE)
 // ==========================================
-const callSave = () => { setTimeout(() => { if (typeof salvarFirebaseImediato === 'function') salvarFirebaseImediato(); else salvarFichaSilencioso(); }, 300); };
+let globalTimer = null;
+const callSave = () => {
+    if (globalTimer) clearTimeout(globalTimer);
+    globalTimer = setTimeout(() => {
+        if (typeof salvarFirebaseImediato === 'function') salvarFirebaseImediato();
+        else salvarFichaSilencioso();
+    }, 400);
+};
 
 const CampoMagico = ({ valor, onChange, placeholder, styleExtra = {}, type = "text", isNumber = false }) => {
     const handleChange = (e) => {
@@ -161,6 +168,7 @@ export default function MarcadosPanel() {
     const [paginaAtual, setPaginaAtual] = useState(1);
     const [salvando, setSalvando] = useState(false);
 
+    // 🔥 ESTADOS PARA MANTER AS CORES SUAVES ANTES DO FIREBASE
     const [localCorFundo, setLocalCorFundo] = useState('#bba9d8');
     const [localCorTinta, setLocalCorTinta] = useState('#000000');
 
@@ -170,20 +178,6 @@ export default function MarcadosPanel() {
             setLocalCorTinta(minhaFicha.estetica?.corTintaRadar || '#000000');
         }
     }, [minhaFicha?.estetica?.diarioCor, minhaFicha?.estetica?.corTintaRadar]);
-
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            if (minhaFicha && (localCorFundo !== minhaFicha.estetica?.diarioCor || localCorTinta !== minhaFicha.estetica?.corTintaRadar)) {
-                updateFicha(f => {
-                    if (!f.estetica) f.estetica = {};
-                    f.estetica.diarioCor = localCorFundo;
-                    f.estetica.corTintaRadar = localCorTinta;
-                });
-                callSave();
-            }
-        }, 800);
-        return () => clearTimeout(timer);
-    }, [localCorFundo, localCorTinta]);
 
     if (!minhaFicha) return <div style={{ color: '#000', padding: 20, fontFamily: 'cursive' }}>Abrindo o Diário...</div>;
 
@@ -198,9 +192,25 @@ export default function MarcadosPanel() {
             }
             atual[chaves[chaves.length - 1]] = valFinal;
         });
+        callSave();
     };
 
-    // 🔥 TABELA QUE RECALCULA DIRETAMENTE A BASE DA FICHA!
+    // 🔥 MOTOR DE SALVAR CORES APÓS SOLTAR O RATO (0.8s)
+    const handleColorChange = (key, val) => {
+        if (key === 'diarioCor') setLocalCorFundo(val);
+        else setLocalCorTinta(val);
+
+        if (window.timerSaveCor) clearTimeout(window.timerSaveCor);
+        window.timerSaveCor = setTimeout(() => {
+            updateFicha(f => {
+                if (!f.estetica) f.estetica = {};
+                f.estetica[key] = val;
+            });
+            callSave();
+        }, 800);
+    };
+
+    // 🔥 TABELA QUE RECALCULA DIRETAMENTE A BASE DA FICHA (Mata o Fantasma!)
     const handleTabelaChange = (k, tipo, valor) => {
         let numVal = Number(valor);
         if (isNaN(numVal)) numVal = 0;
@@ -213,10 +223,11 @@ export default function MarcadosPanel() {
 
         const mults = { vida: 1000000, mana: 10000000, aura: 10000000, chakra: 10000000, corpo: 10000000, status: 1000 };
         const mult = mults[k] || 1;
-
         const novaBase = Math.floor((novoP / novoDiv) * mult);
 
         updateFicha(f => {
+            if (f.overridePrestigio) f.overridePrestigio = null; // Exorciza o fantasma!
+
             if (tipo === 'divisor') {
                 if (!f.divisores) f.divisores = {};
                 f.divisores[k] = novoDiv;
@@ -297,7 +308,6 @@ export default function MarcadosPanel() {
         if (isNaN(rawMaximo)) rawMaximo = 0;
         
         const { mxDisplay, pVit } = calcularEscala(rawMaximo, vitalKey);
-        
         let atual = minhaFicha[vitalKey]?.atual;
         if (atual === undefined || atual === null || atual === '') atual = mxDisplay; else atual = Number(atual);
         if (isNaN(atual)) atual = mxDisplay;
@@ -380,17 +390,17 @@ export default function MarcadosPanel() {
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Cor do Papel:</label>
                             <input 
                                 type="color" value={localCorFundo} 
-                                onChange={(e) => setLocalCorFundo(e.target.value)} 
+                                onChange={(e) => handleColorChange('diarioCor', e.target.value)} 
                                 style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} 
                             />
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Cor da Tinta (Radar):</label>
                             <input 
                                 type="color" value={localCorTinta} 
-                                onChange={(e) => setLocalCorTinta(e.target.value)} 
+                                onChange={(e) => handleColorChange('corTintaRadar', e.target.value)} 
                                 style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} 
                             />
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Fonte da Letra:</label>
-                            <select value={fonteDiario} onChange={(e) => { salvar('estetica.diarioFonte', e.target.value); callSave(); }} style={{ width: '100%', padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', fontFamily: 'inherit' }}>
+                            <select value={fonteDiario} onChange={(e) => salvar('estetica.diarioFonte', e.target.value)} style={{ width: '100%', padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', fontFamily: 'inherit' }}>
                                 <option value='"Comic Sans MS", "Chalkboard SE", "Marker Felt", cursive'>✏️ Escrito à Mão</option>
                                 <option value="'Courier New', Courier, monospace">🖨️ Máquina de Escrever</option>
                                 <option value="'Times New Roman', Times, serif">📖 Grimório Clássico</option>
@@ -426,8 +436,8 @@ export default function MarcadosPanel() {
                                 <CampoMagico valor={minhaFicha.bio?.nivel} onChange={(v) => salvar('bio.nivel', v)} styleExtra={{ width: '60px', borderBottom: 'none', marginLeft: '10px' }} isNumber={true} type="number" />
                             </h2>
 
-                            {/* 🔥 LAYOUT CLÁSSICO E ALINHADO DA BIO RESTAURADO! */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '1.2em' }}>
+                            {/* 🔥 LAYOUT DA BIO 100% IDÊNTICO À SUA IMAGEM (GRID) */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '120px 10px 1fr', gap: '8px', fontSize: '1.2em', alignItems: 'center' }}>
                                 {[
                                     { k: 'idade', lbl: 'Idade' },
                                     { k: 'aniversario', lbl: 'Aniversário' },
@@ -437,22 +447,25 @@ export default function MarcadosPanel() {
                                     { k: 'afiliacao', lbl: 'Afiliação' },
                                     { k: 'classe', lbl: 'Classe' }
                                 ].map(item => (
-                                    <div key={item.k} style={{ display: 'flex', alignItems: 'center' }}>
-                                        <div style={{ width: '130px', fontWeight: 'bold' }}>
+                                    <React.Fragment key={item.k}>
+                                        <div style={{ fontWeight: 'bold' }}>
                                             <LabelMagico valor={getLabel(`bio_${item.k}`, item.lbl)} onChange={(v) => setLabel(`bio_${item.k}`, v)} />
                                         </div>
-                                        <span style={{ fontWeight: 'bold', margin: '0 10px' }}>:</span>
-                                        <CampoMagico valor={minhaFicha.bio?.[item.k]} onChange={(v) => salvar(`bio.${item.k}`, v)} styleExtra={{ flex: 1, borderBottom: '1px dotted rgba(0,0,0,0.3)' }} />
-                                    </div>
+                                        <div style={{ fontWeight: 'bold', textAlign: 'center' }}>:</div>
+                                        <div>
+                                            <CampoMagico valor={minhaFicha.bio?.[item.k]} onChange={(v) => salvar(`bio.${item.k}`, v)} styleExtra={{ width: '100%', borderBottom: '1px dotted rgba(0,0,0,0.3)' }} />
+                                        </div>
+                                    </React.Fragment>
                                 ))}
                             </div>
 
-                            <div style={{ marginTop: '20px', width: 'fit-content', display: 'flex', flexDirection: 'column' }}>
+                            {/* FOTOGRAFIA ENCOSTADA À ESQUERDA ABAIXO DA BIO */}
+                            <div style={{ marginTop: '20px', width: 'fit-content', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                                 <label style={{ cursor: 'pointer', display: 'block' }}>
                                     <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} disabled={uploadingImg} />
                                     {uploadingImg ? <div style={{ width: '320px', height: '480px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed #000' }}>✍️...</div> : minhaFicha.avatar?.base ? <img src={minhaFicha.avatar.base} alt="Avatar" style={{ width: '320px', height: 'auto', objectFit: 'cover', border: '2px solid rgba(0,0,0,0.8)', boxShadow: '8px 8px 0px rgba(0,0,0,0.2)' }} /> : <div style={{ width: '320px', height: '480px', border: '2px dashed #000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', background: 'rgba(255,255,255,0.1)' }}>Colar Fotografia Aqui 📸</div>}
                                 </label>
-                                {minhaFicha.avatar?.base && <button onClick={() => {if(window.confirm('Apagar?')) updateFicha(f => {f.avatar.base = ""}); callSave();}} style={{ background: 'transparent', border: '1px dashed #ff003c', color: '#ff003c', marginTop: '10px', padding: '5px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'inherit', width: 'fit-content' }}>🗑️ Remover Foto</button>}
+                                {minhaFicha.avatar?.base && <button onClick={() => {if(window.confirm('Apagar?')) { updateFicha(f => {f.avatar.base = ""}); callSave(); } }} style={{ background: 'transparent', border: '1px dashed #ff003c', color: '#ff003c', marginTop: '10px', padding: '5px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'inherit', width: 'fit-content' }}>🗑️ Remover Foto</button>}
                             </div>
                         </div>
 

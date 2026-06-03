@@ -147,7 +147,6 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
     const [modalEstilo, setModalEstilo] = useState(false);
     const [paginaAtual, setPaginaAtual] = useState(1);
 
-    // 🔥 TEMPORIZADOR FANTASMA PARA SALVAR CORES DOS NPCS
     const [localCorFundo, setLocalCorFundo] = useState('#ffe6cc');
     const [localCorTinta, setLocalCorTinta] = useState('#000000');
 
@@ -157,21 +156,6 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
             setLocalCorTinta(npcData.estetica?.corTintaRadar || '#000000');
         }
     }, [npcData?.estetica?.diarioCor, npcData?.estetica?.corTintaRadar]);
-
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            if (npcData && (localCorFundo !== npcData.estetica?.diarioCor || localCorTinta !== npcData.estetica?.corTintaRadar)) {
-                const novoNpc = JSON.parse(JSON.stringify(npcData));
-                if (!novoNpc.estetica) novoNpc.estetica = {};
-                novoNpc.estetica.diarioCor = localCorFundo;
-                novoNpc.estetica.corTintaRadar = localCorTinta;
-                onSaveNpc(novoNpc);
-            }
-        }, 800);
-        return () => clearTimeout(timer);
-    }, [localCorFundo, localCorTinta]);
-
-    if (!npcData) return <div style={{ color: '#fff', padding: 20 }}>Conectando à Entidade...</div>;
 
     const salvar = (caminho, valor) => {
         const valFinal = (valor === undefined || (isNaN(valor) && typeof valor === 'number')) ? null : valor;
@@ -184,6 +168,19 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
         }
         atual[chaves[chaves.length - 1]] = valFinal;
         onSaveNpc(novoNpc);
+    };
+
+    const handleColorChange = (key, val) => {
+        if (key === 'diarioCor') setLocalCorFundo(val);
+        else setLocalCorTinta(val);
+
+        if (window.timerSaveCorNPC) clearTimeout(window.timerSaveCorNPC);
+        window.timerSaveCorNPC = setTimeout(() => {
+            const novoNpc = JSON.parse(JSON.stringify(npcData));
+            if (!novoNpc.estetica) novoNpc.estetica = {};
+            novoNpc.estetica[key] = val;
+            onSaveNpc(novoNpc);
+        }, 800);
     };
 
     const handleTabelaChange = (k, tipo, valor) => {
@@ -202,6 +199,8 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
         const novaBase = Math.floor((novoP / novoDiv) * mult);
         const novoNpc = JSON.parse(JSON.stringify(npcData));
         
+        if (novoNpc.overridePrestigio) novoNpc.overridePrestigio = null;
+
         if (tipo === 'divisor') {
             if (!novoNpc.divisores) novoNpc.divisores = {};
             novoNpc.divisores[k] = novoDiv;
@@ -217,7 +216,11 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                 novoNpc[k].base = novaBase;
             }
         }
-        onSaveNpc(novoNpc);
+        
+        if (window.timerSaveNPCTable) clearTimeout(window.timerSaveNPCTable);
+        window.timerSaveNPCTable = setTimeout(() => {
+            onSaveNpc(novoNpc);
+        }, 300);
     };
 
     const getLabel = (key, fallback) => npcData.labels?.[key] !== undefined ? npcData.labels[key] : fallback;
@@ -341,13 +344,13 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Cor do Papel:</label>
                             <input 
                                 type="color" value={localCorFundo} 
-                                onChange={(e) => setLocalCorFundo(e.target.value)} 
+                                onChange={(e) => handleColorChange('diarioCor', e.target.value)} 
                                 style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} 
                             />
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Cor da Tinta (Radar):</label>
                             <input 
                                 type="color" value={localCorTinta} 
-                                onChange={(e) => setLocalCorTinta(e.target.value)} 
+                                onChange={(e) => handleColorChange('corTintaRadar', e.target.value)} 
                                 style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} 
                             />
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Fonte da Letra:</label>
@@ -377,8 +380,8 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                 <CampoMagicoNPC valor={npcData.bio?.nivel} onChange={(v) => salvar('bio.nivel', v)} styleExtra={{ width: '60px', borderBottom: 'none', marginLeft: '10px' }} isNumber={true} type="number" />
                             </h2>
 
-                            {/* 🔥 LAYOUT CLÁSSICO E ALINHADO DA BIO RESTAURADO! */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '1.2em' }}>
+                            {/* 🔥 LAYOUT DA BIO 100% IDÊNTICO À SUA IMAGEM (GRID) */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '120px 10px 1fr', gap: '8px', fontSize: '1.2em', alignItems: 'center' }}>
                                 {[
                                     { k: 'idade', lbl: 'Idade' },
                                     { k: 'aniversario', lbl: 'Aniversário' },
@@ -388,17 +391,20 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                     { k: 'afiliacao', lbl: 'Afiliação', foraDaBio: true },
                                     { k: 'classe', lbl: 'Classe' }
                                 ].map(item => (
-                                    <div key={item.k} style={{ display: 'flex', alignItems: 'center' }}>
-                                        <div style={{ width: '130px', fontWeight: 'bold' }}>
+                                    <React.Fragment key={item.k}>
+                                        <div style={{ fontWeight: 'bold' }}>
                                             <LabelMagicoNPC valor={getLabel(`bio_${item.k}`, item.lbl)} onChange={(v) => setLabel(`bio_${item.k}`, v)} />
                                         </div>
-                                        <span style={{ fontWeight: 'bold', margin: '0 10px' }}>:</span>
-                                        <CampoMagicoNPC valor={item.foraDaBio ? npcData[item.k] : npcData.bio?.[item.k]} onChange={(v) => salvar(item.foraDaBio ? item.k : `bio.${item.k}`, v)} styleExtra={{ flex: 1, borderBottom: '1px dotted rgba(0,0,0,0.3)' }} />
-                                    </div>
+                                        <div style={{ fontWeight: 'bold', textAlign: 'center' }}>:</div>
+                                        <div>
+                                            <CampoMagicoNPC valor={item.foraDaBio ? npcData[item.k] : npcData.bio?.[item.k]} onChange={(v) => salvar(item.foraDaBio ? item.k : `bio.${item.k}`, v)} styleExtra={{ width: '100%', borderBottom: '1px dotted rgba(0,0,0,0.3)' }} />
+                                        </div>
+                                    </React.Fragment>
                                 ))}
                             </div>
 
-                            <div style={{ marginTop: '20px', width: 'fit-content', display: 'flex', flexDirection: 'column' }}>
+                            {/* FOTOGRAFIA ENCOSTADA À ESQUERDA ABAIXO DA BIO */}
+                            <div style={{ marginTop: '20px', width: 'fit-content', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                                 <label style={{ cursor: 'pointer', display: 'block' }}>
                                     <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} disabled={uploadingImg} />
                                     {uploadingImg ? <div style={{ width: '320px', height: '480px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed #000' }}>✍️...</div> : npcData.avatar?.base ? <img src={npcData.avatar.base} alt="Avatar" style={{ width: '320px', height: 'auto', objectFit: 'cover', border: '2px solid rgba(0,0,0,0.8)', boxShadow: '8px 8px 0px rgba(0,0,0,0.2)' }} /> : <div style={{ width: '320px', height: '480px', border: '2px dashed #000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', background: 'rgba(255,255,255,0.1)' }}>Colar Fotografia do Alvo 📸</div>}
