@@ -23,7 +23,6 @@ export default function Sidebar({ onResetClick }) {
                 
             ]
         },
-       
         {
             id: 'combate', icone: '⚔️', nome: 'Combate', cor: '#ff003c', bg: 'rgba(255,0,60,0.15)',
             abas: [
