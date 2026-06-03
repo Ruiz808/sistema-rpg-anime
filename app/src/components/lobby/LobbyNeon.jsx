@@ -9,6 +9,7 @@ export default function LobbyNeon() {
     const { setMesaId, userLogado } = useStore();
     const [codigoSala, setCodigoSala] = useState('');
     const [abaMesas, setAbaMesas] = useState('jogador');
+    const [ping, setPing] = useState(12);
 
     // 🔥 PWA
     const [canInstall, setCanInstall] = useState(!!window.deferredPrompt);
@@ -27,6 +28,14 @@ export default function LobbyNeon() {
             setCanInstall(false);
         }
     };
+
+    // 📡 Simulador de Ping na Rede
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setPing(Math.floor(Math.random() * 15) + 8);
+        }, 3000);
+        return () => clearInterval(interval);
+    }, []);
 
     const [minhasMesas, setMinhasMesas] = useState(() => {
         try { 
@@ -130,12 +139,12 @@ export default function LobbyNeon() {
 
     const entrarMesa = async (idForcado = null) => {
         const id = (idForcado || codigoSala).trim().toUpperCase();
-        if (!id) return alert('Digite o código da mesa para entrar!');
+        if (!id) return alert('Digite o código da entidade/mesa para aceder!');
         const resultado = await verificarMesaExistente(id);
-        if (!resultado.existe) return alert('Mesa não encontrada!');
+        if (!resultado.existe) return alert('Sinal não encontrado na Membrana!');
         let checkFinal = resultado;
         if (!resultado.senhaCorreta) {
-            const { value: senhaDigitada } = await Swal.fire({ title: 'Sala Protegida!', input: 'password', background: '#0a0a0a', color: '#fff', confirmButtonColor: '#0088ff', showCancelButton: true });
+            const { value: senhaDigitada } = await Swal.fire({ title: 'Acesso Restrito!', input: 'password', background: '#0a0a0a', color: '#fff', confirmButtonColor: '#0088ff', showCancelButton: true });
             if (!senhaDigitada) return;
             const reCheck = await verificarMesaExistente(id, senhaDigitada);
             if (!reCheck.senhaCorreta) return Swal.fire({ title: 'Acesso Negado', text: 'Senha Incorreta!', icon: 'error', background: '#0a0a0a', color: '#fff' });
@@ -151,7 +160,7 @@ export default function LobbyNeon() {
     const mesasJogador = minhasMesas.filter(m => !m.isMestre);
 
     const renderTableButton = (m, colorClass, icon, borderColor) => (
-        <div key={m.id} style={{ display: 'flex', gap: '8px', background: 'rgba(0,0,0,0.4)', border: `1px solid ${borderColor}`, padding: '6px', borderRadius: '8px', alignItems: 'stretch', transition: 'all 0.3s' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateX(5px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateX(0)'}>
+        <div key={m.id} style={{ display: 'flex', gap: '8px', background: 'rgba(0,0,0,0.4)', border: `1px solid ${borderColor}`, padding: '6px', borderRadius: '8px', alignItems: 'stretch', transition: 'all 0.3s' }} className="hover-lift">
             <button onClick={() => entrarMesa(m.id)} className={`btn-neon ${colorClass}`} style={{ flex: 1, margin: 0, padding: '10px 15px', fontWeight: 'bold', fontSize: '1.1em', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '10px', background: 'transparent', border: 'none', boxShadow: 'none' }}>
                 <span style={{ fontSize: '1.4em', filter: 'drop-shadow(0 0 5px rgba(255,255,255,0.5))' }}>{icon}</span> 
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '1px' }}>{m.nome}</span>
@@ -162,76 +171,106 @@ export default function LobbyNeon() {
     );
 
     return (
-        <div style={{ height: '100vh', width: '100vw', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', fontFamily: 'sans-serif' }}>
+        <div style={{ minHeight: '100vh', width: '100vw', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', fontFamily: 'sans-serif', padding: '20px 0' }}>
             
-            <div className="def-box fade-in" style={{ padding: '0', maxWidth: '650px', width: '95%', background: 'rgba(10, 10, 15, 0.85)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 20px 50px rgba(0,0,0,0.8)', borderRadius: '15px', overflow: 'hidden' }}>
+            <div className="def-box fade-in" style={{ padding: '0', maxWidth: '750px', width: '95%', background: 'rgba(10, 10, 15, 0.85)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 20px 50px rgba(0,0,0,0.8), inset 0 0 40px rgba(0,0,0,0.5)', borderRadius: '15px', overflow: 'hidden', position: 'relative' }}>
                 
-                {/* 🛡️ CABEÇALHO DO AGENTE (Identificação) */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(90deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.5) 100%)', padding: '15px 25px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                {/* 📡 MARCA DE ÁGUA DE FUNDO (Aesthetic) */}
+                <div style={{ position: 'absolute', top: '-50px', right: '-50px', fontSize: '20em', opacity: 0.02, pointerEvents: 'none', filter: 'blur(5px)', zIndex: 0 }}>⚙️</div>
+
+                {/* 🛡️ CABEÇALHO DO AGENTE (Identificação & Status da Rede) */}
+                <div style={{ position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(90deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.8) 100%)', padding: '15px 25px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                         <div style={{ background: 'linear-gradient(135deg, #444, #111)', color: '#fff', width: '45px', height: '45px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '1.4em', border: '1px solid rgba(255,255,255,0.2)', boxShadow: 'inset 0 0 10px rgba(0,0,0,0.8)' }}>
                             {userLogado.charAt(0).toUpperCase()}
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                            <span style={{ color: '#888', fontSize: '0.65em', textTransform: 'uppercase', letterSpacing: '2px', fontWeight: 'bold' }}>Credencial Ativa</span>
+                            <span style={{ color: '#888', fontSize: '0.65em', textTransform: 'uppercase', letterSpacing: '2px', fontWeight: 'bold' }}>Agente Conectado</span>
                             <strong style={{ color: '#fff', fontSize: '1.2em', letterSpacing: '1px', textShadow: '0 0 10px rgba(255,255,255,0.2)' }}>{userLogado}</strong>
                         </div>
                     </div>
-                    <button title="Desconectar do Multiverso" onClick={() => { if(window.confirm('Sair da conta?')) sairConta(); }} style={{ background: 'rgba(255,0,60,0.1)', border: '1px solid rgba(255,0,60,0.3)', color: '#ff3333', cursor: 'pointer', padding: '8px 15px', borderRadius: '8px', fontSize: '0.9em', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.3s' }}>
-                        SAIR 🚪
-                    </button>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                        {/* Indicador de Rede PING */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0,0,0,0.5)', padding: '5px 10px', borderRadius: '6px', border: '1px solid #333' }}>
+                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#0f0', boxShadow: '0 0 8px #0f0', animation: 'pulse 2s infinite' }}></span>
+                            <span style={{ color: '#0f0', fontSize: '0.7em', fontWeight: 'bold', letterSpacing: '1px' }}>SYS.ON: {ping}ms</span>
+                        </div>
+
+                        <button title="Desconectar do Terminal" onClick={() => { if(window.confirm('Encerrar conexão de Agente?')) sairConta(); }} style={{ background: 'rgba(255,0,60,0.1)', border: '1px solid rgba(255,0,60,0.3)', color: '#ff3333', cursor: 'pointer', padding: '8px 15px', borderRadius: '8px', fontSize: '0.9em', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.3s' }} className="hover-lift">
+                            SAIR 🚪
+                        </button>
+                    </div>
                 </div>
 
-                <div style={{ padding: '30px 25px' }}>
+                <div style={{ padding: '30px 25px', position: 'relative', zIndex: 1 }}>
                     {/* 🌌 TÍTULO E CAPA */}
-                    <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-                        <h1 style={{ color: 'inherit', margin: '0 0 15px 0', textTransform: 'uppercase', letterSpacing: '4px', fontSize: '2em', fontWeight: '900', opacity: 0.9 }}>MULTIVERSO RPG</h1>
-                        <div style={{ width: '100%', height: '2px', background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.5) 50%, transparent 100%)', opacity: 0.3, marginBottom: '20px' }}></div>
+                    <div style={{ textAlign: 'center', marginBottom: '30px', position: 'relative' }}>
+                        <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#00ffcc', color: '#000', fontSize: '0.6em', fontWeight: 'bold', padding: '2px 8px', borderRadius: '10px', letterSpacing: '2px' }}>V.2.0.26 - CORE SYSTEM</div>
                         
-                        <div style={{ width: '100%', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255, 255, 255, 0.1)', background: '#000', position: 'relative' }}>
-                            <img src="/capa-lobby.png" alt="Capa do Multiverso" style={{ width: '100%', height: '140px', objectFit: 'cover', display: 'block', opacity: 0.7 }} onError={(e) => e.target.style.display = 'none'} />
+                        <h1 style={{ color: 'inherit', margin: '15px 0 15px 0', textTransform: 'uppercase', letterSpacing: '5px', fontSize: '2.2em', fontWeight: '900', opacity: 0.9 }}>
+                            REFERÊNCIAS RPG
+                        </h1>
+                        
+                        <div style={{ width: '100%', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255, 255, 255, 0.1)', background: '#000', position: 'relative', boxShadow: '0 10px 20px rgba(0,0,0,0.5)' }}>
+                            <img src="/capa-lobby.png" alt="Capa do Multiverso" style={{ width: '100%', height: '140px', objectFit: 'cover', display: 'block', opacity: 0.8 }} onError={(e) => e.target.style.display = 'none'} />
                             <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'linear-gradient(0deg, rgba(10,10,15,1) 0%, rgba(0,0,0,0) 100%)' }}></div>
                         </div>
                     </div>
 
-                    {/* 🚀 O NOVO PAINEL DE AÇÃO (GRID LADO A LADO) */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '25px' }}>
+                    {/* 🚀 O PAINEL DE AÇÃO (GRID LADO A LADO) */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px', marginBottom: '25px' }}>
                         
                         {/* Caixa 1: Criar Mesa */}
                         <div style={{ background: 'rgba(0, 255, 204, 0.05)', border: '1px solid rgba(0, 255, 204, 0.2)', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', transition: 'all 0.3s' }} className="hover-lift">
                             <div style={{ marginBottom: '15px' }}>
                                 <span style={{ fontSize: '2.5em', display: 'block', marginBottom: '5px', filter: 'drop-shadow(0 0 10px rgba(0,255,204,0.5))' }}>🌌</span>
                                 <strong style={{ color: '#fff', fontSize: '1.1em', display: 'block' }}>FORJAR REALIDADE</strong>
-                                <span style={{ color: '#888', fontSize: '0.8em' }}>Inicie uma nova campanha como Mestre.</span>
+                                <span style={{ color: '#888', fontSize: '0.8em' }}>Inicie uma nova campanha e assuma o manto de Mestre.</span>
                             </div>
-                            <button className="btn-neon btn-green" onClick={criarMesa} style={{ width: '100%', padding: '12px', fontSize: '1em', fontWeight: 'bold', borderRadius: '8px' }}>CRIAR MESA</button>
+                            <button className="btn-neon btn-green" onClick={criarMesa} style={{ width: '100%', padding: '12px', fontSize: '1em', fontWeight: 'bold', borderRadius: '8px' }}>CRIAR SESSÃO</button>
                         </div>
 
-                        {/* Caixa 2: Entrar na Sala (Input Integrado) */}
-                        <div style={{ background: 'rgba(0, 136, 255, 0.05)', border: '1px solid rgba(0, 136, 255, 0.2)', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', transition: 'all 0.3s' }} className="hover-lift">
+                        {/* Caixa 2: Desafiar Entidade (Entrar na Sala) */}
+                        <div style={{ background: 'rgba(255, 0, 60, 0.05)', border: '1px solid rgba(255, 0, 60, 0.2)', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', transition: 'all 0.3s' }} className="hover-lift">
                             <div style={{ marginBottom: '15px' }}>
-                                <span style={{ fontSize: '2.5em', display: 'block', marginBottom: '5px', filter: 'drop-shadow(0 0 10px rgba(0,136,255,0.5))' }}>🚪</span>
-                                <strong style={{ color: '#fff', fontSize: '1.1em', display: 'block' }}>ACESSAR PORTAL</strong>
-                                <span style={{ color: '#888', fontSize: '0.8em' }}>Junte-se a uma aventura existente.</span>
+                                <span style={{ fontSize: '2.5em', display: 'block', marginBottom: '5px', filter: 'drop-shadow(0 0 10px rgba(255,0,60,0.5))' }}>👁️</span>
+                                <strong style={{ color: '#ff3333', fontSize: '1.1em', display: 'block', textShadow: '0 0 10px rgba(255,0,60,0.5)' }}>DESAFIAR ENTIDADE</strong>
+                                <span style={{ color: '#888', fontSize: '0.8em' }}>Sincronize sua marca através do código de convite.</span>
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                <input className="input-neon" type="text" placeholder="CÓDIGO (EX: MESA-A8)" value={codigoSala} onChange={e => setCodigoSala(e.target.value)} style={{ width: '100%', padding: '10px', fontSize: '0.9em', textAlign: 'center', textTransform: 'uppercase', boxSizing: 'border-box', background: 'rgba(0,0,0,0.5)', borderRadius: '6px', border: '1px solid rgba(0, 136, 255, 0.3)' }} />
-                                <button className="btn-neon btn-blue" onClick={() => entrarMesa()} style={{ width: '100%', padding: '10px', fontSize: '1em', fontWeight: 'bold', borderRadius: '6px' }}>ENTRAR</button>
+                                <input className="input-neon" type="text" placeholder="CÓDIGO (EX: MESA-A8)" value={codigoSala} onChange={e => setCodigoSala(e.target.value)} style={{ width: '100%', padding: '10px', fontSize: '0.9em', textAlign: 'center', textTransform: 'uppercase', boxSizing: 'border-box', background: 'rgba(0,0,0,0.5)', borderRadius: '6px', border: '1px solid rgba(255, 0, 60, 0.3)', color: '#ff8888' }} />
+                                <button className="btn-neon btn-red" onClick={() => entrarMesa()} style={{ width: '100%', padding: '10px', fontSize: '1em', fontWeight: 'bold', borderRadius: '6px' }}>ACESSAR PORTAL</button>
                             </div>
                         </div>
 
                     </div>
 
+                    {/* ⚙️ TERMINAL DE COMUNICAÇÃO (Os Frufruzinhos) */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '25px' }}>
+                        
+                        {/* Discord Button */}
+                        <a href="https://discord.gg/SEU-LINK-AQUI" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', background: 'rgba(88, 101, 242, 0.1)', border: '1px solid rgba(88, 101, 242, 0.5)', color: '#5865F2', padding: '12px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', transition: 'all 0.3s' }} className="hover-lift">
+                            <span style={{ fontSize: '1.3em' }}>👾</span> DISCORD DA GUILDA
+                        </a>
+
+                        {/* Configurações do Sistema */}
+                        <button onClick={() => alert("Módulo de Configurações do Sistema em desenvolvimento. A Membrana ainda está instável nesta área.")} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', background: 'rgba(170, 170, 170, 0.1)', border: '1px solid rgba(170, 170, 170, 0.5)', color: '#ccc', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s' }} className="hover-lift">
+                            <span style={{ fontSize: '1.3em' }}>⚙️</span> CONFIGURAÇÕES
+                        </button>
+
+                    </div>
+
                     {/* 💻 BANNER ELEGANTE DO APLICATIVO */}
-                    <a href="COLOQUE_AQUI_O_LINK_COMPARTILHADO_DO_DRIVE" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '15px 20px', background: 'linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', textDecoration: 'none', marginBottom: '25px', boxSizing: 'border-box', transition: 'all 0.3s' }} className="hover-lift">
+                    <a href="COLOQUE_AQUI_O_LINK_COMPARTILHADO_DO_DRIVE" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '15px 20px', background: 'linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '10px', textDecoration: 'none', marginBottom: '25px', boxSizing: 'border-box', transition: 'all 0.3s', boxShadow: '0 5px 15px rgba(0,0,0,0.5)' }} className="hover-lift">
                         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                            <span style={{ fontSize: '1.8em', color: '#fff' }}>🖥️</span>
+                            <span style={{ fontSize: '1.8em', color: '#fff', textShadow: '0 0 10px rgba(255,255,255,0.5)' }}>🖥️</span>
                             <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                <strong style={{ color: '#fff', fontSize: '1em', letterSpacing: '1px' }}>DESKTOP CLIENT</strong>
-                                <span style={{ color: '#aaa', fontSize: '0.8em' }}>Baixar Aplicativo para Windows (.exe)</span>
+                                <strong style={{ color: '#fff', fontSize: '1em', letterSpacing: '1px' }}>DESKTOP CLIENT V2</strong>
+                                <span style={{ color: '#aaa', fontSize: '0.8em' }}>A melhor experiência para Computador (.exe)</span>
                             </div>
                         </div>
-                        <span style={{ color: '#fff', background: 'rgba(255,255,255,0.1)', padding: '5px 12px', borderRadius: '15px', fontSize: '0.8em', fontWeight: 'bold' }}>DOWNLOAD</span>
+                        <span style={{ color: '#000', background: '#fff', padding: '5px 15px', borderRadius: '20px', fontSize: '0.8em', fontWeight: 'bold', boxShadow: '0 0 10px #fff' }}>DOWNLOAD</span>
                     </a>
 
                     {/* 🔥 BOTÃO DOURADO DE INSTALAÇÃO (PWA) 🔥 */}
@@ -243,13 +282,13 @@ export default function LobbyNeon() {
 
                     {/* 📂 GESTÃO DE HISTÓRICO (PASTAS) */}
                     {minhasMesas.length > 0 && (
-                        <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', overflow: 'hidden' }}>
-                            <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                                <button onClick={() => setAbaMesas('jogador')} style={{ flex: 1, padding: '15px', background: abaMesas === 'jogador' ? 'rgba(0, 136, 255, 0.1)' : 'transparent', border: 'none', borderBottom: abaMesas === 'jogador' ? '2px solid #0088ff' : '2px solid transparent', color: abaMesas === 'jogador' ? '#fff' : '#888', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                                    ⚔️ JOGANDO ({mesasJogador.length})
+                        <div style={{ background: 'rgba(0,0,0,0.4)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', overflow: 'hidden' }}>
+                            <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(0,0,0,0.5)' }}>
+                                <button onClick={() => setAbaMesas('jogador')} style={{ flex: 1, padding: '15px', background: abaMesas === 'jogador' ? 'rgba(0, 136, 255, 0.15)' : 'transparent', border: 'none', borderBottom: abaMesas === 'jogador' ? '2px solid #0088ff' : '2px solid transparent', color: abaMesas === 'jogador' ? '#fff' : '#888', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                                    ⚔️ HISTÓRICO DE AGENTE ({mesasJogador.length})
                                 </button>
-                                <button onClick={() => setAbaMesas('mestre')} style={{ flex: 1, padding: '15px', background: abaMesas === 'mestre' ? 'rgba(255, 204, 0, 0.1)' : 'transparent', border: 'none', borderBottom: abaMesas === 'mestre' ? '2px solid #ffcc00' : '2px solid transparent', color: abaMesas === 'mestre' ? '#fff' : '#888', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                                    👑 MESTRANDO ({mesasMestre.length})
+                                <button onClick={() => setAbaMesas('mestre')} style={{ flex: 1, padding: '15px', background: abaMesas === 'mestre' ? 'rgba(255, 204, 0, 0.15)' : 'transparent', border: 'none', borderBottom: abaMesas === 'mestre' ? '2px solid #ffcc00' : '2px solid transparent', color: abaMesas === 'mestre' ? '#fff' : '#888', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                                    👑 DOMÍNIOS ({mesasMestre.length})
                                 </button>
                             </div>
 
@@ -281,9 +320,13 @@ export default function LobbyNeon() {
                 </div>
             </div>
             
-            {/* Adiciona um pouco de magia ao Hover dos novos painéis */}
             <style>{`
                 .hover-lift:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+                @keyframes pulse { 0% { opacity: 0.6; box-shadow: 0 0 5px #0f0; } 50% { opacity: 1; box-shadow: 0 0 15px #0f0, 0 0 5px #0f0 inset; } 100% { opacity: 0.6; box-shadow: 0 0 5px #0f0; } }
+                ::-webkit-scrollbar { width: 8px; }
+                ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px; }
+                ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+                ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.4); }
             `}</style>
         </div>
     );
