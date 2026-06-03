@@ -5,7 +5,7 @@ import { getMaximo, getRawBase, getBuffs } from '../../core/attributes';
 import { getRank } from '../../core/prestige';
 
 // 🔥 AQUI IMPORTAMOS O SEU SISTEMA DE PODERES! (Ajuste o caminho se necessário)
-import PoderesPanel from '../Poderes/PoderesPanel';
+import PoderesPanel from '../poderes/PoderesPanel';
 
 // ==========================================
 // 🛡️ FUNÇÕES SEGURAS DA ENGINE E MATEMÁTICA PURA
