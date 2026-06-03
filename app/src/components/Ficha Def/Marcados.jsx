@@ -1,7 +1,42 @@
 import React, { useState } from 'react';
 import useStore from '../../stores/useStore';
 import { uploadImagem, salvarFichaSilencioso, salvarFirebaseImediato } from '../../services/firebase-sync';
-import { getMaximo } from '../../core/attributes';
+import { getMaximo, getRawBase, getBuffs } from '../../core/attributes';
+import { getPrestigioReal, getRank } from '../../core/prestige';
+
+// ==========================================
+// 🛡️ FUNÇÕES SEGURAS DA ENGINE CORE
+// ==========================================
+const safeGetRawBase = (f, k) => typeof getRawBase === 'function' ? getRawBase(f, k) : parseFloat(f[k]?.base) || 0;
+const safeGetPrestigioReal = (k, val) => typeof getPrestigioReal === 'function' ? getPrestigioReal(k, val) : Math.floor(val / 1000000);
+const safeGetRank = (prest, asc) => typeof getRank === 'function' ? getRank(prest, asc) : { l: 'F', c: '#ffffff', a: asc };
+const safeGetBuffs = (f, k, t) => typeof getBuffs === 'function' ? getBuffs(f, k, t) : {};
+
+const getBasePFor = (ficha, k) => {
+    if (k === 'status') {
+        let m = 0;
+        ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'].forEach(s => {
+            m += safeGetRawBase(ficha, s);
+        });
+        return Math.floor((m / 8) / 1000);
+    }
+    return safeGetPrestigioReal(k, safeGetRawBase(ficha, k));
+};
+
+const getEfetivoMFormas = (ficha, k) => {
+    const anchor = k === 'status' ? 'forca' : k;
+    let s = ficha[anchor] || {};
+    let b = safeGetBuffs(ficha, anchor, true);
+    let v = parseFloat(s.mFormas) || 1.0;
+    if (!b._hasBuff || !b._hasBuff.mformas) return v;
+    return (v === 1.0 ? 0 : v) + b.mformas;
+};
+
+const calcularPrestAtual = (ficha, attrKey, baseP) => {
+    const mFormas = getEfetivoMFormas(ficha, attrKey);
+    const multForma = mFormas >= 10 ? (mFormas / 10) : (mFormas > 1 ? mFormas : 1);
+    return Math.floor(baseP * multForma);
+};
 
 // ==========================================
 // 🖋️ INPUTS E BARRAS MÁGICAS (ESTILO PAPEL)
@@ -58,40 +93,25 @@ const RadarDesenhado = ({ ficha, isAtual, corTinta = "#000000" }) => {
     ];
     const angulos = Array.from({length: 6}).map((_, i) => Math.PI * 2 * i / 6 - Math.PI / 2);
     
-    const calcularPrestigioSimplificado = (attrKey) => {
-        let baseP = 0;
-        try {
-            if (attrKey === 'status') {
-                let m = 0;
-                ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'].forEach(k => { m += (parseFloat(ficha[k]?.base) || 0); });
-                baseP = Math.floor((m / 8) / 1000);
-            } else {
-                const raw = parseFloat(ficha[attrKey]?.base) || 0;
-                const mults = { vida: 1000000, mana: 10000000, aura: 10000000, chakra: 10000000, corpo: 10000000 };
-                baseP = Math.floor(raw / (mults[attrKey] || 1));
-            }
-        } catch(e) {}
-        
-        let prest = baseP;
-        if (isAtual) {
-            const anchor = attrKey === 'status' ? 'forca' : attrKey;
-            const mFormas = parseFloat(ficha[anchor]?.mFormas) || 1.0;
-            const multForma = mFormas >= 10 ? (mFormas / 10) : (mFormas > 1 ? mFormas : 1);
-            prest = Math.floor(baseP * multForma);
-        }
-        return prest;
-    };
+    const ascensao = ficha?.ascensaoBase || 1;
+    const rankInfos = [];
 
-    const valores = eixos.map(e => calcularPrestigioSimplificado(e.key));
-    const limiteRadar = 100; // Define que 100 de prestígio toca na borda do gráfico
-    
-    const dataPoints = valores.map((v, i) => {
-        // Estica o gráfico em direção às bordas (Mínimo de 5% para nunca desaparecer do centro)
-        const frac = Math.min(Math.max(v / limiteRadar, 0.05), 1);
+    const dataPoints = eixos.map((e, i) => {
+        const baseP = getBasePFor(ficha, e.key);
+        const pAtual = isAtual ? calcularPrestAtual(ficha, e.key, baseP) : baseP;
+        
+        // Determina a Letra e a Cor (Ex: [D] Vermelho)
+        const rank = safeGetRank(pAtual, ascensao);
+        rankInfos.push(rank);
+
+        // Estica o gráfico até ao limite de 100
+        let valNorm = pAtual || 0;
+        if (valNorm >= 100) { valNorm = valNorm % 100; if (valNorm === 0 && pAtual > 0) valNorm = 100; }
+        const frac = Math.min(Math.max(valNorm / 100, 0.05), 1);
+        
         return `${100 + 75 * frac * Math.cos(angulos[i])},${100 + 75 * frac * Math.sin(angulos[i])}`;
     }).join(' ');
 
-    // Hex para RGBA para fazer o fundo transparente baseado na cor da tinta
     const hexToRgba = (hex, alpha) => {
         const r = parseInt(hex.slice(1, 3), 16) || 0;
         const g = parseInt(hex.slice(3, 5), 16) || 0;
@@ -100,13 +120,25 @@ const RadarDesenhado = ({ ficha, isAtual, corTinta = "#000000" }) => {
     };
 
     return (
-        <svg viewBox="0 0 200 200" style={{ width: '100%', maxWidth: '280px', height: 'auto', overflow: 'visible', dropShadow: '2px 2px 2px rgba(0,0,0,0.2)' }}>
-            {[0.33, 0.66, 1.0].map((scale, i) => <polygon key={i} fill="none" stroke={hexToRgba(corTinta, 0.2)} strokeWidth="1" strokeDasharray="3" points={angulos.map(a => `${100 + 75 * scale * Math.cos(a)},${100 + 75 * scale * Math.sin(a)}`).join(' ')} />)}
-            {angulos.map((a, i) => <line key={i} x1="100" y1="100" x2={100 + 75 * Math.cos(a)} y2={100 + 75 * Math.sin(a)} stroke={hexToRgba(corTinta, 0.2)} strokeWidth="1" strokeDasharray="3" />)}
-            
-            <polygon points={dataPoints} fill={hexToRgba(corTinta, isAtual ? 0.3 : 0.1)} stroke={corTinta} strokeWidth="2" strokeLinejoin="round" style={{ transition: 'all 0.5s ease-out' }} />
-            
-            {eixos.map((e, i) => <text key={i} x={100 + 95 * Math.cos(angulos[i])} y={100 + 95 * Math.sin(angulos[i])} textAnchor="middle" dominantBaseline="central" fill={corTinta} fontSize="11" fontWeight="bold" style={{ fontStyle: 'italic' }}>{e.label}</text>)}
+        <svg viewBox="0 0 240 240" style={{ width: '100%', maxWidth: '340px', height: 'auto', overflow: 'visible', dropShadow: '2px 2px 2px rgba(0,0,0,0.2)' }}>
+            <g transform="translate(20, 20)">
+                {/* Grelha do Radar */}
+                {[0.33, 0.66, 1.0].map((scale, i) => <polygon key={i} fill="none" stroke={hexToRgba(corTinta, 0.2)} strokeWidth="1" strokeDasharray="3" points={angulos.map(a => `${100 + 75 * scale * Math.cos(a)},${100 + 75 * scale * Math.sin(a)}`).join(' ')} />)}
+                {angulos.map((a, i) => <line key={i} x1="100" y1="100" x2={100 + 75 * Math.cos(a)} y2={100 + 75 * Math.sin(a)} stroke={hexToRgba(corTinta, 0.2)} strokeWidth="1" strokeDasharray="3" />)}
+                
+                {/* Polígono de Poder Esticado */}
+                <polygon points={dataPoints} fill={hexToRgba(corTinta, isAtual ? 0.3 : 0.1)} stroke={corTinta} strokeWidth="2" strokeLinejoin="round" style={{ transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)' }} />
+                
+                {/* Rótulos Ascensão Dinâmicos e Brilhantes */}
+                {eixos.map((e, i) => {
+                    const rk = rankInfos[i];
+                    return (
+                        <text key={i} x={100 + 105 * Math.cos(angulos[i])} y={100 + 105 * Math.sin(angulos[i])} textAnchor="middle" dominantBaseline="central" fill={rk.c} fontSize="11" fontWeight="bold" style={{ textShadow: `0 0 5px ${rk.c}`, fontStyle: 'italic', transition: 'fill 0.3s' }}>
+                            [{rk.l}] A{rk.a} {e.label}
+                        </text>
+                    );
+                })}
+            </g>
         </svg>
     );
 };
@@ -125,7 +157,7 @@ export default function MarcadosPanel() {
     const [textoImport, setTextoImport] = useState('');
     const [modalEstilo, setModalEstilo] = useState(false);
     const [paginaAtual, setPaginaAtual] = useState(1);
-    const [salvando, setSalvando] = useState(false); // 💾 ESTADO DO BOTÃO DE SALVAR
+    const [salvando, setSalvando] = useState(false);
 
     if (!minhaFicha) return <div style={{ color: '#000', padding: 20, fontFamily: 'cursive' }}>Abrindo o Diário...</div>;
 
@@ -151,7 +183,6 @@ export default function MarcadosPanel() {
     const getLabel = (key, fallback) => minhaFicha.labels?.[key] !== undefined ? minhaFicha.labels[key] : fallback;
     const setLabel = (key, val) => salvar(`labels.${key}`, val);
 
-    // Variáveis de Estilo Salvas na Ficha
     const corFundo = minhaFicha.estetica?.diarioCor || '#bba9d8';
     const corTintaRadar = minhaFicha.estetica?.corTintaRadar || '#000000';
     const fonteDiario = minhaFicha.estetica?.diarioFonte || '"Comic Sans MS", "Chalkboard SE", "Marker Felt", cursive';
@@ -181,7 +212,7 @@ export default function MarcadosPanel() {
         const pMana = getP('mana'), pAura = getP('aura');
         
         let statusBase = 0;
-        ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'].forEach(s => statusBase += (parseFloat(minhaFicha[s]?.base)||0));
+        ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'].forEach(s => statusBase += safeGetRawBase(minhaFicha, s));
         const pStatus = calcularEscala(statusBase).pVit;
         
         const mPV = parseFloat(minhaFicha.multiplicadorVida) || 1;
@@ -244,16 +275,13 @@ export default function MarcadosPanel() {
             boxShadow: 'inset 0 0 40px rgba(0,0,0,0.1), 0 10px 30px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column'
         }}>
             
-            {/* 📌 CONTROLES SUPERIORES (POST-ITS) */}
+            {/* 📌 CONTROLES SUPERIORES */}
             <div style={{ position: 'absolute', top: '-15px', right: '30px', zIndex: 10, display: 'flex', gap: '10px' }}>
-                
-                {/* 💾 Botão Salvar Global */}
                 <div style={{ position: 'relative' }}>
                     <button onClick={handleSalvarTudo} style={{ background: salvando ? '#a5d6a7' : '#4caf50', color: '#fff', border: 'none', padding: '10px 20px', fontFamily: 'inherit', fontWeight: 'bold', fontSize: '1.1em', cursor: 'pointer', boxShadow: '3px 3px 10px rgba(0,0,0,0.2)', transform: 'rotate(1deg)' }}>
                         {salvando ? '✅ Guardado!' : '💾 Guardar Diário'}
                     </button>
                 </div>
-
                 <div style={{ position: 'relative' }}>
                     <button onClick={() => { setModalEstilo(!modalEstilo); setModalImport(false); }} style={{ background: '#ff94c2', border: 'none', padding: '10px 20px', fontFamily: 'inherit', fontWeight: 'bold', fontSize: '1.1em', cursor: 'pointer', boxShadow: '3px 3px 10px rgba(0,0,0,0.2)', transform: 'rotate(-2deg)' }}>🎨 Estilo</button>
                     {modalEstilo && (
@@ -299,6 +327,9 @@ export default function MarcadosPanel() {
                             <h2 style={{ fontSize: '2.2em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 20px 0', display: 'flex', alignItems: 'center' }}>
                                 <LabelMagico valor={getLabel('tituloLv', '- Limite quebrado - LV')} onChange={(v) => setLabel('tituloLv', v)} />
                                 <CampoMagico valor={minhaFicha.bio?.nivel} onChange={(v) => salvar('bio.nivel', v)} styleExtra={{ width: '60px', borderBottom: 'none', marginLeft: '10px' }} />
+                                <span style={{ marginLeft: '15px', borderLeft: '2px solid rgba(0,0,0,0.5)', paddingLeft: '15px' }}>
+                                    ASC <CampoMagico valor={minhaFicha.ascensaoBase || 1} onChange={(v) => salvar('ascensaoBase', v)} styleExtra={{ width: '50px', borderBottom: 'none' }} type="number" />
+                                </span>
                             </h2>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '1.2em' }}>
@@ -316,7 +347,7 @@ export default function MarcadosPanel() {
                                     <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} disabled={uploadingImg} />
                                     {uploadingImg ? <div style={{ width: '320px', height: '480px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed #000' }}>✍️...</div> : minhaFicha.avatar?.base ? <img src={minhaFicha.avatar.base} alt="Avatar" style={{ width: '320px', height: 'auto', objectFit: 'cover', border: '2px solid rgba(0,0,0,0.8)', boxShadow: '8px 8px 0px rgba(0,0,0,0.2)' }} /> : <div style={{ width: '320px', height: '480px', border: '2px dashed #000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', background: 'rgba(255,255,255,0.1)' }}>Colar Fotografia Aqui 📸</div>}
                                 </label>
-                                {minhaFicha.avatar?.base && <button onClick={() => {if(window.confirm('Apagar?')) updateFicha(f => {f.avatar.base = ""}); salvarFichaSilencioso();}} style={{ background: 'transparent', border: '1px dashed #ff003c', color: '#ff003c', marginTop: '5px', padding: '5px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'inherit' }}>🗑️ Remover Foto</button>}
+                                {minhaFicha.avatar?.base && <button onClick={() => {if(window.confirm('Apagar?')) updateFicha(f => {f.avatar.base = ""}); salvarFichaSilencioso();}} style={{ background: 'transparent', border: '1px dashed #ff003c', color: '#ff003c', marginTop: '10px', padding: '5px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'inherit' }}>🗑️ Remover Foto</button>}
                             </div>
                         </div>
 
