@@ -11,7 +11,11 @@ const safeGetPrestigioReal = (k, val) => typeof getPrestigioReal === 'function' 
 const safeGetRank = (prest, asc) => typeof getRank === 'function' ? getRank(prest, asc) : { l: 'F', c: '#ffffff', a: asc };
 const safeGetBuffs = (f, k, t) => typeof getBuffs === 'function' ? getBuffs(f, k, t) : {};
 
+// 🔥 ATUALIZADO: Agora obedece à nova Tabela de Divisores/Overrides!
 const getBasePFor = (ficha, k) => {
+    if (ficha?.overridePrestigio?.[k] !== undefined && ficha.overridePrestigio[k] !== null && ficha.overridePrestigio[k] !== '') {
+        return Number(ficha.overridePrestigio[k]);
+    }
     if (k === 'status') {
         let m = 0;
         ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'].forEach(s => {
@@ -148,24 +152,23 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
 
     if (!npcData) return <div style={{ color: '#fff', padding: 20 }}>Conectando à Entidade...</div>;
 
-    // 🔥 O SALVAMENTO DO NPC: Clona o objeto e envia para o Mestre guardar na Firebase
     const salvar = (caminho, valor) => {
-        const novoNpc = JSON.parse(JSON.stringify(npcData)); // Deep Clone seguro
+        const valFinal = (valor === undefined || isNaN(valor) && typeof valor === 'number') ? null : valor;
+        const novoNpc = JSON.parse(JSON.stringify(npcData)); // Deep Clone
         const chaves = caminho.split('.');
         let atual = novoNpc;
         for (let i = 0; i < chaves.length - 1; i++) {
             if (typeof atual[chaves[i]] !== 'object' || atual[chaves[i]] === null) atual[chaves[i]] = {};
             atual = atual[chaves[i]];
         }
-        atual[chaves[chaves.length - 1]] = valor;
+        atual[chaves[chaves.length - 1]] = valFinal;
         onSaveNpc(novoNpc);
     };
 
     const getLabel = (key, fallback) => npcData.labels?.[key] !== undefined ? npcData.labels[key] : fallback;
     const setLabel = (key, val) => salvar(`labels.${key}`, val);
 
-    // Estilos únicos para este NPC!
-    const corFundo = npcData.estetica?.diarioCor || '#ffe6cc'; // Pêssego / Amarelado por Padrão para NPCs
+    const corFundo = npcData.estetica?.diarioCor || '#ffe6cc'; 
     const corTintaRadar = npcData.estetica?.corTintaRadar || '#000000';
     const fonteDiario = npcData.estetica?.diarioFonte || '"Comic Sans MS", "Chalkboard SE", "Marker Felt", cursive';
 
@@ -276,7 +279,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
             width: '100%', minHeight: '85vh', background: corFundo, color: '#000', fontFamily: fonteDiario, 
             padding: '40px 40px 80px 40px', borderRadius: '12px', position: 'relative', transition: 'background 0.5s ease',
             boxShadow: 'inset 0 0 40px rgba(0,0,0,0.1), 0 10px 30px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column',
-            marginTop: '20px' // Espaço para não colar no topo do MestrePanel
+            marginTop: '20px'
         }}>
             
             <div style={{ position: 'absolute', top: '-15px', right: '30px', zIndex: 10, display: 'flex', gap: '10px' }}>
@@ -313,9 +316,6 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                             <h2 style={{ fontSize: '2.2em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 20px 0', display: 'flex', alignItems: 'center' }}>
                                 <LabelMagicoNPC valor={getLabel('tituloLv', '- Limite quebrado - LV')} onChange={(v) => setLabel('tituloLv', v)} />
                                 <CampoMagicoNPC valor={npcData.bio?.nivel} onChange={(v) => salvar('bio.nivel', v)} styleExtra={{ width: '60px', borderBottom: 'none', marginLeft: '10px' }} isNumber={true} type="number" />
-                                <span style={{ marginLeft: '15px', borderLeft: '2px solid rgba(0,0,0,0.5)', paddingLeft: '15px' }}>
-                                    ASC <CampoMagicoNPC valor={npcData.ascensaoBase || 1} onChange={(v) => salvar('ascensaoBase', v)} styleExtra={{ width: '50px', borderBottom: 'none' }} type="number" isNumber={true} />
-                                </span>
                             </h2>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '1.2em' }}>
@@ -433,6 +433,50 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                 <LinhaAtributoCru labelKey="lblCar" fallbackLabel="Carisma" attrKey="carisma" isAtual={true} />
                                 <LinhaAtributoCru labelKey="lblSta" fallbackLabel="Stamina" attrKey="stamina" isAtual={true} />
                                 <LinhaAtributoCru labelKey="lblCon" fallbackLabel="Constituição" attrKey="constituicao" isAtual={true} />
+                            </div>
+                        </div>
+
+                        {/* 🔥 TABELA DE DIVISORES / OVERRIDES PARA O NPC */}
+                        <div className="fade-in" style={{ width: '100%', marginTop: '30px', background: 'rgba(0,0,0,0.03)', padding: '20px', borderRadius: '15px', border: '1px dashed rgba(0,0,0,0.2)' }}>
+                            <h2 style={{ fontSize: '1.8em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 20px 0', textAlign: 'center' }}>Mecânicas de Ascensão e Divisores</h2>
+
+                            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
+                                <div style={{ background: 'rgba(0,0,0,0.8)', color: '#fff', padding: '10px 20px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '15px', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
+                                    <span style={{ fontWeight: 'bold', fontSize: '1.1em' }}>Ascensão Base (Nível):</span>
+                                    <CampoMagicoNPC valor={npcData.ascensaoBase || 1} onChange={(v) => salvar('ascensaoBase', v)} type="number" isNumber={true} styleExtra={{ width: '60px', textAlign: 'center', color: '#fff', borderBottom: '1px dashed #fff', fontSize: '1.2em' }} />
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
+                                {['vida', 'mana', 'aura', 'chakra', 'corpo', 'status'].map(k => {
+                                    const label = k.toUpperCase();
+                                    const calculatedP = getBasePFor({ ...npcData, overridePrestigio: { ...npcData.overridePrestigio, [k]: undefined } }, k);
+                                    const overrideP = npcData.overridePrestigio?.[k];
+                                    const displayP = overrideP !== undefined && overrideP !== null && overrideP !== '' ? overrideP : calculatedP;
+                                    const divisor = npcData.divisores?.[k] || 1;
+
+                                    return (
+                                        <div key={k} style={{ background: 'rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.2)', borderRadius: '8px', padding: '10px', display: 'flex', flexDirection: 'column', gap: '8px', boxShadow: 'inset 0 0 10px rgba(0,0,0,0.05)' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ fontWeight: 'bold', color: '#000', fontSize: '1.1em' }}>{label}</span>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.9em' }}>
+                                                    <span style={{ fontStyle: 'italic', fontWeight: 'bold' }}>Divisor:</span>
+                                                    <CampoMagicoNPC valor={divisor} onChange={v => salvar(`divisores.${k}`, v)} type="number" isNumber={true} styleExtra={{ width: '50px', textAlign: 'center', border: '1px solid rgba(0,0,0,0.3)', borderRadius: '4px', background: 'rgba(255,255,255,0.5)' }} />
+                                                </div>
+                                            </div>
+                                            <div style={{ width: '100%', background: 'rgba(0,0,0,0.85)', borderRadius: '6px', padding: '5px', boxShadow: '0 4px 10px rgba(0,0,0,0.3)' }}>
+                                                <CampoMagicoNPC 
+                                                    valor={displayP} 
+                                                    onChange={v => salvar(`overridePrestigio.${k}`, v)} 
+                                                    type="number" 
+                                                    isNumber={true} 
+                                                    placeholder={calculatedP} 
+                                                    styleExtra={{ width: '100%', textAlign: 'center', color: '#fff', borderBottom: 'none', fontSize: '1.4em', fontWeight: 'bold' }} 
+                                                />
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     </>

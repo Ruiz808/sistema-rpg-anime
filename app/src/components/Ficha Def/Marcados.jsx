@@ -12,7 +12,13 @@ const safeGetPrestigioReal = (k, val) => typeof getPrestigioReal === 'function' 
 const safeGetRank = (prest, asc) => typeof getRank === 'function' ? getRank(prest, asc) : { l: 'F', c: '#ffffff', a: asc };
 const safeGetBuffs = (f, k, t) => typeof getBuffs === 'function' ? getBuffs(f, k, t) : {};
 
+// 🔥 ATUALIZADO: Agora obedece à nova Tabela de Divisores/Overrides!
 const getBasePFor = (ficha, k) => {
+    // Se o Mestre/Jogador forçou um valor na tabela de baixo, usamos esse valor absoluto!
+    if (ficha?.overridePrestigio?.[k] !== undefined && ficha.overridePrestigio[k] !== null && ficha.overridePrestigio[k] !== '') {
+        return Number(ficha.overridePrestigio[k]);
+    }
+
     if (k === 'status') {
         let m = 0;
         ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'].forEach(s => {
@@ -44,9 +50,9 @@ const calcularPrestAtual = (ficha, attrKey, baseP) => {
 const CampoMagico = ({ valor, onChange, placeholder, styleExtra = {}, type = "text", isNumber = false }) => {
     const handleChange = (e) => {
         let val = e.target.value;
-        if (isNumber) {
+        if (isNumber && val !== '') {
             val = Number(val);
-            if (isNaN(val)) val = 0; // Impede que "NaN" seja enviado para a Firebase
+            if (isNaN(val)) val = 0;
         }
         onChange(val);
     };
@@ -55,7 +61,7 @@ const CampoMagico = ({ valor, onChange, placeholder, styleExtra = {}, type = "te
             type={type} 
             value={valor !== undefined && valor !== null ? valor : ''} 
             onChange={handleChange}
-            onBlur={() => { if (typeof salvarFirebaseImediato === 'function') salvarFirebaseImediato(); else salvarFichaSilencioso(); }} // 🔥 O SEGREDO DO SALVAMENTO PERFEITO!
+            onBlur={() => { if (typeof salvarFirebaseImediato === 'function') salvarFirebaseImediato(); else salvarFichaSilencioso(); }}
             placeholder={placeholder}
             style={{ background: 'transparent', border: 'none', borderBottom: '1px dashed rgba(0,0,0,0.3)', fontFamily: 'inherit', fontSize: 'inherit', color: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', outline: 'none', padding: '0 5px', width: '100px', ...styleExtra }} 
         />
@@ -144,9 +150,7 @@ const RadarDesenhado = ({ ficha, isAtual, corTinta = "#000000" }) => {
             <g transform="translate(20, 20)">
                 {[0.33, 0.66, 1.0].map((scale, i) => <polygon key={i} fill="none" stroke={hexToRgba(corTinta, 0.2)} strokeWidth="1" strokeDasharray="3" points={angulos.map(a => `${100 + 75 * scale * Math.cos(a)},${100 + 75 * scale * Math.sin(a)}`).join(' ')} />)}
                 {angulos.map((a, i) => <line key={i} x1="100" y1="100" x2={100 + 75 * Math.cos(a)} y2={100 + 75 * Math.sin(a)} stroke={hexToRgba(corTinta, 0.2)} strokeWidth="1" strokeDasharray="3" />)}
-                
                 <polygon points={dataPoints} fill={hexToRgba(corTinta, isAtual ? 0.3 : 0.1)} stroke={corTinta} strokeWidth="2" strokeLinejoin="round" style={{ transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)' }} />
-                
                 {eixos.map((e, i) => {
                     const rk = rankInfos[i];
                     return (
@@ -160,7 +164,6 @@ const RadarDesenhado = ({ ficha, isAtual, corTinta = "#000000" }) => {
     );
 };
 
-// Variável Global Segura para o Temporizador de Cores
 let timeoutSaveCor = null;
 
 // ==========================================
@@ -181,23 +184,19 @@ export default function MarcadosPanel() {
 
     if (!minhaFicha) return <div style={{ color: '#000', padding: 20, fontFamily: 'cursive' }}>Abrindo o Diário...</div>;
 
-    // 🔥 O "salvar" agora limpa NaNs e Undefineds antes de escrever!
     const salvar = (caminho, valor) => {
         const valFinal = (valor === undefined || isNaN(valor) && typeof valor === 'number') ? null : valor;
         updateFicha(f => {
             const chaves = caminho.split('.');
             let atual = f;
             for (let i = 0; i < chaves.length - 1; i++) {
-                if (typeof atual[chaves[i]] !== 'object' || atual[chaves[i]] === null) {
-                    atual[chaves[i]] = {};
-                }
+                if (typeof atual[chaves[i]] !== 'object' || atual[chaves[i]] === null) atual[chaves[i]] = {};
                 atual = atual[chaves[i]];
             }
             atual[chaves[chaves.length - 1]] = valFinal;
         });
     };
 
-    // 🔥 O Feitiço Infalível de Salvar Cores sem Travar o Firebase
     const salvarCor = (caminho, valor) => {
         salvar(caminho, valor);
         if (timeoutSaveCor) clearTimeout(timeoutSaveCor);
@@ -240,37 +239,30 @@ export default function MarcadosPanel() {
         alert("O seu diário foi sincronizado!");
     };
 
-    // 🧮 A MATEMÁTICA PURA DA ASCENSÃO BLINDADA
-const getSupremas = () => {
-        // Busca os pontos de prestígio reais usando a sua Engine
-        const bV = getBasePFor(minhaFicha, 'vida') || 0;
-        const bCh = getBasePFor(minhaFicha, 'chakra') || 0;
-        const bC = getBasePFor(minhaFicha, 'corpo') || 0;
-        const mPV = parseFloat(minhaFicha.multiplicadorVida) || 1;
+    const getSupremas = () => {
+        const getP = (k) => { let mx = 0; try { mx = getMaximo(minhaFicha, k); } catch(e) { mx = minhaFicha[k]?.base || 0; } return calcularEscala(mx, k).pVit || 0; };
+        const pVida = getP('vida'), pChakra = getP('chakra'), pCorpo = getP('corpo');
+        const pMana = getP('mana'), pAura = getP('aura');
         
-        const bM = getBasePFor(minhaFicha, 'mana') || 0;
-        const bA = getBasePFor(minhaFicha, 'aura') || 0;
-        const bS = getBasePFor(minhaFicha, 'status') || 0;
+        let statusBase = 0;
+        ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'].forEach(s => { statusBase += safeGetRawBase(minhaFicha, s); });
+        const pStatus = calcularEscala(statusBase, 'status').pVit || 0;
+        
+        const mPV = parseFloat(minhaFicha.multiplicadorVida) || 1;
         const mPM = parseFloat(minhaFicha.multiplicadorMorte) || 1;
         
-        // 🔮 Ascensão: +100 Pontos por cada nível acima de 1
         const ascensao = parseInt(minhaFicha.ascensaoBase) || 1;
         const bonusAscensao = (ascensao - 1) * 100;
         
-        const pvCalculado = Math.floor(((bV + bCh + bC) / 3) * mPV) + bonusAscensao;
-        const pmCalculado = Math.floor(((bM + bA + bS) / 3) * mPM) + bonusAscensao;
+        const pvCalculado = Math.floor(((pVida + pChakra + pCorpo) / 3) * mPV) + bonusAscensao;
+        const pmCalculado = Math.floor(((pMana + pAura + pStatus) / 3) * mPM) + bonusAscensao;
 
-        return { 
-            pvMax: pvCalculado || 1, 
-            pmMax: pmCalculado || 1 
-        };
+        return { pvMax: isNaN(pvCalculado) ? 1 : pvCalculado, pmMax: isNaN(pmCalculado) ? 1 : pmCalculado };
     };
     const { pvMax, pmMax } = getSupremas();
 
-    // 💖 DESCANSAR: ENCHE TUDO ATÉ AO NOVO MÁXIMO E FORÇA GRAVAÇÃO
     const handleRegenerarTudo = () => {
         if (!window.confirm('Recuperar toda a Vida, Energias, Pontos e Ações de Turno?')) return;
-        
         updateFicha(f => {
             ['vida', 'mana', 'aura', 'chakra', 'corpo'].forEach(k => {
                 let mx = 0;
@@ -296,21 +288,15 @@ const getSupremas = () => {
 
     const LinhaVital = ({ labelKey, fallbackLabel, vitalKey, overrideMax, subItens, corBarra, corTextoBarra = '#fff' }) => {
         const [aberto, setAberta] = useState(false);
-        
         let rawMaximo = overrideMax !== undefined ? overrideMax : 0;
-        if (overrideMax === undefined) {
-            try { rawMaximo = getMaximo(minhaFicha, vitalKey); } catch(e) { rawMaximo = minhaFicha[vitalKey]?.base || 0; }
-        }
+        if (overrideMax === undefined) { try { rawMaximo = getMaximo(minhaFicha, vitalKey); } catch(e) { rawMaximo = minhaFicha[vitalKey]?.base || 0; } }
         if (isNaN(rawMaximo)) rawMaximo = 0;
         
         const { mxDisplay, pVit } = calcularEscala(rawMaximo, vitalKey);
         
         let atual = minhaFicha[vitalKey]?.atual;
-        if (atual === undefined || atual === null || atual === '') atual = mxDisplay;
-        else atual = Number(atual);
+        if (atual === undefined || atual === null || atual === '') atual = mxDisplay; else atual = Number(atual);
         if (isNaN(atual)) atual = mxDisplay;
-
-        // Limita visualmente para não quebrar o layout
         if (atual > mxDisplay) atual = mxDisplay;
 
         return (
@@ -319,9 +305,7 @@ const getSupremas = () => {
                     {subItens && <span onClick={() => setAberta(!aberto)} style={{ cursor: 'pointer', width: '20px', display: 'inline-block', userSelect: 'none', fontWeight: 'bold' }}>{aberto ? 'v ' : '> '}</span>}
                     <LabelMagico valor={getLabel(labelKey, fallbackLabel)} onChange={(v) => setLabel(labelKey, v)} />
                 </div>
-                
                 <BarraVital atual={atual} maximo={mxDisplay} pVit={pVit} cor={corBarra} corTexto={corTextoBarra} onChangeAtual={(v) => salvar(`${vitalKey}.atual`, v)} />
-                
                 {aberto && subItens && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginLeft: '35px', marginTop: '12px' }}>
                         {subItens.map(sub => (
@@ -343,7 +327,6 @@ const getSupremas = () => {
         let maxVal = 0;
         try { maxVal = getMaximo(minhaFicha, attrKey); } catch(e) { maxVal = baseVal; }
         if (isNaN(maxVal)) maxVal = 0;
-
         return (
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted rgba(0,0,0,0.2)', padding: '6px 0', fontSize: '1.1em' }}>
                 <LabelMagico valor={getLabel(labelKey, fallbackLabel)} onChange={(v) => setLabel(labelKey, v)} />
@@ -411,9 +394,6 @@ const getSupremas = () => {
                             <h2 style={{ fontSize: '2.2em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 20px 0', display: 'flex', alignItems: 'center' }}>
                                 <LabelMagico valor={getLabel('tituloLv', '- Limite quebrado - LV')} onChange={(v) => setLabel('tituloLv', v)} />
                                 <CampoMagico valor={minhaFicha.bio?.nivel} onChange={(v) => salvar('bio.nivel', v)} styleExtra={{ width: '60px', borderBottom: 'none', marginLeft: '10px' }} isNumber={true} type="number" />
-                                <span style={{ marginLeft: '15px', borderLeft: '2px solid rgba(0,0,0,0.5)', paddingLeft: '15px' }}>
-                                    ASC <CampoMagico valor={minhaFicha.ascensaoBase || 1} onChange={(v) => salvar('ascensaoBase', v)} styleExtra={{ width: '50px', borderBottom: 'none' }} type="number" isNumber={true} />
-                                </span>
                             </h2>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '1.2em' }}>
@@ -436,7 +416,6 @@ const getSupremas = () => {
                         </div>
 
                         <div className="fade-in" style={{ flex: '1 1 450px', display: 'flex', flexDirection: 'column' }}>
-                            
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '0 0 10px 5px' }}>
                                 <h2 style={{ fontSize: '2em', fontStyle: 'italic', fontWeight: 'bold', margin: 0, display: 'flex' }}>
                                     <LabelMagico valor={getLabel('tituloBase', '> STATUS PRINCIPAIS')} onChange={(v) => setLabel('tituloBase', v)} />
@@ -544,6 +523,53 @@ const getSupremas = () => {
                                 <LinhaAtributoCru labelKey="lblCar" fallbackLabel="Carisma" attrKey="carisma" isAtual={true} />
                                 <LinhaAtributoCru labelKey="lblSta" fallbackLabel="Stamina" attrKey="stamina" isAtual={true} />
                                 <LinhaAtributoCru labelKey="lblCon" fallbackLabel="Constituição" attrKey="constituicao" isAtual={true} />
+                            </div>
+                        </div>
+
+                        {/* 🔥 NOVA TABELA DE ASCENSÃO E DIVISORES */}
+                        <div className="fade-in" style={{ width: '100%', marginTop: '30px', background: 'rgba(0,0,0,0.03)', padding: '20px', borderRadius: '15px', border: '1px dashed rgba(0,0,0,0.2)' }}>
+                            <h2 style={{ fontSize: '1.8em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 20px 0', textAlign: 'center' }}>Mecânicas de Ascensão e Divisores</h2>
+
+                            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
+                                <div style={{ background: 'rgba(0,0,0,0.8)', color: '#fff', padding: '10px 20px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '15px', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
+                                    <span style={{ fontWeight: 'bold', fontSize: '1.1em' }}>Ascensão Base (Nível):</span>
+                                    <CampoMagico valor={minhaFicha.ascensaoBase || 1} onChange={(v) => salvar('ascensaoBase', v)} type="number" isNumber={true} styleExtra={{ width: '60px', textAlign: 'center', color: '#fff', borderBottom: '1px dashed #fff', fontSize: '1.2em' }} />
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
+                                {['vida', 'mana', 'aura', 'chakra', 'corpo', 'status'].map(k => {
+                                    const label = k.toUpperCase();
+                                    
+                                    // Mostra o valor calculado a menos que o Mestre tenha digitado um override
+                                    const calculatedP = getBasePFor({ ...minhaFicha, overridePrestigio: { ...minhaFicha.overridePrestigio, [k]: undefined } }, k);
+                                    const overrideP = minhaFicha.overridePrestigio?.[k];
+                                    const displayP = overrideP !== undefined && overrideP !== null && overrideP !== '' ? overrideP : calculatedP;
+                                    const divisor = minhaFicha.divisores?.[k] || 1;
+
+                                    return (
+                                        <div key={k} style={{ background: 'rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.2)', borderRadius: '8px', padding: '10px', display: 'flex', flexDirection: 'column', gap: '8px', boxShadow: 'inset 0 0 10px rgba(0,0,0,0.05)' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ fontWeight: 'bold', color: '#000', fontSize: '1.1em' }}>{label}</span>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.9em' }}>
+                                                    <span style={{ fontStyle: 'italic', fontWeight: 'bold' }}>Divisor:</span>
+                                                    <CampoMagico valor={divisor} onChange={v => salvar(`divisores.${k}`, v)} type="number" isNumber={true} styleExtra={{ width: '50px', textAlign: 'center', border: '1px solid rgba(0,0,0,0.3)', borderRadius: '4px', background: 'rgba(255,255,255,0.5)' }} />
+                                                </div>
+                                            </div>
+                                            {/* CAIXA GIGANTE DO PRESTÍGIO (Editável!) */}
+                                            <div style={{ width: '100%', background: 'rgba(0,0,0,0.85)', borderRadius: '6px', padding: '5px', boxShadow: '0 4px 10px rgba(0,0,0,0.3)' }}>
+                                                <CampoMagico 
+                                                    valor={displayP} 
+                                                    onChange={v => salvar(`overridePrestigio.${k}`, v)} 
+                                                    type="number" 
+                                                    isNumber={true} 
+                                                    placeholder={calculatedP} 
+                                                    styleExtra={{ width: '100%', textAlign: 'center', color: '#fff', borderBottom: 'none', fontSize: '1.4em', fontWeight: 'bold' }} 
+                                                />
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     </>
