@@ -41,14 +41,25 @@ const calcularPrestAtual = (ficha, attrKey, baseP) => {
 // ==========================================
 // 🖋️ INPUTS E BARRAS MÁGICAS (ESTILO PAPEL)
 // ==========================================
-const CampoMagico = ({ valor, onChange, placeholder, styleExtra = {}, type = "text" }) => (
-    <input type={type} value={valor || ''} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
-        style={{ background: 'transparent', border: 'none', borderBottom: '1px dashed rgba(0,0,0,0.3)', fontFamily: 'inherit', fontSize: 'inherit', color: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', outline: 'none', padding: '0 5px', width: '100px', ...styleExtra }} 
-    />
-);
+const CampoMagico = ({ valor, onChange, placeholder, styleExtra = {}, type = "text", isNumber = false }) => {
+    const handleChange = (e) => {
+        let val = e.target.value;
+        if (isNumber && val !== '') val = Number(val);
+        onChange(val);
+    };
+    return (
+        <input 
+            type={type} 
+            value={valor !== undefined && valor !== null ? valor : ''} 
+            onChange={handleChange} 
+            placeholder={placeholder}
+            style={{ background: 'transparent', border: 'none', borderBottom: '1px dashed rgba(0,0,0,0.3)', fontFamily: 'inherit', fontSize: 'inherit', color: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', outline: 'none', padding: '0 5px', width: '100px', ...styleExtra }} 
+        />
+    );
+};
 
 const LabelMagico = ({ valor, onChange, fallback }) => (
-    <input type="text" value={valor !== undefined ? valor : fallback} onChange={(e) => onChange(e.target.value)} size={Math.max((valor !== undefined ? valor : fallback).length, 3)}
+    <input type="text" value={valor !== undefined ? valor : fallback} onChange={(e) => onChange(e.target.value)} size={Math.max(String(valor !== undefined ? valor : fallback).length, 3)}
         style={{ background: 'transparent', border: 'none', borderBottom: '1px solid transparent', fontFamily: 'inherit', fontSize: 'inherit', color: 'inherit', fontWeight: 'bold', fontStyle: 'italic', outline: 'none', padding: '0', cursor: 'text', transition: '0.2s' }}
         onFocus={(e) => e.target.style.borderBottom = '1px dashed rgba(0,0,0,0.5)'} onBlur={(e) => e.target.style.borderBottom = '1px solid transparent'}
     />
@@ -75,7 +86,7 @@ const BarraVital = ({ atual, maximo, pVit, cor, corTexto = "#fff", onChangeAtual
             <div style={{ flex: 1, position: 'relative' }}>
                 <div style={{ width: `${pct}%`, height: '100%', background: cor, transition: 'width 0.3s ease' }} />
                 <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.2em', color: corTexto, textShadow: isDark ? '1px 1px 3px #000, -1px -1px 3px #000' : 'none' }}>
-                    <CampoMagico valor={atual} onChange={onChangeAtual} styleExtra={{ width: '120px', textAlign: 'right', color: corTexto, textShadow: 'inherit', borderBottom: `1px dashed ${isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)'}` }} />
+                    <CampoMagico valor={atual} onChange={onChangeAtual} isNumber={true} styleExtra={{ width: '120px', textAlign: 'right', color: corTexto, textShadow: 'inherit', borderBottom: `1px dashed ${isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)'}` }} />
                     <span style={{ margin: '0 8px' }}>/</span><span>{Number(maximo).toLocaleString('pt-BR')}</span>
                 </div>
             </div>
@@ -92,23 +103,18 @@ const RadarDesenhado = ({ ficha, isAtual, corTinta = "#000000" }) => {
         { label: 'CHAKRA', key: 'chakra' }, { label: 'CORPO', key: 'corpo' }, { label: 'STATUS', key: 'status' }
     ];
     const angulos = Array.from({length: 6}).map((_, i) => Math.PI * 2 * i / 6 - Math.PI / 2);
-    
-    const ascensao = ficha?.ascensaoBase || 1;
+    const ascensao = parseInt(ficha?.ascensaoBase) || 1;
     const rankInfos = [];
 
     const dataPoints = eixos.map((e, i) => {
         const baseP = getBasePFor(ficha, e.key);
         const pAtual = isAtual ? calcularPrestAtual(ficha, e.key, baseP) : baseP;
-        
-        // Determina a Letra e a Cor (Ex: [D] Vermelho)
         const rank = safeGetRank(pAtual, ascensao);
         rankInfos.push(rank);
 
-        // Estica o gráfico até ao limite de 100
         let valNorm = pAtual || 0;
         if (valNorm >= 100) { valNorm = valNorm % 100; if (valNorm === 0 && pAtual > 0) valNorm = 100; }
         const frac = Math.min(Math.max(valNorm / 100, 0.05), 1);
-        
         return `${100 + 75 * frac * Math.cos(angulos[i])},${100 + 75 * frac * Math.sin(angulos[i])}`;
     }).join(' ');
 
@@ -122,14 +128,11 @@ const RadarDesenhado = ({ ficha, isAtual, corTinta = "#000000" }) => {
     return (
         <svg viewBox="0 0 240 240" style={{ width: '100%', maxWidth: '340px', height: 'auto', overflow: 'visible', dropShadow: '2px 2px 2px rgba(0,0,0,0.2)' }}>
             <g transform="translate(20, 20)">
-                {/* Grelha do Radar */}
                 {[0.33, 0.66, 1.0].map((scale, i) => <polygon key={i} fill="none" stroke={hexToRgba(corTinta, 0.2)} strokeWidth="1" strokeDasharray="3" points={angulos.map(a => `${100 + 75 * scale * Math.cos(a)},${100 + 75 * scale * Math.sin(a)}`).join(' ')} />)}
                 {angulos.map((a, i) => <line key={i} x1="100" y1="100" x2={100 + 75 * Math.cos(a)} y2={100 + 75 * Math.sin(a)} stroke={hexToRgba(corTinta, 0.2)} strokeWidth="1" strokeDasharray="3" />)}
                 
-                {/* Polígono de Poder Esticado */}
                 <polygon points={dataPoints} fill={hexToRgba(corTinta, isAtual ? 0.3 : 0.1)} stroke={corTinta} strokeWidth="2" strokeLinejoin="round" style={{ transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)' }} />
                 
-                {/* Rótulos Ascensão Dinâmicos e Brilhantes */}
                 {eixos.map((e, i) => {
                     const rk = rankInfos[i];
                     return (
@@ -166,18 +169,22 @@ export default function MarcadosPanel() {
             const chaves = caminho.split('.');
             let atual = f;
             for (let i = 0; i < chaves.length - 1; i++) {
-                if (!atual[chaves[i]]) atual[chaves[i]] = {};
+                if (typeof atual[chaves[i]] !== 'object' || atual[chaves[i]] === null) {
+                    atual[chaves[i]] = {};
+                }
                 atual = atual[chaves[i]];
             }
             atual[chaves[chaves.length - 1]] = valor;
         });
-        salvarFichaSilencioso();
+        // O timeout garante que o Zustand processou o updateFicha antes de atirar para a cloud
+        setTimeout(() => salvarFichaSilencioso(), 50);
     };
 
     const handleSalvarTudo = async () => {
         setSalvando(true);
-        await salvarFirebaseImediato();
-        setTimeout(() => setSalvando(false), 2000);
+        salvarFichaSilencioso();
+        if (typeof salvarFirebaseImediato === 'function') await salvarFirebaseImediato();
+        setTimeout(() => setSalvando(false), 1500);
     };
 
     const getLabel = (key, fallback) => minhaFicha.labels?.[key] !== undefined ? minhaFicha.labels[key] : fallback;
@@ -206,19 +213,29 @@ export default function MarcadosPanel() {
         alert("O seu diário foi sincronizado!");
     };
 
+    // 🧮 CÁLCULO DE PV E PM COM ASCENSÃO
     const getSupremas = () => {
         const getP = (k) => { let mx = 0; try { mx = getMaximo(minhaFicha, k); } catch(e) { mx = minhaFicha[k]?.base || 0; } return calcularEscala(mx).pVit; };
         const pVida = getP('vida'), pChakra = getP('chakra'), pCorpo = getP('corpo');
         const pMana = getP('mana'), pAura = getP('aura');
         
         let statusBase = 0;
-        ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'].forEach(s => statusBase += safeGetRawBase(minhaFicha, s));
+        ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'].forEach(s => {
+            statusBase += safeGetRawBase(minhaFicha, s);
+        });
         const pStatus = calcularEscala(statusBase).pVit;
         
         const mPV = parseFloat(minhaFicha.multiplicadorVida) || 1;
         const mPM = parseFloat(minhaFicha.multiplicadorMorte) || 1;
         
-        return { pvMax: Math.floor(((pVida + pChakra + pCorpo) / 3) * mPV), pmMax: Math.floor(((pMana + pAura + pStatus) / 3) * mPM) };
+        // 🔥 A SUA MECÂNICA DE ASCENSÃO: +100 POR RANK ACIMA DE 1
+        const ascensao = parseInt(minhaFicha.ascensaoBase) || 1;
+        const bonusAscensao = (ascensao - 1) * 100;
+        
+        const pvCalculado = Math.floor(((pVida + pChakra + pCorpo) / 3) * mPV) + bonusAscensao;
+        const pmCalculado = Math.floor(((pMana + pAura + pStatus) / 3) * mPM) + bonusAscensao;
+
+        return { pvMax: pvCalculado, pmMax: pmCalculado };
     };
     const { pvMax, pmMax } = getSupremas();
 
@@ -246,7 +263,7 @@ export default function MarcadosPanel() {
                             <div key={sub.labelKey} style={{ fontSize: '1.05em', display: 'flex', alignItems: 'center' }}>
                                 <LabelMagico valor={getLabel(sub.labelKey, sub.fallbackLabel)} onChange={(v) => setLabel(sub.labelKey, v)} />
                                 <span style={{ fontWeight: 'bold', fontStyle: 'italic', margin: '0 5px' }}>: (</span>
-                                <CampoMagico valor={minhaFicha[sub.key]?.base || ''} onChange={(v) => salvar(`${sub.key}.base`, v)} styleExtra={{ width: '90px' }} />
+                                <CampoMagico valor={minhaFicha[sub.key]?.base || ''} onChange={(v) => salvar(`${sub.key}.base`, v)} styleExtra={{ width: '90px' }} isNumber={true} type="number" />
                                 <span style={{ fontWeight: 'bold', fontStyle: 'italic' }}>)</span>
                             </div>
                         ))}
@@ -263,7 +280,7 @@ export default function MarcadosPanel() {
         return (
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted rgba(0,0,0,0.2)', padding: '6px 0', fontSize: '1.1em' }}>
                 <LabelMagico valor={getLabel(labelKey, fallbackLabel)} onChange={(v) => setLabel(labelKey, v)} />
-                {isAtual ? <span style={{ fontWeight: 'bold' }}>{Number(maxVal).toLocaleString('pt-BR')}</span> : <CampoMagico valor={baseVal} onChange={(v) => salvar(`${attrKey}.base`, v)} styleExtra={{ width: '100px', textAlign: 'right', fontWeight: 'bold' }} type="number" />}
+                {isAtual ? <span style={{ fontWeight: 'bold' }}>{Number(maxVal).toLocaleString('pt-BR')}</span> : <CampoMagico valor={baseVal} onChange={(v) => salvar(`${attrKey}.base`, v)} styleExtra={{ width: '100px', textAlign: 'right', fontWeight: 'bold' }} type="number" isNumber={true} />}
             </div>
         );
     };
@@ -326,9 +343,9 @@ export default function MarcadosPanel() {
                             </div>
                             <h2 style={{ fontSize: '2.2em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 20px 0', display: 'flex', alignItems: 'center' }}>
                                 <LabelMagico valor={getLabel('tituloLv', '- Limite quebrado - LV')} onChange={(v) => setLabel('tituloLv', v)} />
-                                <CampoMagico valor={minhaFicha.bio?.nivel} onChange={(v) => salvar('bio.nivel', v)} styleExtra={{ width: '60px', borderBottom: 'none', marginLeft: '10px' }} />
+                                <CampoMagico valor={minhaFicha.bio?.nivel} onChange={(v) => salvar('bio.nivel', v)} styleExtra={{ width: '60px', borderBottom: 'none', marginLeft: '10px' }} isNumber={true} type="number" />
                                 <span style={{ marginLeft: '15px', borderLeft: '2px solid rgba(0,0,0,0.5)', paddingLeft: '15px' }}>
-                                    ASC <CampoMagico valor={minhaFicha.ascensaoBase || 1} onChange={(v) => salvar('ascensaoBase', v)} styleExtra={{ width: '50px', borderBottom: 'none' }} type="number" />
+                                    ASC <CampoMagico valor={minhaFicha.ascensaoBase || 1} onChange={(v) => salvar('ascensaoBase', v)} styleExtra={{ width: '50px', borderBottom: 'none' }} type="number" isNumber={true} />
                                 </span>
                             </h2>
 
@@ -379,11 +396,11 @@ export default function MarcadosPanel() {
                                 <div style={{ display: 'flex', gap: '15px', marginTop: '5px' }}>
                                     <div style={{ flex: 1, border: '2px solid rgba(0,0,0,0.8)', padding: '10px', borderRadius: '6px', background: 'rgba(255,255,255,0.2)' }}>
                                         <div style={{ fontSize: '0.8em', fontWeight: 'bold', textTransform: 'uppercase' }}><LabelMagico valor={getLabel('lblMultV', 'Mult. de Vida (PV)')} onChange={(v) => setLabel('lblMultV', v)} /></div>
-                                        <CampoMagico valor={minhaFicha.multiplicadorVida || 1} onChange={(v) => salvar('multiplicadorVida', v)} type="number" styleExtra={{ width: '100%', borderBottom: '1px solid rgba(0,0,0,0.5)', marginTop: '5px' }} />
+                                        <CampoMagico valor={minhaFicha.multiplicadorVida || 1} onChange={(v) => salvar('multiplicadorVida', v)} type="number" isNumber={true} styleExtra={{ width: '100%', borderBottom: '1px solid rgba(0,0,0,0.5)', marginTop: '5px' }} />
                                     </div>
                                     <div style={{ flex: 1, border: '2px solid rgba(0,0,0,0.8)', padding: '10px', borderRadius: '6px', background: 'rgba(255,255,255,0.2)' }}>
                                         <div style={{ fontSize: '0.8em', fontWeight: 'bold', textTransform: 'uppercase' }}><LabelMagico valor={getLabel('lblMultM', 'Mult. de Morte (PM)')} onChange={(v) => setLabel('lblMultM', v)} /></div>
-                                        <CampoMagico valor={minhaFicha.multiplicadorMorte || 1} onChange={(v) => salvar('multiplicadorMorte', v)} type="number" styleExtra={{ width: '100%', borderBottom: '1px solid rgba(0,0,0,0.5)', marginTop: '5px' }} />
+                                        <CampoMagico valor={minhaFicha.multiplicadorMorte || 1} onChange={(v) => salvar('multiplicadorMorte', v)} type="number" isNumber={true} styleExtra={{ width: '100%', borderBottom: '1px solid rgba(0,0,0,0.5)', marginTop: '5px' }} />
                                     </div>
                                 </div>
                             </div>
