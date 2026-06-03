@@ -175,7 +175,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
 
     const salvar = (caminho, valor) => {
         const valFinal = (valor === undefined || (isNaN(valor) && typeof valor === 'number')) ? null : valor;
-        const novoNpc = JSON.parse(JSON.stringify(npcData)); // Deep Clone
+        const novoNpc = JSON.parse(JSON.stringify(npcData)); 
         const chaves = caminho.split('.');
         let atual = novoNpc;
         for (let i = 0; i < chaves.length - 1; i++) {
@@ -206,15 +206,16 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
             if (!novoNpc.divisores) novoNpc.divisores = {};
             novoNpc.divisores[k] = novoDiv;
         }
-        
-        if (k === 'status') {
-            ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'].forEach(s => {
-                if (!novoNpc[s]) novoNpc[s] = {};
-                novoNpc[s].base = novaBase;
-            });
-        } else {
-            if (!novoNpc[k]) novoNpc[k] = {};
-            novoNpc[k].base = novaBase;
+        if (tipo === 'prestigio') {
+            if (k === 'status') {
+                ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'].forEach(s => {
+                    if (!novoNpc[s]) novoNpc[s] = {};
+                    novoNpc[s].base = novaBase;
+                });
+            } else {
+                if (!novoNpc[k]) novoNpc[k] = {};
+                novoNpc[k].base = novaBase;
+            }
         }
         onSaveNpc(novoNpc);
     };
@@ -380,16 +381,18 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '1.2em' }}>
                                 {[
                                     { k: 'idade', lbl: 'Idade' },
+                                    { k: 'aniversario', lbl: 'Aniversário' },
+                                    { k: 'alturaPeso', lbl: 'Altura / Peso' },
                                     { k: 'raca', lbl: 'Raça' },
                                     { k: 'alinhamento', lbl: 'Alinhamento' },
                                     { k: 'afiliacao', lbl: 'Afiliação', foraDaBio: true },
                                     { k: 'classe', lbl: 'Classe' }
                                 ].map(item => (
-                                    <div key={item.k} style={{ display: 'flex', alignItems: 'baseline' }}>
-                                        <div style={{ width: '150px', fontWeight: 'bold' }}>
+                                    <div key={item.k} style={{ display: 'flex', alignItems: 'center' }}>
+                                        <div style={{ width: '130px', fontWeight: 'bold' }}>
                                             <LabelMagicoNPC valor={getLabel(`bio_${item.k}`, item.lbl)} onChange={(v) => setLabel(`bio_${item.k}`, v)} />
                                         </div>
-                                        <span style={{ fontWeight: 'bold', marginRight: '10px' }}>:</span>
+                                        <span style={{ fontWeight: 'bold', margin: '0 10px' }}>:</span>
                                         <CampoMagicoNPC valor={item.foraDaBio ? npcData[item.k] : npcData.bio?.[item.k]} onChange={(v) => salvar(item.foraDaBio ? item.k : `bio.${item.k}`, v)} styleExtra={{ flex: 1, borderBottom: '1px dotted rgba(0,0,0,0.3)' }} />
                                     </div>
                                 ))}

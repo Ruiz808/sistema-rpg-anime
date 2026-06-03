@@ -11,7 +11,7 @@ const safeGetRawBase = (f, k) => typeof getRawBase === 'function' ? getRawBase(f
 const safeGetRank = (prest, asc) => typeof getRank === 'function' ? getRank(prest, asc) : { l: 'F', c: '#ffffff', a: asc };
 const safeGetBuffs = (f, k, t) => typeof getBuffs === 'function' ? getBuffs(f, k, t) : {};
 
-// 🔥 LÊ A BASE REAL (Sem overlays, matemática pura!)
+// 🔥 LÊ A BASE REAL DIRETAMENTE DA FICHA (Sem máscaras!)
 const getBasePFor = (ficha, k) => {
     const mults = { vida: 1000000, mana: 10000000, aura: 10000000, chakra: 10000000, corpo: 10000000, status: 1000 };
     const div = parseFloat(ficha?.divisores?.[k]) || 1;
@@ -43,6 +43,8 @@ const calcularPrestAtual = (ficha, attrKey, baseP) => {
 // ==========================================
 // 🖋️ INPUTS E BARRAS MÁGICAS (COM AUTO-SAVE)
 // ==========================================
+const callSave = () => { setTimeout(() => { if (typeof salvarFirebaseImediato === 'function') salvarFirebaseImediato(); else salvarFichaSilencioso(); }, 300); };
+
 const CampoMagico = ({ valor, onChange, placeholder, styleExtra = {}, type = "text", isNumber = false }) => {
     const handleChange = (e) => {
         let val = e.target.value;
@@ -52,8 +54,7 @@ const CampoMagico = ({ valor, onChange, placeholder, styleExtra = {}, type = "te
     return (
         <input 
             type={type} value={valor !== undefined && valor !== null ? valor : ''} onChange={handleChange}
-            onBlur={() => { if (typeof salvarFirebaseImediato === 'function') salvarFirebaseImediato(); else salvarFichaSilencioso(); }}
-            placeholder={placeholder}
+            onBlur={callSave} placeholder={placeholder}
             style={{ background: 'transparent', border: 'none', borderBottom: '1px dashed rgba(0,0,0,0.3)', fontFamily: 'inherit', fontSize: 'inherit', color: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', outline: 'none', padding: '0 5px', width: '100px', ...styleExtra }} 
         />
     );
@@ -62,7 +63,7 @@ const CampoMagico = ({ valor, onChange, placeholder, styleExtra = {}, type = "te
 const LabelMagico = ({ valor, onChange, fallback }) => (
     <input 
         type="text" value={valor !== undefined ? valor : fallback} onChange={(e) => onChange(e.target.value)} 
-        onBlur={(e) => { e.target.style.borderBottom = '1px solid transparent'; if (typeof salvarFirebaseImediato === 'function') salvarFirebaseImediato(); else salvarFichaSilencioso(); }}
+        onBlur={(e) => { e.target.style.borderBottom = '1px solid transparent'; callSave(); }}
         size={Math.max(String(valor !== undefined ? valor : fallback).length, 3)}
         style={{ background: 'transparent', border: 'none', borderBottom: '1px solid transparent', fontFamily: 'inherit', fontSize: 'inherit', color: 'inherit', fontWeight: 'bold', fontStyle: 'italic', outline: 'none', padding: '0', cursor: 'text', transition: '0.2s' }}
         onFocus={(e) => e.target.style.borderBottom = '1px dashed rgba(0,0,0,0.5)'} 
@@ -160,7 +161,6 @@ export default function MarcadosPanel() {
     const [paginaAtual, setPaginaAtual] = useState(1);
     const [salvando, setSalvando] = useState(false);
 
-    // 🔥 TEMPORIZADOR FANTASMA PARA SALVAR AS CORES SEM TRAVAR
     const [localCorFundo, setLocalCorFundo] = useState('#bba9d8');
     const [localCorTinta, setLocalCorTinta] = useState('#000000');
 
@@ -179,10 +179,9 @@ export default function MarcadosPanel() {
                     f.estetica.diarioCor = localCorFundo;
                     f.estetica.corTintaRadar = localCorTinta;
                 });
-                if (typeof salvarFirebaseImediato === 'function') salvarFirebaseImediato();
-                else salvarFichaSilencioso();
+                callSave();
             }
-        }, 800); // Salva 0.8 segundos depois de parar de mexer na cor!
+        }, 800);
         return () => clearTimeout(timer);
     }, [localCorFundo, localCorTinta]);
 
@@ -201,7 +200,7 @@ export default function MarcadosPanel() {
         });
     };
 
-    // 🔥 TABELA SUPREMA QUE ALTERA DIRETAMENTE OS ATRIBUTOS BASE!
+    // 🔥 TABELA QUE RECALCULA DIRETAMENTE A BASE DA FICHA!
     const handleTabelaChange = (k, tipo, valor) => {
         let numVal = Number(valor);
         if (isNaN(numVal)) numVal = 0;
@@ -222,17 +221,19 @@ export default function MarcadosPanel() {
                 if (!f.divisores) f.divisores = {};
                 f.divisores[k] = novoDiv;
             }
-            if (k === 'status') {
-                ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'].forEach(s => {
-                    if (!f[s]) f[s] = {};
-                    f[s].base = novaBase;
-                });
-            } else {
-                if (!f[k]) f[k] = {};
-                f[k].base = novaBase;
+            if (tipo === 'prestigio') {
+                if (k === 'status') {
+                    ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'].forEach(s => {
+                        if (!f[s]) f[s] = {};
+                        f[s].base = novaBase;
+                    });
+                } else {
+                    if (!f[k]) f[k] = {};
+                    f[k].base = novaBase;
+                }
             }
         });
-        setTimeout(() => salvarFichaSilencioso(), 50);
+        callSave();
     };
 
     const handleSalvarTudo = async () => {
@@ -286,10 +287,7 @@ export default function MarcadosPanel() {
                 f.acoes[tipo].atual = f.acoes[tipo].max;
             });
         });
-        setTimeout(() => {
-            if (typeof salvarFirebaseImediato === 'function') salvarFirebaseImediato();
-            else salvarFichaSilencioso();
-        }, 100);
+        callSave();
     };
 
     const LinhaVital = ({ labelKey, fallbackLabel, vitalKey, subItens, corBarra, corTextoBarra = '#fff' }) => {
@@ -348,7 +346,7 @@ export default function MarcadosPanel() {
         try {
             const url = await uploadImagem(file, `avatars/${meuNome || 'desconhecido'}`);
             updateFicha(f => { if (!f.avatar) f.avatar = { base: "" }; f.avatar.base = url; });
-            await salvarFirebaseImediato();
+            callSave();
         } catch (err) { alert('Erro ao pintar o avatar!'); } 
         finally { setUploadingImg(false); }
     };
@@ -392,7 +390,7 @@ export default function MarcadosPanel() {
                                 style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} 
                             />
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Fonte da Letra:</label>
-                            <select value={fonteDiario} onChange={(e) => { salvar('estetica.diarioFonte', e.target.value); if (typeof salvarFirebaseImediato === 'function') salvarFirebaseImediato(); else salvarFichaSilencioso(); }} style={{ width: '100%', padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', fontFamily: 'inherit' }}>
+                            <select value={fonteDiario} onChange={(e) => { salvar('estetica.diarioFonte', e.target.value); callSave(); }} style={{ width: '100%', padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', fontFamily: 'inherit' }}>
                                 <option value='"Comic Sans MS", "Chalkboard SE", "Marker Felt", cursive'>✏️ Escrito à Mão</option>
                                 <option value="'Courier New', Courier, monospace">🖨️ Máquina de Escrever</option>
                                 <option value="'Times New Roman', Times, serif">📖 Grimório Clássico</option>
@@ -439,11 +437,11 @@ export default function MarcadosPanel() {
                                     { k: 'afiliacao', lbl: 'Afiliação' },
                                     { k: 'classe', lbl: 'Classe' }
                                 ].map(item => (
-                                    <div key={item.k} style={{ display: 'flex', alignItems: 'baseline' }}>
-                                        <div style={{ width: '150px', fontWeight: 'bold' }}>
+                                    <div key={item.k} style={{ display: 'flex', alignItems: 'center' }}>
+                                        <div style={{ width: '130px', fontWeight: 'bold' }}>
                                             <LabelMagico valor={getLabel(`bio_${item.k}`, item.lbl)} onChange={(v) => setLabel(`bio_${item.k}`, v)} />
                                         </div>
-                                        <span style={{ fontWeight: 'bold', marginRight: '10px' }}>:</span>
+                                        <span style={{ fontWeight: 'bold', margin: '0 10px' }}>:</span>
                                         <CampoMagico valor={minhaFicha.bio?.[item.k]} onChange={(v) => salvar(`bio.${item.k}`, v)} styleExtra={{ flex: 1, borderBottom: '1px dotted rgba(0,0,0,0.3)' }} />
                                     </div>
                                 ))}
@@ -454,7 +452,7 @@ export default function MarcadosPanel() {
                                     <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} disabled={uploadingImg} />
                                     {uploadingImg ? <div style={{ width: '320px', height: '480px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed #000' }}>✍️...</div> : minhaFicha.avatar?.base ? <img src={minhaFicha.avatar.base} alt="Avatar" style={{ width: '320px', height: 'auto', objectFit: 'cover', border: '2px solid rgba(0,0,0,0.8)', boxShadow: '8px 8px 0px rgba(0,0,0,0.2)' }} /> : <div style={{ width: '320px', height: '480px', border: '2px dashed #000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', background: 'rgba(255,255,255,0.1)' }}>Colar Fotografia Aqui 📸</div>}
                                 </label>
-                                {minhaFicha.avatar?.base && <button onClick={() => {if(window.confirm('Apagar?')) updateFicha(f => {f.avatar.base = ""}); salvarFichaSilencioso();}} style={{ background: 'transparent', border: '1px dashed #ff003c', color: '#ff003c', marginTop: '10px', padding: '5px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'inherit', width: 'fit-content' }}>🗑️ Remover Foto</button>}
+                                {minhaFicha.avatar?.base && <button onClick={() => {if(window.confirm('Apagar?')) updateFicha(f => {f.avatar.base = ""}); callSave();}} style={{ background: 'transparent', border: '1px dashed #ff003c', color: '#ff003c', marginTop: '10px', padding: '5px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'inherit', width: 'fit-content' }}>🗑️ Remover Foto</button>}
                             </div>
                         </div>
 
@@ -513,7 +511,7 @@ export default function MarcadosPanel() {
                                                 <span style={{ fontSize: '1.1em' }}><LabelMagico valor={getLabel(`acao_${tipo}`, tipo.toUpperCase())} onChange={(v) => setLabel(`acao_${tipo}`, v)} /></span>
                                                 <div style={{ display: 'flex', gap: '8px' }}>
                                                     {Array.from({ length: acao.max }).map((_, i) => (
-                                                        <div key={i} onClick={() => { salvar(`acoes.${tipo}.atual`, i >= acao.atual ? acao.atual + 1 : acao.atual - 1); salvarFichaSilencioso(); }}
+                                                        <div key={i} onClick={() => { salvar(`acoes.${tipo}.atual`, i >= acao.atual ? acao.atual + 1 : acao.atual - 1); callSave(); }}
                                                             style={{ width: '25px', height: '25px', border: '2px solid #000', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '1.2em', color: '#ff003c', background: 'rgba(255,255,255,0.2)' }}>
                                                             {i >= acao.atual ? 'X' : ''}
                                                         </div>
