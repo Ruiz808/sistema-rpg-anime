@@ -39,7 +39,7 @@ const calcularPrestAtual = (ficha, attrKey, baseP) => {
 };
 
 // ==========================================
-// 🖋️ INPUTS E BARRAS MÁGICAS (ESTILO PAPEL)
+// 🖋️ INPUTS E BARRAS MÁGICAS (C/ AUTO-FORMATADOR E PONTOS)
 // ==========================================
 const CampoMagicoNPC = ({ valor, onChange, placeholder, styleExtra = {}, type = "text", isNumber = false }) => {
     const [focused, setFocused] = useState(false);
@@ -48,17 +48,19 @@ const CampoMagicoNPC = ({ valor, onChange, placeholder, styleExtra = {}, type = 
         let val = e.target.value;
         if (isNumber && val !== '') { 
             val = val.replace(',', '.');
-            val = Number(val); 
-            if (isNaN(val)) val = 0; 
+            let num = Number(val); 
+            if (!isNaN(num)) val = num; 
+            else val = 0; 
         }
         onChange(val);
     };
 
-    let displayValue = valor !== undefined && valor !== null ? valor : '';
+    let displayValue = valor !== undefined && valor !== null ? String(valor) : '';
     let currentType = type;
 
     if (isNumber && !focused && displayValue !== '') {
-        displayValue = Number(displayValue).toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+        let num = Number(displayValue);
+        if (!isNaN(num)) displayValue = num.toLocaleString('pt-BR');
         currentType = 'text';
     } else if (isNumber && focused) {
         currentType = 'number';
@@ -177,20 +179,21 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
     const [modalEstilo, setModalEstilo] = useState(false);
     const [paginaAtual, setPaginaAtual] = useState(1);
     
-    // 🔥 MOTOR DA ANIMAÇÃO FLUIDA 🔥
     const [animDirection, setAnimDirection] = useState('next');
 
     const [localCorFundo, setLocalCorFundo] = useState('#ffe6cc');
     const [localCorTinta, setLocalCorTinta] = useState('#000000');
     const [localBgImg, setLocalBgImg] = useState('');
+    const [localMolduraAvatar, setLocalMolduraAvatar] = useState('');
 
     useEffect(() => {
         if (npcData) {
             setLocalCorFundo(npcData.estetica?.diarioCor || '#ffe6cc');
             setLocalCorTinta(npcData.estetica?.corTintaRadar || '#000000');
             setLocalBgImg(npcData.estetica?.bgImg || '');
+            setLocalMolduraAvatar(npcData.estetica?.molduraAvatar || '');
         }
-    }, [npcData?.estetica?.diarioCor, npcData?.estetica?.corTintaRadar, npcData?.estetica?.bgImg]);
+    }, [npcData?.estetica?.diarioCor, npcData?.estetica?.corTintaRadar, npcData?.estetica?.bgImg, npcData?.estetica?.molduraAvatar]);
 
     if (!npcData) return <div style={{ color: '#fff', padding: 20 }}>Conectando à Entidade...</div>;
 
@@ -216,6 +219,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
         if (key === 'diarioCor') setLocalCorFundo(val);
         else if (key === 'corTintaRadar') setLocalCorTinta(val);
         else if (key === 'bgImg') setLocalBgImg(val);
+        else if (key === 'molduraAvatar') setLocalMolduraAvatar(val);
 
         if (window.timerSaveCorNPC) clearTimeout(window.timerSaveCorNPC);
         window.timerSaveCorNPC = setTimeout(() => {
@@ -232,6 +236,14 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
             const url = await uploadImagem(file, `backgrounds_npcs/${npcData.id || 'desconhecido'}_bg`);
             handleStyleChange('bgImg', url);
         } catch (err) { alert('Erro ao enviar a imagem de fundo!'); }
+    };
+
+    const handleMolduraUpload = async (e) => {
+        const file = e.target.files[0]; if (!file) return;
+        try {
+            const url = await uploadImagem(file, `molduras_avatars_npcs/${npcData.id || 'desconhecido'}_moldura`);
+            handleStyleChange('molduraAvatar', url);
+        } catch (err) { alert('Erro ao enviar a moldura!'); }
     };
 
     const handleTabelaChange = (k, tipo, valor) => {
@@ -393,13 +405,11 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
             color: '#000', fontFamily: fonteDiario, 
             padding: '40px 40px 80px 40px', borderRadius: '12px', position: 'relative', transition: 'background 0.3s ease',
             boxShadow: 'inset 0 0 40px rgba(0,0,0,0.1), 0 10px 30px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column',
-            overflowX: 'hidden', marginTop: '20px'
+            overflow: 'visible', marginTop: '20px'
         }}>
             
             <style>{`
-                .swoop-container {
-                    transform-style: preserve-3d;
-                }
+                .swoop-container { transform-style: preserve-3d; }
                 @keyframes pageSwoopNext {
                     0% { transform: perspective(1500px) rotateY(-15deg) translateX(30px) scale(0.98); opacity: 0; }
                     100% { transform: perspective(1500px) rotateY(0deg) translateX(0) scale(1); opacity: 1; }
@@ -411,83 +421,65 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                 .page-swoop-next { animation: pageSwoopNext 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
                 .page-swoop-prev { animation: pageSwoopPrev 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
 
-                .grimorio-estilo-papel {
-                    --tinta: ${localCorTinta};
-                    --fundo: ${localCorFundo};
-                    color: var(--tinta) !important;
-                }
-                .grimorio-estilo-papel * {
-                    font-family: ${fonteDiario}, cursive !important;
-                    text-shadow: none !important;
-                    box-shadow: none !important;
-                }
+                .grimorio-estilo-papel { --tinta: ${localCorTinta}; --fundo: ${localCorFundo}; color: var(--tinta) !important; }
+                .grimorio-estilo-papel * { font-family: ${fonteDiario}, cursive !important; text-shadow: none !important; box-shadow: none !important; }
                 .grimorio-estilo-papel .def-box {
-                    background: transparent !important;
-                    border: 2px solid var(--tinta) !important;
-                    border-radius: 2px 255px 3px 25px / 255px 5px 225px 3px !important; 
-                    padding: 20px !important;
-                    margin-bottom: 20px !important;
-                    position: relative;
+                    background: transparent !important; border: 2px solid var(--tinta) !important;
+                    border-radius: 2px 255px 3px 25px / 255px 5px 225px 3px !important; padding: 20px !important; margin-bottom: 20px !important; position: relative;
                 }
                 .grimorio-estilo-papel .def-box::before {
-                    content: ''; position: absolute; top:0; left:0; right:0; bottom:0;
-                    background: var(--tinta); opacity: 0.03; pointer-events: none;
-                    border-radius: inherit;
+                    content: ''; position: absolute; top:0; left:0; right:0; bottom:0; background: var(--tinta); opacity: 0.03; pointer-events: none; border-radius: inherit;
                 }
-                .grimorio-estilo-papel h2, .grimorio-estilo-papel h3, .grimorio-estilo-papel h4 {
-                    color: var(--tinta) !important;
-                    border-bottom: 2px dotted var(--tinta) !important;
-                    display: inline-block;
-                    padding-bottom: 5px;
-                }
+                .grimorio-estilo-papel h2, .grimorio-estilo-papel h3, .grimorio-estilo-papel h4 { color: var(--tinta) !important; display: inline-block; }
                 .grimorio-estilo-papel button {
-                    background: transparent !important;
-                    border: 2px dashed var(--tinta) !important;
-                    border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
-                    color: var(--tinta) !important;
-                    font-weight: bold !important;
-                    text-transform: uppercase !important;
-                    transition: transform 0.2s ease !important;
+                    background: transparent !important; border: 2px dashed var(--tinta) !important; border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
+                    color: var(--tinta) !important; font-weight: bold !important; text-transform: uppercase !important; transition: transform 0.2s ease !important;
                 }
-                .grimorio-estilo-papel button:hover {
-                    background: var(--tinta) !important;
-                    color: var(--fundo) !important;
-                    border-style: solid !important;
-                    transform: scale(1.02) rotate(-1deg) !important;
-                }
+                .grimorio-estilo-papel button:hover { background: var(--tinta) !important; color: var(--fundo) !important; border-style: solid !important; transform: scale(1.02) rotate(-1deg) !important; }
             `}</style>
 
-            <div style={{ position: 'absolute', top: '-15px', right: '15px', zIndex: 10, display: 'flex', gap: '10px' }}>
+            <div style={{ position: 'absolute', top: '-25px', right: '30px', zIndex: 10, display: 'flex', gap: '15px' }}>
                 <div style={{ position: 'relative' }}>
-                    <button onClick={() => setModalEstilo(!modalEstilo)} style={{ background: '#ff94c2', border: 'none', padding: '10px 20px', fontFamily: 'inherit', fontWeight: 'bold', fontSize: '1.1em', cursor: 'pointer', boxShadow: '3px 3px 10px rgba(0,0,0,0.2)', transform: 'rotate(-2deg)' }}>🎨 Estilo do NPC</button>
+                    <button onClick={() => setModalEstilo(!modalEstilo)} style={{ background: '#ff94c2', color: '#000', border: '1px solid #333', borderBottom: '3px solid #222', padding: '10px 20px', fontFamily: 'inherit', fontWeight: 'bold', fontSize: '1.1em', cursor: 'pointer', borderRadius: '4px', boxShadow: '2px 4px 8px rgba(0,0,0,0.4)', transform: 'rotate(-2deg)' }}>🎨 Estilo do NPC</button>
                     {modalEstilo && (
-                        <div className="fade-in" style={{ position: 'absolute', top: '50px', right: '0', background: '#ffe4f0', padding: '15px', border: '1px solid #ccc', boxShadow: '5px 5px 15px rgba(0,0,0,0.3)', width: '300px', zIndex: 20 }}>
-                            <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Cor do Papel:</label>
+                        <div className="fade-in" style={{ position: 'absolute', top: '55px', right: '0', background: '#ffe4f0', padding: '15px', border: '1px solid #ccc', boxShadow: '5px 5px 15px rgba(0,0,0,0.3)', width: '300px', zIndex: 20, borderRadius: '6px' }}>
+                            <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>Cor do Papel:</label>
                             <input 
                                 type="color" value={localCorFundo} 
                                 onChange={(e) => handleStyleChange('diarioCor', e.target.value)} 
                                 style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} 
                             />
-
-                            <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Moldura/Fundo da Ficha:</label>
+                            
+                            <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>🖼️ Fundo da Ficha (URL):</label>
                             <div style={{ display: 'flex', gap: '5px', marginBottom: '15px' }}>
                                 <input 
-                                    type="text" value={localBgImg} onChange={(e) => handleStyleChange('bgImg', e.target.value)} placeholder="URL da imagem..."
+                                    type="text" value={localBgImg} onChange={(e) => handleStyleChange('bgImg', e.target.value)} placeholder="Cole o Link aqui..."
                                     style={{ flex: 1, padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', color: 'inherit' }} 
                                 />
-                                <label style={{ background: 'transparent', border: '1px solid rgba(0,0,0,0.2)', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="Fazer upload de Moldura">
-                                    📁
-                                    <input type="file" accept="image/*" onChange={handleBgUpload} style={{ display: 'none' }} />
+                                <label style={{ background: 'rgba(0,0,0,0.1)', border: '1px solid rgba(0,0,0,0.2)', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="Upload de Fundo">
+                                    📁<input type="file" accept="image/*" onChange={handleBgUpload} style={{ display: 'none' }} />
                                 </label>
                             </div>
 
-                            <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Cor da Tinta (Radar):</label>
+                            {/* 🔥 NOVA OPÇÃO: MOLDURA DO AVATAR! */}
+                            <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>✨ Moldura do Personagem:</label>
+                            <div style={{ display: 'flex', gap: '5px', marginBottom: '15px' }}>
+                                <input 
+                                    type="text" value={localMolduraAvatar} onChange={(e) => handleStyleChange('molduraAvatar', e.target.value)} placeholder="Cole o Link da moldura..."
+                                    style={{ flex: 1, padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', color: 'inherit' }} 
+                                />
+                                <label style={{ background: 'rgba(0,0,0,0.1)', border: '1px solid rgba(0,0,0,0.2)', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="Upload de Moldura">
+                                    📁<input type="file" accept="image/*" onChange={handleMolduraUpload} style={{ display: 'none' }} />
+                                </label>
+                            </div>
+
+                            <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>Cor da Tinta (Radar):</label>
                             <input 
                                 type="color" value={localCorTinta} 
                                 onChange={(e) => handleStyleChange('corTintaRadar', e.target.value)} 
                                 style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} 
                             />
-                            <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Fonte da Letra:</label>
+                            <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>Fonte da Letra:</label>
                             <select value={fonteDiario} onChange={(e) => salvar('estetica.diarioFonte', e.target.value)} style={{ width: '100%', padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', fontFamily: 'inherit' }}>
                                 <option value='"Comic Sans MS", "Chalkboard SE", "Marker Felt", cursive'>✏️ Escrito à Mão</option>
                                 <option value="'Courier New', Courier, monospace">🖨️ Máquina de Escrever</option>
@@ -498,6 +490,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                 </div>
             </div>
 
+            {/* 📖 CONTEÚDO ANIMADO DO LIVRO DO NPC */}
             <div key={paginaAtual} className={`swoop-container ${animDirection === 'next' ? 'page-swoop-next' : 'page-swoop-prev'}`} style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '40px', paddingBottom: '30px' }}>
                 
                 {/* ======================= PÁGINA 1 ======================= */}
@@ -534,13 +527,28 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                 ))}
                             </div>
 
-                            <div style={{ marginTop: '20px', width: 'fit-content', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                                <label style={{ cursor: 'pointer', display: 'block' }}>
-                                    <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} disabled={uploadingImg} />
-                                    {uploadingImg ? <div style={{ width: '320px', height: '480px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed #000' }}>✍️...</div> : npcData.avatar?.base ? <img src={npcData.avatar.base} alt="Avatar" style={{ width: '320px', height: 'auto', objectFit: 'cover', border: '2px solid rgba(0,0,0,0.8)', boxShadow: '8px 8px 0px rgba(0,0,0,0.2)' }} /> : <div style={{ width: '320px', height: '480px', border: '2px dashed #000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', background: 'rgba(255,255,255,0.1)' }}>Colar Fotografia do Alvo 📸</div>}
-                                </label>
-                                {npcData.avatar?.base && <button onClick={() => {if(window.confirm('Apagar?')) salvar('avatar.base', '');}} style={{ background: 'transparent', border: '1px dashed #ff003c', color: '#ff003c', marginTop: '10px', padding: '5px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'inherit', width: 'fit-content' }}>🗑️ Remover Foto</button>}
+                            {/* 🔥 AQUI ENTRA A MOLDURA DO AVATAR! 🔥 */}
+                            <div style={{ marginTop: '20px', position: 'relative', width: '320px', height: '480px', display: 'flex', flexDirection: 'column', borderRadius: '8px', border: npcData.avatar?.base ? 'none' : '2px dashed #000', boxShadow: npcData.avatar?.base ? '8px 8px 0px rgba(0,0,0,0.2)' : 'none' }}>
+                                {uploadingImg ? (
+                                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.7)', color: '#fff', fontWeight: 'bold', zIndex: 20 }}>✍️ Forjando...</div>
+                                ) : npcData.avatar?.base ? (
+                                    <>
+                                        <img src={npcData.avatar.base} alt="Avatar" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 1, borderRadius: '8px' }} />
+                                        {localMolduraAvatar && (
+                                            <img src={localMolduraAvatar} alt="Moldura" style={{ position: 'absolute', top: '-2.5%', left: '-3%', width: '106%', height: '105%', objectFit: 'fill', zIndex: 2, pointerEvents: 'none' }} />
+                                        )}
+                                        <label style={{ cursor: 'pointer', position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 10 }}>
+                                            <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
+                                        </label>
+                                    </>
+                                ) : (
+                                    <label style={{ cursor: 'pointer', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', background: 'rgba(255,255,255,0.1)' }}>
+                                        Colar Fotografia Aqui 📸
+                                        <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
+                                    </label>
+                                )}
                             </div>
+                            {npcData.avatar?.base && <button onClick={() => {if(window.confirm('Apagar?')) salvar('avatar.base', '');}} style={{ background: 'transparent', border: '1px dashed #ff003c', color: '#ff003c', marginTop: '10px', padding: '5px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'inherit', width: 'fit-content' }}>🗑️ Remover Foto</button>}
                         </div>
 
                         <div style={{ flex: '1 1 450px', display: 'flex', flexDirection: 'column' }}>
