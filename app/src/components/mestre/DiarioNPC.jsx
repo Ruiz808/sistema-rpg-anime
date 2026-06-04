@@ -4,7 +4,44 @@ import { getMaximo, getRawBase, getBuffs } from '../../core/attributes';
 import { getRank } from '../../core/prestige';
 
 // ==========================================
-// 🛡️ FUNÇÕES SEGURAS DA ENGINE E MATEMÁTICA PURA
+// 🛡️ DADOS DO COMPÊNDIO (PARA O ÍCONE DA MOLDURA)
+// ==========================================
+const CLASSES_REGULARES_BASE = [
+    { id: 'saber', nome: 'Saber', icone: '⚔️', cor: '#0088ff' },
+    { id: 'archer', nome: 'Archer', icone: '🏹', cor: '#ff003c' },
+    { id: 'lancer', nome: 'Lancer', icone: '🗡️', cor: '#00ffcc' },
+    { id: 'rider', nome: 'Rider', icone: '🏇', cor: '#ff8800' },
+    { id: 'caster', nome: 'Caster', icone: '🧙‍♂️', cor: '#cc00ff' },
+    { id: 'assassin', nome: 'Assassin', icone: '🔪', cor: '#444444' },
+    { id: 'berserker', nome: 'Berserker', icone: '狂', cor: '#ff0000' }
+];
+
+const CLASSES_EXTRA_BASE = [
+    { id: 'shielder', nome: 'Shielder', icone: '🛡️', cor: '#00ffff' },
+    { id: 'ruler', nome: 'Ruler', icone: '⚖️', cor: '#ffcc00' },
+    { id: 'avenger', nome: 'Avenger', icone: '⛓️', cor: '#880000' },
+    { id: 'alterego', nome: 'Alter Ego', icone: '🎭', cor: '#ff00ff' },
+    { id: 'foreigner', nome: 'Foreigner', icone: '🐙', cor: '#00ff88' },
+    { id: 'mooncancer', nome: 'Moon Cancer', icone: '🌕', cor: '#8888aa' },
+    { id: 'pretender', nome: 'Pretender', icone: '🤥', cor: '#ffaa00' },
+    { id: 'beast', nome: 'Beast', icone: '👹', cor: '#4a0000' },
+    { id: 'savior', nome: 'Savior', icone: '☀️', cor: '#ffffff' },
+    { id: 'desconhecido', nome: '?', icone: '👤', cor: '#666666' }
+];
+
+const getClasseInfo = (ficha) => {
+    const nomeClasse = ficha?.bio?.classe;
+    if (!nomeClasse) return null;
+    const nomeStr = String(nomeClasse).trim().toLowerCase();
+    const todasClasses = [...CLASSES_REGULARES_BASE, ...CLASSES_EXTRA_BASE];
+    const overrides = ficha?.compendioOverrides?.classes || {};
+    const overrideMatch = Object.values(overrides).find(c => !c.deletado && c.nome && c.nome.toLowerCase() === nomeStr);
+    if (overrideMatch) return overrideMatch;
+    return todasClasses.find(c => c.nome.toLowerCase() === nomeStr) || null;
+};
+
+// ==========================================
+// 🛡️ FUNÇÕES SEGURAS DA ENGINE E MATEMÁTICA
 // ==========================================
 const safeGetRawBase = (f, k) => typeof getRawBase === 'function' ? getRawBase(f, k) : parseFloat(f[k]?.base) || 0;
 const safeGetRank = (prest, asc) => typeof getRank === 'function' ? getRank(prest, asc) : { l: 'F', c: '#ffffff', a: asc };
@@ -198,6 +235,8 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
     }, [npcData?.estetica?.diarioCor, npcData?.estetica?.corTintaRadar, npcData?.estetica?.bgImg, npcData?.estetica?.molduraAvatar, npcData?.estetica?.corMoldura]);
 
     if (!npcData) return <div style={{ color: '#fff', padding: 20 }}>Conectando à Entidade...</div>;
+
+    const classeInfo = getClasseInfo(npcData);
 
     const mudarPagina = (nova) => {
         setAnimDirection(nova > paginaAtual ? 'next' : 'prev');
@@ -424,7 +463,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                 .page-swoop-next { animation: pageSwoopNext 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
                 .page-swoop-prev { animation: pageSwoopPrev 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
 
-                .grimorio-estilo-papel { --tinta: ${localCorTinta}; --fundo: ${localCorFundo}; color: var(--tinta) !important; }
+                .grimorio-estilo-papel { --tinta: ${localCorTinta || '#000'}; --fundo: ${localCorFundo || '#fff'}; color: var(--tinta) !important; }
                 .grimorio-estilo-papel * { font-family: ${fonteDiario}, cursive !important; text-shadow: none !important; box-shadow: none !important; }
                 .grimorio-estilo-papel .def-box {
                     background: transparent !important; border: 2px solid var(--tinta) !important;
@@ -502,7 +541,6 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                 </div>
             </div>
 
-            {/* 📖 CONTEÚDO ANIMADO DO LIVRO DO NPC */}
             <div key={paginaAtual} className={`swoop-container ${animDirection === 'next' ? 'page-swoop-next' : 'page-swoop-prev'}`} style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '40px', paddingBottom: '30px' }}>
                 
                 {/* ======================= PÁGINA 1 ======================= */}
@@ -539,20 +577,34 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                 ))}
                             </div>
 
-                            {/* 🔥 A MOLDURA E O AVATAR MAGIAM-SE AQUI! 🔥 */}
-                            <div style={{ marginTop: '20px', position: 'relative', width: '320px', height: '480px', display: 'flex', flexDirection: 'column', borderRadius: '8px', border: npcData.avatar?.base ? 'none' : '2px dashed #000', boxShadow: npcData.avatar?.base ? '8px 8px 0px rgba(0,0,0,0.2)' : 'none' }}>
+                            {/* 🔥 A MOLDURA, O AVATAR E O ÍCONE DA CLASSE (ISOLADOS) 🔥 */}
+                            <div style={{ marginTop: '20px', position: 'relative', width: '320px', height: '480px', display: 'flex', flexDirection: 'column', borderRadius: '8px', border: npcData.avatar?.base ? 'none' : '2px dashed #000', boxShadow: npcData.avatar?.base ? '8px 8px 0px rgba(0,0,0,0.2)' : 'none', isolation: 'isolate' }}>
                                 {uploadingImg ? (
                                     <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.7)', color: '#fff', fontWeight: 'bold', zIndex: 20 }}>✍️ Forjando...</div>
                                 ) : npcData.avatar?.base ? (
                                     <>
                                         <img src={npcData.avatar.base} alt="Avatar" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'fill', zIndex: 1, borderRadius: '8px' }} />
                                         
-                                        {/* A MOLDURA E O FILTRO DE COR DE TINTURA */}
+                                        {/* 🔥 A TINTURA DA MOLDURA */}
                                         {localMolduraAvatar && (
                                             <div style={{ position: 'absolute', top: '-2.5%', left: '-3%', width: '106%', height: '105%', zIndex: 2, pointerEvents: 'none', mixBlendMode: 'screen' }}>
                                                 <img src={localMolduraAvatar} alt="Moldura" style={{ width: '100%', height: '100%', objectFit: 'fill', position: 'absolute', top: 0, left: 0 }} />
+                                                
                                                 {localCorMoldura && localCorMoldura !== '#ffffff' && (
                                                     <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: localCorMoldura, mixBlendMode: 'color' }} />
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* 🔥 O ÍCONE DA CLASSE PUXADO DIRETO DO COMPÊNDIO */}
+                                        {classeInfo && (
+                                            <div style={{ position: 'absolute', bottom: '-20px', left: '50%', transform: 'translateX(-50%)', zIndex: 3, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                {classeInfo.iconeUrl ? (
+                                                    <img src={classeInfo.iconeUrl} alt={classeInfo.nome} style={{ width: '60px', height: '60px', objectFit: 'contain', filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.8))' }} />
+                                                ) : (
+                                                    <div style={{ width: '50px', height: '50px', background: classeInfo.cor, transform: 'rotate(45deg)', border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.8)' }}>
+                                                        <span style={{ transform: 'rotate(-45deg)', fontSize: '1.5em', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>{classeInfo.icone}</span>
+                                                    </div>
                                                 )}
                                             </div>
                                         )}
@@ -672,7 +724,6 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                             </div>
                         </div>
 
-                        {/* 🔥 TABELA SUPREMA PARA OS NPCs */}
                         <div style={{ width: '100%', marginTop: '30px', background: 'rgba(0,0,0,0.03)', padding: '20px', borderRadius: '15px', border: '1px dashed rgba(0,0,0,0.2)' }}>
                             <h2 style={{ fontSize: '1.8em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 20px 0', textAlign: 'center' }}>Mecânicas de Ascensão e Divisores</h2>
 
