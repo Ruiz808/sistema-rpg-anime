@@ -169,7 +169,7 @@ export default function MarcadosPanel() {
     const [paginaAtual, setPaginaAtual] = useState(1);
     const [salvando, setSalvando] = useState(false);
 
-    // 🔥 MOTOR DA ANIMAÇÃO DE PÁGINAS 🔥
+    // 🔥 MOTOR DA ANIMAÇÃO DE PÁGINAS FLUIDA 🔥
     const [animDirection, setAnimDirection] = useState('next');
 
     const [localCorFundo, setLocalCorFundo] = useState('#bba9d8');
@@ -387,64 +387,81 @@ export default function MarcadosPanel() {
             overflowX: 'hidden'
         }}>
             
-            {/* 🌟 MAGIAS CSS INJETADAS DIRETAMENTE 🌟 */}
+            {/* 🌟 MAGIAS CSS DA ANIMAÇÃO FLUIDA E DO GRIMÓRIO 🌟 */}
             <style>{`
-                .flip-container {
+                .swoop-container {
                     transform-style: preserve-3d;
                 }
-                @keyframes pageFlipNext {
-                    0% { transform: perspective(2500px) rotateY(90deg); transform-origin: 100% 50%; opacity: 0; filter: blur(3px); }
-                    100% { transform: perspective(2500px) rotateY(0deg); transform-origin: 100% 50%; opacity: 1; filter: blur(0px); }
+                
+                /* Animação suave deslizando e curvando como a página de um livro real */
+                @keyframes pageSwoopNext {
+                    0% { transform: perspective(1500px) rotateY(-15deg) translateX(30px) scale(0.98); opacity: 0; }
+                    100% { transform: perspective(1500px) rotateY(0deg) translateX(0) scale(1); opacity: 1; }
                 }
-                @keyframes pageFlipPrev {
-                    0% { transform: perspective(2500px) rotateY(-90deg); transform-origin: 0% 50%; opacity: 0; filter: blur(3px); }
-                    100% { transform: perspective(2500px) rotateY(0deg); transform-origin: 0% 50%; opacity: 1; filter: blur(0px); }
+                @keyframes pageSwoopPrev {
+                    0% { transform: perspective(1500px) rotateY(15deg) translateX(-30px) scale(0.98); opacity: 0; }
+                    100% { transform: perspective(1500px) rotateY(0deg) translateX(0) scale(1); opacity: 1; }
                 }
-                .page-flip-next { animation: pageFlipNext 0.6s cubic-bezier(0.645, 0.045, 0.355, 1) forwards; }
-                .page-flip-prev { animation: pageFlipPrev 0.6s cubic-bezier(0.645, 0.045, 0.355, 1) forwards; }
+                
+                .page-swoop-next { animation: pageSwoopNext 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+                .page-swoop-prev { animation: pageSwoopPrev 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
 
-                /* 🌟 A ILUSÃO DO GRIMÓRIO (PÁGINA 3) 🌟 */
+                /* 🌟 A ILUSÃO DO GRIMÓRIO PARA A PÁGINA DOS PODERES 🌟 */
                 .grimorio-estilo-papel {
                     --tinta: ${localCorTinta};
                     --fundo: ${localCorFundo};
                     color: var(--tinta) !important;
                 }
                 .grimorio-estilo-papel * {
-                    font-family: ${fonteDiario}, cursive !important;
+                    font-family: ${fonteDiario}, 'Courier New', serif !important;
                     text-shadow: none !important;
                     box-shadow: none !important;
                 }
-                .grimorio-estilo-papel .def-box {
+                
+                /* Transformar as Caixas Neon em Caixas de Papel Desenhadas à Mão */
+                .grimorio-estilo-papel .def-box,
+                .grimorio-estilo-papel [style*="background: rgba"] {
                     background: transparent !important;
                     border: 2px solid var(--tinta) !important;
                     border-radius: 2px 255px 3px 25px / 255px 5px 225px 3px !important; 
-                    padding: 20px !important;
-                    margin-bottom: 20px !important;
+                    position: relative;
                 }
+                
+                /* Sobreposição translúcida para não ficar invisível, mas sem perder o ar de papel */
+                .grimorio-estilo-papel .def-box::before,
+                .grimorio-estilo-papel [style*="background: rgba"]::before {
+                    content: ''; position: absolute; top:0; left:0; right:0; bottom:0;
+                    background: var(--tinta); opacity: 0.03; pointer-events: none;
+                    border-radius: inherit;
+                }
+
                 .grimorio-estilo-papel h2, .grimorio-estilo-papel h3, .grimorio-estilo-papel h4 {
                     color: var(--tinta) !important;
-                    border-bottom: 2px dotted var(--tinta) !important;
                     display: inline-block;
-                    padding-bottom: 5px;
                 }
+
+                /* Botões no estilo Grimório */
                 .grimorio-estilo-papel button {
                     background: transparent !important;
-                    border: 2px solid var(--tinta) !important;
-                    border-radius: 2px 15px 5px 15px / 15px 5px 15px 2px !important;
+                    border: 2px dashed var(--tinta) !important;
+                    border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
                     color: var(--tinta) !important;
                     font-weight: bold !important;
                     text-transform: uppercase !important;
-                    transition: transform 0.2s ease !important;
+                    transition: all 0.2s ease !important;
                 }
                 .grimorio-estilo-papel button:hover {
                     background: var(--tinta) !important;
                     color: var(--fundo) !important;
+                    border-style: solid !important;
                     transform: scale(1.02) rotate(-1deg) !important;
                 }
+
+                /* Inputs em linha de tinta */
                 .grimorio-estilo-papel input, .grimorio-estilo-papel textarea, .grimorio-estilo-papel select {
                     background: rgba(0,0,0,0.03) !important;
                     border: none !important;
-                    border-bottom: 1px dashed var(--tinta) !important;
+                    border-bottom: 2px dotted var(--tinta) !important;
                     color: var(--tinta) !important;
                     border-radius: 0 !important;
                 }
@@ -457,17 +474,23 @@ export default function MarcadosPanel() {
                     opacity: 0.5 !important;
                     font-style: italic !important;
                 }
-                .grimorio-estilo-papel div[style*="radial-gradient"] { display: none !important; }
-                .grimorio-estilo-papel div { border-color: var(--tinta) !important; }
+
+                /* Aniquilar as cores Neon específicas do código original */
+                .grimorio-estilo-papel span[style*="color: #0ff"],
+                .grimorio-estilo-papel span[style*="color: #0f0"],
+                .grimorio-estilo-papel span[style*="color: #ff003c"],
+                .grimorio-estilo-papel span[style*="color: #ffcc00"],
+                .grimorio-estilo-papel span[style*="color: #ff8800"],
+                .grimorio-estilo-papel span[style*="color: #00ccff"],
+                .grimorio-estilo-papel div[style*="color: #ff00ff"] {
+                    color: var(--tinta) !important;
+                }
+                
+                /* Tira a barra lateral e transforma num índice de livro */
                 .grimorio-estilo-papel .poderes-sidebar .def-box {
                     border: none !important;
                     border-right: 2px dashed var(--tinta) !important;
                     border-radius: 0 !important;
-                }
-                .grimorio-estilo-papel div[style*="background: rgba(255, 0, 0"] {
-                    background: transparent !important;
-                    border: 2px dashed var(--tinta) !important;
-                    color: var(--tinta) !important;
                 }
             `}</style>
 
@@ -514,8 +537,8 @@ export default function MarcadosPanel() {
                 </div>
             </div>
 
-            {/* 📖 CONTEÚDO ANIMADO DO LIVRO */}
-            <div key={paginaAtual} className={`flip-container ${animDirection === 'next' ? 'page-flip-next' : 'page-flip-prev'}`} style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '40px', paddingBottom: '30px' }}>
+            {/* 📖 CONTEÚDO ANIMADO DO LIVRO (NOVO SWOOP) */}
+            <div key={paginaAtual} className={`swoop-container ${animDirection === 'next' ? 'page-swoop-next' : 'page-swoop-prev'}`} style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '40px', paddingBottom: '30px' }}>
                 
                 {/* ======================= PÁGINA 1 ======================= */}
                 {paginaAtual === 1 && (
@@ -718,7 +741,7 @@ export default function MarcadosPanel() {
                 {paginaAtual === 3 && (
                     <div className="grimorio-estilo-papel" style={{ width: '100%' }}>
                         <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                            <h1 style={{ fontSize: '2.5em', fontStyle: 'italic', fontWeight: 'bold', margin: 0, paddingBottom: '10px', borderBottom: `2px dashed ${localCorTinta}` }}>
+                            <h1 style={{ fontSize: '3em', fontStyle: 'italic', fontWeight: 'bold', margin: 0, paddingBottom: '10px', borderBottom: `2px dashed ${localCorTinta}` }}>
                                 <LabelMagico valor={getLabel('tituloPg3', 'O Grimório Místico')} onChange={(v) => setLabel('tituloPg3', v)} />
                             </h1>
                         </div>

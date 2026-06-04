@@ -58,7 +58,7 @@ const CampoMagicoNPC = ({ valor, onChange, placeholder, styleExtra = {}, type = 
 const AreaMagicaNPC = ({ valor, onChange, placeholder, styleExtra = {} }) => (
     <textarea 
         value={valor || ''} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-        style={{ width: '100%', minHeight: '60px', background: 'transparent', border: '1px dashed rgba(0,0,0,0.3)', color: 'inherit', fontFamily: 'inherit', padding: '8px', outline: 'none', resize: 'vertical', ...styleExtra }}
+        style={{ width: '100%', minHeight: '60px', background: 'transparent', border: 'none', borderBottom: '2px dotted inherit', color: 'inherit', fontFamily: 'inherit', padding: '8px', outline: 'none', resize: 'vertical', ...styleExtra }}
     />
 );
 
@@ -361,21 +361,24 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
             
             {/* 🌟 MAGIAS CSS DA ANIMAÇÃO E DO NOVO DESIGN DA PÁGINA 3 🌟 */}
             <style>{`
-                .flip-container {
+                .swoop-container {
                     transform-style: preserve-3d;
                 }
-                @keyframes pageFlipNext {
-                    0% { transform: perspective(2500px) rotateY(90deg); transform-origin: 100% 50%; opacity: 0; filter: blur(3px); }
-                    100% { transform: perspective(2500px) rotateY(0deg); transform-origin: 100% 50%; opacity: 1; filter: blur(0px); }
+                
+                /* Animação suave deslizando e curvando como a página de um livro real */
+                @keyframes pageSwoopNext {
+                    0% { transform: perspective(1500px) rotateY(-15deg) translateX(30px) scale(0.98); opacity: 0; }
+                    100% { transform: perspective(1500px) rotateY(0deg) translateX(0) scale(1); opacity: 1; }
                 }
-                @keyframes pageFlipPrev {
-                    0% { transform: perspective(2500px) rotateY(-90deg); transform-origin: 0% 50%; opacity: 0; filter: blur(3px); }
-                    100% { transform: perspective(2500px) rotateY(0deg); transform-origin: 0% 50%; opacity: 1; filter: blur(0px); }
+                @keyframes pageSwoopPrev {
+                    0% { transform: perspective(1500px) rotateY(15deg) translateX(-30px) scale(0.98); opacity: 0; }
+                    100% { transform: perspective(1500px) rotateY(0deg) translateX(0) scale(1); opacity: 1; }
                 }
-                .page-flip-next { animation: pageFlipNext 0.6s cubic-bezier(0.645, 0.045, 0.355, 1) forwards; }
-                .page-flip-prev { animation: pageFlipPrev 0.6s cubic-bezier(0.645, 0.045, 0.355, 1) forwards; }
+                
+                .page-swoop-next { animation: pageSwoopNext 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+                .page-swoop-prev { animation: pageSwoopPrev 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
 
-                /* 🌟 A ILUSÃO DO GRIMÓRIO (PÁGINA 3) 🌟 */
+                /* 🌟 A ILUSÃO DO GRIMÓRIO (PÁGINA 3 DOS NPCS) 🌟 */
                 .grimorio-estilo-papel {
                     --tinta: ${localCorTinta};
                     --fundo: ${localCorFundo};
@@ -389,9 +392,15 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                 .grimorio-estilo-papel .def-box {
                     background: transparent !important;
                     border: 2px solid var(--tinta) !important;
-                    border-radius: 2px 255px 3px 25px / 255px 5px 225px 3px !important; /* Estilo rabiscado à mão */
+                    border-radius: 2px 255px 3px 25px / 255px 5px 225px 3px !important; 
                     padding: 20px !important;
                     margin-bottom: 20px !important;
+                    position: relative;
+                }
+                .grimorio-estilo-papel .def-box::before {
+                    content: ''; position: absolute; top:0; left:0; right:0; bottom:0;
+                    background: var(--tinta); opacity: 0.03; pointer-events: none;
+                    border-radius: inherit;
                 }
                 .grimorio-estilo-papel h2, .grimorio-estilo-papel h3, .grimorio-estilo-papel h4 {
                     color: var(--tinta) !important;
@@ -401,8 +410,8 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                 }
                 .grimorio-estilo-papel button {
                     background: transparent !important;
-                    border: 2px solid var(--tinta) !important;
-                    border-radius: 2px 15px 5px 15px / 15px 5px 15px 2px !important;
+                    border: 2px dashed var(--tinta) !important;
+                    border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
                     color: var(--tinta) !important;
                     font-weight: bold !important;
                     text-transform: uppercase !important;
@@ -411,23 +420,8 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                 .grimorio-estilo-papel button:hover {
                     background: var(--tinta) !important;
                     color: var(--fundo) !important;
+                    border-style: solid !important;
                     transform: scale(1.02) rotate(-1deg) !important;
-                }
-                .grimorio-estilo-papel input, .grimorio-estilo-papel textarea, .grimorio-estilo-papel select {
-                    background: rgba(0,0,0,0.03) !important;
-                    border: none !important;
-                    border-bottom: 1px dashed var(--tinta) !important;
-                    color: var(--tinta) !important;
-                    border-radius: 0 !important;
-                }
-                .grimorio-estilo-papel input:focus, .grimorio-estilo-papel textarea:focus {
-                    background: rgba(0,0,0,0.06) !important;
-                    border-bottom: 2px solid var(--tinta) !important;
-                }
-                .grimorio-estilo-papel input::placeholder, .grimorio-estilo-papel textarea::placeholder {
-                    color: var(--tinta) !important;
-                    opacity: 0.5 !important;
-                    font-style: italic !important;
                 }
             `}</style>
 
@@ -460,7 +454,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
             </div>
 
             {/* 📖 CONTEÚDO ANIMADO DO LIVRO DO NPC */}
-            <div key={paginaAtual} className={`flip-container ${animDirection === 'next' ? 'page-flip-next' : 'page-flip-prev'}`} style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '40px', paddingBottom: '30px' }}>
+            <div key={paginaAtual} className={`swoop-container ${animDirection === 'next' ? 'page-swoop-next' : 'page-swoop-prev'}`} style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '40px', paddingBottom: '30px' }}>
                 
                 {/* ======================= PÁGINA 1 ======================= */}
                 {paginaAtual === 1 && (
@@ -653,7 +647,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                 {paginaAtual === 3 && (
                     <div className="grimorio-estilo-papel" style={{ width: '100%' }}>
                         <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                            <h1 style={{ fontSize: '2.5em', fontStyle: 'italic', fontWeight: 'bold', margin: 0, paddingBottom: '10px', borderBottom: `2px dashed ${localCorTinta}` }}>
+                            <h1 style={{ fontSize: '3em', fontStyle: 'italic', fontWeight: 'bold', margin: 0, paddingBottom: '10px', borderBottom: `2px dashed ${localCorTinta}` }}>
                                 <LabelMagicoNPC valor={getLabel('tituloPg3', 'O Grimório Místico')} onChange={(v) => setLabel('tituloPg3', v)} />
                             </h1>
                         </div>
@@ -667,7 +661,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                                 {(npcData.poderes || []).map((pod, i) => (
                                     <div key={i} className="def-box" style={{ position: 'relative' }}>
-                                        <button onClick={() => { if(window.confirm('Apagar Poder?')) handleArrayItem('poderes', 'remove', i); }} style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', color: '#ff003c', fontSize: '1.2em', cursor: 'pointer' }}>✖</button>
+                                        <button onClick={() => { if(window.confirm('Apagar Poder?')) handleArrayItem('poderes', 'remove', i); }} style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', cursor: 'pointer' }}>✖</button>
                                         <div style={{ display: 'flex', gap: '10px', marginBottom: '10px', flexWrap: 'wrap', paddingRight: '30px' }}>
                                             <CampoMagicoNPC valor={pod.nome} onChange={v => handleArrayItem('poderes', 'update', i, 'nome', v)} placeholder="Nome do Poder" styleExtra={{ flex: '1 1 200px', fontSize: '1.2em', fontWeight: 'bold' }} />
                                             <CampoMagicoNPC valor={pod.custo} onChange={v => handleArrayItem('poderes', 'update', i, 'custo', v)} placeholder="Custo (ex: 50 MP)" styleExtra={{ flex: '1 1 100px' }} />
@@ -689,7 +683,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                                 {(npcData.infinitys || []).map((inf, i) => (
                                     <div key={i} className="def-box" style={{ position: 'relative' }}>
-                                        <button onClick={() => { if(window.confirm('Apagar Infinity?')) handleArrayItem('infinitys', 'remove', i); }} style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', color: '#ff003c', fontSize: '1.2em', cursor: 'pointer' }}>✖</button>
+                                        <button onClick={() => { if(window.confirm('Apagar Infinity?')) handleArrayItem('infinitys', 'remove', i); }} style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', cursor: 'pointer' }}>✖</button>
                                         <div style={{ display: 'flex', gap: '10px', marginBottom: '10px', flexWrap: 'wrap', paddingRight: '30px' }}>
                                             <CampoMagicoNPC valor={inf.nome} onChange={v => handleArrayItem('infinitys', 'update', i, 'nome', v)} placeholder="Nome do Domínio" styleExtra={{ flex: '1 1 200px', fontSize: '1.2em', fontWeight: 'bold' }} />
                                             <CampoMagicoNPC valor={inf.custo} onChange={v => handleArrayItem('infinitys', 'update', i, 'custo', v)} placeholder="Gatilho/Custo" styleExtra={{ flex: '1 1 100px' }} />
@@ -709,7 +703,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                                 {(npcData.singularidades || []).map((sing, i) => (
                                     <div key={i} className="def-box" style={{ position: 'relative' }}>
-                                        <button onClick={() => { if(window.confirm('Apagar Singularidade?')) handleArrayItem('singularidades', 'remove', i); }} style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', color: '#ff003c', fontSize: '1.2em', cursor: 'pointer' }}>✖</button>
+                                        <button onClick={() => { if(window.confirm('Apagar Singularidade?')) handleArrayItem('singularidades', 'remove', i); }} style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', cursor: 'pointer' }}>✖</button>
                                         <div style={{ display: 'flex', gap: '10px', marginBottom: '10px', flexWrap: 'wrap', paddingRight: '30px' }}>
                                             <CampoMagicoNPC valor={sing.nome} onChange={v => handleArrayItem('singularidades', 'update', i, 'nome', v)} placeholder="Essência Única" styleExtra={{ flex: '1 1 200px', fontSize: '1.2em', fontWeight: 'bold' }} />
                                             <CampoMagicoNPC valor={sing.custo} onChange={v => handleArrayItem('singularidades', 'update', i, 'custo', v)} placeholder="Passiva / Ativa" styleExtra={{ flex: '1 1 100px' }} />
