@@ -4,7 +4,7 @@ import { uploadImagem, salvarFichaSilencioso, salvarFirebaseImediato } from '../
 import { getMaximo, getRawBase, getBuffs } from '../../core/attributes';
 import { getRank } from '../../core/prestige';
 
-import PoderesPanel from '../Poderes/PoderesPanel';
+import PoderesPanel from '../poderes/PoderesPanel';
 
 // ==========================================
 // 🛡️ DADOS DO COMPÊNDIO (PARA O ÍCONE DA MOLDURA)
