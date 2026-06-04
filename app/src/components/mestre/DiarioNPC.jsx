@@ -222,6 +222,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
     const [localCorTinta, setLocalCorTinta] = useState('#000000');
     const [localBgImg, setLocalBgImg] = useState('');
     const [localMolduraAvatar, setLocalMolduraAvatar] = useState('');
+    const [localCorMoldura, setLocalCorMoldura] = useState('#ffffff');
 
     useEffect(() => {
         if (npcData) {
@@ -229,8 +230,9 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
             setLocalCorTinta(npcData.estetica?.corTintaRadar || '#000000');
             setLocalBgImg(npcData.estetica?.bgImg || '');
             setLocalMolduraAvatar(npcData.estetica?.molduraAvatar || '');
+            setLocalCorMoldura(npcData.estetica?.corMoldura || '#ffffff');
         }
-    }, [npcData?.estetica?.diarioCor, npcData?.estetica?.corTintaRadar, npcData?.estetica?.bgImg, npcData?.estetica?.molduraAvatar]);
+    }, [npcData?.estetica?.diarioCor, npcData?.estetica?.corTintaRadar, npcData?.estetica?.bgImg, npcData?.estetica?.molduraAvatar, npcData?.estetica?.corMoldura]);
 
     if (!npcData) return <div style={{ color: '#fff', padding: 20 }}>Conectando à Entidade...</div>;
 
@@ -259,6 +261,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
         else if (key === 'corTintaRadar') setLocalCorTinta(val);
         else if (key === 'bgImg') setLocalBgImg(val);
         else if (key === 'molduraAvatar') setLocalMolduraAvatar(val);
+        else if (key === 'corMoldura') setLocalCorMoldura(val);
 
         if (window.timerSaveCorNPC) clearTimeout(window.timerSaveCorNPC);
         window.timerSaveCorNPC = setTimeout(() => {
@@ -511,7 +514,22 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                 </label>
                             </div>
 
-                            <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold', marginTop: '15px' }}>Cor da Tinta (Radar):</label>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9em', color: '#555', marginTop: '10px', fontWeight: 'bold' }}>
+                                <span>Cor da Moldura:</span>
+                                <input 
+                                    type="color" value={localCorMoldura} 
+                                    onChange={(e) => handleStyleChange('corMoldura', e.target.value)} 
+                                    style={{ width: '40px', height: '25px', border: 'none', cursor: 'pointer', background: 'transparent' }} 
+                                    title="Tinge o dourado/metálico da moldura!"
+                                />
+                            </label>
+                            <div style={{ display: 'flex', gap: '5px', marginBottom: '15px', marginTop: '5px' }}>
+                                {['#ffffff', '#aa00ff', '#ffcc00', '#0088ff', '#ff003c', '#000000'].map(c => (
+                                    <div key={c} onClick={() => handleStyleChange('corMoldura', c)} style={{ width: '20px', height: '20px', backgroundColor: c, border: '1px solid rgba(0,0,0,0.5)', cursor: 'pointer', borderRadius: '3px' }} title={`Pintar de ${c}`} />
+                                ))}
+                            </div>
+
+                            <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>Cor da Tinta (Radar):</label>
                             <input 
                                 type="color" value={localCorTinta} 
                                 onChange={(e) => handleStyleChange('corTintaRadar', e.target.value)} 
@@ -569,16 +587,24 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                     <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.7)', color: '#fff', fontWeight: 'bold', zIndex: 20 }}>✍️ Forjando...</div>
                                 ) : npcData.avatar?.base ? (
                                     <>
+                                        {/* 🔥 FOTO ESTICADA SEM CORTE E CENTRADA NO ROSTO 🔥 */}
                                         <img src={npcData.avatar.base} alt="Avatar" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', zIndex: 1, borderRadius: '8px' }} />
                                         
+                                        {/* 🔥 MOLDURA COM ALQUIMIA DE COR E SCREEN 🔥 */}
                                         {localMolduraAvatar && (
-                                            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 2, pointerEvents: 'none', mixBlendMode: 'screen' }}>
+                                            <div style={{ position: 'absolute', top: '-2.5%', left: '-3%', width: '106%', height: '105%', zIndex: 2, pointerEvents: 'none', mixBlendMode: 'screen' }}>
                                                 <img src={localMolduraAvatar} alt="Moldura" style={{ width: '100%', height: '100%', objectFit: 'fill', position: 'absolute', top: 0, left: 0 }} />
+                                                
+                                                {/* CAMADA DE COR FORTE QUE NÃO DESTRÓI O OURO */}
+                                                {localCorMoldura && localCorMoldura !== '#ffffff' && (
+                                                    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: localCorMoldura, mixBlendMode: 'color' }} />
+                                                )}
                                             </div>
                                         )}
 
+                                        {/* 🔥 ÍCONE DA CLASSE (PUXADO DO COMPÊNDIO) */}
                                         {classeInfo && (
-                                            <div style={{ position: 'absolute', bottom: '-20px', left: '50%', transform: 'translateX(-50%)', zIndex: 3, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <div style={{ position: 'absolute', bottom: '-15px', left: '50%', transform: 'translateX(-50%)', zIndex: 3, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                                 {classeInfo.iconeUrl ? (
                                                     <img src={classeInfo.iconeUrl} alt={classeInfo.nome} style={{ width: '60px', height: '60px', objectFit: 'contain', filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.8))' }} />
                                                 ) : (
@@ -704,6 +730,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                             </div>
                         </div>
 
+                        {/* 🔥 TABELA SUPREMA PARA OS NPCs */}
                         <div style={{ width: '100%', marginTop: '30px', background: 'rgba(0,0,0,0.03)', padding: '20px', borderRadius: '15px', border: '1px dashed rgba(0,0,0,0.2)' }}>
                             <h2 style={{ fontSize: '1.8em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 20px 0', textAlign: 'center' }}>Mecânicas de Ascensão e Divisores</h2>
 
