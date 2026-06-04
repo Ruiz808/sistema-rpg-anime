@@ -235,8 +235,6 @@ export default function MarcadosPanel() {
     const [localCorTinta, setLocalCorTinta] = useState('#000000');
     const [localBgImg, setLocalBgImg] = useState('');
     const [localMolduraAvatar, setLocalMolduraAvatar] = useState('');
-    const [localCorMoldura, setLocalCorMoldura] = useState('#ffffff');
-    const [localIconeClasse, setLocalIconeClasse] = useState('');
 
     useEffect(() => {
         if (minhaFicha) {
@@ -244,10 +242,8 @@ export default function MarcadosPanel() {
             setLocalCorTinta(minhaFicha.estetica?.corTintaRadar || '#000000');
             setLocalBgImg(minhaFicha.estetica?.bgImg || '');
             setLocalMolduraAvatar(minhaFicha.estetica?.molduraAvatar || '');
-            setLocalCorMoldura(minhaFicha.estetica?.corMoldura || '#ffffff');
-            setLocalIconeClasse(minhaFicha.estetica?.iconeClasse || '');
         }
-    }, [minhaFicha?.estetica?.diarioCor, minhaFicha?.estetica?.corTintaRadar, minhaFicha?.estetica?.bgImg, minhaFicha?.estetica?.molduraAvatar, minhaFicha?.estetica?.corMoldura, minhaFicha?.estetica?.iconeClasse]);
+    }, [minhaFicha?.estetica?.diarioCor, minhaFicha?.estetica?.corTintaRadar, minhaFicha?.estetica?.bgImg, minhaFicha?.estetica?.molduraAvatar]);
 
     if (!minhaFicha) return <div style={{ color: '#000', padding: 20, fontFamily: 'cursive' }}>Abrindo o Diário...</div>;
 
@@ -277,8 +273,6 @@ export default function MarcadosPanel() {
         else if (key === 'corTintaRadar') setLocalCorTinta(val);
         else if (key === 'bgImg') setLocalBgImg(val);
         else if (key === 'molduraAvatar') setLocalMolduraAvatar(val);
-        else if (key === 'corMoldura') setLocalCorMoldura(val);
-        else if (key === 'iconeClasse') setLocalIconeClasse(val);
 
         if (window.timerSaveCor) clearTimeout(window.timerSaveCor);
         window.timerSaveCor = setTimeout(() => {
@@ -307,14 +301,7 @@ export default function MarcadosPanel() {
         } catch (err) { alert('Erro ao enviar a moldura!'); }
     };
 
-    const handleIconeUpload = async (e) => {
-        const file = e.target.files[0]; if (!file) return;
-        try {
-            const url = await uploadImagem(file, `icones_classes/${meuNome || 'desconhecido'}_icone`);
-            handleStyleChange('iconeClasse', url);
-        } catch (err) { alert('Erro ao enviar o ícone da classe!'); }
-    };
-
+    // 🔥 SALVAMENTO BLINDADO DAS TABELAS COM PROMISES 🔥
     const handleTabelaChange = (k, tipo, valor) => {
         let numVal = Number(valor);
         if (isNaN(numVal)) numVal = 0;
@@ -350,18 +337,19 @@ export default function MarcadosPanel() {
         });
         
         if (typeof salvarFirebaseImediato === 'function') {
-            salvarFirebaseImediato().catch(err => console.error(err));
+            salvarFirebaseImediato().catch(err => console.error("Erro ao guardar tabela:", err));
         } else {
             salvarFichaSilencioso();
         }
     };
 
+    // 🔥 BOTÃO GLOBAL COM PROMISES PARA NÃO ENGASGAR
     const handleSalvarTudo = () => {
         setSalvando(true);
         if (typeof salvarFirebaseImediato === 'function') {
             salvarFirebaseImediato()
                 .then(() => setTimeout(() => setSalvando(false), 1500))
-                .catch(() => { alert("Erro ao sincronizar!"); setSalvando(false); });
+                .catch(() => { alert("Erro ao sincronizar na nuvem!"); setSalvando(false); });
         } else {
             salvarFichaSilencioso();
             setTimeout(() => setSalvando(false), 1500);
@@ -485,17 +473,6 @@ export default function MarcadosPanel() {
         alert("O seu diário foi sincronizado!");
     };
 
-    // 🔥 O MOTOR DA LUMINOSIDADE PARA O PRETO FUNCIONAR 🔥
-    const getLuma = (hex) => {
-        if (!hex) return 255;
-        const c = hex.replace('#', '');
-        const r = parseInt(c.substring(0, 2), 16) || 255;
-        const g = parseInt(c.substring(2, 4), 16) || 255;
-        const b = parseInt(c.substring(4, 6), 16) || 255;
-        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-    };
-    const isDarkFrame = localCorMoldura && getLuma(localCorMoldura) < 50;
-
     return (
         <div style={{ 
             width: '100%', minHeight: '85vh', 
@@ -559,6 +536,7 @@ export default function MarcadosPanel() {
                 .grimorio-estilo-papel .poderes-sidebar .def-box { border: none !important; border-right: 2px dashed var(--tinta) !important; border-radius: 0 !important; }
             `}</style>
 
+            {/* 📌 CONTROLES SUPERIORES */}
             <div style={{ position: 'absolute', top: '-25px', right: '30px', zIndex: 20, display: 'flex', gap: '15px' }}>
                 <div style={{ position: 'relative' }}>
                     <button onClick={handleSalvarTudo} style={{ background: salvando ? '#a5d6a7' : '#4caf50', color: '#fff', border: '1px solid #333', borderBottom: '3px solid #222', padding: '10px 20px', fontFamily: 'inherit', fontWeight: 'bold', fontSize: '1.1em', cursor: 'pointer', borderRadius: '4px', boxShadow: '2px 4px 8px rgba(0,0,0,0.4)', transform: 'rotate(1deg)' }}>
@@ -588,41 +566,13 @@ export default function MarcadosPanel() {
                             </div>
 
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>✨ Moldura do Personagem:</label>
-                            <div style={{ display: 'flex', gap: '5px', marginBottom: '5px' }}>
+                            <div style={{ display: 'flex', gap: '5px', marginBottom: '15px' }}>
                                 <input 
                                     type="text" value={localMolduraAvatar} onChange={(e) => handleStyleChange('molduraAvatar', e.target.value)} placeholder="Cole o Link da moldura..."
                                     style={{ flex: 1, padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', color: 'inherit' }} 
                                 />
                                 <label style={{ background: 'rgba(0,0,0,0.1)', border: '1px solid rgba(0,0,0,0.2)', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="Upload de Moldura">
                                     📁<input type="file" accept="image/*" onChange={handleMolduraUpload} style={{ display: 'none' }} />
-                                </label>
-                            </div>
-                            
-                            {/* 🔥 A TINTURA DA MOLDURA COM PALETA RÁPIDA! */}
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9em', color: '#555', marginTop: '10px' }}>
-                                <span>Cor da Moldura:</span>
-                                <input 
-                                    type="color" value={localCorMoldura} 
-                                    onChange={(e) => handleStyleChange('corMoldura', e.target.value)} 
-                                    style={{ width: '40px', height: '25px', border: 'none', cursor: 'pointer', background: 'transparent' }} 
-                                    title="Tinge o dourado/metálico da moldura!"
-                                />
-                            </label>
-                            <div style={{ display: 'flex', gap: '5px', marginBottom: '15px', marginTop: '5px' }}>
-                                {['#ffffff', '#aa00ff', '#ffcc00', '#0088ff', '#ff003c', '#000000'].map(c => (
-                                    <div key={c} onClick={() => handleStyleChange('corMoldura', c)} style={{ width: '20px', height: '20px', backgroundColor: c, border: '1px solid rgba(0,0,0,0.5)', cursor: 'pointer', borderRadius: '3px' }} title={`Pintar de ${c}`} />
-                                ))}
-                            </div>
-
-                            {/* 🔥 NOVO: ÍCONE DA CLASSE (LOSANGO) */}
-                            <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>🔷 Ícone da Classe (Losango):</label>
-                            <div style={{ display: 'flex', gap: '5px', marginBottom: '15px' }}>
-                                <input 
-                                    type="text" value={localIconeClasse} onChange={(e) => handleStyleChange('iconeClasse', e.target.value)} placeholder="Link do Ícone..."
-                                    style={{ flex: 1, padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', color: 'inherit' }} 
-                                />
-                                <label style={{ background: 'rgba(0,0,0,0.1)', border: '1px solid rgba(0,0,0,0.2)', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="Upload do Ícone">
-                                    📁<input type="file" accept="image/*" onChange={handleIconeUpload} style={{ display: 'none' }} />
                                 </label>
                             </div>
 
@@ -688,30 +638,33 @@ export default function MarcadosPanel() {
                                 ))}
                             </div>
 
-                            {/* 🔥 A MOLDURA COM ALQUIMIA DE CORES E O AVATAR MAGIAM-SE AQUI! 🔥 */}
+                            {/* 🔥 A MOLDURA E O AVATAR COM ISOLATION: ISOLATE! 🔥 */}
                             <div style={{ marginTop: '20px', position: 'relative', width: '320px', height: '480px', display: 'flex', flexDirection: 'column', borderRadius: '8px', border: minhaFicha.avatar?.base ? 'none' : '2px dashed #000', boxShadow: minhaFicha.avatar?.base ? '8px 8px 0px rgba(0,0,0,0.2)' : 'none', isolation: 'isolate' }}>
                                 {uploadingImg ? (
                                     <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.7)', color: '#fff', fontWeight: 'bold', zIndex: 20 }}>✍️ Forjando...</div>
                                 ) : minhaFicha.avatar?.base ? (
                                     <>
-                                        {/* 🔥 A FOTO NÃO É MAIS CORTADA (objectPosition: 'top center') 🔥 */}
+                                        {/* 🔥 Ajustado para objectPosition: top center para NÃO cortar a cabeça! */}
                                         <img src={minhaFicha.avatar.base} alt="Avatar" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', zIndex: 1, borderRadius: '8px' }} />
                                         
-                                        {/* A MAGIA DO PRETO: Se a cor for escura (<50 luma), inverte o preto para branco e multiplica! */}
+                                        {/* 🔥 A MOLDURA: Apenas apaga o fundo preto! */}
                                         {localMolduraAvatar && (
-                                            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 2, pointerEvents: 'none', mixBlendMode: isDarkFrame ? 'multiply' : 'screen' }}>
-                                                <img src={localMolduraAvatar} alt="Moldura" style={{ width: '100%', height: '100%', objectFit: 'fill', position: 'absolute', top: 0, left: 0, filter: isDarkFrame ? 'invert(1) grayscale(1) contrast(1.5)' : 'none' }} />
-                                                
-                                                {/* CAMADA DE COR FORTE */}
-                                                {localCorMoldura && localCorMoldura !== '#ffffff' && (
-                                                    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: localCorMoldura, mixBlendMode: isDarkFrame ? 'screen' : 'multiply' }} />
-                                                )}
+                                            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 2, pointerEvents: 'none', mixBlendMode: 'screen' }}>
+                                                <img src={localMolduraAvatar} alt="Moldura" style={{ width: '100%', height: '100%', objectFit: 'fill', position: 'absolute', top: 0, left: 0 }} />
                                             </div>
                                         )}
 
-                                        {/* 🔥 O ÍCONE DA CLASSE (LOSANGO) */}
-                                        {localIconeClasse && (
-                                            <img src={localIconeClasse} alt="Classe" style={{ position: 'absolute', bottom: '2px', left: '50%', transform: 'translateX(-50%)', width: '55px', height: '55px', objectFit: 'contain', zIndex: 3, filter: 'drop-shadow(0 0 5px rgba(0,0,0,0.8))', pointerEvents: 'none' }} />
+                                        {/* 🔥 O ÍCONE DA CLASSE (PUXADO DIRETO DO COMPÊNDIO) */}
+                                        {classeInfo && (
+                                            <div style={{ position: 'absolute', bottom: '-20px', left: '50%', transform: 'translateX(-50%)', zIndex: 3, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                {classeInfo.iconeUrl ? (
+                                                    <img src={classeInfo.iconeUrl} alt={classeInfo.nome} style={{ width: '60px', height: '60px', objectFit: 'contain', filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.8))' }} />
+                                                ) : (
+                                                    <div style={{ width: '50px', height: '50px', background: classeInfo.cor, transform: 'rotate(45deg)', border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.8)' }}>
+                                                        <span style={{ transform: 'rotate(-45deg)', fontSize: '1.5em', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>{classeInfo.icone}</span>
+                                                    </div>
+                                                )}
+                                            </div>
                                         )}
                                         
                                         <label style={{ cursor: 'pointer', position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 10 }}>

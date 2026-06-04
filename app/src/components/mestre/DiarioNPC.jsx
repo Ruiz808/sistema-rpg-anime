@@ -222,8 +222,6 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
     const [localCorTinta, setLocalCorTinta] = useState('#000000');
     const [localBgImg, setLocalBgImg] = useState('');
     const [localMolduraAvatar, setLocalMolduraAvatar] = useState('');
-    const [localCorMoldura, setLocalCorMoldura] = useState('#ffffff');
-    const [localIconeClasse, setLocalIconeClasse] = useState('');
 
     useEffect(() => {
         if (npcData) {
@@ -231,10 +229,8 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
             setLocalCorTinta(npcData.estetica?.corTintaRadar || '#000000');
             setLocalBgImg(npcData.estetica?.bgImg || '');
             setLocalMolduraAvatar(npcData.estetica?.molduraAvatar || '');
-            setLocalCorMoldura(npcData.estetica?.corMoldura || '#ffffff');
-            setLocalIconeClasse(npcData.estetica?.iconeClasse || '');
         }
-    }, [npcData?.estetica?.diarioCor, npcData?.estetica?.corTintaRadar, npcData?.estetica?.bgImg, npcData?.estetica?.molduraAvatar, npcData?.estetica?.corMoldura, npcData?.estetica?.iconeClasse]);
+    }, [npcData?.estetica?.diarioCor, npcData?.estetica?.corTintaRadar, npcData?.estetica?.bgImg, npcData?.estetica?.molduraAvatar]);
 
     if (!npcData) return <div style={{ color: '#fff', padding: 20 }}>Conectando à Entidade...</div>;
 
@@ -263,8 +259,6 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
         else if (key === 'corTintaRadar') setLocalCorTinta(val);
         else if (key === 'bgImg') setLocalBgImg(val);
         else if (key === 'molduraAvatar') setLocalMolduraAvatar(val);
-        else if (key === 'corMoldura') setLocalCorMoldura(val);
-        else if (key === 'iconeClasse') setLocalIconeClasse(val);
 
         if (window.timerSaveCorNPC) clearTimeout(window.timerSaveCorNPC);
         window.timerSaveCorNPC = setTimeout(() => {
@@ -289,14 +283,6 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
             const url = await uploadImagem(file, `molduras_avatars_npcs/${npcData.id || 'desconhecido'}_moldura`);
             handleStyleChange('molduraAvatar', url);
         } catch (err) { alert('Erro ao enviar a moldura!'); }
-    };
-
-    const handleIconeUpload = async (e) => {
-        const file = e.target.files[0]; if (!file) return;
-        try {
-            const url = await uploadImagem(file, `icones_classes_npcs/${npcData.id || 'desconhecido'}_icone`);
-            handleStyleChange('iconeClasse', url);
-        } catch (err) { alert('Erro ao enviar o ícone!'); }
     };
 
     const handleTabelaChange = (k, tipo, valor) => {
@@ -449,17 +435,6 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
         );
     };
 
-    // 🔥 O MOTOR DA LUMINOSIDADE 🔥
-    const getLuma = (hex) => {
-        if (!hex) return 255;
-        const c = hex.replace('#', '');
-        const r = parseInt(c.substring(0, 2), 16) || 255;
-        const g = parseInt(c.substring(2, 4), 16) || 255;
-        const b = parseInt(c.substring(4, 6), 16) || 255;
-        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-    };
-    const isDarkFrame = localCorMoldura && getLuma(localCorMoldura) < 50;
-
     return (
         <div style={{ 
             width: '100%', minHeight: '85vh', 
@@ -536,33 +511,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                 </label>
                             </div>
 
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9em', color: '#555', marginTop: '10px' }}>
-                                <span>Cor da Moldura:</span>
-                                <input 
-                                    type="color" value={localCorMoldura} 
-                                    onChange={(e) => handleStyleChange('corMoldura', e.target.value)} 
-                                    style={{ width: '40px', height: '25px', border: 'none', cursor: 'pointer', background: 'transparent' }} 
-                                    title="Tinge o dourado/metálico da moldura!"
-                                />
-                            </label>
-                            <div style={{ display: 'flex', gap: '5px', marginBottom: '15px', marginTop: '5px' }}>
-                                {['#ffffff', '#aa00ff', '#ffcc00', '#0088ff', '#ff003c', '#000000'].map(c => (
-                                    <div key={c} onClick={() => handleStyleChange('corMoldura', c)} style={{ width: '20px', height: '20px', backgroundColor: c, border: '1px solid rgba(0,0,0,0.5)', cursor: 'pointer', borderRadius: '3px' }} title={`Pintar de ${c}`} />
-                                ))}
-                            </div>
-
-                            <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>🔷 Ícone da Classe (Losango):</label>
-                            <div style={{ display: 'flex', gap: '5px', marginBottom: '15px' }}>
-                                <input 
-                                    type="text" value={localIconeClasse} onChange={(e) => handleStyleChange('iconeClasse', e.target.value)} placeholder="Link do Ícone..."
-                                    style={{ flex: 1, padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', color: 'inherit' }} 
-                                />
-                                <label style={{ background: 'rgba(0,0,0,0.1)', border: '1px solid rgba(0,0,0,0.2)', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="Upload do Ícone">
-                                    📁<input type="file" accept="image/*" onChange={handleIconeUpload} style={{ display: 'none' }} />
-                                </label>
-                            </div>
-
-                            <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>Cor da Tinta (Radar):</label>
+                            <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold', marginTop: '15px' }}>Cor da Tinta (Radar):</label>
                             <input 
                                 type="color" value={localCorTinta} 
                                 onChange={(e) => handleStyleChange('corTintaRadar', e.target.value)} 
@@ -623,21 +572,18 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                         <img src={npcData.avatar.base} alt="Avatar" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', zIndex: 1, borderRadius: '8px' }} />
                                         
                                         {localMolduraAvatar && (
-                                            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 2, pointerEvents: 'none', mixBlendMode: isDarkFrame ? 'multiply' : 'screen' }}>
-                                                <img src={localMolduraAvatar} alt="Moldura" style={{ width: '100%', height: '100%', objectFit: 'fill', position: 'absolute', top: 0, left: 0, filter: isDarkFrame ? 'invert(1) grayscale(1) contrast(1.5)' : 'none' }} />
-                                                {localCorMoldura && localCorMoldura !== '#ffffff' && (
-                                                    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: localCorMoldura, mixBlendMode: isDarkFrame ? 'screen' : 'multiply' }} />
-                                                )}
+                                            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 2, pointerEvents: 'none', mixBlendMode: 'screen' }}>
+                                                <img src={localMolduraAvatar} alt="Moldura" style={{ width: '100%', height: '100%', objectFit: 'fill', position: 'absolute', top: 0, left: 0 }} />
                                             </div>
                                         )}
 
                                         {classeInfo && (
-                                            <div style={{ position: 'absolute', bottom: '2px', left: '50%', transform: 'translateX(-50%)', zIndex: 3, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <div style={{ position: 'absolute', bottom: '-20px', left: '50%', transform: 'translateX(-50%)', zIndex: 3, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                                 {classeInfo.iconeUrl ? (
-                                                    <img src={classeInfo.iconeUrl} alt={classeInfo.nome} style={{ width: '55px', height: '55px', objectFit: 'contain', filter: 'drop-shadow(0 0 5px rgba(0,0,0,0.8))' }} />
+                                                    <img src={classeInfo.iconeUrl} alt={classeInfo.nome} style={{ width: '60px', height: '60px', objectFit: 'contain', filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.8))' }} />
                                                 ) : (
-                                                    <div style={{ width: '45px', height: '45px', background: classeInfo.cor, transform: 'rotate(45deg)', border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.8)' }}>
-                                                        <span style={{ transform: 'rotate(-45deg)', fontSize: '1.2em', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>{classeInfo.icone}</span>
+                                                    <div style={{ width: '50px', height: '50px', background: classeInfo.cor, transform: 'rotate(45deg)', border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.8)' }}>
+                                                        <span style={{ transform: 'rotate(-45deg)', fontSize: '1.5em', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>{classeInfo.icone}</span>
                                                     </div>
                                                 )}
                                             </div>
@@ -683,7 +629,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                 </div>
 
                                 <div style={{ display: 'flex', gap: '15px', marginTop: '5px' }}>
-                                    <div style={{ flex: 1, border: '2px solid rgba(0,0,0,0.8)', padding: '10px', borderRadius: '6px', background: 'rgba(255,255,255,0.2)' }}>
+                                    <div style={{ flex1, border: '2px solid rgba(0,0,0,0.8)', padding: '10px', borderRadius: '6px', background: 'rgba(255,255,255,0.2)' }}>
                                         <div style={{ fontSize: '0.8em', fontWeight: 'bold', textTransform: 'uppercase' }}><LabelMagicoNPC valor={getLabel('lblMultV', 'Mult. de Vida (PV)')} onChange={(v) => setLabel('lblMultV', v)} /></div>
                                         <CampoMagicoNPC valor={npcData.multiplicadorVida || 1} onChange={(v) => salvar('multiplicadorVida', v)} type="number" isNumber={true} styleExtra={{ width: '100%', borderBottom: '1px solid rgba(0,0,0,0.5)', marginTop: '5px' }} />
                                     </div>
