@@ -42,7 +42,7 @@ const calcularPrestAtual = (ficha, attrKey, baseP) => {
 };
 
 // ==========================================
-// 🖋️ INPUTS E BARRAS MÁGICAS (COM AUTO-SAVE)
+// 🖋️ INPUTS E BARRAS MÁGICAS (COM AUTO-SAVE E FORMATADOR)
 // ==========================================
 let globalTimer = null;
 const callSave = () => {
@@ -54,15 +54,38 @@ const callSave = () => {
 };
 
 const CampoMagico = ({ valor, onChange, placeholder, styleExtra = {}, type = "text", isNumber = false }) => {
+    const [focused, setFocused] = useState(false);
+
     const handleChange = (e) => {
         let val = e.target.value;
-        if (isNumber && val !== '') { val = Number(val); if (isNaN(val)) val = 0; }
+        if (isNumber && val !== '') { 
+            val = val.replace(',', '.'); 
+            val = Number(val); 
+            if (isNaN(val)) val = 0; 
+        }
         onChange(val);
     };
+
+    let displayValue = valor !== undefined && valor !== null ? valor : '';
+    let currentType = type;
+
+    // 🔥 A MAGIA DO TOC RESOLVIDA: Adiciona pontos de milhar apenas quando NÃO está a editar!
+    if (isNumber && !focused && displayValue !== '') {
+        displayValue = Number(displayValue).toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+        currentType = 'text';
+    } else if (isNumber && focused) {
+        currentType = 'number';
+    }
+
     return (
         <input 
-            type={type} value={valor !== undefined && valor !== null ? valor : ''} onChange={handleChange}
-            onBlur={callSave} placeholder={placeholder}
+            type={currentType} 
+            step={isNumber ? "any" : undefined}
+            value={displayValue} 
+            onChange={handleChange}
+            onFocus={() => setFocused(true)}
+            onBlur={() => { setFocused(false); callSave(); }} 
+            placeholder={placeholder}
             style={{ background: 'transparent', border: 'none', borderBottom: '1px dashed rgba(0,0,0,0.3)', fontFamily: 'inherit', fontSize: 'inherit', color: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', outline: 'none', padding: '0 5px', width: '100px', ...styleExtra }} 
         />
     );
@@ -169,9 +192,7 @@ export default function MarcadosPanel() {
     const [paginaAtual, setPaginaAtual] = useState(1);
     const [salvando, setSalvando] = useState(false);
 
-    // 🔥 MOTOR DA ANIMAÇÃO DE PÁGINAS FLUIDA 🔥
     const [animDirection, setAnimDirection] = useState('next');
-
     const [localCorFundo, setLocalCorFundo] = useState('#bba9d8');
     const [localCorTinta, setLocalCorTinta] = useState('#000000');
 
@@ -392,8 +413,6 @@ export default function MarcadosPanel() {
                 .swoop-container {
                     transform-style: preserve-3d;
                 }
-                
-                /* Animação suave deslizando e curvando como a página de um livro real */
                 @keyframes pageSwoopNext {
                     0% { transform: perspective(1500px) rotateY(-15deg) translateX(30px) scale(0.98); opacity: 0; }
                     100% { transform: perspective(1500px) rotateY(0deg) translateX(0) scale(1); opacity: 1; }
@@ -402,11 +421,9 @@ export default function MarcadosPanel() {
                     0% { transform: perspective(1500px) rotateY(15deg) translateX(-30px) scale(0.98); opacity: 0; }
                     100% { transform: perspective(1500px) rotateY(0deg) translateX(0) scale(1); opacity: 1; }
                 }
-                
                 .page-swoop-next { animation: pageSwoopNext 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
                 .page-swoop-prev { animation: pageSwoopPrev 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
 
-                /* 🌟 A ILUSÃO DO GRIMÓRIO PARA A PÁGINA DOS PODERES 🌟 */
                 .grimorio-estilo-papel {
                     --tinta: ${localCorTinta};
                     --fundo: ${localCorFundo};
@@ -417,8 +434,6 @@ export default function MarcadosPanel() {
                     text-shadow: none !important;
                     box-shadow: none !important;
                 }
-                
-                /* Transformar as Caixas Neon em Caixas de Papel Desenhadas à Mão */
                 .grimorio-estilo-papel .def-box,
                 .grimorio-estilo-papel [style*="background: rgba"] {
                     background: transparent !important;
@@ -426,21 +441,16 @@ export default function MarcadosPanel() {
                     border-radius: 2px 255px 3px 25px / 255px 5px 225px 3px !important; 
                     position: relative;
                 }
-                
-                /* Sobreposição translúcida para não ficar invisível, mas sem perder o ar de papel */
                 .grimorio-estilo-papel .def-box::before,
                 .grimorio-estilo-papel [style*="background: rgba"]::before {
                     content: ''; position: absolute; top:0; left:0; right:0; bottom:0;
                     background: var(--tinta); opacity: 0.03; pointer-events: none;
                     border-radius: inherit;
                 }
-
                 .grimorio-estilo-papel h2, .grimorio-estilo-papel h3, .grimorio-estilo-papel h4 {
                     color: var(--tinta) !important;
                     display: inline-block;
                 }
-
-                /* Botões no estilo Grimório */
                 .grimorio-estilo-papel button {
                     background: transparent !important;
                     border: 2px dashed var(--tinta) !important;
@@ -456,8 +466,6 @@ export default function MarcadosPanel() {
                     border-style: solid !important;
                     transform: scale(1.02) rotate(-1deg) !important;
                 }
-
-                /* Inputs em linha de tinta */
                 .grimorio-estilo-papel input, .grimorio-estilo-papel textarea, .grimorio-estilo-papel select {
                     background: rgba(0,0,0,0.03) !important;
                     border: none !important;
@@ -474,8 +482,6 @@ export default function MarcadosPanel() {
                     opacity: 0.5 !important;
                     font-style: italic !important;
                 }
-
-                /* Aniquilar as cores Neon específicas do código original */
                 .grimorio-estilo-papel span[style*="color: #0ff"],
                 .grimorio-estilo-papel span[style*="color: #0f0"],
                 .grimorio-estilo-papel span[style*="color: #ff003c"],
@@ -485,8 +491,6 @@ export default function MarcadosPanel() {
                 .grimorio-estilo-papel div[style*="color: #ff00ff"] {
                     color: var(--tinta) !important;
                 }
-                
-                /* Tira a barra lateral e transforma num índice de livro */
                 .grimorio-estilo-papel .poderes-sidebar .def-box {
                     border: none !important;
                     border-right: 2px dashed var(--tinta) !important;
@@ -494,8 +498,8 @@ export default function MarcadosPanel() {
                 }
             `}</style>
 
-            {/* 📌 CONTROLES SUPERIORES */}
-            <div style={{ position: 'absolute', top: '-15px', right: '30px', zIndex: 10, display: 'flex', gap: '10px' }}>
+            {/* 🔥 CONTROLES SUPERIORES (BAIXEI A ALTURA PARA FICAREM BEM DENTRO DA FICHA) */}
+            <div style={{ position: 'absolute', top: '25px', right: '35px', zIndex: 10, display: 'flex', gap: '10px' }}>
                 <div style={{ position: 'relative' }}>
                     <button onClick={handleSalvarTudo} style={{ background: salvando ? '#a5d6a7' : '#4caf50', color: '#fff', border: 'none', padding: '10px 20px', fontFamily: 'inherit', fontWeight: 'bold', fontSize: '1.1em', cursor: 'pointer', boxShadow: '3px 3px 10px rgba(0,0,0,0.2)', transform: 'rotate(1deg)' }}>
                         {salvando ? '✅ Guardado!' : '💾 Guardar Diário'}
@@ -537,7 +541,7 @@ export default function MarcadosPanel() {
                 </div>
             </div>
 
-            {/* 📖 CONTEÚDO ANIMADO DO LIVRO (NOVO SWOOP) */}
+            {/* 📖 CONTEÚDO ANIMADO DO LIVRO */}
             <div key={paginaAtual} className={`swoop-container ${animDirection === 'next' ? 'page-swoop-next' : 'page-swoop-prev'}`} style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '40px', paddingBottom: '30px' }}>
                 
                 {/* ======================= PÁGINA 1 ======================= */}
@@ -554,7 +558,6 @@ export default function MarcadosPanel() {
                                 <CampoMagico valor={minhaFicha.bio?.nivel} onChange={(v) => salvar('bio.nivel', v)} styleExtra={{ width: '60px', borderBottom: 'none', marginLeft: '10px' }} isNumber={true} type="number" />
                             </h2>
 
-                            {/* 🔥 LAYOUT CLÁSSICO E ALINHADO DA BIO RESTAURADO NA PERFEIÇÃO! */}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '1.2em' }}>
                                 {[
                                     { k: 'idade', lbl: 'Idade' },
@@ -741,7 +744,7 @@ export default function MarcadosPanel() {
                 {paginaAtual === 3 && (
                     <div className="grimorio-estilo-papel" style={{ width: '100%' }}>
                         <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                            <h1 style={{ fontSize: '3em', fontStyle: 'italic', fontWeight: 'bold', margin: 0, paddingBottom: '10px', borderBottom: `2px dashed ${localCorTinta}` }}>
+                            <h1 style={{ fontSize: '2.5em', fontStyle: 'italic', fontWeight: 'bold', margin: 0, paddingBottom: '10px', borderBottom: `2px dashed ${localCorTinta}` }}>
                                 <LabelMagico valor={getLabel('tituloPg3', 'O Grimório Místico')} onChange={(v) => setLabel('tituloPg3', v)} />
                             </h1>
                         </div>

@@ -42,14 +42,37 @@ const calcularPrestAtual = (ficha, attrKey, baseP) => {
 // 🖋️ INPUTS E BARRAS MÁGICAS (ESTILO PAPEL)
 // ==========================================
 const CampoMagicoNPC = ({ valor, onChange, placeholder, styleExtra = {}, type = "text", isNumber = false }) => {
+    const [focused, setFocused] = useState(false);
+
     const handleChange = (e) => {
         let val = e.target.value;
-        if (isNumber) { val = Number(val); if (isNaN(val)) val = 0; }
+        if (isNumber && val !== '') { 
+            val = val.replace(',', '.');
+            val = Number(val); 
+            if (isNaN(val)) val = 0; 
+        }
         onChange(val);
     };
+
+    let displayValue = valor !== undefined && valor !== null ? valor : '';
+    let currentType = type;
+
+    if (isNumber && !focused && displayValue !== '') {
+        displayValue = Number(displayValue).toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+        currentType = 'text';
+    } else if (isNumber && focused) {
+        currentType = 'number';
+    }
+
     return (
         <input 
-            type={type} value={valor !== undefined && valor !== null ? valor : ''} onChange={handleChange} placeholder={placeholder}
+            type={currentType} 
+            step={isNumber ? "any" : undefined}
+            value={displayValue} 
+            onChange={handleChange} 
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            placeholder={placeholder}
             style={{ background: 'transparent', border: 'none', borderBottom: '1px dashed rgba(0,0,0,0.3)', fontFamily: 'inherit', fontSize: 'inherit', color: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', outline: 'none', padding: '0 5px', width: '100px', ...styleExtra }} 
         />
     );
@@ -154,7 +177,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
     const [modalEstilo, setModalEstilo] = useState(false);
     const [paginaAtual, setPaginaAtual] = useState(1);
     
-    // 🔥 MOTOR DA ANIMAÇÃO DE PÁGINAS 🔥
+    // 🔥 MOTOR DA ANIMAÇÃO DE PÁGINAS FLUIDA 🔥
     const [animDirection, setAnimDirection] = useState('next');
 
     const [localCorFundo, setLocalCorFundo] = useState('#ffe6cc');
@@ -359,13 +382,12 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
             overflowX: 'hidden'
         }}>
             
-            {/* 🌟 MAGIAS CSS DA ANIMAÇÃO E DO NOVO DESIGN DA PÁGINA 3 🌟 */}
+            {/* 🌟 MAGIAS CSS DA ANIMAÇÃO FLUIDA E DO NOVO DESIGN DA PÁGINA 3 🌟 */}
             <style>{`
                 .swoop-container {
                     transform-style: preserve-3d;
                 }
                 
-                /* Animação suave deslizando e curvando como a página de um livro real */
                 @keyframes pageSwoopNext {
                     0% { transform: perspective(1500px) rotateY(-15deg) translateX(30px) scale(0.98); opacity: 0; }
                     100% { transform: perspective(1500px) rotateY(0deg) translateX(0) scale(1); opacity: 1; }
@@ -425,7 +447,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                 }
             `}</style>
 
-            <div style={{ position: 'absolute', top: '-15px', right: '30px', zIndex: 10, display: 'flex', gap: '10px' }}>
+            <div style={{ position: 'absolute', top: '25px', right: '35px', zIndex: 10, display: 'flex', gap: '10px' }}>
                 <div style={{ position: 'relative' }}>
                     <button onClick={() => setModalEstilo(!modalEstilo)} style={{ background: '#ff94c2', border: 'none', padding: '10px 20px', fontFamily: 'inherit', fontWeight: 'bold', fontSize: '1.1em', cursor: 'pointer', boxShadow: '3px 3px 10px rgba(0,0,0,0.2)', transform: 'rotate(-2deg)' }}>🎨 Estilo do NPC</button>
                     {modalEstilo && (
