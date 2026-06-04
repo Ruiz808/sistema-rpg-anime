@@ -4,7 +4,7 @@ import { uploadImagem, salvarFichaSilencioso, salvarFirebaseImediato } from '../
 import { getMaximo, getRawBase, getBuffs } from '../../core/attributes';
 import { getRank } from '../../core/prestige';
 
-import PoderesPanel from '../Poderes/poderesPanel';
+import PoderesPanel from '../poderes/PoderesPanel';
 
 // ==========================================
 // 🛡️ FUNÇÕES SEGURAS DA ENGINE E MATEMÁTICA PURA
