@@ -4,8 +4,7 @@ import { uploadImagem, salvarFichaSilencioso, salvarFirebaseImediato } from '../
 import { getMaximo, getRawBase, getBuffs } from '../../core/attributes';
 import { getRank } from '../../core/prestige';
 
-// 🔥 IMPORTAMOS O SEU SISTEMA DE PODERES (Mantenha o caminho que funcionou para si!)
-import PoderesPanel from '../poderes/PoderesPanel';
+import PoderesPanel from '../Poderes/PoderesPanel';
 
 // ==========================================
 // 🛡️ FUNÇÕES SEGURAS DA ENGINE E MATEMÁTICA PURA
@@ -170,6 +169,9 @@ export default function MarcadosPanel() {
     const [paginaAtual, setPaginaAtual] = useState(1);
     const [salvando, setSalvando] = useState(false);
 
+    // 🔥 MOTOR DA ANIMAÇÃO DE PÁGINAS 🔥
+    const [animDirection, setAnimDirection] = useState('next');
+
     const [localCorFundo, setLocalCorFundo] = useState('#bba9d8');
     const [localCorTinta, setLocalCorTinta] = useState('#000000');
 
@@ -181,6 +183,11 @@ export default function MarcadosPanel() {
     }, [minhaFicha?.estetica?.diarioCor, minhaFicha?.estetica?.corTintaRadar]);
 
     if (!minhaFicha) return <div style={{ color: '#000', padding: 20, fontFamily: 'cursive' }}>Abrindo o Diário...</div>;
+
+    const mudarPagina = (nova) => {
+        setAnimDirection(nova > paginaAtual ? 'next' : 'prev');
+        setPaginaAtual(nova);
+    };
 
     const salvar = (caminho, valor) => {
         const valFinal = (valor === undefined || (isNaN(valor) && typeof valor === 'number')) ? null : valor;
@@ -376,9 +383,94 @@ export default function MarcadosPanel() {
         <div style={{ 
             width: '100%', minHeight: '85vh', background: localCorFundo, color: '#000', fontFamily: fonteDiario, 
             padding: '40px 40px 80px 40px', borderRadius: '12px', position: 'relative', transition: 'background 0.3s ease',
-            boxShadow: 'inset 0 0 40px rgba(0,0,0,0.1), 0 10px 30px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column'
+            boxShadow: 'inset 0 0 40px rgba(0,0,0,0.1), 0 10px 30px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column',
+            overflowX: 'hidden'
         }}>
             
+            {/* 🌟 MAGIAS CSS INJETADAS DIRETAMENTE 🌟 */}
+            <style>{`
+                .flip-container {
+                    transform-style: preserve-3d;
+                }
+                @keyframes pageFlipNext {
+                    0% { transform: perspective(2500px) rotateY(90deg); transform-origin: 100% 50%; opacity: 0; filter: blur(3px); }
+                    100% { transform: perspective(2500px) rotateY(0deg); transform-origin: 100% 50%; opacity: 1; filter: blur(0px); }
+                }
+                @keyframes pageFlipPrev {
+                    0% { transform: perspective(2500px) rotateY(-90deg); transform-origin: 0% 50%; opacity: 0; filter: blur(3px); }
+                    100% { transform: perspective(2500px) rotateY(0deg); transform-origin: 0% 50%; opacity: 1; filter: blur(0px); }
+                }
+                .page-flip-next { animation: pageFlipNext 0.6s cubic-bezier(0.645, 0.045, 0.355, 1) forwards; }
+                .page-flip-prev { animation: pageFlipPrev 0.6s cubic-bezier(0.645, 0.045, 0.355, 1) forwards; }
+
+                /* 🌟 A ILUSÃO DO GRIMÓRIO (PÁGINA 3) 🌟 */
+                .grimorio-estilo-papel {
+                    --tinta: ${localCorTinta};
+                    --fundo: ${localCorFundo};
+                    color: var(--tinta) !important;
+                }
+                .grimorio-estilo-papel * {
+                    font-family: ${fonteDiario}, cursive !important;
+                    text-shadow: none !important;
+                    box-shadow: none !important;
+                }
+                .grimorio-estilo-papel .def-box {
+                    background: transparent !important;
+                    border: 2px solid var(--tinta) !important;
+                    border-radius: 2px 255px 3px 25px / 255px 5px 225px 3px !important; 
+                    padding: 20px !important;
+                    margin-bottom: 20px !important;
+                }
+                .grimorio-estilo-papel h2, .grimorio-estilo-papel h3, .grimorio-estilo-papel h4 {
+                    color: var(--tinta) !important;
+                    border-bottom: 2px dotted var(--tinta) !important;
+                    display: inline-block;
+                    padding-bottom: 5px;
+                }
+                .grimorio-estilo-papel button {
+                    background: transparent !important;
+                    border: 2px solid var(--tinta) !important;
+                    border-radius: 2px 15px 5px 15px / 15px 5px 15px 2px !important;
+                    color: var(--tinta) !important;
+                    font-weight: bold !important;
+                    text-transform: uppercase !important;
+                    transition: transform 0.2s ease !important;
+                }
+                .grimorio-estilo-papel button:hover {
+                    background: var(--tinta) !important;
+                    color: var(--fundo) !important;
+                    transform: scale(1.02) rotate(-1deg) !important;
+                }
+                .grimorio-estilo-papel input, .grimorio-estilo-papel textarea, .grimorio-estilo-papel select {
+                    background: rgba(0,0,0,0.03) !important;
+                    border: none !important;
+                    border-bottom: 1px dashed var(--tinta) !important;
+                    color: var(--tinta) !important;
+                    border-radius: 0 !important;
+                }
+                .grimorio-estilo-papel input:focus, .grimorio-estilo-papel textarea:focus {
+                    background: rgba(0,0,0,0.06) !important;
+                    border-bottom: 2px solid var(--tinta) !important;
+                }
+                .grimorio-estilo-papel input::placeholder, .grimorio-estilo-papel textarea::placeholder {
+                    color: var(--tinta) !important;
+                    opacity: 0.5 !important;
+                    font-style: italic !important;
+                }
+                .grimorio-estilo-papel div[style*="radial-gradient"] { display: none !important; }
+                .grimorio-estilo-papel div { border-color: var(--tinta) !important; }
+                .grimorio-estilo-papel .poderes-sidebar .def-box {
+                    border: none !important;
+                    border-right: 2px dashed var(--tinta) !important;
+                    border-radius: 0 !important;
+                }
+                .grimorio-estilo-papel div[style*="background: rgba(255, 0, 0"] {
+                    background: transparent !important;
+                    border: 2px dashed var(--tinta) !important;
+                    color: var(--tinta) !important;
+                }
+            `}</style>
+
             {/* 📌 CONTROLES SUPERIORES */}
             <div style={{ position: 'absolute', top: '-15px', right: '30px', zIndex: 10, display: 'flex', gap: '10px' }}>
                 <div style={{ position: 'relative' }}>
@@ -422,13 +514,13 @@ export default function MarcadosPanel() {
                 </div>
             </div>
 
-            {/* 📖 CONTEÚDO DO LIVRO */}
-            <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '40px', paddingBottom: '30px' }}>
+            {/* 📖 CONTEÚDO ANIMADO DO LIVRO */}
+            <div key={paginaAtual} className={`flip-container ${animDirection === 'next' ? 'page-flip-next' : 'page-flip-prev'}`} style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '40px', paddingBottom: '30px' }}>
                 
                 {/* ======================= PÁGINA 1 ======================= */}
                 {paginaAtual === 1 && (
                     <>
-                        <div className="fade-in" style={{ flex: '1 1 450px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                        <div style={{ flex: '1 1 450px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
                             <div style={{ display: 'flex', alignItems: 'baseline', borderBottom: '2px solid rgba(0,0,0,0.8)', paddingBottom: '5px', marginBottom: '10px', width: 'fit-content' }}>
                                 <span style={{ fontSize: '3.5em', fontStyle: 'italic', fontWeight: 'bold', margin: 0 }}>/</span>
                                 <CampoMagico valor={minhaFicha.bio?.apelido !== undefined ? minhaFicha.bio.apelido : meuNome} onChange={(v) => salvar('bio.apelido', v)} placeholder="Nome" styleExtra={{ fontSize: '3.5em', fontStyle: 'italic', fontWeight: 'bold', minWidth: '300px', width: 'auto', borderBottom: 'none' }} />
@@ -460,7 +552,7 @@ export default function MarcadosPanel() {
                                 ))}
                             </div>
 
-                            <div style={{ marginTop: '20px', position: 'relative', width: 'fit-content', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                            <div style={{ marginTop: '20px', width: 'fit-content', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                                 <label style={{ cursor: 'pointer', display: 'block' }}>
                                     <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} disabled={uploadingImg} />
                                     {uploadingImg ? <div style={{ width: '320px', height: '480px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed #000' }}>✍️...</div> : minhaFicha.avatar?.base ? <img src={minhaFicha.avatar.base} alt="Avatar" style={{ width: '320px', height: 'auto', objectFit: 'cover', border: '2px solid rgba(0,0,0,0.8)', boxShadow: '8px 8px 0px rgba(0,0,0,0.2)' }} /> : <div style={{ width: '320px', height: '480px', border: '2px dashed #000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', background: 'rgba(255,255,255,0.1)' }}>Colar Fotografia Aqui 📸</div>}
@@ -469,7 +561,7 @@ export default function MarcadosPanel() {
                             </div>
                         </div>
 
-                        <div className="fade-in" style={{ flex: '1 1 450px', display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ flex: '1 1 450px', display: 'flex', flexDirection: 'column' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '0 0 10px 5px' }}>
                                 <h2 style={{ fontSize: '2em', fontStyle: 'italic', fontWeight: 'bold', margin: 0, display: 'flex' }}>
                                     <LabelMagico valor={getLabel('tituloBase', '> STATUS PRINCIPAIS')} onChange={(v) => setLabel('tituloBase', v)} />
@@ -542,13 +634,13 @@ export default function MarcadosPanel() {
                 {/* ======================= PÁGINA 2 ======================= */}
                 {paginaAtual === 2 && (
                     <>
-                        <div className="fade-in" style={{ width: '100%', textAlign: 'center', borderBottom: '2px solid rgba(0,0,0,0.8)', paddingBottom: '10px', marginBottom: '20px' }}>
+                        <div style={{ width: '100%', textAlign: 'center', borderBottom: '2px solid rgba(0,0,0,0.8)', paddingBottom: '10px', marginBottom: '20px' }}>
                             <h1 style={{ fontSize: '3em', fontStyle: 'italic', fontWeight: 'bold', margin: 0, letterSpacing: '-1px' }}>
                                 <LabelMagico valor={getLabel('tituloAnalise', 'Análise de Poder')} onChange={(v) => setLabel('tituloAnalise', v)} />
                             </h1>
                         </div>
 
-                        <div className="fade-in" style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(0,0,0,0.03)', padding: '20px', borderRadius: '15px', border: '1px dashed rgba(0,0,0,0.2)' }}>
+                        <div style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(0,0,0,0.03)', padding: '20px', borderRadius: '15px', border: '1px dashed rgba(0,0,0,0.2)' }}>
                             <h2 style={{ fontSize: '2em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 20px 0' }}><LabelMagico valor={getLabel('tituloAnaliseBase', 'Status (Rank Base)')} onChange={(v) => setLabel('tituloAnaliseBase', v)} /></h2>
                             <RadarDesenhado ficha={minhaFicha} isAtual={false} corTinta={localCorTinta} />
                             
@@ -564,7 +656,7 @@ export default function MarcadosPanel() {
                             </div>
                         </div>
 
-                        <div className="fade-in" style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(0,0,0,0.05)', padding: '20px', borderRadius: '15px', border: '2px solid rgba(0,0,0,0.8)' }}>
+                        <div style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(0,0,0,0.05)', padding: '20px', borderRadius: '15px', border: '2px solid rgba(0,0,0,0.8)' }}>
                             <h2 style={{ fontSize: '2em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 20px 0' }}><LabelMagico valor={getLabel('tituloAnaliseAtual', 'Poder Atual (c/ Formas)')} onChange={(v) => setLabel('tituloAnaliseAtual', v)} /></h2>
                             <RadarDesenhado ficha={minhaFicha} isAtual={true} corTinta={localCorTinta} />
                             
@@ -581,7 +673,7 @@ export default function MarcadosPanel() {
                         </div>
 
                         {/* 🔥 TABELA SUPREMA DE ASCENSÃO E DIVISORES */}
-                        <div className="fade-in" style={{ width: '100%', marginTop: '30px', background: 'rgba(0,0,0,0.03)', padding: '20px', borderRadius: '15px', border: '1px dashed rgba(0,0,0,0.2)' }}>
+                        <div style={{ width: '100%', marginTop: '30px', background: 'rgba(0,0,0,0.03)', padding: '20px', borderRadius: '15px', border: '1px dashed rgba(0,0,0,0.2)' }}>
                             <h2 style={{ fontSize: '1.8em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 20px 0', textAlign: 'center' }}>Mecânicas de Ascensão e Divisores</h2>
 
                             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
@@ -624,93 +716,25 @@ export default function MarcadosPanel() {
 
                 {/* ======================= PÁGINA 3 ======================= */}
                 {paginaAtual === 3 && (
-                    <div className="fade-in grimorio-estilo-papel" style={{ width: '100%', padding: '20px', borderRadius: '12px' }}>
-                        
-                        {/* 🌟 A MAGIA DA ILUSÃO CSS: Transforma Cyberpunk em Papel Antigo! */}
-                        <style>{`
-                            .grimorio-estilo-papel {
-                                --tinta: ${localCorTinta};
-                                --fundo: ${localCorFundo};
-                                color: var(--tinta) !important;
-                            }
-                            
-                            .grimorio-estilo-papel * {
-                                font-family: ${fonteDiario} !important;
-                                text-shadow: none !important;
-                                box-shadow: none !important;
-                            }
-
-                            .grimorio-estilo-papel .def-box {
-                                background: rgba(0,0,0,0.02) !important;
-                                border: 2px dashed rgba(0,0,0,0.2) !important;
-                                border-radius: 8px !important;
-                                padding: 15px !important;
-                            }
-
-                            .grimorio-estilo-papel h1, .grimorio-estilo-papel h2, .grimorio-estilo-papel h3, .grimorio-estilo-papel h4, 
-                            .grimorio-estilo-papel p, .grimorio-estilo-papel span, .grimorio-estilo-papel div, 
-                            .grimorio-estilo-papel strong, .grimorio-estilo-papel label {
-                                color: var(--tinta) !important;
-                            }
-
-                            .grimorio-estilo-papel button {
-                                background: transparent !important;
-                                border: 1px solid var(--tinta) !important;
-                                color: var(--tinta) !important;
-                                border-radius: 4px !important;
-                                padding: 8px 15px !important;
-                                font-weight: bold !important;
-                                transition: all 0.3s ease !important;
-                            }
-                            .grimorio-estilo-papel button:hover {
-                                background: var(--tinta) !important;
-                                color: var(--fundo) !important;
-                            }
-                            .grimorio-estilo-papel button.btn-gold, .grimorio-estilo-papel button.btn-blue {
-                                background: var(--tinta) !important;
-                                color: var(--fundo) !important;
-                                border: 2px solid var(--tinta) !important;
-                            }
-
-                            .grimorio-estilo-papel input, 
-                            .grimorio-estilo-papel textarea, 
-                            .grimorio-estilo-papel select {
-                                background: rgba(0,0,0,0.03) !important;
-                                border: none !important;
-                                border-bottom: 1px dotted var(--tinta) !important;
-                                color: var(--tinta) !important;
-                                border-radius: 0 !important;
-                            }
-                            .grimorio-estilo-papel input::placeholder, 
-                            .grimorio-estilo-papel textarea::placeholder {
-                                color: var(--tinta) !important;
-                                opacity: 0.5 !important;
-                            }
-
-                            .grimorio-estilo-papel div[style*="background: rgba"],
-                            .grimorio-estilo-papel div[style*="background-color: rgba"] {
-                                background: rgba(0,0,0,0.04) !important;
-                                border-color: rgba(0,0,0,0.2) !important;
-                            }
-                        `}</style>
-                        
-                        <div style={{ textAlign: 'center', borderBottom: `2px solid ${localCorTinta}`, paddingBottom: '10px', marginBottom: '20px' }}>
-                            <h1 style={{ fontSize: '2.5em', fontStyle: 'italic', fontWeight: 'bold', margin: 0, color: localCorTinta }}>
+                    <div className="grimorio-estilo-papel" style={{ width: '100%' }}>
+                        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                            <h1 style={{ fontSize: '2.5em', fontStyle: 'italic', fontWeight: 'bold', margin: 0, paddingBottom: '10px', borderBottom: `2px dashed ${localCorTinta}` }}>
                                 <LabelMagico valor={getLabel('tituloPg3', 'O Grimório Místico')} onChange={(v) => setLabel('tituloPg3', v)} />
                             </h1>
                         </div>
                         
-                        {/* INJEÇÃO DO SEU SISTEMA DE PODERES COMPLETO! */}
+                        {/* 🌟 O SISTEMA DE PODERES COM A NOVA MÁSCARA CSS! 🌟 */}
                         <PoderesPanel />
                     </div>
                 )}
 
             </div>
 
+            {/* BOTÕES DE NAVEGAÇÃO DA PÁGINA */}
             <div style={{ position: 'absolute', bottom: '20px', left: '0', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px', fontFamily: 'inherit' }}>
-                <button onClick={() => setPaginaAtual(p => Math.max(1, p - 1))} disabled={paginaAtual === 1} style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 1 ? 'default' : 'pointer', opacity: paginaAtual === 1 ? 0.3 : 1, fontFamily: 'inherit' }}>⮜ Anterior</button>
+                <button onClick={() => mudarPagina(Math.max(1, paginaAtual - 1))} disabled={paginaAtual === 1} style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 1 ? 'default' : 'pointer', opacity: paginaAtual === 1 ? 0.3 : 1, fontFamily: 'inherit' }}>⮜ Anterior</button>
                 <span style={{ fontSize: '1.1em', fontWeight: 'bold', borderBottom: '2px solid rgba(0,0,0,0.5)', padding: '0 10px' }}>Página {paginaAtual} de 3</span>
-                <button onClick={() => setPaginaAtual(p => Math.min(3, p + 1))} disabled={paginaAtual === 3} style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 3 ? 'default' : 'pointer', opacity: paginaAtual === 3 ? 0.3 : 1, fontFamily: 'inherit' }}>Próxima ⮞</button>
+                <button onClick={() => mudarPagina(Math.min(3, paginaAtual + 1))} disabled={paginaAtual === 3} style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 3 ? 'default' : 'pointer', opacity: paginaAtual === 3 ? 0.3 : 1, fontFamily: 'inherit' }}>Próxima ⮞</button>
             </div>
 
         </div>
