@@ -39,7 +39,7 @@ const calcularPrestAtual = (ficha, attrKey, baseP) => {
 };
 
 // ==========================================
-// 🖋️ INPUTS E BARRAS MÁGICAS (C/ AUTO-FORMATADOR E PONTOS)
+// 🖋️ INPUTS E BARRAS MÁGICAS (ESTILO PAPEL)
 // ==========================================
 const CampoMagicoNPC = ({ valor, onChange, placeholder, styleExtra = {}, type = "text", isNumber = false }) => {
     const [focused, setFocused] = useState(false);
@@ -60,7 +60,7 @@ const CampoMagicoNPC = ({ valor, onChange, placeholder, styleExtra = {}, type = 
 
     if (isNumber && !focused && displayValue !== '') {
         let num = Number(displayValue);
-        if (!isNaN(num)) displayValue = num.toLocaleString('pt-BR');
+        if (!isNaN(num)) displayValue = num.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
         currentType = 'text';
     } else if (isNumber && focused) {
         currentType = 'number';
@@ -438,7 +438,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                 .grimorio-estilo-papel button:hover { background: var(--tinta) !important; color: var(--fundo) !important; border-style: solid !important; transform: scale(1.02) rotate(-1deg) !important; }
             `}</style>
 
-            <div style={{ position: 'absolute', top: '-25px', right: '30px', zIndex: 10, display: 'flex', gap: '15px' }}>
+            <div style={{ position: 'absolute', top: '-25px', right: '30px', zIndex: 20, display: 'flex', gap: '15px' }}>
                 <div style={{ position: 'relative' }}>
                     <button onClick={() => setModalEstilo(!modalEstilo)} style={{ background: '#ff94c2', color: '#000', border: '1px solid #333', borderBottom: '3px solid #222', padding: '10px 20px', fontFamily: 'inherit', fontWeight: 'bold', fontSize: '1.1em', cursor: 'pointer', borderRadius: '4px', boxShadow: '2px 4px 8px rgba(0,0,0,0.4)', transform: 'rotate(-2deg)' }}>🎨 Estilo do NPC</button>
                     {modalEstilo && (
@@ -449,7 +449,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                 onChange={(e) => handleStyleChange('diarioCor', e.target.value)} 
                                 style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} 
                             />
-                            
+
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>🖼️ Fundo da Ficha (URL):</label>
                             <div style={{ display: 'flex', gap: '5px', marginBottom: '15px' }}>
                                 <input 
@@ -490,7 +490,6 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                 </div>
             </div>
 
-            {/* 📖 CONTEÚDO ANIMADO DO LIVRO DO NPC */}
             <div key={paginaAtual} className={`swoop-container ${animDirection === 'next' ? 'page-swoop-next' : 'page-swoop-prev'}`} style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '40px', paddingBottom: '30px' }}>
                 
                 {/* ======================= PÁGINA 1 ======================= */}
@@ -527,16 +526,19 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                 ))}
                             </div>
 
-                            {/* 🔥 AQUI ENTRA A MOLDURA DO AVATAR! 🔥 */}
+                            {/* 🔥 A MOLDURA E O AVATAR MAGIAM-SE AQUI! 🔥 */}
                             <div style={{ marginTop: '20px', position: 'relative', width: '320px', height: '480px', display: 'flex', flexDirection: 'column', borderRadius: '8px', border: npcData.avatar?.base ? 'none' : '2px dashed #000', boxShadow: npcData.avatar?.base ? '8px 8px 0px rgba(0,0,0,0.2)' : 'none' }}>
                                 {uploadingImg ? (
                                     <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.7)', color: '#fff', fontWeight: 'bold', zIndex: 20 }}>✍️ Forjando...</div>
                                 ) : npcData.avatar?.base ? (
                                     <>
                                         <img src={npcData.avatar.base} alt="Avatar" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 1, borderRadius: '8px' }} />
+                                        
+                                        {/* 🔥 mixBlendMode: 'screen' faz o preto do JPG ficar invisível! */}
                                         {localMolduraAvatar && (
-                                            <img src={localMolduraAvatar} alt="Moldura" style={{ position: 'absolute', top: '-2.5%', left: '-3%', width: '106%', height: '105%', objectFit: 'fill', zIndex: 2, pointerEvents: 'none' }} />
+                                            <img src={localMolduraAvatar} alt="Moldura" style={{ position: 'absolute', top: '-2.5%', left: '-3%', width: '106%', height: '105%', objectFit: 'fill', zIndex: 2, pointerEvents: 'none', mixBlendMode: 'screen' }} />
                                         )}
+                                        
                                         <label style={{ cursor: 'pointer', position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 10 }}>
                                             <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
                                         </label>

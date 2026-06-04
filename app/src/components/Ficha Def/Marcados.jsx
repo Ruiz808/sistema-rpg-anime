@@ -59,7 +59,6 @@ const CampoMagico = ({ valor, onChange, placeholder, styleExtra = {}, type = "te
     const handleChange = (e) => {
         let val = e.target.value;
         if (isNumber && val !== '') { 
-            // Permite digitação decimal
             val = val.replace(',', '.'); 
             let num = Number(val); 
             if (!isNaN(num)) val = num; 
@@ -71,10 +70,9 @@ const CampoMagico = ({ valor, onChange, placeholder, styleExtra = {}, type = "te
     let displayValue = valor !== undefined && valor !== null ? String(valor) : '';
     let currentType = type;
 
-    // 🔥 O FIM DO TOC: Formata com pontos de milhar apenas quando não está a ser editado
     if (isNumber && !focused && displayValue !== '') {
         let num = Number(displayValue);
-        if (!isNaN(num)) displayValue = num.toLocaleString('pt-BR');
+        if (!isNaN(num)) displayValue = num.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
         currentType = 'text';
     } else if (isNumber && focused) {
         currentType = 'number';
@@ -253,7 +251,7 @@ export default function MarcadosPanel() {
         try {
             const url = await uploadImagem(file, `backgrounds/${meuNome || 'desconhecido'}_bg`);
             handleStyleChange('bgImg', url);
-        } catch (err) { alert('Erro ao enviar a imagem!'); }
+        } catch (err) { alert('Erro ao enviar a imagem de fundo!'); }
     };
 
     const handleMolduraUpload = async (e) => {
@@ -436,7 +434,7 @@ export default function MarcadosPanel() {
             color: '#000', fontFamily: fonteDiario, 
             padding: '40px 40px 80px 40px', borderRadius: '12px', position: 'relative', transition: 'background 0.3s ease',
             boxShadow: 'inset 0 0 40px rgba(0,0,0,0.1), 0 10px 30px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column',
-            overflow: 'visible' /* 🔥 Removemos o corte! Agora os Post-its saem para fora! */
+            overflow: 'visible' 
         }}>
             
             <style>{`
@@ -477,6 +475,9 @@ export default function MarcadosPanel() {
                 .grimorio-estilo-papel input:focus, .grimorio-estilo-papel textarea:focus {
                     background: rgba(0,0,0,0.06) !important; border-bottom: 2px solid var(--tinta) !important;
                 }
+                .grimorio-estilo-papel input::placeholder, .grimorio-estilo-papel textarea::placeholder {
+                    color: var(--tinta) !important; opacity: 0.5 !important; font-style: italic !important;
+                }
                 .grimorio-estilo-papel span[style*="color: #0ff"], .grimorio-estilo-papel span[style*="color: #0f0"], .grimorio-estilo-papel span[style*="color: #ff003c"],
                 .grimorio-estilo-papel span[style*="color: #ffcc00"], .grimorio-estilo-papel span[style*="color: #ff8800"], .grimorio-estilo-papel span[style*="color: #00ccff"] {
                     color: var(--tinta) !important;
@@ -484,7 +485,6 @@ export default function MarcadosPanel() {
                 .grimorio-estilo-papel .poderes-sidebar .def-box { border: none !important; border-right: 2px dashed var(--tinta) !important; border-radius: 0 !important; }
             `}</style>
 
-            {/* 🔥 CONTROLES SUPERIORES: POST-ITS CORTADOS RESTAURADOS 🔥 */}
             <div style={{ position: 'absolute', top: '-25px', right: '30px', zIndex: 20, display: 'flex', gap: '15px' }}>
                 <div style={{ position: 'relative' }}>
                     <button onClick={handleSalvarTudo} style={{ background: salvando ? '#a5d6a7' : '#4caf50', color: '#fff', border: '1px solid #333', borderBottom: '3px solid #222', padding: '10px 20px', fontFamily: 'inherit', fontWeight: 'bold', fontSize: '1.1em', cursor: 'pointer', borderRadius: '4px', boxShadow: '2px 4px 8px rgba(0,0,0,0.4)', transform: 'rotate(1deg)' }}>
@@ -513,7 +513,6 @@ export default function MarcadosPanel() {
                                 </label>
                             </div>
 
-                            {/* 🔥 NOVA OPÇÃO: MOLDURA DO AVATAR! */}
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>✨ Moldura do Personagem:</label>
                             <div style={{ display: 'flex', gap: '5px', marginBottom: '15px' }}>
                                 <input 
@@ -551,7 +550,6 @@ export default function MarcadosPanel() {
                 </div>
             </div>
 
-            {/* 📖 CONTEÚDO ANIMADO DO LIVRO (NOVO SWOOP) */}
             <div key={paginaAtual} className={`swoop-container ${animDirection === 'next' ? 'page-swoop-next' : 'page-swoop-prev'}`} style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '40px', paddingBottom: '30px' }}>
                 
                 {/* ======================= PÁGINA 1 ======================= */}
@@ -588,21 +586,19 @@ export default function MarcadosPanel() {
                                 ))}
                             </div>
 
-                            {/* 🔥 AQUI ENTRA A MOLDURA DO AVATAR! 🔥 */}
+                            {/* 🔥 A MOLDURA E O AVATAR MAGIAM-SE AQUI! 🔥 */}
                             <div style={{ marginTop: '20px', position: 'relative', width: '320px', height: '480px', display: 'flex', flexDirection: 'column', borderRadius: '8px', border: minhaFicha.avatar?.base ? 'none' : '2px dashed #000', boxShadow: minhaFicha.avatar?.base ? '8px 8px 0px rgba(0,0,0,0.2)' : 'none' }}>
                                 {uploadingImg ? (
                                     <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.7)', color: '#fff', fontWeight: 'bold', zIndex: 20 }}>✍️ Forjando...</div>
                                 ) : minhaFicha.avatar?.base ? (
                                     <>
-                                        {/* A FOTO DO PERSONAGEM (NO FUNDO) */}
                                         <img src={minhaFicha.avatar.base} alt="Avatar" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 1, borderRadius: '8px' }} />
                                         
-                                        {/* A MOLDURA (POR CIMA DA FOTO) */}
+                                        {/* 🔥 mixBlendMode: 'screen' faz o preto do JPG ficar invisível! */}
                                         {localMolduraAvatar && (
-                                            <img src={localMolduraAvatar} alt="Moldura" style={{ position: 'absolute', top: '-2.5%', left: '-3%', width: '106%', height: '105%', objectFit: 'fill', zIndex: 2, pointerEvents: 'none' }} />
+                                            <img src={localMolduraAvatar} alt="Moldura" style={{ position: 'absolute', top: '-2.5%', left: '-3%', width: '106%', height: '105%', objectFit: 'fill', zIndex: 2, pointerEvents: 'none', mixBlendMode: 'screen' }} />
                                         )}
                                         
-                                        {/* CLICAR NA IMAGEM PARA TROCAR FOTO */}
                                         <label style={{ cursor: 'pointer', position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 10 }}>
                                             <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
                                         </label>
@@ -728,7 +724,6 @@ export default function MarcadosPanel() {
                             </div>
                         </div>
 
-                        {/* 🔥 TABELA SUPREMA DE ASCENSÃO E DIVISORES */}
                         <div style={{ width: '100%', marginTop: '30px', background: 'rgba(0,0,0,0.03)', padding: '20px', borderRadius: '15px', border: '1px dashed rgba(0,0,0,0.2)' }}>
                             <h2 style={{ fontSize: '1.8em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 20px 0', textAlign: 'center' }}>Mecânicas de Ascensão e Divisores</h2>
 
@@ -778,14 +773,12 @@ export default function MarcadosPanel() {
                                 <LabelMagico valor={getLabel('tituloPg3', 'O Grimório Místico')} onChange={(v) => setLabel('tituloPg3', v)} />
                             </h1>
                         </div>
-                        
                         <PoderesPanel />
                     </div>
                 )}
 
             </div>
 
-            {/* BOTÕES DE NAVEGAÇÃO DA PÁGINA */}
             <div style={{ position: 'absolute', bottom: '20px', left: '0', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px', fontFamily: 'inherit' }}>
                 <button onClick={() => mudarPagina(Math.max(1, paginaAtual - 1))} disabled={paginaAtual === 1} style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 1 ? 'default' : 'pointer', opacity: paginaAtual === 1 ? 0.3 : 1, fontFamily: 'inherit' }}>⮜ Anterior</button>
                 <span style={{ fontSize: '1.1em', fontWeight: 'bold', borderBottom: '2px solid rgba(0,0,0,0.5)', padding: '0 10px' }}>Página {paginaAtual} de 3</span>
