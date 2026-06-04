@@ -58,7 +58,6 @@ const CampoMagicoNPC = ({ valor, onChange, placeholder, styleExtra = {}, type = 
     let displayValue = valor !== undefined && valor !== null ? String(valor) : '';
     let currentType = type;
 
-    // 🔥 O FIM DO TOC
     if (isNumber && !focused && displayValue !== '') {
         let num = Number(displayValue);
         if (!isNaN(num)) displayValue = num.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
@@ -186,6 +185,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
     const [localCorTinta, setLocalCorTinta] = useState('#000000');
     const [localBgImg, setLocalBgImg] = useState('');
     const [localMolduraAvatar, setLocalMolduraAvatar] = useState('');
+    const [localCorMoldura, setLocalCorMoldura] = useState('#ffffff');
 
     useEffect(() => {
         if (npcData) {
@@ -193,8 +193,9 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
             setLocalCorTinta(npcData.estetica?.corTintaRadar || '#000000');
             setLocalBgImg(npcData.estetica?.bgImg || '');
             setLocalMolduraAvatar(npcData.estetica?.molduraAvatar || '');
+            setLocalCorMoldura(npcData.estetica?.corMoldura || '#ffffff');
         }
-    }, [npcData?.estetica?.diarioCor, npcData?.estetica?.corTintaRadar, npcData?.estetica?.bgImg, npcData?.estetica?.molduraAvatar]);
+    }, [npcData?.estetica?.diarioCor, npcData?.estetica?.corTintaRadar, npcData?.estetica?.bgImg, npcData?.estetica?.molduraAvatar, npcData?.estetica?.corMoldura]);
 
     if (!npcData) return <div style={{ color: '#fff', padding: 20 }}>Conectando à Entidade...</div>;
 
@@ -221,6 +222,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
         else if (key === 'corTintaRadar') setLocalCorTinta(val);
         else if (key === 'bgImg') setLocalBgImg(val);
         else if (key === 'molduraAvatar') setLocalMolduraAvatar(val);
+        else if (key === 'corMoldura') setLocalCorMoldura(val);
 
         if (window.timerSaveCorNPC) clearTimeout(window.timerSaveCorNPC);
         window.timerSaveCorNPC = setTimeout(() => {
@@ -463,7 +465,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                             </div>
 
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>✨ Moldura do Personagem:</label>
-                            <div style={{ display: 'flex', gap: '5px', marginBottom: '15px' }}>
+                            <div style={{ display: 'flex', gap: '5px', marginBottom: '5px' }}>
                                 <input 
                                     type="text" value={localMolduraAvatar} onChange={(e) => handleStyleChange('molduraAvatar', e.target.value)} placeholder="Cole o Link da moldura..."
                                     style={{ flex: 1, padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', color: 'inherit' }} 
@@ -472,6 +474,16 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                     📁<input type="file" accept="image/*" onChange={handleMolduraUpload} style={{ display: 'none' }} />
                                 </label>
                             </div>
+
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9em', marginBottom: '15px', color: '#555' }}>
+                                <span>Cor da Moldura:</span>
+                                <input 
+                                    type="color" value={localCorMoldura} 
+                                    onChange={(e) => handleStyleChange('corMoldura', e.target.value)} 
+                                    style={{ width: '40px', height: '25px', border: 'none', cursor: 'pointer', background: 'transparent' }} 
+                                    title="Tinge o dourado/metálico da moldura!"
+                                />
+                            </label>
 
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>Cor da Tinta (Radar):</label>
                             <input 
@@ -490,6 +502,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                 </div>
             </div>
 
+            {/* 📖 CONTEÚDO ANIMADO DO LIVRO DO NPC */}
             <div key={paginaAtual} className={`swoop-container ${animDirection === 'next' ? 'page-swoop-next' : 'page-swoop-prev'}`} style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '40px', paddingBottom: '30px' }}>
                 
                 {/* ======================= PÁGINA 1 ======================= */}
@@ -526,17 +539,22 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                 ))}
                             </div>
 
+                            {/* 🔥 A MOLDURA E O AVATAR MAGIAM-SE AQUI! 🔥 */}
                             <div style={{ marginTop: '20px', position: 'relative', width: '320px', height: '480px', display: 'flex', flexDirection: 'column', borderRadius: '8px', border: npcData.avatar?.base ? 'none' : '2px dashed #000', boxShadow: npcData.avatar?.base ? '8px 8px 0px rgba(0,0,0,0.2)' : 'none' }}>
                                 {uploadingImg ? (
                                     <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.7)', color: '#fff', fontWeight: 'bold', zIndex: 20 }}>✍️ Forjando...</div>
                                 ) : npcData.avatar?.base ? (
                                     <>
-                                        {/* 🔥 FOTO ESTICADA SEM CORTE 🔥 */}
                                         <img src={npcData.avatar.base} alt="Avatar" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'fill', zIndex: 1, borderRadius: '8px' }} />
                                         
-                                        {/* 🔥 MOLDURA INVISIBILIZA O FUNDO PRETO 🔥 */}
+                                        {/* A MOLDURA E O FILTRO DE COR DE TINTURA */}
                                         {localMolduraAvatar && (
-                                            <img src={localMolduraAvatar} alt="Moldura" style={{ position: 'absolute', top: '-2.5%', left: '-3%', width: '106%', height: '105%', objectFit: 'fill', zIndex: 2, pointerEvents: 'none', mixBlendMode: 'screen' }} />
+                                            <div style={{ position: 'absolute', top: '-2.5%', left: '-3%', width: '106%', height: '105%', zIndex: 2, pointerEvents: 'none', mixBlendMode: 'screen' }}>
+                                                <img src={localMolduraAvatar} alt="Moldura" style={{ width: '100%', height: '100%', objectFit: 'fill', position: 'absolute', top: 0, left: 0 }} />
+                                                {localCorMoldura && localCorMoldura !== '#ffffff' && (
+                                                    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: localCorMoldura, mixBlendMode: 'color' }} />
+                                                )}
+                                            </div>
                                         )}
                                         
                                         <label style={{ cursor: 'pointer', position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 10 }}>
@@ -654,6 +672,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                             </div>
                         </div>
 
+                        {/* 🔥 TABELA SUPREMA PARA OS NPCs */}
                         <div style={{ width: '100%', marginTop: '30px', background: 'rgba(0,0,0,0.03)', padding: '20px', borderRadius: '15px', border: '1px dashed rgba(0,0,0,0.2)' }}>
                             <h2 style={{ fontSize: '1.8em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 20px 0', textAlign: 'center' }}>Mecânicas de Ascensão e Divisores</h2>
 
