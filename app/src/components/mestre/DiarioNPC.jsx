@@ -223,6 +223,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
     const [localBgImg, setLocalBgImg] = useState('');
     const [localMolduraAvatar, setLocalMolduraAvatar] = useState('');
     const [localCorMoldura, setLocalCorMoldura] = useState('#ffffff');
+    const [localModoMoldura, setLocalModoMoldura] = useState('screen');
 
     useEffect(() => {
         if (npcData) {
@@ -231,8 +232,9 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
             setLocalBgImg(npcData.estetica?.bgImg || '');
             setLocalMolduraAvatar(npcData.estetica?.molduraAvatar || '');
             setLocalCorMoldura(npcData.estetica?.corMoldura || '#ffffff');
+            setLocalModoMoldura(npcData.estetica?.modoMoldura || 'screen');
         }
-    }, [npcData?.estetica?.diarioCor, npcData?.estetica?.corTintaRadar, npcData?.estetica?.bgImg, npcData?.estetica?.molduraAvatar, npcData?.estetica?.corMoldura]);
+    }, [npcData?.estetica?.diarioCor, npcData?.estetica?.corTintaRadar, npcData?.estetica?.bgImg, npcData?.estetica?.molduraAvatar, npcData?.estetica?.corMoldura, npcData?.estetica?.modoMoldura]);
 
     if (!npcData) return <div style={{ color: '#fff', padding: 20 }}>Conectando à Entidade...</div>;
 
@@ -262,6 +264,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
         else if (key === 'bgImg') setLocalBgImg(val);
         else if (key === 'molduraAvatar') setLocalMolduraAvatar(val);
         else if (key === 'corMoldura') setLocalCorMoldura(val);
+        else if (key === 'modoMoldura') setLocalModoMoldura(val);
 
         if (window.timerSaveCorNPC) clearTimeout(window.timerSaveCorNPC);
         window.timerSaveCorNPC = setTimeout(() => {
@@ -514,8 +517,16 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                 </label>
                             </div>
 
+                            {/* 🔥 A TINTURA DA MOLDURA E REMOÇÃO DE FUNDO! */}
+                            <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>🪄 Remoção de Fundo (Moldura):</label>
+                            <select value={localModoMoldura} onChange={(e) => handleStyleChange('modoMoldura', e.target.value)} style={{ width: '100%', padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', fontFamily: 'inherit', marginBottom: '15px' }}>
+                                <option value="screen">Fundo Preto (Magia Screen)</option>
+                                <option value="multiply">Fundo Branco (Magia Multiply)</option>
+                                <option value="normal">Imagem PNG Transparente</option>
+                            </select>
+
                             <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9em', color: '#555', marginTop: '10px', fontWeight: 'bold' }}>
-                                <span>Cor da Moldura:</span>
+                                <span>Tingir Moldura:</span>
                                 <input 
                                     type="color" value={localCorMoldura} 
                                     onChange={(e) => handleStyleChange('corMoldura', e.target.value)} 
@@ -587,29 +598,37 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                     <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.7)', color: '#fff', fontWeight: 'bold', zIndex: 20 }}>✍️ Forjando...</div>
                                 ) : npcData.avatar?.base ? (
                                     <>
-                                        {/* 🔥 FOTO ESTICADA SEM CORTE E CENTRADA NO ROSTO 🔥 */}
+                                        {/* 🔥 FOTO ESTICADA SEM CORTE 🔥 */}
                                         <img src={npcData.avatar.base} alt="Avatar" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', zIndex: 1, borderRadius: '8px' }} />
                                         
-                                        {/* 🔥 MOLDURA COM ALQUIMIA DE COR E SCREEN 🔥 */}
+                                        {/* 🔥 MOLDURA COM ALQUIMIA DE COR E FUNDO (BRANCO OU PRETO) 🔥 */}
                                         {localMolduraAvatar && (
-                                            <div style={{ position: 'absolute', top: '-2.5%', left: '-3%', width: '106%', height: '105%', zIndex: 2, pointerEvents: 'none', mixBlendMode: 'screen' }}>
-                                                <img src={localMolduraAvatar} alt="Moldura" style={{ width: '100%', height: '100%', objectFit: 'fill', position: 'absolute', top: 0, left: 0 }} />
+                                            <div style={{ position: 'absolute', top: '-4%', left: '-4%', width: '108%', height: '108%', zIndex: 2, pointerEvents: 'none', mixBlendMode: localModoMoldura, isolation: 'isolate' }}>
+                                                <img src={localMolduraAvatar} alt="Moldura" style={{ width: '100%', height: '100%', objectFit: 'fill', position: 'absolute', top: 0, left: 0, filter: 'contrast(1.2) saturate(1.2)' }} />
                                                 
-                                                {/* CAMADA DE COR FORTE QUE NÃO DESTRÓI O OURO */}
+                                                {/* CAMADA DE COR FORTE QUE PRESERVA O DOURADO */}
                                                 {localCorMoldura && localCorMoldura !== '#ffffff' && (
                                                     <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: localCorMoldura, mixBlendMode: 'color' }} />
                                                 )}
                                             </div>
                                         )}
 
-                                        {/* 🔥 ÍCONE DA CLASSE (PUXADO DO COMPÊNDIO) */}
+                                        {/* 🔥 O ÍCONE DA CLASSE (PUXADO DIRETO DO COMPÊNDIO COM COR MAGICA) */}
                                         {classeInfo && (
-                                            <div style={{ position: 'absolute', bottom: '-15px', left: '50%', transform: 'translateX(-50%)', zIndex: 3, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <div style={{ position: 'absolute', bottom: '-5px', left: '50%', transform: 'translateX(-50%)', zIndex: 3, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '60px', height: '60px' }}>
                                                 {classeInfo.iconeUrl ? (
-                                                    <img src={classeInfo.iconeUrl} alt={classeInfo.nome} style={{ width: '60px', height: '60px', objectFit: 'contain', filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.8))' }} />
+                                                    <div style={{ 
+                                                        width: '70%', height: '70%', 
+                                                        backgroundColor: (localCorMoldura && localCorMoldura !== '#ffffff') ? localCorMoldura : '#e0b000',
+                                                        maskImage: `url(${classeInfo.iconeUrl})`, WebkitMaskImage: `url(${classeInfo.iconeUrl})`,
+                                                        maskSize: 'contain', WebkitMaskSize: 'contain',
+                                                        maskRepeat: 'no-repeat', WebkitMaskRepeat: 'no-repeat',
+                                                        maskPosition: 'center', WebkitMaskPosition: 'center',
+                                                        filter: 'drop-shadow(0 2px 5px rgba(0,0,0,1))'
+                                                    }} />
                                                 ) : (
-                                                    <div style={{ width: '50px', height: '50px', background: classeInfo.cor, transform: 'rotate(45deg)', border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.8)' }}>
-                                                        <span style={{ transform: 'rotate(-45deg)', fontSize: '1.5em', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>{classeInfo.icone}</span>
+                                                    <div style={{ width: '45px', height: '45px', background: (localCorMoldura && localCorMoldura !== '#ffffff') ? localCorMoldura : classeInfo.cor, transform: 'rotate(45deg)', border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.8)' }}>
+                                                        <span style={{ transform: 'rotate(-45deg)', fontSize: '1.2em', textShadow: '0 2px 4px rgba(0,0,0,0.5)', color: '#fff' }}>{classeInfo.icone}</span>
                                                     </div>
                                                 )}
                                             </div>
