@@ -42,7 +42,7 @@ const calcularPrestAtual = (ficha, attrKey, baseP) => {
 };
 
 // ==========================================
-// 🖋️ INPUTS E BARRAS MÁGICAS (COM AUTO-SAVE E FORMATADOR)
+// 🖋️ INPUTS E BARRAS MÁGICAS (COM AUTO-SAVE)
 // ==========================================
 let globalTimer = null;
 const callSave = () => {
@@ -69,7 +69,6 @@ const CampoMagico = ({ valor, onChange, placeholder, styleExtra = {}, type = "te
     let displayValue = valor !== undefined && valor !== null ? valor : '';
     let currentType = type;
 
-    // 🔥 A MAGIA DO TOC RESOLVIDA: Adiciona pontos de milhar apenas quando NÃO está a editar!
     if (isNumber && !focused && displayValue !== '') {
         displayValue = Number(displayValue).toLocaleString('pt-BR', { maximumFractionDigits: 2 });
         currentType = 'text';
@@ -195,13 +194,15 @@ export default function MarcadosPanel() {
     const [animDirection, setAnimDirection] = useState('next');
     const [localCorFundo, setLocalCorFundo] = useState('#bba9d8');
     const [localCorTinta, setLocalCorTinta] = useState('#000000');
+    const [localBgImg, setLocalBgImg] = useState('');
 
     useEffect(() => {
         if (minhaFicha) {
             setLocalCorFundo(minhaFicha.estetica?.diarioCor || '#bba9d8');
             setLocalCorTinta(minhaFicha.estetica?.corTintaRadar || '#000000');
+            setLocalBgImg(minhaFicha.estetica?.bgImg || '');
         }
-    }, [minhaFicha?.estetica?.diarioCor, minhaFicha?.estetica?.corTintaRadar]);
+    }, [minhaFicha?.estetica?.diarioCor, minhaFicha?.estetica?.corTintaRadar, minhaFicha?.estetica?.bgImg]);
 
     if (!minhaFicha) return <div style={{ color: '#000', padding: 20, fontFamily: 'cursive' }}>Abrindo o Diário...</div>;
 
@@ -224,9 +225,10 @@ export default function MarcadosPanel() {
         callSave();
     };
 
-    const handleColorChange = (key, val) => {
+    const handleStyleChange = (key, val) => {
         if (key === 'diarioCor') setLocalCorFundo(val);
-        else setLocalCorTinta(val);
+        else if (key === 'corTintaRadar') setLocalCorTinta(val);
+        else if (key === 'bgImg') setLocalBgImg(val);
 
         if (window.timerSaveCor) clearTimeout(window.timerSaveCor);
         window.timerSaveCor = setTimeout(() => {
@@ -237,6 +239,14 @@ export default function MarcadosPanel() {
             if (typeof salvarFirebaseImediato === 'function') salvarFirebaseImediato();
             else salvarFichaSilencioso();
         }, 800);
+    };
+
+    const handleBgUpload = async (e) => {
+        const file = e.target.files[0]; if (!file) return;
+        try {
+            const url = await uploadImagem(file, `backgrounds/${meuNome || 'desconhecido'}_bg`);
+            handleStyleChange('bgImg', url);
+        } catch (err) { alert('Erro ao enviar a imagem de fundo!'); }
     };
 
     const handleTabelaChange = (k, tipo, valor) => {
@@ -402,13 +412,19 @@ export default function MarcadosPanel() {
 
     return (
         <div style={{ 
-            width: '100%', minHeight: '85vh', background: localCorFundo, color: '#000', fontFamily: fonteDiario, 
+            width: '100%', minHeight: '85vh', 
+            backgroundColor: localCorFundo, 
+            backgroundImage: localBgImg ? `url(${localBgImg})` : 'none',
+            backgroundSize: '100% 100%',
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'center',
+            color: '#000', fontFamily: fonteDiario, 
             padding: '40px 40px 80px 40px', borderRadius: '12px', position: 'relative', transition: 'background 0.3s ease',
             boxShadow: 'inset 0 0 40px rgba(0,0,0,0.1), 0 10px 30px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column',
             overflowX: 'hidden'
         }}>
             
-            {/* 🌟 MAGIAS CSS DA ANIMAÇÃO FLUIDA E DO GRIMÓRIO 🌟 */}
+            {/* 🌟 MAGIAS CSS DA ANIMAÇÃO E DO GRIMÓRIO 🌟 */}
             <style>{`
                 .swoop-container {
                     transform-style: preserve-3d;
@@ -498,8 +514,8 @@ export default function MarcadosPanel() {
                 }
             `}</style>
 
-            {/* 🔥 CONTROLES SUPERIORES (BAIXEI A ALTURA PARA FICAREM BEM DENTRO DA FICHA) */}
-            <div style={{ position: 'absolute', top: '25px', right: '35px', zIndex: 10, display: 'flex', gap: '10px' }}>
+            {/* 📌 CONTROLES SUPERIORES (FORA DA ÁREA DA FOLHA) */}
+            <div style={{ position: 'absolute', top: '-15px', right: '15px', zIndex: 10, display: 'flex', gap: '10px' }}>
                 <div style={{ position: 'relative' }}>
                     <button onClick={handleSalvarTudo} style={{ background: salvando ? '#a5d6a7' : '#4caf50', color: '#fff', border: 'none', padding: '10px 20px', fontFamily: 'inherit', fontWeight: 'bold', fontSize: '1.1em', cursor: 'pointer', boxShadow: '3px 3px 10px rgba(0,0,0,0.2)', transform: 'rotate(1deg)' }}>
                         {salvando ? '✅ Guardado!' : '💾 Guardar Diário'}
@@ -508,17 +524,30 @@ export default function MarcadosPanel() {
                 <div style={{ position: 'relative' }}>
                     <button onClick={() => { setModalEstilo(!modalEstilo); setModalImport(false); }} style={{ background: '#ff94c2', border: 'none', padding: '10px 20px', fontFamily: 'inherit', fontWeight: 'bold', fontSize: '1.1em', cursor: 'pointer', boxShadow: '3px 3px 10px rgba(0,0,0,0.2)', transform: 'rotate(-2deg)' }}>🎨 Estilo</button>
                     {modalEstilo && (
-                        <div className="fade-in" style={{ position: 'absolute', top: '50px', right: '0', background: '#ffe4f0', padding: '15px', border: '1px solid #ccc', boxShadow: '5px 5px 15px rgba(0,0,0,0.3)', width: '250px', zIndex: 20 }}>
+                        <div className="fade-in" style={{ position: 'absolute', top: '50px', right: '0', background: '#ffe4f0', padding: '15px', border: '1px solid #ccc', boxShadow: '5px 5px 15px rgba(0,0,0,0.3)', width: '300px', zIndex: 20 }}>
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Cor do Papel:</label>
                             <input 
                                 type="color" value={localCorFundo} 
-                                onChange={(e) => handleColorChange('diarioCor', e.target.value)} 
+                                onChange={(e) => handleStyleChange('diarioCor', e.target.value)} 
                                 style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} 
                             />
+                            
+                            <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Moldura/Fundo da Ficha:</label>
+                            <div style={{ display: 'flex', gap: '5px', marginBottom: '15px' }}>
+                                <input 
+                                    type="text" value={localBgImg} onChange={(e) => handleStyleChange('bgImg', e.target.value)} placeholder="URL da imagem..."
+                                    style={{ flex: 1, padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', color: 'inherit' }} 
+                                />
+                                <label style={{ background: 'transparent', border: '1px solid rgba(0,0,0,0.2)', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="Fazer upload de Moldura">
+                                    📁
+                                    <input type="file" accept="image/*" onChange={handleBgUpload} style={{ display: 'none' }} />
+                                </label>
+                            </div>
+
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Cor da Tinta (Radar):</label>
                             <input 
                                 type="color" value={localCorTinta} 
-                                onChange={(e) => handleColorChange('corTintaRadar', e.target.value)} 
+                                onChange={(e) => handleStyleChange('corTintaRadar', e.target.value)} 
                                 style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} 
                             />
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Fonte da Letra:</label>
@@ -541,7 +570,7 @@ export default function MarcadosPanel() {
                 </div>
             </div>
 
-            {/* 📖 CONTEÚDO ANIMADO DO LIVRO */}
+            {/* 📖 CONTEÚDO ANIMADO DO LIVRO (NOVO SWOOP) */}
             <div key={paginaAtual} className={`swoop-container ${animDirection === 'next' ? 'page-swoop-next' : 'page-swoop-prev'}`} style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '40px', paddingBottom: '30px' }}>
                 
                 {/* ======================= PÁGINA 1 ======================= */}
@@ -558,6 +587,7 @@ export default function MarcadosPanel() {
                                 <CampoMagico valor={minhaFicha.bio?.nivel} onChange={(v) => salvar('bio.nivel', v)} styleExtra={{ width: '60px', borderBottom: 'none', marginLeft: '10px' }} isNumber={true} type="number" />
                             </h2>
 
+                            {/* 🔥 LAYOUT CLÁSSICO E ALINHADO DA BIO RESTAURADO NA PERFEIÇÃO! */}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '1.2em' }}>
                                 {[
                                     { k: 'idade', lbl: 'Idade' },
@@ -744,7 +774,7 @@ export default function MarcadosPanel() {
                 {paginaAtual === 3 && (
                     <div className="grimorio-estilo-papel" style={{ width: '100%' }}>
                         <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                            <h1 style={{ fontSize: '2.5em', fontStyle: 'italic', fontWeight: 'bold', margin: 0, paddingBottom: '10px', borderBottom: `2px dashed ${localCorTinta}` }}>
+                            <h1 style={{ fontSize: '3em', fontStyle: 'italic', fontWeight: 'bold', margin: 0, paddingBottom: '10px', borderBottom: `2px dashed ${localCorTinta}` }}>
                                 <LabelMagico valor={getLabel('tituloPg3', 'O Grimório Místico')} onChange={(v) => setLabel('tituloPg3', v)} />
                             </h1>
                         </div>

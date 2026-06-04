@@ -177,18 +177,20 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
     const [modalEstilo, setModalEstilo] = useState(false);
     const [paginaAtual, setPaginaAtual] = useState(1);
     
-    // 🔥 MOTOR DA ANIMAÇÃO DE PÁGINAS FLUIDA 🔥
+    // 🔥 MOTOR DA ANIMAÇÃO FLUIDA 🔥
     const [animDirection, setAnimDirection] = useState('next');
 
     const [localCorFundo, setLocalCorFundo] = useState('#ffe6cc');
     const [localCorTinta, setLocalCorTinta] = useState('#000000');
+    const [localBgImg, setLocalBgImg] = useState('');
 
     useEffect(() => {
         if (npcData) {
             setLocalCorFundo(npcData.estetica?.diarioCor || '#ffe6cc');
             setLocalCorTinta(npcData.estetica?.corTintaRadar || '#000000');
+            setLocalBgImg(npcData.estetica?.bgImg || '');
         }
-    }, [npcData?.estetica?.diarioCor, npcData?.estetica?.corTintaRadar]);
+    }, [npcData?.estetica?.diarioCor, npcData?.estetica?.corTintaRadar, npcData?.estetica?.bgImg]);
 
     if (!npcData) return <div style={{ color: '#fff', padding: 20 }}>Conectando à Entidade...</div>;
 
@@ -210,9 +212,10 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
         onSaveNpc(novoNpc);
     };
 
-    const handleColorChange = (key, val) => {
+    const handleStyleChange = (key, val) => {
         if (key === 'diarioCor') setLocalCorFundo(val);
-        else setLocalCorTinta(val);
+        else if (key === 'corTintaRadar') setLocalCorTinta(val);
+        else if (key === 'bgImg') setLocalBgImg(val);
 
         if (window.timerSaveCorNPC) clearTimeout(window.timerSaveCorNPC);
         window.timerSaveCorNPC = setTimeout(() => {
@@ -221,6 +224,14 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
             novoNpc.estetica[key] = val;
             onSaveNpc(novoNpc);
         }, 800);
+    };
+
+    const handleBgUpload = async (e) => {
+        const file = e.target.files[0]; if (!file) return;
+        try {
+            const url = await uploadImagem(file, `backgrounds_npcs/${npcData.id || 'desconhecido'}_bg`);
+            handleStyleChange('bgImg', url);
+        } catch (err) { alert('Erro ao enviar a imagem de fundo!'); }
     };
 
     const handleTabelaChange = (k, tipo, valor) => {
@@ -259,7 +270,6 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
         onSaveNpc(novoNpc);
     };
 
-    // 🔥 MOTORES DE ARRAY PARA A PÁGINA 3 DOS NPCS
     const handleArrayItem = (chave, acao, index, campo, valor) => {
         const novoNpc = JSON.parse(JSON.stringify(npcData));
         if (!novoNpc[chave]) novoNpc[chave] = [];
@@ -376,18 +386,20 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
 
     return (
         <div style={{ 
-            width: '100%', minHeight: '85vh', background: localCorFundo, color: '#000', fontFamily: fonteDiario, 
+            width: '100%', minHeight: '85vh', 
+            backgroundColor: localCorFundo,
+            backgroundImage: localBgImg ? `url(${localBgImg})` : 'none',
+            backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', backgroundPosition: 'center',
+            color: '#000', fontFamily: fonteDiario, 
             padding: '40px 40px 80px 40px', borderRadius: '12px', position: 'relative', transition: 'background 0.3s ease',
             boxShadow: 'inset 0 0 40px rgba(0,0,0,0.1), 0 10px 30px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column',
-            overflowX: 'hidden'
+            overflowX: 'hidden', marginTop: '20px'
         }}>
             
-            {/* 🌟 MAGIAS CSS DA ANIMAÇÃO FLUIDA E DO NOVO DESIGN DA PÁGINA 3 🌟 */}
             <style>{`
                 .swoop-container {
                     transform-style: preserve-3d;
                 }
-                
                 @keyframes pageSwoopNext {
                     0% { transform: perspective(1500px) rotateY(-15deg) translateX(30px) scale(0.98); opacity: 0; }
                     100% { transform: perspective(1500px) rotateY(0deg) translateX(0) scale(1); opacity: 1; }
@@ -396,11 +408,9 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                     0% { transform: perspective(1500px) rotateY(15deg) translateX(-30px) scale(0.98); opacity: 0; }
                     100% { transform: perspective(1500px) rotateY(0deg) translateX(0) scale(1); opacity: 1; }
                 }
-                
                 .page-swoop-next { animation: pageSwoopNext 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
                 .page-swoop-prev { animation: pageSwoopPrev 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
 
-                /* 🌟 A ILUSÃO DO GRIMÓRIO (PÁGINA 3 DOS NPCS) 🌟 */
                 .grimorio-estilo-papel {
                     --tinta: ${localCorTinta};
                     --fundo: ${localCorFundo};
@@ -447,21 +457,34 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                 }
             `}</style>
 
-            <div style={{ position: 'absolute', top: '25px', right: '35px', zIndex: 10, display: 'flex', gap: '10px' }}>
+            <div style={{ position: 'absolute', top: '-15px', right: '15px', zIndex: 10, display: 'flex', gap: '10px' }}>
                 <div style={{ position: 'relative' }}>
                     <button onClick={() => setModalEstilo(!modalEstilo)} style={{ background: '#ff94c2', border: 'none', padding: '10px 20px', fontFamily: 'inherit', fontWeight: 'bold', fontSize: '1.1em', cursor: 'pointer', boxShadow: '3px 3px 10px rgba(0,0,0,0.2)', transform: 'rotate(-2deg)' }}>🎨 Estilo do NPC</button>
                     {modalEstilo && (
-                        <div className="fade-in" style={{ position: 'absolute', top: '50px', right: '0', background: '#ffe4f0', padding: '15px', border: '1px solid #ccc', boxShadow: '5px 5px 15px rgba(0,0,0,0.3)', width: '250px', zIndex: 20 }}>
+                        <div className="fade-in" style={{ position: 'absolute', top: '50px', right: '0', background: '#ffe4f0', padding: '15px', border: '1px solid #ccc', boxShadow: '5px 5px 15px rgba(0,0,0,0.3)', width: '300px', zIndex: 20 }}>
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Cor do Papel:</label>
                             <input 
                                 type="color" value={localCorFundo} 
-                                onChange={(e) => handleColorChange('diarioCor', e.target.value)} 
+                                onChange={(e) => handleStyleChange('diarioCor', e.target.value)} 
                                 style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} 
                             />
+
+                            <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Moldura/Fundo da Ficha:</label>
+                            <div style={{ display: 'flex', gap: '5px', marginBottom: '15px' }}>
+                                <input 
+                                    type="text" value={localBgImg} onChange={(e) => handleStyleChange('bgImg', e.target.value)} placeholder="URL da imagem..."
+                                    style={{ flex: 1, padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', color: 'inherit' }} 
+                                />
+                                <label style={{ background: 'transparent', border: '1px solid rgba(0,0,0,0.2)', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="Fazer upload de Moldura">
+                                    📁
+                                    <input type="file" accept="image/*" onChange={handleBgUpload} style={{ display: 'none' }} />
+                                </label>
+                            </div>
+
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Cor da Tinta (Radar):</label>
                             <input 
                                 type="color" value={localCorTinta} 
-                                onChange={(e) => handleColorChange('corTintaRadar', e.target.value)} 
+                                onChange={(e) => handleStyleChange('corTintaRadar', e.target.value)} 
                                 style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} 
                             />
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px' }}>Fonte da Letra:</label>
@@ -475,7 +498,6 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                 </div>
             </div>
 
-            {/* 📖 CONTEÚDO ANIMADO DO LIVRO DO NPC */}
             <div key={paginaAtual} className={`swoop-container ${animDirection === 'next' ? 'page-swoop-next' : 'page-swoop-prev'}`} style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '40px', paddingBottom: '30px' }}>
                 
                 {/* ======================= PÁGINA 1 ======================= */}
@@ -492,7 +514,6 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                 <CampoMagicoNPC valor={npcData.bio?.nivel} onChange={(v) => salvar('bio.nivel', v)} styleExtra={{ width: '60px', borderBottom: 'none', marginLeft: '10px' }} isNumber={true} type="number" />
                             </h2>
 
-                            {/* 🔥 LAYOUT CLÁSSICO DA BIO RESTAURADO NA PERFEIÇÃO! */}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '1.2em' }}>
                                 {[
                                     { k: 'idade', lbl: 'Idade' },
