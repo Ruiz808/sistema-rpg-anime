@@ -479,7 +479,8 @@ export default function MarcadosPanel() {
                     color: var(--tinta) !important; opacity: 0.5 !important; font-style: italic !important;
                 }
                 .grimorio-estilo-papel span[style*="color: #0ff"], .grimorio-estilo-papel span[style*="color: #0f0"], .grimorio-estilo-papel span[style*="color: #ff003c"],
-                .grimorio-estilo-papel span[style*="color: #ffcc00"], .grimorio-estilo-papel span[style*="color: #ff8800"], .grimorio-estilo-papel span[style*="color: #00ccff"] {
+                .grimorio-estilo-papel span[style*="color: #ffcc00"], .grimorio-estilo-papel span[style*="color: #ff8800"], .grimorio-estilo-papel span[style*="color: #00ccff"],
+                .grimorio-estilo-papel div[style*="color: #ff00ff"] {
                     color: var(--tinta) !important;
                 }
                 .grimorio-estilo-papel .poderes-sidebar .def-box { border: none !important; border-right: 2px dashed var(--tinta) !important; border-radius: 0 !important; }
@@ -586,15 +587,16 @@ export default function MarcadosPanel() {
                                 ))}
                             </div>
 
-                            {/* 🔥 A MOLDURA E O AVATAR MAGIAM-SE AQUI! 🔥 */}
+                            {/* 🔥 A MOLDURA COM MIX-BLEND-MODE: SCREEN! 🔥 */}
                             <div style={{ marginTop: '20px', position: 'relative', width: '320px', height: '480px', display: 'flex', flexDirection: 'column', borderRadius: '8px', border: minhaFicha.avatar?.base ? 'none' : '2px dashed #000', boxShadow: minhaFicha.avatar?.base ? '8px 8px 0px rgba(0,0,0,0.2)' : 'none' }}>
                                 {uploadingImg ? (
                                     <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.7)', color: '#fff', fontWeight: 'bold', zIndex: 20 }}>✍️ Forjando...</div>
                                 ) : minhaFicha.avatar?.base ? (
                                     <>
-                                        <img src={minhaFicha.avatar.base} alt="Avatar" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 1, borderRadius: '8px' }} />
+                                        {/* 🔥 A FOTO NÃO É MAIS CORTADA (objectFit: 'fill') 🔥 */}
+                                        <img src={minhaFicha.avatar.base} alt="Avatar" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'fill', zIndex: 1, borderRadius: '8px' }} />
                                         
-                                        {/* 🔥 mixBlendMode: 'screen' faz o preto do JPG ficar invisível! */}
+                                        {/* 🔥 A MOLDURA INVISIBILIZA O FUNDO PRETO 🔥 */}
                                         {localMolduraAvatar && (
                                             <img src={localMolduraAvatar} alt="Moldura" style={{ position: 'absolute', top: '-2.5%', left: '-3%', width: '106%', height: '105%', objectFit: 'fill', zIndex: 2, pointerEvents: 'none', mixBlendMode: 'screen' }} />
                                         )}
