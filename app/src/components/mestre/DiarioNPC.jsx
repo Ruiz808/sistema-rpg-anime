@@ -223,6 +223,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
     const [localBgImg, setLocalBgImg] = useState('');
     const [localMolduraAvatar, setLocalMolduraAvatar] = useState('');
     const [localCorMoldura, setLocalCorMoldura] = useState('#ffffff');
+    const [localIconeClasse, setLocalIconeClasse] = useState('');
     const [localModoMoldura, setLocalModoMoldura] = useState('screen');
 
     useEffect(() => {
@@ -232,13 +233,15 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
             setLocalBgImg(npcData.estetica?.bgImg || '');
             setLocalMolduraAvatar(npcData.estetica?.molduraAvatar || '');
             setLocalCorMoldura(npcData.estetica?.corMoldura || '#ffffff');
+            setLocalIconeClasse(npcData.estetica?.iconeClasse || '');
             setLocalModoMoldura(npcData.estetica?.modoMoldura || 'screen');
         }
-    }, [npcData?.estetica?.diarioCor, npcData?.estetica?.corTintaRadar, npcData?.estetica?.bgImg, npcData?.estetica?.molduraAvatar, npcData?.estetica?.corMoldura, npcData?.estetica?.modoMoldura]);
+    }, [npcData?.estetica?.diarioCor, npcData?.estetica?.corTintaRadar, npcData?.estetica?.bgImg, npcData?.estetica?.molduraAvatar, npcData?.estetica?.corMoldura, npcData?.estetica?.iconeClasse, npcData?.estetica?.modoMoldura]);
 
     if (!npcData) return <div style={{ color: '#fff', padding: 20 }}>Conectando à Entidade...</div>;
 
     const classeInfo = getClasseInfo(npcData);
+    const iconeFinal = localIconeClasse || classeInfo?.iconeUrl;
 
     const mudarPagina = (nova) => {
         setAnimDirection(nova > paginaAtual ? 'next' : 'prev');
@@ -264,6 +267,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
         else if (key === 'bgImg') setLocalBgImg(val);
         else if (key === 'molduraAvatar') setLocalMolduraAvatar(val);
         else if (key === 'corMoldura') setLocalCorMoldura(val);
+        else if (key === 'iconeClasse') setLocalIconeClasse(val);
         else if (key === 'modoMoldura') setLocalModoMoldura(val);
 
         if (window.timerSaveCorNPC) clearTimeout(window.timerSaveCorNPC);
@@ -289,6 +293,14 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
             const url = await uploadImagem(file, `molduras_avatars_npcs/${npcData.id || 'desconhecido'}_moldura`);
             handleStyleChange('molduraAvatar', url);
         } catch (err) { alert('Erro ao enviar a moldura!'); }
+    };
+
+    const handleIconeUpload = async (e) => {
+        const file = e.target.files[0]; if (!file) return;
+        try {
+            const url = await uploadImagem(file, `icones_classes_npcs/${npcData.id || 'desconhecido'}_icone`);
+            handleStyleChange('iconeClasse', url);
+        } catch (err) { alert('Erro ao enviar o ícone!'); }
     };
 
     const handleTabelaChange = (k, tipo, valor) => {
@@ -517,12 +529,11 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                 </label>
                             </div>
 
-                            {/* 🔥 A TINTURA DA MOLDURA E REMOÇÃO DE FUNDO! */}
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>🪄 Remoção de Fundo (Moldura):</label>
                             <select value={localModoMoldura} onChange={(e) => handleStyleChange('modoMoldura', e.target.value)} style={{ width: '100%', padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', fontFamily: 'inherit', marginBottom: '15px' }}>
                                 <option value="screen">Fundo Preto (Magia Screen)</option>
                                 <option value="multiply">Fundo Branco (Magia Multiply)</option>
-                                <option value="normal">Imagem PNG Transparente</option>
+                                <option value="normal">Nenhum / Imagem PNG Transparente</option>
                             </select>
 
                             <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9em', color: '#555', marginTop: '10px', fontWeight: 'bold' }}>
@@ -538,6 +549,17 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                 {['#ffffff', '#aa00ff', '#ffcc00', '#0088ff', '#ff003c', '#000000'].map(c => (
                                     <div key={c} onClick={() => handleStyleChange('corMoldura', c)} style={{ width: '20px', height: '20px', backgroundColor: c, border: '1px solid rgba(0,0,0,0.5)', cursor: 'pointer', borderRadius: '3px' }} title={`Pintar de ${c}`} />
                                 ))}
+                            </div>
+
+                            <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>🔷 Ícone da Classe Manual (Opcional):</label>
+                            <div style={{ display: 'flex', gap: '5px', marginBottom: '15px' }}>
+                                <input 
+                                    type="text" value={localIconeClasse} onChange={(e) => handleStyleChange('iconeClasse', e.target.value)} placeholder="Link do Ícone..."
+                                    style={{ flex: 1, padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', color: 'inherit' }} 
+                                />
+                                <label style={{ background: 'rgba(0,0,0,0.1)', border: '1px solid rgba(0,0,0,0.2)', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="Upload do Ícone">
+                                    📁<input type="file" accept="image/*" onChange={handleIconeUpload} style={{ display: 'none' }} />
+                                </label>
                             </div>
 
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>Cor da Tinta (Radar):</label>
@@ -603,7 +625,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                         
                                         {/* 🔥 MOLDURA COM ALQUIMIA DE COR E FUNDO (BRANCO OU PRETO) 🔥 */}
                                         {localMolduraAvatar && (
-                                            <div style={{ position: 'absolute', top: '-4%', left: '-4%', width: '108%', height: '108%', zIndex: 2, pointerEvents: 'none', mixBlendMode: localModoMoldura, isolation: 'isolate' }}>
+                                            <div style={{ position: 'absolute', top: '-2.5%', left: '-3%', width: '106%', height: '105%', zIndex: 2, pointerEvents: 'none', mixBlendMode: localModoMoldura, isolation: 'isolate' }}>
                                                 <img src={localMolduraAvatar} alt="Moldura" style={{ width: '100%', height: '100%', objectFit: 'fill', position: 'absolute', top: 0, left: 0, filter: 'contrast(1.2) saturate(1.2)' }} />
                                                 
                                                 {/* CAMADA DE COR FORTE QUE PRESERVA O DOURADO */}
@@ -613,22 +635,14 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                             </div>
                                         )}
 
-                                        {/* 🔥 O ÍCONE DA CLASSE (PUXADO DIRETO DO COMPÊNDIO COM COR MAGICA) */}
-                                        {classeInfo && (
-                                            <div style={{ position: 'absolute', bottom: '-5px', left: '50%', transform: 'translateX(-50%)', zIndex: 3, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '60px', height: '60px' }}>
-                                                {classeInfo.iconeUrl ? (
-                                                    <div style={{ 
-                                                        width: '70%', height: '70%', 
-                                                        backgroundColor: (localCorMoldura && localCorMoldura !== '#ffffff') ? localCorMoldura : '#e0b000',
-                                                        maskImage: `url(${classeInfo.iconeUrl})`, WebkitMaskImage: `url(${classeInfo.iconeUrl})`,
-                                                        maskSize: 'contain', WebkitMaskSize: 'contain',
-                                                        maskRepeat: 'no-repeat', WebkitMaskRepeat: 'no-repeat',
-                                                        maskPosition: 'center', WebkitMaskPosition: 'center',
-                                                        filter: 'drop-shadow(0 2px 5px rgba(0,0,0,1))'
-                                                    }} />
+                                        {/* 🔥 O ÍCONE DA CLASSE NATIVO */}
+                                        {(classeInfo || localIconeClasse) && (
+                                            <div style={{ position: 'absolute', bottom: '-15px', left: '50%', transform: 'translateX(-50%)', zIndex: 3, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '70px', height: '70px' }}>
+                                                {iconeFinal ? (
+                                                    <img src={iconeFinal} alt="Classe" style={{ width: '100%', height: '100%', objectFit: 'contain', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))' }} />
                                                 ) : (
-                                                    <div style={{ width: '45px', height: '45px', background: (localCorMoldura && localCorMoldura !== '#ffffff') ? localCorMoldura : classeInfo.cor, transform: 'rotate(45deg)', border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.8)' }}>
-                                                        <span style={{ transform: 'rotate(-45deg)', fontSize: '1.2em', textShadow: '0 2px 4px rgba(0,0,0,0.5)', color: '#fff' }}>{classeInfo.icone}</span>
+                                                    <div style={{ width: '50px', height: '50px', background: (localCorMoldura && localCorMoldura !== '#ffffff') ? localCorMoldura : (classeInfo?.cor || '#000'), transform: 'rotate(45deg)', border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.8)' }}>
+                                                        <span style={{ transform: 'rotate(-45deg)', fontSize: '1.5em', textShadow: '0 2px 4px rgba(0,0,0,0.5)', color: '#fff' }}>{classeInfo?.icone}</span>
                                                     </div>
                                                 )}
                                             </div>
