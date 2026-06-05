@@ -6,8 +6,7 @@ import { salvarFichaSilencioso, salvarFirebaseImediato, uploadImagem } from '../
 export const SINGULAR = {
     'habilidade': 'Habilidade',
     'forma': 'Forma',
-    'poder': 'Poder',
-    'classificacao': 'Classificação'
+    'poder': 'Poder'
 };
 
 const PoderesFormContext = createContext(null);
@@ -125,6 +124,7 @@ export function PoderesFormProvider({ children }) {
         setDadosFaces(20);
         setCustoPercentual(0);
         setPoderAlcance(1);
+        setAreaQuad(0); // Correção: limpeza de área
         setArmaVinculada('');
         setEfeitosTemp([]);
         setEfeitosTempPassivos([]);
@@ -179,6 +179,7 @@ export function PoderesFormProvider({ children }) {
                     dadosFaces: parseInt(dadosFaces) || 20,
                     custoPercentual: parseFloat(custoPercentual) || 0,
                     alcance: parseFloat(poderAlcance) || 1,
+                    area: parseFloat(poderArea) || 1,
                     armaVinculada: armaVinculada
                 });
             }
@@ -187,7 +188,7 @@ export function PoderesFormProvider({ children }) {
         salvarFirebaseImediato().then(() => {
             cancelarEdicaoPoder();
         }).catch(() => {
-            alert('Erro ao sincronizar o poder no Firebase!');
+            alert('Erro ao sincronizar no Firebase!');
         });
     }, [nomePoder, efeitosTemp, efeitosTempPassivos, dadosQtd, descricaoPoder, updateFicha, poderEditandoId, poderVertente, poderElemento, elementosAfetados, abaAtual, imagemUrl, dadosFaces, custoPercentual, poderAlcance, poderArea, armaVinculada, cancelarEdicaoPoder]);
 
@@ -246,7 +247,7 @@ export function PoderesFormProvider({ children }) {
     }, [minhaFicha, setPoderEditandoId, setEfeitosTemp, setEfeitosTempPassivos, togglePoder]);
 
     const deletarPoder = useCallback((id) => {
-        if (!window.confirm('Tem certeza que deseja apagar permanentemente?')) return;
+        if (!window.confirm('Tem certeza que deseja rasgar esta página permanentemente?')) return;
         const p = (minhaFicha?.poderes || []).find(po => po.id === id);
         if (p && p.ativa) togglePoder(id);
 
@@ -308,73 +309,10 @@ export function PoderesFormProvider({ children }) {
         salvarFichaSilencioso();
     }, [updateFicha]);
 
-    const hierarquia = minhaFicha?.hierarquia || {};
-    const hPoder = hierarquia.poder || false;
-    const hInfinity = hierarquia.infinity || false;
-    const hSingularidade = hierarquia.singularidade || '';
-
-    const [hTextos, setHTextos] = useState({
-        poderNome: '', poderDesc: '', poderVertente: '', poderElemento: '', poderAfeta: '',
-        infinityNome: '', infinityDesc: '', infinityVertente: '', infinityElemento: '', infinityAfeta: '',
-        singularidadeNome: '', singularidadeDesc: ''
-    });
-    const [salvandoClassificacao, setSalvandoClassificacao] = useState(false);
-
-    useEffect(() => {
-        const h = minhaFicha?.hierarquia || {};
-        setHTextos({
-            poderNome: h.poderNome || '', poderDesc: h.poderDesc || '', poderVertente: h.poderVertente || '',
-            poderElemento: h.poderElemento || '', poderAfeta: h.poderAfeta || '',
-            infinityNome: h.infinityNome || '', infinityDesc: h.infinityDesc || '', infinityVertente: h.infinityVertente || '',
-            infinityElemento: h.infinityElemento || '', infinityAfeta: h.infinityAfeta || '',
-            singularidadeNome: h.singularidadeNome || '', singularidadeDesc: h.singularidadeDesc || ''
-        });
-    }, [
-        minhaFicha?.hierarquia?.poderNome, minhaFicha?.hierarquia?.poderDesc, minhaFicha?.hierarquia?.poderVertente, 
-        minhaFicha?.hierarquia?.poderElemento, minhaFicha?.hierarquia?.poderAfeta,
-        minhaFicha?.hierarquia?.infinityNome, minhaFicha?.hierarquia?.infinityDesc, minhaFicha?.hierarquia?.infinityVertente, 
-        minhaFicha?.hierarquia?.infinityElemento, minhaFicha?.hierarquia?.infinityAfeta,
-        minhaFicha?.hierarquia?.singularidadeNome, minhaFicha?.hierarquia?.singularidadeDesc
-    ]);
-
-    const salvarHierarquia = useCallback((p, i, s) => {
-        if (!isMestre) return;
-        updateFicha(f => {
-            if (!f.hierarquia) f.hierarquia = {};
-            f.hierarquia.poder = p;
-            f.hierarquia.infinity = i;
-            f.hierarquia.singularidade = s;
-        });
-        salvarFichaSilencioso();
-    }, [isMestre, updateFicha]);
-
-    const salvarTextosHierarquia = useCallback(() => {
-        if (!isMestre) return;
-        updateFicha(f => {
-            if (!f.hierarquia) f.hierarquia = {};
-            f.hierarquia.poderNome = hTextos.poderNome;
-            f.hierarquia.poderDesc = hTextos.poderDesc;
-            f.hierarquia.poderVertente = hTextos.poderVertente;
-            f.hierarquia.poderElemento = hTextos.poderElemento;
-            f.hierarquia.poderAfeta = hTextos.poderAfeta;
-            f.hierarquia.infinityNome = hTextos.infinityNome;
-            f.hierarquia.infinityDesc = hTextos.infinityDesc;
-            f.hierarquia.infinityVertente = hTextos.infinityVertente;
-            f.hierarquia.infinityElemento = hTextos.infinityElemento;
-            f.hierarquia.infinityAfeta = hTextos.infinityAfeta;
-            f.hierarquia.singularidadeNome = hTextos.singularidadeNome;
-            f.hierarquia.singularidadeDesc = hTextos.singularidadeDesc;
-        });
-        salvarFichaSilencioso();
-        setSalvandoClassificacao(true);
-        setTimeout(() => setSalvandoClassificacao(false), 2000);
-    }, [isMestre, updateFicha, hTextos]);
-
     const armasEquipadas = useMemo(() => (minhaFicha?.inventario || []).filter(i => i.tipo === 'arma' && i.equipado), [minhaFicha]);
     const poderesGlobais = minhaFicha?.poderes || [];
     const passivas = minhaFicha?.passivas || [];
     
-    // 🔥 FILTRAGEM ÚNICA E BLINDADA 🔥
     const itensFiltrados = useMemo(() => {
         return poderesGlobais.filter(p => {
             const cat = (p.categoria || 'poder').toLowerCase();
@@ -406,12 +344,12 @@ export function PoderesFormProvider({ children }) {
                 hasContent = true;
                 sections.push(
                     <div key={prop} style={{ marginBottom: 6 }}>
-                        <strong style={{ color: '#f0f' }}>{nomesProps[prop]}:</strong>{' '}
+                        <strong>{nomesProps[prop]}:</strong>{' '}
                         {mapaEfeitos[prop].map((t, i) => (
                             <span key={i}>
-                                {i > 0 && <strong style={{ color: '#f0f' }}> + </strong>}
-                                <span style={{ color: '#fff' }}>{t.nome}</span>
-                                <span style={{ color: '#555' }}> ({(t.atributo || '').toUpperCase()}: {t.valor})</span>
+                                {i > 0 && <strong> + </strong>}
+                                <span>{t.nome}</span>
+                                <span style={{ opacity: 0.6, fontStyle: 'italic' }}> ({(t.atributo || '').toUpperCase()}: {t.valor})</span>
                             </span>
                         ))}
                     </div>
@@ -422,12 +360,12 @@ export function PoderesFormProvider({ children }) {
             hasContent = true;
             sections.push(
                 <div key="especial" style={{ marginBottom: 6 }}>
-                    <strong style={{ color: '#0ff' }}>OUTROS EFEITOS:</strong>{' '}
+                    <strong>OUTROS EFEITOS:</strong>{' '}
                     {mapaEfeitos.especial.map((t, i) => (
                         <span key={i}>
-                            {i > 0 && <strong style={{ color: '#0ff' }}> + </strong>}
-                            <span style={{ color: '#fff' }}>{t.nome}</span>
-                            <span style={{ color: '#555' }}> ({(t.atributo || '').toUpperCase()}: {t.valor})</span>
+                            {i > 0 && <strong> + </strong>}
+                            <span>{t.nome}</span>
+                            <span style={{ opacity: 0.6, fontStyle: 'italic' }}> ({(t.atributo || '').toUpperCase()}: {t.valor})</span>
                         </span>
                     ))}
                 </div>
@@ -502,11 +440,10 @@ export function PoderesFormProvider({ children }) {
         setOverchargeAtivo(false);
     }, [overchargeAtivo, updateFicha, danoBruto, energiaElemental, mPotencial]);
 
-    // 🔥 MOTOR IA DEFINITIVO: RESPEITA A ABA ATUAL E GERA RELATÓRIO 🔥
     const injetarJsonDaIA = useCallback((jsonString) => {
         try {
             const dados = JSON.parse(jsonString);
-            let countP = 0, countE = 0, countPa = 0;
+            let countP = 0;
             updateFicha(f => {
                 const time = Date.now();
                 if (dados.poderes && Array.isArray(dados.poderes)) {
@@ -519,7 +456,7 @@ export function PoderesFormProvider({ children }) {
                             dadosQtd: parseInt(p.danoQtd) || 0,
                             dadosFaces: parseInt(p.danoFaces) || 0,
                             vertente: 'Físico',
-                            categoria: abaAtual, // 🎯 Fica exatamente onde você está!
+                            categoria: abaAtual, 
                             ativa: false,
                             isForma: false,
                             notasIA: p.notasIA || '' 
@@ -527,41 +464,11 @@ export function PoderesFormProvider({ children }) {
                         countP++;
                     });
                 }
-                if (dados.ataquesElementais && Array.isArray(dados.ataquesElementais)) {
-                    if (!f.ataquesElementais) f.ataquesElementais = [];
-                    dados.ataquesElementais.forEach((el, i) => {
-                        f.ataquesElementais.push({
-                            id: 'el_ia_' + time + i,
-                            nomeElem: el.nome || 'Magia sem Nome',
-                            descElem: el.descricao || '',
-                            elemSelecionado: el.elementoAlvo || 'Fogo',
-                            dadosQtd: parseInt(el.danoQtd) || 0,
-                            dadosFaces: parseInt(el.danoFaces) || 0,
-                            equipado: false,
-                            notasIA: el.notasIA || ''
-                        });
-                        countE++;
-                    });
-                }
-                if (dados.passivas && Array.isArray(dados.passivas)) {
-                    if (!f.passivas) f.passivas = [];
-                    dados.passivas.forEach((pa, i) => {
-                        f.passivas.push({
-                            id: 'pa_ia_' + time + i,
-                            nomePassiva: pa.nome || 'Passiva sem Nome',
-                            descPassiva: pa.descricao || '',
-                            ativa: true,
-                            notasIA: pa.notasIA || ''
-                        });
-                        countPa++;
-                    });
-                }
             });
             salvarFirebaseImediato();
-            alert(`Sincronização Concluída!\n\n🗡️ Injetados na aba atual: ${countP}\n🌪️ Enviados para Elementos: ${countE}\n🛡️ Enviados para Passivas: ${countPa}`);
+            alert(`Sincronização Concluída!\n\n🗡️ Injetados na aba atual: ${countP} habilidades.`);
             return true;
         } catch (e) {
-            console.error(e);
             alert("Erro no código da IA. Certifique-se de copiar o JSON completo.");
             return false;
         }
@@ -585,9 +492,6 @@ export function PoderesFormProvider({ children }) {
         handleImageUpload, salvarNovoPoder, editarPoder, cancelarEdicaoPoder,
         togglePoder, deletarPoder, vincularArmaAoPoder, salvarFormaPoder,
         deletarFormaPoder, ativarFormaPoder,
-        hierarquia, hPoder, hInfinity, hSingularidade,
-        hTextos, setHTextos, salvandoClassificacao,
-        salvarHierarquia, salvarTextosHierarquia,
         armasEquipadas, itensFiltrados, relatorioAuditoria,
         curMana, curAura, curChakra, energiaElemental, mPotencial, danoBruto,
         dispararAtaque, efeitosTemp, efeitosTempPassivos, poderEditandoId,
@@ -603,9 +507,6 @@ export function PoderesFormProvider({ children }) {
         handleImageUpload, salvarNovoPoder, editarPoder, cancelarEdicaoPoder,
         togglePoder, deletarPoder, vincularArmaAoPoder, salvarFormaPoder,
         deletarFormaPoder, ativarFormaPoder,
-        hierarquia, hPoder, hInfinity, hSingularidade,
-        hTextos, salvandoClassificacao,
-        salvarHierarquia, salvarTextosHierarquia,
         armasEquipadas, itensFiltrados, relatorioAuditoria,
         curMana, curAura, curChakra, energiaElemental, mPotencial, danoBruto,
         dispararAtaque, efeitosTemp, efeitosTempPassivos, poderEditandoId, injetarJsonDaIA

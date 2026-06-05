@@ -146,6 +146,14 @@ const CampoMagico = ({ valor, onChange, placeholder, styleExtra = {}, type = "te
     );
 };
 
+const AreaMagica = ({ valor, onChange, placeholder, styleExtra = {} }) => (
+    <textarea 
+        value={valor || ''} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+        onBlur={() => callSave()}
+        style={{ width: '100%', minHeight: '60px', background: 'transparent', border: 'none', borderBottom: '2px dotted currentColor', color: 'inherit', fontFamily: 'inherit', padding: '8px', outline: 'none', resize: 'vertical', ...styleExtra }}
+    />
+);
+
 const LabelMagico = ({ valor, onChange, fallback }) => (
     <input 
         type="text" value={valor !== undefined ? valor : fallback} onChange={(e) => onChange(e.target.value)} 
@@ -293,7 +301,6 @@ const DominiosPanel = ({ ficha, updateFicha }) => {
                                 <span>{catData.icone}</span> {catData.titulo}
                             </h3>
 
-                            {/* Campo de Forjar Novo Conhecimento */}
                             <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
                                 <input
                                     type="text"
@@ -307,7 +314,6 @@ const DominiosPanel = ({ ficha, updateFicha }) => {
                                 </button>
                             </div>
 
-                            {/* Lista de Conhecimentos Inscritos */}
                             {nomes.length === 0 ? (
                                 <div style={{ opacity: 0.4, fontStyle: 'italic', textAlign: 'center', padding: '10px 0', fontSize: '0.9em' }}>Nenhum registo ainda...</div>
                             ) : (
@@ -356,7 +362,7 @@ const DominiosPanel = ({ ficha, updateFicha }) => {
 };
 
 // ==========================================
-// 📖 PAINEL PRINCIPAL (A FICHA)
+// 📖 PAINEL PRINCIPAL (A FICHA DEFINITIVA)
 // ==========================================
 export default function MarcadosPanel() {
     const minhaFicha = useStore(s => s.minhaFicha);
@@ -418,6 +424,17 @@ export default function MarcadosPanel() {
                 atual = atual[chaves[i]];
             }
             atual[chaves[chaves.length - 1]] = valFinal;
+        });
+        callSave();
+    };
+
+    // 🔥 NOVA FUNÇÃO PARA GESTÃO DE ARRAYS (PODERES, INFINITY E SINGULARIDADES) 🔥
+    const handleArrayItem = (chave, acao, index, campo, valor) => {
+        updateFicha((ficha) => {
+            if (!ficha[chave]) ficha[chave] = [];
+            if (acao === 'add') ficha[chave].push({ nome: '', custo: '', dano: '', descricao: '' });
+            else if (acao === 'remove') ficha[chave].splice(index, 1);
+            else if (acao === 'update') ficha[chave][index][campo] = valor;
         });
         callSave();
     };
@@ -652,13 +669,15 @@ export default function MarcadosPanel() {
     return (
         <div style={{ 
             width: '100%', minHeight: '85vh', 
-            backgroundColor: localCorFundo, color: localCorTexto, fontFamily: fonteDiario, 
-            padding: '40px 40px 80px 40px', borderRadius: '12px', position: 'relative', 
-            transition: 'background 0.3s ease, color 0.3s ease',
-            boxShadow: 'inset 0 0 40px rgba(0,0,0,0.1), 0 10px 30px rgba(0,0,0,0.5)', 
-            display: 'flex', flexDirection: 'column', overflow: 'visible' 
+            backgroundColor: localCorFundo, 
+            color: localCorTexto, 
+            fontFamily: fonteDiario, 
+            padding: '40px 40px 80px 40px', borderRadius: '12px', position: 'relative', transition: 'background 0.3s ease, color 0.3s ease',
+            boxShadow: 'inset 0 0 40px rgba(0,0,0,0.1), 0 10px 30px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column',
+            overflow: 'visible' 
         }}>
             
+            {/* 🔥 FUNDO ALQUÍMICO 🔥 */}
             {localBgImg && (
                 <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0, pointerEvents: 'none', borderRadius: '12px', overflow: 'hidden', mixBlendMode: localModoFundo, isolation: 'isolate' }}>
                     <img src={localBgImg} alt="Fundo" style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', top: 0, left: 0, filter: localModoFundo !== 'normal' ? 'contrast(1.2) saturate(1.2)' : 'none' }} />
@@ -680,14 +699,32 @@ export default function MarcadosPanel() {
 
                 .grimorio-estilo-papel { --tinta: ${localCorTinta || '#000'}; --fundo: ${localCorFundo || '#fff'}; color: var(--tinta) !important; }
                 .grimorio-estilo-papel * { font-family: ${fonteDiario}, 'Courier New', serif !important; text-shadow: none !important; box-shadow: none !important; }
-                .grimorio-estilo-papel .def-box, .grimorio-estilo-papel [style*="background: rgba"] { background: transparent !important; border: 2px solid var(--tinta) !important; border-radius: 2px 255px 3px 25px / 255px 5px 225px 3px !important; position: relative; }
-                .grimorio-estilo-papel .def-box::before, .grimorio-estilo-papel [style*="background: rgba"]::before { content: ''; position: absolute; top:0; left:0; right:0; bottom:0; background: var(--tinta); opacity: 0.03; pointer-events: none; border-radius: inherit; }
+                .grimorio-estilo-papel .def-box, .grimorio-estilo-papel [style*="background: rgba"] {
+                    background: transparent !important; border: 2px solid var(--tinta) !important;
+                    border-radius: 2px 255px 3px 25px / 255px 5px 225px 3px !important; position: relative;
+                }
+                .grimorio-estilo-papel .def-box::before, .grimorio-estilo-papel [style*="background: rgba"]::before {
+                    content: ''; position: absolute; top:0; left:0; right:0; bottom:0; background: var(--tinta); opacity: 0.03; pointer-events: none; border-radius: inherit;
+                }
                 .grimorio-estilo-papel h2, .grimorio-estilo-papel h3, .grimorio-estilo-papel h4 { color: var(--tinta) !important; display: inline-block; }
-                .grimorio-estilo-papel button { background: transparent !important; border: 2px dashed var(--tinta) !important; border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important; color: var(--tinta) !important; font-weight: bold !important; text-transform: uppercase !important; transition: all 0.2s ease !important; }
-                .grimorio-estilo-papel button:hover { background: var(--tinta) !important; color: var(--fundo) !important; border-style: solid !important; transform: scale(1.02) rotate(-1deg) !important; }
-                .grimorio-estilo-papel input, .grimorio-estilo-papel textarea, .grimorio-estilo-papel select { background: rgba(0,0,0,0.03) !important; border: none !important; border-bottom: 2px dotted var(--tinta) !important; color: var(--tinta) !important; border-radius: 0 !important; }
-                .grimorio-estilo-papel input:focus, .grimorio-estilo-papel textarea:focus { background: rgba(0,0,0,0.06) !important; border-bottom: 2px solid var(--tinta) !important; }
-                .grimorio-estilo-papel input::placeholder, .grimorio-estilo-papel textarea::placeholder { color: var(--tinta) !important; opacity: 0.5 !important; font-style: italic !important; }
+                .grimorio-estilo-papel button {
+                    background: transparent !important; border: 2px dashed var(--tinta) !important;
+                    border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important; color: var(--tinta) !important;
+                    font-weight: bold !important; text-transform: uppercase !important; transition: all 0.2s ease !important;
+                }
+                .grimorio-estilo-papel button:hover {
+                    background: var(--tinta) !important; color: var(--fundo) !important; border-style: solid !important; transform: scale(1.02) rotate(-1deg) !important;
+                }
+                .grimorio-estilo-papel input, .grimorio-estilo-papel textarea, .grimorio-estilo-papel select {
+                    background: rgba(0,0,0,0.03) !important; border: none !important; border-bottom: 2px dotted var(--tinta) !important;
+                    color: var(--tinta) !important; border-radius: 0 !important;
+                }
+                .grimorio-estilo-papel input:focus, .grimorio-estilo-papel textarea:focus {
+                    background: rgba(0,0,0,0.06) !important; border-bottom: 2px solid var(--tinta) !important;
+                }
+                .grimorio-estilo-papel input::placeholder, .grimorio-estilo-papel textarea::placeholder {
+                    color: var(--tinta) !important; opacity: 0.5 !important; font-style: italic !important;
+                }
             `}</style>
 
             {/* 📌 CONTROLES SUPERIORES */}
@@ -773,7 +810,7 @@ export default function MarcadosPanel() {
                 </div>
             </div>
 
-            {/* 🔥 AS 3 PÁGINAS DA FICHA DEFINITIVA 🔥 */}
+            {/* 🔥 AS 4 PÁGINAS DA FICHA DEFINITIVA 🔥 */}
             <div key={paginaAtual} className={`swoop-container ${animDirection === 'next' ? 'page-swoop-next' : 'page-swoop-prev'}`} style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '40px', paddingBottom: '30px' }}>
                 
                 {/* ======================= PÁGINA 1: FICHA E AVATAR ======================= */}
@@ -1022,13 +1059,89 @@ export default function MarcadosPanel() {
                     <DominiosPanel ficha={minhaFicha} updateFicha={updateFicha} />
                 )}
 
+                {/* ======================= PÁGINA 4: CLASSIFICAÇÃO ARCANA ======================= */}
+                {paginaAtual === 4 && (
+                    <div className="grimorio-estilo-papel" style={{ width: '100%' }}>
+                        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                            <h1 style={{ fontSize: '3em', fontStyle: 'italic', fontWeight: 'bold', margin: 0, paddingBottom: '10px', borderBottom: `2px dashed currentColor` }}>
+                                <LabelMagico valor={getLabel('tituloPg4', 'Classificação Arcana')} onChange={(v) => setLabel('tituloPg4', v)} />
+                            </h1>
+                            <p style={{ opacity: 0.7, fontStyle: 'italic', marginTop: '5px' }}>As características inatas e poderes absolutos gravados na alma.</p>
+                        </div>
+
+                        {/* 🌀 ARSENAL DE PODERES */}
+                        <div className="def-box">
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                                <h2 style={{ margin: 0 }}>🌀 Poderes Especiais</h2>
+                                <button onClick={() => handleArrayItem('poderes', 'add')}>+ Novo Poder</button>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                {(minhaFicha.poderes || []).map((pod, i) => (
+                                    <div key={i} className="def-box" style={{ position: 'relative' }}>
+                                        <button onClick={() => { if(window.confirm('Apagar Poder?')) handleArrayItem('poderes', 'remove', i); }} style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', cursor: 'pointer' }}>✖</button>
+                                        <div style={{ display: 'flex', gap: '10px', marginBottom: '10px', flexWrap: 'wrap', paddingRight: '30px' }}>
+                                            <CampoMagico valor={pod.nome} onChange={v => handleArrayItem('poderes', 'update', i, 'nome', v)} placeholder="Nome do Poder" styleExtra={{ flex: '1 1 200px', fontSize: '1.2em', fontWeight: 'bold' }} />
+                                            <CampoMagico valor={pod.custo} onChange={v => handleArrayItem('poderes', 'update', i, 'custo', v)} placeholder="Custo (ex: 50 MP)" styleExtra={{ flex: '1 1 100px' }} />
+                                            <CampoMagico valor={pod.dano} onChange={v => handleArrayItem('poderes', 'update', i, 'dano', v)} placeholder="Dano/Efeito" styleExtra={{ flex: '1 1 100px' }} />
+                                        </div>
+                                        <AreaMagica valor={pod.descricao} onChange={v => handleArrayItem('poderes', 'update', i, 'descricao', v)} placeholder="Descreva as características inatas deste poder..." />
+                                    </div>
+                                ))}
+                                {(!minhaFicha.poderes || minhaFicha.poderes.length === 0) && <span style={{ fontStyle: 'italic', opacity: 0.6 }}>Nenhum poder especial forjado ainda...</span>}
+                            </div>
+                        </div>
+
+                        {/* ♾️ O INFINITY */}
+                        <div className="def-box">
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                                <h2 style={{ margin: 0 }}>♾️ Domínios Absolutos (Infinity)</h2>
+                                <button onClick={() => handleArrayItem('infinitys', 'add')}>+ Novo Infinity</button>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                {(minhaFicha.infinitys || []).map((inf, i) => (
+                                    <div key={i} className="def-box" style={{ position: 'relative' }}>
+                                        <button onClick={() => { if(window.confirm('Apagar Infinity?')) handleArrayItem('infinitys', 'remove', i); }} style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', cursor: 'pointer' }}>✖</button>
+                                        <div style={{ display: 'flex', gap: '10px', marginBottom: '10px', flexWrap: 'wrap', paddingRight: '30px' }}>
+                                            <CampoMagico valor={inf.nome} onChange={v => handleArrayItem('infinitys', 'update', i, 'nome', v)} placeholder="Nome do Domínio Mestre" styleExtra={{ flex: '1 1 200px', fontSize: '1.2em', fontWeight: 'bold' }} />
+                                            <CampoMagico valor={inf.custo} onChange={v => handleArrayItem('infinitys', 'update', i, 'custo', v)} placeholder="Gatilho de Expansão" styleExtra={{ flex: '1 1 100px' }} />
+                                        </div>
+                                        <AreaMagica valor={inf.descricao} onChange={v => handleArrayItem('infinitys', 'update', i, 'descricao', v)} placeholder="Descreva as regras inquebráveis deste domínio..." />
+                                    </div>
+                                ))}
+                                {(!minhaFicha.infinitys || minhaFicha.infinitys.length === 0) && <span style={{ fontStyle: 'italic', opacity: 0.6 }}>Nenhuma Expansão de Domínio inscrita...</span>}
+                            </div>
+                        </div>
+
+                        {/* ✨ SINGULARIDADE */}
+                        <div className="def-box">
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                                <h2 style={{ margin: 0 }}>✨ Singularidades</h2>
+                                <button onClick={() => handleArrayItem('singularidades', 'add')}>+ Singularidade</button>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                {(minhaFicha.singularidades || []).map((sing, i) => (
+                                    <div key={i} className="def-box" style={{ position: 'relative' }}>
+                                        <button onClick={() => { if(window.confirm('Apagar Singularidade?')) handleArrayItem('singularidades', 'remove', i); }} style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', cursor: 'pointer' }}>✖</button>
+                                        <div style={{ display: 'flex', gap: '10px', marginBottom: '10px', flexWrap: 'wrap', paddingRight: '30px' }}>
+                                            <CampoMagico valor={sing.nome} onChange={v => handleArrayItem('singularidades', 'update', i, 'nome', v)} placeholder="Traço Único / Essência" styleExtra={{ flex: '1 1 200px', fontSize: '1.2em', fontWeight: 'bold' }} />
+                                            <CampoMagico valor={sing.custo} onChange={v => handleArrayItem('singularidades', 'update', i, 'custo', v)} placeholder="Passiva / Condição" styleExtra={{ flex: '1 1 100px' }} />
+                                        </div>
+                                        <AreaMagica valor={sing.descricao} onChange={v => handleArrayItem('singularidades', 'update', i, 'descricao', v)} placeholder="O poder que quebra as regras do multiverso e existe apenas neste indivíduo..." />
+                                    </div>
+                                ))}
+                                {(!minhaFicha.singularidades || minhaFicha.singularidades.length === 0) && <span style={{ fontStyle: 'italic', opacity: 0.6 }}>Nenhum traço singular identificado...</span>}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
             </div>
 
-            {/* BOTÕES DE NAVEGAÇÃO DA PÁGINA */}
+            {/* BOTÕES DE NAVEGAÇÃO DA PÁGINA (1 A 4) */}
             <div style={{ position: 'absolute', bottom: '20px', left: '0', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px', fontFamily: 'inherit' }}>
                 <button onClick={() => mudarPagina(Math.max(1, paginaAtual - 1))} disabled={paginaAtual === 1} style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 1 ? 'default' : 'pointer', opacity: paginaAtual === 1 ? 0.3 : 1, fontFamily: 'inherit', color: 'inherit' }}>⮜ Anterior</button>
-                <span style={{ fontSize: '1.1em', fontWeight: 'bold', borderBottom: '2px solid currentColor', padding: '0 10px' }}>Página {paginaAtual} de 3</span>
-                <button onClick={() => mudarPagina(Math.min(3, paginaAtual + 1))} disabled={paginaAtual === 3} style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 3 ? 'default' : 'pointer', opacity: paginaAtual === 3 ? 0.3 : 1, fontFamily: 'inherit', color: 'inherit' }}>Próxima ⮞</button>
+                <span style={{ fontSize: '1.1em', fontWeight: 'bold', borderBottom: '2px solid currentColor', padding: '0 10px' }}>Página {paginaAtual} de 4</span>
+                <button onClick={() => mudarPagina(Math.min(4, paginaAtual + 1))} disabled={paginaAtual === 4} style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 4 ? 'default' : 'pointer', opacity: paginaAtual === 4 ? 0.3 : 1, fontFamily: 'inherit', color: 'inherit' }}>Próxima ⮞</button>
             </div>
 
         </div>

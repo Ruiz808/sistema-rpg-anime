@@ -3,7 +3,7 @@ import { usePoderesForm, SINGULAR } from './PoderesFormContext';
 import { ATRIBUTOS_AGRUPADOS, PROPRIEDADE_OPTIONS } from '../../core/efeitos-constants';
 import FormasEditor from '../shared/FormasEditor';
 
-const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Poderes provider não encontrado</div>;
+const FALLBACK = <div style={{ opacity: 0.5, padding: 10 }}>Poderes provider não encontrado</div>;
 
 const ELEMENTOS_OPCOES = [
     { label: 'Elementos Básicos', opcoes: ['Fogo', 'Agua', 'Raio', 'Terra', 'Vento'] },
@@ -27,12 +27,11 @@ export function PoderesImportadorIA() {
     const [fase, setFase] = useState(1); 
 
     if (!ctx) return null;
-    const { injetarJsonDaIA, abaAtual } = ctx;
+    const { injetarJsonDaIA } = ctx;
 
     const gerarPrompt = () => {
         if (!textoDocs.trim()) return alert("Cole o texto primeiro!");
         
-        // 🔥 PROMPT BLINDADO: Obriga a IA a salvar tudo como "poder" na aba atual, ignorando se tem fogo/gelo 🔥
         const prompt = `Atue como extrator de dados de RPG.
 Transforme TODAS as habilidades descritas no texto abaixo em itens dentro do array "poderes". 
 Mesmo que a habilidade use fogo, gelo ou magia, COLOQUE-A EM "poderes", pois o usuário quer registrá-la nesta aba específica.
@@ -52,23 +51,23 @@ RETORNE EXATAMENTE UM JSON PURO:
     };
 
     return (
-        <div style={{ marginBottom: '20px' }}>
-            <button className="btn-neon btn-blue" onClick={() => setAberto(!aberto)} style={{ width: '100%', margin: 0, fontWeight: 'bold' }}>
-                {aberto ? '❌ FECHAR MOTOR IA' : '🤖 IMPORTAR DO GOOGLE DOCS'}
+        <div style={{ marginBottom: '20px', width: '100%' }}>
+            <button onClick={() => setAberto(!aberto)} style={{ width: '100%', padding: '10px' }}>
+                {aberto ? 'Fechar Círculo de Invocação (IA)' : 'Abrir Círculo de Invocação (IA)'}
             </button>
             {aberto && (
-                <div className="def-box" style={{ marginTop: '10px', border: '1px dashed #00aaff', background: 'rgba(0,170,255,0.05)' }}>
+                <div className="fade-in" style={{ marginTop: '10px', border: '1px dashed currentColor', padding: '15px', borderRadius: '8px', background: 'rgba(0,0,0,0.05)' }}>
                     {fase === 1 ? (
                         <>
-                            <textarea value={textoDocs} onChange={e => setTextoDocs(e.target.value)} placeholder="Cole aqui as habilidades do seu Docs..." style={{ width: '100%', height: '120px', background: '#000', color: '#fff', padding: '10px' }} />
-                            <button className="btn-neon btn-gold" onClick={gerarPrompt} style={{ width: '100%', marginTop: '10px' }}>1. COPIAR PROMPT PARA IA</button>
+                            <textarea value={textoDocs} onChange={e => setTextoDocs(e.target.value)} placeholder="Cole aqui os textos longos..." style={{ width: '100%', height: '120px', background: 'transparent', padding: '10px', resize: 'vertical' }} />
+                            <button onClick={gerarPrompt} style={{ width: '100%', marginTop: '10px', padding: '8px' }}>1. Copiar Feitiço de Extração (Prompt)</button>
                         </>
                     ) : (
                         <>
-                            <textarea value={jsonResposta} onChange={e => setJsonResposta(e.target.value)} placeholder="Cole aqui o JSON gerado..." style={{ width: '100%', height: '120px', background: '#000', color: '#0f0', fontFamily: 'monospace', padding: '10px' }} />
+                            <textarea value={jsonResposta} onChange={e => setJsonResposta(e.target.value)} placeholder="Cole o Código Arcano (JSON) devolvido pela IA..." style={{ width: '100%', height: '120px', background: 'transparent', fontFamily: 'monospace', padding: '10px', resize: 'vertical' }} />
                             <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                                <button className="btn-neon btn-red" onClick={() => setFase(1)}>VOLTAR</button>
-                                <button className="btn-neon btn-green" onClick={() => { if(injetarJsonDaIA(jsonResposta)) setAberto(false); }}>2. INJETAR NA FICHA</button>
+                                <button onClick={() => setFase(1)} style={{ flex: 1, padding: '8px' }}>Voltar</button>
+                                <button onClick={() => { if(injetarJsonDaIA(jsonResposta)) setAberto(false); }} style={{ flex: 2, padding: '8px' }}>2. Transcrever para o Grimório</button>
                             </div>
                         </>
                     )}
@@ -78,271 +77,32 @@ RETORNE EXATAMENTE UM JSON PURO:
     );
 }
 
-export function PoderesSidebar() {
+// 🔥 SUBSTITUI A SIDEBAR ANTIGA POR UM ÍNDICE NO TOPO DO LIVRO 🔥
+export function PoderesNavegacaoLivro() {
     const ctx = usePoderesForm();
     if (!ctx) return FALLBACK;
     const { abaAtual, setAbaAtual, cancelarEdicaoPoder } = ctx;
 
     return (
-        <div className="def-box" style={{ flex: '0 0 230px', padding: '15px', position: 'sticky', top: '20px' }}>
-            <h3 style={{ color: '#fff', marginTop: 0, textAlign: 'center', marginBottom: '20px', fontSize: '1.1em', letterSpacing: '1px' }}>
-                📖 ARQUIVOS
-            </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                <button className={`btn-neon ${abaAtual === 'habilidade' ? 'btn-gold' : ''}`} onClick={() => { setAbaAtual('habilidade'); cancelarEdicaoPoder(); }} style={{ padding: '12px 10px', justifyContent: 'flex-start', margin: 0 }}>
-                    🗡️ HABILIDADES
-                </button>
-                <button className={`btn-neon ${abaAtual === 'forma' ? 'btn-gold' : ''}`} onClick={() => { setAbaAtual('forma'); cancelarEdicaoPoder(); }} style={{ padding: '12px 10px', justifyContent: 'flex-start', margin: 0 }}>
-                    🎭 FORMAS
-                </button>
-                <button className={`btn-neon ${abaAtual === 'poder' ? 'btn-gold' : ''}`} onClick={() => { setAbaAtual('poder'); cancelarEdicaoPoder(); }} style={{ padding: '12px 10px', justifyContent: 'flex-start', margin: 0 }}>
-                    ✨ PODERES
-                </button>
-                <button className={`btn-neon ${abaAtual === 'classificacao' ? 'btn-gold' : ''}`} onClick={() => { setAbaAtual('classificacao'); cancelarEdicaoPoder(); }} style={{ padding: '12px 10px', justifyContent: 'flex-start', margin: 0 }}>
-                    👑 CLASSIFICAÇÃO
-                </button>
-            </div>
-        </div>
-    );
-}
-
-export function PoderesClassificacao() {
-    const ctx = usePoderesForm();
-    if (!ctx) return FALLBACK;
-    const { 
-        isMestre, hierarquia, hPoder, hInfinity, hSingularidade,
-        hTextos, setHTextos, salvandoClassificacao,
-        salvarHierarquia, salvarTextosHierarquia 
-    } = ctx;
-
-    let tituloSupremo = 'MUNDANO';
-    let corSuprema = '#555';
-    let glowSupremo = 'none';
-    let nomeHabilidadeDestaque = '';
-    let vertenteDestaque = '';
-    let elementoDestaque = ''; 
-    let afetaDestaque = '';    
-
-    if (hSingularidade === '0') {
-        tituloSupremo = 'SINGULARIDADE GRAU 0 (MARCADO)'; corSuprema = '#ff00ff'; glowSupremo = '0 0 20px rgba(255, 0, 255, 0.8)'; nomeHabilidadeDestaque = hTextos.singularidadeNome;
-    } else if (hSingularidade === '1') {
-        tituloSupremo = 'SINGULARIDADE GRAU 1 (NASCIDA)'; corSuprema = '#ff003c'; glowSupremo = '0 0 20px rgba(255, 0, 60, 0.8)'; nomeHabilidadeDestaque = hTextos.singularidadeNome;
-    } else if (hSingularidade === '2') {
-        tituloSupremo = 'SINGULARIDADE GRAU 2 (DESENVOLVIDA)'; corSuprema = '#ff8800'; glowSupremo = '0 0 20px rgba(255, 136, 0, 0.8)'; nomeHabilidadeDestaque = hTextos.singularidadeNome;
-    } else if (hSingularidade === '3') {
-        tituloSupremo = 'SINGULARIDADE GRAU 3 (HERDADA)'; corSuprema = '#ffcc00'; glowSupremo = '0 0 20px rgba(255, 204, 0, 0.8)'; nomeHabilidadeDestaque = hTextos.singularidadeNome;
-    } else if (hInfinity) {
-        tituloSupremo = 'INFINITY (MANIPULAÇÃO ABSOLUTA)'; corSuprema = '#00ccff'; glowSupremo = '0 0 20px rgba(0, 204, 255, 0.8)'; nomeHabilidadeDestaque = hTextos.infinityNome; vertenteDestaque = hTextos.infinityVertente;
-        elementoDestaque = hTextos.infinityElemento; afetaDestaque = hTextos.infinityAfeta;
-    } else if (hPoder) {
-        tituloSupremo = 'PODER (RESSONÂNCIA NATURAL)'; corSuprema = '#00ffcc'; glowSupremo = '0 0 20px rgba(0, 255, 204, 0.8)'; nomeHabilidadeDestaque = hTextos.poderNome; vertenteDestaque = hTextos.poderVertente;
-        elementoDestaque = hTextos.poderElemento; afetaDestaque = hTextos.poderAfeta;
-    }
-
-    return (
-        <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            {!isMestre && (
-                <div style={{ background: 'rgba(255,0,0,0.1)', border: '1px solid #f00', padding: '15px', borderRadius: '5px', color: '#f00', textAlign: 'center', fontWeight: 'bold', textShadow: '0 0 5px #f00' }}>
-                    🔒 MODO LEITURA: Apenas o Mestre pode forjar e alterar Domínios Místicos.
-                </div>
-            )}
-
-            <div className="def-box" style={{ textAlign: 'center', padding: '30px', border: `2px solid ${corSuprema}`, boxShadow: glowSupremo, background: 'rgba(0,0,0,0.8)', position: 'relative', overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: `radial-gradient(circle, ${corSuprema}30 0%, rgba(0,0,0,0) 70%)`, pointerEvents: 'none' }} />
-                <h2 style={{ color: '#fff', fontSize: '1.2em', margin: '0 0 10px 0', letterSpacing: '2px', textTransform: 'uppercase', position: 'relative', zIndex: 1 }}>Grau de Calamidade Atual</h2>
-                
-                <div style={{ fontSize: '2.5em', fontWeight: '900', color: corSuprema, textShadow: glowSupremo, textTransform: 'uppercase', letterSpacing: '3px', position: 'relative', zIndex: 1 }}>
-                    {tituloSupremo}
-                </div>
-                
-                {nomeHabilidadeDestaque && (
-                    <div style={{ color: '#fff', fontSize: '1.8em', fontWeight: 'bold', fontStyle: 'italic', marginTop: '10px', textShadow: '0 0 10px #000', position: 'relative', zIndex: 1 }}>
-                        "{nomeHabilidadeDestaque}"
-                    </div>
-                )}
-
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap', marginTop: '12px', position: 'relative', zIndex: 1 }}>
-                    {vertenteDestaque && (
-                        <div style={{ padding: '4px 15px', background: 'rgba(0,0,0,0.5)', border: `1px solid ${corSuprema}`, borderRadius: '20px', color: corSuprema, fontSize: '0.85em', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                            🎯 Vertente: {vertenteDestaque}
-                        </div>
-                    )}
-                    {elementoDestaque && vertenteDestaque === 'Elemental' && (
-                        <div style={{ padding: '4px 15px', background: 'rgba(0,0,0,0.5)', border: `1px solid ${corSuprema}`, borderRadius: '20px', color: corSuprema, fontSize: '0.85em', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                            🌪️ Elemento: {elementoDestaque}
-                        </div>
-                    )}
-                    {afetaDestaque && vertenteDestaque === 'Elemental' && (
-                        <div style={{ padding: '4px 15px', background: 'rgba(0,0,0,0.5)', border: `1px solid ${corSuprema}`, borderRadius: '20px', color: corSuprema, fontSize: '0.85em', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                            🌊 Consome: {afetaDestaque}
-                        </div>
-                    )}
-                </div>
-
-                <p style={{ color: '#aaa', fontSize: '0.9em', marginTop: '15px', fontStyle: 'italic', position: 'relative', zIndex: 1 }}>
-                    O sistema rastreia as suas capacidades e irradia a anomalia mais forte que corre nas suas veias.
-                </p>
-            </div>
-
-            <div className="def-box" style={{ display: 'flex', flexDirection: 'column', gap: '15px', opacity: isMestre ? 1 : 0.8 }}>
-                <h3 style={{ color: '#0ff', margin: 0, borderBottom: '1px solid rgba(0,255,255,0.3)', paddingBottom: '10px' }}>Domínios Místicos</h3>
-
-                <div style={{ padding: '15px', background: hPoder ? 'rgba(0, 255, 204, 0.1)' : 'rgba(255,255,255,0.02)', border: `1px solid ${hPoder ? '#00ffcc' : '#333'}`, borderRadius: '8px', transition: 'all 0.3s' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: isMestre ? 'pointer' : 'not-allowed' }}>
-                        <input type="checkbox" checked={hPoder} onChange={e => salvarHierarquia(e.target.checked, hInfinity, hSingularidade)} disabled={!isMestre} style={{ transform: 'scale(1.5)', marginLeft: '5px', cursor: isMestre ? 'pointer' : 'not-allowed' }} />
-                        <div>
-                            <div style={{ color: hPoder ? '#00ffcc' : '#fff', fontWeight: 'bold', fontSize: '1.1em', textShadow: hPoder ? '0 0 10px #00ffcc' : 'none' }}>✨ Categoria 1: Poder</div>
-                            <div style={{ color: '#aaa', fontSize: '0.85em', marginTop: '4px' }}>Ressonância Natural. Habilidade inata que usa as 3 energias (Mana, Aura e Chakra) para escalar o seu impacto, mas <strong>não gasta nenhuma (Custo Zero)</strong>.</div>
-                        </div>
-                    </label>
-                    
-                    {hPoder && (
-                        <div className="fade-in" style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px dashed rgba(0, 255, 204, 0.3)' }}>
-                            <label style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Vertente do Poder:</label>
-                            <select
-                                className="input-neon"
-                                value={hTextos.poderVertente}
-                                onChange={e => setHTextos({...hTextos, poderVertente: e.target.value})}
-                                disabled={!isMestre}
-                                style={{ width: '100%', marginBottom: '10px', borderColor: '#00ffcc', color: '#fff', opacity: isMestre ? 1 : 0.7 }}
-                            >
-                                <option value="">Selecione a Vertente...</option>
-                                <option value="Acumulativo">📈 Acumulativo (Requer Marcadores e Forja)</option>
-                                <option value="Elemental">🌪️ Elemental (Domínio absoluto de forças e natureza)</option>
-                                <option value="Conceitual">🧩 Conceitual (Quebra de regras absolutas e espaço/tempo)</option>
-                                <option value="Utilitario">🛠️ Utilitário (Hackers da realidade, Mimetismo, Anulação)</option>
-                            </select>
-
-                            {hTextos.poderVertente === 'Elemental' && (
-                                <div className="fade-in" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
-                                    <div>
-                                        <label style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold' }}>Elemento Oficial:</label>
-                                        <select className="input-neon" value={hTextos.poderElemento} onChange={e => setHTextos({...hTextos, poderElemento: e.target.value})} disabled={!isMestre} style={{ width: '100%', borderColor: '#00ffcc', color: '#00ffcc', margin: 0, opacity: isMestre ? 1 : 0.7 }}>
-                                            <option value="">Selecione a raiz elemental...</option>
-                                            {ELEMENTOS_OPCOES.map(grupo => (
-                                                <optgroup key={grupo.label} label={grupo.label} style={{ background: '#051010', color: '#00ffcc' }}>
-                                                    {grupo.opcoes.map(el => <option key={el} value={el}>{el}</option>)}
-                                                </optgroup>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold' }}>Afeta/Consome:</label>
-                                        <input className="input-neon" type="text" placeholder="Ex: Gelo, Vento" value={hTextos.poderAfeta} onChange={e => setHTextos({...hTextos, poderAfeta: e.target.value})} disabled={!isMestre} style={{ width: '100%', borderColor: '#00ffcc', color: '#00ffcc', margin: 0, opacity: isMestre ? 1 : 0.7 }} />
-                                    </div>
-                                </div>
-                            )}
-
-                            <input className="input-neon" type="text" placeholder="Nome do seu Poder (Ex: Chamas do Purgatório)" value={hTextos.poderNome} onChange={e => setHTextos({...hTextos, poderNome: e.target.value})} disabled={!isMestre} style={{ width: '100%', marginBottom: '10px', borderColor: '#00ffcc', color: '#fff', fontWeight: 'bold', opacity: isMestre ? 1 : 0.7 }} />
-                            <textarea className="input-neon" placeholder="Descreva como a ressonância da sua habilidade se manifesta na realidade..." value={hTextos.poderDesc} onChange={e => setHTextos({...hTextos, poderDesc: e.target.value})} disabled={!isMestre} style={{ width: '100%', minHeight: '60px', borderColor: '#00ffcc', color: '#ccc', fontStyle: 'italic', opacity: isMestre ? 1 : 0.7 }} />
-                        </div>
-                    )}
-                </div>
-
-                <div style={{ padding: '15px', background: hInfinity ? 'rgba(0, 204, 255, 0.1)' : 'rgba(255,255,255,0.02)', border: `1px solid ${hInfinity ? '#00ccff' : '#333'}`, borderRadius: '8px', transition: 'all 0.3s' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: isMestre ? 'pointer' : 'not-allowed' }}>
-                        <input type="checkbox" checked={hInfinity} onChange={e => salvarHierarquia(hPoder, e.target.checked, hSingularidade)} disabled={!isMestre} style={{ transform: 'scale(1.5)', marginLeft: '5px', cursor: isMestre ? 'pointer' : 'not-allowed' }} />
-                        <div>
-                            <div style={{ color: hInfinity ? '#00ccff' : '#fff', fontWeight: 'bold', fontSize: '1.1em', textShadow: hInfinity ? '0 0 10px #00ccff' : 'none' }}>🌌 Categoria 2: Infinity</div>
-                            <div style={{ color: '#aaa', fontSize: '0.85em', marginTop: '4px' }}>
-                                Manipulação Absoluta. Controle infinito e conceitual de uma habilidade, seja ela uma força física (Gelo Absoluto) ou abstrata (Adaptação). <strong style={{color: '#00ccff'}}>⚠️ Permite Cópia (Mimetismo).</strong>
-                            </div>
-                        </div>
-                    </label>
-
-                    {hInfinity && (
-                        <div className="fade-in" style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px dashed rgba(0, 204, 255, 0.3)' }}>
-                            <label style={{ color: '#00ccff', fontSize: '0.85em', fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Vertente do Infinity:</label>
-                            <select
-                                className="input-neon"
-                                value={hTextos.infinityVertente}
-                                onChange={e => setHTextos({...hTextos, infinityVertente: e.target.value})}
-                                disabled={!isMestre}
-                                style={{ width: '100%', marginBottom: '10px', borderColor: '#00ccff', color: '#fff', opacity: isMestre ? 1 : 0.7 }}
-                            >
-                                <option value="">Selecione a Vertente...</option>
-                                <option value="Acumulativo">📈 Acumulativo (Requer Marcadores e Forja)</option>
-                                <option value="Elemental">🌪️ Elemental (Domínio absoluto de forças e natureza)</option>
-                                <option value="Conceitual">🧩 Conceitual (Quebra de regras absolutas e espaço/tempo)</option>
-                                <option value="Utilitario">🛠️ Utilitário (Hackers da realidade, Mimetismo, Anulação)</option>
-                            </select>
-
-                            {hTextos.infinityVertente === 'Elemental' && (
-                                <div className="fade-in" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
-                                    <div>
-                                        <label style={{ color: '#00ccff', fontSize: '0.85em', fontWeight: 'bold' }}>Elemento Oficial:</label>
-                                        <select className="input-neon" value={hTextos.infinityElemento} onChange={e => setHTextos({...hTextos, infinityElemento: e.target.value})} disabled={!isMestre} style={{ width: '100%', borderColor: '#00ccff', color: '#00ccff', margin: 0, opacity: isMestre ? 1 : 0.7 }}>
-                                            <option value="">Selecione a raiz elemental...</option>
-                                            {ELEMENTOS_OPCOES.map(grupo => (
-                                                <optgroup key={grupo.label} label={grupo.label} style={{ background: '#051010', color: '#00ccff' }}>
-                                                    {grupo.opcoes.map(el => <option key={el} value={el}>{el}</option>)}
-                                                </optgroup>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label style={{ color: '#00ccff', fontSize: '0.85em', fontWeight: 'bold' }}>Afeta/Consome:</label>
-                                        <input className="input-neon" type="text" placeholder="Ex: Fogo, Gelo" value={hTextos.infinityAfeta} onChange={e => setHTextos({...hTextos, infinityAfeta: e.target.value})} disabled={!isMestre} style={{ width: '100%', borderColor: '#00ccff', color: '#00ccff', margin: 0, opacity: isMestre ? 1 : 0.7 }} />
-                                    </div>
-                                </div>
-                            )}
-
-                            <input className="input-neon" type="text" placeholder="Nome do seu Infinity (Ex: Frio Zero Absoluto)" value={hTextos.infinityNome} onChange={e => setHTextos({...hTextos, infinityNome: e.target.value})} disabled={!isMestre} style={{ width: '100%', marginBottom: '10px', borderColor: '#00ccff', color: '#fff', fontWeight: 'bold', opacity: isMestre ? 1 : 0.7 }} />
-                            <textarea className="input-neon" placeholder="Descreva as leis conceituais e limites dessa manipulação infinita..." value={hTextos.infinityDesc} onChange={e => setHTextos({...hTextos, infinityDesc: e.target.value})} disabled={!isMestre} style={{ width: '100%', minHeight: '60px', borderColor: '#00ccff', color: '#ccc', fontStyle: 'italic', opacity: isMestre ? 1 : 0.7 }} />
-                        </div>
-                    )}
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '15px', background: hSingularidade ? 'rgba(255, 0, 255, 0.1)' : 'rgba(255,255,255,0.02)', border: `1px solid ${hSingularidade ? '#ff00ff' : '#333'}`, borderRadius: '8px', transition: 'all 0.3s' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: isMestre ? 'pointer' : 'not-allowed' }}>
-                        <input type="checkbox" checked={!!hSingularidade} onChange={e => { const val = e.target.checked ? '3' : ''; salvarHierarquia(hPoder, hInfinity, val); }} disabled={!isMestre} style={{ transform: 'scale(1.5)', marginLeft: '5px', cursor: isMestre ? 'pointer' : 'not-allowed' }} />
-                        <div>
-                            <div style={{ color: hSingularidade ? '#ff00ff' : '#fff', fontWeight: 'bold', fontSize: '1.1em', textShadow: hSingularidade ? '0 0 10px #ff00ff' : 'none' }}>👑 Categoria 3: Singularidade</div>
-                            <div style={{ color: '#aaa', fontSize: '0.85em', marginTop: '4px' }}>
-                                A Anomalia Máxima. Uma falha na própria realidade. Existem menos de 200 no multiverso inteiro. <strong style={{color: '#ff00ff'}}>🚫 REGRA ABSOLUTA: Impossível ser copiada por qualquer habilidade de Mimetismo.</strong>
-                            </div>
-                        </div>
-                    </label>
-
-                    {hSingularidade && (
-                        <div className="fade-in" style={{ marginTop: '10px', paddingLeft: '45px', borderLeft: '2px solid #ff00ff', marginLeft: '10px' }}>
-                            <label style={{ color: '#ffcc00', fontSize: '0.9em', fontWeight: 'bold' }}>Selecione o Grau da sua Singularidade:</label>
-                            <select 
-                                className="input-neon" 
-                                value={hSingularidade} 
-                                onChange={e => salvarHierarquia(hPoder, hInfinity, e.target.value)} 
-                                disabled={!isMestre}
-                                style={{ width: '100%', marginTop: '8px', marginBottom: '15px', borderColor: corSuprema, color: corSuprema, background: '#111', fontSize: '1em', padding: '10px', textShadow: `0 0 5px ${corSuprema}`, opacity: isMestre ? 1 : 0.7, cursor: isMestre ? 'pointer' : 'not-allowed' }}
-                            >
-                                <option value="3">Grau 3: Herdada (Poder transferido ou roubado)</option>
-                                <option value="2">Grau 2: Desenvolvida (Evoluída além do limite de um Poder/Infinity)</option>
-                                <option value="1">Grau 1: Nascida (Anomalia inata desde o berço)</option>
-                                <option value="0">Grau 0: Marcado Nascido (O próprio Marcado já nasce como Singularidade)</option>
-                            </select>
-
-                            <div style={{ paddingTop: '15px', borderTop: '1px dashed rgba(255, 0, 255, 0.3)' }}>
-                                <input className="input-neon" type="text" placeholder="Nome da Singularidade (Ex: All For One)" value={hTextos.singularidadeNome} onChange={e => setHTextos({...hTextos, singularidadeNome: e.target.value})} disabled={!isMestre} style={{ width: '100%', marginBottom: '10px', borderColor: '#ff00ff', color: '#fff', fontWeight: 'bold', opacity: isMestre ? 1 : 0.7 }} />
-                                <textarea className="input-neon" placeholder="Descreva como essa anomalia cósmica quebra as regras do universo..." value={hTextos.singularidadeDesc} onChange={e => setHTextos({...hTextos, singularidadeDesc: e.target.value})} disabled={!isMestre} style={{ width: '100%', minHeight: '60px', borderColor: '#ff00ff', color: '#ccc', fontStyle: 'italic', opacity: isMestre ? 1 : 0.7 }} />
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {isMestre && (
-                    <button 
-                        className="btn-neon btn-gold" 
-                        onClick={salvarTextosHierarquia} 
-                        style={{ 
-                            marginTop: '10px', width: '100%', padding: '12px', fontSize: '1.1em', letterSpacing: '1px',
-                            backgroundColor: salvandoClassificacao ? 'rgba(0, 255, 100, 0.2)' : undefined,
-                            borderColor: salvandoClassificacao ? '#00ffcc' : undefined,
-                            color: salvandoClassificacao ? '#fff' : undefined
-                        }}
-                    >
-                        {salvandoClassificacao ? '💾 REGISTROS MÍSTICOS SALVOS!' : '💾 SALVAR NOMES E DESCRIÇÕES'}
-                    </button>
-                )}
-            </div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', borderBottom: '2px dashed currentColor', paddingBottom: '15px', marginBottom: '20px', flexWrap: 'wrap' }}>
+            <button 
+                onClick={() => { setAbaAtual('habilidade'); cancelarEdicaoPoder(); }} 
+                style={{ padding: '8px 20px', border: abaAtual === 'habilidade' ? '2px solid currentColor' : '1px dashed currentColor', opacity: abaAtual === 'habilidade' ? 1 : 0.6, fontSize: '1.1em' }}
+            >
+                🗡️ Habilidades
+            </button>
+            <button 
+                onClick={() => { setAbaAtual('forma'); cancelarEdicaoPoder(); }} 
+                style={{ padding: '8px 20px', border: abaAtual === 'forma' ? '2px solid currentColor' : '1px dashed currentColor', opacity: abaAtual === 'forma' ? 1 : 0.6, fontSize: '1.1em' }}
+            >
+                🎭 Formas
+            </button>
+            <button 
+                onClick={() => { setAbaAtual('poder'); cancelarEdicaoPoder(); }} 
+                style={{ padding: '8px 20px', border: abaAtual === 'poder' ? '2px solid currentColor' : '1px dashed currentColor', opacity: abaAtual === 'poder' ? 1 : 0.6, fontSize: '1.1em' }}
+            >
+                ✨ Poderes
+            </button>
         </div>
     );
 }
@@ -370,31 +130,31 @@ export function PoderesFormEditor() {
     const sing = SINGULAR[abaAtual] || 'Poder/Habilidade';
 
     return (
-        <div className="def-box" ref={formRef} id="form-poder-box">
-            <h3 style={{ color: '#0ff', marginBottom: 10 }}>{poderEditandoId ? `Editando: ${nomePoder}` : `Criar ${sing}`}</h3>
+        <div ref={formRef} style={{ border: '1px dashed currentColor', padding: '20px', borderRadius: '8px', background: 'rgba(0,0,0,0.03)' }}>
+            <h3 style={{ marginBottom: 15 }}>{poderEditandoId ? `✎ Reescrevendo: ${nomePoder}` : `✎ Criar Novo(a) ${sing}`}</h3>
             
-            <input className="input-neon" type="text" placeholder={`Nome da ${sing} (Ex: Chama Imortal)`} value={nomePoder} onChange={e => setNomePoder(e.target.value)} />
+            <input type="text" placeholder={`Nome (Ex: Chama Imortal)`} value={nomePoder} onChange={e => setNomePoder(e.target.value)} style={{ width: '100%', fontSize: '1.2em', fontWeight: 'bold' }} />
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10, marginBottom: 5 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15, marginTop: 15 }}>
                 <div>
-                    <label style={{ color: '#0ff', fontSize: '0.85em', fontWeight: 'bold' }}>Natureza da Habilidade / Poder</label>
-                    <select className="input-neon" value={poderVertente} onChange={e => setPoderVertente(e.target.value)} style={{ borderColor: '#0ff', color: '#0ff', margin: 0 }}>
+                    <label style={{ display: 'block', fontSize: '0.85em', fontWeight: 'bold', opacity: 0.8 }}>Natureza da Magia</label>
+                    <select value={poderVertente} onChange={e => setPoderVertente(e.target.value)} style={{ width: '100%' }}>
                         <option value="">Padrão (Dano / Efeito Direto)</option>
-                        <option value="Acumulativo">📈 Acumulativo (Requer Marcadores ou Forja)</option>
-                        <option value="Elemental">🌪️ Elemental / Fenomenal (Ressonância Ativa)</option>
+                        <option value="Acumulativo">📈 Acumulativo (Requer Marcadores/Forja)</option>
+                        <option value="Elemental">🌪️ Elemental (Ressonância Ativa)</option>
                         <option value="Conceitual">🧩 Conceitual (Distorção de Regras)</option>
-                        <option value="Utilitario">🛠️ Utilitário (Cópia / Suporte / Buff)</option>
+                        <option value="Utilitario">🛠️ Utilitário (Cópia / Suporte)</option>
                     </select>
                 </div>
 
                 {(poderVertente || '').toLowerCase().includes('elemental') && (
                     <div className="fade-in" style={{ display: 'flex', gap: '10px', gridColumn: 'span 2' }}>
                         <div style={{ flex: 1 }}>
-                            <label style={{ color: '#ff8800', fontSize: '0.85em', fontWeight: 'bold' }}>Seu Elemento Oficial</label>
-                            <select className="input-neon" value={poderElemento} onChange={e => setPoderElemento(e.target.value)} style={{ borderColor: '#ff8800', color: '#ff8800', margin: 0, width: '100%' }}>
+                            <label style={{ display: 'block', fontSize: '0.85em', fontWeight: 'bold', opacity: 0.8 }}>Elemento Principal</label>
+                            <select value={poderElemento} onChange={e => setPoderElemento(e.target.value)} style={{ width: '100%' }}>
                                 <option value="">Selecione a raiz elemental...</option>
                                 {ELEMENTOS_OPCOES.map(grupo => (
-                                    <optgroup key={grupo.label} label={grupo.label} style={{ background: '#051010', color: '#ff8800' }}>
+                                    <optgroup key={grupo.label} label={grupo.label}>
                                         {grupo.opcoes.map(el => <option key={el} value={el}>{el}</option>)}
                                     </optgroup>
                                 ))}
@@ -402,122 +162,108 @@ export function PoderesFormEditor() {
                         </div>
                         
                         <div style={{ flex: 1 }}>
-                            <label style={{ color: '#00ccff', fontSize: '0.85em', fontWeight: 'bold' }}>Afeta/Consome (Opcional)</label>
-                            <input className="input-neon" type="text" placeholder="Quais elementos ele engole?" value={elementosAfetados} onChange={e => setElementosAfetados(e.target.value)} style={{ borderColor: '#00ccff', color: '#00ccff', margin: 0, width: '100%' }} />
+                            <label style={{ display: 'block', fontSize: '0.85em', fontWeight: 'bold', opacity: 0.8 }}>Afeta/Consome</label>
+                            <input type="text" placeholder="Quais elementos engole?" value={elementosAfetados} onChange={e => setElementosAfetados(e.target.value)} style={{ width: '100%' }} />
                         </div>
                     </div>
                 )}
             </div>
 
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 10 }}>
-                <input className="input-neon" type="text" placeholder="URL da Imagem (Ou anexe ao lado 👉)" value={imagemUrl} onChange={e => setImagemUrl(e.target.value)} style={{ flex: 1, margin: 0 }} />
-                <label className="btn-neon btn-blue" style={{ cursor: 'pointer', padding: '5px 15px', margin: 0, whiteSpace: 'nowrap', opacity: uploadingImg ? 0.5 : 1 }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 15, borderTop: '1px dotted currentColor', paddingTop: 15 }}>
+                <input type="text" placeholder="URL da Imagem..." value={imagemUrl} onChange={e => setImagemUrl(e.target.value)} style={{ flex: 1, margin: 0 }} />
+                <label style={{ cursor: 'pointer', padding: '8px 15px', border: '1px dashed currentColor', borderRadius: '4px', whiteSpace: 'nowrap', opacity: uploadingImg ? 0.5 : 0.8 }}>
                     {uploadingImg ? 'Enviando...' : '📁 Anexar'}
                     <input type="file" accept="image/png, image/jpeg, image/gif, image/webp" onChange={handleImageUpload} style={{ display: 'none' }} disabled={uploadingImg} />
                 </label>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', gap: 8, marginTop: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 15, marginTop: 15 }}>
+                <div><label style={{ display: 'block', fontSize: '0.8em', opacity: 0.7 }}>Qtd Dados</label><input type="number" min="0" value={dadosQtd} onChange={e => setDadosQtd(e.target.value)} style={{width:'100%', textAlign:'center'}} /></div>
+                <div><label style={{ display: 'block', fontSize: '0.8em', opacity: 0.7 }}>Faces (d)</label><input type="number" min="1" value={dadosFaces} onChange={e => setDadosFaces(e.target.value)} style={{width:'100%', textAlign:'center'}} /></div>
+                <div><label style={{ display: 'block', fontSize: '0.8em', opacity: 0.7 }}>Custo (%)</label><input type="number" min="0" value={custoPercentual} onChange={e => setCustoPercentual(e.target.value)} style={{width:'100%', textAlign:'center'}} /></div>
+                <div><label style={{ display: 'block', fontSize: '0.8em', opacity: 0.7 }}>Alcance (Q)</label><input type="number" min="0" step="0.5" value={poderAlcance} onChange={e => setPoderAlcance(e.target.value)} style={{width:'100%', textAlign:'center'}} /></div>
+                <div><label style={{ display: 'block', fontSize: '0.8em', opacity: 0.7 }}>Área (Q)</label><input type="number" min="0" step="0.5" value={poderArea} onChange={e => setPoderArea(e.target.value)} style={{width:'100%', textAlign:'center'}} /></div>
                 <div>
-                    <label style={{ color: '#aaa', fontSize: '0.85em' }}>Dados de Dano (qtd)</label>
-                    <input className="input-neon" type="number" min="0" value={dadosQtd} onChange={e => setDadosQtd(e.target.value)} placeholder="0" />
+                    <label style={{ display: 'block', fontSize: '0.8em', opacity: 0.7 }}>Arma (Opc.)</label>
+                    <select value={armaVinculada} onChange={e => setArmaVinculada(e.target.value)} style={{width:'100%'}}>
+                        <option value="">Livre</option>
+                        {(minhaFicha?.inventario || []).filter(i => i.tipo === 'arma').map(arma => (
+                            <option key={arma.id} value={String(arma.id)}>{arma.nome}</option>
+                        ))}
+                    </select>
                 </div>
-                <div>
-                    <label style={{ color: '#aaa', fontSize: '0.85em' }}>Faces (d)</label>
-                    <input className="input-neon" type="number" min="1" value={dadosFaces} onChange={e => setDadosFaces(e.target.value)} placeholder="20" />
-                </div>
-                <div>
-                    <label style={{ color: '#aaa', fontSize: '0.85em' }}>Custo (% Energia)</label>
-                    <input className="input-neon" type="number" min="0" value={custoPercentual} onChange={e => setCustoPercentual(e.target.value)} placeholder="0" />
-                </div>
-            <div>
-            <label style={{ color: '#00ffcc', fontSize: '0.85em', fontWeight: 'bold' }}>Alcance (Q)</label>
-            <input className="input-neon" type="number" min="0" step="0.5" value={poderAlcance} onChange={e => setPoderAlcance(e.target.value)} style={{ borderColor: '#00ffcc', color: '#00ffcc' }} />
-        </div>
-        <div>
-            <label style={{ color: '#ff00ff', fontSize: '0.85em', fontWeight: 'bold' }}>Área de Efeito (Q)</label>
-            <input className="input-neon" type="number" min="0" step="0.5" value={poderArea} onChange={e => setPoderArea(e.target.value)} style={{ borderColor: '#ff00ff', color: '#ff00ff' }} />
-        </div>
-        <div>
-            <label style={{ color: '#aaa', fontSize: '0.85em' }}>Vincular Arma</label>
-            <select className="input-neon" value={armaVinculada} onChange={e => setArmaVinculada(e.target.value)}>
-                <option value="">Nenhuma (Livre)</option>
-                {(minhaFicha?.inventario || []).filter(i => i.tipo === 'arma').map(arma => (
-                    <option key={arma.id} value={String(arma.id)}>{arma.nome}</option>
-                ))}
-                </select>
-            </div>
             </div>
 
             <textarea 
-                className="input-neon" 
-                placeholder="Descrição / Efeito Narrativo (O que essa habilidade faz visualmente e narrativamente?)" 
+                placeholder="Descrição / Efeito Narrativo..." 
                 value={descricaoPoder} 
                 onChange={e => setDescricaoPoder(e.target.value)} 
-                style={{ width: '100%', minHeight: '60px', marginTop: 15, borderColor: '#555', color: '#ccc', fontStyle: 'italic' }} 
+                style={{ width: '100%', minHeight: '80px', marginTop: 15, padding: '10px', resize: 'vertical' }} 
             />
 
-            <h4 style={{ color: '#0ff', marginTop: 15, marginBottom: 8, fontSize: '0.95em' }}>Efeitos Matemáticos Ativos</h4>
-            <input className="input-neon" type="text" placeholder="Nome do Efeito" value={nomeEfeito} onChange={e => setNomeEfeito(e.target.value)} style={{ marginTop: 5 }} />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8, marginTop: 5 }}>
-                <select className="input-neon" value={novoAtr} onChange={e => setNovoAtr(e.target.value)}>
+            {/* SEÇÃO MATEMÁTICA ATIVA */}
+            <h4 style={{ marginTop: 25, marginBottom: 10, fontSize: '1em', opacity: 0.8, borderBottom: '1px dotted currentColor', paddingBottom: '5px' }}>➕ Efeitos Matemáticos Ativos</h4>
+            <input type="text" placeholder="Nome do Efeito" value={nomeEfeito} onChange={e => setNomeEfeito(e.target.value)} style={{ width: '100%', marginBottom: 10 }} />
+            <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+                <select value={novoAtr} onChange={e => setNovoAtr(e.target.value)} style={{ flex: 1 }}>
                     {ATRIBUTOS_AGRUPADOS.map(grupo => (
-                        <optgroup key={grupo.label} label={grupo.label} style={{ background: '#051010', color: '#0ff' }}>
+                        <optgroup key={grupo.label} label={grupo.label}>
                             {grupo.options.map(a => <option key={a} value={a}>{a.replace('_', ' ').toUpperCase()}</option>)}
                         </optgroup>
                     ))}
                 </select>
-                <select className="input-neon" value={novoProp} onChange={e => setNovoProp(e.target.value)}>
+                <select value={novoProp} onChange={e => setNovoProp(e.target.value)} style={{ flex: 1 }}>
                     {PROPRIEDADE_OPTIONS.map(p => <option key={p} value={p}>{p.toUpperCase()}</option>)}
                 </select>
-                <input className="input-neon" type="text" placeholder="Valor" value={novoVal} onChange={e => setNovoVal(e.target.value)} />
-                <button className="btn-neon btn-blue" onClick={addEfeitoTemp} style={{ padding: '5px 10px' }}>+ Efeito</button>
+                <input type="text" placeholder="Valor" value={novoVal} onChange={e => setNovoVal(e.target.value)} style={{ width: '80px', textAlign: 'center' }} />
+                <button onClick={addEfeitoTemp} style={{ padding: '8px' }}>+</button>
             </div>
 
             <div style={{ marginTop: 10 }}>
                 {efeitosTemp.map((e, i) => {
                     const isMult = ['mbase', 'mgeral', 'mformas', 'mabs', 'munico'].includes((e.propriedade || '').toLowerCase());
                     return (
-                        <div key={i} style={{ color: '#0ff', fontSize: '0.9em', marginBottom: 5, background: 'rgba(0,255,255,0.1)', padding: '5px 10px', borderLeft: '2px solid #0ff', display: 'flex', justifyContent: 'space-between' }}>
-                            <span><strong style={{ color: '#fff' }}>{e.nome || '(Sem nome)'}</strong> [{(e.atributo || '').replace('_', ' ').toUpperCase()}] - [{(e.propriedade || '').toUpperCase()}]: <strong style={{ color: '#ffcc00' }}>{isMult ? '(x)' : '(+)'} {e.valor}</strong></span>
-                            <button onClick={() => removerEfeitoTemp(i)} style={{ background: 'transparent', color: '#f00', border: 'none', cursor: 'pointer' }}>X</button>
+                        <div key={i} style={{ fontSize: '0.9em', marginBottom: 5, padding: '5px 10px', borderLeft: '2px solid currentColor', display: 'flex', justifyContent: 'space-between', opacity: 0.9 }}>
+                            <span><strong>{e.nome || '(Sem nome)'}</strong> [{(e.atributo || '').replace('_', ' ').toUpperCase()}] - [{(e.propriedade || '').toUpperCase()}]: <strong>{isMult ? '(x)' : '(+)'} {e.valor}</strong></span>
+                            <button onClick={() => removerEfeitoTemp(i)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', opacity: 0.6 }}>✖</button>
                         </div>
                     );
                 })}
             </div>
 
-            <h4 style={{ color: '#f0f', marginTop: 15, marginBottom: 8, fontSize: '0.95em' }}>Efeitos Passivos (sempre ativos)</h4>
-            <input className="input-neon" type="text" placeholder="Nome do Efeito Passivo (Ex: +10 CA Fogo)" value={nomeEfeitoPassivo} onChange={e => setNomeEfeitoPassivo(e.target.value)} />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8, marginTop: 5 }}>
-                <select className="input-neon" value={novoAtrPassivo} onChange={e => setNovoAtrPassivo(e.target.value)}>
+            {/* SEÇÃO MATEMÁTICA PASSIVA */}
+            <h4 style={{ marginTop: 25, marginBottom: 10, fontSize: '1em', opacity: 0.8, borderBottom: '1px dotted currentColor', paddingBottom: '5px' }}>🛡️ Efeitos Passivos (Sempre Ligados)</h4>
+            <input type="text" placeholder="Nome do Efeito Passivo" value={nomeEfeitoPassivo} onChange={e => setNomeEfeitoPassivo(e.target.value)} style={{ width: '100%', marginBottom: 10 }} />
+            <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+                <select value={novoAtrPassivo} onChange={e => setNovoAtrPassivo(e.target.value)} style={{ flex: 1 }}>
                     {ATRIBUTOS_AGRUPADOS.map(grupo => (
-                        <optgroup key={grupo.label} label={grupo.label} style={{ background: '#051010', color: '#f0f' }}>
+                        <optgroup key={grupo.label} label={grupo.label}>
                             {grupo.options.map(a => <option key={a} value={a}>{a.replace('_', ' ').toUpperCase()}</option>)}
                         </optgroup>
                     ))}
                 </select>
-                <select className="input-neon" value={novoPropPassivo} onChange={e => setNovoPropPassivo(e.target.value)}>
+                <select value={novoPropPassivo} onChange={e => setNovoPropPassivo(e.target.value)} style={{ flex: 1 }}>
                     {PROPRIEDADE_OPTIONS.map(p => <option key={p} value={p}>{p.toUpperCase()}</option>)}
                 </select>
-                <input className="input-neon" type="text" placeholder="Valor" value={novoValPassivo} onChange={e => setNovoValPassivo(e.target.value)} />
-                <button className="btn-neon" style={{ padding: '5px 10px', borderColor: '#f0f', color: '#f0f' }} onClick={addEfeitoPassivoTemp}>+ Passivo</button>
+                <input type="text" placeholder="Valor" value={novoValPassivo} onChange={e => setNovoValPassivo(e.target.value)} style={{ width: '80px', textAlign: 'center' }} />
+                <button onClick={addEfeitoPassivoTemp} style={{ padding: '8px' }}>+</button>
             </div>
 
             <div style={{ marginTop: 10 }}>
                 {efeitosTempPassivos.map((e, i) => {
                     const isMult = ['mbase', 'mgeral', 'mformas', 'mabs', 'munico'].includes((e.propriedade || '').toLowerCase());
                     return (
-                        <div key={i} style={{ color: '#f0f', fontSize: '0.9em', marginBottom: 5, background: 'rgba(255,0,255,0.1)', padding: '5px 10px', borderLeft: '2px solid #f0f', display: 'flex', justifyContent: 'space-between' }}>
-                            <span>PASSIVO: <strong style={{ color: '#fff' }}>{e.nome || '(Sem nome)'}</strong> [{(e.atributo || '').replace('_', ' ').toUpperCase()}] - [{(e.propriedade || '').toUpperCase()}]: <strong style={{ color: '#ffcc00' }}>{isMult ? '(x)' : '(+)'} {e.valor}</strong></span>
-                            <button onClick={() => removerEfeitoPassivoTemp(i)} style={{ background: 'transparent', color: '#f00', border: 'none', cursor: 'pointer' }}>X</button>
+                        <div key={i} style={{ fontSize: '0.9em', marginBottom: 5, padding: '5px 10px', borderLeft: '2px solid currentColor', display: 'flex', justifyContent: 'space-between', opacity: 0.8 }}>
+                            <span>[PASSIVO] <strong>{e.nome || '(Sem nome)'}</strong> [{(e.atributo || '').replace('_', ' ').toUpperCase()}] - [{(e.propriedade || '').toUpperCase()}]: <strong>{isMult ? '(x)' : '(+)'} {e.valor}</strong></span>
+                            <button onClick={() => removerEfeitoPassivoTemp(i)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', opacity: 0.6 }}>✖</button>
                         </div>
                     );
                 })}
             </div>
 
-            <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
-                <button className="btn-neon btn-gold" onClick={salvarNovoPoder} style={{ flex: 1 }}>{poderEditandoId ? 'Salvar Edição' : `Salvar ${sing}`}</button>
-                {poderEditandoId && <button className="btn-neon btn-red" onClick={cancelarEdicaoPoder} style={{ flex: 1 }}>Cancelar</button>}
+            <div style={{ display: 'flex', gap: 10, marginTop: 25 }}>
+                <button onClick={salvarNovoPoder} style={{ flex: 1, padding: '10px' }}>{poderEditandoId ? '✍️ Concluir Revisão' : `📜 Gravar no Grimório`}</button>
+                {poderEditandoId && <button onClick={cancelarEdicaoPoder} style={{ padding: '10px', width: '100px', opacity: 0.8 }}>Cancelar</button>}
             </div>
         </div>
     );
@@ -538,14 +284,13 @@ export function PoderesLista() {
     const sing = SINGULAR[abaAtual] || 'Poder/Habilidade';
 
     return (
-        <div id="lista-poderes-salvos">
+        <div style={{ marginTop: '20px' }}>
             {itensFiltrados.length === 0 ? (
-                <p style={{ color: '#888' }}>Nenhuma {sing.toLowerCase()} gravada.</p>
+                <p style={{ opacity: 0.5, fontStyle: 'italic', textAlign: 'center' }}>Nenhum registo deste tipo na sua alma.</p>
             ) : (
                 itensFiltrados.map((p) => {
                     if (!p) return null;
-                    const c = p.ativa ? '#0f0' : '#888';
-                    const bg = p.ativa ? 'rgba(0,255,0,0.1)' : 'rgba(0,0,0,0.4)';
+                    const isEquipped = p.ativa;
                     const txtArr = (p.efeitos || []).map(e => {
                         if (!e) return '';
                         return `[${(e.atributo || '').replace('_', ' ').toUpperCase()}] ${(e.propriedade || '').toUpperCase()}: +${e.valor || 0}`;
@@ -564,148 +309,151 @@ export function PoderesLista() {
                     const energiaOver = Math.floor(curMana * overDec) + Math.floor(curAura * overDec) + Math.floor(curChakra * overDec);
                     
                     return (
-                        <div key={p.id} className="def-box" style={{ borderLeft: `5px solid ${c}`, background: bg, marginBottom: 10 }}>
+                        <div key={p.id} style={{ 
+                            border: isEquipped ? `2px solid currentColor` : `1px dashed currentColor`, 
+                            background: isEquipped ? 'rgba(0,0,0,0.05)' : 'transparent', 
+                            opacity: isEquipped ? 1 : 0.7,
+                            marginTop: 15, padding: 15, borderRadius: '6px', position: 'relative',
+                            transition: 'all 0.3s ease'
+                        }}>
                             
-                            {/* 🔥 AVISO DA SEXTA-FEIRA INJETADO AQUI! 🔥 */}
                             {p.notasIA && (
-                                <div style={{ background: '#ffcc00', color: '#000', padding: '4px 10px', fontSize: '0.8em', fontWeight: 'bold', borderRadius: '4px', marginBottom: '10px' }}>
-                                    ⚠️ AVISO DA SEXTA-FEIRA: {p.notasIA}
+                                <div style={{ padding: '4px 10px', fontSize: '0.85em', fontStyle: 'italic', borderBottom: '1px dashed currentColor', marginBottom: '10px', opacity: 0.8 }}>
+                                    <strong>Anotação Adicional:</strong> {p.notasIA}
                                 </div>
                             )}
 
                             <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 15 }}>
                                 <div style={{ flex: 1 }}>
-                                    <h3 style={{ margin: 0, color: c, textShadow: `0 0 10px ${c}` }}>
+                                    <h3 style={{ margin: 0, fontSize: '1.4em', fontWeight: 'bold' }}>
                                         {p.nome || 'Poder'} 
-                                        <span style={{fontSize: '0.6em', color: '#fff'}}> (Alcance: {p.alcance || 1}Q)</span>
+                                        <span style={{fontSize: '0.6em', opacity: 0.6, fontWeight: 'normal'}}> (Alcance: {p.alcance || 1}Q)</span>
                                         {p.vertente && (
-                                            <span style={{ marginLeft: '10px', fontSize: '0.55em', padding: '2px 8px', borderRadius: '10px', background: 'rgba(255,255,255,0.1)', color: '#0ff', border: '1px solid #0ff' }}>
-                                                {pVertenteLower.includes('elemental') ? `🌪️ ELEMENTAL: ${p.elemento || 'Desconhecido'}` : p.vertente.toUpperCase()}
+                                            <span style={{ marginLeft: '10px', fontSize: '0.55em', padding: '2px 8px', borderRadius: '10px', border: '1px solid currentColor', opacity: 0.8 }}>
+                                                {pVertenteLower.includes('elemental') ? `🌪️ ELEMENTAL: ${p.elemento || '?'}` : p.vertente.toUpperCase()}
                                             </span>
                                         )}
                                     </h3>
                                     
                                     {p.descricao && (
-                                        <div style={{ color: '#ccc', fontSize: '0.85em', fontStyle: 'italic', margin: '8px 0', padding: '8px', background: 'rgba(0,0,0,0.3)', borderRadius: '4px', borderLeft: `2px solid ${c}` }}>
+                                        <p style={{ fontSize: '0.9em', fontStyle: 'italic', margin: '8px 0', opacity: 0.8 }}>
                                             "{p.descricao}"
-                                        </div>
+                                        </p>
                                     )}
                                     
                                     {p.elementosAfetados && (
-                                        <div style={{ color: '#00ccff', fontSize: '0.8em', marginTop: '4px', fontWeight: 'bold' }}>
+                                        <p style={{ fontSize: '0.85em', margin: '4px 0', fontWeight: 'bold', opacity: 0.9 }}>
                                             🌊 Consome/Afeta: {p.elementosAfetados}
-                                        </div>
+                                        </p>
                                     )}
 
-                                    <p style={{ color: '#aaa', fontSize: '0.85em', margin: '5px 0 0' }}>{txtArr.join(' | ') || 'Sem efeitos ativos.'}
-                                    {(p.efeitosPassivos || []).length > 0 && (
-                                        <span style={{ color: '#f0f', display: 'block', marginTop: '4px' }}>{(p.efeitosPassivos || []).map(e => {
-                                            if (!e) return '';
-                                            return `PASSIVO: [${(e.atributo || '').replace('_', ' ').toUpperCase()}] ${(e.propriedade || '').toUpperCase()}: +${e.valor || 0}`;
-                                        }).filter(Boolean).join(' | ')}</span>
-                                    )}</p>
+                                    <div style={{ fontSize: '0.85em', marginTop: '10px', opacity: 0.7, borderTop: '1px dotted currentColor', paddingTop: '5px' }}>
+                                        <strong>Mecânica:</strong> {txtArr.join(' | ') || 'Sem bônus matemático.'}
+                                        {(p.efeitosPassivos || []).length > 0 && (
+                                            <span style={{ display: 'block', marginTop: '4px', fontStyle: 'italic' }}>
+                                                {(p.efeitosPassivos || []).map(e => {
+                                                    if (!e) return '';
+                                                    return `[PASSIVO] [${(e.atributo || '').replace('_', ' ').toUpperCase()}] ${(e.propriedade || '').toUpperCase()}: +${e.valor || 0}`;
+                                                }).filter(Boolean).join(' | ')}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
-                                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: '120px' }}>
+                                    
+                                    {/* BOTÃO ATIVAR/DESATIVAR MAGIA COMPLETA */}
                                     <button 
-                                        className={`btn-neon ${poderPreparandoId === p.id ? 'btn-gold' : 'btn-blue'}`} 
-                                        style={{ padding: '5px 15px', fontSize: '1em', margin: 0 }} 
-                                        onClick={() => {
-                                            if (poderPreparandoId === p.id) {
-                                                setPoderPreparandoId(null);
-                                            } else {
-                                                setPoderPreparandoId(p.id);
-                                                setOverchargeAtivo(false);
-                                            }
-                                        }}
+                                        style={{ padding: '8px', fontWeight: 'bold', border: `2px solid currentColor`, opacity: isEquipped ? 1 : 0.6 }} 
+                                        onClick={() => togglePoder(p.id)}
                                     >
-                                        ⚔️ PREPARAR
+                                        {isEquipped ? '★ ATIVADA' : 'Desativada'}
                                     </button>
 
-                                    <button className="btn-neon" style={{ borderColor: c, color: c, padding: '5px 15px', fontSize: '1.1em', margin: 0 }} onClick={() => togglePoder(p.id)}>{p.ativa ? 'LIGADO' : 'DESLIGADO'}</button>
+                                    {/* BOTÃO DISPARAR/PREPARAR MODO */}
+                                    <button 
+                                        style={{ padding: '8px', fontSize: '0.9em', fontWeight: 'bold', opacity: poderPreparandoId === p.id ? 1 : 0.8 }} 
+                                        onClick={() => {
+                                            if (poderPreparandoId === p.id) { setPoderPreparandoId(null); } 
+                                            else { setPoderPreparandoId(p.id); setOverchargeAtivo(false); }
+                                        }}
+                                    >
+                                        ⚔️ PREPARAR AÇÃO
+                                    </button>
+                                    
                                     <div style={{ position: 'relative' }} ref={vincularAberto === p.id ? vincularRef : null}>
-                                            <button
-                                                className={`btn-neon ${p.armaVinculada ? 'btn-gold' : ''}`}
-                                                style={{ padding: '5px 15px', fontSize: '1em', margin: 0 }}
-                                                onClick={() => setVincularAberto(vincularAberto === p.id ? null : p.id)}
-                                            >
-                                                {p.armaVinculada ? `⚔️ ${((minhaFicha?.inventario || []).find(i => String(i.id) === String(p.armaVinculada))?.nome) || 'Arma'}` : '🔗 VINCULAR'}
-                                            </button>
-                                            {vincularAberto === p.id && (
-                                                <div style={{ position: 'absolute', top: '100%', right: 0, zIndex: 10, background: '#0a0a1a', border: '1px solid #0ff', borderRadius: 6, padding: 5, minWidth: 180, marginTop: 4 }}>
-                                                    <button
-                                                        className="btn-neon"
-                                                        style={{ width: '100%', padding: '5px 10px', fontSize: '0.85em', margin: '2px 0', borderColor: !p.armaVinculada ? '#0f0' : '#555', color: !p.armaVinculada ? '#0f0' : '#aaa' }}
-                                                        onClick={() => vincularArmaAoPoder(p.id, '')}
-                                                    >
-                                                        Nenhuma (Livre)
+                                        <button
+                                            style={{ padding: '6px', fontSize: '0.8em', width: '100%', opacity: p.armaVinculada ? 1 : 0.6 }}
+                                            onClick={() => setVincularAberto(vincularAberto === p.id ? null : p.id)}
+                                        >
+                                            {p.armaVinculada ? `🔗 ${((minhaFicha?.inventario || []).find(i => String(i.id) === String(p.armaVinculada))?.nome) || 'Arma'}` : 'Vincular a Arma'}
+                                        </button>
+                                        {vincularAberto === p.id && (
+                                            <div style={{ position: 'absolute', top: '100%', right: 0, zIndex: 10, background: 'rgba(0,0,0,0.9)', border: '1px solid currentColor', borderRadius: 6, padding: 5, minWidth: 180, marginTop: 4 }}>
+                                                <button style={{ width: '100%', padding: '5px 10px', fontSize: '0.85em', margin: '2px 0', background: 'transparent', color: '#fff', border: '1px dotted #ccc' }} onClick={() => vincularArmaAoPoder(p.id, '')}>
+                                                    Nenhuma (Livre)
+                                                </button>
+                                                {armasEquipadas.map(arma => (
+                                                    <button key={arma.id} style={{ width: '100%', padding: '5px 10px', fontSize: '0.85em', margin: '2px 0', background: 'transparent', color: String(p.armaVinculada) === String(arma.id) ? '#ffcc00' : '#fff', border: '1px dotted #ccc' }} onClick={() => vincularArmaAoPoder(p.id, String(arma.id))}>
+                                                        ⚔️ {arma.nome}
                                                     </button>
-                                                    {armasEquipadas.map(arma => (
-                                                        <button
-                                                            key={arma.id}
-                                                            className="btn-neon"
-                                                            style={{ width: '100%', padding: '5px 10px', fontSize: '0.85em', margin: '2px 0', borderColor: String(p.armaVinculada) === String(arma.id) ? '#ffcc00' : '#0ff', color: String(p.armaVinculada) === String(arma.id) ? '#ffcc00' : '#0ff' }}
-                                                            onClick={() => vincularArmaAoPoder(p.id, String(arma.id))}
-                                                        >
-                                                            ⚔️ {arma.nome}
-                                                        </button>
-                                                    ))}
-                                                    {armasEquipadas.length === 0 && (
-                                                        <p style={{ color: '#888', fontSize: '0.8em', margin: '5px 0', textAlign: 'center' }}>Nenhuma arma equipada</p>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    <button className="btn-neon btn-blue" style={{ padding: '5px 15px', fontSize: '1em', margin: 0 }} onClick={() => editarPoder(p.id)}>EDITAR</button>
-                                    <button className="btn-neon btn-red" style={{ padding: '5px 15px', fontSize: '1em', margin: 0 }} onClick={() => deletarPoder(p.id)}>APAGAR</button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                    
+                                    <div style={{ display: 'flex', gap: 5 }}>
+                                        <button style={{ flex: 1, padding: '4px', fontSize: '0.8em' }} onClick={() => editarPoder(p.id)}>Reescrever</button>
+                                        <button style={{ flex: 1, padding: '4px', fontSize: '0.8em', opacity: 0.6 }} onClick={() => deletarPoder(p.id)}>Rasgar</button>
+                                    </div>
                                 </div>
                             </div>
                             
+                            {/* CAIXA DE DISPARO */}
                             {poderPreparandoId === p.id && (
-                                <div className="fade-in" style={{ width: '100%', marginTop: '15px', background: 'rgba(0, 0, 0, 0.7)', border: '1px solid #0ff', borderRadius: '8px', padding: '15px' }}>
-                                    <h4 style={{ color: '#0ff', margin: '0 0 10px 0', textTransform: 'uppercase' }}>⚙️ Central de Disparo: {p.nome}</h4>
+                                <div className="fade-in" style={{ width: '100%', marginTop: '15px', background: 'rgba(0, 0, 0, 0.05)', borderTop: '2px dashed currentColor', paddingTop: '15px' }}>
+                                    <h4 style={{ margin: '0 0 10px 0', opacity: 0.9 }}>⚙️ Central de Disparo: {p.nome}</h4>
 
                                     {pVertenteLower.includes('elemental') ? (
-                                        <div style={{ background: 'rgba(0, 255, 204, 0.1)', borderLeft: '3px solid #00ffcc', padding: '10px', marginBottom: '15px', borderRadius: '4px' }}>
-                                            <p style={{ color: '#00ffcc', margin: '0 0 5px 0', fontWeight: 'bold' }}>🌪️ RESSONÂNCIA ELEMENTAL DETETADA</p>
-                                            <p style={{ color: '#aaa', fontSize: '0.85em', margin: 0 }}>
+                                        <div style={{ borderLeft: '3px solid currentColor', paddingLeft: '10px', marginBottom: '15px' }}>
+                                            <p style={{ margin: '0 0 5px 0', fontWeight: 'bold' }}>🌪️ RESSONÂNCIA ELEMENTAL</p>
+                                            <p style={{ fontSize: '0.85em', margin: 0, opacity: 0.8 }}>
                                                 A Força da Natureza funde {p.custoPercentual}% das suas energias.<br/>
-                                                <span style={{color:'#0cf'}}>Mana ({manaUsada})</span> + <span style={{color:'#0cf'}}>Aura ({auraUsada})</span> + <span style={{color:'#0cf'}}>Chakra ({chakraUsado})</span><br/>
-                                                <strong>Poder Bruto Extraído: <span style={{color: '#0f0'}}>+{energiaExtraida}</span> de Dano.</strong><br/>
-                                                Custo Cobrado na Ficha: <strong style={{color:'#0f0'}}>ZERO (Gratuito)</strong>.
+                                                <span>Mana ({manaUsada})</span> + <span>Aura ({auraUsada})</span> + <span>Chakra ({chakraUsado})</span><br/>
+                                                <strong>Poder Bruto Extraído: <span>+{energiaExtraida}</span> de Dano.</strong><br/>
+                                                Custo Cobrado na Ficha: <strong>ZERO (Gratuito)</strong>.
                                             </p>
 
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px', cursor: 'pointer', background: overchargeAtivo ? 'rgba(255,0,60,0.2)' : 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '5px', border: overchargeAtivo ? '1px solid #ff003c' : '1px solid #444', transition: 'all 0.3s' }}>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px', cursor: 'pointer', background: overchargeAtivo ? 'rgba(0,0,0,0.1)' : 'transparent', padding: '10px', border: '1px dashed currentColor', opacity: overchargeAtivo ? 1 : 0.6 }}>
                                                 <input type="checkbox" checked={overchargeAtivo} onChange={e => setOverchargeAtivo(e.target.checked)} style={{ transform: 'scale(1.3)' }} />
                                                 <div>
-                                                    <div style={{ color: overchargeAtivo ? '#ff003c' : '#fff', fontWeight: 'bold', textShadow: overchargeAtivo ? '0 0 5px #ff003c' : 'none' }}>🔥 MODO OVERCHARGE (Queimar Motor)</div>
-                                                    <div style={{ color: '#aaa', fontSize: '0.8em' }}>
-                                                        Dobra a energia extraída (<strong style={{color: '#0f0'}}>+{energiaOver}</strong> Dano Bruto) para aplicar o seu <strong>Multiplicador Potencial (x{mPotencial})</strong> ao Dano Total Estimado! <br/>
+                                                    <div style={{ fontWeight: 'bold' }}>🔥 MODO OVERCHARGE (Queimar Motor)</div>
+                                                    <div style={{ fontSize: '0.8em' }}>
+                                                        Dobra a energia extraída (<strong>+{energiaOver}</strong> Dano Bruto) para aplicar o seu <strong>Multiplicador Potencial (x{mPotencial})</strong> ao Dano Total Estimado! <br/>
                                                         ⚠️ Mas você <strong>pagará {percBase * 2}%</strong> da sua Mana, Aura e Chakra atuais como custo!
                                                     </div>
                                                 </div>
                                             </label>
                                         </div>
                                     ) : pVertenteLower.includes('acumulativo') ? (
-                                        <div style={{ background: 'rgba(255, 136, 0, 0.1)', borderLeft: '3px solid #ff8800', padding: '10px', marginBottom: '15px', borderRadius: '4px' }}>
-                                            <p style={{ color: '#ff8800', margin: '0 0 5px 0', fontWeight: 'bold' }}>📈 TÉCNICA ACUMULATIVA DETETADA</p>
-                                            <p style={{ color: '#aaa', fontSize: '0.85em', margin: 0 }}>
+                                        <div style={{ borderLeft: '3px solid currentColor', paddingLeft: '10px', marginBottom: '15px', opacity: 0.8 }}>
+                                            <p style={{ margin: '0 0 5px 0', fontWeight: 'bold' }}>📈 TÉCNICA ACUMULATIVA</p>
+                                            <p style={{ fontSize: '0.85em', margin: 0 }}>
                                                 Use os Marcadores de Cena ou a Forja Pós-Combate (Aba Ficha) para processar os ganhos de atributos desta habilidade.<br/>
-                                                Custo Padrão: <strong style={{color: '#f00'}}>{p.custoPercentual}% das Energias</strong>. <br/>
+                                                Custo Padrão: <strong>{p.custoPercentual}% das Energias</strong>. <br/>
                                             </p>
                                         </div>
                                     ) : (
-                                        <div style={{ background: 'rgba(255, 255, 255, 0.05)', borderLeft: '3px solid #888', padding: '10px', marginBottom: '15px', borderRadius: '4px' }}>
-                                            <p style={{ color: '#fff', margin: '0 0 5px 0', fontWeight: 'bold' }}>🎯 Disparo Padrão</p>
-                                            <p style={{ color: '#aaa', fontSize: '0.85em', margin: 0 }}>
-                                                Custo: <strong style={{color: '#f00'}}>{p.custoPercentual}% das Energias</strong>. <br/>
+                                        <div style={{ borderLeft: '3px solid currentColor', paddingLeft: '10px', marginBottom: '15px', opacity: 0.8 }}>
+                                            <p style={{ margin: '0 0 5px 0', fontWeight: 'bold' }}>🎯 Disparo Padrão</p>
+                                            <p style={{ fontSize: '0.85em', margin: 0 }}>
+                                                Custo: <strong>{p.custoPercentual}% das Energias</strong>. <br/>
                                                 Dano Base dos Dados: {p.dadosQtd}d{p.dadosFaces} + Dano Bruto ({danoBruto})
                                             </p>
                                         </div>
                                     )}
 
                                     <button 
-                                        className={`btn-neon ${overchargeAtivo ? 'btn-red' : 'btn-gold'}`} 
-                                        style={{ width: '100%', margin: 0, padding: '12px', fontSize: '1.1em', letterSpacing: '1px' }} 
+                                        style={{ width: '100%', margin: 0, padding: '12px', fontSize: '1.1em', letterSpacing: '1px', fontWeight: 'bold', border: '2px solid currentColor', background: overchargeAtivo ? 'rgba(0,0,0,0.1)' : 'transparent' }} 
                                         onClick={() => dispararAtaque(p)}
                                     >
                                         {overchargeAtivo ? '💥 DISPARAR OVERCHARGE FATAL!' : '⚔️ EXECUTAR HABILIDADE'}
@@ -713,6 +461,7 @@ export function PoderesLista() {
                                 </div>
                             )}
 
+                            {/* O editor de formas também foi parar ao Grimório, certifique-se de que ele tem estilos transparentes na classe dele, ou ele adapta-se sozinho */}
                             <FormasEditor
                                 formas={p.formas || []}
                                 formaAtivaId={p.formaAtivaId || null}
@@ -734,30 +483,23 @@ export function PoderesAuditoria() {
     const { relatorioAuditoria } = ctx;
 
     return (
-        <div className="def-box">
-            <h3 style={{ color: '#0ff', marginBottom: 10 }}>Auditoria de Combos Globais (Auto)</h3>
-            <div style={{ fontSize: '0.9em' }}>
-                {relatorioAuditoria || <span style={{ color: '#888', fontStyle: 'italic' }}>Nenhum efeito passivo ativo computado.</span>}
+        <div style={{ marginTop: '30px', borderTop: '2px dashed currentColor', paddingTop: '20px' }}>
+            <h3 style={{ marginBottom: 10, opacity: 0.8, fontSize: '1.1em' }}>🔍 Auditoria de Combos Globais (Automático)</h3>
+            <div style={{ fontSize: '0.9em', opacity: 0.9 }}>
+                {relatorioAuditoria || <span style={{ opacity: 0.6, fontStyle: 'italic' }}>Nenhum efeito passivo ativo computado.</span>}
             </div>
         </div>
     );
 }
 
 export function PoderesAreaCentral() {
-    const ctx = usePoderesForm();
-    if (!ctx) return FALLBACK;
-    const { abaAtual } = ctx;
-
-    if (abaAtual === 'classificacao') {
-        return <PoderesClassificacao />;
-    }
-
     return (
-        <>
+        <div style={{ width: '100%' }}>
+            <PoderesNavegacaoLivro />
             <PoderesImportadorIA />
             <PoderesFormEditor />
             <PoderesLista />
             <PoderesAuditoria />
-        </>
+        </div>
     );
 }
