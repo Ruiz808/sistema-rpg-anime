@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import useStore, { sanitizarNome } from '../../stores/useStore';
 import { carregarFichaDoFirebase, salvarFichaSilencioso, salvarFirebaseImediato, uploadImagem } from '../../services/firebase-sync';
-import { ref, onValue, set, get } from 'firebase/database';
-import { db, auth } from '../../services/firebase-config';
+import { ref, onValue, set } from 'firebase/database';
+import { db } from '../../services/firebase-config';
 
 const PerfilFormContext = createContext(null);
 
@@ -25,70 +25,47 @@ export function PerfilFormProvider({ children }) {
     const setAbaAtiva = useStore(s => s.setAbaAtiva);
     
     const mesaId = useStore(s => s.mesaId);
-    
-    // 🔥 O estado do Zustand (Forte no Electron, mas fraco no F5 da Web)
-    const userLogadoZustand = useStore(s => s.userLogado);
+    const userLogado = useStore(s => s.userLogado);
 
     const [nomeInput, setNomeInput] = useState(meuNome || '');
     const [listaLocal, setListaLocal] = useState([]);
     const [uploadingImg, setUploadingImg] = useState(false);
 
     // ==========================================
-    // 🔥 IDENTIDADE HÍBRIDA BLINDADA (Web + Electron) 🔥
-    // ==========================================
-    const [contaAtual, setContaAtual] = useState(userLogadoZustand ? sanitizarNome(userLogadoZustand) : null);
-
-    useEffect(() => {
-        // Se o Zustand sabe quem é o jogador (Padrão no Electron), usamos isso!
-        if (userLogadoZustand) {
-            setContaAtual(sanitizarNome(userLogadoZustand));
-            return;
-        }
-        // Se o Zustand se esqueceu (F5 na Web), resgatamos do motor do Firebase
-        const unsub = auth.onAuthStateChanged(u => {
-            if (u && u.email) setContaAtual(sanitizarNome(u.email.split('@')[0]));
-        });
-        return () => unsub();
-    }, [userLogadoZustand]);
-
-    // ==========================================
-    // 🔥 RADAR DE IDENTIDADE: FUSÃO DA NUVEM COM LOCAL 🔥
+    // 🔥 RADAR DA NUVEM À PROVA DE BALAS 🔥
     // ==========================================
     useEffect(() => {
-        const carregarLocal = () => {
-            const local = [];
-            for (let i = 0; i < localStorage.length; i++) {
-                const k = localStorage.key(i);
-                if (k && k.startsWith('rpgFicha_')) local.push(k.replace('rpgFicha_', ''));
-            }
-            return local;
-        };
-
-        if (!contaAtual || !mesaId) {
-            setListaLocal(carregarLocal());
-            return;
-        }
-
-        const refHistorico = ref(db, `usuarios/${contaAtual}/historicoPersonagens_${mesaId}`);
+        if (!userLogado || !mesaId) return;
+        const refHistorico = ref(db, `usuarios/${sanitizarNome(userLogado)}/historicoPersonagens_${mesaId}`);
 
         const unsub = onValue(refHistorico, (snap) => {
-            let nuvemLista = snap.exists() ? snap.val() : [];
-            if (!Array.isArray(nuvemLista)) nuvemLista = Object.values(nuvemLista);
-
-            const localLista = carregarLocal();
-            const listaUnificada = [...new Set([...nuvemLista, ...localLista])];
-
-            if (listaUnificada.length > nuvemLista.length) {
-                set(refHistorico, listaUnificada).catch(()=>{});
+            if (snap.exists()) {
+                let nuvemLista = snap.val();
+                if (!Array.isArray(nuvemLista)) nuvemLista = Object.values(nuvemLista);
+                setListaLocal(nuvemLista);
+            } else {
+                // Fallback para recuperar fichas antigas caso a nuvem esteja vazia
+                const localLista = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const k = localStorage.key(i);
+                    if (k && k.startsWith('rpgFicha_')) localLista.push(k.replace('rpgFicha_', ''));
+                }
+                if (localLista.length > 0) {
+                    set(refHistorico, localLista).catch(()=>{});
+                    setListaLocal(localLista);
+                } else {
+                    setListaLocal([]);
+                }
             }
-
-            setListaLocal(listaUnificada);
         });
         return () => unsub();
-    }, [contaAtual, mesaId]);
+    }, [userLogado, mesaId]);
 
     useEffect(() => { setNomeInput(meuNome || ''); }, [meuNome]);
 
+    // ==========================================
+    // 🔥 CARREGAMENTO E SOMA NA LISTA 🔥
+    // ==========================================
     const processarCarregamento = useCallback(async (nomeCru) => {
         const n = sanitizarNome(nomeCru);
         if (!n || (n === 'Jogador' && nomeCru.trim() === '')) return;
@@ -97,37 +74,29 @@ export function PerfilFormProvider({ children }) {
         localStorage.setItem('rpgNome', n); 
         resetFicha();
 
-        // 1. Tenta carregar do LocalStorage
-        let dadosEncontrados = null;
-        const bl = localStorage.getItem('rpgFicha_' + n);
-        if (bl) { 
-            try { 
-                dadosEncontrados = JSON.parse(bl);
-                carregarDadosFicha(dadosEncontrados); 
-            } catch (e) {} 
+        // 1. Soma na Lista de Troca Rápida SEM usar Firebase get() (Anti-Bugs)
+        if (userLogado && mesaId) {
+            setListaLocal(prevLista => {
+                const novaLista = [n, ...prevLista.filter(x => x !== n)].slice(0, 20);
+                const refHistorico = ref(db, `usuarios/${sanitizarNome(userLogado)}/historicoPersonagens_${mesaId}`);
+                set(refHistorico, novaLista).catch(()=>{});
+                return novaLista; // Atualiza o ecrã instantaneamente
+            });
         }
+
+        // 2. Fallback de velocidade (Disco Rígido)
+        const bl = localStorage.getItem('rpgFicha_' + n);
+        if (bl) { try { carregarDadosFicha(JSON.parse(bl)); } catch (e) {} }
         
-        // 2. Busca na Nuvem e SOBRESCREVE o local
+        // 3. Atualização Definitiva da Nuvem
         const dadosNuven = await carregarFichaDoFirebase(n);
         if (dadosNuven && Object.keys(dadosNuven).length > 2) {
             carregarDadosFicha(dadosNuven);
             localStorage.setItem('rpgFicha_' + n, JSON.stringify(dadosNuven));
         }
-
-        // 3. Regista no Histórico da Nuvem
-        if (contaAtual && mesaId) {
-            const refHistorico = ref(db, `usuarios/${contaAtual}/historicoPersonagens_${mesaId}`);
-            get(refHistorico).then(snap => {
-                let lista = snap.exists() ? snap.val() : [];
-                if (!Array.isArray(lista)) lista = Object.values(lista);
-                lista = [n, ...lista.filter(x => x !== n)].slice(0, 20);
-                set(refHistorico, lista).catch(()=>{});
-            });
-        }
-
-        setListaLocal(prev => [...new Set([n, ...prev])]);
+        
         setAbaAtiva('aba-status');
-    }, [setMeuNome, resetFicha, carregarDadosFicha, setAbaAtiva, contaAtual, mesaId]);
+    }, [setMeuNome, resetFicha, carregarDadosFicha, setAbaAtiva, userLogado, mesaId]);
 
     const trocarPersonagem = useCallback(() => processarCarregamento(nomeInput), [nomeInput, processarCarregamento]);
     const carregarPersonagemExistente = useCallback((n) => { setNomeInput(n); processarCarregamento(n); }, [processarCarregamento]);
