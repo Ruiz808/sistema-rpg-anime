@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import useStore from '../../stores/useStore';
 import { salvarFichaSilencioso } from '../../services/firebase-sync';
 
@@ -36,6 +36,9 @@ export default function ClassificacaoPanel() {
     const minhaFicha = useStore(s => s.minhaFicha);
     const updateFicha = useStore(s => s.updateFicha);
     const isMestre = useStore(s => s.isMestre);
+
+    // 🔥 CORREÇÃO: Resgatamos a cor de fundo para usar nos botões! 🔥
+    const localCorFundo = minhaFicha?.estetica?.diarioCor || '#bba9d8';
 
     // ==========================================
     // 👑 1. LÓGICA DA HIERARQUIA DE LORE
