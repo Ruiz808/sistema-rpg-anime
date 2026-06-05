@@ -47,8 +47,20 @@ export function entrarUsuario(nickname, senha) {
 export function sairConta() { return signOut(auth); }
 export function monitorarAuth(callback) {
     return onAuthStateChanged(auth, (user) => {
-        if (user && user.email) callback(user.email.split('@')[0]);
-        else callback(null);
+        if (user && user.email) {
+            const nick = user.email.split('@')[0];
+            
+            // 🔥 A MÁGICA: Injeta a identidade diretamente no Cérebro do Jogo
+            useStore.getState().setMeuNome(nick); 
+            localStorage.setItem('rpgNome', nick); // Garante a retrocompatibilidade com a Web
+            
+            callback(nick);
+        }
+        else {
+            useStore.getState().setMeuNome('');
+            localStorage.removeItem('rpgNome');
+            callback(null);
+        }
     });
 }
 
