@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import useStore, { sanitizarNome } from '../../stores/useStore';
-import { carregarFichaDoFirebase, salvarFichaSilencioso, salvarFirebaseImediato, uploadImagem, iniciarListenerPersonagens } from '../../services/firebase-sync';
+import { carregarFichaDoFirebase, salvarFichaSilencioso, salvarFirebaseImediato, uploadImagem } from '../../services/firebase-sync';
+import { ref, onValue, set, get } from 'firebase/database';
+import { db } from '../../services/firebase-config';
 
 const PerfilFormContext = createContext(null);
 
@@ -21,27 +23,43 @@ export function PerfilFormProvider({ children }) {
     const carregarDadosFicha = useStore(s => s.carregarDadosFicha);
     const setPersonagemParaDeletar = useStore(s => s.setPersonagemParaDeletar);
     const setAbaAtiva = useStore(s => s.setAbaAtiva);
+    
+    // Novas variáveis puxadas do Cérebro para a mágica da Nuvem
     const mesaId = useStore(s => s.mesaId);
+    const userLogado = useStore(s => s.userLogado);
 
     const [nomeInput, setNomeInput] = useState(meuNome || '');
-    const [listaLocal, setListaLocal] = useState([]); // Agora será alimentada pela Nuvem!
+    const [listaLocal, setListaLocal] = useState([]);
     const [uploadingImg, setUploadingImg] = useState(false);
 
-    // 🔥 O NOVO RADAR DA NUVEM 🔥
-    // Em vez de ler o localStorage, o jogo agora lê os personagens que estão VIVOS dentro da Mesa!
+    // ==========================================
+    // 🔥 RADAR DE IDENTIDADE: HISTÓRICO PESSOAL NA NUVEM 🔥
+    // ==========================================
     useEffect(() => {
-        if (!mesaId) return;
-        const pararEscuta = iniciarListenerPersonagens((personagensDaMesa) => {
-            if (personagensDaMesa) {
-                // Puxa as chaves (os nomes dos personagens) direto do Firebase
-                const nomes = Object.keys(personagensDaMesa);
-                setListaLocal(nomes);
+        if (!userLogado || !mesaId) return;
+        const refHistorico = ref(db, `usuarios/${sanitizarNome(userLogado)}/historicoPersonagens_${mesaId}`);
+
+        const unsub = onValue(refHistorico, (snap) => {
+            if (snap.exists()) {
+                setListaLocal(snap.val());
             } else {
-                setListaLocal([]);
+                // 🚀 MIGRAÇÃO AUTOMÁTICA (Web -> Nuvem)
+                // Se não houver histórico na nuvem, ele procura no navegador e envia para o Firebase!
+                const nomesMigrados = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const k = localStorage.key(i);
+                    if (k && k.startsWith('rpgFicha_')) nomesMigrados.push(k.replace('rpgFicha_', ''));
+                }
+                if (nomesMigrados.length > 0) {
+                    set(refHistorico, nomesMigrados).catch(()=>{});
+                    setListaLocal(nomesMigrados);
+                } else {
+                    setListaLocal([]);
+                }
             }
         });
-        return () => pararEscuta(); // Para de escutar quando muda de sala ou sai
-    }, [mesaId]);
+        return () => unsub();
+    }, [userLogado, mesaId]);
 
     useEffect(() => { setNomeInput(meuNome || ''); }, [meuNome]);
 
@@ -52,19 +70,29 @@ export function PerfilFormProvider({ children }) {
         setMeuNome(n); 
         localStorage.setItem('rpgNome', n); 
         resetFicha();
+
+        // 📝 REGISTAR POSSE: Adiciona o personagem ao histórico do jogador na Nuvem
+        if (userLogado && mesaId) {
+            const refHistorico = ref(db, `usuarios/${sanitizarNome(userLogado)}/historicoPersonagens_${mesaId}`);
+            get(refHistorico).then(snap => {
+                let lista = snap.exists() ? snap.val() : [];
+                lista = [n, ...lista.filter(x => x !== n)].slice(0, 15); // Guarda os últimos 15
+                set(refHistorico, lista).catch(()=>{});
+            });
+        }
         
-        // 1. Tenta carregar do localStorage (apenas como fallback rápido se existir)
+        // Tenta carregar do localStorage (apenas como fallback de milissegundos)
         const bl = localStorage.getItem('rpgFicha_' + n);
         if (bl) { try { carregarDadosFicha(JSON.parse(bl)); } catch (e) {} }
         
-        // 2. A MÁGICA: Força a busca da Ficha atualizada diretamente do Firebase!
+        // Força a busca da Ficha atualizada diretamente do Firebase!
         const dadosNuven = await carregarFichaDoFirebase(n);
         if (dadosNuven && Object.keys(dadosNuven).length > 2) {
             carregarDadosFicha(dadosNuven);
         }
         
         setAbaAtiva('aba-status');
-    }, [setMeuNome, resetFicha, carregarDadosFicha, setAbaAtiva]);
+    }, [setMeuNome, resetFicha, carregarDadosFicha, setAbaAtiva, userLogado, mesaId]);
 
     const trocarPersonagem = useCallback(() => processarCarregamento(nomeInput), [nomeInput, processarCarregamento]);
     const carregarPersonagemExistente = useCallback((n) => { setNomeInput(n); processarCarregamento(n); }, [processarCarregamento]);
@@ -87,7 +115,7 @@ export function PerfilFormProvider({ children }) {
             const url = await uploadImagem(file, `avatars/${meuNome || 'desconhecido'}`);
             updateFicha(ficha => { if (!ficha.avatar) ficha.avatar = { base: "" }; ficha.avatar.base = url; });
             await salvarFirebaseImediato();
-        } catch (err) { alert('Erro ao sincronizar o avatar!'); } 
+        } catch (err) { alert('Erro ao sincronizar o avatar! O upload pode ter falhado ou o Firebase rejeitou o salvamento.'); } 
         finally { setUploadingImg(false); }
     }, [meuNome, updateFicha]);
 
