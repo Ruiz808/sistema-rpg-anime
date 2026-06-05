@@ -300,7 +300,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
         try {
             const url = await uploadImagem(file, `icones_classes_npcs/${npcData.id || 'desconhecido'}_icone`);
             handleStyleChange('iconeClasse', url);
-        } catch (err) { alert('Erro ao enviar o ícone da classe!'); }
+        } catch (err) { alert('Erro ao enviar o ícone!'); }
     };
 
     const handleTabelaChange = (k, tipo, valor) => {
@@ -638,7 +638,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                             </div>
                                         )}
 
-                                        {/* 🔥 O ÍCONE DA CLASSE PERFEITO */}
+                                        {/* 🔥 O ÍCONE DA CLASSE (GIGANTE, E COLORIDO COM MÁSCARA EXATA) */}
                                         {(classeInfo || localIconeClasse) && (
                                             <div style={{ position: 'absolute', bottom: '-8px', left: '50%', transform: 'translateX(-50%)', zIndex: 3, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '70px', height: '70px' }}>
                                                 {iconeFinal ? (
@@ -647,8 +647,16 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                                         
                                                         {localCorMoldura && localCorMoldura !== '#ffffff' && (
                                                             <>
-                                                                <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: localCorMoldura, mixBlendMode: 'color' }} />
-                                                                <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: localCorMoldura, mixBlendMode: 'overlay', opacity: 0.8 }} />
+                                                                <div style={{ 
+                                                                    position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: localCorMoldura, mixBlendMode: 'color',
+                                                                    WebkitMaskImage: `url(${iconeFinal})`, WebkitMaskSize: 'contain', WebkitMaskRepeat: 'no-repeat', WebkitMaskPosition: 'center',
+                                                                    maskImage: `url(${iconeFinal})`, maskSize: 'contain', maskRepeat: 'no-repeat', maskPosition: 'center'
+                                                                }} />
+                                                                <div style={{ 
+                                                                    position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: localCorMoldura, mixBlendMode: 'overlay', opacity: 0.8,
+                                                                    WebkitMaskImage: `url(${iconeFinal})`, WebkitMaskSize: 'contain', WebkitMaskRepeat: 'no-repeat', WebkitMaskPosition: 'center',
+                                                                    maskImage: `url(${iconeFinal})`, maskSize: 'contain', maskRepeat: 'no-repeat', maskPosition: 'center'
+                                                                }} />
                                                             </>
                                                         )}
                                                     </div>
