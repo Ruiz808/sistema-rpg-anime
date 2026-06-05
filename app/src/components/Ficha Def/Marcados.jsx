@@ -42,6 +42,23 @@ const getClasseInfo = (ficha) => {
 };
 
 // ==========================================
+// 🌌 OPÇÕES DE ELEMENTOS PARA A CLASSIFICAÇÃO (PÁG 4)
+// ==========================================
+const ELEMENTOS_OPCOES = [
+    { label: 'Elementos Básicos', opcoes: ['Fogo', 'Agua', 'Raio', 'Terra', 'Vento'] },
+    { label: 'Básicos Verdadeiros', opcoes: ['Fogo Verdadeiro', 'Agua Verdadeira', 'Raio Verdadeiro', 'Terra Verdadeira', 'Vento Verdadeiro'] },
+    { label: 'Elementos Avançados', opcoes: ['Solar', 'Energia', 'Gelo', 'Vacuo', 'Natureza'] },
+    { label: 'Avançados Verdadeiros', opcoes: ['Solar Verdadeiro', 'Energia Verdadeira', 'Gelo Verdadeiro', 'Vacuo Verdadeiro', 'Natureza Verdadeira'] },
+    { label: 'Elementos Primordiais', opcoes: ['Luz', 'Trevas', 'Ether', 'Celestial', 'Infernal', 'Caos', 'Criacao', 'Destruicao', 'Cosmos'] },
+    { label: 'Elementos Astrais', opcoes: ['Vida', 'Morte', 'Vazio'] },
+    { label: 'Kekkei Genkai / Touta', opcoes: ['Elemento Madeira', 'Elemento Mineral', 'Elemento Cinzas', 'Elemento Igneo', 'Elemento Lava', 'Elemento Vapor', 'Elemento Nevoa', 'Elemento Tempestade', 'Elemento Areia', 'Elemento Tufao', 'Elemento Velocidade', 'Elemento Poeira', 'Elemento Calor', 'Elemento Cal', 'Elemento Carbono', 'Elemento Veneno', 'Elemento Magnetismo', 'Elemento Som'] },
+    { label: 'Magias Ancestrais', opcoes: ['Truques Ancestrais', 'Magia de Sangue', 'Magia de Osso', 'Magia Draconica', 'Magia de Borracha', 'Magia de Espelho', 'Magia de Sal', 'Magia de Alma', 'Magia de Tremor', 'Magia de Gravidade', 'Magia de Tempo', 'Magia de Equipamento', 'Magia de Explosao', 'Magia Espacial', 'Magia de Metamorfose'] },
+    { label: 'Magias Arcanas/Negras', opcoes: ['Truques Arcanos/Negros', 'Magias Arcanas/Negra de 1º Ciclo', 'Magias Arcanas/Negra de 2º Ciclo', 'Magias Arcanas/Negra de 3º Ciclo', 'Magias Arcanas/Negra de 4º Ciclo', 'Magias Arcanas/Negra de 5º Ciclo', 'Magias Arcanas/Negra de 6º Ciclo', 'Magias Arcanas/Negra de 7º Ciclo', 'Magias Arcanas/Negra de 8º Ciclo', 'Magias Arcanas/Negra de 9º Ciclo', 'Magias Arcanas/Negra de 10º Ciclo'] },
+    { label: 'Magias de Ciclo', opcoes: ['Truques de Ciclo', 'Magias de 1º Ciclo', 'Magias de 2º Ciclo', 'Magias de 3º Ciclo', 'Magias de 4º Ciclo', 'Magias de 5º Ciclo', 'Magias de 6º Ciclo', 'Magias de 7º Ciclo', 'Magias de 8º Ciclo', 'Magias de 9º Ciclo', 'Magias de 10º Ciclo'] },
+    { label: 'Manifestações e Fusões', opcoes: ['Aura Pura', 'Projeção de Aura', 'Artes Marciais', 'Reforço Físico', 'Fusões Básicas', 'Fusões Avançadas'] }
+];
+
+// ==========================================
 // 🌌 REGRAS DOS DOMÍNIOS E HIERARQUIA
 // ==========================================
 const NIVEIS_DOMINIO = {
@@ -145,14 +162,6 @@ const CampoMagico = ({ valor, onChange, placeholder, styleExtra = {}, type = "te
         />
     );
 };
-
-const AreaMagica = ({ valor, onChange, placeholder, styleExtra = {} }) => (
-    <textarea 
-        value={valor || ''} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-        onBlur={() => callSave()}
-        style={{ width: '100%', minHeight: '60px', background: 'transparent', border: 'none', borderBottom: '2px dotted currentColor', color: 'inherit', fontFamily: 'inherit', padding: '8px', outline: 'none', resize: 'vertical', ...styleExtra }}
-    />
-);
 
 const LabelMagico = ({ valor, onChange, fallback }) => (
     <input 
@@ -368,6 +377,7 @@ export default function MarcadosPanel() {
     const minhaFicha = useStore(s => s.minhaFicha);
     const updateFicha = useStore(s => s.updateFicha);
     const meuNome = useStore(s => s.meuNome);
+    const isMestre = useStore(s => s.isMestre);
     const importarDaAbaStatus = useStore(s => s.importarDaAbaStatus);
 
     const [uploadingImg, setUploadingImg] = useState(false);
@@ -389,6 +399,19 @@ export default function MarcadosPanel() {
     const [localModoFundo, setLocalModoFundo] = useState('normal'); 
     const [localCorFundoTint, setLocalCorFundoTint] = useState('#ffffff'); 
 
+    // ESTADOS DA CLASSIFICAÇÃO ARCANA (PÁG 4)
+    const hierarquia = minhaFicha?.hierarquia || {};
+    const hPoder = hierarquia.poder || false;
+    const hInfinity = hierarquia.infinity || false;
+    const hSingularidade = hierarquia.singularidade || '';
+    
+    const [hTextos, setHTextos] = useState({
+        poderNome: '', poderDesc: '', poderVertente: '', poderElemento: '', poderAfeta: '',
+        infinityNome: '', infinityDesc: '', infinityVertente: '', infinityElemento: '', infinityAfeta: '',
+        singularidadeNome: '', singularidadeDesc: ''
+    });
+    const [salvandoClassificacao, setSalvandoClassificacao] = useState(false);
+
     useEffect(() => {
         if (minhaFicha) {
             setLocalCorFundo(minhaFicha.estetica?.diarioCor || '#bba9d8');
@@ -403,6 +426,23 @@ export default function MarcadosPanel() {
             setLocalCorFundoTint(minhaFicha.estetica?.corFundoTint || '#ffffff');
         }
     }, [minhaFicha?.estetica]);
+
+    useEffect(() => {
+        const h = minhaFicha?.hierarquia || {};
+        setHTextos({
+            poderNome: h.poderNome || '', poderDesc: h.poderDesc || '', poderVertente: h.poderVertente || '',
+            poderElemento: h.poderElemento || '', poderAfeta: h.poderAfeta || '',
+            infinityNome: h.infinityNome || '', infinityDesc: h.infinityDesc || '', infinityVertente: h.infinityVertente || '',
+            infinityElemento: h.infinityElemento || '', infinityAfeta: h.infinityAfeta || '',
+            singularidadeNome: h.singularidadeNome || '', singularidadeDesc: h.singularidadeDesc || ''
+        });
+    }, [
+        minhaFicha?.hierarquia?.poderNome, minhaFicha?.hierarquia?.poderDesc, minhaFicha?.hierarquia?.poderVertente, 
+        minhaFicha?.hierarquia?.poderElemento, minhaFicha?.hierarquia?.poderAfeta,
+        minhaFicha?.hierarquia?.infinityNome, minhaFicha?.hierarquia?.infinityDesc, minhaFicha?.hierarquia?.infinityVertente, 
+        minhaFicha?.hierarquia?.infinityElemento, minhaFicha?.hierarquia?.infinityAfeta,
+        minhaFicha?.hierarquia?.singularidadeNome, minhaFicha?.hierarquia?.singularidadeDesc
+    ]);
 
     if (!minhaFicha) return <div style={{ color: '#000', padding: 20, fontFamily: 'cursive' }}>Abrindo a Ficha...</div>;
 
@@ -428,15 +468,37 @@ export default function MarcadosPanel() {
         callSave();
     };
 
-    // 🔥 NOVA FUNÇÃO PARA GESTÃO DE ARRAYS (PODERES, INFINITY E SINGULARIDADES) 🔥
-    const handleArrayItem = (chave, acao, index, campo, valor) => {
-        updateFicha((ficha) => {
-            if (!ficha[chave]) ficha[chave] = [];
-            if (acao === 'add') ficha[chave].push({ nome: '', custo: '', dano: '', descricao: '' });
-            else if (acao === 'remove') ficha[chave].splice(index, 1);
-            else if (acao === 'update') ficha[chave][index][campo] = valor;
+    const salvarHierarquia = (p, i, s) => {
+        if (!isMestre) return;
+        updateFicha(f => {
+            if (!f.hierarquia) f.hierarquia = {};
+            f.hierarquia.poder = p;
+            f.hierarquia.infinity = i;
+            f.hierarquia.singularidade = s;
         });
         callSave();
+    };
+
+    const salvarTextosHierarquia = () => {
+        if (!isMestre) return;
+        updateFicha(f => {
+            if (!f.hierarquia) f.hierarquia = {};
+            f.hierarquia.poderNome = hTextos.poderNome;
+            f.hierarquia.poderDesc = hTextos.poderDesc;
+            f.hierarquia.poderVertente = hTextos.poderVertente;
+            f.hierarquia.poderElemento = hTextos.poderElemento;
+            f.hierarquia.poderAfeta = hTextos.poderAfeta;
+            f.hierarquia.infinityNome = hTextos.infinityNome;
+            f.hierarquia.infinityDesc = hTextos.infinityDesc;
+            f.hierarquia.infinityVertente = hTextos.infinityVertente;
+            f.hierarquia.infinityElemento = hTextos.infinityElemento;
+            f.hierarquia.infinityAfeta = hTextos.infinityAfeta;
+            f.hierarquia.singularidadeNome = hTextos.singularidadeNome;
+            f.hierarquia.singularidadeDesc = hTextos.singularidadeDesc;
+        });
+        callSave();
+        setSalvandoClassificacao(true);
+        setTimeout(() => setSalvandoClassificacao(false), 2000);
     };
 
     const handleStyleChange = (key, val) => {
@@ -656,15 +718,31 @@ export default function MarcadosPanel() {
         alert("A sua ficha foi sincronizada!");
     };
 
-    const getLuma = (hex) => {
-        if (!hex) return 255;
-        const c = hex.replace('#', '');
-        const r = parseInt(c.substring(0, 2), 16) || 255;
-        const g = parseInt(c.substring(2, 4), 16) || 255;
-        const b = parseInt(c.substring(4, 6), 16) || 255;
-        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-    };
-    const isDarkFrame = localCorMoldura && getLuma(localCorMoldura) < 50;
+    // ==========================================
+    // 👑 LÓGICA DO GRAU DE CALAMIDADE (PÁGINA 4)
+    // ==========================================
+    let tituloSupremo = 'MUNDANO';
+    let corSuprema = localCorTinta;
+    let nomeHabilidadeDestaque = '';
+    let vertenteDestaque = '';
+    let elementoDestaque = ''; 
+    let afetaDestaque = '';    
+
+    if (hSingularidade === '0') {
+        tituloSupremo = 'SINGULARIDADE GRAU 0 (MARCADO)'; corSuprema = '#ff00ff'; nomeHabilidadeDestaque = hTextos.singularidadeNome;
+    } else if (hSingularidade === '1') {
+        tituloSupremo = 'SINGULARIDADE GRAU 1 (NASCIDA)'; corSuprema = '#ff003c'; nomeHabilidadeDestaque = hTextos.singularidadeNome;
+    } else if (hSingularidade === '2') {
+        tituloSupremo = 'SINGULARIDADE GRAU 2 (DESENVOLVIDA)'; corSuprema = '#ff8800'; nomeHabilidadeDestaque = hTextos.singularidadeNome;
+    } else if (hSingularidade === '3') {
+        tituloSupremo = 'SINGULARIDADE GRAU 3 (HERDADA)'; corSuprema = '#ffcc00'; nomeHabilidadeDestaque = hTextos.singularidadeNome;
+    } else if (hInfinity) {
+        tituloSupremo = 'INFINITY (MANIPULAÇÃO ABSOLUTA)'; corSuprema = '#00ccff'; nomeHabilidadeDestaque = hTextos.infinityNome; vertenteDestaque = hTextos.infinityVertente;
+        elementoDestaque = hTextos.infinityElemento; afetaDestaque = hTextos.infinityAfeta;
+    } else if (hPoder) {
+        tituloSupremo = 'PODER (RESSONÂNCIA NATURAL)'; corSuprema = '#00ffcc'; nomeHabilidadeDestaque = hTextos.poderNome; vertenteDestaque = hTextos.poderVertente;
+        elementoDestaque = hTextos.poderElemento; afetaDestaque = hTextos.poderAfeta;
+    }
 
     return (
         <div style={{ 
@@ -677,7 +755,6 @@ export default function MarcadosPanel() {
             overflow: 'visible' 
         }}>
             
-            {/* 🔥 FUNDO ALQUÍMICO 🔥 */}
             {localBgImg && (
                 <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0, pointerEvents: 'none', borderRadius: '12px', overflow: 'hidden', mixBlendMode: localModoFundo, isolation: 'isolate' }}>
                     <img src={localBgImg} alt="Fundo" style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', top: 0, left: 0, filter: localModoFundo !== 'normal' ? 'contrast(1.2) saturate(1.2)' : 'none' }} />
@@ -717,7 +794,7 @@ export default function MarcadosPanel() {
                 }
                 .grimorio-estilo-papel input, .grimorio-estilo-papel textarea, .grimorio-estilo-papel select {
                     background: rgba(0,0,0,0.03) !important; border: none !important; border-bottom: 2px dotted var(--tinta) !important;
-                    color: var(--tinta) !important; border-radius: 0 !important;
+                    color: var(--tinta) !important; border-radius: 0 !important; outline: none !important;
                 }
                 .grimorio-estilo-papel input:focus, .grimorio-estilo-papel textarea:focus {
                     background: rgba(0,0,0,0.06) !important; border-bottom: 2px solid var(--tinta) !important;
@@ -1069,72 +1146,163 @@ export default function MarcadosPanel() {
                             <p style={{ opacity: 0.7, fontStyle: 'italic', marginTop: '5px' }}>As características inatas e poderes absolutos gravados na alma.</p>
                         </div>
 
-                        {/* 🌀 ARSENAL DE PODERES */}
-                        <div className="def-box">
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                                <h2 style={{ margin: 0 }}>🌀 Poderes Especiais</h2>
-                                <button onClick={() => handleArrayItem('poderes', 'add')}>+ Novo Poder</button>
+                        {!isMestre && (
+                            <div style={{ border: '2px dashed #f00', padding: '10px', textAlign: 'center', fontWeight: 'bold', color: '#f00', marginBottom: '20px', borderRadius: '4px' }}>
+                                🔒 MODO LEITURA: Apenas o Mestre pode forjar e alterar a Classificação.
                             </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                                {(minhaFicha.poderes || []).map((pod, i) => (
-                                    <div key={i} className="def-box" style={{ position: 'relative' }}>
-                                        <button onClick={() => { if(window.confirm('Apagar Poder?')) handleArrayItem('poderes', 'remove', i); }} style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', cursor: 'pointer' }}>✖</button>
-                                        <div style={{ display: 'flex', gap: '10px', marginBottom: '10px', flexWrap: 'wrap', paddingRight: '30px' }}>
-                                            <CampoMagico valor={pod.nome} onChange={v => handleArrayItem('poderes', 'update', i, 'nome', v)} placeholder="Nome do Poder" styleExtra={{ flex: '1 1 200px', fontSize: '1.2em', fontWeight: 'bold' }} />
-                                            <CampoMagico valor={pod.custo} onChange={v => handleArrayItem('poderes', 'update', i, 'custo', v)} placeholder="Custo (ex: 50 MP)" styleExtra={{ flex: '1 1 100px' }} />
-                                            <CampoMagico valor={pod.dano} onChange={v => handleArrayItem('poderes', 'update', i, 'dano', v)} placeholder="Dano/Efeito" styleExtra={{ flex: '1 1 100px' }} />
-                                        </div>
-                                        <AreaMagica valor={pod.descricao} onChange={v => handleArrayItem('poderes', 'update', i, 'descricao', v)} placeholder="Descreva as características inatas deste poder..." />
-                                    </div>
-                                ))}
-                                {(!minhaFicha.poderes || minhaFicha.poderes.length === 0) && <span style={{ fontStyle: 'italic', opacity: 0.6 }}>Nenhum poder especial forjado ainda...</span>}
+                        )}
+
+                        <div style={{ textAlign: 'center', padding: '30px', border: `3px double ${corSuprema}`, background: 'rgba(0,0,0,0.05)', borderRadius: '8px', marginBottom: '30px', position: 'relative' }}>
+                            <h2 style={{ fontSize: '1.2em', margin: '0 0 10px 0', letterSpacing: '2px', textTransform: 'uppercase', opacity: 0.8 }}>Grau de Calamidade Atual</h2>
+                            <div style={{ fontSize: '2.5em', fontWeight: '900', color: corSuprema, textTransform: 'uppercase', letterSpacing: '2px' }}>
+                                {tituloSupremo}
                             </div>
+                            {nomeHabilidadeDestaque && (
+                                <div style={{ fontSize: '1.8em', fontWeight: 'bold', fontStyle: 'italic', marginTop: '10px' }}>
+                                    "{nomeHabilidadeDestaque}"
+                                </div>
+                            )}
+                            <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap', marginTop: '12px' }}>
+                                {vertenteDestaque && <div style={{ padding: '4px 15px', border: `1px dashed ${corSuprema}`, color: corSuprema, borderRadius: '20px', fontSize: '0.85em', fontWeight: 'bold', textTransform: 'uppercase' }}>🎯 Vertente: {vertenteDestaque}</div>}
+                                {elementoDestaque && vertenteDestaque === 'Elemental' && <div style={{ padding: '4px 15px', border: `1px dashed ${corSuprema}`, color: corSuprema, borderRadius: '20px', fontSize: '0.85em', fontWeight: 'bold', textTransform: 'uppercase' }}>🌪️ Elemento: {elementoDestaque}</div>}
+                                {afetaDestaque && vertenteDestaque === 'Elemental' && <div style={{ padding: '4px 15px', border: `1px dashed ${corSuprema}`, color: corSuprema, borderRadius: '20px', fontSize: '0.85em', fontWeight: 'bold', textTransform: 'uppercase' }}>🌊 Consome: {afetaDestaque}</div>}
+                            </div>
+                            <p style={{ opacity: 0.7, fontSize: '0.9em', marginTop: '15px', fontStyle: 'italic' }}>O sistema rastreia as suas capacidades e irradia a anomalia mais forte que corre nas suas veias.</p>
                         </div>
 
-                        {/* ♾️ O INFINITY */}
-                        <div className="def-box">
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                                <h2 style={{ margin: 0 }}>♾️ Domínios Absolutos (Infinity)</h2>
-                                <button onClick={() => handleArrayItem('infinitys', 'add')}>+ Novo Infinity</button>
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                                {(minhaFicha.infinitys || []).map((inf, i) => (
-                                    <div key={i} className="def-box" style={{ position: 'relative' }}>
-                                        <button onClick={() => { if(window.confirm('Apagar Infinity?')) handleArrayItem('infinitys', 'remove', i); }} style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', cursor: 'pointer' }}>✖</button>
-                                        <div style={{ display: 'flex', gap: '10px', marginBottom: '10px', flexWrap: 'wrap', paddingRight: '30px' }}>
-                                            <CampoMagico valor={inf.nome} onChange={v => handleArrayItem('infinitys', 'update', i, 'nome', v)} placeholder="Nome do Domínio Mestre" styleExtra={{ flex: '1 1 200px', fontSize: '1.2em', fontWeight: 'bold' }} />
-                                            <CampoMagico valor={inf.custo} onChange={v => handleArrayItem('infinitys', 'update', i, 'custo', v)} placeholder="Gatilho de Expansão" styleExtra={{ flex: '1 1 100px' }} />
-                                        </div>
-                                        <AreaMagica valor={inf.descricao} onChange={v => handleArrayItem('infinitys', 'update', i, 'descricao', v)} placeholder="Descreva as regras inquebráveis deste domínio..." />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', opacity: isMestre ? 1 : 0.8 }}>
+                            {/* Categoria 1: Poder */}
+                            <div style={{ border: `1px solid ${hPoder ? '#00ffcc' : 'currentColor'}`, padding: '15px', borderRadius: '8px', background: hPoder ? 'rgba(0,255,204,0.05)' : 'transparent', transition: 'all 0.3s' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: isMestre ? 'pointer' : 'not-allowed' }}>
+                                    <input type="checkbox" checked={hPoder} onChange={e => salvarHierarquia(e.target.checked, hInfinity, hSingularidade)} disabled={!isMestre} style={{ transform: 'scale(1.5)', margin: '5px' }} />
+                                    <div>
+                                        <div style={{ color: hPoder ? '#00ffcc' : 'inherit', fontWeight: 'bold', fontSize: '1.1em' }}>✨ Categoria 1: Poder (Ressonância Natural)</div>
+                                        <div style={{ fontSize: '0.85em', marginTop: '4px', opacity: 0.8 }}>Habilidade inata que usa as 3 energias para escalar, mas não gasta nenhuma (Custo Zero).</div>
                                     </div>
-                                ))}
-                                {(!minhaFicha.infinitys || minhaFicha.infinitys.length === 0) && <span style={{ fontStyle: 'italic', opacity: 0.6 }}>Nenhuma Expansão de Domínio inscrita...</span>}
-                            </div>
-                        </div>
+                                </label>
+                                {hPoder && (
+                                    <div className="fade-in" style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px dashed currentColor' }}>
+                                        <label style={{ fontSize: '0.85em', fontWeight: 'bold', display: 'block', marginBottom: '5px', opacity: 0.8 }}>Vertente do Poder:</label>
+                                        <select value={hTextos.poderVertente} onChange={e => setHTextos({...hTextos, poderVertente: e.target.value})} disabled={!isMestre} style={{ width: '100%', marginBottom: '10px' }}>
+                                            <option value="">Selecione a Vertente...</option>
+                                            <option value="Acumulativo">📈 Acumulativo (Requer Marcadores e Forja)</option>
+                                            <option value="Elemental">🌪️ Elemental (Domínio absoluto de forças e natureza)</option>
+                                            <option value="Conceitual">🧩 Conceitual (Quebra de regras absolutas e espaço/tempo)</option>
+                                            <option value="Utilitario">🛠️ Utilitário (Hackers da realidade, Mimetismo, Anulação)</option>
+                                        </select>
 
-                        {/* ✨ SINGULARIDADE */}
-                        <div className="def-box">
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                                <h2 style={{ margin: 0 }}>✨ Singularidades</h2>
-                                <button onClick={() => handleArrayItem('singularidades', 'add')}>+ Singularidade</button>
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                                {(minhaFicha.singularidades || []).map((sing, i) => (
-                                    <div key={i} className="def-box" style={{ position: 'relative' }}>
-                                        <button onClick={() => { if(window.confirm('Apagar Singularidade?')) handleArrayItem('singularidades', 'remove', i); }} style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', cursor: 'pointer' }}>✖</button>
-                                        <div style={{ display: 'flex', gap: '10px', marginBottom: '10px', flexWrap: 'wrap', paddingRight: '30px' }}>
-                                            <CampoMagico valor={sing.nome} onChange={v => handleArrayItem('singularidades', 'update', i, 'nome', v)} placeholder="Traço Único / Essência" styleExtra={{ flex: '1 1 200px', fontSize: '1.2em', fontWeight: 'bold' }} />
-                                            <CampoMagico valor={sing.custo} onChange={v => handleArrayItem('singularidades', 'update', i, 'custo', v)} placeholder="Passiva / Condição" styleExtra={{ flex: '1 1 100px' }} />
-                                        </div>
-                                        <AreaMagica valor={sing.descricao} onChange={v => handleArrayItem('singularidades', 'update', i, 'descricao', v)} placeholder="O poder que quebra as regras do multiverso e existe apenas neste indivíduo..." />
+                                        {hTextos.poderVertente === 'Elemental' && (
+                                            <div className="fade-in" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                                                <div>
+                                                    <label style={{ fontSize: '0.85em', fontWeight: 'bold', opacity: 0.8 }}>Elemento Oficial:</label>
+                                                    <select value={hTextos.poderElemento} onChange={e => setHTextos({...hTextos, poderElemento: e.target.value})} disabled={!isMestre} style={{ width: '100%' }}>
+                                                        <option value="">Selecione a raiz elemental...</option>
+                                                        {ELEMENTOS_OPCOES.map(grupo => (
+                                                            <optgroup key={grupo.label} label={grupo.label}>
+                                                                {grupo.opcoes.map(el => <option key={el} value={el}>{el}</option>)}
+                                                            </optgroup>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label style={{ fontSize: '0.85em', fontWeight: 'bold', opacity: 0.8 }}>Afeta/Consome:</label>
+                                                    <input type="text" placeholder="Ex: Gelo, Vento" value={hTextos.poderAfeta} onChange={e => setHTextos({...hTextos, poderAfeta: e.target.value})} disabled={!isMestre} style={{ width: '100%' }} />
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <input type="text" placeholder="Nome do seu Poder (Ex: Chamas do Purgatório)" value={hTextos.poderNome} onChange={e => setHTextos({...hTextos, poderNome: e.target.value})} disabled={!isMestre} style={{ width: '100%', marginBottom: '10px', fontSize: '1.1em', fontWeight: 'bold' }} />
+                                        <textarea placeholder="Descreva como a ressonância da sua habilidade se manifesta na realidade..." value={hTextos.poderDesc} onChange={e => setHTextos({...hTextos, poderDesc: e.target.value})} disabled={!isMestre} style={{ width: '100%', minHeight: '60px' }} />
                                     </div>
-                                ))}
-                                {(!minhaFicha.singularidades || minhaFicha.singularidades.length === 0) && <span style={{ fontStyle: 'italic', opacity: 0.6 }}>Nenhum traço singular identificado...</span>}
+                                )}
                             </div>
+
+                            {/* Categoria 2: Infinity */}
+                            <div style={{ border: `1px solid ${hInfinity ? '#00ccff' : 'currentColor'}`, padding: '15px', borderRadius: '8px', background: hInfinity ? 'rgba(0,204,255,0.05)' : 'transparent', transition: 'all 0.3s' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: isMestre ? 'pointer' : 'not-allowed' }}>
+                                    <input type="checkbox" checked={hInfinity} onChange={e => salvarHierarquia(hPoder, e.target.checked, hSingularidade)} disabled={!isMestre} style={{ transform: 'scale(1.5)', margin: '5px' }} />
+                                    <div>
+                                        <div style={{ color: hInfinity ? '#00ccff' : 'inherit', fontWeight: 'bold', fontSize: '1.1em' }}>🌌 Categoria 2: Infinity (Manipulação Absoluta)</div>
+                                        <div style={{ fontSize: '0.85em', marginTop: '4px', opacity: 0.8 }}>Controle infinito e conceitual. <strong style={{color: hInfinity ? '#00ccff' : 'inherit'}}>⚠️ Permite Cópia (Mimetismo).</strong></div>
+                                    </div>
+                                </label>
+                                {hInfinity && (
+                                    <div className="fade-in" style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px dashed currentColor' }}>
+                                        <label style={{ fontSize: '0.85em', fontWeight: 'bold', display: 'block', marginBottom: '5px', opacity: 0.8 }}>Vertente do Infinity:</label>
+                                        <select value={hTextos.infinityVertente} onChange={e => setHTextos({...hTextos, infinityVertente: e.target.value})} disabled={!isMestre} style={{ width: '100%', marginBottom: '10px' }}>
+                                            <option value="">Selecione a Vertente...</option>
+                                            <option value="Acumulativo">📈 Acumulativo (Requer Marcadores e Forja)</option>
+                                            <option value="Elemental">🌪️ Elemental (Domínio absoluto de forças e natureza)</option>
+                                            <option value="Conceitual">🧩 Conceitual (Quebra de regras absolutas e espaço/tempo)</option>
+                                            <option value="Utilitario">🛠️ Utilitário (Hackers da realidade, Mimetismo, Anulação)</option>
+                                        </select>
+
+                                        {hTextos.infinityVertente === 'Elemental' && (
+                                            <div className="fade-in" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                                                <div>
+                                                    <label style={{ fontSize: '0.85em', fontWeight: 'bold', opacity: 0.8 }}>Elemento Oficial:</label>
+                                                    <select value={hTextos.infinityElemento} onChange={e => setHTextos({...hTextos, infinityElemento: e.target.value})} disabled={!isMestre} style={{ width: '100%' }}>
+                                                        <option value="">Selecione a raiz elemental...</option>
+                                                        {ELEMENTOS_OPCOES.map(grupo => (
+                                                            <optgroup key={grupo.label} label={grupo.label}>
+                                                                {grupo.opcoes.map(el => <option key={el} value={el}>{el}</option>)}
+                                                            </optgroup>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label style={{ fontSize: '0.85em', fontWeight: 'bold', opacity: 0.8 }}>Afeta/Consome:</label>
+                                                    <input type="text" placeholder="Ex: Fogo, Gelo" value={hTextos.infinityAfeta} onChange={e => setHTextos({...hTextos, infinityAfeta: e.target.value})} disabled={!isMestre} style={{ width: '100%' }} />
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <input type="text" placeholder="Nome do seu Infinity (Ex: Frio Zero Absoluto)" value={hTextos.infinityNome} onChange={e => setHTextos({...hTextos, infinityNome: e.target.value})} disabled={!isMestre} style={{ width: '100%', marginBottom: '10px', fontSize: '1.1em', fontWeight: 'bold' }} />
+                                        <textarea placeholder="Descreva as leis conceituais e limites dessa manipulação infinita..." value={hTextos.infinityDesc} onChange={e => setHTextos({...hTextos, infinityDesc: e.target.value})} disabled={!isMestre} style={{ width: '100%', minHeight: '60px' }} />
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Categoria 3: Singularidade */}
+                            <div style={{ border: `1px solid ${hSingularidade ? '#ff00ff' : 'currentColor'}`, padding: '15px', borderRadius: '8px', background: hSingularidade ? 'rgba(255,0,255,0.05)' : 'transparent', transition: 'all 0.3s' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: isMestre ? 'pointer' : 'not-allowed' }}>
+                                    <input type="checkbox" checked={!!hSingularidade} onChange={e => { const val = e.target.checked ? '3' : ''; salvarHierarquia(hPoder, hInfinity, val); }} disabled={!isMestre} style={{ transform: 'scale(1.5)', margin: '5px' }} />
+                                    <div>
+                                        <div style={{ color: hSingularidade ? '#ff00ff' : 'inherit', fontWeight: 'bold', fontSize: '1.1em' }}>👑 Categoria 3: Singularidade (Anomalia Máxima)</div>
+                                        <div style={{ fontSize: '0.85em', marginTop: '4px', opacity: 0.8 }}>Uma falha na própria realidade. <strong style={{color: hSingularidade ? '#ff00ff' : 'inherit'}}>🚫 REGRA ABSOLUTA: Impossível ser copiada.</strong></div>
+                                    </div>
+                                </label>
+                                {hSingularidade && (
+                                    <div className="fade-in" style={{ marginTop: '15px', paddingLeft: '20px', borderLeft: '2px dashed currentColor' }}>
+                                        <label style={{ fontSize: '0.9em', fontWeight: 'bold', opacity: 0.8 }}>Selecione o Grau da sua Singularidade:</label>
+                                        <select 
+                                            value={hSingularidade} 
+                                            onChange={e => salvarHierarquia(hPoder, hInfinity, e.target.value)} 
+                                            disabled={!isMestre}
+                                            style={{ width: '100%', marginTop: '8px', marginBottom: '15px', fontSize: '1em', padding: '10px' }}
+                                        >
+                                            <option value="3">Grau 3: Herdada (Poder transferido ou roubado)</option>
+                                            <option value="2">Grau 2: Desenvolvida (Evoluída além do limite de um Poder/Infinity)</option>
+                                            <option value="1">Grau 1: Nascida (Anomalia inata desde o berço)</option>
+                                            <option value="0">Grau 0: Marcado Nascido (O próprio Marcado já nasce como Singularidade)</option>
+                                        </select>
+
+                                        <div style={{ paddingTop: '15px', borderTop: '1px dashed currentColor' }}>
+                                            <input type="text" placeholder="Nome da Singularidade (Ex: All For One)" value={hTextos.singularidadeNome} onChange={e => setHTextos({...hTextos, singularidadeNome: e.target.value})} disabled={!isMestre} style={{ width: '100%', marginBottom: '10px', fontSize: '1.1em', fontWeight: 'bold' }} />
+                                            <textarea placeholder="Descreva como essa anomalia cósmica quebra as regras do universo..." value={hTextos.singularidadeDesc} onChange={e => setHTextos({...hTextos, singularidadeDesc: e.target.value})} disabled={!isMestre} style={{ width: '100%', minHeight: '60px' }} />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {isMestre && (
+                                <button onClick={salvarTextosHierarquia} style={{ marginTop: '10px', width: '100%', padding: '12px', fontSize: '1.1em', fontWeight: 'bold', border: '2px solid currentColor' }}>
+                                    {salvandoClassificacao ? '✅ REGISTROS MÍSTICOS SALVOS!' : '💾 SALVAR CLASSIFICAÇÃO NA ALMA'}
+                                </button>
+                            )}
                         </div>
                     </div>
                 )}
-
             </div>
 
             {/* BOTÕES DE NAVEGAÇÃO DA PÁGINA (1 A 4) */}
@@ -1143,7 +1311,6 @@ export default function MarcadosPanel() {
                 <span style={{ fontSize: '1.1em', fontWeight: 'bold', borderBottom: '2px solid currentColor', padding: '0 10px' }}>Página {paginaAtual} de 4</span>
                 <button onClick={() => mudarPagina(Math.min(4, paginaAtual + 1))} disabled={paginaAtual === 4} style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 4 ? 'default' : 'pointer', opacity: paginaAtual === 4 ? 0.3 : 1, fontFamily: 'inherit', color: 'inherit' }}>Próxima ⮞</button>
             </div>
-
         </div>
     );
 }
