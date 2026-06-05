@@ -9,7 +9,6 @@ import Swal from 'sweetalert2';
 // 🌌 MOTOR GRÁFICO EXTRAVAGANTE (Puro CSS & JS)
 // ==========================================
 const FundoAnimado = ({ tema, modoDesempenho }) => {
-    // Se o modo desempenho estiver ativo, reduzimos drasticamente as partículas
     const qtdParticulas = modoDesempenho ? 10 : 45;
     
     const particulas = useMemo(() => Array.from({ length: qtdParticulas }).map((_, i) => ({
@@ -17,56 +16,40 @@ const FundoAnimado = ({ tema, modoDesempenho }) => {
         left: Math.random() * 100,
         top: Math.random() * 100,
         size: Math.random() * 5 + 2,
-        delay: Math.random() * -20, // Delay negativo para já começarem na tela
+        delay: Math.random() * -20,
         duracao: Math.random() * 10 + 5
     })), [qtdParticulas]);
 
     return (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: -2, overflow: 'hidden', background: '#020202' }}>
             
-            {/* 🟢 TEMA CYBER: Chuva de Dados e Grelha */}
             <div style={{ display: tema === 'theme-cyber' ? 'block' : 'none', width: '100%', height: '100%', position: 'absolute' }}>
                 <div className="anim-cyber-grid" />
                 {!modoDesempenho && particulas.map(p => (
-                    <div key={`cyber-${p.id}`} className="anim-cyber-rain" style={{
-                        left: `${p.left}%`, width: '2px', height: `${p.size * 10}px`,
-                        animationDuration: `${p.duracao / 2}s`, animationDelay: `${p.delay}s`
-                    }} />
+                    <div key={`cyber-${p.id}`} className="anim-cyber-rain" style={{ left: `${p.left}%`, width: '2px', height: `${p.size * 10}px`, animationDuration: `${p.duracao / 2}s`, animationDelay: `${p.delay}s` }} />
                 ))}
             </div>
 
-            {/* 🩸 TEMA OCULTO: Abismo e Brasas Escarlates */}
             <div style={{ display: tema === 'theme-blood' ? 'block' : 'none', width: '100%', height: '100%', position: 'absolute' }}>
                 <div className="anim-blood-abyss" />
                 <div className="anim-blood-pulse" />
                 {!modoDesempenho && particulas.map(p => (
-                    <div key={`blood-${p.id}`} className="anim-blood-ember" style={{
-                        left: `${p.left}%`, bottom: `-10%`, width: `${p.size}px`, height: `${p.size}px`,
-                        animationDuration: `${p.duracao}s`, animationDelay: `${p.delay}s`
-                    }} />
+                    <div key={`blood-${p.id}`} className="anim-blood-ember" style={{ left: `${p.left}%`, bottom: `-10%`, width: `${p.size}px`, height: `${p.size}px`, animationDuration: `${p.duracao}s`, animationDelay: `${p.delay}s` }} />
                 ))}
             </div>
 
-            {/* ⚔️ TEMA VIDRO/AÇO: Estilhaços e Feixes de Luz */}
             <div style={{ display: tema === 'theme-glass' ? 'block' : 'none', width: '100%', height: '100%', position: 'absolute', background: 'linear-gradient(135deg, #05070a 0%, #000 100%)' }}>
                 <div className="anim-glass-beams" />
                 {!modoDesempenho && particulas.slice(0, 20).map(p => (
-                    <div key={`glass-${p.id}`} className="anim-glass-shard" style={{
-                        left: `${p.left}%`, top: `${p.top}%`, width: `${p.size * 3}px`, height: `${p.size * 3}px`,
-                        animationDuration: `${p.duracao * 1.5}s`, animationDelay: `${p.delay}s`
-                    }} />
+                    <div key={`glass-${p.id}`} className="anim-glass-shard" style={{ left: `${p.left}%`, top: `${p.top}%`, width: `${p.size * 3}px`, height: `${p.size * 3}px`, animationDuration: `${p.duracao * 1.5}s`, animationDelay: `${p.delay}s` }} />
                 ))}
             </div>
 
-            {/* 💜 TEMA ARCANO: Portal Cósmico e Poeira Estelar */}
             <div style={{ display: tema === 'theme-arcane' ? 'block' : 'none', width: '100%', height: '100%', position: 'absolute', background: '#0a001a' }}>
                 <div className="anim-arcane-nebula" />
                 <div className="anim-arcane-portal" />
                 {!modoDesempenho && particulas.map(p => (
-                    <div key={`arcane-${p.id}`} className="anim-arcane-star" style={{
-                        left: `${p.left}%`, top: `${p.top}%`, width: `${p.size}px`, height: `${p.size}px`,
-                        animationDuration: `${p.duracao}s`, animationDelay: `${p.delay}s`
-                    }} />
+                    <div key={`arcane-${p.id}`} className="anim-arcane-star" style={{ left: `${p.left}%`, top: `${p.top}%`, width: `${p.size}px`, height: `${p.size}px`, animationDuration: `${p.duracao}s`, animationDelay: `${p.delay}s` }} />
                 ))}
             </div>
 
@@ -104,7 +87,9 @@ const FundoAnimado = ({ tema, modoDesempenho }) => {
 // ==========================================
 
 export default function LobbyNeon() {
-    const { setMesaId, userLogado } = useStore();
+    // 🔥 A MÁGICA: Extraímos o setMeuNome para forçar a identificação do jogador
+    const { setMesaId, userLogado, setMeuNome } = useStore();
+    
     const [codigoSala, setCodigoSala] = useState('');
     const [abaMesas, setAbaMesas] = useState('jogador');
     const [ping, setPing] = useState(12);
@@ -115,12 +100,20 @@ export default function LobbyNeon() {
     const [fonteAtiva, setFonteAtiva] = useState(localStorage.getItem('rpg_fonte') || 'sans-serif');
     const [brilho, setBrilho] = useState(localStorage.getItem('rpg_brilho') || '100');
     
-    // 🎛️ NOVOS ESTADOS (Volume e Desempenho)
     const [volumeGeral, setVolumeGeral] = useState(localStorage.getItem('rpg_volume') || '50');
     const [modoDesempenho, setModoDesempenho] = useState(localStorage.getItem('rpg_desempenho') === 'true');
-    const [sfxAtivo, setSfxAtivo] = useState(localStorage.getItem('rpg_sfx') !== 'false'); // Padrão é true
+    const [sfxAtivo, setSfxAtivo] = useState(localStorage.getItem('rpg_sfx') !== 'false');
 
     const [canInstall, setCanInstall] = useState(!!window.deferredPrompt);
+
+    // 🔥 BLINDAGEM DE IDENTIDADE: Garante que as Fichas saibam de quem são!
+    useEffect(() => {
+        if (userLogado) {
+            setMeuNome(userLogado);
+            localStorage.setItem('rpgNome', userLogado);
+        }
+    }, [userLogado, setMeuNome]);
+
     useEffect(() => {
         const handleReady = () => setCanInstall(true);
         window.addEventListener('pwa-ready', handleReady);
@@ -139,7 +132,6 @@ export default function LobbyNeon() {
         return () => clearInterval(interval);
     }, []);
 
-    // 🎨 Salvar Configurações no Computador do Jogador
     useEffect(() => {
         document.body.className = temaAtivo;
         localStorage.setItem('rpg_tema', temaAtivo);
@@ -150,7 +142,6 @@ export default function LobbyNeon() {
         localStorage.setItem('rpg_sfx', sfxAtivo);
     }, [temaAtivo, fonteAtiva, brilho, volumeGeral, modoDesempenho, sfxAtivo]);
 
-    // Histórico de Mesas
     const [minhasMesas, setMinhasMesas] = useState(() => {
         try { return JSON.parse(localStorage.getItem('rpg_historico_mesas')) || []; } catch(e) { return []; }
     });
@@ -247,8 +238,6 @@ export default function LobbyNeon() {
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
-                            
-                            {/* Temas */}
                             <div style={{ background: 'rgba(0,0,0,0.4)', padding: '15px', borderRadius: '10px', border: '1px solid #333' }}>
                                 <strong style={{ color: '#aaa', fontSize: '0.8em', textTransform: 'uppercase', letterSpacing: '1px', display: 'block', marginBottom: '10px' }}>1. Espectro Visual (Tema)</strong>
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
@@ -259,7 +248,6 @@ export default function LobbyNeon() {
                                 </div>
                             </div>
 
-                            {/* Controles Deslizantes (Brilho e Volume) */}
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                                 <div style={{ background: 'rgba(0,0,0,0.4)', padding: '15px', borderRadius: '10px', border: '1px solid #333' }}>
                                     <strong style={{ color: '#aaa', fontSize: '0.8em', textTransform: 'uppercase', display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}><span>Brilho</span><span style={{ color: '#fff' }}>{brilho}%</span></strong>
@@ -271,7 +259,6 @@ export default function LobbyNeon() {
                                 </div>
                             </div>
 
-                            {/* Toggles (Desempenho e SFX) */}
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                                 <label style={{ display: 'flex', alignItems: 'center', gap: '10px', background: modoDesempenho ? 'rgba(255,204,0,0.1)' : 'rgba(0,0,0,0.4)', padding: '15px', borderRadius: '10px', border: `1px solid ${modoDesempenho ? '#ffcc00' : '#333'}`, cursor: 'pointer' }}>
                                     <input type="checkbox" checked={modoDesempenho} onChange={e => setModoDesempenho(e.target.checked)} style={{ transform: 'scale(1.2)' }} />
@@ -283,7 +270,6 @@ export default function LobbyNeon() {
                                 </label>
                             </div>
 
-                            {/* Fonte */}
                             <div style={{ background: 'rgba(0,0,0,0.4)', padding: '15px', borderRadius: '10px', border: '1px solid #333' }}>
                                 <strong style={{ color: '#aaa', fontSize: '0.8em', textTransform: 'uppercase', letterSpacing: '1px', display: 'block', marginBottom: '10px' }}>Tipografia (Fonte)</strong>
                                 <select className="input-neon" value={fonteAtiva} onChange={(e) => setFonteAtiva(e.target.value)} style={{ width: '100%', padding: '12px', fontSize: '1em', background: '#000' }}>
@@ -329,7 +315,6 @@ export default function LobbyNeon() {
                             </button>
                         </div>
 
-                        {/* Histórico Simplificado para poupar espaço */}
                         {minhasMesas.length > 0 && (
                             <div style={{ background: 'rgba(0,0,0,0.4)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', overflow: 'hidden' }}>
                                 <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(0,0,0,0.5)' }}>
