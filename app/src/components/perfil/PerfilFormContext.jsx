@@ -25,28 +25,36 @@ export function PerfilFormProvider({ children }) {
     const setAbaAtiva = useStore(s => s.setAbaAtiva);
     
     const mesaId = useStore(s => s.mesaId);
+    
+    // 🔥 O estado do Zustand (Forte no Electron, mas fraco no F5 da Web)
+    const userLogadoZustand = useStore(s => s.userLogado);
 
     const [nomeInput, setNomeInput] = useState(meuNome || '');
     const [listaLocal, setListaLocal] = useState([]);
     const [uploadingImg, setUploadingImg] = useState(false);
 
     // ==========================================
-    // 🔥 IDENTIDADE BLINDADA DIRETO DO FIREBASE 🔥
+    // 🔥 IDENTIDADE HÍBRIDA BLINDADA (Web + Electron) 🔥
     // ==========================================
-    const [contaAtual, setContaAtual] = useState(null);
+    const [contaAtual, setContaAtual] = useState(userLogadoZustand ? sanitizarNome(userLogadoZustand) : null);
+
     useEffect(() => {
-        // Lê diretamente do motor de autenticação, sobrevive a qualquer recarregamento da página
+        // Se o Zustand sabe quem é o jogador (Padrão no Electron), usamos isso!
+        if (userLogadoZustand) {
+            setContaAtual(sanitizarNome(userLogadoZustand));
+            return;
+        }
+        // Se o Zustand se esqueceu (F5 na Web), resgatamos do motor do Firebase
         const unsub = auth.onAuthStateChanged(u => {
             if (u && u.email) setContaAtual(sanitizarNome(u.email.split('@')[0]));
         });
         return () => unsub();
-    }, []);
+    }, [userLogadoZustand]);
 
     // ==========================================
     // 🔥 RADAR DE IDENTIDADE: FUSÃO DA NUVEM COM LOCAL 🔥
     // ==========================================
     useEffect(() => {
-        // Função rápida para ler o disco local
         const carregarLocal = () => {
             const local = [];
             for (let i = 0; i < localStorage.length; i++) {
@@ -56,7 +64,6 @@ export function PerfilFormProvider({ children }) {
             return local;
         };
 
-        // Se a Nuvem ainda está a carregar, mostra o que tem no PC para a tela nunca ficar vazia
         if (!contaAtual || !mesaId) {
             setListaLocal(carregarLocal());
             return;
@@ -69,11 +76,8 @@ export function PerfilFormProvider({ children }) {
             if (!Array.isArray(nuvemLista)) nuvemLista = Object.values(nuvemLista);
 
             const localLista = carregarLocal();
-
-            // Unifica as realidades e remove duplicatas
             const listaUnificada = [...new Set([...nuvemLista, ...localLista])];
 
-            // Atualiza a Nuvem automaticamente se o jogador tiver personagens locais antigos
             if (listaUnificada.length > nuvemLista.length) {
                 set(refHistorico, listaUnificada).catch(()=>{});
             }
@@ -103,27 +107,24 @@ export function PerfilFormProvider({ children }) {
             } catch (e) {} 
         }
         
-        // 2. Busca na Nuvem e SOBRESCREVE o local para manter as coisas atualizadas
+        // 2. Busca na Nuvem e SOBRESCREVE o local
         const dadosNuven = await carregarFichaDoFirebase(n);
         if (dadosNuven && Object.keys(dadosNuven).length > 2) {
             carregarDadosFicha(dadosNuven);
-            // 🔥 A CORREÇÃO: Força o salvamento no computador para aparecer na lista IMEDIATAMENTE
             localStorage.setItem('rpgFicha_' + n, JSON.stringify(dadosNuven));
         }
 
-        // 3. REGISTRA A POSSE NO HISTÓRICO DA NUVEM IMEDIATAMENTE 🔥
+        // 3. Regista no Histórico da Nuvem
         if (contaAtual && mesaId) {
             const refHistorico = ref(db, `usuarios/${contaAtual}/historicoPersonagens_${mesaId}`);
             get(refHistorico).then(snap => {
                 let lista = snap.exists() ? snap.val() : [];
                 if (!Array.isArray(lista)) lista = Object.values(lista);
-                // Coloca o personagem carregado no topo da lista e garante que não há duplicados
                 lista = [n, ...lista.filter(x => x !== n)].slice(0, 20);
                 set(refHistorico, lista).catch(()=>{});
             });
         }
 
-        // Força a atualização da lista visual na hora
         setListaLocal(prev => [...new Set([n, ...prev])]);
         setAbaAtiva('aba-status');
     }, [setMeuNome, resetFicha, carregarDadosFicha, setAbaAtiva, contaAtual, mesaId]);
