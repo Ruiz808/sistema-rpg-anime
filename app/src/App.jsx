@@ -26,13 +26,14 @@ import AIPanel from './components/ia/AIPanel';
 import GravadorPanel from './components/ia/GravadorPanel';
 import MarcadosPanel from './components/Ficha Def/Marcados';
 
-// 👑 Imports Extensivos Isolados
+// 🔥 IMPORTAÇÃO DO NOVO GRIMÓRIO!
+import GrimorioPanel from './components/Ficha Def/Grimorio';
+
 import MestrePanel from './components/mestre/MestrePanel';
 import AuthScreen from './components/auth/AuthScreen';
 import LobbyNeon from './components/lobby/LobbyNeon';
 import TelaLoading from './components/layout/TelaLoading';
 
-// 🔗 Funções de Sync
 import { 
     carregarFichaDoFirebase, iniciarListenerDummies,
     iniciarListenerCenario, monitorarAuth,
@@ -40,7 +41,6 @@ import {
     iniciarListenerMestres
 } from './services/firebase-sync';
 
-// 🔥 INTERCETOR PWA: ESCUTA SE O NAVEGADOR PODE INSTALAR O APP 🔥
 window.deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
@@ -48,7 +48,6 @@ window.addEventListener('beforeinstallprompt', (e) => {
     window.dispatchEvent(new Event('pwa-ready'));
 });
 
-// --- O CORAÇÃO DO SISTEMA ---
 export default function App() {
     const userLogado = useStore(s => s.userLogado);
     const setUserLogado = useStore(s => s.setUserLogado);
@@ -191,7 +190,6 @@ export default function App() {
     if (playersOn.length > 0) tooltipOnline += `⚔️ AVENTUREIROS:\n- ${playersOn.join(', ')}`;
     if (jogadoresOnline.length === 0) tooltipOnline += "Ninguém online no momento.";
 
-    // 🎭 TELAS DE ESTADO (Loading, Login, Lobby)
     if (!authVerificada) return <TelaLoading texto="Verificando as chaves do Multiverso..." />;
     if (!userLogado) return <AuthScreen />;
     if (!mesaId) return <LobbyNeon />;
@@ -321,7 +319,9 @@ export default function App() {
                 <TabPanel id="aba-compendio"><CompendioPanel /></TabPanel>
                 <TabPanel id="aba-oraculo"><AIPanel /></TabPanel>
                 <TabPanel id="aba-gravador"><GravadorPanel /></TabPanel>
+                {/* 🔥 AS DUAS ABAS ÉPICAS! */}
                 <TabPanel id="aba-Ficha Def"><MarcadosPanel /></TabPanel>
+                <TabPanel id="aba-grimorio"><GrimorioPanel /></TabPanel>
             </div>
             
             <ModalConfirm isOpen={modalAberto} onClose={() => setModalAberto(false)} />

@@ -4,8 +4,6 @@ import { uploadImagem, salvarFichaSilencioso, salvarFirebaseImediato } from '../
 import { getMaximo, getRawBase, getBuffs } from '../../core/attributes';
 import { getRank } from '../../core/prestige';
 
-import PoderesPanel from '../poderes/PoderesPanel';
-
 // ==========================================
 // 🛡️ DADOS DO COMPÊNDIO (PARA O ÍCONE DA MOLDURA)
 // ==========================================
@@ -215,7 +213,7 @@ const RadarDesenhado = ({ ficha, isAtual, corTinta = "#000000" }) => {
 };
 
 // ==========================================
-// 📖 PAINEL PRINCIPAL (O GRIMÓRIO)
+// 📖 PAINEL PRINCIPAL (A FICHA)
 // ==========================================
 export default function MarcadosPanel() {
     const minhaFicha = useStore(s => s.minhaFicha);
@@ -239,8 +237,8 @@ export default function MarcadosPanel() {
     const [localCorMoldura, setLocalCorMoldura] = useState('#ffffff');
     const [localIconeClasse, setLocalIconeClasse] = useState('');
     const [localModoMoldura, setLocalModoMoldura] = useState('screen');
-    const [localModoFundo, setLocalModoFundo] = useState('normal'); // 🔥 MODO DO FUNDO
-    const [localCorFundoTint, setLocalCorFundoTint] = useState('#ffffff'); // 🔥 TINTA DO FUNDO
+    const [localModoFundo, setLocalModoFundo] = useState('normal'); 
+    const [localCorFundoTint, setLocalCorFundoTint] = useState('#ffffff'); 
 
     useEffect(() => {
         if (minhaFicha) {
@@ -257,7 +255,7 @@ export default function MarcadosPanel() {
         }
     }, [minhaFicha?.estetica]);
 
-    if (!minhaFicha) return <div style={{ color: '#000', padding: 20, fontFamily: 'cursive' }}>Abrindo o Diário...</div>;
+    if (!minhaFicha) return <div style={{ color: '#000', padding: 20, fontFamily: 'cursive' }}>Abrindo a Ficha...</div>;
 
     const classeInfo = getClasseInfo(minhaFicha);
     const iconeFinal = localIconeClasse || classeInfo?.iconeUrl;
@@ -495,10 +493,9 @@ export default function MarcadosPanel() {
         importarDaAbaStatus(textoImport);
         setModalImport(false);
         setTextoImport('');
-        alert("O seu diário foi sincronizado!");
+        alert("A sua ficha foi sincronizada!");
     };
 
-    // 🔥 MOTOR DE LUMINOSIDADE PARA A MOLDURA 🔥
     const getLuma = (hex) => {
         if (!hex) return 255;
         const c = hex.replace('#', '');
@@ -535,50 +532,21 @@ export default function MarcadosPanel() {
 
             <style>{`
                 .swoop-container { transform-style: preserve-3d; z-index: 1; position: relative; }
-                @keyframes pageSwoopNext {
-                    0% { transform: perspective(1500px) rotateY(-15deg) translateX(30px) scale(0.98); opacity: 0; }
-                    100% { transform: perspective(1500px) rotateY(0deg) translateX(0) scale(1); opacity: 1; }
-                }
-                @keyframes pageSwoopPrev {
-                    0% { transform: perspective(1500px) rotateY(15deg) translateX(-30px) scale(0.98); opacity: 0; }
-                    100% { transform: perspective(1500px) rotateY(0deg) translateX(0) scale(1); opacity: 1; }
-                }
+                @keyframes pageSwoopNext { 0% { transform: perspective(1500px) rotateY(-15deg) translateX(30px) scale(0.98); opacity: 0; } 100% { transform: perspective(1500px) rotateY(0deg) translateX(0) scale(1); opacity: 1; } }
+                @keyframes pageSwoopPrev { 0% { transform: perspective(1500px) rotateY(15deg) translateX(-30px) scale(0.98); opacity: 0; } 100% { transform: perspective(1500px) rotateY(0deg) translateX(0) scale(1); opacity: 1; } }
                 .page-swoop-next { animation: pageSwoopNext 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
                 .page-swoop-prev { animation: pageSwoopPrev 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
 
                 .grimorio-estilo-papel { --tinta: ${localCorTinta || '#000'}; --fundo: ${localCorFundo || '#fff'}; color: var(--tinta) !important; }
                 .grimorio-estilo-papel * { font-family: ${fonteDiario}, 'Courier New', serif !important; text-shadow: none !important; box-shadow: none !important; }
-                .grimorio-estilo-papel .def-box, .grimorio-estilo-papel [style*="background: rgba"] {
-                    background: transparent !important; border: 2px solid var(--tinta) !important;
-                    border-radius: 2px 255px 3px 25px / 255px 5px 225px 3px !important; position: relative;
-                }
-                .grimorio-estilo-papel .def-box::before, .grimorio-estilo-papel [style*="background: rgba"]::before {
-                    content: ''; position: absolute; top:0; left:0; right:0; bottom:0; background: var(--tinta); opacity: 0.03; pointer-events: none; border-radius: inherit;
-                }
+                .grimorio-estilo-papel .def-box, .grimorio-estilo-papel [style*="background: rgba"] { background: transparent !important; border: 2px solid var(--tinta) !important; border-radius: 2px 255px 3px 25px / 255px 5px 225px 3px !important; position: relative; }
+                .grimorio-estilo-papel .def-box::before, .grimorio-estilo-papel [style*="background: rgba"]::before { content: ''; position: absolute; top:0; left:0; right:0; bottom:0; background: var(--tinta); opacity: 0.03; pointer-events: none; border-radius: inherit; }
                 .grimorio-estilo-papel h2, .grimorio-estilo-papel h3, .grimorio-estilo-papel h4 { color: var(--tinta) !important; display: inline-block; }
-                .grimorio-estilo-papel button {
-                    background: transparent !important; border: 2px dashed var(--tinta) !important;
-                    border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important; color: var(--tinta) !important;
-                    font-weight: bold !important; text-transform: uppercase !important; transition: all 0.2s ease !important;
-                }
-                .grimorio-estilo-papel button:hover {
-                    background: var(--tinta) !important; color: var(--fundo) !important; border-style: solid !important; transform: scale(1.02) rotate(-1deg) !important;
-                }
-                .grimorio-estilo-papel input, .grimorio-estilo-papel textarea, .grimorio-estilo-papel select {
-                    background: rgba(0,0,0,0.03) !important; border: none !important; border-bottom: 2px dotted var(--tinta) !important;
-                    color: var(--tinta) !important; border-radius: 0 !important;
-                }
-                .grimorio-estilo-papel input:focus, .grimorio-estilo-papel textarea:focus {
-                    background: rgba(0,0,0,0.06) !important; border-bottom: 2px solid var(--tinta) !important;
-                }
-                .grimorio-estilo-papel input::placeholder, .grimorio-estilo-papel textarea::placeholder {
-                    color: var(--tinta) !important; opacity: 0.5 !important; font-style: italic !important;
-                }
-                .grimorio-estilo-papel span[style*="color: #0ff"], .grimorio-estilo-papel span[style*="color: #0f0"], .grimorio-estilo-papel span[style*="color: #ff003c"],
-                .grimorio-estilo-papel span[style*="color: #ffcc00"], .grimorio-estilo-papel span[style*="color: #ff8800"], .grimorio-estilo-papel span[style*="color: #00ccff"],
-                .grimorio-estilo-papel div[style*="color: #ff00ff"] {
-                    color: var(--tinta) !important;
-                }
+                .grimorio-estilo-papel button { background: transparent !important; border: 2px dashed var(--tinta) !important; border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important; color: var(--tinta) !important; font-weight: bold !important; text-transform: uppercase !important; transition: all 0.2s ease !important; }
+                .grimorio-estilo-papel button:hover { background: var(--tinta) !important; color: var(--fundo) !important; border-style: solid !important; transform: scale(1.02) rotate(-1deg) !important; }
+                .grimorio-estilo-papel input, .grimorio-estilo-papel textarea, .grimorio-estilo-papel select { background: rgba(0,0,0,0.03) !important; border: none !important; border-bottom: 2px dotted var(--tinta) !important; color: var(--tinta) !important; border-radius: 0 !important; }
+                .grimorio-estilo-papel input:focus, .grimorio-estilo-papel textarea:focus { background: rgba(0,0,0,0.06) !important; border-bottom: 2px solid var(--tinta) !important; }
+                .grimorio-estilo-papel input::placeholder, .grimorio-estilo-papel textarea::placeholder { color: var(--tinta) !important; opacity: 0.5 !important; font-style: italic !important; }
                 .grimorio-estilo-papel .poderes-sidebar .def-box { border: none !important; border-right: 2px dashed var(--tinta) !important; border-radius: 0 !important; }
             `}</style>
 
@@ -586,7 +554,7 @@ export default function MarcadosPanel() {
             <div style={{ position: 'absolute', top: '-25px', right: '30px', zIndex: 20, display: 'flex', gap: '15px' }}>
                 <div style={{ position: 'relative' }}>
                     <button onClick={handleSalvarTudo} style={{ background: salvando ? '#a5d6a7' : '#4caf50', color: '#fff', border: '1px solid #333', borderBottom: '3px solid #222', padding: '10px 20px', fontFamily: 'inherit', fontWeight: 'bold', fontSize: '1.1em', cursor: 'pointer', borderRadius: '4px', boxShadow: '2px 4px 8px rgba(0,0,0,0.4)', transform: 'rotate(1deg)' }}>
-                        {salvando ? '✅ Guardado!' : '💾 Guardar Diário'}
+                        {salvando ? '✅ Guardado!' : '💾 Guardar Ficha'}
                     </button>
                 </div>
                 <div style={{ position: 'relative' }}>
@@ -594,28 +562,16 @@ export default function MarcadosPanel() {
                     {modalEstilo && (
                         <div className="fade-in" style={{ position: 'absolute', top: '55px', right: '0', background: '#ffe4f0', padding: '15px', border: '1px solid #ccc', boxShadow: '5px 5px 15px rgba(0,0,0,0.3)', width: '320px', zIndex: 20, borderRadius: '6px', color: '#000', maxHeight: '70vh', overflowY: 'auto' }}>
                             
-                            {/* 🔥 COR DO TEXTO 🔥 */}
+                            {/* 🔥 COR DO TEXTO E FUNDO 🔥 */}
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>Cor do Texto da Ficha:</label>
-                            <input 
-                                type="color" value={localCorTexto} 
-                                onChange={(e) => handleStyleChange('corTexto', e.target.value)} 
-                                style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} 
-                            />
-
+                            <input type="color" value={localCorTexto} onChange={(e) => handleStyleChange('corTexto', e.target.value)} style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} />
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>Cor do Papel (Fundo Base):</label>
-                            <input 
-                                type="color" value={localCorFundo} 
-                                onChange={(e) => handleStyleChange('diarioCor', e.target.value)} 
-                                style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} 
-                            />
+                            <input type="color" value={localCorFundo} onChange={(e) => handleStyleChange('diarioCor', e.target.value)} style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} />
                             
-                            {/* 🔥 FUNDO DA FICHA 🔥 */}
+                            {/* 🔥 FUNDO ALQUÍMICO 🔥 */}
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>🖼️ Imagem de Fundo (URL):</label>
                             <div style={{ display: 'flex', gap: '5px', marginBottom: '5px' }}>
-                                <input 
-                                    type="text" value={localBgImg} onChange={(e) => handleStyleChange('bgImg', e.target.value)} placeholder="Cole o Link aqui..."
-                                    style={{ flex: 1, padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', color: 'inherit' }} 
-                                />
+                                <input type="text" value={localBgImg} onChange={(e) => handleStyleChange('bgImg', e.target.value)} placeholder="Cole o Link aqui..." style={{ flex: 1, padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', color: 'inherit' }} />
                                 <label style={{ background: 'rgba(0,0,0,0.1)', border: '1px solid rgba(0,0,0,0.2)', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="Fazer upload de Fundo">
                                     📁<input type="file" accept="image/*" onChange={handleBgUpload} style={{ display: 'none' }} />
                                 </label>
@@ -635,15 +591,11 @@ export default function MarcadosPanel() {
                             {/* 🔥 MOLDURA 🔥 */}
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>✨ Moldura do Personagem:</label>
                             <div style={{ display: 'flex', gap: '5px', marginBottom: '5px' }}>
-                                <input 
-                                    type="text" value={localMolduraAvatar} onChange={(e) => handleStyleChange('molduraAvatar', e.target.value)} placeholder="Cole o Link da moldura..."
-                                    style={{ flex: 1, padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', color: 'inherit' }} 
-                                />
+                                <input type="text" value={localMolduraAvatar} onChange={(e) => handleStyleChange('molduraAvatar', e.target.value)} placeholder="Cole o Link da moldura..." style={{ flex: 1, padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', color: 'inherit' }} />
                                 <label style={{ background: 'rgba(0,0,0,0.1)', border: '1px solid rgba(0,0,0,0.2)', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="Upload de Moldura">
                                     📁<input type="file" accept="image/*" onChange={handleMolduraUpload} style={{ display: 'none' }} />
                                 </label>
                             </div>
-                            
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>🪄 Remoção de Fundo (Moldura):</label>
                             <select value={localModoMoldura} onChange={(e) => handleStyleChange('modoMoldura', e.target.value)} style={{ width: '100%', padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', fontFamily: 'inherit', marginBottom: '10px' }}>
                                 <option value="screen">Fundo Preto (Magia Screen)</option>
@@ -653,12 +605,7 @@ export default function MarcadosPanel() {
 
                             <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9em', color: '#555', marginTop: '10px', fontWeight: 'bold' }}>
                                 <span>Tingir Moldura & Ícone:</span>
-                                <input 
-                                    type="color" value={localCorMoldura} 
-                                    onChange={(e) => handleStyleChange('corMoldura', e.target.value)} 
-                                    style={{ width: '40px', height: '25px', border: 'none', cursor: 'pointer', background: 'transparent' }} 
-                                    title="Tinge o dourado/metálico da moldura!"
-                                />
+                                <input type="color" value={localCorMoldura} onChange={(e) => handleStyleChange('corMoldura', e.target.value)} style={{ width: '40px', height: '25px', border: 'none', cursor: 'pointer', background: 'transparent' }} title="Tinge o dourado/metálico da moldura!" />
                             </label>
                             <div style={{ display: 'flex', gap: '5px', marginBottom: '15px', marginTop: '5px' }}>
                                 {['#ffffff', '#aa00ff', '#ffcc00', '#0088ff', '#ff003c', '#000000'].map(c => (
@@ -668,10 +615,7 @@ export default function MarcadosPanel() {
 
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>🔷 Ícone da Classe Manual (Opcional):</label>
                             <div style={{ display: 'flex', gap: '5px', marginBottom: '15px' }}>
-                                <input 
-                                    type="text" value={localIconeClasse} onChange={(e) => handleStyleChange('iconeClasse', e.target.value)} placeholder="Link do Ícone..."
-                                    style={{ flex: 1, padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', color: 'inherit' }} 
-                                />
+                                <input type="text" value={localIconeClasse} onChange={(e) => handleStyleChange('iconeClasse', e.target.value)} placeholder="Link do Ícone..." style={{ flex: 1, padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', color: 'inherit' }} />
                                 <label style={{ background: 'rgba(0,0,0,0.1)', border: '1px solid rgba(0,0,0,0.2)', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="Upload do Ícone">
                                     📁<input type="file" accept="image/*" onChange={handleIconeUpload} style={{ display: 'none' }} />
                                 </label>
@@ -680,11 +624,7 @@ export default function MarcadosPanel() {
                             <hr style={{ border: '1px dashed #ccc', margin: '15px 0' }}/>
 
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>Cor da Tinta (Radar):</label>
-                            <input 
-                                type="color" value={localCorTinta} 
-                                onChange={(e) => handleStyleChange('corTintaRadar', e.target.value)} 
-                                style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} 
-                            />
+                            <input type="color" value={localCorTinta} onChange={(e) => handleStyleChange('corTintaRadar', e.target.value)} style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} />
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>Fonte da Letra:</label>
                             <select value={fonteDiario} onChange={(e) => { salvar('estetica.diarioFonte', e.target.value); callSave(); }} style={{ width: '100%', padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', fontFamily: 'inherit' }}>
                                 <option value='"Comic Sans MS", "Chalkboard SE", "Marker Felt", cursive'>✏️ Escrito à Mão</option>
@@ -705,9 +645,10 @@ export default function MarcadosPanel() {
                 </div>
             </div>
 
+            {/* 🔥 AS 2 PÁGINAS DA FICHA DEFINITIVA 🔥 */}
             <div key={paginaAtual} className={`swoop-container ${animDirection === 'next' ? 'page-swoop-next' : 'page-swoop-prev'}`} style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '40px', paddingBottom: '30px' }}>
                 
-                {/* ======================= PÁGINA 1 ======================= */}
+                {/* ======================= PÁGINA 1: FICHA E AVATAR ======================= */}
                 {paginaAtual === 1 && (
                     <>
                         <div style={{ flex: '1 1 450px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
@@ -741,21 +682,17 @@ export default function MarcadosPanel() {
                                 ))}
                             </div>
 
-                            {/* 🔥 A MOLDURA E O AVATAR COM ISOLATION: ISOLATE! 🔥 */}
                             <div style={{ marginTop: '20px', position: 'relative', width: '320px', height: '480px', display: 'flex', flexDirection: 'column', borderRadius: '8px', border: minhaFicha.avatar?.base ? 'none' : '2px dashed currentColor', boxShadow: minhaFicha.avatar?.base ? '8px 8px 0px rgba(0,0,0,0.2)' : 'none', isolation: 'isolate' }}>
                                 {uploadingImg ? (
                                     <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.7)', color: '#fff', fontWeight: 'bold', zIndex: 20 }}>✍️ Forjando...</div>
                                 ) : minhaFicha.avatar?.base ? (
                                     <>
-                                        {/* 🔥 FOTO ESTICADA SEM CORTE (objectPosition: top center) 🔥 */}
                                         <img src={minhaFicha.avatar.base} alt="Avatar" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', zIndex: 1, borderRadius: '8px' }} />
                                         
-                                        {/* 🔥 A MOLDURA COM ALQUIMIA DE COR FORTE E FUNDO 🔥 */}
                                         {localMolduraAvatar && (
                                             <div style={{ position: 'absolute', top: '-3.5%', left: '-3%', width: '106%', height: '107%', zIndex: 2, pointerEvents: 'none', mixBlendMode: localModoMoldura, isolation: 'isolate' }}>
                                                 <img src={localMolduraAvatar} alt="Moldura" style={{ width: '100%', height: '100%', objectFit: 'fill', position: 'absolute', top: 0, left: 0, filter: 'contrast(1.2) saturate(1.2)' }} />
                                                 
-                                                {/* CAMADA DE COR FORTE (Color + Overlay) */}
                                                 {localCorMoldura && localCorMoldura !== '#ffffff' && (
                                                     <>
                                                         <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: localCorMoldura, mixBlendMode: 'color' }} />
@@ -765,15 +702,12 @@ export default function MarcadosPanel() {
                                             </div>
                                         )}
 
-                                        {/* 🔥 O ÍCONE DA CLASSE PERFEITO (COM MÁSCARA EXATA PARA NÃO VAZAR O QUADRADO) */}
                                         {(classeInfo || localIconeClasse) && (
                                             <div style={{ position: 'absolute', bottom: '-8px', left: '50%', transform: 'translateX(-50%)', zIndex: 3, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '70px', height: '70px' }}>
                                                 {iconeFinal ? (
                                                     <div style={{ position: 'relative', width: '100%', height: '100%', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))', isolation: 'isolate' }}>
-                                                        {/* Imagem Original Base */}
                                                         <img src={iconeFinal} alt="Classe" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'contain' }} />
                                                         
-                                                        {/* Camadas de Cor recortadas pela Máscara para não pintar o quadrado inteiro! */}
                                                         {localCorMoldura && localCorMoldura !== '#ffffff' && (
                                                             <>
                                                                 <div style={{ 
@@ -881,7 +815,7 @@ export default function MarcadosPanel() {
                     </>
                 )}
 
-                {/* ======================= PÁGINA 2 ======================= */}
+                {/* ======================= PÁGINA 2: ANÁLISE DE PODER ======================= */}
                 {paginaAtual === 2 && (
                     <>
                         <div style={{ width: '100%', textAlign: 'center', borderBottom: '2px solid currentColor', paddingBottom: '10px', marginBottom: '20px' }}>
@@ -922,7 +856,6 @@ export default function MarcadosPanel() {
                             </div>
                         </div>
 
-                        {/* 🔥 TABELA SUPREMA DE ASCENSÃO E DIVISORES */}
                         <div style={{ width: '100%', marginTop: '30px', background: 'rgba(0,0,0,0.03)', padding: '20px', borderRadius: '15px', border: '1px dashed currentColor' }}>
                             <h2 style={{ fontSize: '1.8em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 20px 0', textAlign: 'center', color: 'inherit' }}>Mecânicas de Ascensão e Divisores</h2>
 
@@ -964,24 +897,13 @@ export default function MarcadosPanel() {
                     </>
                 )}
 
-                {/* ======================= PÁGINA 3 ======================= */}
-                {paginaAtual === 3 && (
-                    <div className="grimorio-estilo-papel" style={{ width: '100%' }}>
-                        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                            <h1 style={{ fontSize: '2.5em', fontStyle: 'italic', fontWeight: 'bold', margin: 0, paddingBottom: '10px', borderBottom: `2px dashed ${localCorTinta}` }}>
-                                <LabelMagico valor={getLabel('tituloPg3', 'O Grimório Místico')} onChange={(v) => setLabel('tituloPg3', v)} />
-                            </h1>
-                        </div>
-                        <PoderesPanel />
-                    </div>
-                )}
-
             </div>
 
+            {/* BOTÕES DE NAVEGAÇÃO DA PÁGINA (AGORA SÓ VAI ATÉ À PÁGINA 2) */}
             <div style={{ position: 'absolute', bottom: '20px', left: '0', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px', fontFamily: 'inherit' }}>
-                <button onClick={() => mudarPagina(Math.max(1, paginaAtual - 1))} disabled={paginaAtual === 1} style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 1 ? 'default' : 'pointer', opacity: paginaAtual === 1 ? 0.3 : 1, fontFamily: 'inherit', color: 'inherit' }}>⮜ Anterior</button>
-                <span style={{ fontSize: '1.1em', fontWeight: 'bold', borderBottom: '2px solid currentColor', padding: '0 10px' }}>Página {paginaAtual} de 3</span>
-                <button onClick={() => mudarPagina(Math.min(3, paginaAtual + 1))} disabled={paginaAtual === 3} style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 3 ? 'default' : 'pointer', opacity: paginaAtual === 3 ? 0.3 : 1, fontFamily: 'inherit', color: 'inherit' }}>Próxima ⮞</button>
+                <button onClick={() => mudarPagina(1)} disabled={paginaAtual === 1} style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 1 ? 'default' : 'pointer', opacity: paginaAtual === 1 ? 0.3 : 1, fontFamily: 'inherit', color: 'inherit' }}>⮜ Anterior</button>
+                <span style={{ fontSize: '1.1em', fontWeight: 'bold', borderBottom: '2px solid currentColor', padding: '0 10px' }}>Página {paginaAtual} de 2</span>
+                <button onClick={() => mudarPagina(2)} disabled={paginaAtual === 2} style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 2 ? 'default' : 'pointer', opacity: paginaAtual === 2 ? 0.3 : 1, fontFamily: 'inherit', color: 'inherit' }}>Próxima ⮞</button>
             </div>
 
         </div>

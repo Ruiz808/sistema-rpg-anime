@@ -6,11 +6,9 @@ export default function Sidebar({ onResetClick }) {
     const setAbaAtiva = useStore(s => s.setAbaAtiva);
     const isMestre = useStore(s => s.isMestre);
 
-    // Estado para controlar qual "Gaveta" (Categoria) está aberta. 
-    // Começa com a 'entidade' aberta por padrão.
     const [gavetaAberta, setGavetaAberta] = useState('entidade');
 
-    // 🗂️ O NOVO SISTEMA DE AGRUPAMENTO
+    // 🗂️ O NOVO SISTEMA DE AGRUPAMENTO (COM A GAVETA DE DIÁRIOS!)
     const categorias = [
         {
             id: 'entidade', icone: '👤', nome: 'Entidade', cor: '#00ffcc', bg: 'rgba(0,255,204,0.15)',
@@ -18,9 +16,14 @@ export default function Sidebar({ onResetClick }) {
                 { id: 'aba-status', icone: '❤️', nome: 'Status' },
                 { id: 'aba-ficha', icone: '📋', nome: 'Ficha' },
                 { id: 'aba-perfil', icone: '🆔', nome: 'Perfil' },
-                { id: 'aba-Ficha Def', icone: '📋', nome: 'Ficha Completa' },
-                
-                
+            ]
+        },
+        // 🔥 A NOVA GAVETA EXCLUSIVA PARA AS FICHAS FÍSICAS!
+        {
+            id: 'diarios', icone: '📜', nome: 'Diários Físicos', cor: '#bba9d8', bg: 'rgba(187,169,216,0.15)',
+            abas: [
+                { id: 'aba-Ficha Def', icone: '📝', nome: 'Ficha Definitiva' },
+                { id: 'aba-grimorio', icone: '📖', nome: 'O Grimório Místico' },
             ]
         },
         {
@@ -35,7 +38,7 @@ export default function Sidebar({ onResetClick }) {
         {
             id: 'arsenal', icone: '🎒', nome: 'Arsenal e Oculto', cor: '#ffcc00', bg: 'rgba(255,204,0,0.15)',
             abas: [
-                { id: 'aba-poderes', icone: '🌀', nome: 'Poderes' },
+                { id: 'aba-poderes', icone: '🌀', nome: 'Poderes Clássicos' },
                 { id: 'aba-arsenal', icone: '🎒', nome: 'Inventário' },
                 { id: 'aba-elementos', icone: '🔥', nome: 'Elementos' },
             ]
@@ -45,7 +48,7 @@ export default function Sidebar({ onResetClick }) {
             abas: [
                 { id: 'aba-mapa', icone: '🗺️', nome: 'Mapa' },
                 { id: 'aba-log', icone: '📜', nome: 'Feed e Log' },
-                { id: 'aba-compendio', icone: '📖', nome: 'Lore do Mundo' },
+                { id: 'aba-compendio', icone: '📚', nome: 'Lore do Mundo' },
                 { id: 'aba-musica', icone: '🎵', nome: 'Jukebox' },
                 { id: 'aba-oraculo', icone: '🤖', nome: 'Oráculo (IA)' },
                 { id: 'aba-gravador', icone: '🎙️', nome: 'Gravador' },
@@ -54,43 +57,25 @@ export default function Sidebar({ onResetClick }) {
     ];
 
     const alternarGaveta = (id) => {
-        // Se clicar na mesma gaveta que já está aberta, ela fecha. Senão, abre a nova.
         setGavetaAberta(gavetaAberta === id ? '' : id);
     };
 
     return (
         <div className="sidebar-magica" style={{
-            width: '70px',
-            height: '100vh',
-            background: 'var(--bg-sidebar, rgba(10, 5, 20, 0.6))',
-            backdropFilter: 'blur(10px)',
-            borderRight: '1px solid rgba(255,255,255,0.05)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            padding: '20px 0',
-            gap: '15px',
-            overflowY: 'auto',
-            overflowX: 'hidden',
-            zIndex: 100,
+            width: '70px', height: '100vh', background: 'var(--bg-sidebar, rgba(10, 5, 20, 0.6))',
+            backdropFilter: 'blur(10px)', borderRight: '1px solid rgba(255,255,255,0.05)',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px 0',
+            gap: '15px', overflowY: 'auto', overflowX: 'hidden', zIndex: 100,
         }}>
             <style>{`
-                /* Esconde a barra de rolagem nativa para manter o design limpo */
                 .sidebar-magica::-webkit-scrollbar { width: 0px; }
-                
                 .gaveta-container { display: flex; flex-direction: column; align-items: center; width: 100%; }
-                
-                /* Botões Principais (Macros) */
                 .btn-macro { width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.6em; cursor: pointer; border: 1px solid transparent; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: rgba(0,0,0,0.3); color: #fff; filter: grayscale(0.5); }
                 .btn-macro:hover { transform: scale(1.1); filter: grayscale(0); background: rgba(255,255,255,0.1); }
                 .btn-macro.ativa { filter: grayscale(0); transform: scale(1.05); }
-
-                /* O Segredo da Animação das Sub-Abas */
                 .sub-abas-wrapper { display: flex; flex-direction: column; gap: 8px; overflow: hidden; transition: max-height 0.4s ease, opacity 0.3s ease, margin 0.3s ease; width: 100%; align-items: center; }
                 .sub-abas-wrapper.fechada { max-height: 0px; opacity: 0; pointer-events: none; margin-top: 0; }
                 .sub-abas-wrapper.aberta { max-height: 400px; opacity: 1; margin-top: 10px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
-
-                /* Botões Menores (Sub-Abas) */
                 .btn-micro { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2em; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; background: rgba(0,0,0,0.5); opacity: 0.6; }
                 .btn-micro:hover { opacity: 1; background: rgba(255,255,255,0.1); transform: translateX(3px); }
                 .btn-micro.ativa { opacity: 1; transform: scale(1.1); }
@@ -103,25 +88,19 @@ export default function Sidebar({ onResetClick }) {
                         className={`btn-macro ${abaAtiva === 'aba-mestre' ? 'ativa' : ''}`}
                         onClick={() => { setAbaAtiva('aba-mestre'); setGavetaAberta(''); }}
                         style={abaAtiva === 'aba-mestre' ? { background: 'rgba(255,204,0,0.2)', borderColor: '#ffcc00', boxShadow: '0 0 15px rgba(255,204,0,0.4)' } : {}}
-                    >
-                        👑
-                    </button>
+                    >👑</button>
                 </div>
             )}
 
             {categorias.map(cat => (
                 <div key={cat.id} className="gaveta-container">
-                    {/* BOTÃO DA CATEGORIA PRINCIPAL */}
                     <button
                         title={cat.nome}
                         className={`btn-macro ${gavetaAberta === cat.id ? 'ativa' : ''}`}
                         onClick={() => alternarGaveta(cat.id)}
                         style={gavetaAberta === cat.id ? { background: cat.bg, borderColor: cat.cor, boxShadow: `0 0 15px ${cat.bg}` } : {}}
-                    >
-                        {cat.icone}
-                    </button>
+                    >{cat.icone}</button>
 
-                    {/* SUB-ABAS (Ficam escondidas até a categoria ser clicada) */}
                     <div className={`sub-abas-wrapper ${gavetaAberta === cat.id ? 'aberta' : 'fechada'}`}>
                         {cat.abas.map(aba => (
                             <button
@@ -130,9 +109,7 @@ export default function Sidebar({ onResetClick }) {
                                 className={`btn-micro ${abaAtiva === aba.id ? 'ativa' : ''}`}
                                 onClick={() => setAbaAtiva(aba.id)}
                                 style={abaAtiva === aba.id ? { background: cat.bg, borderColor: cat.cor, boxShadow: `inset 0 0 10px ${cat.cor}` } : {}}
-                            >
-                                {aba.icone}
-                            </button>
+                            >{aba.icone}</button>
                         ))}
                     </div>
                 </div>
