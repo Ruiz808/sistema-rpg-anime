@@ -1,11 +1,8 @@
 import React, { useState } from 'react';
-import { useElementosForm, emogis, cores, ABAS_GRIMORIO, BONUS_OPTIONS, NIVEIS_DOMINIO } from './ElementosFormContext';
+import { useElementosForm, emogis, cores, BONUS_OPTIONS, NIVEIS_DOMINIO } from './ElementosFormContext';
 
 const FALLBACK = <div style={{ opacity: 0.5, padding: 10 }}>Elementos provider não encontrado...</div>;
 
-// ============================================================================
-// 🔥 O IMPORTADOR INTELIGENTE DO GRIMÓRIO 🔥
-// ============================================================================
 export function ElementosImportadorIA() {
     const ctx = useElementosForm();
     const [aberto, setAberto] = useState(false);
@@ -66,14 +63,14 @@ RETORNE EXATAMENTE UM JSON PURO:
 }
 
 // ============================================================================
-// 🔥 NOVO NAVEGADOR DE PÁGINAS (SUBSTITUI A BARRA LATERAL!) 🔥
+// 🔥 O NAVEGADOR COM ÍNDICE RÁPIDO 🔥
 // ============================================================================
 export function ElementosNavegacaoLivro() {
     const ctx = useElementosForm();
     if (!ctx) return null;
-    const { abaAtual, setAbaAtual, cancelarEdicaoElem } = ctx;
+    const { abaAtual, setAbaAtual, cancelarEdicaoElem, abasDinamicas } = ctx;
 
-    const chaves = Object.keys(ABAS_GRIMORIO);
+    const chaves = Object.keys(abasDinamicas);
     const indexAtual = chaves.indexOf(abaAtual);
     const total = chaves.length;
 
@@ -84,7 +81,7 @@ export function ElementosNavegacaoLivro() {
         }
     };
 
-    const dadosAba = ABAS_GRIMORIO[abaAtual];
+    const dadosAba = abasDinamicas[abaAtual];
 
     return (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px dashed currentColor', paddingBottom: '15px', marginBottom: '20px' }}>
@@ -92,8 +89,20 @@ export function ElementosNavegacaoLivro() {
                 ⮜ Folhear para Trás
             </button>
             
-            <div style={{ textAlign: 'center' }}>
-                <span style={{ fontSize: '0.9em', opacity: 0.7, textTransform: 'uppercase', letterSpacing: '2px' }}>Capítulo {indexAtual + 1} de {total}</span>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <select 
+                    value={abaAtual} 
+                    onChange={(e) => { setAbaAtual(e.target.value); cancelarEdicaoElem(); }}
+                    style={{ background: 'transparent', color: 'inherit', border: 'none', borderBottom: '1px dotted currentColor', fontSize: '0.9em', textTransform: 'uppercase', letterSpacing: '1px', outline: 'none', cursor: 'pointer', textAlign: 'center', opacity: 0.8 }}
+                    title="Pular para um Capítulo"
+                >
+                    {chaves.map((k, i) => (
+                        <option key={k} value={k} style={{ background: '#1e1423', color: '#e6d5b8' }}>
+                            Capítulo {i + 1} de {total}: {abasDinamicas[k].label}
+                        </option>
+                    ))}
+                </select>
+                
                 <h2 style={{ margin: '5px 0 0 0', fontSize: '1.8em', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <span>{dadosAba.icon}</span> {dadosAba.label}
                 </h2>
@@ -107,16 +116,20 @@ export function ElementosNavegacaoLivro() {
 }
 
 // ============================================================================
-// O RESTO DOS COMPONENTES VISUAIS
+// AS PÁGINAS COM O BOTÃO CRIAR
 // ============================================================================
-
 export function ElementosGrimorio() {
     const ctx = useElementosForm();
     if (!ctx) return FALLBACK;
-    const { abaAtual, elemSelecionado, selecionarElemento, minhaFicha } = ctx;
-    const categoriasVisiveis = ABAS_GRIMORIO[abaAtual]?.categorias || [];
+    const { abaAtual, elemSelecionado, selecionarElemento, minhaFicha, abasDinamicas, criarElementoCustomizado } = ctx;
+    const categoriasVisiveis = abasDinamicas[abaAtual]?.categorias || [];
 
     const dominios = minhaFicha?.dominios?.elementais || {};
+
+    const handleCriar = () => {
+        const nome = window.prompt(`Como se chama o novo Conhecimento/Caminho que quer forjar neste capítulo?`);
+        if (nome) criarElementoCustomizado(nome);
+    };
 
     return (
         <div key={abaAtual} className="fade-in" style={{ padding: '0 15px 15px 15px', borderBottom: '2px dashed currentColor', marginBottom: '20px' }}>
@@ -156,6 +169,13 @@ export function ElementosGrimorio() {
                     </div>
                 ))
             )}
+
+            {/* 🔥 BOTÃO DE CRIAÇÃO LIVRE 🔥 */}
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '25px' }}>
+                <button onClick={handleCriar} style={{ background: 'transparent', border: '1px dashed currentColor', color: 'inherit', padding: '5px 15px', borderRadius: '4px', opacity: 0.6, fontSize: '0.85em', cursor: 'pointer' }}>
+                    + Forjar Novo Conhecimento Neste Capítulo
+                </button>
+            </div>
         </div>
     );
 }

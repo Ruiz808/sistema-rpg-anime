@@ -35,10 +35,8 @@ export const cores = {
     'Aura Pura': '#b366ff', 'Projeção de Aura': '#b366ff', 'Artes Marciais': '#ff3333', 'Reforço Físico': '#ff3333', 'Fusões Básicas': '#ff00ff', 'Fusões Avançadas': '#ff00ff'
 };
 
-// ============================================================================
-// 📖 A DIVISÃO ÉPICA DOS CAPÍTULOS DO GRIMÓRIO
-// ============================================================================
-export const ABAS_GRIMORIO = {
+// Matriz Base de Capítulos (Será expandida dinamicamente)
+const ABAS_GRIMORIO_STATIC = {
     'basicos': {
         label: 'Elementos Básicos', icon: '🔥',
         categorias: [
@@ -103,16 +101,6 @@ export const ABAS_GRIMORIO = {
     }
 };
 
-// Se aparecer alguma magia extra misteriosa, cria um capítulo de "Perdidos" no fim do livro!
-const itensJáCategorizados = Object.values(ABAS_GRIMORIO).flatMap(aba => aba.categorias.flatMap(c => c.itens));
-const magiasSobressalentes = Object.keys(cores).filter(k => !itensJáCategorizados.includes(k));
-if (magiasSobressalentes.length > 0) { 
-    ABAS_GRIMORIO['extras'] = {
-        label: 'Pergaminhos Perdidos', icon: '📜',
-        categorias: [{ titulo: 'Magias e Elementos Não Catalogados', itens: magiasSobressalentes }]
-    }; 
-}
-
 export const BONUS_OPTIONS = [
     { value: 'nenhum', label: 'Nenhum (Apenas Elemento)' },
     { value: 'mult_dano', label: 'Mult Dano' },
@@ -150,7 +138,7 @@ export function ElementosFormProvider({ children }) {
     const elemEditandoId = useStore(s => s.elemEditandoId);
     const setElemEditandoId = useStore(s => s.setElemEditandoId);
 
-    const [abaAtual, setAbaAtual] = useState('basicos'); // 🔥 Inicia na página dos Elementos Básicos!
+    const [abaAtual, setAbaAtual] = useState('basicos'); 
     const [elemSelecionado, setElemSelecionado] = useState('Neutro');
     const [nomeElem, setNomeElem] = useState('');
     const [descricaoElem, setDescricaoElem] = useState(''); 
@@ -180,6 +168,55 @@ export function ElementosFormProvider({ children }) {
         return parseInt(strVal.substring(0, 2), 10);
     }, []);
 
+    // 🔥 O MOTOR DE CAPÍTULOS DINÂMICOS (Adiciona os Customizados pelo Jogador) 🔥
+    const abasDinamicas = useMemo(() => {
+        const base = JSON.parse(JSON.stringify(ABAS_GRIMORIO_STATIC)); // Deep Copy para não estragar a original
+        const custom = minhaFicha?.elementosCustomizados || {};
+
+        // Injeta as criações nas respetivas abas
+        for (const abaKey in custom) {
+            if (base[abaKey]) {
+                base[abaKey].categorias.push({
+                    titulo: 'Conhecimentos Forjados por Mim',
+                    itens: custom[abaKey]
+                });
+            }
+        }
+
+        // Recupera elementos extras não categorizados no código ou magias abandonadas da ficha
+        const itensJáCategorizados = Object.values(base).flatMap(aba => aba.categorias.flatMap(c => c.itens));
+        const magiasSobressalentes = Object.keys(cores).filter(k => !itensJáCategorizados.includes(k));
+        const elementosNasMagias = (minhaFicha?.ataquesElementais || []).map(m => m.elemento).filter(Boolean);
+        
+        const extraFinal = [...new Set([...magiasSobressalentes, ...elementosNasMagias])]
+            .filter(k => !itensJáCategorizados.includes(k) && k !== 'Neutro');
+
+        if (extraFinal.length > 0) {
+            base['extras'] = {
+                label: 'Pergaminhos Perdidos', icon: '📜',
+                categorias: [{ titulo: 'Magias Desconhecidas', itens: extraFinal }]
+            };
+        }
+
+        return base;
+    }, [minhaFicha?.elementosCustomizados, minhaFicha?.ataquesElementais]);
+
+    // 🔥 CRIAR NOVO ELEMENTO E SALVAR NO FIREBASE 🔥
+    const criarElementoCustomizado = useCallback((nome) => {
+        if (!nome || !nome.trim()) return;
+        const nForm = nome.trim();
+        updateFicha(f => {
+            if (!f.elementosCustomizados) f.elementosCustomizados = {};
+            if (!f.elementosCustomizados[abaAtual]) f.elementosCustomizados[abaAtual] = [];
+            if (!f.elementosCustomizados[abaAtual].includes(nForm)) {
+                f.elementosCustomizados[abaAtual].push(nForm);
+            }
+        });
+        salvarFichaSilencioso();
+        setElemSelecionado(nForm);
+    }, [abaAtual, updateFicha, setElemSelecionado]);
+
+    // Lógicas de inatos e combustão...
     const elementosInatos = useMemo(() => {
         if (!minhaFicha) return [];
         const inatos = [];
@@ -305,11 +342,8 @@ export function ElementosFormProvider({ children }) {
     const cancelarEdicaoElem = useCallback(() => {
         setElemEditandoId(null); setNomeElem(''); setDescricaoElem(''); 
         setElementosAfetados(''); 
-        
-        // Atualizado para englobar todas as abas genéricas
-        const abasNaoManas = ['basicos', 'basicos_verdadeiros', 'avancados', 'avancados_verdadeiros', 'primordiais', 'primordiais_verdadeiros', 'absolutos', 'compostos'];
-        setEnergiaCombustao(abasNaoManas.includes(abaAtual) ? 'flexivel' : 'mana');
-        
+        const abasFlexiveis = ['basicos', 'basicos_verdadeiros', 'avancados', 'avancados_verdadeiros', 'primordiais', 'primordiais_verdadeiros', 'absolutos', 'compostos'];
+        setEnergiaCombustao(abasFlexiveis.includes(abaAtual) ? 'flexivel' : 'mana');
         setTipoMecanica('ataque'); setAlcanceQuad(1); setAreaQuad(0);
         setAlvosAfetados('todos'); setDuracaoZona(0);
     }, [setElemEditandoId, abaAtual]);
@@ -357,7 +391,7 @@ export function ElementosFormProvider({ children }) {
         const el = p.elemento || 'Neutro';
         setElemSelecionado(el);
         let foundAba = 'basicos';
-        for (const [abaKey, abaData] of Object.entries(ABAS_GRIMORIO)) {
+        for (const [abaKey, abaData] of Object.entries(abasDinamicas)) {
             if (abaData.categorias.some(cat => cat.itens.includes(el))) {
                 foundAba = abaKey;
                 break;
@@ -372,7 +406,7 @@ export function ElementosFormProvider({ children }) {
         setAreaQuad(p.areaQuad || 0); setAlvosAfetados(p.alvosAfetados || 'todos'); setDuracaoZona(p.duracaoZona || 0);
 
         if (formRef.current) formRef.current.scrollIntoView({ behavior: 'smooth' });
-    }, [minhaFicha.ataquesElementais, setElemEditandoId, updateFicha]);
+    }, [minhaFicha.ataquesElementais, setElemEditandoId, updateFicha, abasDinamicas]);
 
     const toggleEquiparElem = useCallback((id) => {
         updateFicha((ficha) => {
@@ -452,11 +486,11 @@ export function ElementosFormProvider({ children }) {
         formRef, profGlobal, getModificadorDoisDigitos, allowedEnergies,
         selecionarElemento, salvarNovoElem, editarElem, cancelarEdicaoElem, toggleEquiparElem,
         deletarElem, conjurarMagia, magiasDoGrupo, magiasConjuradasOutros, elemEditandoId, minhaFicha,
-        elementosInatos, injetarJsonDaIA 
+        elementosInatos, injetarJsonDaIA, abasDinamicas, criarElementoCustomizado 
     }), [
         abaAtual, elemSelecionado, nomeElem, descricaoElem, elementosAfetados, bonusTipo, bonusValor, custoValor, dadosQtd, dadosFaces,
         energiaCombustao, tipoMecanica, savingAttr, alcanceQuad, areaQuad, alvosAfetados, duracaoZona, profGlobal, getModificadorDoisDigitos, allowedEnergies,
-        selecionarElemento, salvarNovoElem, editarElem, cancelarEdicaoElem, toggleEquiparElem, deletarElem, conjurarMagia, magiasDoGrupo, magiasConjuradasOutros, elemEditandoId, minhaFicha, elementosInatos, injetarJsonDaIA
+        selecionarElemento, salvarNovoElem, editarElem, cancelarEdicaoElem, toggleEquiparElem, deletarElem, conjurarMagia, magiasDoGrupo, magiasConjuradasOutros, elemEditandoId, minhaFicha, elementosInatos, injetarJsonDaIA, abasDinamicas, criarElementoCustomizado
     ]);
 
     return <ElementosFormContext.Provider value={value}>{children}</ElementosFormContext.Provider>;
