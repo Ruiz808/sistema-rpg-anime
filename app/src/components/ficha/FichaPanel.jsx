@@ -2,15 +2,10 @@ import React from 'react';
 import { FichaFormProvider } from './FichaFormContext';
 import { 
     FichaBioGroup, 
-    FichaCondicoesEElementais, // 🔥 IMPORTAÇÃO DO NOVO PAINEL 🔥
+    FichaCondicoesEElementais,
     FichaSeresSelados, 
     FichaEditorAtributos, 
-    FichaReatorElemental, 
-    FichaDistorcaoConceitual, 
-    FichaMatrizUtilitaria, 
     FichaFuriaBerserker, 
-    FichaMarcadoresCena, 
-    FichaForjaCalamidade, 
     FichaMultiplicadoresDano 
 } from './FichaSubComponents';
 import TabelaPrestigio from './TabelaPrestigio';
@@ -25,17 +20,11 @@ export default function FichaPanel({ className, children }) {
                     <>
                         <FichaBioGroup />
                         
-                        {/* 🔥 O PAINEL DE SANGRAMENTOS E RESISTÊNCIAS FICA AQUI, BEM VISÍVEL 🔥 */}
                         <FichaCondicoesEElementais /> 
                         
                         <FichaSeresSelados />
                         <FichaEditorAtributos />
-                        <FichaReatorElemental />
-                        <FichaDistorcaoConceitual />
-                        <FichaMatrizUtilitaria />
                         <FichaFuriaBerserker />
-                        <FichaMarcadoresCena />
-                        <FichaForjaCalamidade />
                         <FichaMultiplicadoresDano />
                         
                         <AbaDominios /> 

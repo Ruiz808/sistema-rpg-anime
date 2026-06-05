@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import useStore from '../../stores/useStore';
 import { contarDigitos } from '../../core/utils.js';
 import { getMaximo, getBuffs, getEfeitosDeClasse } from '../../core/attributes.js';
-import { salvarFichaSilencioso } from '../../services/firebase-sync.js';
+import { salvarFichaSilencioso, salvarFirebaseImediato, uploadImagem } from '../../services/firebase-sync.js';
 
 export const STATS = ['forca', 'destreza', 'inteligencia', 'sabedoria', 'energiaEsp', 'carisma', 'stamina', 'constituicao'];
 export const ENERGIAS = ['mana', 'aura', 'chakra', 'corpo', 'pontosVitais', 'pontosMortais'];
@@ -47,9 +47,7 @@ export const ELEMENTOS_BASE = [
 const FichaFormContext = createContext(null);
 
 export function useFichaForm() {
-    const ctx = useContext(FichaFormContext);
-    if (!ctx) return null;
-    return ctx;
+    return useContext(FichaFormContext);
 }
 
 export function FichaFormProvider({ children }) {
@@ -73,8 +71,6 @@ export function FichaFormProvider({ children }) {
     const [dinheiro, setDinheiro] = useState('');
     const [salvandoBio, setSalvandoBio] = useState(false);
     
-    const [painelForcado, setPainelForcado] = useState('auto');
-
     const seresSelados = minhaFicha?.seresSelados || [];
     const [serNome, setSerNome] = useState('');
     const [serDescricao, setSerDescricao] = useState('');
@@ -127,10 +123,8 @@ export function FichaFormProvider({ children }) {
         salvarFichaSilencioso();
     }, [updateFicha]);
 
-    // 🔥 LEITURA DINÂMICA DO COMPÊNDIO COM CORREÇÃO DE VARREDURA 🔥
     const overridesCompendio = useMemo(() => {
         let globais = { classes: {}, grands: {}, condicoes: {}, elementos: {}, regras: {} };
-
         if (personagens) {
             Object.values(personagens).forEach(p => {
                 if (p && p.compendioOverrides) {
@@ -142,7 +136,6 @@ export function FichaFormProvider({ children }) {
                 }
             });
         }
-
         if (minhaFicha && minhaFicha.compendioOverrides) {
             if (minhaFicha.compendioOverrides.classes) Object.assign(globais.classes, minhaFicha.compendioOverrides.classes);
             if (minhaFicha.compendioOverrides.grands) Object.assign(globais.grands, minhaFicha.compendioOverrides.grands);
@@ -150,7 +143,6 @@ export function FichaFormProvider({ children }) {
             if (minhaFicha.compendioOverrides.elementos) Object.assign(globais.elementos, minhaFicha.compendioOverrides.elementos);
             if (minhaFicha.compendioOverrides.regras) Object.assign(globais.regras, minhaFicha.compendioOverrides.regras);
         }
-
         return globais;
     }, [minhaFicha, personagens]);
 
@@ -175,19 +167,10 @@ export function FichaFormProvider({ children }) {
 
     const carregarBio = useCallback(() => {
         const bio = minhaFicha?.bio || {};
-        setMesa(bio.mesa || 'presente');
-        setRaca(bio.raca || '');
-        setClasse(bio.classe || '');
-        setSubClasse(bio.subClasse || ''); 
-        setAlterEgoSlot1(bio.alterEgoSlot1 || '');
-        setAlterEgoSerId(bio.alterEgoSerId || '');
-        setClassesMemorizadas(bio.classesMemorizadas || []); 
-        setIdade(bio.idade || '');
-        setFisico(bio.fisico || '');
-        setSangue(bio.sangue || '');
-        setAlinhamento(bio.alinhamento || '');
-        setAfiliacao(bio.afiliacao || '');
-        setDinheiro(bio.dinheiro || '');
+        setMesa(bio.mesa || 'presente'); setRaca(bio.raca || ''); setClasse(bio.classe || '');
+        setSubClasse(bio.subClasse || ''); setAlterEgoSlot1(bio.alterEgoSlot1 || ''); setAlterEgoSerId(bio.alterEgoSerId || '');
+        setClassesMemorizadas(bio.classesMemorizadas || []); setIdade(bio.idade || ''); setFisico(bio.fisico || '');
+        setSangue(bio.sangue || ''); setAlinhamento(bio.alinhamento || ''); setAfiliacao(bio.afiliacao || ''); setDinheiro(bio.dinheiro || '');
     }, [minhaFicha?.bio]);
 
     useEffect(() => { carregarBio(); }, [carregarBio]);
@@ -212,13 +195,8 @@ export function FichaFormProvider({ children }) {
         salvarFichaSilencioso();
     }, [updateFicha, mesa, raca, classe, subClasse, alterEgoSlot1, alterEgoSerId, classesMemorizadas, idade, fisico, sangue, alinhamento, afiliacao, dinheiro]);
 
-    const salvarBio = useCallback(() => {
-        comitarBio(); setSalvandoBio(true); setTimeout(() => setSalvandoBio(false), 2000);
-    }, [comitarBio]);
-
-    const mudarSubClasseDireto = useCallback((novaSub) => {
-        setSubClasse(novaSub); comitarBio({ subClasse: novaSub });
-    }, [comitarBio]);
+    const salvarBio = useCallback(() => { comitarBio(); setSalvandoBio(true); setTimeout(() => setSalvandoBio(false), 2000); }, [comitarBio]);
+    const mudarSubClasseDireto = useCallback((novaSub) => { setSubClasse(novaSub); comitarBio({ subClasse: novaSub }); }, [comitarBio]);
 
     let multiplicadorFuriaClasse = 0;
     const scanFuria = (efs) => {
@@ -360,9 +338,7 @@ export function FichaFormProvider({ children }) {
         setSerNovoVal(''); setSerNovoNomeEfeito('');
     }, [serNovoVal, serNovoNomeEfeito, serNovoAtr, serNovoProp, serEfeitos]);
 
-    const removeSerEfeito = useCallback((index) => {
-        setSerEfeitos(serEfeitos.filter((_, i) => i !== index));
-    }, [serEfeitos]);
+    const removeSerEfeito = useCallback((index) => { setSerEfeitos(serEfeitos.filter((_, i) => i !== index)); }, [serEfeitos]);
 
     const addSerEfeitoPassivo = useCallback(() => {
         if (!serNovoValPassivo || !serNovoNomeEfeitoPassivo.trim()) { alert('Preencha o nome e o valor do passivo!'); return; }
@@ -370,9 +346,7 @@ export function FichaFormProvider({ children }) {
         setSerNovoValPassivo(''); setSerNovoNomeEfeitoPassivo('');
     }, [serNovoValPassivo, serNovoNomeEfeitoPassivo, serNovoAtrPassivo, serNovoPropPassivo, serEfeitosPassivos]);
 
-    const removeSerEfeitoPassivo = useCallback((index) => {
-        setSerEfeitosPassivos(serEfeitosPassivos.filter((_, i) => i !== index));
-    }, [serEfeitosPassivos]);
+    const removeSerEfeitoPassivo = useCallback((index) => { setSerEfeitosPassivos(serEfeitosPassivos.filter((_, i) => i !== index)); }, [serEfeitosPassivos]);
 
     const cancelarEdicaoSer = useCallback(() => {
         setSerEditandoId(null); setSerNome(''); setSerDescricao(''); setSerElemento(''); setSerClasse(''); setSerZeraCusto(false);
@@ -396,8 +370,7 @@ export function FichaFormProvider({ children }) {
                 });
             }
         });
-        salvarFichaSilencioso();
-        cancelarEdicaoSer();
+        salvarFichaSilencioso(); cancelarEdicaoSer();
     }, [serNome, serDescricao, serElemento, serClasse, serZeraCusto, serEfeitos, serEfeitosPassivos, serEditandoId, updateFicha, cancelarEdicaoSer]);
 
     const editarSerSelado = useCallback((id) => {
@@ -410,9 +383,7 @@ export function FichaFormProvider({ children }) {
 
     const removeSerSelado = useCallback((id) => {
         if(!window.confirm('Tem certeza que deseja exilar esta entidade e quebrar o pacto?')) return;
-        updateFicha(f => {
-            if (f.seresSelados) f.seresSelados = f.seresSelados.filter(x => x.id !== id);
-        });
+        updateFicha(f => { if (f.seresSelados) f.seresSelados = f.seresSelados.filter(x => x.id !== id); });
         salvarFichaSilencioso();
     }, [updateFicha]);
 
@@ -431,8 +402,7 @@ export function FichaFormProvider({ children }) {
             if (!s) return;
             if (!s.formas) s.formas = [];
             const ix = s.formas.findIndex(x => x.id === forma.id);
-            if (ix >= 0) s.formas[ix] = forma;
-            else s.formas.push(forma);
+            if (ix >= 0) s.formas[ix] = forma; else s.formas.push(forma);
         });
         salvarFichaSilencioso();
     }, [updateFicha]);
@@ -441,10 +411,7 @@ export function FichaFormProvider({ children }) {
         if (!window.confirm("Deseja apagar esta forma/modo do Ser Selado?")) return;
         updateFicha(f => {
             const s = (f.seresSelados || []).find(x => x.id === serId);
-            if (s && s.formas) {
-                s.formas = s.formas.filter(x => x.id !== formaId);
-                if (s.formaAtivaId === formaId) s.formaAtivaId = null;
-            }
+            if (s && s.formas) { s.formas = s.formas.filter(x => x.id !== formaId); if (s.formaAtivaId === formaId) s.formaAtivaId = null; }
         });
         salvarFichaSilencioso();
     }, [updateFicha]);
@@ -452,129 +419,10 @@ export function FichaFormProvider({ children }) {
     const ativarFormaSer = useCallback((serId, formaId) => {
         updateFicha(f => {
             const s = (f.seresSelados || []).find(x => x.id === serId);
-            if (s) {
-                s.formaAtivaId = s.formaAtivaId === formaId ? null : formaId;
-                if (s.formaAtivaId && !s.ativo) s.ativo = true;
-            }
+            if (s) { s.formaAtivaId = s.formaAtivaId === formaId ? null : formaId; if (s.formaAtivaId && !s.ativo) s.ativo = true; }
         });
         salvarFichaSilencioso();
     }, [updateFicha]);
-
-    const hierarquia = minhaFicha?.hierarquia || {};
-    const poderesGlobais = minhaFicha?.poderes || [];
-    const hPoder = hierarquia.poder || false;
-    const hInfinity = hierarquia.infinity || false;
-    const hPoderVertente = hierarquia.poderVertente || '';
-    const hInfinityVertente = hierarquia.infinityVertente || '';
-    
-    const checkVertente = (valorSalvo, alvo) => {
-        if (!valorSalvo) return false;
-        const v = String(valorSalvo).toLowerCase().trim();
-        return v === alvo || v.startsWith(alvo);
-    };
-
-    const classAcumulativo = (hPoder && checkVertente(hPoderVertente, 'acumulativo')) || (hInfinity && checkVertente(hInfinityVertente, 'acumulativo'));
-    const classElemental = (hPoder && checkVertente(hPoderVertente, 'elemental')) || (hInfinity && checkVertente(hInfinityVertente, 'elemental'));
-    const classConceitual = (hPoder && checkVertente(hPoderVertente, 'conceitual')) || (hInfinity && checkVertente(hInfinityVertente, 'conceitual'));
-    const classUtilitario = (hPoder && checkVertente(hPoderVertente, 'utilitario')) || (hInfinity && checkVertente(hInfinityVertente, 'utilitario'));
-
-    const showMarcadoresCena = painelForcado === 'acumulativo' || (painelForcado === 'auto' && (classAcumulativo || poderesGlobais.some(p => p.ativa && checkVertente(p.vertente, 'acumulativo'))));
-    const showForjaCalamidade = painelForcado === 'acumulativo' || (painelForcado === 'auto' && (classAcumulativo || poderesGlobais.some(p => p.ativa && checkVertente(p.vertente, 'acumulativo'))));
-    const showElemental = painelForcado === 'elemental' || (painelForcado === 'auto' && (classElemental || poderesGlobais.some(p => p.ativa && checkVertente(p.vertente, 'elemental'))));
-    const showConceitual = painelForcado === 'conceitual' || (painelForcado === 'auto' && (classConceitual || poderesGlobais.some(p => p.ativa && checkVertente(p.vertente, 'conceitual'))));
-    const showUtilitario = painelForcado === 'utilitario' || (painelForcado === 'auto' && (classUtilitario || poderesGlobais.some(p => p.ativa && checkVertente(p.vertente, 'utilitario'))));
-
-    const trackersCena = minhaFicha?.combate?.trackers || [];
-    const [novoTrackerNome, setNovoTrackerNome] = useState('');
-    const [novoTrackerValor, setNovoTrackerValor] = useState('');
-
-    const addTrackerCena = useCallback(() => {
-        if (!novoTrackerNome.trim()) return;
-        updateFicha(f => {
-            if (!f.combate) f.combate = {}; if (!f.combate.trackers) f.combate.trackers = [];
-            f.combate.trackers.push({ id: Date.now(), nome: novoTrackerNome, valor: parseFloat(novoTrackerValor) || 0, stacks: 0 });
-        });
-        salvarFichaSilencioso(); setNovoTrackerNome(''); setNovoTrackerValor('');
-    }, [novoTrackerNome, novoTrackerValor, updateFicha]);
-
-    const modTrackerCena = useCallback((id, delta) => {
-        updateFicha(f => {
-            if (!f.combate || !f.combate.trackers) return;
-            const t = f.combate.trackers.find(x => x.id === id);
-            if (t) t.stacks = Math.max(0, t.stacks + delta);
-        });
-        salvarFichaSilencioso();
-    }, [updateFicha]);
-
-    const removeTrackerCena = useCallback((id) => {
-        updateFicha(f => { if (!f.combate || !f.combate.trackers) return; f.combate.trackers = f.combate.trackers.filter(x => x.id !== id); });
-        salvarFichaSilencioso();
-    }, [updateFicha]);
-
-    const resetarTrackersCena = useCallback(() => {
-        if (!window.confirm('A cena terminou? Isso vai zerar todos os seus stacks acumulados na batalha.')) return;
-        updateFicha(f => { if (!f.combate || !f.combate.trackers) return; f.combate.trackers.forEach(t => t.stacks = 0); });
-        salvarFichaSilencioso();
-    }, [updateFicha]);
-
-    const [valorInjecao, setValorInjecao] = useState('');
-    const [alvosInjecao, setAlvosInjecao] = useState({ vida: true, energias: true, status: false, danoBruto: true, multGeral: false });
-    const [showAbsorverMsg, setShowAbsorverMsg] = useState('');
-
-    const toggleAlvo = useCallback((k) => setAlvosInjecao(prev => ({...prev, [k]: !prev[k]})), []);
-
-    const injetarAnomalia = useCallback(() => {
-        const val = parseFloat(valorInjecao);
-        if (!val || isNaN(val)) return;
-        updateFicha(ficha => {
-            const addBase = (chave) => { if (!ficha[chave]) ficha[chave] = {}; ficha[chave].base = (parseFloat(ficha[chave].base) || 0) + val; };
-            if (alvosInjecao.vida) addBase('vida');
-            if (alvosInjecao.energias) { ['mana', 'aura', 'chakra', 'corpo'].forEach(addBase); }
-            if (alvosInjecao.status) { STATS.forEach(addBase); }
-            if (alvosInjecao.danoBruto || alvosInjecao.multGeral) {
-                if (!ficha.dano) ficha.dano = {};
-                if (alvosInjecao.danoBruto) ficha.dano.danoBruto = (parseFloat(ficha.dano.danoBruto) || 0) + val;
-                if (alvosInjecao.multGeral) ficha.dano.mGeral = (parseFloat(ficha.dano.mGeral) || 1) + val;
-            }
-        });
-        salvarFichaSilencioso(); setValorInjecao(''); setShowAbsorverMsg(`✨ Evolução Concluída! Valor de +${val} injetado nos domínios selecionados!`);
-        setTimeout(() => setShowAbsorverMsg(''), 6000);
-    }, [valorInjecao, alvosInjecao, updateFicha]);
-
-    const leisCena = minhaFicha?.combate?.leis || [];
-    const [novaLeiNome, setNovaLeiNome] = useState('');
-    const addLeiCena = useCallback(() => {
-        if (!novaLeiNome.trim()) return;
-        updateFicha(f => { if (!f.combate) f.combate = {}; if (!f.combate.leis) f.combate.leis = []; f.combate.leis.push({ id: Date.now(), texto: novaLeiNome }); });
-        salvarFichaSilencioso(); setNovaLeiNome('');
-    }, [novaLeiNome, updateFicha]);
-
-    const removeLeiCena = useCallback((id) => {
-        updateFicha(f => { if (!f.combate || !f.combate.leis) return; f.combate.leis = f.combate.leis.filter(x => x.id !== id); });
-        salvarFichaSilencioso();
-    }, [updateFicha]);
-
-    const copiasAtivas = minhaFicha?.combate?.copias || [];
-    const [novaCopiaNome, setNovaCopiaNome] = useState('');
-    const [novaCopiaEfeito, setNovaCopiaEfeito] = useState('');
-
-    const addCopiaAtiva = useCallback(() => {
-        if (!novaCopiaNome.trim()) return;
-        updateFicha(f => { if (!f.combate) f.combate = {}; if (!f.combate.copias) f.combate.copias = []; f.combate.copias.push({ id: Date.now(), nome: novaCopiaNome, efeito: novaCopiaEfeito }); });
-        salvarFichaSilencioso(); setNovaCopiaNome(''); setNovaCopiaEfeito('');
-    }, [novaCopiaNome, novaCopiaEfeito, updateFicha]);
-
-    const removeCopiaAtiva = useCallback((id) => {
-        updateFicha(f => { if (!f.combate || !f.combate.copias) return; f.combate.copias = f.combate.copias.filter(x => x.id !== id); });
-        salvarFichaSilencioso();
-    }, [updateFicha]);
-
-    const getAtualVital = useCallback((key) => {
-        if (!minhaFicha) return 0;
-        const max = getMaximo(minhaFicha, key);
-        if (minhaFicha[key] && minhaFicha[key].atual !== undefined) return minhaFicha[key].atual;
-        return max;
-    }, [minhaFicha]);
 
     const value = useMemo(() => ({
         minhaFicha, updateFicha, personagens, meuNome,
@@ -582,7 +430,6 @@ export function FichaFormProvider({ children }) {
         alterEgoSlot1, setAlterEgoSlot1, alterEgoSerId, setAlterEgoSerId, classesMemorizadas, setClassesMemorizadas,
         idade, setIdade, fisico, setFisico, sangue, setSangue, alinhamento, setAlinhamento,
         afiliacao, setAfiliacao, dinheiro, setDinheiro, salvandoBio,
-        painelForcado, setPainelForcado, 
         overridesCompendio, grands, isGrand, grandIcone, comitarBio, salvarBio, mudarSubClasseDireto,
         multiplicadorFuriaClasse, rawMaxVida, maxVida, atualVida, percAtualLostFloor, furiaMax, percEfetivoParaDisplay,
         multiplicadorFuriaVisor, furiaAcalmadaMsg, acalmarFuria, toggleMemoriaPretender, descansoLongoPretender,
@@ -591,19 +438,9 @@ export function FichaFormProvider({ children }) {
         dmFormas, setDmFormas, dmAbsoluto, setDmAbsoluto, dmUnico, setDmUnico,
         danoBruto, setDanoBruto, salvandoMult, salvarMultiplicadores,
         buffsDano, sKeyForBuffs, buffsAtuais,
-        hierarquia, poderesGlobais, hPoder, hInfinity, hPoderVertente, hInfinityVertente,
-        classAcumulativo, classElemental, classConceitual, classUtilitario,
-        showMarcadoresCena, showForjaCalamidade, showElemental, showConceitual, showUtilitario,
-        trackersCena, novoTrackerNome, setNovoTrackerNome, novoTrackerValor, setNovoTrackerValor,
-        addTrackerCena, modTrackerCena, removeTrackerCena, resetarTrackersCena,
-        valorInjecao, setValorInjecao, alvosInjecao, setAlvosInjecao, showAbsorverMsg, toggleAlvo, injetarAnomalia,
-        leisCena, novaLeiNome, setNovaLeiNome, addLeiCena, removeLeiCena,
-        copiasAtivas, novaCopiaNome, setNovaCopiaNome, novaCopiaEfeito, setNovaCopiaEfeito,
-        addCopiaAtiva, removeCopiaAtiva, getAtualVital,
         seresSelados, serNome, setSerNome, serDescricao, setSerDescricao,
         serElemento, setSerElemento, serClasse, setSerClasse, serEditandoId, serZeraCusto, setSerZeraCusto,
-        serEfeitos, serEfeitosPassivos, 
-        serNovoNomeEfeito, setSerNovoNomeEfeito, 
+        serEfeitos, serEfeitosPassivos, serNovoNomeEfeito, setSerNovoNomeEfeito, 
         serNovoAtr, setSerNovoAtr, serNovoProp, setSerNovoProp, serNovoVal, setSerNovoVal,
         serNovoNomeEfeitoPassivo, setSerNovoNomeEfeitoPassivo, 
         serNovoAtrPassivo, setSerNovoAtrPassivo, serNovoPropPassivo, setSerNovoPropPassivo, serNovoValPassivo, setSerNovoValPassivo,
@@ -613,15 +450,10 @@ export function FichaFormProvider({ children }) {
         modificarCondicao, toggleAfinidade, condicoesDinamicas, elementosDinamicos
     }), [
         minhaFicha, updateFicha, personagens, meuNome, mesa, raca, classe, subClasse, alterEgoSlot1, alterEgoSerId, classesMemorizadas,
-        idade, fisico, sangue, alinhamento, afiliacao, dinheiro, salvandoBio, painelForcado, overridesCompendio, grands, isGrand, grandIcone,
+        idade, fisico, sangue, alinhamento, afiliacao, dinheiro, salvandoBio, overridesCompendio, grands, isGrand, grandIcone,
         comitarBio, salvarBio, mudarSubClasseDireto, multiplicadorFuriaClasse, rawMaxVida, maxVida, atualVida, percAtualLostFloor, furiaMax, percEfetivoParaDisplay,
         multiplicadorFuriaVisor, furiaAcalmadaMsg, acalmarFuria, toggleMemoriaPretender, descansoLongoPretender, selAtributo, campos, handleCampo, carregarAtributoNaTela, salvarAtributo,
         dmBase, dmPotencial, dmGeral, dmFormas, dmAbsoluto, dmUnico, danoBruto, salvandoMult, salvarMultiplicadores, buffsDano, sKeyForBuffs, buffsAtuais,
-        hierarquia, poderesGlobais, hPoder, hInfinity, hPoderVertente, hInfinityVertente, classAcumulativo, classElemental, classConceitual, classUtilitario,
-        showMarcadoresCena, showForjaCalamidade, showElemental, showConceitual, showUtilitario,
-        trackersCena, novoTrackerNome, novoTrackerValor, addTrackerCena, modTrackerCena, removeTrackerCena, resetarTrackersCena,
-        valorInjecao, alvosInjecao, showAbsorverMsg, toggleAlvo, injetarAnomalia, leisCena, novaLeiNome, addLeiCena, removeLeiCena,
-        copiasAtivas, novaCopiaNome, novaCopiaEfeito, addCopiaAtiva, removeCopiaAtiva, getAtualVital,
         seresSelados, serNome, serDescricao, serElemento, serClasse, serEditandoId, serZeraCusto,
         serEfeitos, serEfeitosPassivos, serNovoNomeEfeito, serNovoAtr, serNovoProp, serNovoVal,
         serNovoNomeEfeitoPassivo, serNovoAtrPassivo, serNovoPropPassivo, serNovoValPassivo,
