@@ -489,23 +489,14 @@ export default function MarcadosPanel() {
         alert("O seu diário foi sincronizado!");
     };
 
-    // 🔥 MOTOR DA LUMINOSIDADE 🔥
-    const getLuma = (hex) => {
-        if (!hex) return 255;
-        const c = hex.replace('#', '');
-        const r = parseInt(c.substring(0, 2), 16) || 255;
-        const g = parseInt(c.substring(2, 4), 16) || 255;
-        const b = parseInt(c.substring(4, 6), 16) || 255;
-        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-    };
-    const isDarkFrame = localCorMoldura && getLuma(localCorMoldura) < 50;
-
     return (
         <div style={{ 
             width: '100%', minHeight: '85vh', 
             backgroundColor: localCorFundo, 
             backgroundImage: localBgImg ? `url(${localBgImg})` : 'none',
-            backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', backgroundPosition: 'center',
+            backgroundSize: '100% 100%',
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'center',
             color: '#000', fontFamily: fonteDiario, 
             padding: '40px 40px 80px 40px', borderRadius: '12px', position: 'relative', transition: 'background 0.3s ease',
             boxShadow: 'inset 0 0 40px rgba(0,0,0,0.1), 0 10px 30px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column',
@@ -608,9 +599,9 @@ export default function MarcadosPanel() {
                                 <option value="normal">Nenhum / Imagem PNG Transparente</option>
                             </select>
 
-                            {/* 🔥 A TINTURA DA MOLDURA COM PALETA RÁPIDA! */}
+                            {/* 🔥 A TINTURA DA MOLDURA COM PALETA RÁPIDA (O PRETO VOLTOU) */}
                             <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9em', color: '#555', marginTop: '10px', fontWeight: 'bold' }}>
-                                <span>Cor da Moldura & Ícone:</span>
+                                <span>Tingir Moldura & Ícone:</span>
                                 <input 
                                     type="color" value={localCorMoldura} 
                                     onChange={(e) => handleStyleChange('corMoldura', e.target.value)} 
@@ -686,44 +677,42 @@ export default function MarcadosPanel() {
                                 ))}
                             </div>
 
-                            {/* 🔥 A MOLDURA, O AVATAR E O ÍCONE DA CLASSE (ISOLADOS) 🔥 */}
+                            {/* 🔥 A MOLDURA E O AVATAR COM ISOLATION: ISOLATE! 🔥 */}
                             <div style={{ marginTop: '20px', position: 'relative', width: '320px', height: '480px', display: 'flex', flexDirection: 'column', borderRadius: '8px', border: minhaFicha.avatar?.base ? 'none' : '2px dashed #000', boxShadow: minhaFicha.avatar?.base ? '8px 8px 0px rgba(0,0,0,0.2)' : 'none', isolation: 'isolate' }}>
                                 {uploadingImg ? (
                                     <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.7)', color: '#fff', fontWeight: 'bold', zIndex: 20 }}>✍️ Forjando...</div>
                                 ) : minhaFicha.avatar?.base ? (
                                     <>
-                                        {/* 🔥 FOTO ESTICADA SEM CORTE 🔥 */}
+                                        {/* 🔥 FOTO ESTICADA SEM CORTE (objectPosition: top center) 🔥 */}
                                         <img src={minhaFicha.avatar.base} alt="Avatar" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', zIndex: 1, borderRadius: '8px' }} />
                                         
-                                        {/* 🔥 MOLDURA COM ALQUIMIA DE COR E FUNDO (BRANCO OU PRETO) 🔥 */}
+                                        {/* 🔥 A MOLDURA COM ALQUIMIA DE COR FORTE E FUNDO (BRANCO OU PRETO) 🔥 */}
                                         {localMolduraAvatar && (
-                                            <div style={{ position: 'absolute', top: '-3%', left: '-3%', width: '106%', height: '106%', zIndex: 2, pointerEvents: 'none', mixBlendMode: localModoMoldura, isolation: 'isolate' }}>
+                                            <div style={{ position: 'absolute', top: '-3.5%', left: '-3%', width: '106%', height: '107%', zIndex: 2, pointerEvents: 'none', mixBlendMode: localModoMoldura, isolation: 'isolate' }}>
                                                 <img src={localMolduraAvatar} alt="Moldura" style={{ width: '100%', height: '100%', objectFit: 'fill', position: 'absolute', top: 0, left: 0, filter: 'contrast(1.2) saturate(1.2)' }} />
                                                 
-                                                {/* CAMADA DE COR FORTE QUE PRESERVA O DOURADO */}
+                                                {/* CAMADA DE COR FORTE (Color + Overlay garante cores profundas sem estragar o fundo da moldura original) */}
                                                 {localCorMoldura && localCorMoldura !== '#ffffff' && (
-                                                    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: localCorMoldura, mixBlendMode: 'color' }} />
+                                                    <>
+                                                        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: localCorMoldura, mixBlendMode: 'color' }} />
+                                                        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: localCorMoldura, mixBlendMode: 'overlay', opacity: 0.8 }} />
+                                                    </>
                                                 )}
                                             </div>
                                         )}
 
-                                        {/* 🔥 O ÍCONE DA CLASSE (NOVO E COLORIDO) */}
-                                        {classeInfo && (
+                                        {/* 🔥 O ÍCONE DA CLASSE PERFEITO (GIGANTE, COM COR MAGICA E TEXTURA INTACTA) */}
+                                        {(classeInfo || localIconeClasse) && (
                                             <div style={{ position: 'absolute', bottom: '-8px', left: '50%', transform: 'translateX(-50%)', zIndex: 3, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '70px', height: '70px' }}>
                                                 {iconeFinal ? (
-                                                    <div style={{ position: 'relative', width: '100%', height: '100%', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))' }}>
+                                                    <div style={{ position: 'relative', width: '100%', height: '100%', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))', isolation: 'isolate' }}>
                                                         <img src={iconeFinal} alt="Classe" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'contain' }} />
                                                         
                                                         {localCorMoldura && localCorMoldura !== '#ffffff' && (
-                                                            <div style={{
-                                                                position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
-                                                                backgroundColor: localCorMoldura, 
-                                                                mixBlendMode: isDarkFrame ? 'multiply' : 'color',
-                                                                maskImage: `url(${iconeFinal})`, WebkitMaskImage: `url(${iconeFinal})`,
-                                                                maskSize: 'contain', WebkitMaskSize: 'contain',
-                                                                maskRepeat: 'no-repeat', WebkitMaskRepeat: 'no-repeat',
-                                                                maskPosition: 'center', WebkitMaskPosition: 'center'
-                                                            }} />
+                                                            <>
+                                                                <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: localCorMoldura, mixBlendMode: 'color' }} />
+                                                                <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: localCorMoldura, mixBlendMode: 'overlay', opacity: 0.8 }} />
+                                                            </>
                                                         )}
                                                     </div>
                                                 ) : (
@@ -909,12 +898,15 @@ export default function MarcadosPanel() {
                                 <LabelMagico valor={getLabel('tituloPg3', 'O Grimório Místico')} onChange={(v) => setLabel('tituloPg3', v)} />
                             </h1>
                         </div>
+                        
+                        {/* 🌟 O SISTEMA DE PODERES COM A NOVA MÁSCARA CSS! 🌟 */}
                         <PoderesPanel />
                     </div>
                 )}
 
             </div>
 
+            {/* BOTÕES DE NAVEGAÇÃO DA PÁGINA */}
             <div style={{ position: 'absolute', bottom: '20px', left: '0', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px', fontFamily: 'inherit' }}>
                 <button onClick={() => mudarPagina(Math.max(1, paginaAtual - 1))} disabled={paginaAtual === 1} style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 1 ? 'default' : 'pointer', opacity: paginaAtual === 1 ? 0.3 : 1, fontFamily: 'inherit' }}>⮜ Anterior</button>
                 <span style={{ fontSize: '1.1em', fontWeight: 'bold', borderBottom: '2px solid rgba(0,0,0,0.5)', padding: '0 10px' }}>Página {paginaAtual} de 3</span>

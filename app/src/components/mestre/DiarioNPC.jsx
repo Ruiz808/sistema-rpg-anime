@@ -223,6 +223,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
     const [localBgImg, setLocalBgImg] = useState('');
     const [localMolduraAvatar, setLocalMolduraAvatar] = useState('');
     const [localCorMoldura, setLocalCorMoldura] = useState('#ffffff');
+    const [localIconeClasse, setLocalIconeClasse] = useState('');
     const [localModoMoldura, setLocalModoMoldura] = useState('screen');
 
     useEffect(() => {
@@ -232,13 +233,15 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
             setLocalBgImg(npcData.estetica?.bgImg || '');
             setLocalMolduraAvatar(npcData.estetica?.molduraAvatar || '');
             setLocalCorMoldura(npcData.estetica?.corMoldura || '#ffffff');
+            setLocalIconeClasse(npcData.estetica?.iconeClasse || '');
             setLocalModoMoldura(npcData.estetica?.modoMoldura || 'screen');
         }
-    }, [npcData?.estetica?.diarioCor, npcData?.estetica?.corTintaRadar, npcData?.estetica?.bgImg, npcData?.estetica?.molduraAvatar, npcData?.estetica?.corMoldura, npcData?.estetica?.modoMoldura]);
+    }, [npcData?.estetica?.diarioCor, npcData?.estetica?.corTintaRadar, npcData?.estetica?.bgImg, npcData?.estetica?.molduraAvatar, npcData?.estetica?.corMoldura, npcData?.estetica?.iconeClasse, npcData?.estetica?.modoMoldura]);
 
     if (!npcData) return <div style={{ color: '#fff', padding: 20 }}>Conectando à Entidade...</div>;
 
     const classeInfo = getClasseInfo(npcData);
+    const iconeFinal = localIconeClasse || classeInfo?.iconeUrl;
 
     const mudarPagina = (nova) => {
         setAnimDirection(nova > paginaAtual ? 'next' : 'prev');
@@ -264,6 +267,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
         else if (key === 'bgImg') setLocalBgImg(val);
         else if (key === 'molduraAvatar') setLocalMolduraAvatar(val);
         else if (key === 'corMoldura') setLocalCorMoldura(val);
+        else if (key === 'iconeClasse') setLocalIconeClasse(val);
         else if (key === 'modoMoldura') setLocalModoMoldura(val);
 
         if (window.timerSaveCorNPC) clearTimeout(window.timerSaveCorNPC);
@@ -289,6 +293,14 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
             const url = await uploadImagem(file, `molduras_avatars_npcs/${npcData.id || 'desconhecido'}_moldura`);
             handleStyleChange('molduraAvatar', url);
         } catch (err) { alert('Erro ao enviar a moldura!'); }
+    };
+
+    const handleIconeUpload = async (e) => {
+        const file = e.target.files[0]; if (!file) return;
+        try {
+            const url = await uploadImagem(file, `icones_classes_npcs/${npcData.id || 'desconhecido'}_icone`);
+            handleStyleChange('iconeClasse', url);
+        } catch (err) { alert('Erro ao enviar o ícone da classe!'); }
     };
 
     const handleTabelaChange = (k, tipo, valor) => {
@@ -441,17 +453,6 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
         );
     };
 
-    // 🔥 O MOTOR DA LUMINOSIDADE 🔥
-    const getLuma = (hex) => {
-        if (!hex) return 255;
-        const c = hex.replace('#', '');
-        const r = parseInt(c.substring(0, 2), 16) || 255;
-        const g = parseInt(c.substring(2, 4), 16) || 255;
-        const b = parseInt(c.substring(4, 6), 16) || 255;
-        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-    };
-    const isDarkFrame = localCorMoldura && getLuma(localCorMoldura) < 50;
-
     return (
         <div style={{ 
             width: '100%', minHeight: '85vh', 
@@ -550,6 +551,17 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                 ))}
                             </div>
 
+                            <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>🔷 Ícone da Classe Manual (Opcional):</label>
+                            <div style={{ display: 'flex', gap: '5px', marginBottom: '15px' }}>
+                                <input 
+                                    type="text" value={localIconeClasse} onChange={(e) => handleStyleChange('iconeClasse', e.target.value)} placeholder="Link do Ícone..."
+                                    style={{ flex: 1, padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', color: 'inherit' }} 
+                                />
+                                <label style={{ background: 'rgba(0,0,0,0.1)', border: '1px solid rgba(0,0,0,0.2)', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="Upload do Ícone">
+                                    📁<input type="file" accept="image/*" onChange={handleIconeUpload} style={{ display: 'none' }} />
+                                </label>
+                            </div>
+
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>Cor da Tinta (Radar):</label>
                             <input 
                                 type="color" value={localCorTinta} 
@@ -608,38 +620,36 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                     <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.7)', color: '#fff', fontWeight: 'bold', zIndex: 20 }}>✍️ Forjando...</div>
                                 ) : npcData.avatar?.base ? (
                                     <>
-                                        {/* 🔥 FOTO ESTICADA SEM CORTE 🔥 */}
+                                        {/* 🔥 FOTO ESTICADA SEM CORTE (objectPosition: top center) 🔥 */}
                                         <img src={npcData.avatar.base} alt="Avatar" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', zIndex: 1, borderRadius: '8px' }} />
                                         
-                                        {/* 🔥 MOLDURA COM ALQUIMIA DE COR E FUNDO (BRANCO OU PRETO) 🔥 */}
+                                        {/* 🔥 A MOLDURA COM ALQUIMIA DE COR FORTE E FUNDO (BRANCO OU PRETO) 🔥 */}
                                         {localMolduraAvatar && (
-                                            <div style={{ position: 'absolute', top: '-3%', left: '-3%', width: '106%', height: '106%', zIndex: 2, pointerEvents: 'none', mixBlendMode: localModoMoldura, isolation: 'isolate' }}>
+                                            <div style={{ position: 'absolute', top: '-3.5%', left: '-3%', width: '106%', height: '107%', zIndex: 2, pointerEvents: 'none', mixBlendMode: localModoMoldura, isolation: 'isolate' }}>
                                                 <img src={localMolduraAvatar} alt="Moldura" style={{ width: '100%', height: '100%', objectFit: 'fill', position: 'absolute', top: 0, left: 0, filter: 'contrast(1.2) saturate(1.2)' }} />
                                                 
-                                                {/* CAMADA DE COR FORTE QUE PRESERVA O DOURADO */}
+                                                {/* CAMADA DE COR FORTE (Color + Overlay) */}
                                                 {localCorMoldura && localCorMoldura !== '#ffffff' && (
-                                                    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: localCorMoldura, mixBlendMode: 'color' }} />
+                                                    <>
+                                                        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: localCorMoldura, mixBlendMode: 'color' }} />
+                                                        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: localCorMoldura, mixBlendMode: 'overlay', opacity: 0.8 }} />
+                                                    </>
                                                 )}
                                             </div>
                                         )}
 
-                                        {/* 🔥 O ÍCONE DA CLASSE (NOVO E COLORIDO) */}
-                                        {classeInfo && (
+                                        {/* 🔥 O ÍCONE DA CLASSE PERFEITO */}
+                                        {(classeInfo || localIconeClasse) && (
                                             <div style={{ position: 'absolute', bottom: '-8px', left: '50%', transform: 'translateX(-50%)', zIndex: 3, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '70px', height: '70px' }}>
-                                                {classeInfo.iconeUrl ? (
-                                                    <div style={{ position: 'relative', width: '100%', height: '100%', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))' }}>
-                                                        <img src={classeInfo.iconeUrl} alt="Classe" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'contain' }} />
+                                                {iconeFinal ? (
+                                                    <div style={{ position: 'relative', width: '100%', height: '100%', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))', isolation: 'isolate' }}>
+                                                        <img src={iconeFinal} alt="Classe" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'contain' }} />
                                                         
                                                         {localCorMoldura && localCorMoldura !== '#ffffff' && (
-                                                            <div style={{
-                                                                position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
-                                                                backgroundColor: localCorMoldura, 
-                                                                mixBlendMode: isDarkFrame ? 'multiply' : 'color',
-                                                                maskImage: `url(${classeInfo.iconeUrl})`, WebkitMaskImage: `url(${classeInfo.iconeUrl})`,
-                                                                maskSize: 'contain', WebkitMaskSize: 'contain',
-                                                                maskRepeat: 'no-repeat', WebkitMaskRepeat: 'no-repeat',
-                                                                maskPosition: 'center', WebkitMaskPosition: 'center'
-                                                            }} />
+                                                            <>
+                                                                <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: localCorMoldura, mixBlendMode: 'color' }} />
+                                                                <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: localCorMoldura, mixBlendMode: 'overlay', opacity: 0.8 }} />
+                                                            </>
                                                         )}
                                                     </div>
                                                 ) : (
