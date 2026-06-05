@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import useStore from '../../stores/useStore';
 import { salvarFichaSilencioso } from '../../services/firebase-sync';
+import { getMaximo } from '../../core/attributes'; // 🔥 CORREÇÃO: O FEITIÇO FOI IMPORTADO AQUI! 🔥
 
 // ==========================================
 // 🌌 CONSTANTES DE ELEMENTOS
@@ -140,7 +141,7 @@ function ClassificacaoNavegacao() {
 }
 
 // ==========================================
-// 📖 CAPÍTULO 1: HIERARQUIA DA ALMA (ANTIGA PÁGINA 4)
+// 📖 CAPÍTULO 1: HIERARQUIA DA ALMA
 // ==========================================
 function PaginaRegistros() {
     const { minhaFicha, updateFicha, callSave, isMestre } = useClassificacao();
@@ -420,12 +421,12 @@ function PaginaMarcadores() {
     return (
         <div className="fade-in" style={{ border: '2px solid currentColor', padding: '20px', borderRadius: '8px', background: 'rgba(0,0,0,0.03)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '1px dotted currentColor', paddingBottom: '10px' }}>
-                <span style={{ fontSize: '0.9em', opacity: 0.7, fontStyle: 'italic' }}>Acumule buffs durante a batalha. O valor final deve ser somado nos dados.</span>
+                <span style={{ fontSize: '0.9em', opacity: 0.7, fontStyle: 'italic' }}>Acumule buffs durante a batalha. Valor soma-se aos dados.</span>
                 <button onClick={resetCena} style={{ padding: '8px 15px', border: '1px solid currentColor', color: 'inherit', background: 'transparent', cursor: 'pointer', opacity: 0.8 }}>🧹 Limpar Cena</button>
             </div>
 
             <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-                <CampoMagico valor={novoTrackerNome} onChange={setNovoTrackerNome} placeholder="Nome (Ex: Fúria, Acerto...)" styleExtra={{ flex: 2, border: '1px dashed currentColor' }} />
+                <CampoMagico valor={novoTrackerNome} onChange={setNovoTrackerNome} placeholder="Nome (Ex: Fúria...)" styleExtra={{ flex: 2, border: '1px dashed currentColor' }} />
                 <CampoMagico valor={novoTrackerValor} onChange={setNovoTrackerValor} placeholder="Bônus por Stack (Ex: 8)" type="number" styleExtra={{ flex: 1, border: '1px dashed currentColor', textAlign: 'center' }} />
                 <button onClick={addMarcador} style={{ padding: '10px 20px', background: 'transparent', border: '1px solid currentColor', color: 'inherit', cursor: 'pointer', fontWeight: 'bold' }}>+ Inscrever</button>
             </div>
