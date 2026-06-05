@@ -35,6 +35,9 @@ export const cores = {
     'Aura Pura': '#b366ff', 'Projeção de Aura': '#b366ff', 'Artes Marciais': '#ff3333', 'Reforço Físico': '#ff3333', 'Fusões Básicas': '#ff00ff', 'Fusões Avançadas': '#ff00ff'
 };
 
+// ============================================================================
+// 📖 A DIVISÃO ÉPICA DOS CAPÍTULOS DO GRIMÓRIO
+// ============================================================================
 export const ABAS_GRIMORIO = {
     'basicos': {
         label: 'Elementos Básicos', icon: '🔥',
@@ -43,35 +46,72 @@ export const ABAS_GRIMORIO = {
             { titulo: 'Neutro (Sem Elemento)', itens: ['Neutro'] }
         ]
     },
-    'avancados_temp': {
-        label: 'Em Organização...', icon: '📦',
-        categorias: [
-            { titulo: 'Elementos Básicos Verdadeiros', itens: ['Fogo Verdadeiro', 'Raio Verdadeiro', 'Agua Verdadeira', 'Vento Verdadeiro', 'Terra Verdadeira'] },
-            { titulo: 'Elementos Avançados', itens: ['Solar', 'Energia', 'Gelo', 'Vacuo', 'Natureza'] },
-            { titulo: 'Elementos Avançados Verdadeiros', itens: ['Solar Verdadeiro', 'Energia Verdadeira', 'Gelo Verdadeiro', 'Vacuo Verdadeiro', 'Natureza Verdadeira'] },
-            { titulo: 'Elementos Primordiais', itens: ['Luz', 'Trevas', 'Ether'] },
-            { titulo: 'Elementos Primordiais Verdadeiros', itens: ['Celestial', 'Infernal', 'Caos'] },
-            { titulo: 'Elementos Primordiais Absolutos', itens: ['Criacao', 'Destruicao', 'Cosmos'] }
-        ]
+    'basicos_verdadeiros': {
+        label: 'Básicos Verdadeiros', icon: '🌋',
+        categorias: [{ titulo: 'A Natureza Pura e Intocada', itens: ['Fogo Verdadeiro', 'Raio Verdadeiro', 'Agua Verdadeira', 'Vento Verdadeiro', 'Terra Verdadeira'] }]
     },
-    'astrais': { label: 'Elementos Astrais', icon: '🌌', categorias: [{ titulo: 'Elementos Astrais', itens: ['Vida', 'Morte', 'Vazio'] }] },
-    'chakra': { label: 'Chakra', icon: '🌀', categorias: [
-        { titulo: 'Kekkei Genkai', itens: ['Elemento Madeira', 'Elemento Mineral', 'Elemento Cinzas', 'Elemento Igneo', 'Elemento Lava', 'Elemento Vapor', 'Elemento Nevoa', 'Elemento Tempestade', 'Elemento Areia', 'Elemento Tufao'] },
-        { titulo: 'Kekkei Touta', itens: ['Elemento Velocidade', 'Elemento Poeira', 'Elemento Veneno', 'Elemento Cal', 'Elemento Carbono', 'Elemento Calor', 'Elemento Som', 'Elemento Magnetismo'] }
-    ] },
-    'mana': { label: 'Mana', icon: '🔮', categorias: [
-        { titulo: 'Magias de Ciclo', itens: ['Truques de Ciclo', 'Magias de 1º Ciclo', 'Magias de 2º Ciclo', 'Magias de 3º Ciclo', 'Magias de 4º Ciclo', 'Magias de 5º Ciclo', 'Magias de 6º Ciclo', 'Magias de 7º Ciclo', 'Magias de 8º Ciclo', 'Magias de 9º Ciclo', 'Magias de 10º Ciclo'] },
-        { titulo: 'Magias Arcanas/Negra', itens: ['Truques Arcanos/Negros', 'Magias Arcanas/Negra de 1º Ciclo', 'Magias Arcanas/Negra de 2º Ciclo', 'Magias Arcanas/Negra de 3º Ciclo', 'Magias Arcanas/Negra de 4º Ciclo', 'Magias Arcanas/Negra de 5º Ciclo', 'Magias Arcanas/Negra de 6º Ciclo', 'Magias Arcanas/Negra de 7º Ciclo', 'Magias Arcanas/Negra de 8º Ciclo', 'Magias Arcanas/Negra de 9º Ciclo', 'Magias Arcanas/Negra de 10º Ciclo'] },
-        { titulo: 'Magias Ancestrais', itens: ['Truques Ancestrais', 'Magia de Sangue', 'Magia de Osso', 'Magia Draconica', 'Magia de Borracha', 'Magia de Espelho', 'Magia de Sal', 'Magia de Alma', 'Magia de Tremor', 'Magia de Gravidade', 'Magia de Tempo', 'Magia de Equipamento', 'Magia de Explosao', 'Magia Espacial', 'Magia de Metamorfose'] }
-    ] },
-    'aura': { label: 'Aura', icon: '✨', categorias: [{ titulo: 'Manifestações de Aura', itens: ['Aura Pura', 'Projeção de Aura'] }] },
-    'corpo': { label: 'Corpo', icon: '💪', categorias: [{ titulo: 'Técnicas Corporais', itens: ['Artes Marciais', 'Reforço Físico'] }] },
-    'compostos': { label: 'Elementos Compostos', icon: '⚛️', categorias: [{ titulo: 'Misturas Elementais', itens: ['Fusões Básicas', 'Fusões Avançadas'] }] }
+    'avancados': {
+        label: 'Elementos Avançados', icon: '❄️',
+        categorias: [{ titulo: 'As Forças Superiores', itens: ['Solar', 'Energia', 'Gelo', 'Vacuo', 'Natureza'] }]
+    },
+    'avancados_verdadeiros': {
+        label: 'Avançados Verdadeiros', icon: '☀️',
+        categorias: [{ titulo: 'O Ápice das Forças Superiores', itens: ['Solar Verdadeiro', 'Energia Verdadeira', 'Gelo Verdadeiro', 'Vacuo Verdadeiro', 'Natureza Verdadeira'] }]
+    },
+    'primordiais': {
+        label: 'Elementos Primordiais', icon: '✨',
+        categorias: [{ titulo: 'As Essências da Realidade', itens: ['Luz', 'Trevas', 'Ether'] }]
+    },
+    'primordiais_verdadeiros': {
+        label: 'Primordiais Verdadeiros', icon: '🌟',
+        categorias: [{ titulo: 'A Divindade e a Ruína', itens: ['Celestial', 'Infernal', 'Caos'] }]
+    },
+    'absolutos': {
+        label: 'Primordiais Absolutos', icon: '♾️',
+        categorias: [{ titulo: 'O Início e o Fim de Tudo', itens: ['Criacao', 'Destruicao', 'Cosmos'] }]
+    },
+    'astrais': { 
+        label: 'Elementos Astrais', icon: '🌌', 
+        categorias: [{ titulo: 'As Forças Astrais', itens: ['Vida', 'Morte', 'Vazio'] }] 
+    },
+    'chakra': { 
+        label: 'O Chakra', icon: '🌀', 
+        categorias: [
+            { titulo: 'Kekkei Genkai (Mutações Genéticas)', itens: ['Elemento Madeira', 'Elemento Mineral', 'Elemento Cinzas', 'Elemento Igneo', 'Elemento Lava', 'Elemento Vapor', 'Elemento Nevoa', 'Elemento Tempestade', 'Elemento Areia', 'Elemento Tufao'] },
+            { titulo: 'Kekkei Touta (Seleção Sanguínea)', itens: ['Elemento Velocidade', 'Elemento Poeira', 'Elemento Veneno', 'Elemento Cal', 'Elemento Carbono', 'Elemento Calor', 'Elemento Som', 'Elemento Magnetismo'] }
+        ] 
+    },
+    'mana': { 
+        label: 'A Mana', icon: '🔮', 
+        categorias: [
+            { titulo: 'Magias de Ciclo', itens: ['Truques de Ciclo', 'Magias de 1º Ciclo', 'Magias de 2º Ciclo', 'Magias de 3º Ciclo', 'Magias de 4º Ciclo', 'Magias de 5º Ciclo', 'Magias de 6º Ciclo', 'Magias de 7º Ciclo', 'Magias de 8º Ciclo', 'Magias de 9º Ciclo', 'Magias de 10º Ciclo'] },
+            { titulo: 'Magias Arcanas e Negras', itens: ['Truques Arcanos/Negros', 'Magias Arcanas/Negra de 1º Ciclo', 'Magias Arcanas/Negra de 2º Ciclo', 'Magias Arcanas/Negra de 3º Ciclo', 'Magias Arcanas/Negra de 4º Ciclo', 'Magias Arcanas/Negra de 5º Ciclo', 'Magias Arcanas/Negra de 6º Ciclo', 'Magias Arcanas/Negra de 7º Ciclo', 'Magias Arcanas/Negra de 8º Ciclo', 'Magias Arcanas/Negra de 9º Ciclo', 'Magias Arcanas/Negra de 10º Ciclo'] },
+            { titulo: 'Magias Ancestrais', itens: ['Truques Ancestrais', 'Magia de Sangue', 'Magia de Osso', 'Magia Draconica', 'Magia de Borracha', 'Magia de Espelho', 'Magia de Sal', 'Magia de Alma', 'Magia de Tremor', 'Magia de Gravidade', 'Magia de Tempo', 'Magia de Equipamento', 'Magia de Explosao', 'Magia Espacial', 'Magia de Metamorfose'] }
+        ] 
+    },
+    'aura': { 
+        label: 'A Aura', icon: '🛡️', 
+        categorias: [{ titulo: 'Manifestações de Aura', itens: ['Aura Pura', 'Projeção de Aura'] }] 
+    },
+    'corpo': { 
+        label: 'O Corpo', icon: '💪', 
+        categorias: [{ titulo: 'Técnicas Corporais', itens: ['Artes Marciais', 'Reforço Físico'] }] 
+    },
+    'compostos': { 
+        label: 'Elementos Compostos', icon: '⚛️', 
+        categorias: [{ titulo: 'Misturas Elementais', itens: ['Fusões Básicas', 'Fusões Avançadas'] }] 
+    }
 };
 
+// Se aparecer alguma magia extra misteriosa, cria um capítulo de "Perdidos" no fim do livro!
 const itensJáCategorizados = Object.values(ABAS_GRIMORIO).flatMap(aba => aba.categorias.flatMap(c => c.itens));
 const magiasSobressalentes = Object.keys(cores).filter(k => !itensJáCategorizados.includes(k));
-if (magiasSobressalentes.length > 0) { ABAS_GRIMORIO['avancados_temp'].categorias.push({ titulo: 'Magias e Elementos Extras', itens: magiasSobressalentes }); }
+if (magiasSobressalentes.length > 0) { 
+    ABAS_GRIMORIO['extras'] = {
+        label: 'Pergaminhos Perdidos', icon: '📜',
+        categorias: [{ titulo: 'Magias e Elementos Não Catalogados', itens: magiasSobressalentes }]
+    }; 
+}
 
 export const BONUS_OPTIONS = [
     { value: 'nenhum', label: 'Nenhum (Apenas Elemento)' },
@@ -265,7 +305,11 @@ export function ElementosFormProvider({ children }) {
     const cancelarEdicaoElem = useCallback(() => {
         setElemEditandoId(null); setNomeElem(''); setDescricaoElem(''); 
         setElementosAfetados(''); 
-        setEnergiaCombustao(['basicos', 'avancados_temp', 'compostos'].includes(abaAtual) ? 'flexivel' : 'mana');
+        
+        // Atualizado para englobar todas as abas genéricas
+        const abasNaoManas = ['basicos', 'basicos_verdadeiros', 'avancados', 'avancados_verdadeiros', 'primordiais', 'primordiais_verdadeiros', 'absolutos', 'compostos'];
+        setEnergiaCombustao(abasNaoManas.includes(abaAtual) ? 'flexivel' : 'mana');
+        
         setTipoMecanica('ataque'); setAlcanceQuad(1); setAreaQuad(0);
         setAlvosAfetados('todos'); setDuracaoZona(0);
     }, [setElemEditandoId, abaAtual]);
