@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import useStore, { sanitizarNome } from '../../stores/useStore';
-import { carregarFichaDoFirebase, deletarPersonagem, salvarFichaSilencioso, salvarFirebaseImediato, uploadImagem } from '../../services/firebase-sync';
+import { carregarFichaDoFirebase, salvarFichaSilencioso, salvarFirebaseImediato, uploadImagem, iniciarListenerPersonagens } from '../../services/firebase-sync';
 
 const PerfilFormContext = createContext(null);
 
@@ -21,32 +21,50 @@ export function PerfilFormProvider({ children }) {
     const carregarDadosFicha = useStore(s => s.carregarDadosFicha);
     const setPersonagemParaDeletar = useStore(s => s.setPersonagemParaDeletar);
     const setAbaAtiva = useStore(s => s.setAbaAtiva);
+    const mesaId = useStore(s => s.mesaId);
 
     const [nomeInput, setNomeInput] = useState(meuNome || '');
-    const [listaLocal, setListaLocal] = useState([]);
+    const [listaLocal, setListaLocal] = useState([]); // Agora será alimentada pela Nuvem!
     const [uploadingImg, setUploadingImg] = useState(false);
 
-    const atualizarListaLocal = useCallback(() => {
-        const nomes = [];
-        for (let i = 0; i < localStorage.length; i++) {
-            const k = localStorage.key(i);
-            if (k && k.startsWith('rpgFicha_')) nomes.push(k.replace('rpgFicha_', ''));
-        }
-        setListaLocal(nomes);
-    }, []);
+    // 🔥 O NOVO RADAR DA NUVEM 🔥
+    // Em vez de ler o localStorage, o jogo agora lê os personagens que estão VIVOS dentro da Mesa!
+    useEffect(() => {
+        if (!mesaId) return;
+        const pararEscuta = iniciarListenerPersonagens((personagensDaMesa) => {
+            if (personagensDaMesa) {
+                // Puxa as chaves (os nomes dos personagens) direto do Firebase
+                const nomes = Object.keys(personagensDaMesa);
+                setListaLocal(nomes);
+            } else {
+                setListaLocal([]);
+            }
+        });
+        return () => pararEscuta(); // Para de escutar quando muda de sala ou sai
+    }, [mesaId]);
 
-    useEffect(() => { atualizarListaLocal(); }, [meuNome, atualizarListaLocal]);
     useEffect(() => { setNomeInput(meuNome || ''); }, [meuNome]);
 
-    const processarCarregamento = useCallback((nomeCru) => {
+    const processarCarregamento = useCallback(async (nomeCru) => {
         const n = sanitizarNome(nomeCru);
         if (!n || (n === 'Jogador' && nomeCru.trim() === '')) return;
-        setMeuNome(n); localStorage.setItem('rpgNome', n); resetFicha();
+        
+        setMeuNome(n); 
+        localStorage.setItem('rpgNome', n); 
+        resetFicha();
+        
+        // 1. Tenta carregar do localStorage (apenas como fallback rápido se existir)
         const bl = localStorage.getItem('rpgFicha_' + n);
         if (bl) { try { carregarDadosFicha(JSON.parse(bl)); } catch (e) {} }
-        carregarFichaDoFirebase(n).then((dados) => { if (dados && Object.keys(dados).length > 2) carregarDadosFicha(dados); });
-        atualizarListaLocal(); setAbaAtiva('aba-status');
-    }, [setMeuNome, resetFicha, carregarDadosFicha, atualizarListaLocal, setAbaAtiva]);
+        
+        // 2. A MÁGICA: Força a busca da Ficha atualizada diretamente do Firebase!
+        const dadosNuven = await carregarFichaDoFirebase(n);
+        if (dadosNuven && Object.keys(dadosNuven).length > 2) {
+            carregarDadosFicha(dadosNuven);
+        }
+        
+        setAbaAtiva('aba-status');
+    }, [setMeuNome, resetFicha, carregarDadosFicha, setAbaAtiva]);
 
     const trocarPersonagem = useCallback(() => processarCarregamento(nomeInput), [nomeInput, processarCarregamento]);
     const carregarPersonagemExistente = useCallback((n) => { setNomeInput(n); processarCarregamento(n); }, [processarCarregamento]);
@@ -69,7 +87,7 @@ export function PerfilFormProvider({ children }) {
             const url = await uploadImagem(file, `avatars/${meuNome || 'desconhecido'}`);
             updateFicha(ficha => { if (!ficha.avatar) ficha.avatar = { base: "" }; ficha.avatar.base = url; });
             await salvarFirebaseImediato();
-        } catch (err) { alert('Erro ao sincronizar o avatar! O upload pode ter falhado ou o Firebase rejeitou o salvamento.'); } 
+        } catch (err) { alert('Erro ao sincronizar o avatar!'); } 
         finally { setUploadingImg(false); }
     }, [meuNome, updateFicha]);
 
