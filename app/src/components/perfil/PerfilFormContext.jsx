@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import useStore, { sanitizarNome } from '../../stores/useStore';
-import { carregarFichaDoFirebase, salvarFichaSilencioso, salvarFirebaseImediato, uploadImagem } from '../../services/firebase-sync';
+import { carregarFichaDoFirebase, salvarFichaSilencioso, salvarFirebaseImediato, uploadImagem, iniciarListenerPersonagens } from '../../services/firebase-sync';
 import { ref, onValue, set, get } from 'firebase/database';
 import { db } from '../../services/firebase-config';
 
@@ -30,6 +30,17 @@ export function PerfilFormProvider({ children }) {
     const [nomeInput, setNomeInput] = useState(meuNome || '');
     const [listaLocal, setListaLocal] = useState([]);
     const [uploadingImg, setUploadingImg] = useState(false);
+    
+    // 🔥 NOVO: Armazena temporariamente todos os personagens da sala para o Scanner
+    const [todosMesa, setTodosMesa] = useState([]);
+
+    useEffect(() => {
+        if (!mesaId) return;
+        const unsub = iniciarListenerPersonagens((dados) => {
+            setTodosMesa(dados ? Object.keys(dados) : []);
+        });
+        return () => unsub();
+    }, [mesaId]);
 
     // ==========================================
     // 🔥 RADAR DE IDENTIDADE: FUSÃO DA NUVEM COM LOCAL 🔥
@@ -39,21 +50,17 @@ export function PerfilFormProvider({ children }) {
         const refHistorico = ref(db, `usuarios/${sanitizarNome(userLogado)}/historicoPersonagens_${mesaId}`);
 
         const unsub = onValue(refHistorico, (snap) => {
-            // 1. Pega o que já está na Nuvem (e garante que é um Array)
             let nuvemLista = snap.exists() ? snap.val() : [];
             if (!Array.isArray(nuvemLista)) nuvemLista = Object.values(nuvemLista);
 
-            // 2. Pega tudo o que está esquecido no navegador Web (Local)
             const localLista = [];
             for (let i = 0; i < localStorage.length; i++) {
                 const k = localStorage.key(i);
                 if (k && k.startsWith('rpgFicha_')) localLista.push(k.replace('rpgFicha_', ''));
             }
 
-            // 3. Funde as duas realidades e remove duplicatas (A Mágica!)
             const listaUnificada = [...new Set([...nuvemLista, ...localLista])];
 
-            // 4. Se a lista unificada for maior (ou seja, achou coisas locais), atualiza a Nuvem para todos!
             if (listaUnificada.length > nuvemLista.length) {
                 set(refHistorico, listaUnificada).catch(()=>{});
             }
@@ -73,7 +80,7 @@ export function PerfilFormProvider({ children }) {
         localStorage.setItem('rpgNome', n); 
         resetFicha();
 
-        // Regista a posse ao abrir o personagem
+        // Regista a posse ao abrir/carregar o personagem
         if (userLogado && mesaId) {
             const refHistorico = ref(db, `usuarios/${sanitizarNome(userLogado)}/historicoPersonagens_${mesaId}`);
             get(refHistorico).then(snap => {
@@ -84,11 +91,9 @@ export function PerfilFormProvider({ children }) {
             });
         }
         
-        // Carrega Local se houver
         const bl = localStorage.getItem('rpgFicha_' + n);
         if (bl) { try { carregarDadosFicha(JSON.parse(bl)); } catch (e) {} }
         
-        // Busca final garantida na Nuvem
         const dadosNuven = await carregarFichaDoFirebase(n);
         if (dadosNuven && Object.keys(dadosNuven).length > 2) {
             carregarDadosFicha(dadosNuven);
@@ -122,6 +127,6 @@ export function PerfilFormProvider({ children }) {
         finally { setUploadingImg(false); }
     }, [meuNome, updateFicha]);
 
-    const value = useMemo(() => ({ minhaFicha, meuNome, isMestre, nomeInput, setNomeInput, listaLocal, uploadingImg, trocarPersonagem, carregarPersonagemExistente, abrirModalDelete, toggleMestre, alterarAvatarBase, handleImageUpload }), [ minhaFicha, meuNome, isMestre, nomeInput, listaLocal, uploadingImg, trocarPersonagem, carregarPersonagemExistente, abrirModalDelete, toggleMestre, alterarAvatarBase, handleImageUpload ]);
+    const value = useMemo(() => ({ minhaFicha, meuNome, isMestre, nomeInput, setNomeInput, listaLocal, uploadingImg, trocarPersonagem, carregarPersonagemExistente, abrirModalDelete, toggleMestre, alterarAvatarBase, handleImageUpload, todosMesa }), [ minhaFicha, meuNome, isMestre, nomeInput, listaLocal, uploadingImg, trocarPersonagem, carregarPersonagemExistente, abrirModalDelete, toggleMestre, alterarAvatarBase, handleImageUpload, todosMesa ]);
     return <PerfilFormContext.Provider value={value}>{children}</PerfilFormContext.Provider>;
 }
