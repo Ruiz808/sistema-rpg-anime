@@ -112,7 +112,7 @@ const CampoMagicoNPC = ({ valor, onChange, placeholder, styleExtra = {}, type = 
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
             placeholder={placeholder}
-            style={{ background: 'transparent', border: 'none', borderBottom: '1px dashed rgba(0,0,0,0.3)', fontFamily: 'inherit', fontSize: 'inherit', color: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', outline: 'none', padding: '0 5px', width: '100px', ...styleExtra }} 
+            style={{ background: 'transparent', border: 'none', borderBottom: '1px dashed currentColor', fontFamily: 'inherit', fontSize: 'inherit', color: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', outline: 'none', padding: '0 5px', width: '100px', ...styleExtra }} 
         />
     );
 };
@@ -129,7 +129,7 @@ const LabelMagicoNPC = ({ valor, onChange, fallback }) => (
         type="text" value={valor !== undefined ? valor : fallback} onChange={(e) => onChange(e.target.value)} 
         size={Math.max(String(valor !== undefined ? valor : fallback).length, 3)}
         style={{ background: 'transparent', border: 'none', borderBottom: '1px solid transparent', fontFamily: 'inherit', fontSize: 'inherit', color: 'inherit', fontWeight: 'bold', fontStyle: 'italic', outline: 'none', padding: '0', cursor: 'text', transition: '0.2s' }}
-        onFocus={(e) => e.target.style.borderBottom = '1px dashed rgba(0,0,0,0.5)'} onBlur={(e) => e.target.style.borderBottom = '1px solid transparent'}
+        onFocus={(e) => e.target.style.borderBottom = '1px dashed currentColor'} onBlur={(e) => e.target.style.borderBottom = '1px solid transparent'}
     />
 );
 
@@ -146,7 +146,7 @@ const BarraVitalNPC = ({ atual, maximo, pVit, cor, corTexto = "#fff", onChangeAt
     const pct = maximo > 0 ? Math.min(100, Math.max(0, (atual / maximo) * 100)) : 0;
     const isDark = corTexto === '#fff';
     return (
-        <div style={{ position: 'relative', width: '100%', height: '35px', border: '2px solid rgba(0,0,0,0.8)', borderRadius: '6px', background: 'rgba(255,255,255,0.2)', overflow: 'hidden', marginTop: '5px', boxShadow: 'inset 0 0 10px rgba(0,0,0,0.5)', display: 'flex' }}>
+        <div style={{ position: 'relative', width: '100%', height: '35px', border: '2px solid currentColor', borderRadius: '6px', background: 'rgba(255,255,255,0.2)', overflow: 'hidden', marginTop: '5px', boxShadow: 'inset 0 0 10px rgba(0,0,0,0.5)', display: 'flex' }}>
             {pVit > 0 && (
                 <div style={{ width: '35px', height: '100%', background: 'rgba(0,0,0,0.9)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.2em', borderRight: '2px solid rgba(0,0,0,0.8)', zIndex: 5, boxShadow: `inset 0 0 10px ${cor}` }}>{pVit}</div>
             )}
@@ -219,24 +219,30 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
     const [animDirection, setAnimDirection] = useState('next');
 
     const [localCorFundo, setLocalCorFundo] = useState('#ffe6cc');
+    const [localCorTexto, setLocalCorTexto] = useState('#000000');
     const [localCorTinta, setLocalCorTinta] = useState('#000000');
     const [localBgImg, setLocalBgImg] = useState('');
     const [localMolduraAvatar, setLocalMolduraAvatar] = useState('');
     const [localCorMoldura, setLocalCorMoldura] = useState('#ffffff');
     const [localIconeClasse, setLocalIconeClasse] = useState('');
     const [localModoMoldura, setLocalModoMoldura] = useState('screen');
+    const [localModoFundo, setLocalModoFundo] = useState('normal');
+    const [localCorFundoTint, setLocalCorFundoTint] = useState('#ffffff');
 
     useEffect(() => {
         if (npcData) {
             setLocalCorFundo(npcData.estetica?.diarioCor || '#ffe6cc');
+            setLocalCorTexto(npcData.estetica?.corTexto || '#000000');
             setLocalCorTinta(npcData.estetica?.corTintaRadar || '#000000');
             setLocalBgImg(npcData.estetica?.bgImg || '');
             setLocalMolduraAvatar(npcData.estetica?.molduraAvatar || '');
             setLocalCorMoldura(npcData.estetica?.corMoldura || '#ffffff');
             setLocalIconeClasse(npcData.estetica?.iconeClasse || '');
             setLocalModoMoldura(npcData.estetica?.modoMoldura || 'screen');
+            setLocalModoFundo(npcData.estetica?.modoFundo || 'normal');
+            setLocalCorFundoTint(npcData.estetica?.corFundoTint || '#ffffff');
         }
-    }, [npcData?.estetica?.diarioCor, npcData?.estetica?.corTintaRadar, npcData?.estetica?.bgImg, npcData?.estetica?.molduraAvatar, npcData?.estetica?.corMoldura, npcData?.estetica?.iconeClasse, npcData?.estetica?.modoMoldura]);
+    }, [npcData?.estetica]);
 
     if (!npcData) return <div style={{ color: '#fff', padding: 20 }}>Conectando à Entidade...</div>;
 
@@ -263,12 +269,15 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
 
     const handleStyleChange = (key, val) => {
         if (key === 'diarioCor') setLocalCorFundo(val);
+        else if (key === 'corTexto') setLocalCorTexto(val);
         else if (key === 'corTintaRadar') setLocalCorTinta(val);
         else if (key === 'bgImg') setLocalBgImg(val);
         else if (key === 'molduraAvatar') setLocalMolduraAvatar(val);
         else if (key === 'corMoldura') setLocalCorMoldura(val);
         else if (key === 'iconeClasse') setLocalIconeClasse(val);
         else if (key === 'modoMoldura') setLocalModoMoldura(val);
+        else if (key === 'modoFundo') setLocalModoFundo(val);
+        else if (key === 'corFundoTint') setLocalCorFundoTint(val);
 
         if (window.timerSaveCorNPC) clearTimeout(window.timerSaveCorNPC);
         window.timerSaveCorNPC = setTimeout(() => {
@@ -446,27 +455,50 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
         try { maxVal = getMaximo(npcData, attrKey); } catch(e) { maxVal = baseVal; }
         if (isNaN(maxVal)) maxVal = 0;
         return (
-            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted rgba(0,0,0,0.2)', padding: '6px 0', fontSize: '1.1em' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted currentColor', padding: '6px 0', fontSize: '1.1em' }}>
                 <LabelMagicoNPC valor={getLabel(labelKey, fallbackLabel)} onChange={(v) => setLabel(labelKey, v)} />
                 {isAtual ? <span style={{ fontWeight: 'bold' }}>{Number(maxVal).toLocaleString('pt-BR')}</span> : <CampoMagicoNPC valor={baseVal} onChange={(v) => salvar(`${attrKey}.base`, v)} styleExtra={{ width: '100px', textAlign: 'right', fontWeight: 'bold' }} type="number" isNumber={true} />}
             </div>
         );
     };
 
+    // 🔥 O MOTOR DA LUMINOSIDADE 🔥
+    const getLuma = (hex) => {
+        if (!hex) return 255;
+        const c = hex.replace('#', '');
+        const r = parseInt(c.substring(0, 2), 16) || 255;
+        const g = parseInt(c.substring(2, 4), 16) || 255;
+        const b = parseInt(c.substring(4, 6), 16) || 255;
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const isDarkFrame = localCorMoldura && getLuma(localCorMoldura) < 50;
+
     return (
         <div style={{ 
             width: '100%', minHeight: '85vh', 
             backgroundColor: localCorFundo,
-            backgroundImage: localBgImg ? `url(${localBgImg})` : 'none',
-            backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', backgroundPosition: 'center',
-            color: '#000', fontFamily: fonteDiario, 
-            padding: '40px 40px 80px 40px', borderRadius: '12px', position: 'relative', transition: 'background 0.3s ease',
+            color: localCorTexto,
+            fontFamily: fonteDiario, 
+            padding: '40px 40px 80px 40px', borderRadius: '12px', position: 'relative', transition: 'background 0.3s ease, color 0.3s ease',
             boxShadow: 'inset 0 0 40px rgba(0,0,0,0.1), 0 10px 30px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column',
             overflow: 'visible', marginTop: '20px'
         }}>
             
+            {/* 🔥 FUNDO ALQUÍMICO 🔥 */}
+            {localBgImg && (
+                <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0, pointerEvents: 'none', borderRadius: '12px', overflow: 'hidden', mixBlendMode: localModoFundo, isolation: 'isolate' }}>
+                    <img src={localBgImg} alt="Fundo" style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', top: 0, left: 0, filter: localModoFundo !== 'normal' ? 'contrast(1.2) saturate(1.2)' : 'none' }} />
+                    {localCorFundoTint && localCorFundoTint !== '#ffffff' && (
+                        <>
+                            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: localCorFundoTint, mixBlendMode: 'color' }} />
+                            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: localCorFundoTint, mixBlendMode: 'overlay', opacity: 0.8 }} />
+                        </>
+                    )}
+                </div>
+            )}
+
             <style>{`
-                .swoop-container { transform-style: preserve-3d; }
+                .swoop-container { transform-style: preserve-3d; z-index: 1; position: relative; }
                 @keyframes pageSwoopNext {
                     0% { transform: perspective(1500px) rotateY(-15deg) translateX(30px) scale(0.98); opacity: 0; }
                     100% { transform: perspective(1500px) rotateY(0deg) translateX(0) scale(1); opacity: 1; }
@@ -499,16 +531,26 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                 <div style={{ position: 'relative' }}>
                     <button onClick={() => setModalEstilo(!modalEstilo)} style={{ background: '#ff94c2', color: '#000', border: '1px solid #333', borderBottom: '3px solid #222', padding: '10px 20px', fontFamily: 'inherit', fontWeight: 'bold', fontSize: '1.1em', cursor: 'pointer', borderRadius: '4px', boxShadow: '2px 4px 8px rgba(0,0,0,0.4)', transform: 'rotate(-2deg)' }}>🎨 Estilo do NPC</button>
                     {modalEstilo && (
-                        <div className="fade-in" style={{ position: 'absolute', top: '55px', right: '0', background: '#ffe4f0', padding: '15px', border: '1px solid #ccc', boxShadow: '5px 5px 15px rgba(0,0,0,0.3)', width: '300px', zIndex: 20, borderRadius: '6px' }}>
-                            <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>Cor do Papel:</label>
+                        <div className="fade-in" style={{ position: 'absolute', top: '55px', right: '0', background: '#ffe4f0', padding: '15px', border: '1px solid #ccc', boxShadow: '5px 5px 15px rgba(0,0,0,0.3)', width: '320px', zIndex: 20, borderRadius: '6px', color: '#000', maxHeight: '70vh', overflowY: 'auto' }}>
+                            
+                            {/* 🔥 COR DO TEXTO 🔥 */}
+                            <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>Cor do Texto da Ficha:</label>
+                            <input 
+                                type="color" value={localCorTexto} 
+                                onChange={(e) => handleStyleChange('corTexto', e.target.value)} 
+                                style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} 
+                            />
+
+                            <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>Cor do Papel (Fundo Base):</label>
                             <input 
                                 type="color" value={localCorFundo} 
                                 onChange={(e) => handleStyleChange('diarioCor', e.target.value)} 
                                 style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} 
                             />
 
-                            <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>🖼️ Fundo da Ficha (URL):</label>
-                            <div style={{ display: 'flex', gap: '5px', marginBottom: '15px' }}>
+                            {/* 🔥 FUNDO DA FICHA 🔥 */}
+                            <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>🖼️ Imagem de Fundo (URL):</label>
+                            <div style={{ display: 'flex', gap: '5px', marginBottom: '5px' }}>
                                 <input 
                                     type="text" value={localBgImg} onChange={(e) => handleStyleChange('bgImg', e.target.value)} placeholder="Cole o Link aqui..."
                                     style={{ flex: 1, padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', color: 'inherit' }} 
@@ -517,6 +559,17 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                     📁<input type="file" accept="image/*" onChange={handleBgUpload} style={{ display: 'none' }} />
                                 </label>
                             </div>
+                            <select value={localModoFundo} onChange={(e) => handleStyleChange('modoFundo', e.target.value)} style={{ width: '100%', padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', fontFamily: 'inherit', marginBottom: '5px' }}>
+                                <option value="normal">Fundo Normal</option>
+                                <option value="screen">Apagar Preto (Screen)</option>
+                                <option value="multiply">Apagar Branco (Multiply)</option>
+                            </select>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9em', marginBottom: '15px', color: '#555', fontWeight: 'bold' }}>
+                                <span>Tingir Fundo:</span>
+                                <input type="color" value={localCorFundoTint} onChange={(e) => handleStyleChange('corFundoTint', e.target.value)} style={{ width: '40px', height: '25px', border: 'none', cursor: 'pointer', background: 'transparent' }} />
+                            </label>
+
+                            <hr style={{ border: '1px dashed #ccc', margin: '15px 0' }}/>
 
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>✨ Moldura do Personagem:</label>
                             <div style={{ display: 'flex', gap: '5px', marginBottom: '5px' }}>
@@ -530,7 +583,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                             </div>
 
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>🪄 Remoção de Fundo (Moldura):</label>
-                            <select value={localModoMoldura} onChange={(e) => handleStyleChange('modoMoldura', e.target.value)} style={{ width: '100%', padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', fontFamily: 'inherit', marginBottom: '15px' }}>
+                            <select value={localModoMoldura} onChange={(e) => handleStyleChange('modoMoldura', e.target.value)} style={{ width: '100%', padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', fontFamily: 'inherit', marginBottom: '10px' }}>
                                 <option value="screen">Fundo Preto (Magia Screen)</option>
                                 <option value="multiply">Fundo Branco (Magia Multiply)</option>
                                 <option value="normal">Nenhum / Imagem PNG Transparente</option>
@@ -562,6 +615,8 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                 </label>
                             </div>
 
+                            <hr style={{ border: '1px dashed #ccc', margin: '15px 0' }}/>
+
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>Cor da Tinta (Radar):</label>
                             <input 
                                 type="color" value={localCorTinta} 
@@ -585,7 +640,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                 {paginaAtual === 1 && (
                     <>
                         <div style={{ flex: '1 1 450px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                            <div style={{ display: 'flex', alignItems: 'baseline', borderBottom: '2px solid rgba(0,0,0,0.8)', paddingBottom: '5px', marginBottom: '10px', width: 'fit-content' }}>
+                            <div style={{ display: 'flex', alignItems: 'baseline', borderBottom: '2px solid currentColor', paddingBottom: '5px', marginBottom: '10px', width: 'fit-content' }}>
                                 <span style={{ fontSize: '3.5em', fontStyle: 'italic', fontWeight: 'bold', margin: 0 }}>/</span>
                                 <CampoMagicoNPC valor={npcData.nome} onChange={(v) => salvar('nome', v)} placeholder="Nome do NPC" styleExtra={{ fontSize: '3.5em', fontStyle: 'italic', fontWeight: 'bold', minWidth: '300px', width: 'auto', borderBottom: 'none' }} />
                                 <span style={{ fontSize: '3.5em', fontStyle: 'italic', fontWeight: 'bold', margin: 0 }}>©</span>
@@ -610,22 +665,22 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                             <LabelMagicoNPC valor={getLabel(`bio_${item.k}`, item.lbl)} onChange={(v) => setLabel(`bio_${item.k}`, v)} />
                                         </div>
                                         <span style={{ fontWeight: 'bold', marginRight: '8px' }}>:</span>
-                                        <CampoMagicoNPC valor={item.foraDaBio ? npcData[item.k] : npcData.bio?.[item.k]} onChange={(v) => salvar(item.foraDaBio ? item.k : `bio.${item.k}`, v)} styleExtra={{ flex: 1, borderBottom: '1px dotted rgba(0,0,0,0.3)' }} />
+                                        <CampoMagicoNPC valor={item.foraDaBio ? npcData[item.k] : npcData.bio?.[item.k]} onChange={(v) => salvar(item.foraDaBio ? item.k : `bio.${item.k}`, v)} styleExtra={{ flex: 1, borderBottom: '1px dotted currentColor' }} />
                                     </div>
                                 ))}
                             </div>
 
-                            <div style={{ marginTop: '20px', position: 'relative', width: '320px', height: '480px', display: 'flex', flexDirection: 'column', borderRadius: '8px', border: npcData.avatar?.base ? 'none' : '2px dashed #000', boxShadow: npcData.avatar?.base ? '8px 8px 0px rgba(0,0,0,0.2)' : 'none', isolation: 'isolate' }}>
+                            <div style={{ marginTop: '20px', position: 'relative', width: '320px', height: '480px', display: 'flex', flexDirection: 'column', borderRadius: '8px', border: npcData.avatar?.base ? 'none' : '2px dashed currentColor', boxShadow: npcData.avatar?.base ? '8px 8px 0px rgba(0,0,0,0.2)' : 'none', isolation: 'isolate' }}>
                                 {uploadingImg ? (
                                     <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.7)', color: '#fff', fontWeight: 'bold', zIndex: 20 }}>✍️ Forjando...</div>
                                 ) : npcData.avatar?.base ? (
                                     <>
-                                        {/* 🔥 FOTO ESTICADA SEM CORTE (objectPosition: top center) 🔥 */}
+                                        {/* 🔥 FOTO ESTICADA SEM CORTE 🔥 */}
                                         <img src={npcData.avatar.base} alt="Avatar" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', zIndex: 1, borderRadius: '8px' }} />
                                         
-                                        {/* 🔥 A MOLDURA COM ALQUIMIA DE COR FORTE E FUNDO (BRANCO OU PRETO) 🔥 */}
+                                        {/* 🔥 MOLDURA COM ALQUIMIA DE COR FORTE E FUNDO 🔥 */}
                                         {localMolduraAvatar && (
-                                            <div style={{ position: 'absolute', top: '-3.5%', left: '-3%', width: '106%', height: '107%', zIndex: 2, pointerEvents: 'none', mixBlendMode: localModoMoldura, isolation: 'isolate' }}>
+                                            <div style={{ position: 'absolute', top: '-3%', left: '-3%', width: '106%', height: '106%', zIndex: 2, pointerEvents: 'none', mixBlendMode: localModoMoldura, isolation: 'isolate' }}>
                                                 <img src={localMolduraAvatar} alt="Moldura" style={{ width: '100%', height: '100%', objectFit: 'fill', position: 'absolute', top: 0, left: 0, filter: 'contrast(1.2) saturate(1.2)' }} />
                                                 
                                                 {/* CAMADA DE COR FORTE (Color + Overlay) */}
@@ -638,13 +693,15 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                             </div>
                                         )}
 
-                                        {/* 🔥 O ÍCONE DA CLASSE (GIGANTE, E COLORIDO COM MÁSCARA EXATA) */}
+                                        {/* 🔥 O ÍCONE DA CLASSE PERFEITO (COM MÁSCARA EXATA PARA NÃO VAZAR O QUADRADO) */}
                                         {(classeInfo || localIconeClasse) && (
                                             <div style={{ position: 'absolute', bottom: '-8px', left: '50%', transform: 'translateX(-50%)', zIndex: 3, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '70px', height: '70px' }}>
                                                 {iconeFinal ? (
                                                     <div style={{ position: 'relative', width: '100%', height: '100%', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))', isolation: 'isolate' }}>
+                                                        {/* Imagem Original Base */}
                                                         <img src={iconeFinal} alt="Classe" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'contain' }} />
                                                         
+                                                        {/* Camadas de Cor recortadas pela Máscara para não pintar o quadrado inteiro! */}
                                                         {localCorMoldura && localCorMoldura !== '#ffffff' && (
                                                             <>
                                                                 <div style={{ 
@@ -673,7 +730,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                         </label>
                                     </>
                                 ) : (
-                                    <label style={{ cursor: 'pointer', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', background: 'rgba(255,255,255,0.1)' }}>
+                                    <label style={{ cursor: 'pointer', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'currentColor', opacity: 0.7, background: 'rgba(255,255,255,0.1)' }}>
                                         Colar Fotografia Aqui 📸
                                         <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
                                     </label>
@@ -685,7 +742,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                         <div style={{ flex: '1 1 450px', display: 'flex', flexDirection: 'column' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '0 0 10px 5px' }}>
                                 <h2 style={{ fontSize: '2em', fontStyle: 'italic', fontWeight: 'bold', margin: 0, display: 'flex' }}><LabelMagicoNPC valor={getLabel('tituloBase', '> STATUS PRINCIPAIS')} onChange={(v) => setLabel('tituloBase', v)} /></h2>
-                                <button onClick={handleRegenerarTudo} style={{ background: 'rgba(255,255,255,0.4)', border: '2px solid rgba(0,0,0,0.8)', padding: '5px 15px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'inherit', fontSize: '0.9em', display: 'flex', alignItems: 'center', gap: '5px', boxShadow: '2px 2px 5px rgba(0,0,0,0.2)' }}><span>💖</span> Curar NPC</button>
+                                <button onClick={handleRegenerarTudo} style={{ background: 'rgba(255,255,255,0.4)', border: '2px solid currentColor', padding: '5px 15px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'inherit', fontSize: '0.9em', display: 'flex', alignItems: 'center', gap: '5px', boxShadow: '2px 2px 5px rgba(0,0,0,0.2)' }}><span>💖</span> Curar NPC</button>
                             </div>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
@@ -708,18 +765,18 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                 </div>
 
                                 <div style={{ display: 'flex', gap: '15px', marginTop: '5px' }}>
-                                    <div style={{ flex1, border: '2px solid rgba(0,0,0,0.8)', padding: '10px', borderRadius: '6px', background: 'rgba(255,255,255,0.2)' }}>
+                                    <div style={{ flex1, border: '2px solid currentColor', padding: '10px', borderRadius: '6px', background: 'rgba(255,255,255,0.2)' }}>
                                         <div style={{ fontSize: '0.8em', fontWeight: 'bold', textTransform: 'uppercase' }}><LabelMagicoNPC valor={getLabel('lblMultV', 'Mult. de Vida (PV)')} onChange={(v) => setLabel('lblMultV', v)} /></div>
-                                        <CampoMagicoNPC valor={npcData.multiplicadorVida || 1} onChange={(v) => salvar('multiplicadorVida', v)} type="number" isNumber={true} styleExtra={{ width: '100%', borderBottom: '1px solid rgba(0,0,0,0.5)', marginTop: '5px' }} />
+                                        <CampoMagicoNPC valor={npcData.multiplicadorVida || 1} onChange={(v) => salvar('multiplicadorVida', v)} type="number" isNumber={true} styleExtra={{ width: '100%', borderBottom: '1px solid currentColor', marginTop: '5px' }} />
                                     </div>
-                                    <div style={{ flex: 1, border: '2px solid rgba(0,0,0,0.8)', padding: '10px', borderRadius: '6px', background: 'rgba(255,255,255,0.2)' }}>
+                                    <div style={{ flex: 1, border: '2px solid currentColor', padding: '10px', borderRadius: '6px', background: 'rgba(255,255,255,0.2)' }}>
                                         <div style={{ fontSize: '0.8em', fontWeight: 'bold', textTransform: 'uppercase' }}><LabelMagicoNPC valor={getLabel('lblMultM', 'Mult. de Morte (PM)')} onChange={(v) => setLabel('lblMultM', v)} /></div>
-                                        <CampoMagicoNPC valor={npcData.multiplicadorMorte || 1} onChange={(v) => salvar('multiplicadorMorte', v)} type="number" isNumber={true} styleExtra={{ width: '100%', borderBottom: '1px solid rgba(0,0,0,0.5)', marginTop: '5px' }} />
+                                        <CampoMagicoNPC valor={npcData.multiplicadorMorte || 1} onChange={(v) => salvar('multiplicadorMorte', v)} type="number" isNumber={true} styleExtra={{ width: '100%', borderBottom: '1px solid currentColor', marginTop: '5px' }} />
                                     </div>
                                 </div>
                             </div>
 
-                            <div style={{ marginTop: '30px', border: '2px dashed rgba(0,0,0,0.5)', padding: '20px', borderRadius: '10px', position: 'relative' }}>
+                            <div style={{ marginTop: '30px', border: '2px dashed currentColor', padding: '20px', borderRadius: '10px', position: 'relative' }}>
                                 <span style={{ position: 'absolute', top: '-15px', left: '20px', background: localCorFundo, padding: '0 10px', fontSize: '1.2em', transition: 'background 0.2s ease' }}><LabelMagicoNPC valor={getLabel('tituloTurno', 'Ações de Turno')} onChange={(v) => setLabel('tituloTurno', v)} /></span>
                                 <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', marginTop: '10px' }}>
                                     {['padrao', 'bonus', 'reacao'].map(tipo => {
@@ -730,7 +787,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                                 <div style={{ display: 'flex', gap: '8px' }}>
                                                     {Array.from({ length: acao.max }).map((_, i) => (
                                                         <div key={i} onClick={() => salvar(`acoes.${tipo}.atual`, i >= acao.atual ? acao.atual + 1 : acao.atual - 1)}
-                                                            style={{ width: '25px', height: '25px', border: '2px solid #000', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '1.2em', color: '#ff003c', background: 'rgba(255,255,255,0.2)' }}>
+                                                            style={{ width: '25px', height: '25px', border: '2px solid currentColor', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '1.2em', color: '#ff003c', background: 'rgba(255,255,255,0.2)' }}>
                                                             {i >= acao.atual ? 'X' : ''}
                                                         </div>
                                                     ))}
@@ -747,11 +804,11 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                 {/* ======================= PÁGINA 2 ======================= */}
                 {paginaAtual === 2 && (
                     <>
-                        <div style={{ width: '100%', textAlign: 'center', borderBottom: '2px solid rgba(0,0,0,0.8)', paddingBottom: '10px', marginBottom: '20px' }}>
+                        <div style={{ width: '100%', textAlign: 'center', borderBottom: '2px solid currentColor', paddingBottom: '10px', marginBottom: '20px' }}>
                             <h1 style={{ fontSize: '3em', fontStyle: 'italic', fontWeight: 'bold', margin: 0, letterSpacing: '-1px' }}><LabelMagicoNPC valor={getLabel('tituloAnalise', 'Análise de Poder')} onChange={(v) => setLabel('tituloAnalise', v)} /></h1>
                         </div>
 
-                        <div style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(0,0,0,0.03)', padding: '20px', borderRadius: '15px', border: '1px dashed rgba(0,0,0,0.2)' }}>
+                        <div style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(0,0,0,0.03)', padding: '20px', borderRadius: '15px', border: '1px dashed currentColor' }}>
                             <h2 style={{ fontSize: '2em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 20px 0' }}><LabelMagicoNPC valor={getLabel('tituloAnaliseBase', 'Status (Rank Base)')} onChange={(v) => setLabel('tituloAnaliseBase', v)} /></h2>
                             <RadarDesenhadoNPC ficha={npcData} isAtual={false} corTinta={localCorTinta} />
                             
@@ -767,7 +824,7 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                             </div>
                         </div>
 
-                        <div style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(0,0,0,0.05)', padding: '20px', borderRadius: '15px', border: '2px solid rgba(0,0,0,0.8)' }}>
+                        <div style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(0,0,0,0.05)', padding: '20px', borderRadius: '15px', border: '2px solid currentColor' }}>
                             <h2 style={{ fontSize: '2em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 20px 0' }}><LabelMagicoNPC valor={getLabel('tituloAnaliseAtual', 'Poder Atual (c/ Formas)')} onChange={(v) => setLabel('tituloAnaliseAtual', v)} /></h2>
                             <RadarDesenhadoNPC ficha={npcData} isAtual={true} corTinta={localCorTinta} />
                             
@@ -784,8 +841,8 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                         </div>
 
                         {/* 🔥 TABELA SUPREMA PARA OS NPCs */}
-                        <div style={{ width: '100%', marginTop: '30px', background: 'rgba(0,0,0,0.03)', padding: '20px', borderRadius: '15px', border: '1px dashed rgba(0,0,0,0.2)' }}>
-                            <h2 style={{ fontSize: '1.8em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 20px 0', textAlign: 'center' }}>Mecânicas de Ascensão e Divisores</h2>
+                        <div style={{ width: '100%', marginTop: '30px', background: 'rgba(0,0,0,0.03)', padding: '20px', borderRadius: '15px', border: '1px dashed currentColor' }}>
+                            <h2 style={{ fontSize: '1.8em', fontStyle: 'italic', fontWeight: 'bold', margin: '0 0 20px 0', textAlign: 'center', color: 'inherit' }}>Mecânicas de Ascensão e Divisores</h2>
 
                             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
                                 <div style={{ background: 'rgba(0,0,0,0.8)', color: '#fff', padding: '10px 20px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '15px', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
@@ -802,10 +859,10 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
                                     return (
                                         <div key={k} style={{ background: 'rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.2)', borderRadius: '8px', padding: '10px', display: 'flex', flexDirection: 'column', gap: '8px', boxShadow: 'inset 0 0 10px rgba(0,0,0,0.05)' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ fontWeight: 'bold', color: '#000', fontSize: '1.1em' }}>{k.toUpperCase()}</span>
+                                                <span style={{ fontWeight: 'bold', color: 'inherit', fontSize: '1.1em' }}>{k.toUpperCase()}</span>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.9em' }}>
                                                     <span style={{ fontStyle: 'italic', fontWeight: 'bold' }}>Divisor:</span>
-                                                    <CampoMagicoNPC valor={divisor} onChange={v => handleTabelaChange(k, 'divisor', v)} type="number" isNumber={true} styleExtra={{ width: '50px', textAlign: 'center', border: '1px solid rgba(0,0,0,0.3)', borderRadius: '4px', background: 'rgba(255,255,255,0.5)' }} />
+                                                    <CampoMagicoNPC valor={divisor} onChange={v => handleTabelaChange(k, 'divisor', v)} type="number" isNumber={true} styleExtra={{ width: '50px', textAlign: 'center', border: '1px solid currentColor', borderRadius: '4px', background: 'rgba(255,255,255,0.5)' }} />
                                                 </div>
                                             </div>
                                             <div style={{ width: '100%', background: 'rgba(0,0,0,0.85)', borderRadius: '6px', padding: '5px', boxShadow: '0 4px 10px rgba(0,0,0,0.3)' }}>
@@ -901,9 +958,9 @@ export default function DiarioNPC({ npcData, onSaveNpc }) {
             </div>
 
             <div style={{ position: 'absolute', bottom: '20px', left: '0', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px', fontFamily: 'inherit' }}>
-                <button onClick={() => mudarPagina(Math.max(1, paginaAtual - 1))} disabled={paginaAtual === 1} style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 1 ? 'default' : 'pointer', opacity: paginaAtual === 1 ? 0.3 : 1, fontFamily: 'inherit' }}>⮜ Anterior</button>
-                <span style={{ fontSize: '1.1em', fontWeight: 'bold', borderBottom: '2px solid rgba(0,0,0,0.5)', padding: '0 10px' }}>Página {paginaAtual} de 3</span>
-                <button onClick={() => mudarPagina(Math.min(3, paginaAtual + 1))} disabled={paginaAtual === 3} style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 3 ? 'default' : 'pointer', opacity: paginaAtual === 3 ? 0.3 : 1, fontFamily: 'inherit' }}>Próxima ⮞</button>
+                <button onClick={() => mudarPagina(Math.max(1, paginaAtual - 1))} disabled={paginaAtual === 1} style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 1 ? 'default' : 'pointer', opacity: paginaAtual === 1 ? 0.3 : 1, fontFamily: 'inherit', color: 'inherit' }}>⮜ Anterior</button>
+                <span style={{ fontSize: '1.1em', fontWeight: 'bold', borderBottom: '2px solid currentColor', padding: '0 10px' }}>Página {paginaAtual} de 3</span>
+                <button onClick={() => mudarPagina(Math.min(3, paginaAtual + 1))} disabled={paginaAtual === 3} style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 3 ? 'default' : 'pointer', opacity: paginaAtual === 3 ? 0.3 : 1, fontFamily: 'inherit', color: 'inherit' }}>Próxima ⮞</button>
             </div>
 
         </div>
