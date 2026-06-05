@@ -2,38 +2,41 @@ import React, { useState, useEffect } from 'react';
 import useStore from '../../stores/useStore';
 import PoderesPanel from '../poderes/PoderesPanel';
 import ElementosPanel from '../arsenal/ElementosPanel';
-import { salvarFichaSilencioso, salvarFirebaseImediato } from '../../services/firebase-sync';
+import { salvarFichaSilencioso, salvarFirebaseImediato, uploadImagem } from '../../services/firebase-sync';
 
 export default function GrimorioPanel() {
     const minhaFicha = useStore(s => s.minhaFicha);
     const updateFicha = useStore(s => s.updateFicha);
+    const meuNome = useStore(s => s.meuNome);
     
     const [paginaAtual, setPaginaAtual] = useState(1);
     const [animDirection, setAnimDirection] = useState('next');
     const [modalEstilo, setModalEstilo] = useState(false);
     const [salvando, setSalvando] = useState(false);
 
-    const [localCorFundo, setLocalCorFundo] = useState('#bba9d8');
-    const [localCorTexto, setLocalCorTexto] = useState('#000000');
-    const [localCorTinta, setLocalCorTinta] = useState('#000000');
+    // 🔥 ESTÉTICA INDEPENDENTE SÓ PARA O GRIMÓRIO 🔥
+    const [localCorFundo, setLocalCorFundo] = useState('#1e1423'); // Fundo escuro por padrão
+    const [localCorTexto, setLocalCorTexto] = useState('#e6d5b8'); // Texto cor de pergaminho/ouro
+    const [localCorTinta, setLocalCorTinta] = useState('#d4af37'); // Tinta Dourada
     const [localBgImg, setLocalBgImg] = useState('');
     const [localModoFundo, setLocalModoFundo] = useState('normal');
     const [localCorFundoTint, setLocalCorFundoTint] = useState('#ffffff');
     
     useEffect(() => {
         if (minhaFicha) {
-            setLocalCorFundo(minhaFicha.estetica?.diarioCor || '#bba9d8');
-            setLocalCorTexto(minhaFicha.estetica?.corTexto || '#000000');
-            setLocalCorTinta(minhaFicha.estetica?.corTintaRadar || '#000000');
-            setLocalBgImg(minhaFicha.estetica?.bgImg || '');
-            setLocalModoFundo(minhaFicha.estetica?.modoFundo || 'normal');
-            setLocalCorFundoTint(minhaFicha.estetica?.corFundoTint || '#ffffff');
+            // Puxa do nó esteticaGrimorio em vez de estetica!
+            setLocalCorFundo(minhaFicha.esteticaGrimorio?.corPapel || '#1e1423');
+            setLocalCorTexto(minhaFicha.esteticaGrimorio?.corTexto || '#e6d5b8');
+            setLocalCorTinta(minhaFicha.esteticaGrimorio?.corTinta || '#d4af37');
+            setLocalBgImg(minhaFicha.esteticaGrimorio?.bgImg || '');
+            setLocalModoFundo(minhaFicha.esteticaGrimorio?.modoFundo || 'normal');
+            setLocalCorFundoTint(minhaFicha.esteticaGrimorio?.corFundoTint || '#ffffff');
         }
-    }, [minhaFicha?.estetica]);
+    }, [minhaFicha?.esteticaGrimorio]);
 
     if (!minhaFicha) return <div style={{ color: '#fff', padding: 20 }}>Invocando o Grimório...</div>;
 
-    const fonteDiario = minhaFicha.estetica?.diarioFonte || '"Comic Sans MS", "Chalkboard SE", "Marker Felt", cursive';
+    const fonteDiario = minhaFicha.esteticaGrimorio?.diarioFonte || '"Comic Sans MS", "Chalkboard SE", "Marker Felt", cursive';
 
     const mudarPagina = (nova) => {
         setAnimDirection(nova > paginaAtual ? 'next' : 'prev');
@@ -52,6 +55,33 @@ export default function GrimorioPanel() {
         }
     };
 
+    const handleStyleChange = (key, val) => {
+        if (key === 'corPapel') setLocalCorFundo(val);
+        else if (key === 'corTexto') setLocalCorTexto(val);
+        else if (key === 'corTinta') setLocalCorTinta(val);
+        else if (key === 'bgImg') setLocalBgImg(val);
+        else if (key === 'modoFundo') setLocalModoFundo(val);
+        else if (key === 'corFundoTint') setLocalCorFundoTint(val);
+
+        if (window.timerSaveCorGrimorio) clearTimeout(window.timerSaveCorGrimorio);
+        window.timerSaveCorGrimorio = setTimeout(() => {
+            updateFicha(f => {
+                if (!f.esteticaGrimorio) f.esteticaGrimorio = {};
+                f.esteticaGrimorio[key] = val;
+            });
+            if (typeof salvarFirebaseImediato === 'function') salvarFirebaseImediato();
+            else salvarFichaSilencioso();
+        }, 800);
+    };
+
+    const handleBgUpload = async (e) => {
+        const file = e.target.files[0]; if (!file) return;
+        try {
+            const url = await uploadImagem(file, `backgrounds_grimorio/${meuNome || 'desconhecido'}_bg`);
+            handleStyleChange('bgImg', url);
+        } catch (err) { alert('Erro ao enviar a imagem de fundo das páginas!'); }
+    };
+
     return (
         <div style={{ width: '100%', minHeight: '85vh', position: 'relative', display: 'flex', flexDirection: 'column' }}>
             
@@ -64,7 +94,7 @@ export default function GrimorioPanel() {
                 .page-swoop-prev { animation: pageSwoopPrev 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
                 
                 /* Magia da Estética nas Sub-telas */
-                .grimorio-estilo-papel { --tinta: ${localCorTinta || '#000'}; --fundo: ${localCorFundo || '#fff'}; color: currentColor !important; width: 100%; }
+                .grimorio-estilo-papel { --tinta: ${localCorTinta || '#d4af37'}; --fundo: ${localCorFundo || '#1e1423'}; color: currentColor !important; width: 100%; }
                 .grimorio-estilo-papel * { font-family: ${fonteDiario}, 'Courier New', serif !important; text-shadow: none !important; box-shadow: none !important; }
                 .grimorio-estilo-papel .def-box, .grimorio-estilo-papel [style*="background: rgba"] { background: transparent !important; border: 2px solid var(--tinta) !important; border-radius: 2px 255px 3px 25px / 255px 5px 225px 3px !important; position: relative; }
                 .grimorio-estilo-papel .def-box::before, .grimorio-estilo-papel [style*="background: rgba"]::before { content: ''; position: absolute; top:0; left:0; right:0; bottom:0; background: var(--tinta); opacity: 0.03; pointer-events: none; border-radius: inherit; }
@@ -77,11 +107,11 @@ export default function GrimorioPanel() {
                 .grimorio-estilo-papel .poderes-sidebar .def-box { border: none !important; border-right: 2px dashed var(--tinta) !important; border-radius: 0 !important; }
             `}</style>
 
-            {/* 📖 A ESTRUTURA FÍSICA DO LIVRO */}
+            {/* 📖 A ESTRUTURA FÍSICA DA CAPA DO LIVRO */}
             <div style={{
                 display: 'flex', width: '100%', minHeight: '85vh',
-                background: '#1a0f14', // Capa de couro escuro
-                border: '2px solid #3a2a2f', borderRadius: '12px 25px 25px 12px',
+                background: '#0a0a0f', // Cor da mesa por baixo do livro
+                border: '2px solid #222', borderRadius: '12px 25px 25px 12px',
                 padding: '10px 20px 10px 45px', boxShadow: '20px 20px 50px rgba(0,0,0,0.9), inset 15px 0 30px rgba(0,0,0,0.9)',
                 position: 'relative'
             }}>
@@ -96,10 +126,10 @@ export default function GrimorioPanel() {
                 {/* ✨ Fio de Ouro na Capa */}
                 <div style={{
                     position: 'absolute', top: '15px', bottom: '15px', left: '40px', right: '15px',
-                    border: '1px solid rgba(255, 204, 0, 0.2)', borderRadius: '5px 15px 15px 5px', pointerEvents: 'none', zIndex: 10
+                    border: `1px solid ${localCorTinta}`, opacity: 0.3, borderRadius: '5px 15px 15px 5px', pointerEvents: 'none', zIndex: 10
                 }}/>
 
-                {/* 📄 AS PÁGINAS DE PAPEL (Herda as cores da Ficha) */}
+                {/* 📄 AS PÁGINAS DO GRIMÓRIO (Livres para terem o próprio fundo!) */}
                 <div style={{
                     flex: 1, position: 'relative', backgroundColor: localCorFundo, color: localCorTexto,
                     borderRadius: '5px 15px 15px 5px', boxShadow: '-5px 0 15px rgba(0,0,0,0.5), inset -2px 0 5px rgba(0,0,0,0.1)',
@@ -109,7 +139,7 @@ export default function GrimorioPanel() {
                     {/* Fundo Alquímico da Página */}
                     {localBgImg && (
                         <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0, pointerEvents: 'none', mixBlendMode: localModoFundo, isolation: 'isolate' }}>
-                            <img src={localBgImg} alt="Fundo" style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', top: 0, left: 0, filter: localModoFundo !== 'normal' ? 'contrast(1.2) saturate(1.2)' : 'none' }} />
+                            <img src={localBgImg} alt="Fundo do Grimório" style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', top: 0, left: 0, filter: localModoFundo !== 'normal' ? 'contrast(1.2) saturate(1.2)' : 'none' }} />
                             {localCorFundoTint && localCorFundoTint !== '#ffffff' && (
                                 <>
                                     <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: localCorFundoTint, mixBlendMode: 'color' }} />
@@ -122,18 +152,67 @@ export default function GrimorioPanel() {
                     {/* Sombra da Dobra Central da Página */}
                     <div style={{
                         position: 'absolute', top: 0, bottom: 0, left: 0, width: '50px',
-                        background: 'linear-gradient(to right, rgba(0,0,0,0.3) 0%, transparent 100%)',
+                        background: 'linear-gradient(to right, rgba(0,0,0,0.5) 0%, transparent 100%)',
                         pointerEvents: 'none', zIndex: 10
                     }}/>
 
-                    {/* 📌 CONTROLES DE SAVE */}
-                    <div style={{ position: 'absolute', top: '15px', right: '15px', zIndex: 20 }}>
+                    {/* 📌 CONTROLES (SALVAR E ESTILO DO GRIMÓRIO) */}
+                    <div style={{ position: 'absolute', top: '15px', right: '15px', zIndex: 20, display: 'flex', gap: '10px' }}>
                         <button onClick={handleSalvarTudo} style={{ background: salvando ? '#a5d6a7' : '#4caf50', color: '#fff', border: '1px solid #333', borderBottom: '3px solid #222', padding: '8px 15px', fontFamily: 'inherit', fontWeight: 'bold', cursor: 'pointer', borderRadius: '4px', boxShadow: '2px 4px 8px rgba(0,0,0,0.4)', transform: 'rotate(1deg)' }}>
                             {salvando ? '✅ Escrito!' : '💾 Gravar Magia'}
                         </button>
+                        
+                        <div style={{ position: 'relative' }}>
+                            <button onClick={() => setModalEstilo(!modalEstilo)} style={{ background: '#bba9d8', color: '#000', border: '1px solid #333', borderBottom: '3px solid #222', padding: '8px 15px', fontFamily: 'inherit', fontWeight: 'bold', cursor: 'pointer', borderRadius: '4px', boxShadow: '2px 4px 8px rgba(0,0,0,0.4)', transform: 'rotate(-2deg)' }}>
+                                🎨 Estilo do Grimório
+                            </button>
+                            
+                            {modalEstilo && (
+                                <div className="fade-in" style={{ position: 'absolute', top: '45px', right: '0', background: '#ffe4f0', padding: '15px', border: '1px solid #ccc', boxShadow: '5px 5px 15px rgba(0,0,0,0.3)', width: '320px', zIndex: 50, borderRadius: '6px', color: '#000' }}>
+                                    <h4 style={{ margin: '0 0 10px 0', borderBottom: '1px dashed #333', paddingBottom: '5px' }}>🎨 Personalizar as Páginas</h4>
+                                    
+                                    <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>Cor do Texto das Páginas:</label>
+                                    <input type="color" value={localCorTexto} onChange={(e) => handleStyleChange('corTexto', e.target.value)} style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} />
+                                    
+                                    <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>Cor do Papel (Fundo Base):</label>
+                                    <input type="color" value={localCorFundo} onChange={(e) => handleStyleChange('corPapel', e.target.value)} style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} />
+                                    
+                                    <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>🖼️ Textura da Página (URL):</label>
+                                    <div style={{ display: 'flex', gap: '5px', marginBottom: '5px' }}>
+                                        <input type="text" value={localBgImg} onChange={(e) => handleStyleChange('bgImg', e.target.value)} placeholder="Cole o Link da textura..." style={{ flex: 1, padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', color: 'inherit' }} />
+                                        <label style={{ background: 'rgba(0,0,0,0.1)', border: '1px solid rgba(0,0,0,0.2)', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="Upload de Textura">
+                                            📁<input type="file" accept="image/*" onChange={handleBgUpload} style={{ display: 'none' }} />
+                                        </label>
+                                    </div>
+                                    
+                                    <select value={localModoFundo} onChange={(e) => handleStyleChange('modoFundo', e.target.value)} style={{ width: '100%', padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', fontFamily: 'inherit', marginBottom: '5px' }}>
+                                        <option value="normal">Fundo Normal</option>
+                                        <option value="screen">Apagar Preto (Efeito Mágico)</option>
+                                        <option value="multiply">Apagar Branco (Tinta no Papel)</option>
+                                    </select>
+                                    
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9em', marginBottom: '15px', color: '#555', fontWeight: 'bold' }}>
+                                        <span>Tingir Fundo:</span>
+                                        <input type="color" value={localCorFundoTint} onChange={(e) => handleStyleChange('corFundoTint', e.target.value)} style={{ width: '40px', height: '25px', border: 'none', cursor: 'pointer', background: 'transparent' }} />
+                                    </label>
+
+                                    <hr style={{ border: '1px dashed #ccc', margin: '15px 0' }}/>
+
+                                    <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>Cor da Tinta (Caixas e Bordas):</label>
+                                    <input type="color" value={localCorTinta} onChange={(e) => handleStyleChange('corTinta', e.target.value)} style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} />
+                                    
+                                    <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>Caligrafia (Fonte):</label>
+                                    <select value={fonteDiario} onChange={(e) => { handleStyleChange('diarioFonte', e.target.value); }} style={{ width: '100%', padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', fontFamily: 'inherit' }}>
+                                        <option value='"Comic Sans MS", "Chalkboard SE", "Marker Felt", cursive'>✏️ Escrito à Mão</option>
+                                        <option value="'Courier New', Courier, monospace">🖨️ Máquina de Escrever</option>
+                                        <option value="'Times New Roman', Times, serif">📖 Grimório Clássico</option>
+                                    </select>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
-                    {/* 📖 CONTEÚDO DO LIVRO (SWOOP) */}
+                    {/* 📖 CONTEÚDO DO LIVRO (SWOOP ENTRE PODERES E ELEMENTOS) */}
                     <div key={paginaAtual} className={`swoop-container ${animDirection === 'next' ? 'page-swoop-next' : 'page-swoop-prev'}`} style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                         {paginaAtual === 1 && (
                             <div className="grimorio-estilo-papel" style={{ flex: 1 }}>
@@ -153,12 +232,13 @@ export default function GrimorioPanel() {
                                         Afinidades & Elementos
                                     </h1>
                                 </div>
+                                {/* O Componente de Elementos já tem a sua própria navegação de "Capítulos"! */}
                                 <ElementosPanel />
                             </div>
                         )}
                     </div>
 
-                    {/* 🗂️ NAVEGAÇÃO DAS PÁGINAS DO LIVRO */}
+                    {/* 🗂️ NAVEGAÇÃO PRINCIPAL DO LIVRO (Fundo da página) */}
                     <div style={{ position: 'absolute', bottom: '20px', left: '0', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px', fontFamily: 'inherit', zIndex: 10 }}>
                         <button onClick={() => mudarPagina(1)} disabled={paginaAtual === 1} style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 1 ? 'default' : 'pointer', opacity: paginaAtual === 1 ? 0.3 : 1, fontFamily: 'inherit', color: 'currentColor' }}>⮜ Poderes</button>
                         <span style={{ fontSize: '1.1em', fontWeight: 'bold', borderBottom: '2px solid currentColor', padding: '0 10px' }}>Página {paginaAtual} de 2</span>

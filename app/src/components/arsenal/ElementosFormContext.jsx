@@ -36,17 +36,22 @@ export const cores = {
 };
 
 export const ABAS_GRIMORIO = {
-    'elementos': {
-        label: 'Elementos', icon: '🔥',
+    'basicos': {
+        label: 'Elementos Básicos', icon: '🔥',
         categorias: [
-            { titulo: 'Elementos Básicos', itens: ['Fogo', 'Raio', 'Agua', 'Vento', 'Terra'] },
+            { titulo: 'A Natureza Base', itens: ['Fogo', 'Raio', 'Vento', 'Agua', 'Terra'] },
+            { titulo: 'Neutro (Sem Elemento)', itens: ['Neutro'] }
+        ]
+    },
+    'avancados_temp': {
+        label: 'Em Organização...', icon: '📦',
+        categorias: [
             { titulo: 'Elementos Básicos Verdadeiros', itens: ['Fogo Verdadeiro', 'Raio Verdadeiro', 'Agua Verdadeira', 'Vento Verdadeiro', 'Terra Verdadeira'] },
             { titulo: 'Elementos Avançados', itens: ['Solar', 'Energia', 'Gelo', 'Vacuo', 'Natureza'] },
             { titulo: 'Elementos Avançados Verdadeiros', itens: ['Solar Verdadeiro', 'Energia Verdadeira', 'Gelo Verdadeiro', 'Vacuo Verdadeiro', 'Natureza Verdadeira'] },
             { titulo: 'Elementos Primordiais', itens: ['Luz', 'Trevas', 'Ether'] },
             { titulo: 'Elementos Primordiais Verdadeiros', itens: ['Celestial', 'Infernal', 'Caos'] },
-            { titulo: 'Elementos Primordiais Absolutos', itens: ['Criacao', 'Destruicao', 'Cosmos'] },
-            { titulo: 'Neutro (Sem Elemento)', itens: ['Neutro'] }
+            { titulo: 'Elementos Primordiais Absolutos', itens: ['Criacao', 'Destruicao', 'Cosmos'] }
         ]
     },
     'astrais': { label: 'Elementos Astrais', icon: '🌌', categorias: [{ titulo: 'Elementos Astrais', itens: ['Vida', 'Morte', 'Vazio'] }] },
@@ -66,7 +71,7 @@ export const ABAS_GRIMORIO = {
 
 const itensJáCategorizados = Object.values(ABAS_GRIMORIO).flatMap(aba => aba.categorias.flatMap(c => c.itens));
 const magiasSobressalentes = Object.keys(cores).filter(k => !itensJáCategorizados.includes(k));
-if (magiasSobressalentes.length > 0) { ABAS_GRIMORIO['elementos'].categorias.push({ titulo: 'Magias e Elementos Extras', itens: magiasSobressalentes }); }
+if (magiasSobressalentes.length > 0) { ABAS_GRIMORIO['avancados_temp'].categorias.push({ titulo: 'Magias e Elementos Extras', itens: magiasSobressalentes }); }
 
 export const BONUS_OPTIONS = [
     { value: 'nenhum', label: 'Nenhum (Apenas Elemento)' },
@@ -105,7 +110,7 @@ export function ElementosFormProvider({ children }) {
     const elemEditandoId = useStore(s => s.elemEditandoId);
     const setElemEditandoId = useStore(s => s.setElemEditandoId);
 
-    const [abaAtual, setAbaAtual] = useState('elementos');
+    const [abaAtual, setAbaAtual] = useState('basicos'); // 🔥 Inicia na página dos Elementos Básicos!
     const [elemSelecionado, setElemSelecionado] = useState('Neutro');
     const [nomeElem, setNomeElem] = useState('');
     const [descricaoElem, setDescricaoElem] = useState(''); 
@@ -260,7 +265,7 @@ export function ElementosFormProvider({ children }) {
     const cancelarEdicaoElem = useCallback(() => {
         setElemEditandoId(null); setNomeElem(''); setDescricaoElem(''); 
         setElementosAfetados(''); 
-        setEnergiaCombustao(abaAtual === 'elementos' || abaAtual === 'compostos' ? 'flexivel' : 'mana');
+        setEnergiaCombustao(['basicos', 'avancados_temp', 'compostos'].includes(abaAtual) ? 'flexivel' : 'mana');
         setTipoMecanica('ataque'); setAlcanceQuad(1); setAreaQuad(0);
         setAlvosAfetados('todos'); setDuracaoZona(0);
     }, [setElemEditandoId, abaAtual]);
@@ -307,7 +312,7 @@ export function ElementosFormProvider({ children }) {
         }
         const el = p.elemento || 'Neutro';
         setElemSelecionado(el);
-        let foundAba = 'elementos';
+        let foundAba = 'basicos';
         for (const [abaKey, abaData] of Object.entries(ABAS_GRIMORIO)) {
             if (abaData.categorias.some(cat => cat.itens.includes(el))) {
                 foundAba = abaKey;

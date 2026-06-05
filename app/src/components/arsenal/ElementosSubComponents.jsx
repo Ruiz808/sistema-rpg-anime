@@ -44,7 +44,7 @@ RETORNE EXATAMENTE UM JSON PURO:
                 {aberto ? 'Fechar Círculo de Invocação (IA)' : 'Abrir Círculo de Invocação (IA)'}
             </button>
             {aberto && (
-                <div style={{ marginTop: '10px', border: '1px dashed currentColor', padding: '15px', borderRadius: '8px', background: 'rgba(0,0,0,0.05)' }}>
+                <div className="fade-in" style={{ marginTop: '10px', border: '1px dashed currentColor', padding: '15px', borderRadius: '8px', background: 'rgba(0,0,0,0.05)' }}>
                     {fase === 1 ? (
                         <>
                             <textarea value={textoDocs} onChange={e => setTextoDocs(e.target.value)} placeholder="Cole aqui os manuscritos, feitiços e grimórios extensos..." style={{ width: '100%', height: '120px', background: 'transparent', padding: '10px', resize: 'vertical' }} />
@@ -66,31 +66,49 @@ RETORNE EXATAMENTE UM JSON PURO:
 }
 
 // ============================================================================
-// O RESTO DOS COMPONENTES
+// 🔥 NOVO NAVEGADOR DE PÁGINAS (SUBSTITUI A BARRA LATERAL!) 🔥
 // ============================================================================
-
-export function ElementosSidebar() {
+export function ElementosNavegacaoLivro() {
     const ctx = useElementosForm();
-    if (!ctx) return FALLBACK;
+    if (!ctx) return null;
     const { abaAtual, setAbaAtual, cancelarEdicaoElem } = ctx;
 
+    const chaves = Object.keys(ABAS_GRIMORIO);
+    const indexAtual = chaves.indexOf(abaAtual);
+    const total = chaves.length;
+
+    const irPara = (novoIndex) => {
+        if (novoIndex >= 0 && novoIndex < total) {
+            setAbaAtual(chaves[novoIndex]);
+            cancelarEdicaoElem();
+        }
+    };
+
+    const dadosAba = ABAS_GRIMORIO[abaAtual];
+
     return (
-        <div style={{ flex: '0 0 250px', padding: '15px', position: 'sticky', top: '20px', borderRight: '2px dashed currentColor' }}>
-            <h3 style={{ marginTop: 0, textAlign: 'center', marginBottom: '20px', fontSize: '1.4em', letterSpacing: '1px', borderBottom: '2px dotted currentColor', paddingBottom: '10px' }}>
-                Índice Mágico
-            </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {Object.entries(ABAS_GRIMORIO).map(([key, data]) => (
-                    <button key={key}
-                        onClick={() => { setAbaAtual(key); cancelarEdicaoElem(); }}
-                        style={{ padding: '8px', textAlign: 'left', border: abaAtual === key ? '2px solid currentColor' : '1px dashed currentColor', opacity: abaAtual === key ? 1 : 0.6 }}>
-                        {data.icon} {data.label}
-                    </button>
-                ))}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px dashed currentColor', paddingBottom: '15px', marginBottom: '20px' }}>
+            <button onClick={() => irPara(indexAtual - 1)} disabled={indexAtual === 0} style={{ background: 'transparent', border: 'none', color: 'inherit', fontSize: '1.2em', cursor: indexAtual === 0 ? 'default' : 'pointer', opacity: indexAtual === 0 ? 0.3 : 1, fontWeight: 'bold' }}>
+                ⮜ Folhear para Trás
+            </button>
+            
+            <div style={{ textAlign: 'center' }}>
+                <span style={{ fontSize: '0.9em', opacity: 0.7, textTransform: 'uppercase', letterSpacing: '2px' }}>Capítulo {indexAtual + 1} de {total}</span>
+                <h2 style={{ margin: '5px 0 0 0', fontSize: '1.8em', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span>{dadosAba.icon}</span> {dadosAba.label}
+                </h2>
             </div>
+
+            <button onClick={() => irPara(indexAtual + 1)} disabled={indexAtual === total - 1} style={{ background: 'transparent', border: 'none', color: 'inherit', fontSize: '1.2em', cursor: indexAtual === total - 1 ? 'default' : 'pointer', opacity: indexAtual === total - 1 ? 0.3 : 1, fontWeight: 'bold' }}>
+                Folhear para Frente ⮞
+            </button>
         </div>
     );
 }
+
+// ============================================================================
+// O RESTO DOS COMPONENTES VISUAIS
+// ============================================================================
 
 export function ElementosGrimorio() {
     const ctx = useElementosForm();
@@ -101,17 +119,16 @@ export function ElementosGrimorio() {
     const dominios = minhaFicha?.dominios?.elementais || {};
 
     return (
-        <div style={{ padding: '15px', borderBottom: '2px dashed currentColor', marginBottom: '20px' }}>
-            <h3 style={{ marginBottom: 15, fontStyle: 'italic' }}>Capítulo: {ABAS_GRIMORIO[abaAtual].label}</h3>
+        <div key={abaAtual} className="fade-in" style={{ padding: '0 15px 15px 15px', borderBottom: '2px dashed currentColor', marginBottom: '20px' }}>
             {categoriasVisiveis.length === 0 ? (
-                <p style={{ opacity: 0.6, fontStyle: 'italic' }}>Páginas em branco...</p>
+                <p style={{ opacity: 0.6, fontStyle: 'italic', textAlign: 'center' }}>Páginas em branco neste capítulo...</p>
             ) : (
                 categoriasVisiveis.map(categoria => (
-                    <div key={categoria.titulo} style={{ marginBottom: 18 }}>
-                        <h4 style={{ fontSize: '1em', letterSpacing: '1px', borderBottom: '1px solid currentColor', paddingBottom: 4, marginBottom: 8, marginTop: 0, opacity: 0.8 }}>
+                    <div key={categoria.titulo} style={{ marginBottom: 25 }}>
+                        <h4 style={{ fontSize: '1em', letterSpacing: '1px', borderBottom: '1px solid currentColor', paddingBottom: 4, marginBottom: 12, marginTop: 0, opacity: 0.8, textAlign: 'center' }}>
                             {categoria.titulo}
                         </h4>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
                             {categoria.itens.map(elem => {
                                 const isActive = elem === elemSelecionado;
                                 const nivelDom = dominios[elem]?.nivel;
@@ -121,11 +138,14 @@ export function ElementosGrimorio() {
                                 return (
                                     <button key={elem} onClick={() => selecionarElemento(elem)}
                                         style={{ 
-                                            padding: '4px 10px', fontSize: '0.9em', borderRadius: '4px',
+                                            padding: '6px 12px', fontSize: '0.9em', borderRadius: '4px',
                                             border: isActive ? `2px solid ${corBase}` : '1px dashed currentColor',
                                             background: isActive ? 'rgba(0,0,0,0.05)' : 'transparent',
                                             color: isActive ? corBase : 'inherit',
-                                            opacity: isActive ? 1 : 0.7
+                                            opacity: isActive ? 1 : 0.7,
+                                            boxShadow: isActive ? `inset 0 0 10px ${corBase}` : 'none',
+                                            transform: isActive ? 'scale(1.05)' : 'scale(1)',
+                                            transition: 'all 0.2s ease'
                                         }}>
                                         {emogis[elem] || '\u2728'} {elem}
                                         <span style={{ fontWeight: nivelDom ? 'bold' : 'normal', opacity: 0.9 }}>{domTexto}</span>
