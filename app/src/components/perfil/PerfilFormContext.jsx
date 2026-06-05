@@ -24,7 +24,6 @@ export function PerfilFormProvider({ children }) {
     const setPersonagemParaDeletar = useStore(s => s.setPersonagemParaDeletar);
     const setAbaAtiva = useStore(s => s.setAbaAtiva);
     
-    // Novas variáveis puxadas do Cérebro para a mágica da Nuvem
     const mesaId = useStore(s => s.mesaId);
     const userLogado = useStore(s => s.userLogado);
 
@@ -33,30 +32,33 @@ export function PerfilFormProvider({ children }) {
     const [uploadingImg, setUploadingImg] = useState(false);
 
     // ==========================================
-    // 🔥 RADAR DE IDENTIDADE: HISTÓRICO PESSOAL NA NUVEM 🔥
+    // 🔥 RADAR DE IDENTIDADE: FUSÃO DA NUVEM COM LOCAL 🔥
     // ==========================================
     useEffect(() => {
         if (!userLogado || !mesaId) return;
         const refHistorico = ref(db, `usuarios/${sanitizarNome(userLogado)}/historicoPersonagens_${mesaId}`);
 
         const unsub = onValue(refHistorico, (snap) => {
-            if (snap.exists()) {
-                setListaLocal(snap.val());
-            } else {
-                // 🚀 MIGRAÇÃO AUTOMÁTICA (Web -> Nuvem)
-                // Se não houver histórico na nuvem, ele procura no navegador e envia para o Firebase!
-                const nomesMigrados = [];
-                for (let i = 0; i < localStorage.length; i++) {
-                    const k = localStorage.key(i);
-                    if (k && k.startsWith('rpgFicha_')) nomesMigrados.push(k.replace('rpgFicha_', ''));
-                }
-                if (nomesMigrados.length > 0) {
-                    set(refHistorico, nomesMigrados).catch(()=>{});
-                    setListaLocal(nomesMigrados);
-                } else {
-                    setListaLocal([]);
-                }
+            // 1. Pega o que já está na Nuvem (e garante que é um Array)
+            let nuvemLista = snap.exists() ? snap.val() : [];
+            if (!Array.isArray(nuvemLista)) nuvemLista = Object.values(nuvemLista);
+
+            // 2. Pega tudo o que está esquecido no navegador Web (Local)
+            const localLista = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const k = localStorage.key(i);
+                if (k && k.startsWith('rpgFicha_')) localLista.push(k.replace('rpgFicha_', ''));
             }
+
+            // 3. Funde as duas realidades e remove duplicatas (A Mágica!)
+            const listaUnificada = [...new Set([...nuvemLista, ...localLista])];
+
+            // 4. Se a lista unificada for maior (ou seja, achou coisas locais), atualiza a Nuvem para todos!
+            if (listaUnificada.length > nuvemLista.length) {
+                set(refHistorico, listaUnificada).catch(()=>{});
+            }
+
+            setListaLocal(listaUnificada);
         });
         return () => unsub();
     }, [userLogado, mesaId]);
@@ -71,21 +73,22 @@ export function PerfilFormProvider({ children }) {
         localStorage.setItem('rpgNome', n); 
         resetFicha();
 
-        // 📝 REGISTAR POSSE: Adiciona o personagem ao histórico do jogador na Nuvem
+        // Regista a posse ao abrir o personagem
         if (userLogado && mesaId) {
             const refHistorico = ref(db, `usuarios/${sanitizarNome(userLogado)}/historicoPersonagens_${mesaId}`);
             get(refHistorico).then(snap => {
                 let lista = snap.exists() ? snap.val() : [];
-                lista = [n, ...lista.filter(x => x !== n)].slice(0, 15); // Guarda os últimos 15
+                if (!Array.isArray(lista)) lista = Object.values(lista);
+                lista = [n, ...lista.filter(x => x !== n)].slice(0, 15);
                 set(refHistorico, lista).catch(()=>{});
             });
         }
         
-        // Tenta carregar do localStorage (apenas como fallback de milissegundos)
+        // Carrega Local se houver
         const bl = localStorage.getItem('rpgFicha_' + n);
         if (bl) { try { carregarDadosFicha(JSON.parse(bl)); } catch (e) {} }
         
-        // Força a busca da Ficha atualizada diretamente do Firebase!
+        // Busca final garantida na Nuvem
         const dadosNuven = await carregarFichaDoFirebase(n);
         if (dadosNuven && Object.keys(dadosNuven).length > 2) {
             carregarDadosFicha(dadosNuven);
@@ -115,7 +118,7 @@ export function PerfilFormProvider({ children }) {
             const url = await uploadImagem(file, `avatars/${meuNome || 'desconhecido'}`);
             updateFicha(ficha => { if (!ficha.avatar) ficha.avatar = { base: "" }; ficha.avatar.base = url; });
             await salvarFirebaseImediato();
-        } catch (err) { alert('Erro ao sincronizar o avatar! O upload pode ter falhado ou o Firebase rejeitou o salvamento.'); } 
+        } catch (err) { alert('Erro ao sincronizar o avatar!'); } 
         finally { setUploadingImg(false); }
     }, [meuNome, updateFicha]);
 
