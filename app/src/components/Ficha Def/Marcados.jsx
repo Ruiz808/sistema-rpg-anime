@@ -4,9 +4,9 @@ import { uploadImagem, salvarFichaSilencioso, salvarFirebaseImediato } from '../
 import { getMaximo, getRawBase, getBuffs } from '../../core/attributes';
 import { getRank } from '../../core/prestige';
 
-// 🔥 IMPORTA A NOVA PÁGINA 4 (A CLASSIFICAÇÃO ISOLADA) 🔥
+// 🔥 IMPORTAÇÕES DAS PÁGINAS MÁGICAS EXTERNAS 🔥
 import ClassificacaoPanel from './ClassificacaoPanel';
-import RelicarioPanel from './RelicarioPanel';
+import RelicarioPanel from './RelicarioPanel'; 
 
 // ==========================================
 // 🛡️ DADOS DO COMPÊNDIO (PARA O ÍCONE DA MOLDURA)
@@ -46,7 +46,7 @@ const getClasseInfo = (ficha) => {
 };
 
 // ==========================================
-// 🌌 REGRAS DOS DOMÍNIOS E HIERARQUIA (PÁG 3)
+// 🌌 REGRAS DOS DOMÍNIOS E HIERARQUIA
 // ==========================================
 const NIVEIS_DOMINIO = {
     1: { nome: "Básico", cor: "#44ff44", desc: "+10% Dano Mágico" },
@@ -641,22 +641,10 @@ export default function MarcadosPanel() {
         alert("A sua ficha foi sincronizada!");
     };
 
-    const getLuma = (hex) => {
-        if (!hex) return 255;
-        const c = hex.replace('#', '');
-        const r = parseInt(c.substring(0, 2), 16) || 255;
-        const g = parseInt(c.substring(2, 4), 16) || 255;
-        const b = parseInt(c.substring(4, 6), 16) || 255;
-        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-    };
-    const isDarkFrame = localCorMoldura && getLuma(localCorMoldura) < 50;
-
     return (
         <div style={{ 
             width: '100%', minHeight: '85vh', 
-            backgroundColor: localCorFundo, 
-            color: localCorTexto, 
-            fontFamily: fonteDiario, 
+            backgroundColor: localCorFundo, color: localCorTexto, fontFamily: fonteDiario, 
             padding: '40px 40px 80px 40px', borderRadius: '12px', position: 'relative', transition: 'background 0.3s ease, color 0.3s ease',
             boxShadow: 'inset 0 0 40px rgba(0,0,0,0.1), 0 10px 30px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column',
             overflow: 'visible' 
@@ -795,7 +783,7 @@ export default function MarcadosPanel() {
                 </div>
             </div>
 
-            {/* 🔥 AS 4 PÁGINAS DA FICHA DEFINITIVA 🔥 */}
+            {/* 🔥 AS 5 PÁGINAS DA FICHA DEFINITIVA 🔥 */}
             <div key={paginaAtual} className={`swoop-container ${animDirection === 'next' ? 'page-swoop-next' : 'page-swoop-prev'}`} style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '40px', paddingBottom: '30px' }}>
                 
                 {/* ======================= PÁGINA 1: FICHA E AVATAR ======================= */}
@@ -1048,6 +1036,7 @@ export default function MarcadosPanel() {
                 {paginaAtual === 4 && (
                     <ClassificacaoPanel />
                 )}
+
                 {/* ======================= PÁGINA 5: RELICÁRIO (INVENTÁRIO E ARSENAL) ======================= */}
                 {paginaAtual === 5 && (
                     <RelicarioPanel />
@@ -1055,11 +1044,11 @@ export default function MarcadosPanel() {
 
             </div>
 
-            {/* BOTÕES DE NAVEGAÇÃO DA PÁGINA (1 A 4) */}
+            {/* BOTÕES DE NAVEGAÇÃO DA PÁGINA (1 A 5) */}
             <div style={{ position: 'absolute', bottom: '20px', left: '0', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px', fontFamily: 'inherit' }}>
                 <button onClick={() => mudarPagina(Math.max(1, paginaAtual - 1))} disabled={paginaAtual === 1} style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 1 ? 'default' : 'pointer', opacity: paginaAtual === 1 ? 0.3 : 1, fontFamily: 'inherit', color: 'inherit' }}>⮜ Anterior</button>
-                <span style={{ fontSize: '1.1em', fontWeight: 'bold', borderBottom: '2px solid currentColor', padding: '0 10px' }}>Página {paginaAtual} de 4</span>
-                <button onClick={() => mudarPagina(Math.min(4, paginaAtual + 1))} disabled={paginaAtual === 4} style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 4 ? 'default' : 'pointer', opacity: paginaAtual === 4 ? 0.3 : 1, fontFamily: 'inherit', color: 'inherit' }}>Próxima ⮞</button>
+                <span style={{ fontSize: '1.1em', fontWeight: 'bold', borderBottom: '2px solid currentColor', padding: '0 10px' }}>Página {paginaAtual} de 5</span>
+                <button onClick={() => mudarPagina(Math.min(5, paginaAtual + 1))} disabled={paginaAtual === 5} style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 5 ? 'default' : 'pointer', opacity: paginaAtual === 5 ? 0.3 : 1, fontFamily: 'inherit', color: 'inherit' }}>Próxima ⮞</button>
             </div>
         </div>
     );
