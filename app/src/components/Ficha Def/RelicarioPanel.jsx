@@ -3,13 +3,37 @@ import useStore from '../../stores/useStore';
 import { salvarFichaSilencioso, uploadImagem } from '../../services/firebase-sync';
 
 // ==========================================
+// 🎲 CONSTANTES DE RPG (ITENS E ARMAS)
+// ==========================================
+const RARIDADES = {
+    'comum': { label: '⚪ Comum', cor: '#cccccc' },
+    'incomum': { label: '🟢 Incomum', cor: '#44ff44' },
+    'raro': { label: '🔵 Raro', cor: '#00aaff' },
+    'epico': { label: '🟣 Épico', cor: '#aa00ff' },
+    'lendario': { label: '🟠 Lendário', cor: '#ffaa00' },
+    'mitico': { label: '🔴 Mítico', cor: '#ff003c' },
+    'divino': { label: '✨ Divino', cor: '#ffffcc' },
+    'singular': { label: '🌌 Singularidade', cor: '#ff00ff' }
+};
+
+const TIPOS_ITEM = [
+    { value: 'mundano', label: '🎒 Item Mundano / Recurso' },
+    { value: 'arma', label: '⚔️ Arma' },
+    { value: 'armadura', label: '🛡️ Armadura / Vestimenta' },
+    { value: 'acessorio', label: '💍 Acessório / Relíquia Menor' },
+    { value: 'consumivel', label: '🧪 Consumível / Poção' }
+];
+
+const TIPOS_DANO = ['Cortante', 'Perfurante', 'Impacto', 'Mágico', 'Elemental', 'Verdadeiro', 'Conceitual', 'Espiritual', 'Nenhum'];
+
+// ==========================================
 // 📖 OS CAPÍTULOS DO RELICÁRIO
 // ==========================================
 const CAPITULOS = [
     { id: 'altar', label: 'Altar da Relíquia', icon: '🗡️' },
     { id: 'passivas', label: 'Estigmas & Runas', icon: '🪨' },
     { id: 'formas', label: 'Despertar das Formas', icon: '🌌' },
-    { id: 'mochila', label: 'Mochila Mundana', icon: '🎒' }
+    { id: 'mochila', label: 'Inventário & Arsenal', icon: '🎒' }
 ];
 
 // ==========================================
@@ -30,7 +54,6 @@ export function RelicarioProvider({ children }) {
 
     const callSave = useCallback(() => { salvarFichaSilencioso(); }, []);
 
-    // Inicializa a estrutura da Arma Espiritual se não existir
     useEffect(() => {
         if (minhaFicha && !minhaFicha.armaEspiritual) {
             updateFicha(f => {
@@ -56,7 +79,6 @@ export function RelicarioProvider({ children }) {
             else if (acao === 'remove') target.splice(index, 1);
             else if (acao === 'update') target[index][campo] = valor;
             
-            // Lógica para as Sub-Configurações dentro das Formas
             else if (acao === 'add-config') {
                 if (!target[index].configs) target[index].configs = [];
                 target[index].configs.push({ id: Date.now(), nome: '', desc: '', img: '' });
@@ -67,15 +89,12 @@ export function RelicarioProvider({ children }) {
         callSave();
     }, [updateFicha, callSave]);
 
-    const value = {
-        minhaFicha, updateFicha, isMestre, meuNome, abaAtual, setAbaAtual, callSave, handleArrayItem
-    };
-
+    const value = { minhaFicha, updateFicha, isMestre, meuNome, abaAtual, setAbaAtual, callSave, handleArrayItem };
     return <RelicarioContext.Provider value={value}>{children}</RelicarioContext.Provider>;
 }
 
 // ==========================================
-// 🖋️ COMPONENTES VISUAIS E UPLOADERS
+// 🖋️ COMPONENTES VISUAIS
 // ==========================================
 const CampoMagico = ({ valor, onChange, placeholder, styleExtra = {}, type = "text", disabled = false }) => {
     const { callSave } = useRelicario();
@@ -127,7 +146,6 @@ const ImageUploader = ({ valorAtual, onUploadComplete, placeholder }) => {
     );
 };
 
-// 📚 O NAVEGADOR DE CAPÍTULOS
 function RelicarioNavegacao() {
     const { abaAtual, setAbaAtual } = useRelicario();
     const indexAtual = CAPITULOS.findIndex(c => c.id === abaAtual);
@@ -154,12 +172,9 @@ function RelicarioNavegacao() {
 // 🗡️ PÁGINA 1: O ALTAR DA RELÍQUIA
 // ==========================================
 function PaginaAltar() {
-    const { minhaFicha, updateFicha, callSave } = useRelicario();
+    const { minhaFicha, updateFicha } = useRelicario();
     const arma = minhaFicha?.armaEspiritual || {};
-
-    const updateArma = (campo, valor) => {
-        updateFicha(f => { if(f.armaEspiritual) f.armaEspiritual[campo] = valor; });
-    };
+    const updateArma = (campo, valor) => { updateFicha(f => { if(f.armaEspiritual) f.armaEspiritual[campo] = valor; }); };
 
     return (
         <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -167,32 +182,25 @@ function PaginaAltar() {
                 <CampoMagico valor={arma.nome} onChange={v => updateArma('nome', v)} placeholder="Nome da Entidade/Arma (Ex: EA - Scathach Tilith)" styleExtra={{ fontSize: '2.5em', fontWeight: '900', textAlign: 'center', color: '#ff003c', letterSpacing: '2px', border: 'none' }} />
                 <CampoMagico valor={arma.epiteto} onChange={v => updateArma('epiteto', v)} placeholder="Epíteto (Ex: Soberania da Rainha)" styleExtra={{ fontSize: '1.2em', fontStyle: 'italic', textAlign: 'center', color: 'currentColor', border: 'none', opacity: 0.8 }} />
             </div>
-
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                     <div style={{ border: '1px dashed currentColor', padding: '15px', borderRadius: '8px', background: 'rgba(0,0,0,0.02)' }}>
                         <h3 style={{ margin: '0 0 10px 0', fontSize: '1.1em', opacity: 0.8 }}>📜 Cântico de Invocação</h3>
                         <AreaMagica valor={arma.cantico} onChange={v => updateArma('cantico', v)} placeholder={"Ex: I am the bone of my sword...\nUnknown to life,\nBut known for death."} styleExtra={{ minHeight: '180px', fontStyle: 'italic', fontSize: '1.1em', lineHeight: '1.5', border: 'none', background: 'transparent' }} />
                     </div>
-
                     <div style={{ border: '2px solid currentColor', padding: '15px', borderRadius: '8px', background: 'rgba(0,0,0,0.05)' }}>
                         <h3 style={{ margin: '0 0 10px 0', fontSize: '1.1em', color: '#ff003c' }}>💥 Dano Base da Relíquia</h3>
                         <CampoMagico valor={arma.danoBase} onChange={v => updateArma('danoBase', v)} placeholder="Ex: 250d8 + Des x2 + Energia Espiritual x2" styleExtra={{ fontSize: '1.3em', fontWeight: 'bold' }} />
                     </div>
                 </div>
-
                 <div style={{ display: 'flex', gap: '15px' }}>
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         <h3 style={{ margin: 0, fontSize: '1em', textAlign: 'center', opacity: 0.8 }}>Forma Humanoide</h3>
-                        <div style={{ flex: 1, minHeight: '300px' }}>
-                            <ImageUploader valorAtual={arma.avatarHumano} onUploadComplete={v => updateArma('avatarHumano', v)} placeholder="Adicionar Retrato Humanoide 📸" />
-                        </div>
+                        <div style={{ flex: 1, minHeight: '300px' }}><ImageUploader valorAtual={arma.avatarHumano} onUploadComplete={v => updateArma('avatarHumano', v)} placeholder="Retrato Humanoide 📸" /></div>
                     </div>
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         <h3 style={{ margin: 0, fontSize: '1em', textAlign: 'center', opacity: 0.8 }}>Forma Espada</h3>
-                        <div style={{ flex: 1, minHeight: '300px' }}>
-                            <ImageUploader valorAtual={arma.avatarArma} onUploadComplete={v => updateArma('avatarArma', v)} placeholder="Adicionar Retrato da Lâmina 📸" />
-                        </div>
+                        <div style={{ flex: 1, minHeight: '300px' }}><ImageUploader valorAtual={arma.avatarArma} onUploadComplete={v => updateArma('avatarArma', v)} placeholder="Retrato da Lâmina 📸" /></div>
                     </div>
                 </div>
             </div>
@@ -201,53 +209,43 @@ function PaginaAltar() {
 }
 
 // ==========================================
-// 🪨 PÁGINA 2: ESTIGMAS & RUNAS (PASSIVAS)
+// 🪨 PÁGINA 2: ESTIGMAS & RUNAS
 // ==========================================
 function PaginaPassivas() {
     const { minhaFicha, handleArrayItem } = useRelicario();
     const arma = minhaFicha?.armaEspiritual || {};
-
     return (
         <div className="fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '30px' }}>
-            
-            {/* PASSIVAS */}
             <div style={{ border: '1px dashed currentColor', padding: '20px', borderRadius: '8px', background: 'rgba(0,0,0,0.02)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '1px dotted currentColor', paddingBottom: '10px' }}>
                     <h2 style={{ margin: 0, fontSize: '1.4em', color: '#00ffcc' }}>✨ Passivas da Relíquia</h2>
                     <button onClick={() => handleArrayItem('passivas', 'add')} style={{ background: 'transparent', border: '1px solid currentColor', color: 'inherit', padding: '5px 10px', cursor: 'pointer' }}>+ Inscrever</button>
                 </div>
-                
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     {(arma.passivas || []).map((p, i) => (
                         <div key={p.id} style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
                             <span style={{ fontSize: '1.5em', opacity: 0.5 }}>-</span>
-                            <AreaMagica valor={p.texto} onChange={v => handleArrayItem('passivas', 'update', i, 'texto', v)} placeholder="Ex: Absorção de Armas: EA pode absorver armas de nível inferior..." styleExtra={{ minHeight: '40px', padding: '5px' }} />
+                            <AreaMagica valor={p.texto} onChange={v => handleArrayItem('passivas', 'update', i, 'texto', v)} placeholder="Ex: EA pode absorver armas..." styleExtra={{ minHeight: '40px', padding: '5px' }} />
                             <button onClick={() => { if(window.confirm('Apagar?')) handleArrayItem('passivas', 'remove', i); }} style={{ background: 'transparent', border: 'none', color: '#ff003c', cursor: 'pointer', fontWeight: 'bold' }}>✖</button>
                         </div>
                     ))}
-                    {(!arma.passivas || arma.passivas.length === 0) && <div style={{ opacity: 0.5, fontStyle: 'italic', textAlign: 'center' }}>Nenhuma passiva gravada.</div>}
                 </div>
             </div>
-
-            {/* RUNAS */}
             <div style={{ border: '1px dashed currentColor', padding: '20px', borderRadius: '8px', background: 'rgba(0,0,0,0.02)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '1px dotted currentColor', paddingBottom: '10px' }}>
                     <h2 style={{ margin: 0, fontSize: '1.4em', color: '#ff00ff' }}>🔮 Runas & Multiplicadores</h2>
                     <button onClick={() => handleArrayItem('runas', 'add')} style={{ background: 'transparent', border: '1px solid currentColor', color: 'inherit', padding: '5px 10px', cursor: 'pointer' }}>+ Inscrever</button>
                 </div>
-                
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     {(arma.runas || []).map((r, i) => (
                         <div key={r.id} style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
                             <span style={{ fontSize: '1.5em', opacity: 0.5 }}>•</span>
-                            <AreaMagica valor={r.texto} onChange={v => handleArrayItem('runas', 'update', i, 'texto', v)} placeholder="Ex: EA multiplica o dano geral na forma base em 10x..." styleExtra={{ minHeight: '40px', padding: '5px' }} />
+                            <AreaMagica valor={r.texto} onChange={v => handleArrayItem('runas', 'update', i, 'texto', v)} placeholder="Ex: EA multiplica o dano em 10x..." styleExtra={{ minHeight: '40px', padding: '5px' }} />
                             <button onClick={() => { if(window.confirm('Apagar?')) handleArrayItem('runas', 'remove', i); }} style={{ background: 'transparent', border: 'none', color: '#ff003c', cursor: 'pointer', fontWeight: 'bold' }}>✖</button>
                         </div>
                     ))}
-                    {(!arma.runas || arma.runas.length === 0) && <div style={{ opacity: 0.5, fontStyle: 'italic', textAlign: 'center' }}>Nenhuma runa gravada.</div>}
                 </div>
             </div>
-
         </div>
     );
 }
@@ -265,55 +263,42 @@ function PaginaFormas() {
                 <h2 style={{ margin: 0, fontSize: '1.8em', color: '#ffcc00' }}>🌌 O Despertar da Lâmina</h2>
                 <button onClick={() => handleArrayItem('formas', 'add')} style={{ padding: '10px 20px', background: 'transparent', border: '2px solid currentColor', color: 'inherit', fontWeight: 'bold', cursor: 'pointer', borderRadius: '4px' }}>+ CRIAR NOVA FORMA</button>
             </div>
-
             {(arma.formas || []).map((forma, i) => (
                 <div key={forma.id} style={{ border: '2px double currentColor', padding: '20px', borderRadius: '8px', background: 'rgba(0,0,0,0.03)', position: 'relative' }}>
                     <button onClick={() => { if(window.confirm('Destruir Forma?')) handleArrayItem('formas', 'remove', i); }} style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', color: '#ff003c', fontSize: '1.2em', cursor: 'pointer' }}>✖</button>
-                    
-                    {/* CABEÇALHO DA FORMA */}
                     <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '20px' }}>
-                        <div style={{ flex: '0 0 150px', height: '200px' }}>
-                            <ImageUploader valorAtual={forma.img} onUploadComplete={v => handleArrayItem('formas', 'update', i, 'img', v)} placeholder="Foto Forma 📸" />
-                        </div>
+                        <div style={{ flex: '0 0 150px', height: '200px' }}><ImageUploader valorAtual={forma.img} onUploadComplete={v => handleArrayItem('formas', 'update', i, 'img', v)} placeholder="Foto Forma 📸" /></div>
                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            <CampoMagico valor={forma.nome} onChange={v => handleArrayItem('formas', 'update', i, 'nome', v)} placeholder="Ex: 1ª Forma: Pecados / Forma Verdadeira" styleExtra={{ fontSize: '1.5em', fontWeight: 'bold', color: '#ff00ff' }} />
-                            <CampoMagico valor={forma.dano} onChange={v => handleArrayItem('formas', 'update', i, 'dano', v)} placeholder="Dano Adicional/Específico desta Forma (Ex: 36d4)" styleExtra={{ fontSize: '1.1em', fontWeight: 'bold' }} />
-                            
-                            {/* SUB-CONFIGURAÇÕES */}
+                            <CampoMagico valor={forma.nome} onChange={v => handleArrayItem('formas', 'update', i, 'nome', v)} placeholder="Ex: 1ª Forma: Pecados" styleExtra={{ fontSize: '1.5em', fontWeight: 'bold', color: '#ff00ff' }} />
+                            <CampoMagico valor={forma.dano} onChange={v => handleArrayItem('formas', 'update', i, 'dano', v)} placeholder="Dano Adicional (Ex: 36d4)" styleExtra={{ fontSize: '1.1em', fontWeight: 'bold' }} />
                             <div style={{ marginTop: '15px', borderTop: '1px dashed currentColor', paddingTop: '15px' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                                     <h4 style={{ margin: 0, opacity: 0.8 }}>Sub-Configurações Elementais</h4>
-                                    <button onClick={() => handleArrayItem('formas', 'add-config', i)} style={{ background: 'transparent', border: '1px solid currentColor', color: 'inherit', padding: '4px 8px', fontSize: '0.8em', cursor: 'pointer' }}>+ Adicionar Sub-Configuração</button>
+                                    <button onClick={() => handleArrayItem('formas', 'add-config', i)} style={{ background: 'transparent', border: '1px solid currentColor', color: 'inherit', padding: '4px 8px', fontSize: '0.8em', cursor: 'pointer' }}>+ Sub-Configuração</button>
                                 </div>
-
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                                     {(forma.configs || []).map((cfg, cIdx) => (
                                         <div key={cfg.id} style={{ display: 'flex', gap: '15px', background: 'rgba(0,0,0,0.05)', padding: '10px', borderRadius: '6px', position: 'relative' }}>
-                                            <button onClick={() => { if(window.confirm('Apagar Configuração?')) handleArrayItem('formas', 'remove-config', i, null, null, cIdx); }} style={{ position: 'absolute', top: '5px', right: '5px', background: 'transparent', border: 'none', color: '#ff003c', cursor: 'pointer' }}>✖</button>
-                                            
-                                            <div style={{ flex: '0 0 80px', height: '100px' }}>
-                                                <ImageUploader valorAtual={cfg.img} onUploadComplete={v => handleArrayItem('formas', 'update-config', i, null, v, cIdx, 'img')} placeholder="Lâmina 📸" />
-                                            </div>
+                                            <button onClick={() => { if(window.confirm('Apagar?')) handleArrayItem('formas', 'remove-config', i, null, null, cIdx); }} style={{ position: 'absolute', top: '5px', right: '5px', background: 'transparent', border: 'none', color: '#ff003c', cursor: 'pointer' }}>✖</button>
+                                            <div style={{ flex: '0 0 80px', height: '100px' }}><ImageUploader valorAtual={cfg.img} onUploadComplete={v => handleArrayItem('formas', 'update-config', i, null, v, cIdx, 'img')} placeholder="Lâmina 📸" /></div>
                                             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
                                                 <CampoMagico valor={cfg.nome} onChange={v => handleArrayItem('formas', 'update-config', i, null, v, cIdx, 'nome')} placeholder="Ex: Tiamat Branca-Gelo" styleExtra={{ fontWeight: 'bold', fontSize: '1.1em', color: '#00ccff' }} />
-                                                <AreaMagica valor={cfg.desc} onChange={v => handleArrayItem('formas', 'update-config', i, null, v, cIdx, 'desc')} placeholder="Efeitos específicos da lâmina de gelo..." styleExtra={{ minHeight: '40px', fontSize: '0.9em' }} />
+                                                <AreaMagica valor={cfg.desc} onChange={v => handleArrayItem('formas', 'update-config', i, null, v, cIdx, 'desc')} placeholder="Efeitos específicos..." styleExtra={{ minHeight: '40px', fontSize: '0.9em' }} />
                                             </div>
                                         </div>
                                     ))}
-                                    {(!forma.configs || forma.configs.length === 0) && <div style={{ opacity: 0.5, fontStyle: 'italic', fontSize: '0.85em' }}>Sem sub-configurações.</div>}
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             ))}
-            {(!arma.formas || arma.formas.length === 0) && <div style={{ textAlign: 'center', opacity: 0.5, fontStyle: 'italic', padding: '40px' }}>A Lâmina ainda não despertou nenhuma forma oculta.</div>}
         </div>
     );
 }
 
 // ==========================================
-// 🎒 PÁGINA 4: MOCHILA MUNDANA
+// 🎒 PÁGINA 4: INVENTÁRIO (MECÂNICAS DE RPG)
 // ==========================================
 function PaginaMochila() {
     const { minhaFicha, updateFicha, callSave } = useRelicario();
@@ -322,7 +307,10 @@ function PaginaMochila() {
     const addItem = () => {
         updateFicha(f => {
             if (!f.inventario) f.inventario = [];
-            f.inventario.push({ id: Date.now(), nome: '', quantidade: 1, peso: 0, desc: '', equipado: false });
+            f.inventario.push({ 
+                id: Date.now(), nome: '', quantidade: 1, peso: 0, desc: '', 
+                tipo: 'mundano', raridade: 'comum', dano: '', tipoDano: 'Físico', equipado: false 
+            });
         });
         callSave();
     };
@@ -339,31 +327,79 @@ function PaginaMochila() {
         }
     };
 
+    const toggleEquipar = (index) => {
+        updateFicha(f => { f.inventario[index].equipado = !f.inventario[index].equipado; });
+        callSave();
+    };
+
     return (
         <div className="fade-in" style={{ border: '2px solid currentColor', padding: '20px', borderRadius: '8px', background: 'rgba(0,0,0,0.02)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px dotted currentColor', paddingBottom: '10px' }}>
-                <h2 style={{ margin: 0, fontSize: '1.5em' }}>🎒 Itens e Suprimentos Mundanos</h2>
+                <div>
+                    <h2 style={{ margin: 0, fontSize: '1.5em' }}>🎒 Arsenal & Inventário</h2>
+                    <span style={{ fontSize: '0.85em', opacity: 0.7, fontStyle: 'italic' }}>Armas equipadas podem ser vinculadas a Habilidades na Página 1.</span>
+                </div>
                 <button onClick={addItem} style={{ padding: '8px 15px', background: 'transparent', border: '1px solid currentColor', color: 'inherit', fontWeight: 'bold', cursor: 'pointer' }}>+ Guardar Novo Item</button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {inventario.map((item, i) => (
-                    <div key={item.id} style={{ display: 'flex', gap: '10px', alignItems: 'center', background: 'rgba(0,0,0,0.05)', padding: '10px', borderRadius: '5px', borderLeft: '3px solid currentColor' }}>
-                        <CampoMagico valor={item.nome} onChange={v => updateItem(i, 'nome', v)} placeholder="Nome do Item" styleExtra={{ flex: 3, fontWeight: 'bold' }} />
-                        
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
-                            <span style={{ fontSize: '0.8em', opacity: 0.7 }}>Qtd:</span>
-                            <CampoMagico valor={item.quantidade} onChange={v => updateItem(i, 'quantidade', Number(v))} type="number" styleExtra={{ textAlign: 'center' }} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                {inventario.map((item, i) => {
+                    const rData = RARIDADES[item.raridade || 'comum'];
+                    const isWeaponOrArmor = item.tipo === 'arma' || item.tipo === 'armadura' || item.tipo === 'acessorio';
+                    
+                    return (
+                        <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: item.equipado ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.03)', padding: '15px', borderRadius: '6px', borderLeft: `4px solid ${rData.cor}`, border: item.equipado ? `2px solid ${rData.cor}` : `1px dashed ${rData.cor}80` }}>
+                            
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                <CampoMagico valor={item.nome} onChange={v => updateItem(i, 'nome', v)} placeholder="Nome do Item" styleExtra={{ flex: '1 1 200px', fontWeight: 'bold', fontSize: '1.2em', color: rData.cor }} />
+                                
+                                <select value={item.tipo || 'mundano'} onChange={e => updateItem(i, 'tipo', e.target.value)} style={{ background: 'transparent', color: 'inherit', border: 'none', borderBottom: '1px dotted currentColor', outline: 'none', fontFamily: 'inherit' }}>
+                                    {TIPOS_ITEM.map(opt => <option key={opt.value} value={opt.value} style={{color: '#000'}}>{opt.label}</option>)}
+                                </select>
+
+                                <select value={item.raridade || 'comum'} onChange={e => updateItem(i, 'raridade', e.target.value)} style={{ background: 'transparent', color: rData.cor, border: 'none', borderBottom: '1px dotted currentColor', outline: 'none', fontWeight: 'bold', fontFamily: 'inherit' }}>
+                                    {Object.entries(RARIDADES).map(([k, v]) => <option key={k} value={k} style={{color: '#000'}}>{v.label}</option>)}
+                                </select>
+                                
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                    <span style={{ fontSize: '0.8em', opacity: 0.7 }}>Qtd:</span>
+                                    <CampoMagico valor={item.quantidade} onChange={v => updateItem(i, 'quantidade', Number(v))} type="number" styleExtra={{ width: '50px', textAlign: 'center' }} />
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                    <span style={{ fontSize: '0.8em', opacity: 0.7 }}>Kg:</span>
+                                    <CampoMagico valor={item.peso} onChange={v => updateItem(i, 'peso', Number(v))} type="number" step="0.1" styleExtra={{ width: '50px', textAlign: 'center' }} />
+                                </div>
+
+                                <button onClick={() => removeItem(i)} style={{ background: 'transparent', border: 'none', color: '#ff003c', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.2em' }}>✖</button>
+                            </div>
+
+                            {/* MECÂNICAS DE COMBATE PARA ITENS ESPECIAIS */}
+                            {isWeaponOrArmor && (
+                                <div style={{ display: 'flex', gap: '15px', alignItems: 'center', borderTop: '1px dashed currentColor', paddingTop: '10px', marginTop: '5px' }}>
+                                    {item.tipo === 'arma' && (
+                                        <>
+                                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                <span style={{ fontSize: '0.8em', opacity: 0.7, fontWeight: 'bold' }}>Dano:</span>
+                                                <CampoMagico valor={item.dano} onChange={v => updateItem(i, 'dano', v)} placeholder="Ex: 2d8+5" styleExtra={{ flex: 1 }} />
+                                            </div>
+                                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                <span style={{ fontSize: '0.8em', opacity: 0.7, fontWeight: 'bold' }}>Tipo:</span>
+                                                <select value={item.tipoDano || 'Cortante'} onChange={e => updateItem(i, 'tipoDano', e.target.value)} style={{ background: 'transparent', color: 'inherit', border: 'none', borderBottom: '1px dashed currentColor', outline: 'none', fontFamily: 'inherit', flex: 1 }}>
+                                                    {TIPOS_DANO.map(d => <option key={d} value={d} style={{color: '#000'}}>{d}</option>)}
+                                                </select>
+                                            </div>
+                                        </>
+                                    )}
+                                    <button onClick={() => toggleEquipar(i)} style={{ padding: '5px 15px', background: item.equipado ? rData.cor : 'transparent', color: item.equipado ? '#000' : 'inherit', border: `1px solid ${rData.cor}`, borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>
+                                        {item.equipado ? '★ EQUIPADO' : 'Equipar'}
+                                    </button>
+                                </div>
+                            )}
+                            
+                            <AreaMagica valor={item.desc} onChange={v => updateItem(i, 'desc', v)} placeholder="Descrição e bônus do item..." styleExtra={{ minHeight: '30px', fontSize: '0.85em', marginTop: '5px' }} />
                         </div>
-                        
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
-                            <span style={{ fontSize: '0.8em', opacity: 0.7 }}>Kg:</span>
-                            <CampoMagico valor={item.peso} onChange={v => updateItem(i, 'peso', Number(v))} type="number" step="0.1" styleExtra={{ textAlign: 'center' }} />
-                        </div>
-                        
-                        <button onClick={() => removeItem(i)} style={{ background: 'transparent', border: 'none', color: '#ff003c', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.2em' }}>✖</button>
-                    </div>
-                ))}
+                    );
+                })}
                 {inventario.length === 0 && <div style={{ textAlign: 'center', opacity: 0.5, fontStyle: 'italic', padding: '20px' }}>A sua mochila está vazia.</div>}
             </div>
         </div>
@@ -376,7 +412,7 @@ function PaginaMochila() {
 export default function RelicarioPanel() {
     return (
         <RelicarioProvider>
-            <div className="grimorio-estilo-papel" style={{ width: '100%' }}>
+            <div className="grimorio-estilo-papel" style={{ width: '100%', paddingBottom: '30px' }}>
                 <RelicarioNavegacao />
                 <ConteudoDinamico />
             </div>

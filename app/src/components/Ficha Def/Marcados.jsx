@@ -6,6 +6,7 @@ import { getRank } from '../../core/prestige';
 
 // 🔥 IMPORTA A NOVA PÁGINA 4 (A CLASSIFICAÇÃO ISOLADA) 🔥
 import ClassificacaoPanel from './ClassificacaoPanel';
+import RelicarioPanel from './RelicarioPanel';
 
 // ==========================================
 // 🛡️ DADOS DO COMPÊNDIO (PARA O ÍCONE DA MOLDURA)
@@ -1046,6 +1047,10 @@ export default function MarcadosPanel() {
                 {/* ======================= PÁGINA 4: CLASSIFICAÇÃO ARCANA ======================= */}
                 {paginaAtual === 4 && (
                     <ClassificacaoPanel />
+                )}
+                {/* ======================= PÁGINA 5: RELICÁRIO (INVENTÁRIO E ARSENAL) ======================= */}
+                {paginaAtual === 5 && (
+                    <RelicarioPanel />
                 )}
 
             </div>
