@@ -344,7 +344,8 @@ function PaginaMochila() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                 {inventario.map((item, i) => {
-                    const rData = RARIDADES[item.raridade || 'comum'];
+                    // 🔥 CORREÇÃO DO ERRO DE RARIDADE: Se o item for antigo ou não tiver raridade, usa 'comum'
+                    const rData = RARIDADES[item.raridade] || RARIDADES['comum'];
                     const isWeaponOrArmor = item.tipo === 'arma' || item.tipo === 'armadura' || item.tipo === 'acessorio';
                     
                     return (
