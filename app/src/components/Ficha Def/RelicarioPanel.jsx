@@ -16,12 +16,15 @@ const RARIDADES = {
     'singular': { label: '🌌 Singularidade', cor: '#ff00ff' }
 };
 
-const TIPOS_ITEM = [
-    { value: 'mundano', label: '🎒 Item Mundano / Recurso' },
+const TIPOS_ARSENAL = [
     { value: 'arma', label: '⚔️ Arma' },
     { value: 'armadura', label: '🛡️ Armadura / Vestimenta' },
-    { value: 'acessorio', label: '💍 Acessório / Relíquia Menor' },
-    { value: 'consumivel', label: '🧪 Consumível / Poção' }
+    { value: 'acessorio', label: '💍 Acessório / Relíquia Menor' }
+];
+
+const TIPOS_SUPRIMENTO = [
+    { value: 'consumivel', label: '🧪 Consumível / Poção' },
+    { value: 'mundano', label: '🎒 Item Mundano / Recurso' }
 ];
 
 const TIPOS_DANO = ['Cortante', 'Perfurante', 'Impacto', 'Mágico', 'Elemental', 'Verdadeiro', 'Conceitual', 'Espiritual', 'Nenhum'];
@@ -32,8 +35,10 @@ const TIPOS_DANO = ['Cortante', 'Perfurante', 'Impacto', 'Mágico', 'Elemental',
 const CAPITULOS = [
     { id: 'altar', label: 'Altar da Relíquia', icon: '🗡️' },
     { id: 'passivas', label: 'Estigmas & Runas', icon: '🪨' },
-    { id: 'formas', label: 'Despertar das Formas', icon: '🌌' },
-    { id: 'mochila', label: 'Inventário & Arsenal', icon: '🎒' }
+    { id: 'formas', label: 'Formas Base', icon: '🌌' },
+    { id: 'verdadeiras', label: 'Formas Verdadeiras', icon: '👑' },
+    { id: 'arsenal', label: 'Arsenal Místico', icon: '⚔️' },
+    { id: 'suprimentos', label: 'Suprimentos & Notas', icon: '🧪' }
 ];
 
 // ==========================================
@@ -60,7 +65,7 @@ export function RelicarioProvider({ children }) {
                 f.armaEspiritual = {
                     nome: '', epiteto: '', cantico: '', danoBase: '',
                     avatarHumano: '', avatarArma: '',
-                    passivas: [], runas: [], formas: []
+                    passivas: [], runas: [], formas: [], formasVerdadeiras: []
                 };
             });
             callSave();
@@ -69,11 +74,21 @@ export function RelicarioProvider({ children }) {
 
     const handleArrayItem = useCallback((chave, acao, index, campo, valor, subIndex = null, subCampo = null) => {
         updateFicha((ficha) => {
+            // Se for o bloco de notas
+            if (chave === 'notas') {
+                if (!ficha.notas) ficha.notas = [];
+                if (acao === 'add') ficha.notas.push({ id: Date.now(), titulo: '', texto: '' });
+                else if (acao === 'remove') ficha.notas.splice(index, 1);
+                else if (acao === 'update') ficha.notas[index][campo] = valor;
+                return;
+            }
+
+            // Se for a Arma Espiritual
             if (!ficha.armaEspiritual) return;
             const target = ficha.armaEspiritual[chave];
             
             if (acao === 'add') {
-                if (chave === 'formas') target.push({ id: Date.now(), nome: '', dano: '', img: '', configs: [] });
+                if (chave === 'formas' || chave === 'formasVerdadeiras') target.push({ id: Date.now(), nome: '', dano: '', img: '', configs: [] });
                 else target.push({ id: Date.now(), texto: '' });
             } 
             else if (acao === 'remove') target.splice(index, 1);
@@ -89,7 +104,39 @@ export function RelicarioProvider({ children }) {
         callSave();
     }, [updateFicha, callSave]);
 
-    const value = { minhaFicha, updateFicha, isMestre, meuNome, abaAtual, setAbaAtual, callSave, handleArrayItem };
+    // Gestão de Itens por ID (Seguro para listas filtradas)
+    const updateItemById = useCallback((id, campo, valor) => {
+        updateFicha(f => { const i = f.inventario.find(x => x.id === id); if (i) i[campo] = valor; });
+        callSave();
+    }, [updateFicha, callSave]);
+
+    const removeItemById = useCallback((id) => {
+        if(window.confirm('Deitar fora este item para sempre?')) {
+            updateFicha(f => { f.inventario = f.inventario.filter(x => x.id !== id); });
+            callSave();
+        }
+    }, [updateFicha, callSave]);
+
+    const toggleEquiparById = useCallback((id) => {
+        updateFicha(f => { const i = f.inventario.find(x => x.id === id); if (i) i.equipado = !i.equipado; });
+        callSave();
+    }, [updateFicha, callSave]);
+
+    const addItem = useCallback((tipoPadrao) => {
+        updateFicha(f => {
+            if (!f.inventario) f.inventario = [];
+            f.inventario.push({ 
+                id: Date.now(), nome: '', quantidade: 1, peso: 0, desc: '', 
+                tipo: tipoPadrao, raridade: 'comum', dano: '', tipoDano: 'Físico', equipado: false 
+            });
+        });
+        callSave();
+    }, [updateFicha, callSave]);
+
+    const value = { 
+        minhaFicha, updateFicha, isMestre, meuNome, abaAtual, setAbaAtual, callSave, handleArrayItem,
+        updateItemById, removeItemById, toggleEquiparById, addItem 
+    };
     return <RelicarioContext.Provider value={value}>{children}</RelicarioContext.Provider>;
 }
 
@@ -136,7 +183,7 @@ const ImageUploader = ({ valorAtual, onUploadComplete, placeholder }) => {
     return (
         <div style={{ position: 'relative', width: '100%', height: '100%', border: valorAtual ? 'none' : '2px dashed currentColor', borderRadius: '8px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.2)' }}>
             {loading ? <span style={{ fontWeight: 'bold' }}>Forjando...</span> : 
-             valorAtual ? <img src={valorAtual} alt="Relíquia" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : 
+             valorAtual ? <img src={valorAtual} alt="Imagem" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : 
              <span style={{ opacity: 0.5, fontStyle: 'italic', padding: '20px', textAlign: 'center' }}>{placeholder}</span>}
             
             <label style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', cursor: 'pointer', zIndex: 10 }}>
@@ -251,7 +298,7 @@ function PaginaPassivas() {
 }
 
 // ==========================================
-// 🌌 PÁGINA 3: DESPERTAR DAS FORMAS
+// 🌌 PÁGINA 3: FORMAS BASE
 // ==========================================
 function PaginaFormas() {
     const { minhaFicha, handleArrayItem } = useRelicario();
@@ -260,16 +307,16 @@ function PaginaFormas() {
     return (
         <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid currentColor', paddingBottom: '10px' }}>
-                <h2 style={{ margin: 0, fontSize: '1.8em', color: '#ffcc00' }}>🌌 O Despertar da Lâmina</h2>
-                <button onClick={() => handleArrayItem('formas', 'add')} style={{ padding: '10px 20px', background: 'transparent', border: '2px solid currentColor', color: 'inherit', fontWeight: 'bold', cursor: 'pointer', borderRadius: '4px' }}>+ CRIAR NOVA FORMA</button>
+                <h2 style={{ margin: 0, fontSize: '1.8em', color: '#00aaff' }}>🌌 Formas Base da Lâmina</h2>
+                <button onClick={() => handleArrayItem('formas', 'add')} style={{ padding: '10px 20px', background: 'transparent', border: '2px solid currentColor', color: 'inherit', fontWeight: 'bold', cursor: 'pointer', borderRadius: '4px' }}>+ CRIAR FORMA BASE</button>
             </div>
             {(arma.formas || []).map((forma, i) => (
-                <div key={forma.id} style={{ border: '2px double currentColor', padding: '20px', borderRadius: '8px', background: 'rgba(0,0,0,0.03)', position: 'relative' }}>
+                <div key={forma.id} style={{ border: '2px double currentColor', padding: '20px', borderRadius: '8px', background: 'rgba(0,170,255,0.03)', position: 'relative' }}>
                     <button onClick={() => { if(window.confirm('Destruir Forma?')) handleArrayItem('formas', 'remove', i); }} style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', color: '#ff003c', fontSize: '1.2em', cursor: 'pointer' }}>✖</button>
                     <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '20px' }}>
                         <div style={{ flex: '0 0 150px', height: '200px' }}><ImageUploader valorAtual={forma.img} onUploadComplete={v => handleArrayItem('formas', 'update', i, 'img', v)} placeholder="Foto Forma 📸" /></div>
                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            <CampoMagico valor={forma.nome} onChange={v => handleArrayItem('formas', 'update', i, 'nome', v)} placeholder="Ex: 1ª Forma: Pecados" styleExtra={{ fontSize: '1.5em', fontWeight: 'bold', color: '#ff00ff' }} />
+                            <CampoMagico valor={forma.nome} onChange={v => handleArrayItem('formas', 'update', i, 'nome', v)} placeholder="Ex: 1ª Forma: Pecados" styleExtra={{ fontSize: '1.5em', fontWeight: 'bold', color: '#00aaff' }} />
                             <CampoMagico valor={forma.dano} onChange={v => handleArrayItem('formas', 'update', i, 'dano', v)} placeholder="Dano Adicional (Ex: 36d4)" styleExtra={{ fontSize: '1.1em', fontWeight: 'bold' }} />
                             <div style={{ marginTop: '15px', borderTop: '1px dashed currentColor', paddingTop: '15px' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
@@ -282,7 +329,7 @@ function PaginaFormas() {
                                             <button onClick={() => { if(window.confirm('Apagar?')) handleArrayItem('formas', 'remove-config', i, null, null, cIdx); }} style={{ position: 'absolute', top: '5px', right: '5px', background: 'transparent', border: 'none', color: '#ff003c', cursor: 'pointer' }}>✖</button>
                                             <div style={{ flex: '0 0 80px', height: '100px' }}><ImageUploader valorAtual={cfg.img} onUploadComplete={v => handleArrayItem('formas', 'update-config', i, null, v, cIdx, 'img')} placeholder="Lâmina 📸" /></div>
                                             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                                <CampoMagico valor={cfg.nome} onChange={v => handleArrayItem('formas', 'update-config', i, null, v, cIdx, 'nome')} placeholder="Ex: Tiamat Branca-Gelo" styleExtra={{ fontWeight: 'bold', fontSize: '1.1em', color: '#00ccff' }} />
+                                                <CampoMagico valor={cfg.nome} onChange={v => handleArrayItem('formas', 'update-config', i, null, v, cIdx, 'nome')} placeholder="Ex: Tiamat Branca-Gelo" styleExtra={{ fontWeight: 'bold', fontSize: '1.1em', color: 'inherit' }} />
                                                 <AreaMagica valor={cfg.desc} onChange={v => handleArrayItem('formas', 'update-config', i, null, v, cIdx, 'desc')} placeholder="Efeitos específicos..." styleExtra={{ minHeight: '40px', fontSize: '0.9em' }} />
                                             </div>
                                         </div>
@@ -293,116 +340,197 @@ function PaginaFormas() {
                     </div>
                 </div>
             ))}
+            {(!arma.formas || arma.formas.length === 0) && <div style={{ textAlign: 'center', opacity: 0.5, fontStyle: 'italic', padding: '40px' }}>A Lâmina ainda não despertou nenhuma Forma Base.</div>}
         </div>
     );
 }
 
 // ==========================================
-// 🎒 PÁGINA 4: INVENTÁRIO (MECÂNICAS DE RPG)
+// 👑 PÁGINA 4: FORMAS VERDADEIRAS
 // ==========================================
-function PaginaMochila() {
-    const { minhaFicha, updateFicha, callSave } = useRelicario();
+function PaginaFormasVerdadeiras() {
+    const { minhaFicha, handleArrayItem } = useRelicario();
+    const arma = minhaFicha?.armaEspiritual || {};
+
+    return (
+        <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #ffcc00', paddingBottom: '10px' }}>
+                <h2 style={{ margin: 0, fontSize: '1.8em', color: '#ffcc00' }}>👑 Formas Verdadeiras (O Ápice)</h2>
+                <button onClick={() => handleArrayItem('formasVerdadeiras', 'add')} style={{ padding: '10px 20px', background: 'transparent', border: '2px solid #ffcc00', color: '#ffcc00', fontWeight: 'bold', cursor: 'pointer', borderRadius: '4px' }}>+ DESPERTAR FORMA VERDADEIRA</button>
+            </div>
+            {(arma.formasVerdadeiras || []).map((forma, i) => (
+                <div key={forma.id} style={{ border: '2px double #ffcc00', padding: '20px', borderRadius: '8px', background: 'rgba(255,204,0,0.05)', position: 'relative' }}>
+                    <button onClick={() => { if(window.confirm('Destruir Forma Verdadeira?')) handleArrayItem('formasVerdadeiras', 'remove', i); }} style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', color: '#ff003c', fontSize: '1.2em', cursor: 'pointer' }}>✖</button>
+                    <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '20px' }}>
+                        <div style={{ flex: '0 0 150px', height: '200px' }}><ImageUploader valorAtual={forma.img} onUploadComplete={v => handleArrayItem('formasVerdadeiras', 'update', i, 'img', v)} placeholder="Foto Forma 📸" /></div>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            <CampoMagico valor={forma.nome} onChange={v => handleArrayItem('formasVerdadeiras', 'update', i, 'nome', v)} placeholder="Ex: 1 Forma Verdadeira: Pecados" styleExtra={{ fontSize: '1.5em', fontWeight: 'bold', color: '#ff003c' }} />
+                            <CampoMagico valor={forma.dano} onChange={v => handleArrayItem('formasVerdadeiras', 'update', i, 'dano', v)} placeholder="Dano Colossal (Ex: 120d4 + Des + E.E)" styleExtra={{ fontSize: '1.1em', fontWeight: 'bold', color: '#ffcc00' }} />
+                            <div style={{ marginTop: '15px', borderTop: '1px dashed #ffcc00', paddingTop: '15px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                    <h4 style={{ margin: 0, opacity: 0.9, color: '#ffcc00' }}>Sub-Configurações Supremas</h4>
+                                    <button onClick={() => handleArrayItem('formasVerdadeiras', 'add-config', i)} style={{ background: 'transparent', border: '1px solid #ffcc00', color: '#ffcc00', padding: '4px 8px', fontSize: '0.8em', cursor: 'pointer' }}>+ Sub-Configuração</button>
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                    {(forma.configs || []).map((cfg, cIdx) => (
+                                        <div key={cfg.id} style={{ display: 'flex', gap: '15px', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '6px', position: 'relative', border: '1px solid #ffcc0040' }}>
+                                            <button onClick={() => { if(window.confirm('Apagar?')) handleArrayItem('formasVerdadeiras', 'remove-config', i, null, null, cIdx); }} style={{ position: 'absolute', top: '5px', right: '5px', background: 'transparent', border: 'none', color: '#ff003c', cursor: 'pointer' }}>✖</button>
+                                            <div style={{ flex: '0 0 80px', height: '100px' }}><ImageUploader valorAtual={cfg.img} onUploadComplete={v => handleArrayItem('formasVerdadeiras', 'update-config', i, null, v, cIdx, 'img')} placeholder="Lâmina 📸" /></div>
+                                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                                <CampoMagico valor={cfg.nome} onChange={v => handleArrayItem('formasVerdadeiras', 'update-config', i, null, v, cIdx, 'nome')} placeholder="Ex: Variante Verdadeira" styleExtra={{ fontWeight: 'bold', fontSize: '1.1em', color: '#ffcc00' }} />
+                                                <AreaMagica valor={cfg.desc} onChange={v => handleArrayItem('formasVerdadeiras', 'update-config', i, null, v, cIdx, 'desc')} placeholder="Efeitos específicos..." styleExtra={{ minHeight: '40px', fontSize: '0.9em' }} />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ))}
+            {(!arma.formasVerdadeiras || arma.formasVerdadeiras.length === 0) && <div style={{ textAlign: 'center', opacity: 0.5, fontStyle: 'italic', padding: '40px' }}>Nenhuma Forma Verdadeira foi revelada ainda.</div>}
+        </div>
+    );
+}
+
+// ==========================================
+// ⚔️ PÁGINA 5: ARSENAL MÍSTICO
+// ==========================================
+function PaginaArsenal() {
+    const { minhaFicha, updateItemById, removeItemById, toggleEquiparById, addItem } = useRelicario();
     const inventario = minhaFicha?.inventario || [];
-
-    const addItem = () => {
-        updateFicha(f => {
-            if (!f.inventario) f.inventario = [];
-            f.inventario.push({ 
-                id: Date.now(), nome: '', quantidade: 1, peso: 0, desc: '', 
-                tipo: 'mundano', raridade: 'comum', dano: '', tipoDano: 'Físico', equipado: false 
-            });
-        });
-        callSave();
-    };
-
-    const updateItem = (index, campo, valor) => {
-        updateFicha(f => { f.inventario[index][campo] = valor; });
-        callSave();
-    };
-
-    const removeItem = (index) => {
-        if(window.confirm('Deitar fora o item?')) {
-            updateFicha(f => { f.inventario.splice(index, 1); });
-            callSave();
-        }
-    };
-
-    const toggleEquipar = (index) => {
-        updateFicha(f => { f.inventario[index].equipado = !f.inventario[index].equipado; });
-        callSave();
-    };
+    
+    // Filtra apenas Armas, Armaduras e Acessórios
+    const arsenal = inventario.filter(i => ['arma', 'armadura', 'acessorio'].includes(i.tipo));
 
     return (
         <div className="fade-in" style={{ border: '2px solid currentColor', padding: '20px', borderRadius: '8px', background: 'rgba(0,0,0,0.02)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px dotted currentColor', paddingBottom: '10px' }}>
                 <div>
-                    <h2 style={{ margin: 0, fontSize: '1.5em' }}>🎒 Arsenal & Inventário</h2>
-                    <span style={{ fontSize: '0.85em', opacity: 0.7, fontStyle: 'italic' }}>Armas equipadas podem ser vinculadas a Habilidades na Página 1.</span>
+                    <h2 style={{ margin: 0, fontSize: '1.5em' }}>⚔️ Arsenal Místico & Relíquias</h2>
+                    <span style={{ fontSize: '0.85em', opacity: 0.7, fontStyle: 'italic' }}>Armas equipadas aqui podem ser vinculadas a Habilidades na Página 1.</span>
                 </div>
-                <button onClick={addItem} style={{ padding: '8px 15px', background: 'transparent', border: '1px solid currentColor', color: 'inherit', fontWeight: 'bold', cursor: 'pointer' }}>+ Guardar Novo Item</button>
+                <button onClick={() => addItem('arma')} style={{ padding: '8px 15px', background: 'transparent', border: '1px solid currentColor', color: 'inherit', fontWeight: 'bold', cursor: 'pointer' }}>+ Guardar Nova Arma</button>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                {inventario.map((item, i) => {
-                    // 🔥 CORREÇÃO DO ERRO DE RARIDADE: Se o item for antigo ou não tiver raridade, usa 'comum'
+                {arsenal.map(item => {
                     const rData = RARIDADES[item.raridade] || RARIDADES['comum'];
-                    const isWeaponOrArmor = item.tipo === 'arma' || item.tipo === 'armadura' || item.tipo === 'acessorio';
-                    
                     return (
                         <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: item.equipado ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.03)', padding: '15px', borderRadius: '6px', borderLeft: `4px solid ${rData.cor}`, border: item.equipado ? `2px solid ${rData.cor}` : `1px dashed ${rData.cor}80` }}>
-                            
                             <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                                <CampoMagico valor={item.nome} onChange={v => updateItem(i, 'nome', v)} placeholder="Nome do Item" styleExtra={{ flex: '1 1 200px', fontWeight: 'bold', fontSize: '1.2em', color: rData.cor }} />
+                                <CampoMagico valor={item.nome} onChange={v => updateItemById(item.id, 'nome', v)} placeholder="Nome do Item" styleExtra={{ flex: '1 1 200px', fontWeight: 'bold', fontSize: '1.2em', color: rData.cor }} />
                                 
-                                <select value={item.tipo || 'mundano'} onChange={e => updateItem(i, 'tipo', e.target.value)} style={{ background: 'transparent', color: 'inherit', border: 'none', borderBottom: '1px dotted currentColor', outline: 'none', fontFamily: 'inherit' }}>
-                                    {TIPOS_ITEM.map(opt => <option key={opt.value} value={opt.value} style={{color: '#000'}}>{opt.label}</option>)}
+                                <select value={item.tipo || 'arma'} onChange={e => updateItemById(item.id, 'tipo', e.target.value)} style={{ background: 'transparent', color: 'inherit', border: 'none', borderBottom: '1px dotted currentColor', outline: 'none', fontFamily: 'inherit' }}>
+                                    {TIPOS_ARSENAL.map(opt => <option key={opt.value} value={opt.value} style={{color: '#000'}}>{opt.label}</option>)}
                                 </select>
 
-                                <select value={item.raridade || 'comum'} onChange={e => updateItem(i, 'raridade', e.target.value)} style={{ background: 'transparent', color: rData.cor, border: 'none', borderBottom: '1px dotted currentColor', outline: 'none', fontWeight: 'bold', fontFamily: 'inherit' }}>
+                                <select value={item.raridade || 'comum'} onChange={e => updateItemById(item.id, 'raridade', e.target.value)} style={{ background: 'transparent', color: rData.cor, border: 'none', borderBottom: '1px dotted currentColor', outline: 'none', fontWeight: 'bold', fontFamily: 'inherit' }}>
                                     {Object.entries(RARIDADES).map(([k, v]) => <option key={k} value={k} style={{color: '#000'}}>{v.label}</option>)}
                                 </select>
                                 
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                    <span style={{ fontSize: '0.8em', opacity: 0.7 }}>Qtd:</span>
-                                    <CampoMagico valor={item.quantidade} onChange={v => updateItem(i, 'quantidade', Number(v))} type="number" styleExtra={{ width: '50px', textAlign: 'center' }} />
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                    <span style={{ fontSize: '0.8em', opacity: 0.7 }}>Kg:</span>
-                                    <CampoMagico valor={item.peso} onChange={v => updateItem(i, 'peso', Number(v))} type="number" step="0.1" styleExtra={{ width: '50px', textAlign: 'center' }} />
-                                </div>
-
-                                <button onClick={() => removeItem(i)} style={{ background: 'transparent', border: 'none', color: '#ff003c', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.2em' }}>✖</button>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><span style={{ fontSize: '0.8em', opacity: 0.7 }}>Qtd:</span><CampoMagico valor={item.quantidade} onChange={v => updateItemById(item.id, 'quantidade', Number(v))} type="number" styleExtra={{ width: '50px', textAlign: 'center' }} /></div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><span style={{ fontSize: '0.8em', opacity: 0.7 }}>Kg:</span><CampoMagico valor={item.peso} onChange={v => updateItemById(item.id, 'peso', Number(v))} type="number" step="0.1" styleExtra={{ width: '50px', textAlign: 'center' }} /></div>
+                                <button onClick={() => removeItemById(item.id)} style={{ background: 'transparent', border: 'none', color: '#ff003c', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.2em' }}>✖</button>
                             </div>
 
-                            {/* MECÂNICAS DE COMBATE PARA ITENS ESPECIAIS */}
-                            {isWeaponOrArmor && (
-                                <div style={{ display: 'flex', gap: '15px', alignItems: 'center', borderTop: '1px dashed currentColor', paddingTop: '10px', marginTop: '5px' }}>
-                                    {item.tipo === 'arma' && (
-                                        <>
-                                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                                <span style={{ fontSize: '0.8em', opacity: 0.7, fontWeight: 'bold' }}>Dano:</span>
-                                                <CampoMagico valor={item.dano} onChange={v => updateItem(i, 'dano', v)} placeholder="Ex: 2d8+5" styleExtra={{ flex: 1 }} />
-                                            </div>
-                                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                                <span style={{ fontSize: '0.8em', opacity: 0.7, fontWeight: 'bold' }}>Tipo:</span>
-                                                <select value={item.tipoDano || 'Cortante'} onChange={e => updateItem(i, 'tipoDano', e.target.value)} style={{ background: 'transparent', color: 'inherit', border: 'none', borderBottom: '1px dashed currentColor', outline: 'none', fontFamily: 'inherit', flex: 1 }}>
-                                                    {TIPOS_DANO.map(d => <option key={d} value={d} style={{color: '#000'}}>{d}</option>)}
-                                                </select>
-                                            </div>
-                                        </>
-                                    )}
-                                    <button onClick={() => toggleEquipar(i)} style={{ padding: '5px 15px', background: item.equipado ? rData.cor : 'transparent', color: item.equipado ? '#000' : 'inherit', border: `1px solid ${rData.cor}`, borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>
-                                        {item.equipado ? '★ EQUIPADO' : 'Equipar'}
-                                    </button>
-                                </div>
-                            )}
+                            <div style={{ display: 'flex', gap: '15px', alignItems: 'center', borderTop: '1px dashed currentColor', paddingTop: '10px', marginTop: '5px' }}>
+                                {item.tipo === 'arma' && (
+                                    <>
+                                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                            <span style={{ fontSize: '0.8em', opacity: 0.7, fontWeight: 'bold' }}>Dano:</span>
+                                            <CampoMagico valor={item.dano} onChange={v => updateItemById(item.id, 'dano', v)} placeholder="Ex: 2d8+5" styleExtra={{ flex: 1 }} />
+                                        </div>
+                                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                            <span style={{ fontSize: '0.8em', opacity: 0.7, fontWeight: 'bold' }}>Tipo:</span>
+                                            <select value={item.tipoDano || 'Cortante'} onChange={e => updateItemById(item.id, 'tipoDano', e.target.value)} style={{ background: 'transparent', color: 'inherit', border: 'none', borderBottom: '1px dashed currentColor', outline: 'none', fontFamily: 'inherit', flex: 1 }}>
+                                                {TIPOS_DANO.map(d => <option key={d} value={d} style={{color: '#000'}}>{d}</option>)}
+                                            </select>
+                                        </div>
+                                    </>
+                                )}
+                                <button onClick={() => toggleEquiparById(item.id)} style={{ padding: '5px 15px', background: item.equipado ? rData.cor : 'transparent', color: item.equipado ? '#000' : 'inherit', border: `1px solid ${rData.cor}`, borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', marginLeft: 'auto' }}>
+                                    {item.equipado ? '★ EQUIPADO' : 'Equipar'}
+                                </button>
+                            </div>
                             
-                            <AreaMagica valor={item.desc} onChange={v => updateItem(i, 'desc', v)} placeholder="Descrição e bônus do item..." styleExtra={{ minHeight: '30px', fontSize: '0.85em', marginTop: '5px' }} />
+                            <AreaMagica valor={item.desc} onChange={v => updateItemById(item.id, 'desc', v)} placeholder="Descrição e bônus da arma/armadura..." styleExtra={{ minHeight: '30px', fontSize: '0.85em', marginTop: '5px' }} />
                         </div>
                     );
                 })}
-                {inventario.length === 0 && <div style={{ textAlign: 'center', opacity: 0.5, fontStyle: 'italic', padding: '20px' }}>A sua mochila está vazia.</div>}
+                {arsenal.length === 0 && <div style={{ textAlign: 'center', opacity: 0.5, fontStyle: 'italic', padding: '20px' }}>O seu arsenal está vazio.</div>}
             </div>
+        </div>
+    );
+}
+
+// ==========================================
+// 🧪 PÁGINA 6: SUPRIMENTOS E NOTAS
+// ==========================================
+function PaginaSuprimentos() {
+    const { minhaFicha, updateItemById, removeItemById, addItem, handleArrayItem } = useRelicario();
+    const inventario = minhaFicha?.inventario || [];
+    
+    // Filtra apenas Consumíveis e Mundanos
+    const suprimentos = inventario.filter(i => ['consumivel', 'mundano'].includes(i.tipo));
+
+    return (
+        <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+            
+            {/* INVENTÁRIO COMUM */}
+            <div style={{ border: '2px solid currentColor', padding: '20px', borderRadius: '8px', background: 'rgba(0,0,0,0.02)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px dotted currentColor', paddingBottom: '10px' }}>
+                    <h2 style={{ margin: 0, fontSize: '1.5em' }}>🧪 Mochila & Suprimentos</h2>
+                    <button onClick={() => addItem('consumivel')} style={{ padding: '8px 15px', background: 'transparent', border: '1px solid currentColor', color: 'inherit', fontWeight: 'bold', cursor: 'pointer' }}>+ Novo Suprimento</button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {suprimentos.map(item => {
+                        const rData = RARIDADES[item.raridade] || RARIDADES['comum'];
+                        return (
+                            <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: 'rgba(0,0,0,0.03)', padding: '10px 15px', borderRadius: '6px', borderLeft: `4px solid ${rData.cor}` }}>
+                                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                    <CampoMagico valor={item.nome} onChange={v => updateItemById(item.id, 'nome', v)} placeholder="Nome da Poção/Item" styleExtra={{ flex: '1 1 200px', fontWeight: 'bold', fontSize: '1.1em', color: rData.cor }} />
+                                    
+                                    <select value={item.tipo || 'consumivel'} onChange={e => updateItemById(item.id, 'tipo', e.target.value)} style={{ background: 'transparent', color: 'inherit', border: 'none', borderBottom: '1px dotted currentColor', outline: 'none', fontFamily: 'inherit' }}>
+                                        {TIPOS_SUPRIMENTO.map(opt => <option key={opt.value} value={opt.value} style={{color: '#000'}}>{opt.label}</option>)}
+                                    </select>
+
+                                    <select value={item.raridade || 'comum'} onChange={e => updateItemById(item.id, 'raridade', e.target.value)} style={{ background: 'transparent', color: rData.cor, border: 'none', borderBottom: '1px dotted currentColor', outline: 'none', fontWeight: 'bold', fontFamily: 'inherit' }}>
+                                        {Object.entries(RARIDADES).map(([k, v]) => <option key={k} value={k} style={{color: '#000'}}>{v.label}</option>)}
+                                    </select>
+                                    
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><span style={{ fontSize: '0.8em', opacity: 0.7 }}>Qtd:</span><CampoMagico valor={item.quantidade} onChange={v => updateItemById(item.id, 'quantidade', Number(v))} type="number" styleExtra={{ width: '40px', textAlign: 'center' }} /></div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><span style={{ fontSize: '0.8em', opacity: 0.7 }}>Kg:</span><CampoMagico valor={item.peso} onChange={v => updateItemById(item.id, 'peso', Number(v))} type="number" step="0.1" styleExtra={{ width: '40px', textAlign: 'center' }} /></div>
+                                    <button onClick={() => removeItemById(item.id)} style={{ background: 'transparent', border: 'none', color: '#ff003c', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.2em' }}>✖</button>
+                                </div>
+                                <AreaMagica valor={item.desc} onChange={v => updateItemById(item.id, 'desc', v)} placeholder="Efeito da poção ou utilidade..." styleExtra={{ minHeight: '30px', fontSize: '0.85em' }} />
+                            </div>
+                        );
+                    })}
+                    {suprimentos.length === 0 && <div style={{ textAlign: 'center', opacity: 0.5, fontStyle: 'italic', padding: '10px' }}>Sem poções ou suprimentos.</div>}
+                </div>
+            </div>
+
+            {/* BLOCO DE NOTAS DA CAMPANHA */}
+            <div style={{ border: '2px solid currentColor', padding: '20px', borderRadius: '8px', background: 'rgba(0,0,0,0.02)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px dotted currentColor', paddingBottom: '10px' }}>
+                    <h2 style={{ margin: 0, fontSize: '1.5em' }}>📝 Diário de Bordo & Anotações</h2>
+                    <button onClick={() => handleArrayItem('notas', 'add')} style={{ padding: '8px 15px', background: 'transparent', border: '1px solid currentColor', color: 'inherit', fontWeight: 'bold', cursor: 'pointer' }}>+ Nova Folha</button>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+                    {(minhaFicha.notas || []).map((nota, i) => (
+                        <div key={nota.id} style={{ position: 'relative', background: 'rgba(0,0,0,0.05)', padding: '15px', borderRadius: '6px', borderTop: '3px solid currentColor', boxShadow: '2px 2px 10px rgba(0,0,0,0.1)' }}>
+                            <button onClick={() => { if(window.confirm('Queimar folha?')) handleArrayItem('notas', 'remove', i); }} style={{ position: 'absolute', top: '5px', right: '5px', background: 'transparent', border: 'none', color: '#ff003c', cursor: 'pointer', fontWeight: 'bold' }}>✖</button>
+                            <CampoMagico valor={nota.titulo} onChange={v => handleArrayItem('notas', 'update', i, 'titulo', v)} placeholder="Título da Nota (Ex: Pista do Dragão)" styleExtra={{ fontWeight: 'bold', fontSize: '1.1em', marginBottom: '10px', paddingRight: '20px' }} />
+                            <AreaMagica valor={nota.texto} onChange={v => handleArrayItem('notas', 'update', i, 'texto', v)} placeholder="Escreva as suas descobertas, nomes de NPCs, charadas..." styleExtra={{ minHeight: '120px', fontSize: '0.9em', fontStyle: 'italic', background: 'transparent', border: 'none' }} />
+                        </div>
+                    ))}
+                    {(!minhaFicha.notas || minhaFicha.notas.length === 0) && <div style={{ textAlign: 'center', opacity: 0.5, fontStyle: 'italic', padding: '20px', gridColumn: '1 / -1' }}>Nenhuma anotação gravada neste diário.</div>}
+                </div>
+            </div>
+
         </div>
     );
 }
@@ -426,6 +554,8 @@ function ConteudoDinamico() {
     if (abaAtual === 'altar') return <PaginaAltar />;
     if (abaAtual === 'passivas') return <PaginaPassivas />;
     if (abaAtual === 'formas') return <PaginaFormas />;
-    if (abaAtual === 'mochila') return <PaginaMochila />;
+    if (abaAtual === 'verdadeiras') return <PaginaFormasVerdadeiras />;
+    if (abaAtual === 'arsenal') return <PaginaArsenal />;
+    if (abaAtual === 'suprimentos') return <PaginaSuprimentos />;
     return null;
 }
