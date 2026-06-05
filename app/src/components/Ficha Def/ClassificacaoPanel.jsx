@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import useStore from '../../stores/useStore';
 import { salvarFichaSilencioso } from '../../services/firebase-sync';
-import { getMaximo } from '../../core/attributes'; // 🔥 CORREÇÃO: O FEITIÇO FOI IMPORTADO AQUI! 🔥
 
 // ==========================================
 // 🌌 CONSTANTES DE ELEMENTOS
@@ -25,7 +24,7 @@ const ELEMENTOS_OPCOES = [
 // ==========================================
 const CAPITULOS = [
     { id: 'registros', label: 'Hierarquia da Alma', icon: '📖' },
-    { id: 'acumulativo', label: 'Marcadores de Cena', icon: '📈' },
+    { id: 'acumulativo', label: 'Marcadores & Adaptação', icon: '⚖️' },
     { id: 'forja', label: 'Forja de Calamidade', icon: '🌌' },
     { id: 'elemental', label: 'Reator de Ressonância', icon: '🌪️' },
     { id: 'conceitual', label: 'Distorção Conceitual', icon: '🧩' },
@@ -390,12 +389,13 @@ function PaginaRegistros() {
 }
 
 // ==========================================
-// ⚔️ CAPÍTULO 2: MARCADORES DE CENA
+// ⚖️ CAPÍTULO 2: MARCADORES DE CENA E ADAPTAÇÃO
 // ==========================================
 function PaginaMarcadores() {
     const { minhaFicha, updateFicha, callSave, novoTrackerNome, setNovoTrackerNome, novoTrackerValor, setNovoTrackerValor } = useClassificacao();
     const corSuprema = minhaFicha?.estetica?.corTintaRadar || '#000000';
 
+    // Lógica dos Marcadores Padrão
     const addMarcador = () => {
         if (!novoTrackerNome.trim() || !novoTrackerValor) return;
         updateFicha(f => {
@@ -414,43 +414,196 @@ function PaginaMarcadores() {
     };
 
     const resetCena = () => {
-        if (!window.confirm("Apagar todos os marcadores desta cena?")) return;
-        updateFicha(f => { f.marcadores = []; }); callSave();
+        if (!window.confirm("Apagar todos os marcadores desta cena e esvaziar o Tanque de Absorção?")) return;
+        updateFicha(f => { 
+            f.marcadores = []; 
+            if(f.combate) f.combate.danoAbsorvido = 0; 
+        }); 
+        callSave();
+    };
+
+    // LÓGICA DO NOVO REATOR DE ADAPTAÇÃO (DANO SOFRIDO) & EVOLUÇÃO (COFRE)
+    const danoAbsorvido = minhaFicha?.combate?.danoAbsorvido || 0;
+    const conversaoAlvo = minhaFicha?.combate?.conversaoAlvo || 10000;
+    const conversaoBonus = minhaFicha?.combate?.conversaoBonus || 1;
+    const danoTotalRecebido = minhaFicha?.combate?.danoTotalRecebido || 0;
+    const letalidadeTotalRecebida = minhaFicha?.combate?.letalidadeTotalRecebida || 0;
+
+    const [danoTomadoInput, setDanoTomadoInput] = useState('');
+    const [letalidadeInput, setLetalidadeInput] = useState('');
+
+    const registrarDanoSofrido = () => {
+        const val = Number(danoTomadoInput);
+        if (isNaN(val) || val <= 0) return;
+        updateFicha(f => {
+            if (!f.combate) f.combate = {};
+            f.combate.danoAbsorvido = (Number(f.combate.danoAbsorvido) || 0) + val;
+            f.combate.danoTotalRecebido = (Number(f.combate.danoTotalRecebido) || 0) + val; // Conta para evolução pós-luta
+        });
+        setDanoTomadoInput(''); callSave();
+    };
+
+    const registrarLetalidade = () => {
+        const val = Number(letalidadeInput);
+        if (isNaN(val) || val <= 0) return;
+        updateFicha(f => {
+            if (!f.combate) f.combate = {};
+            f.combate.letalidadeTotalRecebida = (Number(f.combate.letalidadeTotalRecebida) || 0) + val;
+        });
+        setLetalidadeInput(''); callSave();
+    };
+
+    // Calcula os pacotes de conversão para a Habilidade de Adaptação
+    const pacotesAcumulados = Math.floor(danoAbsorvido / (conversaoAlvo > 0 ? conversaoAlvo : 1));
+    const bonusCalculadoMult = pacotesAcumulados * conversaoBonus; 
+    const multiplicadorUnicoFormatado = (1 + (bonusCalculadoMult / 100)).toFixed(2); 
+
+    const injetarBuffAdaptação = () => {
+        if (bonusCalculadoMult <= 0) return alert("Não há bônus acumulado suficiente no tanque para injetar!");
+        updateFicha(f => {
+            if (!f.dano) f.dano = {};
+            const novoValorStr = String(multiplicadorUnicoFormatado);
+            if (!f.dano.mUnico || f.dano.mUnico === '1.0' || f.dano.mUnico === '1') {
+                f.dano.mUnico = novoValorStr;
+            } else {
+                f.dano.mUnico = f.dano.mUnico + ' e ' + novoValorStr;
+            }
+        });
+        callSave();
+        alert(`Adaptação Concluída! Multiplicador Único de x${multiplicadorUnicoFormatado} injetado na sua Ficha!`);
+    };
+
+    const resetarEvolucao = () => {
+        if (!window.confirm("Atenção! Isso vai zerar o seu Cofre de Evolução (Dano e Letalidade guardados). Só faça isso APÓS gastar os seus pontos de prestígio. Continuar?")) return;
+        updateFicha(f => {
+            if (f.combate) {
+                f.combate.danoTotalRecebido = 0;
+                f.combate.letalidadeTotalRecebida = 0;
+            }
+        });
+        callSave();
     };
 
     return (
-        <div className="fade-in" style={{ border: '2px solid currentColor', padding: '20px', borderRadius: '8px', background: 'rgba(0,0,0,0.03)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '1px dotted currentColor', paddingBottom: '10px' }}>
-                <span style={{ fontSize: '0.9em', opacity: 0.7, fontStyle: 'italic' }}>Acumule buffs durante a batalha. Valor soma-se aos dados.</span>
-                <button onClick={resetCena} style={{ padding: '8px 15px', border: '1px solid currentColor', color: 'inherit', background: 'transparent', cursor: 'pointer', opacity: 0.8 }}>🧹 Limpar Cena</button>
-            </div>
+        <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+            
+            {/* ⚖️ BALANÇA DE ADAPTAÇÃO (TANQUE DA CENA) */}
+            <div style={{ border: '2px double currentColor', padding: '20px', borderRadius: '8px', background: 'rgba(0,0,0,0.05)', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '1px dotted currentColor', paddingBottom: '10px', position: 'relative', zIndex: 1 }}>
+                    <div>
+                        <h2 style={{ margin: 0, fontSize: '1.4em', display: 'flex', alignItems: 'center', gap: '10px', color: '#00ffcc' }}>⚖️ Balança de Adaptação (Batalha Atual)</h2>
+                        <span style={{ fontSize: '0.85em', opacity: 0.8, fontStyle: 'italic' }}>Absorva o dano sofrido na luta e converta a dor num Multiplicador Único de Dano.</span>
+                    </div>
+                </div>
 
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-                <CampoMagico valor={novoTrackerNome} onChange={setNovoTrackerNome} placeholder="Nome (Ex: Fúria...)" styleExtra={{ flex: 2, border: '1px dashed currentColor' }} />
-                <CampoMagico valor={novoTrackerValor} onChange={setNovoTrackerValor} placeholder="Bônus por Stack (Ex: 8)" type="number" styleExtra={{ flex: 1, border: '1px dashed currentColor', textAlign: 'center' }} />
-                <button onClick={addMarcador} style={{ padding: '10px 20px', background: 'transparent', border: '1px solid currentColor', color: 'inherit', cursor: 'pointer', fontWeight: 'bold' }}>+ Inscrever</button>
-            </div>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '15px', background: 'rgba(0,0,0,0.03)', padding: '10px', borderRadius: '6px', border: '1px dashed #00ffcc', position: 'relative', zIndex: 1 }}>
+                    <div style={{ flex: '1 1 200px' }}>
+                        <span style={{ fontSize: '0.8em', fontWeight: 'bold', textTransform: 'uppercase', opacity: 0.7, color: '#00ffcc' }}>A cada (X) Dano Sofrido...</span>
+                        <CampoMagico valor={conversaoAlvo} onChange={v => { updateFicha(f => { if(!f.combate) f.combate={}; f.combate.conversaoAlvo = Number(v); }); callSave(); }} type="number" styleExtra={{ fontSize: '1.1em', fontWeight: 'bold', borderBottomColor: '#00ffcc', color: '#00ffcc' }} />
+                    </div>
+                    <div style={{ flex: '1 1 200px' }}>
+                        <span style={{ fontSize: '0.8em', fontWeight: 'bold', textTransform: 'uppercase', opacity: 0.7, color: '#00ffcc' }}>...Ganha (%) de Buff Único</span>
+                        <CampoMagico valor={conversaoBonus} onChange={v => { updateFicha(f => { if(!f.combate) f.combate={}; f.combate.conversaoBonus = Number(v); }); callSave(); }} type="number" styleExtra={{ fontSize: '1.1em', fontWeight: 'bold', borderBottomColor: '#00ffcc', color: '#00ffcc' }} />
+                    </div>
+                </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {(!minhaFicha.marcadores || minhaFicha.marcadores.length === 0) ? (
-                    <div style={{ textAlign: 'center', opacity: 0.5, fontStyle: 'italic', padding: '10px' }}>Nenhum marcador ativo.</div>
-                ) : (
-                    minhaFicha.marcadores.map((m, i) => (
-                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.05)', padding: '10px 15px', borderRadius: '6px', borderLeft: '3px solid currentColor' }}>
-                            <div style={{ fontSize: '1.2em', fontWeight: 'bold' }}>{m.nome}</div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                <div style={{ fontSize: '1em', opacity: 0.8 }}>(+{m.bonus}/stack)</div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(0,0,0,0.05)', padding: '5px 10px', borderRadius: '20px', border: '1px dotted currentColor' }}>
-                                    <button onClick={() => updateStack(i, -1)} style={{ background: 'transparent', border: 'none', color: 'inherit', fontSize: '1.2em', cursor: 'pointer' }}>-</button>
-                                    <span style={{ fontSize: '1.2em', fontWeight: 'bold', minWidth: '20px', textAlign: 'center' }}>{m.stacks}</span>
-                                    <button onClick={() => updateStack(i, 1)} style={{ background: 'transparent', border: 'none', color: 'inherit', fontSize: '1.2em', cursor: 'pointer' }}>+</button>
-                                </div>
-                                <div style={{ fontSize: '1.4em', fontWeight: 'bold', width: '80px', textAlign: 'right', color: corSuprema }}>= +{m.stacks * m.bonus}</div>
-                                <button onClick={() => { updateFicha(f => f.marcadores.splice(i,1)); callSave(); }} style={{ padding: '5px', background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', opacity: 0.5 }}>✖</button>
-                            </div>
+                <div style={{ display: 'flex', gap: '20px', alignItems: 'stretch', flexWrap: 'wrap', position: 'relative', zIndex: 1 }}>
+                    <div style={{ flex: '1 1 250px', background: 'rgba(255, 0, 60, 0.05)', border: '1px solid #ff003c', borderRadius: '6px', padding: '15px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                        <span style={{ fontSize: '0.85em', color: '#ff003c', fontWeight: 'bold', textTransform: 'uppercase' }}>Ferimento (Dano Tomado Neste Turno):</span>
+                        <div style={{ display: 'flex', gap: '10px', marginTop: '5px' }}>
+                            <CampoMagico valor={danoTomadoInput} onChange={setDanoTomadoInput} placeholder="Ex: 500000" type="number" styleExtra={{ borderBottom: '1px solid #ff003c', color: '#ff003c', fontSize: '1.2em' }} />
+                            <button onClick={registrarDanoSofrido} style={{ padding: '8px 15px', background: 'transparent', border: '1px solid #ff003c', color: '#ff003c', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>ABSORVER</button>
                         </div>
-                    ))
-                )}
+                        <button onClick={() => { updateFicha(f => { if(f.combate) f.combate.danoAbsorvido = 0; }); callSave(); }} style={{ marginTop: '10px', background: 'transparent', border: 'none', color: '#ff003c', fontSize: '0.8em', cursor: 'pointer', opacity: 0.8, textDecoration: 'underline' }}>Esvaziar Tanque da Cena</button>
+                    </div>
+
+                    <div style={{ flex: '1 1 250px', background: 'rgba(0, 255, 204, 0.05)', border: '1px solid #00ffcc', borderRadius: '6px', padding: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+                        <span style={{ fontSize: '0.85em', color: '#00ffcc', fontWeight: 'bold', textTransform: 'uppercase' }}>Tanque de Absorção Atual</span>
+                        <span style={{ fontSize: '2em', fontWeight: '900', color: '#00ffcc', textShadow: '0 0 10px rgba(0,255,204,0.5)' }}>{Number(danoAbsorvido).toLocaleString('pt-BR')}</span>
+                        
+                        <div style={{ marginTop: '10px', borderTop: '1px dashed #00ffcc', paddingTop: '10px', width: '100%' }}>
+                            <span style={{ fontSize: '0.85em', color: '#aaa' }}>Buff Multiplicador Convertido:</span>
+                            <div style={{ fontSize: '1.5em', fontWeight: 'bold', color: 'inherit' }}>+{bonusCalculadoMult}% <span style={{fontSize: '0.6em', opacity: 0.6}}>(x{multiplicadorUnicoFormatado})</span></div>
+                        </div>
+
+                        <button onClick={injetarBuffAdaptação} style={{ marginTop: '10px', width: '100%', padding: '8px', background: 'transparent', border: '1px solid #00ffcc', color: '#00ffcc', fontWeight: 'bold', cursor: 'pointer', borderRadius: '4px', transition: '0.2s' }}>
+                            ⚡ INJETAR BÔNUS MULT. ÚNICO
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* 🩸 COFRE DE FERIMENTOS (PARA UPAR PÓS LUTA) */}
+            <div style={{ border: '2px solid #ff003c', padding: '20px', borderRadius: '8px', background: 'rgba(255,0,60,0.05)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '1px dotted #ff003c', paddingBottom: '10px' }}>
+                    <div>
+                        <h2 style={{ margin: 0, fontSize: '1.4em', display: 'flex', alignItems: 'center', gap: '10px', color: '#ff003c' }}>🩸 Cofre de Evolução (Pós-Combate)</h2>
+                        <span style={{ fontSize: '0.85em', opacity: 0.8, fontStyle: 'italic', color: '#ffaaaa' }}>O dano absorvido acima entra aqui automaticamente. Registe a letalidade manualmente.</span>
+                    </div>
+                    <button onClick={resetarEvolucao} style={{ padding: '8px 15px', border: '1px solid #ff003c', color: '#ff003c', background: 'transparent', cursor: 'pointer', opacity: 0.8, borderRadius: '4px' }}>🧹 Zerar Cofre</button>
+                </div>
+
+                <div style={{ display: 'flex', gap: '20px', alignItems: 'stretch', flexWrap: 'wrap' }}>
+                    {/* Input de Letalidade */}
+                    <div style={{ flex: '1 1 200px', background: 'rgba(0,0,0,0.2)', borderRadius: '6px', padding: '15px', display: 'flex', flexDirection: 'column', justifyContent: 'center', border: '1px dashed #ff003c' }}>
+                        <span style={{ fontSize: '0.85em', color: '#ff003c', fontWeight: 'bold', textTransform: 'uppercase' }}>Sofreu Golpe Letal? (Registe):</span>
+                        <div style={{ display: 'flex', gap: '10px', marginTop: '5px' }}>
+                            <CampoMagico valor={letalidadeInput} onChange={setLetalidadeInput} placeholder="Ex: 50" type="number" styleExtra={{ borderBottom: '1px solid #ff003c', color: '#ff003c', fontSize: '1.2em' }} />
+                            <button onClick={registrarLetalidade} style={{ padding: '8px 15px', background: 'transparent', border: '1px solid #ff003c', color: '#ff003c', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>+ REGISTRAR</button>
+                        </div>
+                    </div>
+
+                    {/* Mostrador do Cofre */}
+                    <div style={{ flex: '2 1 300px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                        <div style={{ background: 'rgba(0,0,0,0.4)', borderRadius: '6px', padding: '15px', textAlign: 'center', border: '1px solid #555' }}>
+                            <div style={{ fontSize: '0.85em', color: '#aaa', textTransform: 'uppercase', marginBottom: '5px' }}>Total de Dano Histórico</div>
+                            <div style={{ fontSize: '1.8em', fontWeight: 'bold', color: '#ffcc00' }}>{Number(danoTotalRecebido).toLocaleString('pt-BR')}</div>
+                        </div>
+                        <div style={{ background: 'rgba(0,0,0,0.4)', borderRadius: '6px', padding: '15px', textAlign: 'center', border: '1px solid #555' }}>
+                            <div style={{ fontSize: '0.85em', color: '#aaa', textTransform: 'uppercase', marginBottom: '5px' }}>Letalidade Acumulada</div>
+                            <div style={{ fontSize: '1.8em', fontWeight: 'bold', color: '#ff00ff' }}>{Number(letalidadeTotalRecebida).toLocaleString('pt-BR')}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* ⚔️ MARCADORES DE CENA (BUFFS POR TURNO) */}
+            <div style={{ border: '2px solid currentColor', padding: '20px', borderRadius: '8px', background: 'rgba(0,0,0,0.03)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '1px dotted currentColor', paddingBottom: '10px' }}>
+                    <div>
+                        <h2 style={{ margin: 0, fontSize: '1.4em', display: 'flex', alignItems: 'center', gap: '10px' }}>⚔️ Stacks por Turno (Marcadores Livres)</h2>
+                        <span style={{ fontSize: '0.85em', opacity: 0.7, fontStyle: 'italic' }}>Ex: "A cada turno recebe +8 de Acerto". Valor final para somar nos dados.</span>
+                    </div>
+                    <button onClick={resetCena} style={{ padding: '8px 15px', border: '1px solid currentColor', color: 'inherit', background: 'transparent', cursor: 'pointer', opacity: 0.8, borderRadius: '4px' }}>🧹 Limpar Todos</button>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                    <CampoMagico valor={novoTrackerNome} onChange={setNovoTrackerNome} placeholder="Nome (Ex: Acerto, CA...)" styleExtra={{ flex: 2, border: '1px dashed currentColor' }} />
+                    <CampoMagico valor={novoTrackerValor} onChange={setNovoTrackerValor} placeholder="Bônus por Stack (Ex: 8)" type="number" styleExtra={{ flex: 1, border: '1px dashed currentColor', textAlign: 'center' }} />
+                    <button onClick={addMarcador} style={{ padding: '10px 20px', background: 'transparent', border: '1px solid currentColor', color: 'inherit', cursor: 'pointer', fontWeight: 'bold', borderRadius: '4px' }}>+ Inscrever</button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {(!minhaFicha.marcadores || minhaFicha.marcadores.length === 0) ? (
+                        <div style={{ textAlign: 'center', opacity: 0.5, fontStyle: 'italic', padding: '10px' }}>Nenhum marcador ativo.</div>
+                    ) : (
+                        minhaFicha.marcadores.map((m, i) => (
+                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.05)', padding: '10px 15px', borderRadius: '6px', borderLeft: '3px solid currentColor' }}>
+                                <div style={{ fontSize: '1.2em', fontWeight: 'bold' }}>{m.nome}</div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                    <div style={{ fontSize: '1em', opacity: 0.8 }}>(+{m.bonus}/stack)</div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(0,0,0,0.05)', padding: '5px 10px', borderRadius: '20px', border: '1px dotted currentColor' }}>
+                                        <button onClick={() => updateStack(i, -1)} style={{ background: 'transparent', border: 'none', color: 'inherit', fontSize: '1.2em', cursor: 'pointer' }}>-</button>
+                                        <span style={{ fontSize: '1.2em', fontWeight: 'bold', minWidth: '20px', textAlign: 'center' }}>{m.stacks}</span>
+                                        <button onClick={() => updateStack(i, 1)} style={{ background: 'transparent', border: 'none', color: 'inherit', fontSize: '1.2em', cursor: 'pointer' }}>+</button>
+                                    </div>
+                                    <div style={{ fontSize: '1.4em', fontWeight: 'bold', width: '80px', textAlign: 'right', color: corSuprema }}>= +{m.stacks * m.bonus}</div>
+                                    <button onClick={() => { updateFicha(f => f.marcadores.splice(i,1)); callSave(); }} style={{ padding: '5px', background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', opacity: 0.5 }}>✖</button>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
             </div>
         </div>
     );
