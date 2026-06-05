@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import useStore, { sanitizarNome } from '../../stores/useStore';
-import { carregarFichaDoFirebase, salvarFichaSilencioso, salvarFirebaseImediato, uploadImagem, iniciarListenerPersonagens } from '../../services/firebase-sync';
+import { carregarFichaDoFirebase, salvarFichaSilencioso, salvarFirebaseImediato, uploadImagem } from '../../services/firebase-sync';
 import { ref, onValue, set, get } from 'firebase/database';
 import { db } from '../../services/firebase-config';
 
@@ -30,20 +30,10 @@ export function PerfilFormProvider({ children }) {
     const [nomeInput, setNomeInput] = useState(meuNome || '');
     const [listaLocal, setListaLocal] = useState([]);
     const [uploadingImg, setUploadingImg] = useState(false);
-    
-    // 🔥 NOVO: Armazena temporariamente todos os personagens da sala para o Scanner
-    const [todosMesa, setTodosMesa] = useState([]);
-
-    useEffect(() => {
-        if (!mesaId) return;
-        const unsub = iniciarListenerPersonagens((dados) => {
-            setTodosMesa(dados ? Object.keys(dados) : []);
-        });
-        return () => unsub();
-    }, [mesaId]);
 
     // ==========================================
-    // 🔥 RADAR DE IDENTIDADE: FUSÃO DA NUVEM COM LOCAL 🔥
+    // 🔥 O VERDADEIRO MOTOR DE SINCRONIZAÇÃO 🔥
+    // Lemos a Nuvem. Se não existir nada, puxamos os restos do Navegador.
     // ==========================================
     useEffect(() => {
         if (!userLogado || !mesaId) return;
@@ -60,7 +50,8 @@ export function PerfilFormProvider({ children }) {
             }
 
             const listaUnificada = [...new Set([...nuvemLista, ...localLista])];
-
+            
+            // Só atualiza o Firebase se a máquina local tiver algo que a Nuvem não tem
             if (listaUnificada.length > nuvemLista.length) {
                 set(refHistorico, listaUnificada).catch(()=>{});
             }
@@ -72,6 +63,27 @@ export function PerfilFormProvider({ children }) {
 
     useEffect(() => { setNomeInput(meuNome || ''); }, [meuNome]);
 
+    // 🔥 VÍNCULO DE POSSE INVISÍVEL 🔥
+    // Sempre que o jogador ativa um personagem (mesmo um antigo resgatado), 
+    // ele é agarrado pela conta e fixado na Nuvem de imediato.
+    useEffect(() => {
+        if (meuNome && userLogado && mesaId) {
+            const n = sanitizarNome(meuNome);
+            const refHistorico = ref(db, `usuarios/${sanitizarNome(userLogado)}/historicoPersonagens_${mesaId}`);
+            
+            get(refHistorico).then(snap => {
+                let lista = snap.exists() ? snap.val() : [];
+                if (!Array.isArray(lista)) lista = Object.values(lista);
+                
+                // Se o personagem atual não estiver na lista da Nuvem, adiciona-o no topo (limite 20)
+                if (!lista.includes(n)) {
+                    lista = [n, ...lista.filter(x => x !== n)].slice(0, 20);
+                    set(refHistorico, lista).catch(()=>{});
+                }
+            });
+        }
+    }, [meuNome, userLogado, mesaId]);
+
     const processarCarregamento = useCallback(async (nomeCru) => {
         const n = sanitizarNome(nomeCru);
         if (!n || (n === 'Jogador' && nomeCru.trim() === '')) return;
@@ -79,17 +91,6 @@ export function PerfilFormProvider({ children }) {
         setMeuNome(n); 
         localStorage.setItem('rpgNome', n); 
         resetFicha();
-
-        // Regista a posse ao abrir/carregar o personagem
-        if (userLogado && mesaId) {
-            const refHistorico = ref(db, `usuarios/${sanitizarNome(userLogado)}/historicoPersonagens_${mesaId}`);
-            get(refHistorico).then(snap => {
-                let lista = snap.exists() ? snap.val() : [];
-                if (!Array.isArray(lista)) lista = Object.values(lista);
-                lista = [n, ...lista.filter(x => x !== n)].slice(0, 15);
-                set(refHistorico, lista).catch(()=>{});
-            });
-        }
         
         const bl = localStorage.getItem('rpgFicha_' + n);
         if (bl) { try { carregarDadosFicha(JSON.parse(bl)); } catch (e) {} }
@@ -100,7 +101,7 @@ export function PerfilFormProvider({ children }) {
         }
         
         setAbaAtiva('aba-status');
-    }, [setMeuNome, resetFicha, carregarDadosFicha, setAbaAtiva, userLogado, mesaId]);
+    }, [setMeuNome, resetFicha, carregarDadosFicha, setAbaAtiva]);
 
     const trocarPersonagem = useCallback(() => processarCarregamento(nomeInput), [nomeInput, processarCarregamento]);
     const carregarPersonagemExistente = useCallback((n) => { setNomeInput(n); processarCarregamento(n); }, [processarCarregamento]);
@@ -127,6 +128,6 @@ export function PerfilFormProvider({ children }) {
         finally { setUploadingImg(false); }
     }, [meuNome, updateFicha]);
 
-    const value = useMemo(() => ({ minhaFicha, meuNome, isMestre, nomeInput, setNomeInput, listaLocal, uploadingImg, trocarPersonagem, carregarPersonagemExistente, abrirModalDelete, toggleMestre, alterarAvatarBase, handleImageUpload, todosMesa }), [ minhaFicha, meuNome, isMestre, nomeInput, listaLocal, uploadingImg, trocarPersonagem, carregarPersonagemExistente, abrirModalDelete, toggleMestre, alterarAvatarBase, handleImageUpload, todosMesa ]);
+    const value = useMemo(() => ({ minhaFicha, meuNome, isMestre, nomeInput, setNomeInput, listaLocal, uploadingImg, trocarPersonagem, carregarPersonagemExistente, abrirModalDelete, toggleMestre, alterarAvatarBase, handleImageUpload }), [ minhaFicha, meuNome, isMestre, nomeInput, listaLocal, uploadingImg, trocarPersonagem, carregarPersonagemExistente, abrirModalDelete, toggleMestre, alterarAvatarBase, handleImageUpload ]);
     return <PerfilFormContext.Provider value={value}>{children}</PerfilFormContext.Provider>;
 }

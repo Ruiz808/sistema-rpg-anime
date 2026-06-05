@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { usePerfilForm } from './PerfilFormContext';
 
 const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Perfil provider não encontrado</div>;
@@ -36,44 +36,16 @@ export function PerfilJogadorEditor() {
 export function PerfilPersonagensSalvos() {
     const ctx = usePerfilForm();
     if (!ctx) return FALLBACK;
-    const { listaLocal, meuNome, isMestre, carregarPersonagemExistente, abrirModalDelete, todosMesa } = ctx;
-    
-    // 🔥 NOVO: Estado para mostrar o Scanner
-    const [mostrarRecuperacao, setMostrarRecuperacao] = useState(false);
-
-    // Filtra os personagens da mesa que NÃO estão na sua lista pessoal
-    const perdidos = todosMesa.filter(n => !listaLocal.includes(n));
+    const { listaLocal, meuNome, isMestre, carregarPersonagemExistente, abrirModalDelete } = ctx;
 
     return (
         <div className="def-box" style={{ marginTop: 15 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                <h3 style={{ color: '#0ff', margin: 0 }}>Personagens Salvos</h3>
-                
-                {/* 🔍 Botão de Emergência só aparece se houver personagens "perdidos" na Sala */}
-                {perdidos.length > 0 && (
-                    <button onClick={() => setMostrarRecuperacao(!mostrarRecuperacao)} className="btn-neon btn-blue btn-small" style={{ padding: '5px 10px', fontSize: '0.8em' }}>
-                        {mostrarRecuperacao ? 'Ocultar Scanner' : '🔍 Scan da Mesa'}
-                    </button>
-                )}
-            </div>
-
-            {/* 🖥️ Interface do Scanner de Recuperação */}
-            {mostrarRecuperacao && perdidos.length > 0 && (
-                <div className="fade-in" style={{ background: 'rgba(0,136,255,0.1)', border: '1px dashed #0088ff', padding: '15px', borderRadius: '8px', marginBottom: '15px' }}>
-                    <p style={{ color: '#0088ff', fontSize: '0.85em', marginTop: 0, fontWeight: 'bold' }}>Personagens encontrados no servidor desta sala. Clique para reclamar a posse:</p>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                        {perdidos.map(p => (
-                            <button key={p} onClick={() => { carregarPersonagemExistente(p); setMostrarRecuperacao(false); }} className="btn-neon btn-small hover-lift" style={{ background: 'rgba(0,0,0,0.5)', borderColor: '#0088ff', color: '#0088ff', fontSize: '0.85em' }}>
-                                📥 {p}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            )}
-
+            <h3 style={{ color: '#0ff', marginBottom: 10 }}>Personagens Salvos</h3>
             <div id="lista-personagens-jogador">
                 {listaLocal.length === 0 ? (
-                    <p style={{ color: '#888', fontStyle: 'italic' }}>Nenhum personagem registado no seu Histórico. Utilize o botão "Scan da Mesa" acima ou digite o nome.</p>
+                    <p style={{ color: '#888', fontStyle: 'italic' }}>
+                        Nenhum personagem registrado no seu Histórico. Digite o nome acima e clique em Trocar/Criar para o recuperar da nuvem!
+                    </p>
                 ) : (
                     listaLocal.map((n) => (
                         <div className="char-card" key={n}>
