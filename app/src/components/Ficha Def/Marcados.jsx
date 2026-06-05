@@ -42,6 +42,35 @@ const getClasseInfo = (ficha) => {
 };
 
 // ==========================================
+// 🌌 REGRAS DOS DOMÍNIOS E HIERARQUIA
+// ==========================================
+const NIVEIS_DOMINIO = {
+    1: { nome: "Básico", cor: "#44ff44", desc: "+10% Dano Mágico" },
+    2: { nome: "Intermediário", cor: "#44ff44", desc: "+25% Dano | -5% Custo" },
+    3: { nome: "Avançado", cor: "#44ff44", desc: "+50% Dano | -10% Custo" },
+    4: { nome: "Virtuoso", cor: "#0088ff", desc: "Dano x2 | Ignora Resistências Menores" },
+    5: { nome: "Maestria", cor: "#0088ff", desc: "Dano x3.5 | -25% Custo | -50% Dano Sofrido" },
+    6: { nome: "Perfeito", cor: "#0088ff", desc: "Dano x6 | Imunidade Total | Incancelável" },
+    7: { nome: "Molecular", cor: "#aa00ff", desc: "Dano x10 | Ignora Imunidades | Dano Persistente" },
+    8: { nome: "Atômico", cor: "#aa00ff", desc: "Dano x50 | -50% Custo | Desintegração de Armadura" },
+    9: { nome: "Absoluto", cor: "#ff003c", desc: "Dano x100 | Custo ZERO | Silenciamento de Elemento" },
+    10: { nome: "Eterno", cor: "#ffcc00", desc: "Dano Incalculável | Apagamento Conceitual" }
+};
+
+const CATEGORIAS_DOMINIO = {
+    'elementais': { titulo: 'Manipulação Elemental', icone: '🔥' },
+    'mana': { titulo: 'Artes de Mana (Grimório)', icone: '🔮' },
+    'chakra': { titulo: 'Artes de Chakra (Shinobi)', icone: '🌀' },
+    'aura': { titulo: 'Artes de Aura (Manifestação)', icone: '✨' },
+    'primordiais': { titulo: 'Artes Primordiais Cósmicas', icone: '🌌' },
+    'astrais': { titulo: 'Artes Astrais (Vida/Morte)', icone: '👁️' },
+    'marciais': { titulo: 'Artes Marciais (Taijutsu)', icone: '🥋' },
+    'armas': { titulo: 'Maestria de Armas (Kenjutsu)', icone: '⚔️' },
+    'cura': { titulo: 'Atributos de Cura e Suporte', icone: '💚' },
+    'summons': { titulo: 'Contratos & Invocações', icone: '👹' }
+};
+
+// ==========================================
 // 🛡️ FUNÇÕES SEGURAS DA ENGINE E MATEMÁTICA
 // ==========================================
 const safeGetRawBase = (f, k) => typeof getRawBase === 'function' ? getRawBase(f, k) : parseFloat(f[k]?.base) || 0;
@@ -77,7 +106,7 @@ const calcularPrestAtual = (ficha, attrKey, baseP) => {
 };
 
 // ==========================================
-// 🖋️ INPUTS E BARRAS MÁGICAS (C/ AUTO-FORMATADOR)
+// 🖋️ INPUTS E BARRAS MÁGICAS
 // ==========================================
 let globalTimer = null;
 const callSave = () => {
@@ -90,37 +119,27 @@ const callSave = () => {
 
 const CampoMagico = ({ valor, onChange, placeholder, styleExtra = {}, type = "text", isNumber = false }) => {
     const [focused, setFocused] = useState(false);
-
     const handleChange = (e) => {
         let val = e.target.value;
         if (isNumber && val !== '') { 
             val = val.replace(',', '.'); 
             let num = Number(val); 
-            if (!isNaN(num)) val = num; 
-            else val = 0; 
+            if (!isNaN(num)) val = num; else val = 0; 
         }
         onChange(val);
     };
-
     let displayValue = valor !== undefined && valor !== null ? String(valor) : '';
     let currentType = type;
-
     if (isNumber && !focused && displayValue !== '') {
         let num = Number(displayValue);
         if (!isNaN(num)) displayValue = num.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
         currentType = 'text';
-    } else if (isNumber && focused) {
-        currentType = 'number';
-    }
+    } else if (isNumber && focused) { currentType = 'number'; }
 
     return (
         <input 
-            type={currentType} 
-            step={isNumber ? "any" : undefined}
-            value={displayValue} 
-            onChange={handleChange}
-            onFocus={() => setFocused(true)}
-            onBlur={() => { setFocused(false); callSave(); }} 
+            type={currentType} step={isNumber ? "any" : undefined} value={displayValue} 
+            onChange={handleChange} onFocus={() => setFocused(true)} onBlur={() => { setFocused(false); callSave(); }} 
             placeholder={placeholder}
             style={{ background: 'transparent', border: 'none', borderBottom: '1px dashed currentColor', fontFamily: 'inherit', fontSize: 'inherit', color: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', outline: 'none', padding: '0 5px', width: '100px', ...styleExtra }} 
         />
@@ -209,6 +228,130 @@ const RadarDesenhado = ({ ficha, isAtual, corTinta = "#000000" }) => {
                 })}
             </g>
         </svg>
+    );
+};
+
+// ==========================================
+// 📜 O COMPONENTE: HIERARQUIA DE DOMÍNIOS (PÁGINA 3)
+// ==========================================
+const DominiosPanel = ({ ficha, updateFicha }) => {
+    const [inputs, setInputs] = useState({});
+
+    const handleAdd = (catKey) => {
+        const val = inputs[catKey]?.trim();
+        if (!val) return;
+        updateFicha(f => {
+            if (!f.dominios) f.dominios = {};
+            if (!f.dominios[catKey]) f.dominios[catKey] = {};
+            f.dominios[catKey][val] = { nivel: 1 };
+        });
+        setInputs(prev => ({...prev, [catKey]: ''}));
+        callSave();
+    };
+
+    const handleRemove = (catKey, nome) => {
+        if (!window.confirm(`Riscar o domínio [${nome}] das suas páginas?`)) return;
+        updateFicha(f => {
+            if (f.dominios && f.dominios[catKey]) delete f.dominios[catKey][nome];
+        });
+        callSave();
+    };
+
+    const handleChangeNivel = (catKey, nome, nivel) => {
+        updateFicha(f => {
+            if (f.dominios && f.dominios[catKey] && f.dominios[catKey][nome]) {
+                f.dominios[catKey][nome].nivel = parseInt(nivel);
+            }
+        });
+        callSave();
+    };
+
+    const dominiosSalvos = ficha?.dominios || {};
+
+    return (
+        <div style={{ width: '100%' }}>
+            <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+                <h1 style={{ fontSize: '3em', fontStyle: 'italic', fontWeight: 'bold', margin: 0, paddingBottom: '10px', borderBottom: `2px dashed currentColor` }}>
+                    A Hierarquia de Domínios
+                </h1>
+                <p style={{ opacity: 0.7, fontStyle: 'italic', marginTop: '5px' }}>O Conhecimento Absoluto das Artes Místicas e Marciais</p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '25px' }}>
+                {Object.entries(CATEGORIAS_DOMINIO).map(([catKey, catData]) => {
+                    const listaDestaCategoria = dominiosSalvos[catKey] || {};
+                    const nomes = Object.keys(listaDestaCategoria);
+
+                    return (
+                        <div key={catKey} style={{ 
+                            border: '1px solid currentColor', borderStyle: 'double',
+                            padding: '20px', borderRadius: '8px', 
+                            background: 'rgba(0,0,0,0.03)', position: 'relative',
+                            boxShadow: 'inset 0 0 20px rgba(0,0,0,0.02)'
+                        }}>
+                            <h3 style={{ margin: '0 0 15px 0', fontSize: '1.2em', borderBottom: '1px dotted currentColor', paddingBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span>{catData.icone}</span> {catData.titulo}
+                            </h3>
+
+                            {/* Campo de Forjar Novo Conhecimento */}
+                            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                                <input
+                                    type="text"
+                                    placeholder="Ex: Punho das Sombras..."
+                                    value={inputs[catKey] || ''}
+                                    onChange={e => setInputs({...inputs, [catKey]: e.target.value})}
+                                    style={{ flex: 1, background: 'transparent', border: 'none', borderBottom: '1px dashed currentColor', color: 'inherit', fontFamily: 'inherit', outline: 'none', fontSize: '0.9em' }}
+                                />
+                                <button onClick={() => handleAdd(catKey)} style={{ background: 'transparent', border: '1px solid currentColor', color: 'inherit', cursor: 'pointer', padding: '6px 12px', borderRadius: '4px', fontWeight: 'bold', fontSize: '0.85em', opacity: 0.8, textTransform: 'uppercase' }}>
+                                    + Forjar
+                                </button>
+                            </div>
+
+                            {/* Lista de Conhecimentos Inscritos */}
+                            {nomes.length === 0 ? (
+                                <div style={{ opacity: 0.4, fontStyle: 'italic', textAlign: 'center', padding: '10px 0', fontSize: '0.9em' }}>Nenhum registo ainda...</div>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                    {nomes.map(nomeDom => {
+                                        const nivel = listaDestaCategoria[nomeDom]?.nivel || 1;
+                                        const infoNivel = NIVEIS_DOMINIO[nivel] || NIVEIS_DOMINIO[1];
+                                        return (
+                                            <div key={nomeDom} style={{ 
+                                                padding: '12px', 
+                                                borderLeft: `4px solid ${infoNivel.cor}`, 
+                                                background: 'rgba(0,0,0,0.05)', 
+                                                borderRadius: '0 6px 6px 0',
+                                                position: 'relative'
+                                            }}>
+                                                <button onClick={() => handleRemove(catKey, nomeDom)} style={{ position: 'absolute', top: '5px', right: '5px', background: 'transparent', border: 'none', color: 'currentColor', fontSize: '1em', cursor: 'pointer', opacity: 0.5, padding: 0 }} title="Apagar Registo">✖</button>
+                                                
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', paddingRight: '20px' }}>
+                                                    <strong style={{ fontSize: '1.1em', textTransform: 'uppercase', letterSpacing: '1px' }}>{nomeDom}</strong>
+                                                    
+                                                    <select
+                                                        value={nivel}
+                                                        onChange={e => handleChangeNivel(catKey, nomeDom, e.target.value)}
+                                                        style={{ background: 'transparent', color: 'inherit', border: 'none', borderBottom: '1px dotted currentColor', fontFamily: 'inherit', outline: 'none', fontWeight: 'bold', fontSize: '0.9em', cursor: 'pointer' }}
+                                                    >
+                                                        {Object.entries(NIVEIS_DOMINIO).map(([n, d]) => (
+                                                            <option key={n} value={n} style={{ color: '#000' }}>Nv {n} - {d.nome}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+
+                                                <div style={{ fontSize: '0.85em', fontStyle: 'italic', marginTop: '8px', opacity: 0.8, color: infoNivel.cor, textShadow: `0 0 3px ${infoNivel.cor}40` }}>
+                                                    ⚡ {infoNivel.desc}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
     );
 };
 
@@ -509,15 +652,13 @@ export default function MarcadosPanel() {
     return (
         <div style={{ 
             width: '100%', minHeight: '85vh', 
-            backgroundColor: localCorFundo, 
-            color: localCorTexto, 
-            fontFamily: fonteDiario, 
-            padding: '40px 40px 80px 40px', borderRadius: '12px', position: 'relative', transition: 'background 0.3s ease, color 0.3s ease',
-            boxShadow: 'inset 0 0 40px rgba(0,0,0,0.1), 0 10px 30px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column',
-            overflow: 'visible' 
+            backgroundColor: localCorFundo, color: localCorTexto, fontFamily: fonteDiario, 
+            padding: '40px 40px 80px 40px', borderRadius: '12px', position: 'relative', 
+            transition: 'background 0.3s ease, color 0.3s ease',
+            boxShadow: 'inset 0 0 40px rgba(0,0,0,0.1), 0 10px 30px rgba(0,0,0,0.5)', 
+            display: 'flex', flexDirection: 'column', overflow: 'visible' 
         }}>
             
-            {/* 🔥 FUNDO ALQUÍMICO 🔥 */}
             {localBgImg && (
                 <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0, pointerEvents: 'none', borderRadius: '12px', overflow: 'hidden', mixBlendMode: localModoFundo, isolation: 'isolate' }}>
                     <img src={localBgImg} alt="Fundo" style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', top: 0, left: 0, filter: localModoFundo !== 'normal' ? 'contrast(1.2) saturate(1.2)' : 'none' }} />
@@ -547,7 +688,6 @@ export default function MarcadosPanel() {
                 .grimorio-estilo-papel input, .grimorio-estilo-papel textarea, .grimorio-estilo-papel select { background: rgba(0,0,0,0.03) !important; border: none !important; border-bottom: 2px dotted var(--tinta) !important; color: var(--tinta) !important; border-radius: 0 !important; }
                 .grimorio-estilo-papel input:focus, .grimorio-estilo-papel textarea:focus { background: rgba(0,0,0,0.06) !important; border-bottom: 2px solid var(--tinta) !important; }
                 .grimorio-estilo-papel input::placeholder, .grimorio-estilo-papel textarea::placeholder { color: var(--tinta) !important; opacity: 0.5 !important; font-style: italic !important; }
-                .grimorio-estilo-papel .poderes-sidebar .def-box { border: none !important; border-right: 2px dashed var(--tinta) !important; border-radius: 0 !important; }
             `}</style>
 
             {/* 📌 CONTROLES SUPERIORES */}
@@ -561,14 +701,10 @@ export default function MarcadosPanel() {
                     <button onClick={() => { setModalEstilo(!modalEstilo); setModalImport(false); }} style={{ background: '#ff94c2', color: '#000', border: '1px solid #333', borderBottom: '3px solid #222', padding: '10px 20px', fontFamily: 'inherit', fontWeight: 'bold', fontSize: '1.1em', cursor: 'pointer', borderRadius: '4px', boxShadow: '2px 4px 8px rgba(0,0,0,0.4)', transform: 'rotate(-2deg)' }}>🎨 Estilo</button>
                     {modalEstilo && (
                         <div className="fade-in" style={{ position: 'absolute', top: '55px', right: '0', background: '#ffe4f0', padding: '15px', border: '1px solid #ccc', boxShadow: '5px 5px 15px rgba(0,0,0,0.3)', width: '320px', zIndex: 20, borderRadius: '6px', color: '#000', maxHeight: '70vh', overflowY: 'auto' }}>
-                            
-                            {/* 🔥 COR DO TEXTO E FUNDO 🔥 */}
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>Cor do Texto da Ficha:</label>
                             <input type="color" value={localCorTexto} onChange={(e) => handleStyleChange('corTexto', e.target.value)} style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} />
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>Cor do Papel (Fundo Base):</label>
                             <input type="color" value={localCorFundo} onChange={(e) => handleStyleChange('diarioCor', e.target.value)} style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} />
-                            
-                            {/* 🔥 FUNDO ALQUÍMICO 🔥 */}
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>🖼️ Imagem de Fundo (URL):</label>
                             <div style={{ display: 'flex', gap: '5px', marginBottom: '5px' }}>
                                 <input type="text" value={localBgImg} onChange={(e) => handleStyleChange('bgImg', e.target.value)} placeholder="Cole o Link aqui..." style={{ flex: 1, padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', color: 'inherit' }} />
@@ -585,10 +721,7 @@ export default function MarcadosPanel() {
                                 <span>Tingir Fundo:</span>
                                 <input type="color" value={localCorFundoTint} onChange={(e) => handleStyleChange('corFundoTint', e.target.value)} style={{ width: '40px', height: '25px', border: 'none', cursor: 'pointer', background: 'transparent' }} />
                             </label>
-
                             <hr style={{ border: '1px dashed #ccc', margin: '15px 0' }}/>
-
-                            {/* 🔥 MOLDURA 🔥 */}
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>✨ Moldura do Personagem:</label>
                             <div style={{ display: 'flex', gap: '5px', marginBottom: '5px' }}>
                                 <input type="text" value={localMolduraAvatar} onChange={(e) => handleStyleChange('molduraAvatar', e.target.value)} placeholder="Cole o Link da moldura..." style={{ flex: 1, padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', color: 'inherit' }} />
@@ -596,13 +729,11 @@ export default function MarcadosPanel() {
                                     📁<input type="file" accept="image/*" onChange={handleMolduraUpload} style={{ display: 'none' }} />
                                 </label>
                             </div>
-                            <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>🪄 Remoção de Fundo (Moldura):</label>
                             <select value={localModoMoldura} onChange={(e) => handleStyleChange('modoMoldura', e.target.value)} style={{ width: '100%', padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', fontFamily: 'inherit', marginBottom: '10px' }}>
                                 <option value="screen">Fundo Preto (Magia Screen)</option>
                                 <option value="multiply">Fundo Branco (Magia Multiply)</option>
                                 <option value="normal">Nenhum / Imagem PNG Transparente</option>
                             </select>
-
                             <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9em', color: '#555', marginTop: '10px', fontWeight: 'bold' }}>
                                 <span>Tingir Moldura & Ícone:</span>
                                 <input type="color" value={localCorMoldura} onChange={(e) => handleStyleChange('corMoldura', e.target.value)} style={{ width: '40px', height: '25px', border: 'none', cursor: 'pointer', background: 'transparent' }} title="Tinge o dourado/metálico da moldura!" />
@@ -612,7 +743,6 @@ export default function MarcadosPanel() {
                                     <div key={c} onClick={() => handleStyleChange('corMoldura', c)} style={{ width: '20px', height: '20px', backgroundColor: c, border: '1px solid rgba(0,0,0,0.5)', cursor: 'pointer', borderRadius: '3px' }} title={`Pintar de ${c}`} />
                                 ))}
                             </div>
-
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>🔷 Ícone da Classe Manual (Opcional):</label>
                             <div style={{ display: 'flex', gap: '5px', marginBottom: '15px' }}>
                                 <input type="text" value={localIconeClasse} onChange={(e) => handleStyleChange('iconeClasse', e.target.value)} placeholder="Link do Ícone..." style={{ flex: 1, padding: '8px', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', color: 'inherit' }} />
@@ -620,9 +750,7 @@ export default function MarcadosPanel() {
                                     📁<input type="file" accept="image/*" onChange={handleIconeUpload} style={{ display: 'none' }} />
                                 </label>
                             </div>
-
                             <hr style={{ border: '1px dashed #ccc', margin: '15px 0' }}/>
-
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>Cor da Tinta (Radar):</label>
                             <input type="color" value={localCorTinta} onChange={(e) => handleStyleChange('corTintaRadar', e.target.value)} style={{ width: '100%', height: '40px', border: 'none', cursor: 'pointer', marginBottom: '15px', background: 'transparent' }} />
                             <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '5px', fontWeight: 'bold' }}>Fonte da Letra:</label>
@@ -645,7 +773,7 @@ export default function MarcadosPanel() {
                 </div>
             </div>
 
-            {/* 🔥 AS 2 PÁGINAS DA FICHA DEFINITIVA 🔥 */}
+            {/* 🔥 AS 3 PÁGINAS DA FICHA DEFINITIVA 🔥 */}
             <div key={paginaAtual} className={`swoop-container ${animDirection === 'next' ? 'page-swoop-next' : 'page-swoop-prev'}`} style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '40px', paddingBottom: '30px' }}>
                 
                 {/* ======================= PÁGINA 1: FICHA E AVATAR ======================= */}
@@ -710,16 +838,8 @@ export default function MarcadosPanel() {
                                                         
                                                         {localCorMoldura && localCorMoldura !== '#ffffff' && (
                                                             <>
-                                                                <div style={{ 
-                                                                    position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: localCorMoldura, mixBlendMode: 'color',
-                                                                    WebkitMaskImage: `url(${iconeFinal})`, WebkitMaskSize: 'contain', WebkitMaskRepeat: 'no-repeat', WebkitMaskPosition: 'center',
-                                                                    maskImage: `url(${iconeFinal})`, maskSize: 'contain', maskRepeat: 'no-repeat', maskPosition: 'center'
-                                                                }} />
-                                                                <div style={{ 
-                                                                    position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: localCorMoldura, mixBlendMode: 'overlay', opacity: 0.8,
-                                                                    WebkitMaskImage: `url(${iconeFinal})`, WebkitMaskSize: 'contain', WebkitMaskRepeat: 'no-repeat', WebkitMaskPosition: 'center',
-                                                                    maskImage: `url(${iconeFinal})`, maskSize: 'contain', maskRepeat: 'no-repeat', maskPosition: 'center'
-                                                                }} />
+                                                                <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: localCorMoldura, mixBlendMode: 'color', WebkitMaskImage: `url(${iconeFinal})`, WebkitMaskSize: 'contain', WebkitMaskRepeat: 'no-repeat', WebkitMaskPosition: 'center', maskImage: `url(${iconeFinal})`, maskSize: 'contain', maskRepeat: 'no-repeat', maskPosition: 'center' }} />
+                                                                <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: localCorMoldura, mixBlendMode: 'overlay', opacity: 0.8, WebkitMaskImage: `url(${iconeFinal})`, WebkitMaskSize: 'contain', WebkitMaskRepeat: 'no-repeat', WebkitMaskPosition: 'center', maskImage: `url(${iconeFinal})`, maskSize: 'contain', maskRepeat: 'no-repeat', maskPosition: 'center' }} />
                                                             </>
                                                         )}
                                                     </div>
@@ -897,13 +1017,18 @@ export default function MarcadosPanel() {
                     </>
                 )}
 
+                {/* ======================= PÁGINA 3: HIERARQUIA DE DOMÍNIOS ======================= */}
+                {paginaAtual === 3 && (
+                    <DominiosPanel ficha={minhaFicha} updateFicha={updateFicha} />
+                )}
+
             </div>
 
-            {/* BOTÕES DE NAVEGAÇÃO DA PÁGINA (AGORA SÓ VAI ATÉ À PÁGINA 2) */}
+            {/* BOTÕES DE NAVEGAÇÃO DA PÁGINA */}
             <div style={{ position: 'absolute', bottom: '20px', left: '0', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px', fontFamily: 'inherit' }}>
-                <button onClick={() => mudarPagina(1)} disabled={paginaAtual === 1} style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 1 ? 'default' : 'pointer', opacity: paginaAtual === 1 ? 0.3 : 1, fontFamily: 'inherit', color: 'inherit' }}>⮜ Anterior</button>
-                <span style={{ fontSize: '1.1em', fontWeight: 'bold', borderBottom: '2px solid currentColor', padding: '0 10px' }}>Página {paginaAtual} de 2</span>
-                <button onClick={() => mudarPagina(2)} disabled={paginaAtual === 2} style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 2 ? 'default' : 'pointer', opacity: paginaAtual === 2 ? 0.3 : 1, fontFamily: 'inherit', color: 'inherit' }}>Próxima ⮞</button>
+                <button onClick={() => mudarPagina(Math.max(1, paginaAtual - 1))} disabled={paginaAtual === 1} style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 1 ? 'default' : 'pointer', opacity: paginaAtual === 1 ? 0.3 : 1, fontFamily: 'inherit', color: 'inherit' }}>⮜ Anterior</button>
+                <span style={{ fontSize: '1.1em', fontWeight: 'bold', borderBottom: '2px solid currentColor', padding: '0 10px' }}>Página {paginaAtual} de 3</span>
+                <button onClick={() => mudarPagina(Math.min(3, paginaAtual + 1))} disabled={paginaAtual === 3} style={{ background: 'transparent', border: 'none', fontSize: '1.2em', fontWeight: 'bold', cursor: paginaAtual === 3 ? 'default' : 'pointer', opacity: paginaAtual === 3 ? 0.3 : 1, fontFamily: 'inherit', color: 'inherit' }}>Próxima ⮞</button>
             </div>
 
         </div>
