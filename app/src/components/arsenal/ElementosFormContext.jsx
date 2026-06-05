@@ -1,19 +1,21 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useMemo } from 'react';
 import useStore from '../../stores/useStore';
 import { salvarFichaSilencioso, enviarParaFeed } from '../../services/firebase-sync';
-import { calcularAcerto } from '../../core/engine';
 
+// ============================================================================
+// 🔮 CONSTANTES MÁGICAS E REGRAS DO SISTEMA
+// ============================================================================
 export const emogis = {
-    'Fogo': '\uD83D\uDD25', 'Agua': '\uD83D\uDCA7', 'Raio': '\u26A1', 'Terra': '\uD83E\uDEA8', 'Vento': '\uD83C\uDF2A\uFE0F',
-    'Fogo Verdadeiro': '\uD83D\uDD25', 'Agua Verdadeira': '\uD83D\uDCA7', 'Raio Verdadeiro': '\u26A1', 'Terra Verdadeira': '\uD83E\uDEA8', 'Vento Verdadeiro': '\uD83C\uDF2A\uFE0F',
-    'Solar': '\u2600\uFE0F', 'Solar Verdadeiro': '\u2600\uFE0F', 'Gelo': '\u2744\uFE0F', 'Gelo Verdadeiro': '\u2744\uFE0F', 'Natureza': '\uD83C\uDF3F', 'Natureza Verdadeira': '\uD83C\uDF3F', 'Energia': '\uD83D\uDCAB', 'Energia Verdadeira': '\uD83D\uDCAB', 'Vacuo': '\uD83D\uDD73\uFE0F', 'Vacuo Verdadeiro': '\uD83D\uDD73\uFE0F',
-    'Luz': '\u2728', 'Trevas': '\uD83C\uDF11', 'Ether': '\uD83C\uDF0C', 'Celestial': '\uD83C\uDF1F', 'Infernal': '\uD83C\uDF0B', 'Caos': '\uD83C\uDF00', 'Criacao': '\uD83C\uDF87', 'Destruicao': '\uD83D\uDCA5', 'Cosmos': '\u267E\uFE0F',
-    'Vida': '\uD83C\uDF3A', 'Morte': '\uD83D\uDC80', 'Vazio': '\u2B1B', 'Neutro': '\u26AA',
-    'Magia de Osso': '\uD83E\uDDB4', 'Magia de Sangue': '\uD83E\uDE78', 'Magia de Borracha': '\uD83C\uDF88', 'Magia de Sal': '\uD83E\uDDC2', 'Magia de Alma': '\uD83D\uDC7B', 'Magia de Tremor': '\uD83E\uDEE8', 'Magia de Gravidade': '\uD83C\uDF0C', 'Magia de Equipamento': '\u2699\uFE0F', 'Magia de Tempo': '\u23F3', 'Magia Draconica': '\uD83D\uDC09', 'Magia de Espelho': '\uD83E\uDE9E', 'Magia de Explosao': '\uD83D\uDCA5', 'Magia Espacial': '\uD83C\uDF00', 'Magia de Metamorfose': '\uD83C\uDFAD',
-    'Magias Arcanas/Negra de 1º Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 2º Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 3º Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 4º Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 5º Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 6º Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 7º Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 8º Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 9º Ciclo': '\uD83D\uDD2E', 'Magias Arcanas/Negra de 10º Ciclo': '\uD83D\uDD2E',
-    'Magias de 1º Ciclo': '\uD83D\uDD04', 'Magias de 2º Ciclo': '\uD83D\uDD04', 'Magias de 3º Ciclo': '\uD83D\uDD04', 'Magias de 4º Ciclo': '\uD83D\uDD04', 'Magias de 5º Ciclo': '\uD83D\uDD04', 'Magias de 6º Ciclo': '\uD83D\uDD04', 'Magias de 7º Ciclo': '\uD83D\uDD04', 'Magias de 8º Ciclo': '\uD83D\uDD04', 'Magias de 9º Ciclo': '\uD83D\uDD04', 'Magias de 10º Ciclo': '\uD83D\uDD04',
-    'Elemento Madeira': '\uD83E\uDEB5', 'Elemento Mineral': '\uD83D\uDC8E', 'Elemento Cinzas': '\uD83C\uDF2B\uFE0F', 'Elemento Igneo': '\u2604\uFE0F', 'Elemento Lava': '\uD83C\uDF0B', 'Elemento Vapor': '\u2668\uFE0F', 'Elemento Nevoa': '\uD83C\uDF2B\uFE0F', 'Elemento Tempestade': '\uD83C\uDF29\uFE0F', 'Elemento Areia': '\uD83C\uDFDC\uFE0F', 'Elemento Tufao': '\uD83C\uDF2A\uFE0F',
-    'Elemento Velocidade': '\uD83D\uDCA8', 'Elemento Poeira': '\uD83D\uDD32', 'Elemento Calor': '\uD83C\uDF21\uFE0F', 'Elemento Cal': '\u2B1C', 'Elemento Carbono': '\u2B1B', 'Elemento Veneno': '\u2623\uFE0F', 'Elemento Magnetismo': '\uD83E\uDDF2', 'Elemento Som': '\uD83D\uDD0A',
+    'Fogo': '🔥', 'Agua': '💧', 'Raio': '⚡', 'Terra': '🪨', 'Vento': '🌪️',
+    'Fogo Verdadeiro': '🔥', 'Agua Verdadeira': '💧', 'Raio Verdadeiro': '⚡', 'Terra Verdadeira': '🪨', 'Vento Verdadeiro': '🌪️',
+    'Solar': '☀️', 'Solar Verdadeiro': '☀️', 'Gelo': '❄️', 'Gelo Verdadeiro': '❄️', 'Natureza': '🌿', 'Natureza Verdadeira': '🌿', 'Energia': '💫', 'Energia Verdadeira': '💫', 'Vacuo': '🕳️', 'Vacuo Verdadeiro': '🕳️',
+    'Luz': '✨', 'Trevas': '🌒', 'Ether': '🌌', 'Celestial': '🌟', 'Infernal': '🌋', 'Caos': '🌀', 'Criacao': '🎇', 'Destruicao': '💥', 'Cosmos': '♾️',
+    'Vida': '🌺', 'Morte': '💀', 'Vazio': '⬛', 'Neutro': '⚪',
+    'Magia de Osso': '🦴', 'Magia de Sangue': '🩸', 'Magia de Borracha': '🎈', 'Magia de Sal': '🧂', 'Magia de Alma': '👻', 'Magia de Tremor': '🫨', 'Magia de Gravidade': '🌌', 'Magia de Equipamento': '⚙️', 'Magia de Tempo': '⏳', 'Magia Draconica': '🐉', 'Magia de Espelho': '🪞', 'Magia de Explosao': '💥', 'Magia Espacial': '🌀', 'Magia de Metamorfose': '🎭',
+    'Magias Arcanas/Negra de 1º Ciclo': '🔮', 'Magias Arcanas/Negra de 2º Ciclo': '🔮', 'Magias Arcanas/Negra de 3º Ciclo': '🔮', 'Magias Arcanas/Negra de 4º Ciclo': '🔮', 'Magias Arcanas/Negra de 5º Ciclo': '🔮', 'Magias Arcanas/Negra de 6º Ciclo': '🔮', 'Magias Arcanas/Negra de 7º Ciclo': '🔮', 'Magias Arcanas/Negra de 8º Ciclo': '🔮', 'Magias Arcanas/Negra de 9º Ciclo': '🔮', 'Magias Arcanas/Negra de 10º Ciclo': '🔮',
+    'Magias de 1º Ciclo': '🔄', 'Magias de 2º Ciclo': '🔄', 'Magias de 3º Ciclo': '🔄', 'Magias de 4º Ciclo': '🔄', 'Magias de 5º Ciclo': '🔄', 'Magias de 6º Ciclo': '🔄', 'Magias de 7º Ciclo': '🔄', 'Magias de 8º Ciclo': '🔄', 'Magias de 9º Ciclo': '🔄', 'Magias de 10º Ciclo': '🔄',
+    'Elemento Madeira': '🪵', 'Elemento Mineral': '💎', 'Elemento Cinzas': '🌫️', 'Elemento Igneo': '☄️', 'Elemento Lava': '🌋', 'Elemento Vapor': '♨️', 'Elemento Nevoa': '🌫️', 'Elemento Tempestade': '🌩️', 'Elemento Areia': '🏜️', 'Elemento Tufao': '🌪️',
+    'Elemento Velocidade': '💨', 'Elemento Poeira': '🔲', 'Elemento Calor': '🌡️', 'Elemento Cal': '⬜', 'Elemento Carbono': '⬛', 'Elemento Veneno': '☣️', 'Elemento Magnetismo': '🧲', 'Elemento Som': '🔊',
     'Truques de Ciclo': '✨', 'Truques Arcanos/Negros': '🔮', 'Truques Ancestrais': '📜',
     'Aura Pura': '✨', 'Projeção de Aura': '🛡️', 'Artes Marciais': '🥋', 'Reforço Físico': '💪', 'Fusões Básicas': '🌀', 'Fusões Avançadas': '⚛️'
 };
@@ -73,6 +75,19 @@ export const BONUS_OPTIONS = [
     { value: 'letalidade', label: 'Letalidade' },
 ];
 
+export const NIVEIS_DOMINIO = {
+    1: { nome: "Básico", cor: "#44ff44", desc: "+10% Dano" },
+    2: { nome: "Intermediário", cor: "#44ff44", desc: "+25% Dano | -5% Custo" },
+    3: { nome: "Avançado", cor: "#44ff44", desc: "+50% Dano | -10% Custo" },
+    4: { nome: "Virtuoso", cor: "#0088ff", desc: "Dano x2 | Ignora Resistências Menores" },
+    5: { nome: "Maestria", cor: "#0088ff", desc: "Dano x3.5 | -25% Custo | -50% Dano Sofrido" },
+    6: { nome: "Perfeito", cor: "#0088ff", desc: "Dano x6 | Imunidade Total | Incancelável" },
+    7: { nome: "Molecular", cor: "#aa00ff", desc: "Dano x10 | Ignora Imunidades | Dano Persistente" },
+    8: { nome: "Atômico", cor: "#aa00ff", desc: "Dano x50 | -50% Custo | Desintegração de Armadura" },
+    9: { nome: "Absoluto", cor: "#ff003c", desc: "Dano x100 | Custo ZERO | Silenciamento de Elemento" },
+    10: { nome: "Eterno", cor: "#ffcc00", desc: "Dano Incalculável | Apagamento Conceitual" }
+};
+
 const ElementosFormContext = createContext(null);
 
 export function useElementosForm() {
@@ -120,23 +135,19 @@ export function ElementosFormProvider({ children }) {
         return parseInt(strVal.substring(0, 2), 10);
     }, []);
 
-    // 🔥 RADAR MÁXIMO: Lê Elementos Base e os "Efeitos Inatos" de Formas e Poderes 🔥
     const elementosInatos = useMemo(() => {
         if (!minhaFicha) return [];
         const inatos = [];
 
-        // Função que lê Efeitos procurando por "elemento_inato"
         const lerInatosDosEfeitos = (efeitos) => {
             if (!efeitos) return;
             efeitos.forEach(ef => {
                 if (ef && ef.propriedade === 'elemento_inato' && ef.nome) {
-                    // Separa se o usuário escrever "Fogo, Vento Verdadeiro"
                     ef.nome.split(',').forEach(n => inatos.push(n.toLowerCase().trim()));
                 }
             });
         };
 
-        // 1. Ler Aba de Poderes
         if (minhaFicha.poderes) {
             minhaFicha.poderes.forEach(p => {
                 if (p.ativa) {
@@ -159,7 +170,6 @@ export function ElementosFormProvider({ children }) {
             });
         }
 
-        // 2. Classificação / Hierarquia
         const h = minhaFicha.hierarquia || {};
         if (h.poder && (h.poderVertente || '').toLowerCase().includes('elemental') && h.poderElemento) {
             inatos.push(h.poderElemento.toLowerCase().trim());
@@ -168,7 +178,6 @@ export function ElementosFormProvider({ children }) {
             inatos.push(h.infinityElemento.toLowerCase().trim());
         }
 
-        // 3. Seres Selados (O Pacto de Sylphie)
         if (minhaFicha.seresSelados) {
             minhaFicha.seresSelados.forEach(s => {
                 if (s.ativo) {
@@ -191,7 +200,6 @@ export function ElementosFormProvider({ children }) {
             });
         }
         
-        // 4. Arsenal (Itens também podem dar elementos grátis!)
         if (minhaFicha.inventario) {
             minhaFicha.inventario.forEach(item => {
                 if (item.equipado) {
@@ -211,29 +219,28 @@ export function ElementosFormProvider({ children }) {
 
         if (isArcana) {
             opts = [
-                { value: 'flexivel', label: 'Flexível (Escolher na Conjuração)' },
-                { value: 'mana', label: 'Mana (Base: Int)' }, { value: 'aura', label: 'Aura (Base: Eng. Esp)' }, { value: 'chakra', label: 'Chakra (Base: Stamina)' },
-                { value: 'corpo', label: 'Corpo (Base: For/Des)' }, { value: 'pontosVitais', label: 'Pts. Vitais (Base: Const)' }, { value: 'pontosMortais', label: 'Pts. Mortais (Base: Int)' },
-                { value: 'livre', label: 'Truque / Livre' }
+                { value: 'flexivel', label: 'Flexível (Escolher)' },
+                { value: 'mana', label: 'Mana (Base: Int)' }, { value: 'aura', label: 'Aura (Base: Eng)' }, { value: 'chakra', label: 'Chakra (Base: Sta)' },
+                { value: 'corpo', label: 'Corpo (Base: For/Des)' }, { value: 'pontosVitais', label: 'Pts. Vitais (Const)' }, { value: 'pontosMortais', label: 'Pts. Mortais (Int)' },
+                { value: 'livre', label: 'Livre' }
             ];
         } else if (isTruque) {
-            opts = [{ value: 'livre', label: 'Truque / Livre' }];
+            opts = [{ value: 'livre', label: 'Livre' }];
         } else if (abaAtual === 'astrais') {
-            opts = [{ value: 'pontosVitais', label: 'Pts. Vitais (Base: Const)' }, { value: 'pontosMortais', label: 'Pts. Mortais (Base: Int)' }];
-        } else if (abaAtual === 'chakra') { opts = [{ value: 'chakra', label: 'Chakra (Base: Stamina)' }];
-        } else if (abaAtual === 'aura') { opts = [{ value: 'aura', label: 'Aura (Base: Eng. Esp)' }];
-        } else if (abaAtual === 'corpo') { opts = [{ value: 'corpo', label: 'Corpo (Base: For/Des)' }];
-        } else if (abaAtual === 'mana') { opts = [{ value: 'mana', label: 'Mana (Base: Int)' }];
+            opts = [{ value: 'pontosVitais', label: 'Pts. Vitais' }, { value: 'pontosMortais', label: 'Pts. Mortais' }];
+        } else if (abaAtual === 'chakra') { opts = [{ value: 'chakra', label: 'Chakra' }];
+        } else if (abaAtual === 'aura') { opts = [{ value: 'aura', label: 'Aura' }];
+        } else if (abaAtual === 'corpo') { opts = [{ value: 'corpo', label: 'Corpo' }];
+        } else if (abaAtual === 'mana') { opts = [{ value: 'mana', label: 'Mana' }];
         } else {
             opts = [
-                { value: 'flexivel', label: 'Flexível (Escolher na Conjuração)' },
-                { value: 'mana', label: 'Mana (Base: Int)' }, { value: 'aura', label: 'Aura (Base: Eng. Esp)' }, { value: 'chakra', label: 'Chakra (Base: Stamina)' }
+                { value: 'flexivel', label: 'Flexível' },
+                { value: 'mana', label: 'Mana' }, { value: 'aura', label: 'Aura' }, { value: 'chakra', label: 'Chakra' }
             ];
         }
 
         if (elemEditandoId && !opts.some(o => o.value === energiaCombustao)) {
-            const allLabels = { 'flexivel': 'Flexível', 'mana': 'Mana', 'aura': 'Aura', 'chakra': 'Chakra', 'corpo': 'Corpo', 'pontosVitais': 'Pts. Vitais', 'pontosMortais': 'Pts. Mortais', 'livre': 'Livre' };
-            opts.push({ value: energiaCombustao, label: `${allLabels[energiaCombustao] || energiaCombustao} (Forçado)` });
+            opts.push({ value: energiaCombustao, label: `${energiaCombustao} (Forçado)` });
         }
         return opts;
     }, [abaAtual, elemSelecionado, elemEditandoId, energiaCombustao]);
@@ -260,7 +267,7 @@ export function ElementosFormProvider({ children }) {
 
     const salvarNovoElem = useCallback(() => {
         const n = nomeElem.trim();
-        if (!n) { alert('Falta o nome da Magia/Ataque!'); return; }
+        if (!n) { alert('Sua magia precisa de um nome, Arcano!'); return; }
         updateFicha((ficha) => {
             if (!ficha.ataquesElementais) ficha.ataquesElementais = [];
             const novaMagia = {
@@ -296,7 +303,7 @@ export function ElementosFormProvider({ children }) {
                 if (idx !== -1) f.ataquesElementais[idx].equipado = false;
             });
             salvarFichaSilencioso();
-            alert(`O ataque [${p.nome}] foi DESATIVADO para edicao.`);
+            alert(`O pergaminho de [${p.nome}] foi DESMEMORIZADO para edição.`);
         }
         const el = p.elemento || 'Neutro';
         setElemSelecionado(el);
@@ -328,13 +335,13 @@ export function ElementosFormProvider({ children }) {
     }, [updateFicha]);
 
     const deletarElem = useCallback((id) => {
-        if (!window.confirm('Deseja apagar este ataque elemental do grimorio?')) return;
+        if (!window.confirm('Rasgar esta página do Grimório para sempre?')) return;
         updateFicha((ficha) => { ficha.ataquesElementais = (ficha.ataquesElementais || []).filter(i => i.id !== id); });
         salvarFichaSilencioso();
     }, [updateFicha]);
 
     const conjurarMagia = useCallback((magia, energiaOverride = null) => {
-        enviarParaFeed({ tipo: 'sistema', nome: meuNome, texto: `Atenção: A conjuração direta pelo Grimório foi desativada temporariamente. Equipe a magia e use o painel de Dano/Acerto para usufruir do novo sistema de Áreas Persistentes!` });
+        enviarParaFeed({ tipo: 'sistema', nome: meuNome, texto: `Atenção: A conjuração direta pelo Grimório foi desativada. Equipe a magia e use o painel principal!` });
         setAbaAtiva('aba-ataque');
     }, [meuNome, setAbaAtiva]);
 

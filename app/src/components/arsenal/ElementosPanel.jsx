@@ -6,12 +6,12 @@ export default function ElementosPanel({ className, children }) {
     const hasChildren = React.Children.count(children) > 0
     return (
         <ElementosFormProvider>
-            <div className={['elementos-panel', className].filter(Boolean).join(' ')} style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+            <div className={['elementos-panel', className].filter(Boolean).join(' ')} style={{ display: 'flex', gap: '30px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
                 {hasChildren ? children : (
                     <>
                         <ElementosSidebar />
-                        <div style={{ flex: '1 1 500px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                            <ElementosImportadorIA /> {/* 🔥 NOSSO NOVO MOTOR DE IA PARA MAGIAS 🔥 */}
+                        <div style={{ flex: '1 1 500px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                            <ElementosImportadorIA />
                             <ElementosGrimorio />
                             <ElementosFormMagia />
                             <ElementosMagiaLista />
