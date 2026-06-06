@@ -19,42 +19,41 @@ export function MapaDadoAnimado() {
     return createPortal(
         <>
             <style dangerouslySetInnerHTML={{__html: `
-                @keyframes d20-spin {
-                    0% { transform: rotate(0deg) scale(1); filter: brightness(1) drop-shadow(0 0 10px #00ffcc); }
-                    25% { transform: rotate(90deg) scale(1.1); filter: brightness(1.2) drop-shadow(0 0 20px #00ffcc); }
-                    50% { transform: rotate(180deg) scale(0.9); filter: brightness(1) drop-shadow(0 0 10px #00ffcc); }
-                    75% { transform: rotate(270deg) scale(1.1); filter: brightness(1.2) drop-shadow(0 0 20px #00ffcc); }
-                    100% { transform: rotate(360deg) scale(1); filter: brightness(1) drop-shadow(0 0 10px #00ffcc); }
+                @keyframes rolarDado {
+                    0% { transform: rotate(0deg) translate(0, 0); }
+                    25% { transform: rotate(90deg) translate(-50px, -50px); }
+                    50% { transform: rotate(180deg) translate(50px, -30px); }
+                    75% { transform: rotate(270deg) translate(-30px, 40px); }
+                    100% { transform: rotate(360deg) translate(0, 0); }
                 }
-                @keyframes d20-land {
-                    0% { transform: scale(1.5); filter: brightness(2) drop-shadow(0 0 40px var(--land-color)); }
-                    100% { transform: scale(1); filter: brightness(1) drop-shadow(0 0 15px var(--land-color)); }
+                @keyframes impactoDado {
+                    0% { transform: scale(1.5) rotate(0deg); filter: drop-shadow(0 0 20px var(--dado-cor)); }
+                    50% { transform: scale(1.2) rotate(10deg); }
+                    100% { transform: scale(1) rotate(0deg); }
                 }
-                .d20-spinning { animation: d20-spin 0.2s infinite linear; }
-                .d20-landed { animation: d20-land 0.4s ease-out forwards; }
+                .dado-rolando { animation: rolarDado 0.5s infinite linear; }
+                .dado-impacto { animation: impactoDado 0.3s ease-out forwards; }
             `}} />
-            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(3px)', zIndex: 999999, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
-                <div className={dadoAnim.finalResult ? 'd20-landed' : 'd20-spinning'} style={{ '--land-color': dadoAnim.cor }}>
-                    <svg viewBox="0 0 100 100" style={{ width: '250px', height: '250px' }}>
-                        <polygon points="50,5 95,30 95,75 50,95 5,75 5,30" fill="rgba(10,10,15,0.95)" stroke={dadoAnim.cor} strokeWidth="4" strokeLinejoin="round" />
-                        <polygon points="50,85 20,35 80,35" fill="none" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
-                        <line x1="50" y1="5" x2="20" y2="35" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
-                        <line x1="50" y1="5" x2="80" y2="35" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
-                        <line x1="95" y1="30" x2="80" y2="35" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
-                        <line x1="95" y1="75" x2="80" y2="35" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
-                        <line x1="95" y1="75" x2="50" y2="85" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
-                        <line x1="50" y1="95" x2="50" y2="85" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
-                        <line x1="5" y1="75" x2="50" y2="85" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
-                        <line x1="5" y1="75" x2="20" y2="35" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
-                        <line x1="5" y1="30" x2="20" y2="35" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
-                        <text x="50%" y="56%" dominantBaseline="middle" textAnchor="middle" fill="#fff" fontSize="32" fontWeight="bold" fontFamily="sans-serif">{dadoAnim.numero}</text>
-                    </svg>
+            <div style={{
+                position: 'fixed', inset: 0, zIndex: 999999,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'rgba(0,0,0,0.6)' // Fundo levemente escuro para dar foco
+            }}>
+                <div 
+                    className={dadoAnim.finalResult ? 'dado-impacto' : 'dado-rolando'} 
+                    style={{ 
+                        '--dado-cor': dadoAnim.cor,
+                        width: '120px', height: '120px',
+                        background: 'white',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '40px', fontWeight: 'bold', color: dadoAnim.cor,
+                        borderRadius: '20px',
+                        border: `5px solid ${dadoAnim.cor}`,
+                        boxShadow: `0 0 30px ${dadoAnim.cor}`
+                    }}
+                >
+                    {dadoAnim.numero}
                 </div>
-                {dadoAnim.finalResult && (
-                    <div style={{ marginTop: '30px', color: dadoAnim.cor, fontSize: '2em', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '3px', textShadow: `0 0 20px ${dadoAnim.cor}` }}>
-                        {dadoAnim.cor === '#ff003c' ? 'CRÍTICO FATAL!' : dadoAnim.cor === '#ffcc00' ? 'CRÍTICO!' : dadoAnim.cor === '#660000' ? 'FALHA CRÍTICA' : 'ROLADO!'}
-                    </div>
-                )}
             </div>
         </>,
         document.body
