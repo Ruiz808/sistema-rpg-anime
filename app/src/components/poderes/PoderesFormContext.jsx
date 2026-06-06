@@ -124,7 +124,7 @@ export function PoderesFormProvider({ children }) {
         setDadosFaces(20);
         setCustoPercentual(0);
         setPoderAlcance(1);
-        setAreaQuad(0); // Correção: limpeza de área
+        setPoderArea(0); // Correção de nomenclatura
         setArmaVinculada('');
         setEfeitosTemp([]);
         setEfeitosTempPassivos([]);
@@ -133,12 +133,23 @@ export function PoderesFormProvider({ children }) {
         setNovoValPassivo('');
     }, [setPoderEditandoId, setEfeitosTemp, setEfeitosTempPassivos]);
 
+    // ==========================================
+    // 🛡️ O ESCUDO ANTI-VÁCUO DO FIREBASE 
+    // ==========================================
     const salvarNovoPoder = useCallback(() => {
         const n = nomePoder.trim();
         if (!n || (!efeitosTemp.length && !efeitosTempPassivos.length && dadosQtd === 0 && !descricaoPoder.trim())) {
             alert('Falta nome ou efeitos (ou dados/descrição)!');
             return;
         }
+
+        // Blindagem: Transforma "undefined" em valores seguros antes de tocar no Firebase
+        const descSafe = descricaoPoder || "";
+        const vertSafe = poderVertente || "";
+        const elemSafe = poderElemento || "";
+        const afetaSafe = elementosAfetados || "";
+        const urlSafe = imagemUrl || "";
+        const armaSafe = armaVinculada || "";
 
         updateFicha((ficha) => {
             if (!ficha.poderes) ficha.poderes = [];
@@ -147,40 +158,40 @@ export function PoderesFormProvider({ children }) {
                 const ix = ficha.poderes.findIndex(p => p.id === poderEditandoId);
                 if (ix !== -1) {
                     ficha.poderes[ix].nome = n;
-                    ficha.poderes[ix].descricao = descricaoPoder; 
-                    ficha.poderes[ix].vertente = poderVertente; 
-                    ficha.poderes[ix].elemento = poderElemento; 
-                    ficha.poderes[ix].elementosAfetados = elementosAfetados; 
+                    ficha.poderes[ix].descricao = descSafe; 
+                    ficha.poderes[ix].vertente = vertSafe; 
+                    ficha.poderes[ix].elemento = elemSafe; 
+                    ficha.poderes[ix].elementosAfetados = afetaSafe; 
                     ficha.poderes[ix].categoria = abaAtual;
                     ficha.poderes[ix].efeitos = JSON.parse(JSON.stringify(efeitosTemp));
                     ficha.poderes[ix].efeitosPassivos = JSON.parse(JSON.stringify(efeitosTempPassivos));
-                    ficha.poderes[ix].imagemUrl = imagemUrl;
+                    ficha.poderes[ix].imagemUrl = urlSafe;
                     ficha.poderes[ix].dadosQtd = parseInt(dadosQtd) || 0;
                     ficha.poderes[ix].dadosFaces = parseInt(dadosFaces) || 20;
                     ficha.poderes[ix].custoPercentual = parseFloat(custoPercentual) || 0;
                     ficha.poderes[ix].alcance = parseFloat(poderAlcance) || 1;
-                    ficha.poderes[ix].area = parseFloat(poderArea) || 1;
-                    ficha.poderes[ix].armaVinculada = armaVinculada;
+                    ficha.poderes[ix].area = parseFloat(poderArea) || 0;
+                    ficha.poderes[ix].armaVinculada = armaSafe;
                 }
             } else {
                 ficha.poderes.push({
                     id: Date.now(),
                     nome: n,
-                    descricao: descricaoPoder, 
-                    vertente: poderVertente, 
-                    elemento: poderElemento, 
-                    elementosAfetados: elementosAfetados, 
+                    descricao: descSafe, 
+                    vertente: vertSafe, 
+                    elemento: elemSafe, 
+                    elementosAfetados: afetaSafe, 
                     categoria: abaAtual,
                     ativa: false,
                     efeitos: JSON.parse(JSON.stringify(efeitosTemp)),
                     efeitosPassivos: JSON.parse(JSON.stringify(efeitosTempPassivos)),
-                    imagemUrl: imagemUrl,
+                    imagemUrl: urlSafe,
                     dadosQtd: parseInt(dadosQtd) || 0,
                     dadosFaces: parseInt(dadosFaces) || 20,
                     custoPercentual: parseFloat(custoPercentual) || 0,
                     alcance: parseFloat(poderAlcance) || 1,
-                    area: parseFloat(poderArea) || 1,
-                    armaVinculada: armaVinculada
+                    area: parseFloat(poderArea) || 0,
+                    armaVinculada: armaSafe
                 });
             }
         });
@@ -238,7 +249,7 @@ export function PoderesFormProvider({ children }) {
         setDadosFaces(p.dadosFaces || 20);
         setCustoPercentual(p.custoPercentual || 0);
         setPoderAlcance(p.alcance || 1);
-        setPoderArea(p.area || 1);
+        setPoderArea(p.area || 0);
         setArmaVinculada(p.armaVinculada || '');
         setEfeitosTemp(JSON.parse(JSON.stringify(p.efeitos || [])));
         setEfeitosTempPassivos(JSON.parse(JSON.stringify(p.efeitosPassivos || [])));

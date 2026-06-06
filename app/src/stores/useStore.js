@@ -6,7 +6,7 @@ export const fichaPadrao = {
     ascensaoBase: 1, poderes: [], inventario: [], ataquesElementais: [], passivas: [], seresSelados: [],
     
     // 🔥 NOVO: Estruturas do Novo Grimório 🔥
-    habilidades: [], formas: [], grimorio: { estilo: {} },
+    habilidades: [], formas: [], esteticaGrimorio: {},
     
     hierarquia: { poder: false, infinity: false, singularidade: '', poderNome: '', poderDesc: '', infinityNome: '', infinityDesc: '', singularidadeNome: '', singularidadeDesc: '' },
     proficienciaBase: 2, proficiencias: {}, avatar: { base: "" },
@@ -103,6 +103,7 @@ const useStore = create(
             if (!dados) return;
             const chaves = Object.keys(fichaPadrao);
             
+            // 🔥 NOVO: Reconhecimento imediato do dono
             if (dados.donoDaFicha !== undefined) state.minhaFicha.donoDaFicha = dados.donoDaFicha;
             
             if (dados.ascensaoBase !== undefined) state.minhaFicha.ascensaoBase = parseInt(dados.ascensaoBase) || 1;
@@ -115,18 +116,20 @@ const useStore = create(
             else state.minhaFicha.avatar = { base: "" };
             if (dados.bio) state.minhaFicha.bio = Object.assign({}, fichaPadrao.bio, dados.bio);
             
+            // 🔥 NOVO: Carregar Afinidades e Condições do Firebase
             if (dados.afinidades) state.minhaFicha.afinidades = Object.assign({}, fichaPadrao.afinidades, dados.afinidades);
             if (dados.condicoes) state.minhaFicha.condicoes = dados.condicoes || [];
 
+            // 🔥 NOVO: Carregar Estética e Variáveis da Nova Ficha
             if (dados.estetica) state.minhaFicha.estetica = Object.assign({}, fichaPadrao.estetica, dados.estetica);
             if (dados.labels) state.minhaFicha.labels = Object.assign({}, fichaPadrao.labels, dados.labels);
             if (dados.pv) state.minhaFicha.pv = Object.assign({}, fichaPadrao.pv, dados.pv);
             if (dados.pm) state.minhaFicha.pm = Object.assign({}, fichaPadrao.pm, dados.pm);
             if (dados.multiplicadorVida !== undefined) state.minhaFicha.multiplicadorVida = parseFloat(dados.multiplicadorVida) || 1;
             if (dados.multiplicadorMorte !== undefined) state.minhaFicha.multiplicadorMorte = parseFloat(dados.multiplicadorMorte) || 1;
-            
+
             // 🔥 NOVO: Carregar Estilo do Grimório e Listas Novas
-            if (dados.grimorio) state.minhaFicha.grimorio = Object.assign({}, fichaPadrao.grimorio, dados.grimorio);
+            if (dados.esteticaGrimorio) state.minhaFicha.esteticaGrimorio = Object.assign({}, fichaPadrao.esteticaGrimorio, dados.esteticaGrimorio);
             state.minhaFicha.habilidades = dados.habilidades || [];
             state.minhaFicha.formas = dados.formas || [];
 
@@ -157,8 +160,8 @@ const useStore = create(
 
             for (let i = 0; i < chaves.length; i++) {
                 const ch = chaves[i];
-                // 🔥 NOVO: As chaves do Grimório adicionadas à lista de exclusão
-                if (dados[ch] !== undefined && ch !== 'donoDaFicha' && ch !== 'grimorio' && ch !== 'habilidades' && ch !== 'formas' && ch !== 'ascensaoBase' && ch !== 'poderes' && ch !== 'divisores' && ch !== 'inventario' && ch !== 'ataquesElementais' && ch !== 'ataqueConfig' && ch !== 'avatar' && ch !== 'bio' && ch !== 'afinidades' && ch !== 'condicoes' && ch !== 'notas' && ch !== 'passivas' && ch !== 'seresSelados' && ch !== 'posicao' && ch !== 'iniciativa' && ch !== 'acoes' && ch !== 'proficienciaBase' && ch !== 'proficiencias' && ch !== 'cores' && ch !== 'hierarquia' && ch !== 'dominios' && ch !== 'estetica' && ch !== 'labels' && ch !== 'pv' && ch !== 'pm' && ch !== 'multiplicadorVida' && ch !== 'multiplicadorMorte') {
+                // 🔥 NOVO: Ignorar as novas chaves no loop genérico para evitar sobreposição
+                if (dados[ch] !== undefined && ch !== 'esteticaGrimorio' && ch !== 'habilidades' && ch !== 'formas' && ch !== 'donoDaFicha' && ch !== 'ascensaoBase' && ch !== 'poderes' && ch !== 'divisores' && ch !== 'inventario' && ch !== 'ataquesElementais' && ch !== 'ataqueConfig' && ch !== 'avatar' && ch !== 'bio' && ch !== 'afinidades' && ch !== 'condicoes' && ch !== 'notas' && ch !== 'passivas' && ch !== 'seresSelados' && ch !== 'posicao' && ch !== 'iniciativa' && ch !== 'acoes' && ch !== 'proficienciaBase' && ch !== 'proficiencias' && ch !== 'cores' && ch !== 'hierarquia' && ch !== 'dominios' && ch !== 'estetica' && ch !== 'labels' && ch !== 'pv' && ch !== 'pm' && ch !== 'multiplicadorVida' && ch !== 'multiplicadorMorte') {
                     if (typeof fichaPadrao[ch] === 'object' && !Array.isArray(fichaPadrao[ch])) {
                         state.minhaFicha[ch] = Object.assign({}, fichaPadrao[ch], dados[ch]);
                         const numF = ['base', 'mBase', 'mGeral', 'mFormas', 'mAbsoluto', 'reducaoCusto', 'regeneracao', 'atual'];
