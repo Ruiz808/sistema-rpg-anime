@@ -87,14 +87,12 @@ const FundoAnimado = ({ tema, modoDesempenho }) => {
 // ==========================================
 
 export default function LobbyNeon() {
-    // 🔥 A MÁGICA: Extraímos o setMeuNome para forçar a identificação do jogador
     const { setMesaId, userLogado, setMeuNome } = useStore();
     
     const [codigoSala, setCodigoSala] = useState('');
     const [abaMesas, setAbaMesas] = useState('jogador');
     const [ping, setPing] = useState(12);
 
-    // ⚙️ ESTADOS DAS CONFIGURAÇÕES
     const [mostrarConfig, setMostrarConfig] = useState(false);
     const [temaAtivo, setTemaAtivo] = useState(localStorage.getItem('rpg_tema') || 'theme-cyber');
     const [fonteAtiva, setFonteAtiva] = useState(localStorage.getItem('rpg_fonte') || 'sans-serif');
@@ -106,7 +104,6 @@ export default function LobbyNeon() {
 
     const [canInstall, setCanInstall] = useState(!!window.deferredPrompt);
 
-    // 🔥 BLINDAGEM DE IDENTIDADE: Garante que as Fichas saibam de quem são!
     useEffect(() => {
         if (userLogado) {
             setMeuNome(userLogado);
@@ -142,9 +139,7 @@ export default function LobbyNeon() {
         localStorage.setItem('rpg_sfx', sfxAtivo);
     }, [temaAtivo, fonteAtiva, brilho, volumeGeral, modoDesempenho, sfxAtivo]);
 
-    const [minhasMesas, setMinhasMesas] = useState(() => {
-        try { return JSON.parse(localStorage.getItem('rpg_historico_mesas')) || []; } catch(e) { return []; }
-    });
+    const [minhasMesas, setMinhasMesas] = useState([]);
 
     const atualizarHistoricoNuvem = async (novaLista) => {
         setMinhasMesas(novaLista);
@@ -154,13 +149,32 @@ export default function LobbyNeon() {
         }
     };
 
+    // 🔥 O VERDADEIRO MOTOR DE FUSÃO DAS MESAS 🔥
     useEffect(() => {
         if (!userLogado) return;
-        const unsub = onValue(ref(db, `usuarios/${sanitizarNome(userLogado)}/historicoMesas`), (snap) => {
-            if (snap.exists()) {
-                setMinhasMesas(snap.val());
-                localStorage.setItem('rpg_historico_mesas', JSON.stringify(snap.val()));
+        const refHistorico = ref(db, `usuarios/${sanitizarNome(userLogado)}/historicoMesas`);
+        
+        const unsub = onValue(refHistorico, (snap) => {
+            let nuvemLista = snap.exists() ? snap.val() : [];
+            if (!Array.isArray(nuvemLista)) nuvemLista = Object.values(nuvemLista);
+
+            let localLista = [];
+            try { localLista = JSON.parse(localStorage.getItem('rpg_historico_mesas')) || []; } catch(e) {}
+
+            // Unifica Nuvem e LocalStorage, removendo IDs duplicados
+            const mapUnificado = new Map();
+            [...nuvemLista, ...localLista].forEach(m => {
+                if (m && m.id && !mapUnificado.has(m.id)) mapUnificado.set(m.id, m);
+            });
+            const listaUnificada = Array.from(mapUnificado.values()).slice(0, 10);
+
+            // Se o LocalStorage tiver mesas que a nuvem desconhece, forja-as na base de dados!
+            if (listaUnificada.length > nuvemLista.length) {
+                set(refHistorico, listaUnificada).catch(()=>{});
             }
+
+            setMinhasMesas(listaUnificada);
+            localStorage.setItem('rpg_historico_mesas', JSON.stringify(listaUnificada));
         });
         return () => unsub();
     }, [userLogado]);
@@ -168,7 +182,15 @@ export default function LobbyNeon() {
     const salvarNoHistorico = (id, nomePersonalizado = id, isMestreTable = false) => {
         let existing = minhasMesas.find(m => m.id === id);
         let finalName = existing ? existing.nome : nomePersonalizado;
-        atualizarHistoricoNuvem([{ id, nome: finalName, isMestre: isMestreTable }, ...minhasMesas.filter(m => m.id !== id)].slice(0, 5));
+        atualizarHistoricoNuvem([{ id, nome: finalName, isMestre: isMestreTable }, ...minhasMesas.filter(m => m.id !== id)].slice(0, 10));
+    };
+
+    // 🔥 A FUNÇÃO EM FALTA PARA APAGAR AS MESAS 🔥
+    const removerDoHistorico = (id, e) => {
+        e.stopPropagation();
+        if (!window.confirm('Esquecer as coordenadas desta mesa?')) return;
+        const novaLista = minhasMesas.filter(m => m.id !== id);
+        atualizarHistoricoNuvem(novaLista);
     };
 
     const criarMesa = async () => {
