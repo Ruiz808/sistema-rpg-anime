@@ -1,13 +1,8 @@
 import React from 'react';
 import { MapaFormProvider } from './MapaFormContext';
-import {
-    MapaDadoAnimado,
-    MapaFerramentasMestre,
-    MapaAreaCentral,
-    MapaRolagemRapida,
-    MapaIniciativaTracker,
-    MapaHologramaAcao,
-} from './MapaSubComponents';
+import { MapaDadoAnimado, MapaRolagemRapida, MapaIniciativaTracker, MapaHologramaAcao } from './MapaCombate';
+import { MapaFerramentasMestre } from './MapaFerramentasMestre';
+import { MapaAreaCentral } from './MapaGrelha';
 
 export default function MapaPanel({ className, children }) {
     const hasChildren = React.Children.count(children) > 0;
@@ -18,13 +13,17 @@ export default function MapaPanel({ className, children }) {
                 
                 {hasChildren ? children : (
                     <>
+                        {/* MÓDULO DE COMBATE E ROLAGEM */}
                         <MapaDadoAnimado />
                         
                         <div style={{ flex: '1 1 70%', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                            {/* MÓDULO DO MESTRE (ZONAS, CENAS, DUMMIES) */}
                             <MapaFerramentasMestre />
                             
+                            {/* MÓDULO VISUAL E COMUNICAÇÃO (GRELHA, 3D, VOZ E IA) */}
                             <MapaAreaCentral />
                             
+                            {/* MÓDULO DE COMBATE RÁPIDO */}
                             <MapaRolagemRapida />
                             <MapaIniciativaTracker />
                         </div>
