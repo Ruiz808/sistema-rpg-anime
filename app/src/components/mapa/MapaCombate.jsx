@@ -14,47 +14,137 @@ export function MapaDadoAnimado() {
     const mapaVisivel = painelMapa && (painelMapa.offsetWidth > 0 || painelMapa.offsetHeight > 0);
     const isAbaMapa = String(abaAtiva || '').toLowerCase().includes('map');
 
+    // Estados para controlar a física 2D do dado
+    const [pos, setPos] = React.useState({ x: -1000, y: -1000 });
+    const [rot, setRot] = React.useState(0);
+    const requestRef = React.useRef();
+    
+    // Velocidade inicial caótica
+    const vel = React.useRef({ 
+        vx: (Math.random() > 0.5 ? 1 : -1) * (20 + Math.random() * 15), 
+        vy: (Math.random() > 0.5 ? 1 : -1) * (20 + Math.random() * 15) 
+    });
+
+    React.useEffect(() => {
+        if (dadoAnim?.ativo && !dadoAnim.finalResult) {
+            // Nasce no centro da tela
+            let currentX = window.innerWidth / 2;
+            let currentY = window.innerHeight / 2;
+            let currentRot = 0;
+
+            const animate = () => {
+                currentX += vel.current.vx;
+                currentY += vel.current.vy;
+                currentRot += 25; // Velocidade do giro
+
+                const size = 150; // Tamanho do dado
+                
+                // Colisão Direita / Esquerda
+                if (currentX <= 0 || currentX >= window.innerWidth - size) {
+                    vel.current.vx *= -1; // Inverte e rebate!
+                    currentX = Math.max(0, Math.min(currentX, window.innerWidth - size));
+                }
+                // Colisão Cima / Baixo
+                if (currentY <= 0 || currentY >= window.innerHeight - size) {
+                    vel.current.vy *= -1; // Inverte e rebate!
+                    currentY = Math.max(0, Math.min(currentY, window.innerHeight - size));
+                }
+
+                setPos({ x: currentX, y: currentY });
+                setRot(currentRot);
+
+                requestRef.current = requestAnimationFrame(animate);
+            };
+            requestRef.current = requestAnimationFrame(animate);
+
+            return () => cancelAnimationFrame(requestRef.current);
+        }
+    }, [dadoAnim?.ativo, dadoAnim?.finalResult]);
+
     if (!dadoAnim?.ativo || (!mapaVisivel && !isAbaMapa)) return null;
+
+    const isLanded = !!dadoAnim.finalResult;
 
     return createPortal(
         <>
             <style dangerouslySetInnerHTML={{__html: `
-                @keyframes rolarDado {
-                    0% { transform: rotate(0deg) translate(0, 0); }
-                    25% { transform: rotate(90deg) translate(-50px, -50px); }
-                    50% { transform: rotate(180deg) translate(50px, -30px); }
-                    75% { transform: rotate(270deg) translate(-30px, 40px); }
-                    100% { transform: rotate(360deg) translate(0, 0); }
+                .dado-wrapper {
+                    position: fixed;
+                    width: 150px;
+                    height: 150px;
+                    z-index: 999999;
+                    pointer-events: none;
+                    /* Quando aterrar, faz o movimento suave para o centro! */
+                    transition: ${isLanded ? 'all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275)' : 'none'};
                 }
-                @keyframes impactoDado {
-                    0% { transform: scale(1.5) rotate(0deg); filter: drop-shadow(0 0 20px var(--dado-cor)); }
-                    50% { transform: scale(1.2) rotate(10deg); }
-                    100% { transform: scale(1) rotate(0deg); }
+                .dado-svg {
+                    width: 100%;
+                    height: 100%;
+                    transition: ${isLanded ? 'transform 0.6s ease-out' : 'none'};
                 }
-                .dado-rolando { animation: rolarDado 0.5s infinite linear; }
-                .dado-impacto { animation: impactoDado 0.3s ease-out forwards; }
+                .dado-landed-text {
+                    position: fixed;
+                    top: 65%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    z-index: 999999;
+                    animation: zoomInTexto 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+                }
+                @keyframes zoomInTexto {
+                    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+                    100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+                }
             `}} />
-            <div style={{
-                position: 'fixed', inset: 0, zIndex: 999999,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: 'rgba(0,0,0,0.6)' // Fundo levemente escuro para dar foco
-            }}>
-                <div 
-                    className={dadoAnim.finalResult ? 'dado-impacto' : 'dado-rolando'} 
-                    style={{ 
-                        '--dado-cor': dadoAnim.cor,
-                        width: '120px', height: '120px',
-                        background: 'white',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '40px', fontWeight: 'bold', color: dadoAnim.cor,
-                        borderRadius: '20px',
-                        border: `5px solid ${dadoAnim.cor}`,
-                        boxShadow: `0 0 30px ${dadoAnim.cor}`
-                    }}
+            
+            {/* O Fundo Escuro que só aparece quando o dado pára */}
+            {isLanded && <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(2px)', zIndex: 999998 }} />}
+
+            {/* A Caixa Física do Dado */}
+            <div 
+                className="dado-wrapper"
+                style={{ 
+                    left: isLanded ? '50%' : `${pos.x}px`, 
+                    top: isLanded ? '50%' : `${pos.y}px`,
+                    transform: isLanded ? 'translate(-50%, -50%) scale(1.5)' : 'none',
+                    filter: `drop-shadow(0 0 ${isLanded ? '40px' : '15px'} ${dadoAnim.cor})`
+                }}
+            >
+                <svg 
+                    className="dado-svg"
+                    viewBox="0 0 100 100" 
+                    style={{ transform: `rotate(${isLanded ? 0 : rot}deg)` }}
                 >
-                    {dadoAnim.numero}
-                </div>
+                    {/* Arestas do D20 */}
+                    <polygon points="50,5 95,30 95,75 50,95 5,75 5,30" fill="rgba(10,10,15,0.95)" stroke={dadoAnim.cor} strokeWidth="4" strokeLinejoin="round" />
+                    <polygon points="50,85 20,35 80,35" fill="none" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
+                    <line x1="50" y1="5" x2="20" y2="35" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
+                    <line x1="50" y1="5" x2="80" y2="35" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
+                    <line x1="95" y1="30" x2="80" y2="35" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
+                    <line x1="95" y1="75" x2="80" y2="35" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
+                    <line x1="95" y1="75" x2="50" y2="85" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
+                    <line x1="50" y1="95" x2="50" y2="85" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
+                    <line x1="5" y1="75" x2="50" y2="85" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
+                    <line x1="5" y1="75" x2="20" y2="35" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
+                    <line x1="5" y1="30" x2="20" y2="35" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
+                    
+                    {/* Número (O truque do -rot o mantém sempre de pé!) */}
+                    <text 
+                        x="50%" y="56%" 
+                        dominantBaseline="middle" textAnchor="middle" 
+                        fill="#fff" fontSize="32" fontWeight="bold" fontFamily="sans-serif"
+                        style={{ transform: `rotate(${isLanded ? 0 : -rot}deg)`, transformOrigin: '50% 50%' }} 
+                    >
+                        {dadoAnim.numero}
+                    </text>
+                </svg>
             </div>
+
+            {/* Texto Final (CRÍTICO, ROLADO, etc.) */}
+            {isLanded && (
+                <div className="dado-landed-text" style={{ color: dadoAnim.cor, fontSize: '3em', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '3px', textShadow: `0 0 30px ${dadoAnim.cor}` }}>
+                    {dadoAnim.cor === '#ff003c' ? 'CRÍTICO FATAL!' : dadoAnim.cor === '#ffcc00' ? 'CRÍTICO!' : dadoAnim.cor === '#660000' ? 'FALHA CRÍTICA' : 'ROLADO!'}
+                </div>
+            )}
         </>,
         document.body
     );
