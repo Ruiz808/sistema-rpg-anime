@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import useStore from '../../stores/useStore';
 import { useMapaForm, urlSeguraParaCss, calcularCA } from './MapaFormContext';
-import { salvarDummie, salvarFichaSilencioso } from '../../services/firebase-sync';
+import { salvarDummie, salvarFichaSilencioso, salvarCenarioCompleto } from '../../services/firebase-sync';
+import { getClassIconById } from '../../core/classIcons';
 
 export function MapaDadoAnimado() {
     const ctx = useMapaForm();
@@ -13,7 +14,7 @@ export function MapaDadoAnimado() {
     const mapaVisivel = painelMapa && (painelMapa.offsetWidth > 0 || painelMapa.offsetHeight > 0);
     const isAbaMapa = String(abaAtiva || '').toLowerCase().includes('map');
 
-    if (!dadoAnim.ativo || (!mapaVisivel && !isAbaMapa)) return null;
+    if (!dadoAnim?.ativo || (!mapaVisivel && !isAbaMapa)) return null;
 
     return createPortal(
         <>
@@ -144,8 +145,27 @@ export function MapaIniciativaTracker() {
         minhaFicha, iniciativaInput, setIniciativaInput, isMestre, sairDoCombate, encerrarCombate, 
         setMinhaIniciativa, avancarTurno, ordemIniciativa, turnoAtualIndex, jogadorHistory, 
         setJogadorHistory, feedCombate, getAvatarInfo, fmt, jogadorDaVez, infoDaVez, cenario,
-        todasEntidades, toggleVisibilidadeToken
+        jogadores, dummies, cenaRenderId
     } = ctx;
+
+    // 🔥 BLINDAGEM: Recria o "todasEntidades" localmente para a barra renderizar corretamente! 🔥
+    const todasEntidades = useMemo(() => {
+        const js = Object.entries(jogadores || {}).filter(([n, f]) => (f.posicao?.cenaId || 'default') === cenaRenderId).map(([n, f]) => ({ id: n, nome: n, ficha: f, isDummie: false, init: f.iniciativa || 0 }));
+        const ds = Object.entries(dummies || {}).filter(([id, d]) => (d.cenaId || 'default') === cenaRenderId).map(([id, d]) => ({ id, nome: d.nome, ficha: d, isDummie: true, init: d.iniciativa || 0 }));
+        return [...js, ...ds].sort((a, b) => b.init - a.init);
+    }, [jogadores, dummies, cenaRenderId]);
+
+    const toggleVisibilidadeToken = (e, idOuNome) => {
+        e.stopPropagation();
+        const novoCenario = JSON.parse(JSON.stringify(cenario || {}));
+        if (!novoCenario.tokensOcultos) novoCenario.tokensOcultos = [];
+        if (novoCenario.tokensOcultos.includes(idOuNome)) {
+            novoCenario.tokensOcultos = novoCenario.tokensOcultos.filter(t => t !== idOuNome);
+        } else {
+            novoCenario.tokensOcultos.push(idOuNome);
+        }
+        salvarCenarioCompleto(novoCenario);
+    };
 
     return (
         <div className="def-box" style={{ marginTop: 15, padding: 12 }}>
@@ -172,7 +192,7 @@ export function MapaIniciativaTracker() {
 
                         const info = getAvatarInfo(entidade.ficha);
                         const isRolled = entidade.init > 0;
-                        const isActive = isRolled && ordemIniciativa.length > 0 && (ordemIniciativa[turnoAtualIndex % ordemIniciativa.length]?.nome === entidade.nome);
+                        const isActive = isRolled && (ordemIniciativa || []).length > 0 && (ordemIniciativa[turnoAtualIndex % ordemIniciativa.length]?.nome === entidade.nome);
 
                         return (
                             <div key={entidade.id} style={{ position: 'relative' }}>
@@ -199,7 +219,7 @@ export function MapaIniciativaTracker() {
                         <button className="btn-neon btn-red" onClick={() => setJogadorHistory(null)} style={{ padding: '2px 8px', fontSize: '0.8em', margin: 0 }}>X</button>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 200, overflowY: 'auto' }}>
-                        {feedCombate.filter(f => f.nome === jogadorHistory).slice(-6).reverse().map((h, i) => (
+                        {(feedCombate || []).filter(f => f.nome === jogadorHistory).slice(-6).reverse().map((h, i) => (
                             <div key={i} style={{ fontSize: '0.85em', color: '#ccc', background: 'rgba(0,0,0,0.5)', padding: 8, borderRadius: 5, borderLeft: `3px solid ${h.tipo === 'dano' ? '#ff003c' : '#f90'}` }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}><strong style={{ color: h.tipo === 'dano' ? '#ff003c' : h.tipo === 'acerto' ? '#f90' : '#0088ff', textTransform: 'uppercase' }}>[{h.tipo}]</strong>{h.acertoTotal && <strong style={{ color: '#fff' }}>Total: {fmt(h.acertoTotal)}</strong>}{h.dano && <strong style={{ color: '#fff' }}>Dano: {fmt(h.dano)}</strong>}</div>
                             </div>
@@ -257,11 +277,103 @@ export function MapaRolagemRapida() {
 export function MapaHologramaAcao() {
     const ctx = useMapaForm();
     if (!ctx) return null;
-    const { ordemIniciativa, acaoExibir, nomeBase, fichaBase, infoBase, isGrand, isCandidato, grandIconUrl, customClassIcon, defaultClassSymbol, isCritNormal, isCritFatal, isFalha, isForaDeCombate, isForaDeTurno, corImpacto, corHeader, corTextoHeader, tituloImpacto, valorImpacto, fmt, classId } = ctx;
+    const { ordemIniciativa, feedCombate, feedIndexTurnoAtual, jogadorDaVez, jogadores, overridesCompendio, getAvatarInfo, fmt, meuNome, minhaFicha } = ctx;
 
-    const emCombate = ordemIniciativa.length > 0;
+    // 🔥 BLINDAGEM: Restaura a lógica de leitura do dano e da ação aqui dentro para não depender do Contexto e nunca "crashar"! 🔥
+    const feedSeguro = feedCombate || [];
+    const ordemSegura = ordemIniciativa || [];
+    const emCombate = ordemSegura.length > 0;
 
-    if (!emCombate && !acaoExibir) return <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontStyle: 'italic', border: '2px dashed #333', borderRadius: 8 }}>O campo de batalha aguarda...</div>;
+    const acaoNovaNoTurno = feedSeguro.length > feedIndexTurnoAtual ? feedSeguro[feedSeguro.length - 1] : null;
+    const acaoGeralForaDeCombate = feedSeguro.length > 0 ? feedSeguro[feedSeguro.length - 1] : null;
+    const acaoExibir = emCombate ? acaoNovaNoTurno : acaoGeralForaDeCombate;
+
+    if (!emCombate && !acaoExibir) {
+        return <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontStyle: 'italic', border: '2px dashed #333', borderRadius: 8 }}>O campo de batalha aguarda...</div>;
+    }
+
+    let nomeBase = jogadorDaVez ? jogadorDaVez.nome : (acaoExibir ? acaoExibir.nome : '');
+    let fichaBase = jogadorDaVez ? jogadorDaVez.ficha : (acaoExibir ? jogadores[acaoExibir.nome] : null);
+    let infoBase = getAvatarInfo(fichaBase);
+
+    let classId = fichaBase?.bio?.classe;
+    if ((classId === 'pretender' || classId === 'alterego') && fichaBase?.bio?.subClasse) classId = fichaBase?.bio?.subClasse;
+    let mesaBase = fichaBase?.bio?.mesa || 'presente';
+    
+    const isGrand = classId && overridesCompendio?.grands?.[`${classId}_${mesaBase}`] === nomeBase;
+    const listaCands = overridesCompendio?.grands?.[`${classId}_${mesaBase}_candidatos`] || [];
+    const isCandidato = classId && !isGrand && listaCands.includes(nomeBase);
+    const grandIconUrl = overridesCompendio?.grands?.[`${classId}_${mesaBase}_icone`];
+    const customClassIcon = classId ? overridesCompendio[classId]?.iconeUrl : null;
+    const defaultClassSymbol = getClassIconById(classId);
+
+    let isCritNormal = false, isCritFatal = false, isFalha = false;
+    if (acaoExibir && acaoExibir.rolagem && (acaoExibir.tipo === 'acerto' || acaoExibir.tipo === 'dano')) {
+        let maxDado = 0;
+        let regexStrong = /<strong>(\d+)<\/strong>/g;
+        let match;
+        while ((match = regexStrong.exec(acaoExibir.rolagem)) !== null) {
+            let v = parseInt(match[1]);
+            if (v > maxDado) maxDado = v;
+        }
+        if (maxDado === 0) {
+            let regexArr = /\[(.*?)\]/;
+            let mArr = regexArr.exec(acaoExibir.rolagem);
+            if (mArr) {
+                let clean = mArr[1].replace(/<[^>]*>?/gm, ''); 
+                let nums = clean.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n));
+                if (nums.length > 0) maxDado = Math.max(...nums);
+            }
+        }
+        const acCfg = fichaBase?.ataqueConfig || minhaFicha?.ataqueConfig || {};
+        const cNMin = acCfg.criticoNormalMin || 16, cNMax = acCfg.criticoNormalMax || 18;
+        const cFMin = acCfg.criticoFatalMin || 19, cFMax = acCfg.criticoFatalMax || 20;
+        
+        if (maxDado >= cFMin && maxDado <= cFMax) isCritFatal = true;
+        else if (maxDado >= cNMin && maxDado <= cNMax) isCritNormal = true;
+        else if (maxDado === 1) isFalha = true;
+
+        if (acaoExibir.tipo === 'dano') {
+            if (acaoExibir.armaStr?.includes('FATAL')) { isCritFatal = true; isCritNormal = false; }
+            else if (acaoExibir.armaStr?.includes('CRÍTICO')) { isCritNormal = true; isCritFatal = false; }
+        }
+    }
+
+    const isForaDeCombate = acaoExibir && emCombate && (!ordemSegura.find(j => j.nome === acaoExibir.nome));
+    const isForaDeTurno = acaoExibir && emCombate && !isForaDeCombate && acaoExibir.nome !== nomeBase;
+
+    let corImpacto = '#333', corHeader = '#00ffcc', corTextoHeader = '#000', tituloImpacto = 'AÇÃO', valorImpacto = 0;
+    if (acaoExibir) {
+        switch (acaoExibir.tipo) {
+            case 'dano': corImpacto = '#ff003c'; tituloImpacto = 'DANO'; valorImpacto = acaoExibir.dano; break;
+            case 'acerto': corImpacto = '#f90'; tituloImpacto = 'ACERTO'; valorImpacto = acaoExibir.acertoTotal; break;
+            case 'evasiva': corImpacto = '#0088ff'; tituloImpacto = 'ESQUIVA'; valorImpacto = acaoExibir.total; break;
+            case 'resistencia': corImpacto = '#ccc'; tituloImpacto = 'BLOQUEIO'; valorImpacto = acaoExibir.total; break;
+            case 'escudo': corImpacto = '#f0f'; tituloImpacto = 'ESCUDO'; valorImpacto = acaoExibir.escudoReduzido; break;
+            case 'sistema': corImpacto = '#ffcc00'; tituloImpacto = 'AVISO DO SISTEMA'; valorImpacto = 0; break;
+            default: break;
+        }
+    }
+
+    if (isCritFatal) { corImpacto = '#ff003c'; corHeader = '#ff003c'; corTextoHeader = '#fff'; tituloImpacto = '🔥 CRÍTICO FATAL 🔥'; }
+    else if (isCritNormal) { corImpacto = '#ffcc00'; corHeader = '#ffcc00'; corTextoHeader = '#000'; tituloImpacto = '⚡ CRÍTICO NORMAL ⚡'; }
+    else if (isFalha) { corImpacto = '#660000'; corHeader = '#660000'; corTextoHeader = '#ff003c'; tituloImpacto = '☠️ FALHA CRÍTICA ☠️'; }
+    else if (acaoExibir) {
+        corHeader = corImpacto; corTextoHeader = '#000';
+        if (acaoExibir.tipo === 'sistema' && acaoExibir.texto.includes('É a vez de')) {
+            tituloImpacto = `⚡ TURNO DE ${nomeBase} ⚡`;
+            corHeader = '#00ffcc';
+            corImpacto = '#00ffcc';
+        } else if (acaoExibir.tipo === 'sistema') {
+            tituloImpacto = 'AVISO DO SISTEMA';
+        } else if (jogadorDaVez && !isForaDeTurno && !isForaDeCombate) {
+            tituloImpacto = `TURNO DE ${nomeBase}`;
+        } else {
+            tituloImpacto = 'AÇÃO LIVRE';
+        }
+    } else {
+        tituloImpacto = `⚡ TURNO DE ${nomeBase} ⚡`;
+    }
 
     return (
         <div className="def-box" style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', border: isGrand ? `3px solid #ffcc00` : (isCandidato ? `2px solid #00ccff` : `2px solid ${corImpacto}`), boxShadow: isGrand ? `0 0 30px rgba(255,0,60,0.6), inset 0 0 20px rgba(255,204,0,0.3)` : (isCandidato ? `0 0 20px rgba(0,204,255,0.4)` : `0 0 20px ${corImpacto}40`) }}>
@@ -285,10 +397,12 @@ export function MapaHologramaAcao() {
                     </div>
                     {acaoExibir && (
                         <div style={{ padding: '20px', background: 'rgba(0,0,0,0.85)', textAlign: 'center', borderTop: `1px solid ${corImpacto}` }}>
-                            {isForaDeCombate && <div style={{ background: 'rgba(255,204,0,0.1)', color: '#ffcc00', border: '1px solid #ffcc00', padding: 4, fontSize: '0.8em', marginBottom: 10, borderRadius: 4 }}>⚠️ Fora de Combate</div>}
-                            {isForaDeTurno && <div style={{ background: 'rgba(255,0,60,0.1)', color: '#ff003c', border: '1px solid #ff003c', padding: 4, fontSize: '0.8em', marginBottom: 10, borderRadius: 4 }}>❌ Fora de Turno</div>}
+                            {isForaDeCombate && <div style={{ background: 'rgba(255,204,0,0.1)', color: '#ffcc00', border: '1px solid #ffcc00', padding: 4, fontSize: '0.8em', marginBottom: 10, borderRadius: 4 }}>⚠️ Rolagem Fora de Combate</div>}
+                            {isForaDeTurno && <div style={{ background: 'rgba(255,0,60,0.1)', color: '#ff003c', border: '1px solid #ff003c', padding: 4, fontSize: '0.8em', marginBottom: 10, borderRadius: 4 }}>❌ Ação Fora de Turno</div>}
                             
-                            <div style={{ fontSize: '0.9em', color: '#aaa', marginBottom: '5px', textTransform: 'uppercase' }}>{tituloImpacto} {(!isForaDeCombate && !isForaDeTurno && acaoExibir.tipo !== 'sistema') ? '' : `(${acaoExibir.nome})`}</div>
+                            <div style={{ fontSize: '0.9em', color: '#aaa', marginBottom: '5px', textTransform: 'uppercase' }}>
+                                {tituloImpacto} {(!isForaDeCombate && !isForaDeTurno && acaoExibir.tipo !== 'sistema') ? '' : `(${acaoExibir.nome})`}
+                            </div>
 
                             {acaoExibir.tipo === 'sistema' ? (
                                 <h2 style={{ margin: '15px 0', color: '#ffcc00', textShadow: '0 0 10px #ffcc00' }}>{acaoExibir.texto}</h2>
