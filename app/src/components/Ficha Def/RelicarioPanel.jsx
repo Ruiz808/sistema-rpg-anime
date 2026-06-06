@@ -74,16 +74,15 @@ export function RelicarioProvider({ children }) {
 
     const handleArrayItem = useCallback((chave, acao, index, campo, valor, subIndex = null, subCampo = null) => {
         updateFicha((ficha) => {
-            // Se for o bloco de notas
+            // 🔥 CORREÇÃO DE BLINDAGEM: Se "notas" for texto/undefined antigo, força a ser Array
             if (chave === 'notas') {
-                if (!ficha.notas) ficha.notas = [];
+                if (!Array.isArray(ficha.notas)) ficha.notas = [];
                 if (acao === 'add') ficha.notas.push({ id: Date.now(), titulo: '', texto: '' });
                 else if (acao === 'remove') ficha.notas.splice(index, 1);
-                else if (acao === 'update') ficha.notas[index][campo] = valor;
+                else if (acao === 'update' && ficha.notas[index]) ficha.notas[index][campo] = valor;
                 return;
             }
 
-            // Se for a Arma Espiritual
             if (!ficha.armaEspiritual) return;
             const target = ficha.armaEspiritual[chave];
             
@@ -104,7 +103,6 @@ export function RelicarioProvider({ children }) {
         callSave();
     }, [updateFicha, callSave]);
 
-    // Gestão de Itens por ID (Seguro para listas filtradas)
     const updateItemById = useCallback((id, campo, valor) => {
         updateFicha(f => { const i = f.inventario.find(x => x.id === id); if (i) i[campo] = valor; });
         callSave();
@@ -400,7 +398,6 @@ function PaginaArsenal() {
     const { minhaFicha, updateItemById, removeItemById, toggleEquiparById, addItem } = useRelicario();
     const inventario = minhaFicha?.inventario || [];
     
-    // Filtra apenas Armas, Armaduras e Acessórios
     const arsenal = inventario.filter(i => ['arma', 'armadura', 'acessorio'].includes(i.tipo));
 
     return (
@@ -471,8 +468,10 @@ function PaginaSuprimentos() {
     const { minhaFicha, updateItemById, removeItemById, addItem, handleArrayItem } = useRelicario();
     const inventario = minhaFicha?.inventario || [];
     
-    // Filtra apenas Consumíveis e Mundanos
     const suprimentos = inventario.filter(i => ['consumivel', 'mundano'].includes(i.tipo));
+
+    // 🔥 BLINDAGEM DO NOTAS PARA EVITAR CRASH 🔥
+    const notasArray = Array.isArray(minhaFicha?.notas) ? minhaFicha.notas : [];
 
     return (
         <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
@@ -520,14 +519,14 @@ function PaginaSuprimentos() {
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
-                    {(minhaFicha.notas || []).map((nota, i) => (
+                    {notasArray.map((nota, i) => (
                         <div key={nota.id} style={{ position: 'relative', background: 'rgba(0,0,0,0.05)', padding: '15px', borderRadius: '6px', borderTop: '3px solid currentColor', boxShadow: '2px 2px 10px rgba(0,0,0,0.1)' }}>
                             <button onClick={() => { if(window.confirm('Queimar folha?')) handleArrayItem('notas', 'remove', i); }} style={{ position: 'absolute', top: '5px', right: '5px', background: 'transparent', border: 'none', color: '#ff003c', cursor: 'pointer', fontWeight: 'bold' }}>✖</button>
                             <CampoMagico valor={nota.titulo} onChange={v => handleArrayItem('notas', 'update', i, 'titulo', v)} placeholder="Título da Nota (Ex: Pista do Dragão)" styleExtra={{ fontWeight: 'bold', fontSize: '1.1em', marginBottom: '10px', paddingRight: '20px' }} />
                             <AreaMagica valor={nota.texto} onChange={v => handleArrayItem('notas', 'update', i, 'texto', v)} placeholder="Escreva as suas descobertas, nomes de NPCs, charadas..." styleExtra={{ minHeight: '120px', fontSize: '0.9em', fontStyle: 'italic', background: 'transparent', border: 'none' }} />
                         </div>
                     ))}
-                    {(!minhaFicha.notas || minhaFicha.notas.length === 0) && <div style={{ textAlign: 'center', opacity: 0.5, fontStyle: 'italic', padding: '20px', gridColumn: '1 / -1' }}>Nenhuma anotação gravada neste diário.</div>}
+                    {notasArray.length === 0 && <div style={{ textAlign: 'center', opacity: 0.5, fontStyle: 'italic', padding: '20px', gridColumn: '1 / -1' }}>Nenhuma anotação gravada neste diário.</div>}
                 </div>
             </div>
 
