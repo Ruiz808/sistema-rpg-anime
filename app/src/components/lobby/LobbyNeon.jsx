@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ref, set, onValue } from 'firebase/database';
+import { ref, set, get } from 'firebase/database';
 import { db } from '../../services/firebase-config';
 import useStore, { sanitizarNome } from '../../stores/useStore';
 import { verificarMesaExistente, registrarNovaMesa, sairConta } from '../../services/firebase-sync';
@@ -104,6 +104,11 @@ export default function LobbyNeon() {
 
     const [canInstall, setCanInstall] = useState(!!window.deferredPrompt);
 
+    // 🔥 PREVENÇÃO CONTRA AMNÉSIA INICIAL 🔥
+    const [minhasMesas, setMinhasMesas] = useState(() => {
+        try { return JSON.parse(localStorage.getItem('rpg_historico_mesas')) || []; } catch(e) { return []; }
+    });
+
     useEffect(() => {
         if (userLogado) {
             setMeuNome(userLogado);
@@ -139,8 +144,6 @@ export default function LobbyNeon() {
         localStorage.setItem('rpg_sfx', sfxAtivo);
     }, [temaAtivo, fonteAtiva, brilho, volumeGeral, modoDesempenho, sfxAtivo]);
 
-    const [minhasMesas, setMinhasMesas] = useState([]);
-
     const atualizarHistoricoNuvem = async (novaLista) => {
         setMinhasMesas(novaLista);
         localStorage.setItem('rpg_historico_mesas', JSON.stringify(novaLista));
@@ -149,34 +152,37 @@ export default function LobbyNeon() {
         }
     };
 
-    // 🔥 O VERDADEIRO MOTOR DE FUSÃO DAS MESAS 🔥
+    // 🔥 O VERDADEIRO MOTOR DE FUSÃO BLINDADO 🔥
     useEffect(() => {
         if (!userLogado) return;
-        const refHistorico = ref(db, `usuarios/${sanitizarNome(userLogado)}/historicoMesas`);
-        
-        const unsub = onValue(refHistorico, (snap) => {
-            let nuvemLista = snap.exists() ? snap.val() : [];
-            if (!Array.isArray(nuvemLista)) nuvemLista = Object.values(nuvemLista);
+        const syncHistorico = async () => {
+            const refHistorico = ref(db, `usuarios/${sanitizarNome(userLogado)}/historicoMesas`);
+            try {
+                const snap = await get(refHistorico);
+                let nuvemLista = snap.exists() ? snap.val() : [];
+                if (!Array.isArray(nuvemLista)) nuvemLista = Object.values(nuvemLista);
 
-            let localLista = [];
-            try { localLista = JSON.parse(localStorage.getItem('rpg_historico_mesas')) || []; } catch(e) {}
+                setMinhasMesas(prevLocal => {
+                    const mapUnificado = new Map();
+                    // Prioriza a nuvem, mas adiciona os registos locais se existirem
+                    [...nuvemLista, ...prevLocal].forEach(m => {
+                        if (m && m.id && !mapUnificado.has(m.id)) mapUnificado.set(m.id, m);
+                    });
+                    const listaUnificada = Array.from(mapUnificado.values()).slice(0, 10);
 
-            // Unifica Nuvem e LocalStorage, removendo IDs duplicados
-            const mapUnificado = new Map();
-            [...nuvemLista, ...localLista].forEach(m => {
-                if (m && m.id && !mapUnificado.has(m.id)) mapUnificado.set(m.id, m);
-            });
-            const listaUnificada = Array.from(mapUnificado.values()).slice(0, 10);
-
-            // Se o LocalStorage tiver mesas que a nuvem desconhece, forja-as na base de dados!
-            if (listaUnificada.length > nuvemLista.length) {
-                set(refHistorico, listaUnificada).catch(()=>{});
+                    // Atualiza a Nuvem silenciosamente se juntarmos coisas locais novas
+                    if (listaUnificada.length > nuvemLista.length) {
+                        set(refHistorico, listaUnificada).catch(()=>{});
+                    }
+                    
+                    localStorage.setItem('rpg_historico_mesas', JSON.stringify(listaUnificada));
+                    return listaUnificada;
+                });
+            } catch (error) {
+                console.warn("A nuvem negou a leitura ou falhou. Mantendo os atalhos locais seguros.");
             }
-
-            setMinhasMesas(listaUnificada);
-            localStorage.setItem('rpg_historico_mesas', JSON.stringify(listaUnificada));
-        });
-        return () => unsub();
+        };
+        syncHistorico();
     }, [userLogado]);
 
     const salvarNoHistorico = (id, nomePersonalizado = id, isMestreTable = false) => {
@@ -185,7 +191,6 @@ export default function LobbyNeon() {
         atualizarHistoricoNuvem([{ id, nome: finalName, isMestre: isMestreTable }, ...minhasMesas.filter(m => m.id !== id)].slice(0, 10));
     };
 
-    // 🔥 A FUNÇÃO EM FALTA PARA APAGAR AS MESAS 🔥
     const removerDoHistorico = (id, e) => {
         e.stopPropagation();
         if (!window.confirm('Esquecer as coordenadas desta mesa?')) return;
