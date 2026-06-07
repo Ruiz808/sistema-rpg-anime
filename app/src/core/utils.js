@@ -4,10 +4,13 @@
 
 /**
  * Conta dígitos corretamente mesmo para números > 10^21.
- * Sem isso, String(1.23e+21) retorna "1.23e+21" (8 chars) em vez de 22 dígitos.
+ * Traduz a notação científica (1e+21) para o número real de dígitos (22).
  */
 export function contarDigitos(v) {
-    return (isFinite(v) && v > 0) ? Math.floor(Math.log10(v)) + 1 : 1;
+    if (!v || isNaN(v) || v <= 0) return 0;
+    
+    // Forma matemática exata e limpa:
+    return Math.floor(Math.log10(v)) + 1;
 }
 
 export function tratarUnico(t) {
@@ -25,6 +28,12 @@ export function pegarDoisPrimeirosDigitos(v) {
     let n = Math.floor(Math.abs(v || 0));
     if (n === 0) return 0;
     let str = String(n);
+    // Para resolver o antigo erro da Vida e Energias base a rebentar a escala de Vitalidade
+    if (str.includes('e')) {
+        const firstNums = str.split('e')[0].replace('.', '');
+        return parseInt(firstNums.substring(0, 2).padEnd(2, '0'));
+    }
+    
     if (str === "100" || str.startsWith("100")) return 100;
     return str.length <= 2 ? n : parseInt(str.substring(0, 2));
 }

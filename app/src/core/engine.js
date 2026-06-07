@@ -36,7 +36,6 @@ export function calcularCA(ficha, tipo) {
         somarBonus(resolved.efeitosPassivos);
     });
 
-    // 🔥 NOSSA INJEÇÃO ENTRA AQUI 🔥
     let totalBruto = Math.floor(base + bonus);
     return processarDefesaComCondicoes(ficha, tipo, totalBruto);
 }
@@ -105,7 +104,6 @@ function formatarRolagem(qtd, faces, rolls, soma) {
     return `${qtd}d${faces}: [${rolls.slice(0, 30).join(', ')}... +${(rolls.length - 30).toLocaleString('pt-BR')} dados] = ${soma}`;
 }
 
-// 🔥 NOVO: Aceita combustoesMultiplas para o Dano Inato 🔥
 function calcularSubDano({ qtdDados, facesDados, sels, combustaoPorEnergia, combustoesMultiplas, minhaFicha, mUnico }) {
     if (qtdDados <= 0) return { dano: 0, rolagem: '', rolagemValor: 0, somaTermos: 0, detalhesTermos: [] };
 
@@ -213,7 +211,7 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
     let drenosPorEnergia = {};
     let drenos = [];
     let custoTxt = [];
-    let innateNames = []; // Guarda as habilidades que custaram Zero
+    let innateNames = []; 
 
     function calcularDreno(energiaKey, custoPerc) {
         if (custoPerc <= 0) return { dreno: 0, combustao: 0 };
@@ -239,7 +237,6 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
         }
     }
 
-    // 🔥 NOVO: LÓGICA DE FUSÃO INATA (Custo Zero e 3 Energias) 🔥
     let skillCombustoes = {};
     for (let i = 0; i < configHabilidades.length; i++) {
         let hab = configHabilidades[i];
@@ -402,8 +399,18 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
     let total = Math.floor(somaDanos * multEfetivo);
     if (isNaN(total)) total = 0;
 
-    let letal = Math.max(0, contarDigitos(total) - 8) + iLetalidade;
-    let dRed = letal > 0 ? Math.floor(total / Math.pow(10, letal)) : total;
+    // 🔥 CORREÇÃO DE NOTAÇÃO CIENTÍFICA NO MOTOR PRINCIPAL 🔥
+    let digitosGerais = contarDigitos(total);
+
+    const letalidadeCalculada = Math.max(0, digitosGerais - 8) + Math.floor(iLetalidade);
+    const letalidadePorTamanho = Math.max(0, digitosGerais - 8);
+
+    let danoReduzido = total;
+    if (letalidadePorTamanho > 0) {
+        danoReduzido = Math.floor(total / Math.pow(10, letalidadePorTamanho));
+    } else {
+        danoReduzido = Math.floor(total);
+    }
 
     let txtEng = '';
     if (custoTxt.length > 0) {
@@ -466,7 +473,8 @@ export function calcularDano({ minhaFicha, configArma, configHabilidades, itensE
     else if (isCriticoNormal) armaStr += ` ⚡ CRÍTICO ⚡`;
 
     return {
-        dano: dRed, letalidade: letal,
+        dano: danoReduzido, 
+        letalidade: letalidadeCalculada,
         rolagem: rolagemTextoFinal || 'Nenhuma rolagem',
         rolagemMagica: "",
         atributosUsados: [...allAttrNames].join(' + '),
@@ -670,7 +678,6 @@ export function calcularMultiplicadorElemental(ficha, elementoAtaque) {
     return 1.0;
 }
 
-// 🔥 MOTOR DE EFICÁCIA DA CURA (COLE NO FINAL DO engine.js) 🔥
 export function calcularEficaciaCura(ficha) {
     if (!ficha) return 1.0;
     

@@ -25,7 +25,7 @@ export function useAtaqueForm() {
 export function AtaqueFormProvider({ children }) {
     const minhaFicha = useStore(s => s.minhaFicha);
     const meuNome = useStore(s => s.meuNome);
-    const personagens = useStore(s => s.personagens); // 🔥 Lê toda a mesa
+    const personagens = useStore(s => s.personagens); 
     const updateFicha = useStore(s => s.updateFicha);
     const setAbaAtiva = useStore(s => s.setAbaAtiva);
     const feedCombate = useStore(s => s.feedCombate);
@@ -60,7 +60,6 @@ export function AtaqueFormProvider({ children }) {
     const [customEnergiaTipo, setCustomEnergiaTipo] = useState('nenhum');
     const [customEnergiaCusto, setCustomEnergiaCusto] = useState(0);
 
-    // 🔥 LEITURA DINÂMICA DO COMPÊNDIO (VARREDURA GLOBAL) 🔥
     const overridesCompendio = useMemo(() => {
         let globais = { classes: {}, grands: {}, condicoes: {}, elementos: {}, regras: {} };
 
@@ -333,9 +332,23 @@ export function AtaqueFormProvider({ children }) {
             if (isNaN(resultadoFinal) || !isFinite(resultadoFinal)) throw new Error("Cálculo infinito");
 
             const letalExtra = parseInt(letalAtiva) || 0;
-            const digitosGerais = String(Math.floor(Math.abs(resultadoFinal))).length;
-            const letalidadeCalculada = Math.max(0, digitosGerais - 8) + letalExtra;
-            const danoReduzido = letalidadeCalculada > 0 ? Math.floor(resultadoFinal / Math.pow(10, letalidadeCalculada)) : Math.floor(resultadoFinal);
+            
+            // 🔥 CORREÇÃO: Leitura de Notação Científica para Dano Astronômico 🔥
+            let digitosGerais = 0;
+            const strNum = String(Math.floor(Math.abs(resultadoFinal)));
+            if (strNum.includes('e')) {
+                const parts = strNum.split('e');
+                digitosGerais = parseInt(parts[1].replace('+', '')) + 1;
+            } else {
+                digitosGerais = strNum.length;
+            }
+
+            const letalidadePorTamanho = Math.max(0, digitosGerais - 8);
+            const danoReduzido = letalidadePorTamanho > 0 
+                ? Math.floor(resultadoFinal / Math.pow(10, letalidadePorTamanho)) 
+                : Math.floor(resultadoFinal);
+
+            const letalidadeCalculada = letalidadePorTamanho + letalExtra;
 
             const percNum = parseFloat(custoAtiva) || 0;
             let logEnergia = '';
