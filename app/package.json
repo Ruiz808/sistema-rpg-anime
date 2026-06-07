@@ -21,8 +21,7 @@
       "output": "release"
     },
     "win": {
-      "target": "nsis",
-      "icon": "public/pwa-192x192.png"
+      "target": "nsis"
     },
     "nsis": {
       "oneClick": false,
