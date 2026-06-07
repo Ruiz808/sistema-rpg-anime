@@ -61,7 +61,6 @@ const NIVEIS_DOMINIO = {
     10: { nome: "Eterno", cor: "#ffcc00", desc: "Dano Incalculável | Apagamento Conceitual" }
 };
 
-// Adicionada a propriedade "cor" baseada no tema de cada quadrante
 const CATEGORIAS_DOMINIO = {
     'elementais': { titulo: 'Manipulação Elemental', icone: '🔥', cor: '#ff6600' },
     'mana': { titulo: 'Artes de Mana (Grimório)', icone: '🔮', cor: '#0088ff' },
@@ -75,7 +74,7 @@ const CATEGORIAS_DOMINIO = {
     'summons': { titulo: 'Contratos & Invocações', icone: '👹', cor: '#ffcc00' }
 };
 
-// Mapeamento dos predefinidos da Lore para o Dropdown
+// 🔥 LORE ATUALIZADA COM BASE NA SUA PRINT 🔥
 const PREDEFINIDOS_LORE = {
     elementais: [
         { label: 'Elementos Básicos', itens: ['Fogo', 'Raio', 'Agua', 'Vento', 'Terra'] },
@@ -84,7 +83,9 @@ const PREDEFINIDOS_LORE = {
         { label: 'Avançados Verdadeiros', itens: ['Solar Verdadeiro', 'Energia Verdadeira', 'Gelo Verdadeiro', 'Vacuo Verdadeiro', 'Natureza Verdadeira'] }
     ],
     mana: [
-        { label: 'Artes Mágicas Básicas', itens: ['Magia Branca', 'Magia Negra', 'Magia de Sangue', 'Necromancia', 'Ilusão', 'Gravidade'] }
+        { label: 'Magias de Ciclo', itens: ['Truques de Ciclo', 'Magias de 1º a 10º Ciclo'] },
+        { label: 'Magias Arcanas/Negras', itens: ['Truques Arcanos/Negras', 'Magias Arcanas/Negra de 1º a 10º Ciclo'] },
+        { label: 'Magias Ancestrais', itens: ['Truques Ancestrais', 'Magia de Sangue', 'Magia de Osso', 'Magia Draconica', 'Magia de Alma', 'Magia de Tempo', 'Magia de Gravidade', 'Magia Espacial', 'Magia de Borracha', 'Magia de Espelho', 'Magia de Sal', 'Magia de Tremor'] }
     ],
     chakra: [
         { label: 'Naturezas de Chakra', itens: ['Katon (Fogo)', 'Suiton (Água)', 'Doton (Terra)', 'Fuuton (Vento)', 'Raiton (Raio)'] },
@@ -96,6 +97,19 @@ const PREDEFINIDOS_LORE = {
     primordiais: [
         { label: 'Poderes Cósmicos', itens: ['Criação Constelar', 'Distorção Espacial', 'Manipulação do Tempo'] }
     ]
+};
+
+// Descobre o quadrante correto analisando as strings da Lore
+const encontrarCategoriaPorLore = (nome) => {
+    const nomeClean = String(nome || '').trim().toLowerCase();
+    for (const [catKey, grupos] of Object.entries(PREDEFINIDOS_LORE)) {
+        for (const grupo of grupos) {
+            if (grupo.itens.some(item => item.trim().toLowerCase() === nomeClean)) {
+                return catKey;
+            }
+        }
+    }
+    return null;
 };
 
 // ==========================================
@@ -260,55 +274,189 @@ const RadarDesenhado = ({ ficha, isAtual, corTinta = "#000000" }) => {
 };
 
 // ==========================================
-// 📜 O COMPONENTE: HIERARQUIA DE DOMÍNIOS (PÁGINA 3)
+// 📜 O COMPONENTE: HIERARQUIA DE DOMÍNIOS (ISOLADO E INTELIGENTE)
 // ==========================================
-const DominiosPanel = ({ ficha, updateFicha }) => {
-    const [inputs, setInputs] = useState({});
-    const [selects, setSelects] = useState({});
 
-    // Função para adicionar via Input customizado
-    const handleAdd = (catKey) => {
-        const val = inputs[catKey]?.trim();
-        if (!val) return;
+function QuadranteCategoria({ catKey, catData, dominiosSalvos, updateFicha }) {
+    const [selectValue, setSelectValue] = useState('');
+    const [inputValue, setInputValue] = useState('');
+
+    const corTema = catData.cor || '#ffffff';
+
+    // Distribuidor Dinâmico: Lê a base plana, filtra e descobre a aba automaticamente
+    const dominiosFiltrados = Object.entries(dominiosSalvos).filter(([nome, dados]) => {
+        if (!dados || typeof dados !== 'object') return false;
+        
+        const catAuto = encontrarCategoriaPorLore(nome);
+        if (catAuto) return catAuto === catKey; // Se encontrou na Lore, vai pra gaveta certa!
+        
+        // Se for customizado por input livre, segue a chave gravada ou cai na padrão (Elementais)
+        return dados.categoria === catKey || (!dados.categoria && catKey === 'elementais');
+    });
+
+    const handleAdd = (val) => {
+        const nome = val?.trim();
+        if (!nome) return;
         updateFicha(f => {
             if (!f.dominios) f.dominios = {};
-            if (!f.dominios[catKey]) f.dominios[catKey] = {};
-            f.dominios[catKey][val] = { nivel: 1 };
-        });
-        setInputs(prev => ({...prev, [catKey]: ''}));
-        callSave();
-    };
-
-    // Função para adicionar via Dropdown (Lore)
-    const handleAddSelect = (catKey) => {
-        const val = selects[catKey];
-        if (!val) return;
-        updateFicha(f => {
-            if (!f.dominios) f.dominios = {};
-            if (!f.dominios[catKey]) f.dominios[catKey] = {};
-            f.dominios[catKey][val] = { nivel: 1 };
-        });
-        setSelects(prev => ({...prev, [catKey]: ''}));
-        callSave();
-    };
-
-    const handleRemove = (catKey, nome) => {
-        if (!window.confirm(`Riscar o domínio [${nome}] das suas páginas?`)) return;
-        updateFicha(f => {
-            if (f.dominios && f.dominios[catKey]) delete f.dominios[catKey][nome];
-        });
-        callSave();
-    };
-
-    const handleChangeNivel = (catKey, nome, nivel) => {
-        updateFicha(f => {
-            if (f.dominios && f.dominios[catKey] && f.dominios[catKey][nome]) {
-                f.dominios[catKey][nome].nivel = parseInt(nivel);
+            if (!f.dominios[nome] || typeof f.dominios[nome] !== 'object') {
+                f.dominios[nome] = { nivel: 1, categoria: catKey };
+            } else {
+                f.dominios[nome].categoria = catKey; // Apenas move se já existir, não reseta o nível
             }
         });
         callSave();
+        setSelectValue(''); setInputValue('');
     };
 
+    const handleRemove = (nome) => {
+        if (!window.confirm(`Riscar o domínio [${nome}] das suas páginas?`)) return;
+        updateFicha(f => { if (f.dominios) delete f.dominios[nome]; });
+        callSave();
+    };
+
+    const handleChangeNivel = (nome, nivel) => {
+        updateFicha(f => { if (f.dominios && f.dominios[nome]) f.dominios[nome].nivel = parseInt(nivel); });
+        callSave();
+    };
+
+    const handleMove = (nome, newCat) => {
+        if (!newCat) return;
+        updateFicha(f => { if (f.dominios && f.dominios[nome]) f.dominios[nome].categoria = newCat; });
+        callSave();
+    };
+
+    return (
+        <div style={{ 
+            border: `1px solid ${corTema}`, padding: '20px', borderRadius: '8px', 
+            background: 'rgba(0,0,0,0.1)', position: 'relative', display: 'flex', flexDirection: 'column', gap: '12px',
+            boxShadow: `inset 0 0 15px ${corTema}10`
+        }}>
+            <h3 style={{ margin: '0 0 5px 0', fontSize: '1.25em', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', color: corTema }}>
+                <span>{catData.icone}</span> {catData.titulo}
+            </h3>
+            <div style={{ width: '100%', borderBottom: '1px dotted currentColor', opacity: 0.2, marginBottom: '5px' }} />
+
+            {/* 1. SELETOR DA LORE */}
+            <div style={{ display: 'flex', gap: '10px' }}>
+                <select
+                    value={selectValue}
+                    onChange={e => setSelectValue(e.target.value)}
+                    style={{ 
+                        flex: 1, background: '#0a0a0f', border: `1px solid ${corTema}`, color: '#fff', 
+                        padding: '10px', borderRadius: '4px', outline: 'none', fontFamily: 'inherit', fontSize: '0.95em' 
+                    }}
+                >
+                    <option value="">-- Escolher da Lore --</option>
+                    {(PREDEFINIDOS_LORE[catKey] || []).map(grupo => (
+                        <optgroup key={grupo.label} label={`— ${grupo.label} —`} style={{ color: '#fff', background: '#0a0a0f' }}>
+                            {grupo.itens.map(item => <option key={item} value={item}>{item}</option>)}
+                        </optgroup>
+                    ))}
+                </select>
+                <button 
+                    onClick={() => handleAdd(selectValue)} 
+                    style={{ 
+                        background: 'transparent', border: `1px solid ${corTema}`, color: corTema, cursor: 'pointer', 
+                        padding: '10px 20px', borderRadius: '4px', fontWeight: 'bold', textTransform: 'uppercase', fontFamily: 'inherit'
+                    }}
+                >
+                    ADICIONAR
+                </button>
+            </div>
+
+            {/* 2. INPUT DE CRIAÇÃO LIVRE */}
+            <div style={{ display: 'flex', gap: '10px' }}>
+                <input
+                    type="text"
+                    placeholder="Criar novo (Ex: Punho das Sombras)"
+                    value={inputValue}
+                    onChange={e => setInputValue(e.target.value)}
+                    style={{ 
+                        flex: 1, background: '#0a0a0f', border: '1px solid #ffcc00', color: '#fff', 
+                        padding: '10px', borderRadius: '4px', outline: 'none', fontFamily: 'inherit', fontSize: '0.95em' 
+                    }}
+                />
+                <button 
+                    onClick={() => handleAdd(inputValue)} 
+                    style={{ 
+                        background: 'transparent', border: '1px solid #ffcc00', color: '#ffcc00', cursor: 'pointer', 
+                        padding: '10px 20px', borderRadius: '4px', fontWeight: 'bold', textTransform: 'uppercase', 
+                        display: 'flex', alignItems: 'center', gap: '5px', fontFamily: 'inherit'
+                    }}
+                >
+                    + CRIAR
+                </button>
+            </div>
+
+            {/* 3. LISTA DE HABILIDADES ADICIONADAS */}
+            {dominiosFiltrados.length === 0 ? (
+                <div style={{ opacity: 0.3, fontStyle: 'italic', textAlign: 'center', padding: '15px 0', fontSize: '0.95em' }}>Nenhum registo ainda...</div>
+            ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '5px' }}>
+                    {dominiosFiltrados.map(([nomeDom, dadosDom]) => {
+                        const nivel = dadosDom?.nivel || 1;
+                        const infoNivel = NIVEIS_DOMINIO[nivel] || NIVEIS_DOMINIO[1];
+                        return (
+                            <div key={nomeDom} style={{ 
+                                padding: '14px', border: `1px solid ${corTema}`, background: '#050508', 
+                                borderRadius: '6px', position: 'relative', display: 'flex', flexDirection: 'column', gap: '6px'
+                            }}>
+                                <button 
+                                    onClick={() => handleRemove(nomeDom)} 
+                                    style={{ position: 'absolute', top: '10px', right: '12px', background: 'transparent', border: 'none', color: '#ff003c', fontSize: '1.3em', cursor: 'pointer', padding: '0', fontWeight: 'bold' }} 
+                                    title="Apagar Registo"
+                                >
+                                    ✖
+                                </button>
+                                
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingRight: '25px' }}>
+                                    <strong style={{ fontSize: '1.2em', textTransform: 'uppercase', letterSpacing: '1px', color: '#fff' }}>{nomeDom}</strong>
+                                    
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        {/* Dropdown de mover (SÓ aparece se for customizado e não vier da Lore Oficial) */}
+                                        {!encontrarCategoriaPorLore(nomeDom) && (
+                                            <select
+                                                value={dadosDom.categoria || catKey}
+                                                onChange={e => handleMove(nomeDom, e.target.value)}
+                                                style={{ background: '#0a0a0f', color: '#aaa', border: '1px dashed #444', borderRadius: '4px', padding: '4px 6px', fontSize: '0.85em', fontFamily: 'inherit', outline: 'none', cursor: 'pointer' }}
+                                                title="Mover para outro quadrante"
+                                            >
+                                                {Object.entries(CATEGORIAS_DOMINIO).map(([k, c]) => (
+                                                    <option key={k} value={k}>➔ {c.titulo.split(' ')[0]}</option>
+                                                ))}
+                                            </select>
+                                        )}
+
+                                        <select
+                                            value={nivel}
+                                            onChange={e => handleChangeNivel(nomeDom, e.target.value)}
+                                            style={{ 
+                                                background: '#0a0a0f', color: infoNivel.cor, border: `1px solid ${infoNivel.cor}`, 
+                                                borderRadius: '4px', padding: '4px 8px', fontFamily: 'inherit', outline: 'none', 
+                                                fontWeight: 'bold', fontSize: '0.9em', cursor: 'pointer' 
+                                            }}
+                                        >
+                                            {Object.entries(NIVEIS_DOMINIO).map(([n, d]) => (
+                                                <option key={n} value={n} style={{ background: '#0a0a0f', color: '#fff' }}>Lv {n} - {d.nome}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div style={{ fontSize: '0.9em', fontStyle: 'italic', color: '#ccc' }}>
+                                    <span style={{ color: infoNivel.cor, fontWeight: 'bold' }}>⚡ :</span> {infoNivel.desc}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+
+const DominiosPanel = ({ ficha, updateFicha }) => {
     const dominiosSalvos = ficha?.dominios || {};
 
     return (
@@ -320,99 +468,16 @@ const DominiosPanel = ({ ficha, updateFicha }) => {
                 <p style={{ opacity: 0.7, fontStyle: 'italic', marginTop: '5px' }}>O Conhecimento Absoluto das Artes Místicas e Marciais</p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '25px' }}>
-                {Object.entries(CATEGORIAS_DOMINIO).map(([catKey, catData]) => {
-                    const listaDestaCategoria = dominiosSalvos[catKey] || {};
-                    const nomes = Object.keys(listaDestaCategoria);
-                    const corTema = catData.cor;
-
-                    return (
-                        <div key={catKey} style={{ 
-                            border: `1px solid ${corTema}`, borderStyle: 'double',
-                            padding: '20px', borderRadius: '8px', 
-                            background: 'rgba(0,0,0,0.05)', position: 'relative',
-                            boxShadow: `inset 0 0 20px ${corTema}10`
-                        }}>
-                            <h3 style={{ margin: '0 0 15px 0', fontSize: '1.2em', borderBottom: `1px dotted ${corTema}`, paddingBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px', color: corTema }}>
-                                <span>{catData.icone}</span> {catData.titulo}
-                            </h3>
-
-                            {/* DROPDOWN DE LORE */}
-                            <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-                                <select
-                                    value={selects[catKey] || ''}
-                                    onChange={e => setSelects({...selects, [catKey]: e.target.value})}
-                                    style={{ flex: 1, background: 'rgba(0,0,0,0.7)', border: `1px solid ${corTema}`, color: '#fff', padding: '8px', borderRadius: '4px', outline: 'none', fontFamily: 'inherit' }}
-                                >
-                                    <option value="">-- Escolher da Lore --</option>
-                                    {(PREDEFINIDOS_LORE[catKey] || []).map(grupo => (
-                                        <optgroup key={grupo.label} label={`— ${grupo.label} —`} style={{ color: corTema }}>
-                                            {grupo.itens.map(item => <option key={item} value={item} style={{ color: '#fff' }}>{item}</option>)}
-                                        </optgroup>
-                                    ))}
-                                </select>
-                                <button onClick={() => handleAddSelect(catKey)} style={{ background: 'transparent', border: `1px solid ${corTema}`, color: corTema, cursor: 'pointer', padding: '8px 15px', borderRadius: '4px', fontWeight: 'bold', textTransform: 'uppercase' }}>
-                                    Adicionar
-                                </button>
-                            </div>
-
-                            {/* INPUT PARA CRIAR NOVO */}
-                            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-                                <input
-                                    type="text"
-                                    placeholder="Criar novo (Ex: Punho das Sombras)"
-                                    value={inputs[catKey] || ''}
-                                    onChange={e => setInputs({...inputs, [catKey]: e.target.value})}
-                                    style={{ flex: 1, background: 'rgba(0,0,0,0.7)', border: '1px solid #ffcc00', color: '#fff', padding: '8px', borderRadius: '4px', outline: 'none', fontFamily: 'inherit' }}
-                                />
-                                <button onClick={() => handleAdd(catKey)} style={{ background: 'transparent', border: '1px solid #ffcc00', color: '#ffcc00', cursor: 'pointer', padding: '8px 15px', borderRadius: '4px', fontWeight: 'bold', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                    <span style={{ fontSize: '1.2em' }}>+</span> Criar
-                                </button>
-                            </div>
-
-                            {/* QUADRANTES / LISTA DE CARDS ADICIONADOS */}
-                            {nomes.length === 0 ? (
-                                <div style={{ opacity: 0.4, fontStyle: 'italic', textAlign: 'center', padding: '10px 0', fontSize: '0.9em' }}>Nenhum registo ainda...</div>
-                            ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                    {nomes.map(nomeDom => {
-                                        const nivel = listaDestaCategoria[nomeDom]?.nivel || 1;
-                                        const infoNivel = NIVEIS_DOMINIO[nivel] || NIVEIS_DOMINIO[1];
-                                        return (
-                                            <div key={nomeDom} style={{ 
-                                                padding: '12px', 
-                                                border: `1px solid ${infoNivel.cor}`, 
-                                                background: 'rgba(0,0,0,0.85)', 
-                                                borderRadius: '6px',
-                                                position: 'relative'
-                                            }}>
-                                                <button onClick={() => handleRemove(catKey, nomeDom)} style={{ position: 'absolute', top: '5px', right: '5px', background: 'transparent', border: 'none', color: '#ff003c', fontSize: '1.2em', cursor: 'pointer', padding: 0, fontWeight: 'bold' }} title="Apagar Registo">✖</button>
-                                                
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', paddingRight: '20px' }}>
-                                                    <strong style={{ fontSize: '1.1em', textTransform: 'uppercase', letterSpacing: '1px', color: '#fff' }}>{nomeDom}</strong>
-                                                    
-                                                    <select
-                                                        value={nivel}
-                                                        onChange={e => handleChangeNivel(catKey, nomeDom, e.target.value)}
-                                                        style={{ background: 'transparent', color: infoNivel.cor, border: `1px solid ${infoNivel.cor}`, borderRadius: '4px', padding: '2px 6px', fontFamily: 'inherit', outline: 'none', fontWeight: 'bold', fontSize: '0.85em', cursor: 'pointer' }}
-                                                    >
-                                                        {Object.entries(NIVEIS_DOMINIO).map(([n, d]) => (
-                                                            <option key={n} value={n} style={{ background: '#111', color: '#fff' }}>Lv {n} - {d.nome}</option>
-                                                        ))}
-                                                    </select>
-                                                </div>
-
-                                                <div style={{ fontSize: '0.85em', fontStyle: 'italic', color: '#ccc' }}>
-                                                    <span style={{ color: infoNivel.cor, fontWeight: 'bold' }}>⚡ :</span> {infoNivel.desc}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
-                    );
-                })}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '25px' }}>
+                {Object.entries(CATEGORIAS_DOMINIO).map(([catKey, catData]) => (
+                    <QuadranteCategoria 
+                        key={catKey} 
+                        catKey={catKey} 
+                        catData={catData} 
+                        dominiosSalvos={dominiosSalvos} 
+                        updateFicha={updateFicha} 
+                    />
+                ))}
             </div>
         </div>
     );
