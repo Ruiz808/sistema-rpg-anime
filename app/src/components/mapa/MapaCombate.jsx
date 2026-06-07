@@ -10,55 +10,114 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
 // ============================================================================
-// 🎲 MOTOR 3D DO DADO D20
+// 🎲 MOTOR 3D DO DADO D20 (REFATORADO PARA ALTO REALISMO)
 // ============================================================================
 function DadoFisico3D({ isLanded, cor }) {
     const meshRef = useRef();
 
+    // Gera uma textura procedimental de relevo (Bump Map) para simular microimperfeições,
+    // granulação de resina pesada e pequenos arranhões de impacto físico na superfície.
+    const bumpTexture = useMemo(() => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 512;
+        const ctx = canvas.getContext('2d');
+        
+        // Base cinza neutra (sem alteração de relevo profundo)
+        ctx.fillStyle = '#808080';
+        ctx.fillRect(0, 0, 512, 512);
+        
+        // Adiciona microgranulação de alta frequência textura de metal/resina áspera
+        for (let i = 0; i < 4000; i++) {
+            const x = Math.random() * 512;
+            const y = Math.random() * 512;
+            const tomCinza = Math.floor(Math.random() * 30) + 110;
+            ctx.fillStyle = `rgb(${tomCinza},${tomCinza},${tomCinza})`;
+            ctx.fillRect(x, y, 1, 1);
+        }
+        
+        // Adiciona micro-ranhuras lineares para simular desgaste e marcas de combate
+        for (let i = 0; i < 35; i++) {
+            ctx.strokeStyle = `rgba(255, 255, 255, ${Math.random() * 0.15})`;
+            ctx.lineWidth = Math.random() * 1.5 + 0.5;
+            ctx.beginPath();
+            const x = Math.random() * 512;
+            const y = Math.random() * 512;
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + (Math.random() - 0.5) * 40, y + (Math.random() - 0.5) * 40);
+            ctx.stroke();
+        }
+        
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        return tex;
+    }, []);
+
     useFrame((state, delta) => {
         if (!meshRef.current) return;
         if (!isLanded) {
-            // Rotação caótica durante o voo
-            meshRef.current.rotation.x += delta * 12;
-            meshRef.current.rotation.y += delta * 16;
-            meshRef.current.rotation.z += delta * 8;
+            // Rotação tridimensional caótica simétrica durante o voo de arremesso
+            meshRef.current.rotation.x += delta * 13;
+            meshRef.current.rotation.y += delta * 17;
+            meshRef.current.rotation.z += delta * 9;
         } else {
-            // Estabiliza suavemente num ângulo estético quando aterra
-            meshRef.current.rotation.x = THREE.MathUtils.lerp(meshRef.current.rotation.x, 0.4, 0.1);
-            meshRef.current.rotation.y = THREE.MathUtils.lerp(meshRef.current.rotation.y, 0.5, 0.1);
-            meshRef.current.rotation.z = THREE.MathUtils.lerp(meshRef.current.rotation.z, 0, 0.1);
+            // Assentamento físico suave e inclinação estética realista ao parar
+            meshRef.current.rotation.x = THREE.MathUtils.lerp(meshRef.current.rotation.x, 0.38, 0.08);
+            meshRef.current.rotation.y = THREE.MathUtils.lerp(meshRef.current.rotation.y, 0.48, 0.08);
+            meshRef.current.rotation.z = THREE.MathUtils.lerp(meshRef.current.rotation.z, 0.02, 0.08);
         }
     });
 
+    const isCritFatal = cor === '#ff003c';
+    const isCritNormal = cor === '#ffcc00';
+    const glowIntensity = isCritFatal ? 1.8 : isCritNormal ? 1.0 : 0.3;
+
     return (
         <group>
-            {/* Iluminação Ambiente e Focos de Luz */}
-            <ambientLight intensity={0.8} />
-            <directionalLight position={[10, 20, 10]} intensity={2} castShadow />
-            <pointLight position={[-10, -10, -10]} intensity={1} color={cor} />
+            {/* 💡 ESTÚDIO DE ILUMINAÇÃO DE TRÊS PONTOS (MÁXIMO DESTAQUE DE FACETAS) */}
+            <ambientLight intensity={0.25} />
+            
+            {/* Luz Direcional Principal (Key Light) - Cria brilhos intensos e sombras vincadas */}
+            <directionalLight position={[12, 20, 10]} intensity={3.8} castShadow />
+            
+            {/* Luz de Preenchimento (Fill Light) - Suaviza contrastes sem perder o tom sombrio */}
+            <directionalLight position={[-12, 6, -6]} intensity={1.5} color="#484d6d" />
+            
+            {/* Luz de Contra-Borda (Rim Light) - Desenha o contorno do dado contra o cenário de fundo */}
+            <directionalLight position={[0, -15, -12]} intensity={2.2} color={cor} />
+            
+            {/* Ponto de Luz Interno (Núcleo de Energia) - Vazamento luminoso de relíquia pelas fendas */}
+            <pointLight position={[0, 0, 0]} intensity={glowIntensity * 4} color={cor} distance={10} />
             
             <mesh ref={meshRef} castShadow receiveShadow>
-                {/* Geometria do D20 */}
+                {/* Geometria Base do d20 */}
                 <icosahedronGeometry args={[2.8, 0]} />
                 
-                {/* Material Físico (Aparencia de Metal / Resina Escura) */}
+                {/* Material Físico Premium (Estilo Aço Balístico / Polímero Obsidiana) */}
                 <meshPhysicalMaterial 
-                    color="#111115"
-                    emissive={cor}
-                    emissiveIntensity={0.2}
-                    roughness={0.1}
-                    metalness={0.8}
-                    clearcoat={1}
-                    clearcoatRoughness={0.1}
-                    polygonOffset
-                    polygonOffsetFactor={1}
+                    color="#08080c"                     // Base escura de altíssima absorção de luz
+                    emissive={cor}                      // Reação cromática dinâmica baseada no resultado
+                    emissiveIntensity={glowIntensity}
+                    roughness={0.16}                    // Base altamente polida para refletir focos de luz
+                    metalness={0.96}                    // Comportamento estritamente reflexivo e metálico
+                    bumpMap={bumpTexture}               // Injeção física de micro-ranhuras e texturas de uso
+                    bumpScale={0.012}                   // Relevo sutil perceptível apenas sob luz direta
+                    clearcoat={1.0}                     // Camada espessa de verniz vítreo automotivo por cima
+                    clearcoatRoughness={0.02}           // Brilho externo espelhado sem imperfeições na resina
+                    reflectivity={1.0}
                 />
                 
-                {/* Arestas Metálicas/Brilhantes (A cor muda consoante é crítico/falha) */}
-                <lineSegments>
-                    <edgesGeometry args={[new THREE.IcosahedronGeometry(2.8, 0)]} />
-                    <lineBasicMaterial color={cor} linewidth={3} />
-                </lineSegments>
+                {/* Arestas Volumétricas Sincronizadas - Substitui linhas retas por uma malha de brilho tridimensional */}
+                <mesh scale={[1.003, 1.003, 1.003]}>
+                    <icosahedronGeometry args={[2.8, 0]} />
+                    <meshBasicMaterial 
+                        color={cor} 
+                        wireframe 
+                        transparent 
+                        opacity={isCritFatal ? 0.85 : isCritNormal ? 0.6 : 0.35} 
+                    />
+                </mesh>
             </mesh>
         </group>
     );
@@ -73,7 +132,6 @@ export function MapaDadoAnimado() {
     const mapaVisivel = painelMapa && (painelMapa.offsetWidth > 0 || painelMapa.offsetHeight > 0);
     const isAbaMapa = String(abaAtiva || '').toLowerCase().includes('map');
 
-    // Estados para controlar a física de ressalto na tela
     const [pos, setPos] = useState({ x: -1000, y: -1000 });
     const requestRef = useRef();
     const vel = useRef({ 
@@ -91,7 +149,6 @@ export function MapaDadoAnimado() {
                 currentY += vel.current.vy;
                 const size = 150; 
                 
-                // Colisões e Ressaltos nas paredes da tela
                 if (currentX <= 0 || currentX >= window.innerWidth - size) {
                     vel.current.vx *= -1; 
                     currentX = Math.max(0, Math.min(currentX, window.innerWidth - size));
@@ -123,7 +180,6 @@ export function MapaDadoAnimado() {
                     height: 150px;
                     z-index: 999999;
                     pointer-events: none;
-                    /* Voo para o centro quando para de rolar */
                     transition: ${isLanded ? 'all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275)' : 'none'};
                 }
                 .dado-landed-text {
@@ -140,36 +196,31 @@ export function MapaDadoAnimado() {
                 }
             `}} />
             
-            {/* O Fundo Escuro que só aparece quando o dado pára */}
-            {isLanded && <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(2px)', zIndex: 999998 }} />}
+            {isLanded && <div style={{ position: 'fixed', inset: 0, background: 'rgba(2,2,4,0.75)', backdropFilter: 'blur(3px)', zIndex: 999998 }} />}
 
-            {/* A Caixa Física do Dado */}
             <div 
                 className="dado-wrapper"
                 style={{ 
                     left: isLanded ? '50%' : `${pos.x}px`, 
                     top: isLanded ? '50%' : `${pos.y}px`,
-                    transform: isLanded ? 'translate(-50%, -50%) scale(1.5)' : 'none',
-                    filter: `drop-shadow(0 0 ${isLanded ? '40px' : '15px'} ${dadoAnim.cor})`
+                    transform: isLanded ? 'translate(-50%, -50%) scale(1.65)' : 'none',
+                    filter: `drop-shadow(0 0 ${isLanded ? '50px' : '20px'} ${dadoAnim.cor})`
                 }}
             >
-                {/* RENDERIZADOR 3D FÍSICO (DREI/FIBER) */}
                 <Canvas camera={{ position: [0, 0, 8], fov: 50 }} style={{ width: '100%', height: '100%' }}>
                     <DadoFisico3D isLanded={isLanded} cor={dadoAnim.cor} />
                 </Canvas>
                 
-                {/* O NÚMERO HOLOGRÁFICO QUE FICA DE PÉ FRENTE AO DADO */}
                 <div style={{
                     position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                    color: '#fff', fontSize: '45px', fontWeight: '900', fontFamily: 'sans-serif',
-                    textShadow: `0 0 10px ${dadoAnim.cor}, 2px 2px 0 #000, -2px -2px 0 #000`,
+                    color: '#fff', fontSize: '46px', fontWeight: '900', fontFamily: 'sans-serif',
+                    textShadow: `0 0 12px ${dadoAnim.cor}, 2px 2px 0 #000, -2px -2px 0 #000`,
                     pointerEvents: 'none', zIndex: 10
                 }}>
                     {dadoAnim.numero}
                 </div>
             </div>
 
-            {/* Texto Final de Impacto (CRÍTICO, ROLADO, etc.) */}
             {isLanded && (
                 <div className="dado-landed-text" style={{ color: dadoAnim.cor, fontSize: '3em', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '3px', textShadow: `0 0 30px ${dadoAnim.cor}` }}>
                     {dadoAnim.cor === '#ff003c' ? 'CRÍTICO FATAL!' : dadoAnim.cor === '#ffcc00' ? 'CRÍTICO!' : dadoAnim.cor === '#660000' ? 'FALHA CRÍTICA' : 'ROLADO!'}
@@ -181,9 +232,8 @@ export function MapaDadoAnimado() {
 }
 
 // ============================================================================
-// 🔥 O RESTO DO MÓDULO (INTACTO)
+// O RESTO DO MÓDULO DE COMBATE
 // ============================================================================
-
 export function MapaEconomiaAcoes() {
     const ctx = useMapaForm();
     if (!ctx) return null;
@@ -314,7 +364,7 @@ export function MapaIniciativaTracker() {
 
                         const info = getAvatarInfo(entidade.ficha);
                         const isRolled = entidade.init > 0;
-                        const isActive = isRolled && (ordemIniciativa || []).length > 0 && (ordemIniciativa[turnoAtualIndex % ordemIniciativa.length]?.nome === entidade.nome);
+                        const isActive = isRolled && (ordemIniciativa || []).length > 0 && (ordemIniciativa[turnoAtualIndex % ordemIniciativa.length]?.nome === Granny || ordemIniciativa[turnoAtualIndex % ordemIniciativa.length]?.nome === entidade.nome);
 
                         return (
                             <div key={entidade.id} style={{ position: 'relative' }}>
@@ -325,7 +375,7 @@ export function MapaIniciativaTracker() {
                                     backgroundImage: urlSeguraParaCss(info.img) || 'none', backgroundSize: 'cover', backgroundPosition: 'top center', 
                                     display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.7em', color: 'white', textShadow: '1px 1px 2px black' 
                                 }}>{!info.img && entidade.nome.charAt(0)}</div>
-                                {isMestre && <button onClick={(e) => toggleVisibilidadeToken(e, entidade.id)} style={{ position: 'absolute', top: -5, right: -5, background: isOculto ? '#ff003c' : '#000', borderRadius: '50%', padding: '2px 4px', fontSize: '10px', cursor: 'pointer', border: '1px solid #fff' }}>{isOculto ? '👻' : '👁️'}</button>}
+                                {isMestre && <button onClick={(e) => toggleVisibilidadeToken(e, dynamicTokenId => toggleVisibilidadeToken(e, entidade.id))} style={{ position: 'absolute', top: -5, right: -5, background: isOculto ? '#ff003c' : '#000', borderRadius: '50%', padding: '2px 4px', fontSize: '10px', cursor: 'pointer', border: '1px solid #fff' }}>{isOculto ? '👻' : '👁️'}</button>}
                             </div>
                         );
                     })
