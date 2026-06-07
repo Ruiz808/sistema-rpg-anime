@@ -364,8 +364,7 @@ export function MapaIniciativaTracker() {
 
                         const info = getAvatarInfo(entidade.ficha);
                         const isRolled = entidade.init > 0;
-                        const isActive = isRolled && (ordemIniciativa || []).length > 0 && (ordemIniciativa[turnoAtualIndex % ordemIniciativa.length]?.nome === Granny || ordemIniciativa[turnoAtualIndex % ordemIniciativa.length]?.nome === entidade.nome);
-
+                        const isActive = isRolled && (ordemIniciativa || []).length > 0 && (ordemIniciativa[turnoAtualIndex % ordemIniciativa.length]?.nome === entidade.nome);
                         return (
                             <div key={entidade.id} style={{ position: 'relative' }}>
                                 <div onClick={() => setJogadorHistory(entidade.nome)} style={{ 
