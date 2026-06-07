@@ -28,6 +28,7 @@ export const CATEGORIAS_DOMINIO = {
     'summons': { titulo: 'Contratos & Invocações', icone: '👹', cor: '#ffcc00' }
 };
 
+// 🔥 LORE ATUALIZADA (Idêntica à Print 3) 🔥
 export const PREDEFINIDOS_LORE = {
     elementais: [
         { label: 'Elementos Básicos', itens: ['Fogo', 'Raio', 'Agua', 'Vento', 'Terra'] },
@@ -35,8 +36,9 @@ export const PREDEFINIDOS_LORE = {
         { label: 'Elementos Avançados', itens: ['Solar', 'Energia', 'Gelo', 'Vacuo', 'Natureza'] }
     ],
     mana: [
-        { label: 'Artes Mágicas Básicas', itens: ['Magia Branca', 'Magia Negra', 'Magia de Sangue', 'Necromancia', 'Ilusão', 'Gravidade'] },
-        { label: 'Mágicas Avançadas', itens: ['Magia Espacial', 'Magia Temporal', 'Magia de Selamento'] }
+        { label: 'Magias de Ciclo', itens: ['Truques de Ciclo', 'Magias de 1º a 10º Ciclo'] },
+        { label: 'Magias Arcanas/Negras', itens: ['Truques Arcanos/Negras', 'Magias Arcanas/Negra de 1º a 10º Ciclo'] },
+        { label: 'Magias Ancestrais', itens: ['Truques Ancestrais', 'Magia de Sangue', 'Magia de Osso', 'Magia Draconica', 'Magia de Alma', 'Magia de Tempo', 'Magia de Gravidade', 'Magia Espacial', 'Magia de Borracha', 'Magia de Espelho', 'Magia de Sal', 'Magia de Tremor'] }
     ],
     chakra: [
         { label: 'Naturezas de Chakra', itens: ['Katon (Fogo)', 'Suiton (Água)', 'Doton (Terra)', 'Fuuton (Vento)', 'Raiton (Raio)'] }
@@ -61,14 +63,12 @@ export function MarcadosFormProvider({ children }) {
 
     const callSave = useCallback(() => { salvarFichaSilencioso(); }, []);
 
-    // Função unificada e 100% isolada para adicionar
     const handleAddDominio = useCallback((catKey, val) => {
         const nome = val?.trim();
         if (!nome) return;
         updateFicha(f => {
             if (!f.dominios) f.dominios = {};
             if (!f.dominios[catKey]) f.dominios[catKey] = {};
-            // Só adiciona se não existir, evitando resetar o nível sem querer
             if (!f.dominios[catKey][nome]) {
                 f.dominios[catKey][nome] = { nivel: 1 };
             }
@@ -93,15 +93,12 @@ export function MarcadosFormProvider({ children }) {
         callSave();
     }, [updateFicha, callSave]);
 
-    // O "Santuário de Correção" - Move dados antigos para o lugar certo
     const handleMoveDominio = useCallback((oldCat, newCat, nome) => {
         if (!newCat || oldCat === newCat) return;
         updateFicha(f => {
             if (!f.dominios) f.dominios = {};
             if (!f.dominios[newCat]) f.dominios[newCat] = {};
-            // Clona o status atual da magia para o novo quadrante
             f.dominios[newCat][nome] = f.dominios[oldCat][nome];
-            // Remove do quadrante errado
             delete f.dominios[oldCat][nome];
         });
         callSave();
