@@ -16,13 +16,22 @@
   },
   "build": {
     "appId": "com.multiverso.rpg",
-    "productName": "Multiverso RPG",
+    "productName": "RPG Anime System",
     "directories": {
       "output": "release"
     },
     "win": {
       "target": "nsis",
       "icon": "public/pwa-192x192.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "RPG Anime System",
+      "artifactName": "Instalador_RPG_Anime_System.exe"
     }
   },
   "dependencies": {

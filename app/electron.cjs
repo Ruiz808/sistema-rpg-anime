@@ -20,7 +20,8 @@ function createWindow() {
   win.webContents.session.clearCache();
   win.webContents.session.clearStorageData({ storages: ['serviceworkers'] });
 
-  win.loadURL('https://COLOQUE-SEU-LINK.web.app');
+  // 🔥 CORREÇÃO VITAL: Apontando para o seu domínio real 🔥
+  win.loadURL('https://databaserpg-5595b.web.app');
 }
 
 app.whenReady().then(createWindow);
