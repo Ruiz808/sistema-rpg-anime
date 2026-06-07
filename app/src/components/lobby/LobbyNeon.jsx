@@ -340,6 +340,10 @@ export default function LobbyNeon() {
                             <button onClick={() => setMostrarConfig(true)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', background: 'rgba(170, 170, 170, 0.1)', border: '1px solid rgba(170, 170, 170, 0.5)', color: '#ccc', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }} className="hover-lift">
                                 <span style={{ fontSize: '1.3em' }}>⚙️</span> CONFIGURAÇÕES
                             </button>
+                            {/* 🔥 NOVO BOTÃO DE RECARREGAR (EXCLUSIVO DO LOBBY) 🔥 */}
+                            <button onClick={() => window.location.reload(true)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', background: 'rgba(0, 255, 204, 0.1)', border: '1px solid rgba(0, 255, 204, 0.5)', color: '#00ffcc', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }} className="hover-lift">
+                                <span style={{ fontSize: '1.3em' }}>🔄</span> RECARREGAR (F5)
+                            </button>
                         </div>
 
                         {minhasMesas.length > 0 && (

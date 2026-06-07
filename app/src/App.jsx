@@ -86,6 +86,18 @@ export default function App() {
 
     useEffect(() => { setTimeout(() => setThemeReady(true), 50); }, []);
 
+    // 🔥 ATALHO SECRETO (F5 / CTRL+R) PARA ATUALIZAR O APP 🔥
+    useEffect(() => {
+        const handleRefresh = (e) => {
+            if (e.key === 'F5' || (e.ctrlKey && (e.key === 'r' || e.key === 'R' || e.key === 'f5' || e.key === 'F5'))) {
+                e.preventDefault();
+                window.location.reload(true);
+            }
+        };
+        window.addEventListener('keydown', handleRefresh);
+        return () => window.removeEventListener('keydown', handleRefresh);
+    }, []);
+
     useEffect(() => {
         const unsub = monitorarAuth((nick) => {
             setUserLogado(nick);
