@@ -74,29 +74,49 @@ const CATEGORIAS_DOMINIO = {
     'summons': { titulo: 'Contratos & Invocações', icone: '👹', cor: '#ffcc00' }
 };
 
-// 🔥 LORE ATUALIZADA COM BASE NA SUA PRINT 🔥
-const PREDEFINIDOS_LORE = {
-    elementais: [
-        { label: 'Elementos Básicos', itens: ['Fogo', 'Raio', 'Agua', 'Vento', 'Terra'] },
-        { label: 'Básicos Verdadeiros', itens: ['Fogo Verdadeiro', 'Raio Verdadeiro', 'Agua Verdadeira', 'Vento Verdadeiro', 'Terra Verdadeira'] },
-        { label: 'Elementos Avançados', itens: ['Solar', 'Energia', 'Gelo', 'Vacuo', 'Natureza', 'Cristal', 'Lava', 'Madeira'] },
-        { label: 'Avançados Verdadeiros', itens: ['Solar Verdadeiro', 'Energia Verdadeira', 'Gelo Verdadeiro', 'Vacuo Verdadeiro', 'Natureza Verdadeira'] }
-    ],
-    mana: [
-        { label: 'Magias de Ciclo', itens: ['Truques de Ciclo', 'Magias de 1º a 10º Ciclo'] },
-        { label: 'Magias Arcanas/Negras', itens: ['Truques Arcanos/Negras', 'Magias Arcanas/Negra de 1º a 10º Ciclo'] },
-        { label: 'Magias Ancestrais', itens: ['Truques Ancestrais', 'Magia de Sangue', 'Magia de Osso', 'Magia Draconica', 'Magia de Alma', 'Magia de Tempo', 'Magia de Gravidade', 'Magia Espacial', 'Magia de Borracha', 'Magia de Espelho', 'Magia de Sal', 'Magia de Tremor'] }
-    ],
-    chakra: [
-        { label: 'Naturezas de Chakra', itens: ['Katon (Fogo)', 'Suiton (Água)', 'Doton (Terra)', 'Fuuton (Vento)', 'Raiton (Raio)'] },
-        { label: 'Kekkei Genkai', itens: ['Mokuton', 'Hyouton', 'Youton', 'Jiton'] }
-    ],
-    aura: [
-        { label: 'Manifestações', itens: ['Aura de Combate', 'Instinto Assassino', 'Aura de Cura', 'Pressão Espiritual'] }
-    ],
-    primordiais: [
-        { label: 'Poderes Cósmicos', itens: ['Criação Constelar', 'Distorção Espacial', 'Manipulação do Tempo'] }
-    ]
+const PREDEFINICOES = {
+    elementos: {
+        "Elementos Básicos": ["Fogo", "Raio", "Agua", "Vento", "Terra"],
+        "Básicos Verdadeiros": ["Fogo Verdadeiro", "Raio Verdadeiro", "Agua Verdadeira", "Vento Verdadeiro", "Terra Verdadeira"],
+        "Elementos Avançados": ["Solar", "Energia", "Gelo", "Vacuo", "Natureza"],
+        "Avançados Verdadeiros": ["Solar Verdadeiro", "Energia Verdadeira", "Gelo Verdadeiro", "Vacuo Verdadeiro", "Natureza Verdadeira"]
+    },
+    mana: {
+        "Magias de Ciclo": ["Truques de Ciclo", "Magias de 1º a 10º Ciclo"],
+        "Magias Arcanas/Negras": ["Truques Arcanos/Negros", "Magias Arcanas/Negra de 1º a 10º Ciclo"],
+        "Magias Ancestrais": ["Truques Ancestrais", "Magia de Sangue", "Magia de Osso", "Magia Draconica", "Magia de Alma", "Magia de Tempo", "Magia de Gravidade", "Magia Espacial", "Magia de Borracha", "Magia de Espelho", "Magia de Sal", "Magia de Tremor", "Magia de Equipamento", "Magia de Explosao", "Magia de Metamorfose"]
+    },
+    chakra: {
+        "Kekkei Genkai": ["Elemento Madeira", "Elemento Mineral", "Elemento Cinzas", "Elemento Igneo", "Elemento Lava", "Elemento Vapor", "Elemento Nevoa", "Elemento Tempestade", "Elemento Areia", "Elemento Tufao"],
+        "Kekkei Touta": ["Elemento Velocidade", "Elemento Poeira", "Elemento Veneno", "Elemento Cal", "Elemento Carbono", "Elemento Calor", "Elemento Som", "Elemento Magnetismo"]
+    },
+    aura: {
+        "Manifestação": ["Aura Pura", "Projeção de Aura", "Reforço de Aura"],
+        "Fusões": ["Fusões Básicas", "Fusões Avançadas"]
+    },
+    primordiais: {
+        "Primordiais Base": ["Luz", "Trevas", "Ether"],
+        "Primordiais Verdadeiros": ["Celestial", "Infernal", "Caos"],
+        "Absolutos": ["Criacao", "Destruicao", "Cosmos"]
+    },
+    astral: {
+        "Domínios da Existência": ["Vida", "Morte", "Vazio", "Neutro", "Energia Astral"]
+    },
+    marciais: {
+        "Fundamentos": ["Artes Marciais (Combate Corpo-a-Corpo)", "Reforço Físico"],
+        "Estilos de Combate": ["Punho do Dragão", "Palma Suave", "Caminho do Tigre", "Boxe Demoníaco", "Artes de Assassino", "Estilo Bêbado", "Punho de Ferro"]
+    },
+    armas: {
+        "Kenjutsu (Espadas)": ["Ittouryu (1 Espada)", "Nitouryu (2 Espadas)", "Santouryu (3 Espadas)", "Iaido", "Kenjutsu"],
+        "Posturas de Combate": ["Postura da Montanha", "Postura da Água", "Postura do Vento", "Postura do Trovão"],
+        "Outras Armas": ["Maestria com Lança", "Maestria com Foice", "Maestria com Arco", "Maestria com Armas de Fogo", "Maestria com Escudo"]
+    },
+    cura: {
+        "Medicina": ["Regeneração Básica", "Cura Celular", "Purificação", "Reversão Temporal", "Transferência Vital", "Ressurreição Limitada"]
+    },
+    summons: {
+        "Pactos": ["Pacto Demoníaco", "Feras Divinas", "Espíritos Ancestrais", "Contrato Dracônico", "Exército de Sombras", "Invocação de Armamento Sagrado"]
+    }
 };
 
 // Descobre o quadrante correto analisando as strings da Lore
