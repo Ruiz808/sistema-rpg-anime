@@ -1,119 +1,149 @@
 import React, { useState } from 'react';
-import { useMarcadosForm, CATEGORIAS_DOMINIO, PREDEFINIDOS_LORE, NIVEIS_DOMINIO } from './MarcadosFormContext';
+import { useMarcadosForm, CATEGORIAS_DOMINIO, PREDEFINIDOS_LORE, NIVEIS_DOMINIO, encontrarCategoriaPorLore } from './MarcadosFormContext';
 
-// COMPONENTE ISOLADO: Garante que os inputs não conversem entre si
-function QuadranteCategoria({ catKey, catData, dominiosDaCategoria }) {
+function QuadranteCategoria({ catKey, catData, dominiosSalvos }) {
     const { handleAddDominio, handleRemoveDominio, handleChangeNivelDominio, handleMoveDominio } = useMarcadosForm();
     const [selectValue, setSelectValue] = useState('');
     const [inputValue, setInputValue] = useState('');
 
     const corTema = catData.cor || '#ffffff';
-    const nomes = Object.keys(dominiosDaCategoria);
+
+    // Distribuidor dinâmico inteligente (Conserta e organiza os dados na hora da renderização)
+    const dominiosFiltrados = Object.entries(dominiosSalvos).filter(([nome, dados]) => {
+        if (!dados || typeof dados !== 'object') return false;
+        
+        const catAuto = encontrarCategoriaPorLore(nome);
+        if (catAuto) return catAuto === catKey; // Se está mapeado na Lore, vai pra gaveta certa automaticamente
+        
+        // Se for customizado por input livre, segue a chave gravada ou cai na padrão
+        return dados.categoria === catKey || (!dados.categoria && catKey === 'elementais');
+    });
 
     return (
-        <div className="def-box fade-in" style={{ padding: '20px', border: `1px solid ${corTema}`, borderRadius: '8px', marginTop: 0, boxShadow: `inset 0 0 10px ${corTema}15` }}>
-            <h3 style={{ color: corTema, margin: '0 0 15px 0', borderBottom: `1px dotted ${corTema}`, paddingBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ 
+            border: `1px solid ${corTema}`, 
+            padding: '20px', borderRadius: '8px', 
+            background: 'rgba(0,0,0,0.1)', position: 'relative',
+            display: 'flex', flexDirection: 'column', gap: '12px'
+        }}>
+            <h3 style={{ margin: '0 0 5px 0', fontSize: '1.25em', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', color: corTema }}>
                 <span>{catData.icone}</span> {catData.titulo}
             </h3>
+            <div style={{ width: '100%', borderBottom: '1px dotted currentColor', opacity: 0.2, marginBottom: '5px' }} />
 
-            {/* 1. SELETOR DA LORE (Estilo Input Neon) */}
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+            {/* DROPDOWN DE LORE */}
+            <div style={{ display: 'flex', gap: '10px' }}>
                 <select
-                    className="input-neon"
                     value={selectValue}
                     onChange={e => setSelectValue(e.target.value)}
-                    style={{ flex: 1, borderColor: corTema, margin: 0, color: '#fff' }}
+                    style={{ 
+                        flex: 1, background: '#0a0a0f', border: `1px solid ${corTema}`, 
+                        color: '#fff', padding: '10px', borderRadius: '4px', outline: 'none', 
+                        fontFamily: 'inherit', fontSize: '0.95em' 
+                    }}
                 >
                     <option value="">-- Escolher da Lore --</option>
                     {(PREDEFINIDOS_LORE[catKey] || []).map(grupo => (
-                        <optgroup key={grupo.label} label={`— ${grupo.label} —`}>
+                        <optgroup key={grupo.label} label={`— ${grupo.label} —`} style={{ color: '#fff', background: '#0a0a0f' }}>
                             {grupo.itens.map(item => <option key={item} value={item}>{item}</option>)}
                         </optgroup>
                     ))}
                 </select>
-                <button
-                    className="btn-neon"
-                    onClick={() => { handleAddDominio(catKey, selectValue); setSelectValue(''); }}
-                    style={{ margin: 0, borderColor: corTema, color: corTema, padding: '8px 15px', fontWeight: 'bold' }}
+                <button 
+                    onClick={() => { handleAddDominio(catKey, selectValue); setSelectValue(''); }} 
+                    style={{ 
+                        background: 'transparent', border: `1px solid ${corTema}`, color: corTema, 
+                        cursor: 'pointer', padding: '10px 20px', borderRadius: '4px', 
+                        fontWeight: 'bold', textTransform: 'uppercase', fontFamily: 'inherit'
+                    }}
                 >
                     ADICIONAR
                 </button>
             </div>
 
-            {/* 2. INPUT CRIAR MANUAL (Estilo Input Neon) */}
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+            {/* INPUT MANUAL DE CRIAÇÃO */}
+            <div style={{ display: 'flex', gap: '10px' }}>
                 <input
-                    className="input-neon"
                     type="text"
-                    placeholder={`Criar novo (Ex: Punho das Sombras)`}
+                    placeholder="Criar novo (Ex: Punho das Sombras)"
                     value={inputValue}
                     onChange={e => setInputValue(e.target.value)}
-                    style={{ flex: 1, borderColor: '#ffcc00', margin: 0, color: '#fff' }}
+                    style={{ 
+                        flex: 1, background: '#0a0a0f', border: '1px solid #ffcc00', 
+                        color: '#fff', padding: '10px', borderRadius: '4px', outline: 'none', 
+                        fontFamily: 'inherit', fontSize: '0.95em' 
+                    }}
                 />
-                <button
-                    className="btn-neon"
-                    onClick={() => { handleAddDominio(catKey, inputValue); setInputValue(''); }}
-                    style={{ margin: 0, borderColor: '#ffcc00', color: '#ffcc00', padding: '8px 15px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}
+                <button 
+                    onClick={() => { handleAddDominio(catKey, inputValue); setInputValue(''); }} 
+                    style={{ 
+                        background: 'transparent', border: '1px solid #ffcc00', color: '#ffcc00', 
+                        cursor: 'pointer', padding: '10px 20px', borderRadius: '4px', 
+                        fontWeight: 'bold', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '5px', fontFamily: 'inherit'
+                    }}
                 >
-                    <span style={{ fontSize: '1.2em' }}>+</span> CRIAR
+                    + CRIAR
                 </button>
             </div>
 
-            {/* 3. LISTA DE HABILIDADES SALVAS NO QUADRANTE */}
-            {nomes.length === 0 ? (
-                <div style={{ opacity: 0.4, fontStyle: 'italic', textAlign: 'center', padding: '10px 0', fontSize: '0.9em' }}>Nenhum registo ainda...</div>
+            {/* LISTA DE CARDS ESTILO DESIGN NOVO */}
+            {dominiosFiltrados.length === 0 ? (
+                <div style={{ opacity: 0.3, fontStyle: 'italic', textAlign: 'center', padding: '15px 0', fontSize: '0.95em' }}>Nenhum registo ainda...</div>
             ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {nomes.map(nomeDom => {
-                        const nivel = dominiosDaCategoria[nomeDom]?.nivel || 1;
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '5px' }}>
+                    {dominiosFiltrados.map(([nomeDom, dadosDom]) => {
+                        const nivel = dadosDom?.nivel || 1;
                         const infoNivel = NIVEIS_DOMINIO[nivel] || NIVEIS_DOMINIO[1];
                         return (
-                            <div key={nomeDom} style={{ padding: '12px', border: `1px solid ${infoNivel.cor}`, background: 'rgba(0,0,0,0.6)', borderRadius: '6px', position: 'relative' }}>
-
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                    <strong style={{ fontSize: '1.1em', textTransform: 'uppercase', letterSpacing: '1px', color: '#fff' }}>
+                            <div key={nomeDom} style={{ 
+                                padding: '14px', border: `1px solid ${corTema}`, 
+                                background: '#050508', borderRadius: '6px',
+                                position: 'relative', display: 'flex', flexDirection: 'column', gap: '6px'
+                            }}>
+                                <button 
+                                    onClick={() => handleRemoveDominio(nomeDom)} 
+                                    style={{ position: 'absolute', top: '10px', right: '12px', background: 'transparent', border: 'none', color: '#ff003c', fontSize: '1.3em', cursor: 'pointer', padding: '0', fontWeight: 'bold' }} 
+                                >
+                                    ✖
+                                </button>
+                                
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingRight: '25px' }}>
+                                    <strong style={{ fontSize: '1.2em', textTransform: 'uppercase', letterSpacing: '1px', color: '#fff' }}>
                                         {nomeDom}
                                     </strong>
-
+                                    
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        {/* Dropdown de correção visível apenas para magias customizadas feitas à mão */}
+                                        {!encontrarCategoriaPorLore(nomeDom) && (
+                                            <select
+                                                value={dadosDom.categoria || catKey}
+                                                onChange={e => handleMoveDominio(nomeDom, e.target.value)}
+                                                style={{ background: '#0a0a0f', color: '#aaa', border: '1px dashed #444', borderRadius: '4px', padding: '4px 6px', fontSize: '0.85em', fontFamily: 'inherit', outline: 'none' }}
+                                            >
+                                                {Object.entries(CATEGORIAS_DOMINIO).map(([k, c]) => (
+                                                    <option key={k} value={k}>➔ {c.titulo.split(' ')[0]}</option>
+                                                ))}
+                                            </select>
+                                        )}
 
                                         <select
-                                            className="input-neon"
                                             value={nivel}
-                                            onChange={e => handleChangeNivelDominio(catKey, nomeDom, e.target.value)}
-                                            style={{ margin: 0, borderColor: infoNivel.cor, color: infoNivel.cor, padding: '4px 8px', fontWeight: 'bold' }}
+                                            onChange={e => handleChangeNivelDominio(nomeDom, e.target.value)}
+                                            style={{ 
+                                                background: '#0a0a0f', color: infoNivel.cor, border: `1px solid ${infoNivel.cor}`, 
+                                                borderRadius: '4px', padding: '4px 8px', fontFamily: 'inherit', outline: 'none', 
+                                                fontWeight: 'bold', fontSize: '0.9em', cursor: 'pointer' 
+                                            }}
                                         >
                                             {Object.entries(NIVEIS_DOMINIO).map(([n, d]) => (
-                                                <option key={n} value={n} style={{ color: '#fff' }}>Lv {n} - {d.nome}</option>
+                                                <option key={n} value={n} style={{ background: '#0a0a0f', color: '#fff' }}>Lv {n} - {d.nome}</option>
                                             ))}
                                         </select>
-
-                                        {/* DROPDOWN PARA MOVER/CORRIGIR MAGIA */}
-                                        <select
-                                            className="input-neon"
-                                            title="Mover para outro quadrante"
-                                            onChange={e => handleMoveDominio(catKey, e.target.value, nomeDom)}
-                                            value=""
-                                            style={{ margin: 0, padding: '2px', borderColor: '#444', color: '#aaa', cursor: 'pointer', width: '35px', textAlign: 'center' }}
-                                        >
-                                            <option value="" disabled>⮀</option>
-                                            {Object.entries(CATEGORIAS_DOMINIO).filter(([k]) => k !== catKey).map(([k, d]) => (
-                                                <option key={k} value={k} style={{ color: '#fff' }}>Mover p/: {d.titulo}</option>
-                                            ))}
-                                        </select>
-
-                                        <button
-                                            onClick={() => handleRemoveDominio(catKey, nomeDom)}
-                                            style={{ background: 'transparent', border: 'none', color: '#ff003c', fontSize: '1.4em', cursor: 'pointer', padding: '0 2px', fontWeight: 'bold' }}
-                                            title="Apagar Registo"
-                                        >
-                                            ✖
-                                        </button>
                                     </div>
                                 </div>
 
-                                <div style={{ fontSize: '0.85em', fontStyle: 'italic', color: '#ccc' }}>
-                                    <span style={{ fontWeight: 'bold', color: '#ffcc00' }}>⚡ :</span> {infoNivel.desc}
+                                <div style={{ fontSize: '0.9em', fontStyle: 'italic', color: '#ccc' }}>
+                                    <span style={{ color: infoNivel.cor, fontWeight: 'bold' }}>⚡ :</span> {infoNivel.desc}
                                 </div>
                             </div>
                         );
@@ -124,7 +154,6 @@ function QuadranteCategoria({ catKey, catData, dominiosDaCategoria }) {
     );
 }
 
-// O PAINEL QUE ENGLOBA TODOS OS QUADRANTES
 export function AbaDominios() {
     const ctx = useMarcadosForm();
     if (!ctx) return <div style={{ color: '#888', padding: 10 }}>Contexto não encontrado</div>;
@@ -132,14 +161,14 @@ export function AbaDominios() {
     const dominiosSalvos = minhaFicha?.dominios || {};
 
     return (
-        <div style={{ width: '100%' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '25px' }}>
+        <div style={{ width: '100%', padding: '10px 0' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '25px' }}>
                 {Object.entries(CATEGORIAS_DOMINIO).map(([catKey, catData]) => (
                     <QuadranteCategoria 
                         key={catKey} 
                         catKey={catKey} 
                         catData={catData} 
-                        dominiosDaCategoria={dominiosSalvos[catKey] || {}} 
+                        dominiosSalvos={dominiosSalvos} 
                     />
                 ))}
             </div>

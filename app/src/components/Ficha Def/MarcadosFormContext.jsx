@@ -28,7 +28,7 @@ export const CATEGORIAS_DOMINIO = {
     'summons': { titulo: 'Contratos & Invocações', icone: '👹', cor: '#ffcc00' }
 };
 
-// 🔥 LORE ATUALIZADA (Idêntica à Print 3) 🔥
+// 🔥 MAPEAMENTO EXATO BASEADO NA LORE DA SUA PRINT 3 🔥
 export const PREDEFINIDOS_LORE = {
     elementais: [
         { label: 'Elementos Básicos', itens: ['Fogo', 'Raio', 'Agua', 'Vento', 'Terra'] },
@@ -51,6 +51,19 @@ export const PREDEFINIDOS_LORE = {
     ]
 };
 
+// Descobre o quadrante correto analisando as strings da Print 3
+export const encontrarCategoriaPorLore = (nome) => {
+    const nomeClean = String(nome || '').trim().toLowerCase();
+    for (const [catKey, grupos] of Object.entries(PREDEFINIDOS_LORE)) {
+        for (const grupo of grupos) {
+            if (grupo.itens.some(item => item.trim().toLowerCase() === nomeClean)) {
+                return catKey;
+            }
+        }
+    }
+    return null;
+};
+
 const MarcadosFormContext = createContext(null);
 
 export function useMarcadosForm() {
@@ -63,43 +76,43 @@ export function MarcadosFormProvider({ children }) {
 
     const callSave = useCallback(() => { salvarFichaSilencioso(); }, []);
 
+    // Adiciona na estrutura FLAT compatível com a Ficha Antiga
     const handleAddDominio = useCallback((catKey, val) => {
         const nome = val?.trim();
         if (!nome) return;
         updateFicha(f => {
             if (!f.dominios) f.dominios = {};
-            if (!f.dominios[catKey]) f.dominios[catKey] = {};
-            if (!f.dominios[catKey][nome]) {
-                f.dominios[catKey][nome] = { nivel: 1 };
+            if (!f.dominios[nome] || typeof f.dominios[nome] !== 'object') {
+                f.dominios[nome] = { nivel: 1, categoria: catKey };
+            } else {
+                f.dominios[nome].categoria = catKey;
             }
         });
         callSave();
     }, [updateFicha, callSave]);
 
-    const handleRemoveDominio = useCallback((catKey, nome) => {
+    const handleRemoveDominio = useCallback((nome) => {
         if (!window.confirm(`Riscar o domínio [${nome}] das suas páginas?`)) return;
         updateFicha(f => {
-            if (f.dominios && f.dominios[catKey]) delete f.dominios[catKey][nome];
+            if (f.dominios) delete f.dominios[nome];
         });
         callSave();
     }, [updateFicha, callSave]);
 
-    const handleChangeNivelDominio = useCallback((catKey, nome, nivel) => {
+    const handleChangeNivelDominio = useCallback((nome, nivel) => {
         updateFicha(f => {
-            if (f.dominios && f.dominios[catKey] && f.dominios[catKey][nome]) {
-                f.dominios[catKey][nome].nivel = parseInt(nivel);
+            if (f.dominios && f.dominios[nome]) {
+                f.dominios[nome].nivel = parseInt(nivel);
             }
         });
         callSave();
     }, [updateFicha, callSave]);
 
-    const handleMoveDominio = useCallback((oldCat, newCat, nome) => {
-        if (!newCat || oldCat === newCat) return;
+    const handleMoveDominio = useCallback((nome, newCat) => {
         updateFicha(f => {
-            if (!f.dominios) f.dominios = {};
-            if (!f.dominios[newCat]) f.dominios[newCat] = {};
-            f.dominios[newCat][nome] = f.dominios[oldCat][nome];
-            delete f.dominios[oldCat][nome];
+            if (f.dominios && f.dominios[nome]) {
+                f.dominios[nome].categoria = newCat;
+            }
         });
         callSave();
     }, [updateFicha, callSave]);
@@ -108,11 +121,7 @@ export function MarcadosFormProvider({ children }) {
         minhaFicha, updateFicha,
         handleAddDominio, handleRemoveDominio, 
         handleChangeNivelDominio, handleMoveDominio
-    }), [
-        minhaFicha, updateFicha,
-        handleAddDominio, handleRemoveDominio, 
-        handleChangeNivelDominio, handleMoveDominio
-    ]);
+    }), [minhaFicha, updateFicha, handleAddDominio, handleRemoveDominio, handleChangeNivelDominio, handleMoveDominio]);
 
     return (
         <MarcadosFormContext.Provider value={value}>
