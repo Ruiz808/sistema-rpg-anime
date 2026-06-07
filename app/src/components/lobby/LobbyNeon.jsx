@@ -104,10 +104,9 @@ export default function LobbyNeon() {
 
     const [canInstall, setCanInstall] = useState(!!window.deferredPrompt);
 
-    // 🔥 PREVENÇÃO CONTRA AMNÉSIA INICIAL 🔥
-    const [minhasMesas, setMinhasMesas] = useState(() => {
-        try { return JSON.parse(localStorage.getItem('rpg_historico_mesas')) || []; } catch(e) { return []; }
-    });
+    // 🔥 PREVENÇÃO CONTRA VAZAMENTO: O estado inicia vazio.
+    // Apenas a Nuvem ou a "gaveta específica" do usuário vai preenchê-lo.
+    const [minhasMesas, setMinhasMesas] = useState([]);
 
     useEffect(() => {
         if (userLogado) {
@@ -146,17 +145,26 @@ export default function LobbyNeon() {
 
     const atualizarHistoricoNuvem = async (novaLista) => {
         setMinhasMesas(novaLista);
-        localStorage.setItem('rpg_historico_mesas', JSON.stringify(novaLista));
         if (userLogado) {
-            try { await set(ref(db, `usuarios/${sanitizarNome(userLogado)}/historicoMesas`), novaLista); } catch(e){}
+            const nomeSanitizado = sanitizarNome(userLogado);
+            const chaveLocalIsolada = `rpg_historico_mesas_${nomeSanitizado}`;
+            localStorage.setItem(chaveLocalIsolada, JSON.stringify(novaLista));
+            try { await set(ref(db, `usuarios/${nomeSanitizado}/historicoMesas`), novaLista); } catch(e){}
         }
     };
 
-    // 🔥 O VERDADEIRO MOTOR DE FUSÃO BLINDADO 🔥
+    // 🔥 O MOTOR DE FUSÃO ABSOLUTAMENTE ISOLADO 🔥
     useEffect(() => {
-        if (!userLogado) return;
+        if (!userLogado) {
+            setMinhasMesas([]);
+            return;
+        }
+
         const syncHistorico = async () => {
-            const refHistorico = ref(db, `usuarios/${sanitizarNome(userLogado)}/historicoMesas`);
+            const nomeSanitizado = sanitizarNome(userLogado);
+            const refHistorico = ref(db, `usuarios/${nomeSanitizado}/historicoMesas`);
+            const chaveLocalIsolada = `rpg_historico_mesas_${nomeSanitizado}`;
+            
             try {
                 const snap = await get(refHistorico);
                 let nuvemLista = snap.exists() ? snap.val() : [];
@@ -164,18 +172,24 @@ export default function LobbyNeon() {
 
                 setMinhasMesas(prevLocal => {
                     const mapUnificado = new Map();
-                    // Prioriza a nuvem, mas adiciona os registos locais se existirem
-                    [...nuvemLista, ...prevLocal].forEach(m => {
+                    
+                    // Apenas lê da gaveta EXCLUSIVA do usuário que fez login.
+                    let localIsolado = [];
+                    try { localIsolado = JSON.parse(localStorage.getItem(chaveLocalIsolada)) || []; } catch(e) {}
+
+                    // Funde a Nuvem e a Gaveta Local Isolada
+                    [...nuvemLista, ...localIsolado].forEach(m => {
                         if (m && m.id && !mapUnificado.has(m.id)) mapUnificado.set(m.id, m);
                     });
+                    
                     const listaUnificada = Array.from(mapUnificado.values()).slice(0, 10);
 
-                    // Atualiza a Nuvem silenciosamente se juntarmos coisas locais novas
+                    // Atualiza a Nuvem silenciosamente se houver dados novos
                     if (listaUnificada.length > nuvemLista.length) {
                         set(refHistorico, listaUnificada).catch(()=>{});
                     }
                     
-                    localStorage.setItem('rpg_historico_mesas', JSON.stringify(listaUnificada));
+                    localStorage.setItem(chaveLocalIsolada, JSON.stringify(listaUnificada));
                     return listaUnificada;
                 });
             } catch (error) {
