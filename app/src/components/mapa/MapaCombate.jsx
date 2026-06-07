@@ -1,9 +1,68 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import useStore from '../../stores/useStore';
 import { useMapaForm, urlSeguraParaCss, calcularCA } from './MapaFormContext';
 import { salvarDummie, salvarFichaSilencioso, salvarCenarioCompleto } from '../../services/firebase-sync';
 import { getClassIconById } from '../../core/classIcons';
+
+// 🔥 IMPORTAÇÕES PARA RENDERIZAR O DADO 3D FÍSICO 🔥
+import { Canvas, useFrame } from '@react-three/fiber';
+import * as THREE from 'three';
+
+// ============================================================================
+// 🎲 MOTOR 3D DO DADO D20
+// ============================================================================
+function DadoFisico3D({ isLanded, cor }) {
+    const meshRef = useRef();
+
+    useFrame((state, delta) => {
+        if (!meshRef.current) return;
+        if (!isLanded) {
+            // Rotação caótica durante o voo
+            meshRef.current.rotation.x += delta * 12;
+            meshRef.current.rotation.y += delta * 16;
+            meshRef.current.rotation.z += delta * 8;
+        } else {
+            // Estabiliza suavemente num ângulo estético quando aterra
+            meshRef.current.rotation.x = THREE.MathUtils.lerp(meshRef.current.rotation.x, 0.4, 0.1);
+            meshRef.current.rotation.y = THREE.MathUtils.lerp(meshRef.current.rotation.y, 0.5, 0.1);
+            meshRef.current.rotation.z = THREE.MathUtils.lerp(meshRef.current.rotation.z, 0, 0.1);
+        }
+    });
+
+    return (
+        <group>
+            {/* Iluminação Ambiente e Focos de Luz */}
+            <ambientLight intensity={0.8} />
+            <directionalLight position={[10, 20, 10]} intensity={2} castShadow />
+            <pointLight position={[-10, -10, -10]} intensity={1} color={cor} />
+            
+            <mesh ref={meshRef} castShadow receiveShadow>
+                {/* Geometria do D20 */}
+                <icosahedronGeometry args={[2.8, 0]} />
+                
+                {/* Material Físico (Aparencia de Metal / Resina Escura) */}
+                <meshPhysicalMaterial 
+                    color="#111115"
+                    emissive={cor}
+                    emissiveIntensity={0.2}
+                    roughness={0.1}
+                    metalness={0.8}
+                    clearcoat={1}
+                    clearcoatRoughness={0.1}
+                    polygonOffset
+                    polygonOffsetFactor={1}
+                />
+                
+                {/* Arestas Metálicas/Brilhantes (A cor muda consoante é crítico/falha) */}
+                <lineSegments>
+                    <edgesGeometry args={[new THREE.IcosahedronGeometry(2.8, 0)]} />
+                    <lineBasicMaterial color={cor} linewidth={3} />
+                </lineSegments>
+            </mesh>
+        </group>
+    );
+}
 
 export function MapaDadoAnimado() {
     const ctx = useMapaForm();
@@ -14,45 +73,35 @@ export function MapaDadoAnimado() {
     const mapaVisivel = painelMapa && (painelMapa.offsetWidth > 0 || painelMapa.offsetHeight > 0);
     const isAbaMapa = String(abaAtiva || '').toLowerCase().includes('map');
 
-    // Estados para controlar a física 2D do dado
-    const [pos, setPos] = React.useState({ x: -1000, y: -1000 });
-    const [rot, setRot] = React.useState(0);
-    const requestRef = React.useRef();
-    
-    // Velocidade inicial caótica
-    const vel = React.useRef({ 
-        vx: (Math.random() > 0.5 ? 1 : -1) * (20 + Math.random() * 15), 
-        vy: (Math.random() > 0.5 ? 1 : -1) * (20 + Math.random() * 15) 
+    // Estados para controlar a física de ressalto na tela
+    const [pos, setPos] = useState({ x: -1000, y: -1000 });
+    const requestRef = useRef();
+    const vel = useRef({ 
+        vx: (Math.random() > 0.5 ? 1 : -1) * (15 + Math.random() * 15), 
+        vy: (Math.random() > 0.5 ? 1 : -1) * (15 + Math.random() * 15) 
     });
 
-    React.useEffect(() => {
+    useEffect(() => {
         if (dadoAnim?.ativo && !dadoAnim.finalResult) {
-            // Nasce no centro da tela
             let currentX = window.innerWidth / 2;
             let currentY = window.innerHeight / 2;
-            let currentRot = 0;
 
             const animate = () => {
                 currentX += vel.current.vx;
                 currentY += vel.current.vy;
-                currentRot += 25; // Velocidade do giro
-
-                const size = 150; // Tamanho do dado
+                const size = 150; 
                 
-                // Colisão Direita / Esquerda
+                // Colisões e Ressaltos nas paredes da tela
                 if (currentX <= 0 || currentX >= window.innerWidth - size) {
-                    vel.current.vx *= -1; // Inverte e rebate!
+                    vel.current.vx *= -1; 
                     currentX = Math.max(0, Math.min(currentX, window.innerWidth - size));
                 }
-                // Colisão Cima / Baixo
                 if (currentY <= 0 || currentY >= window.innerHeight - size) {
-                    vel.current.vy *= -1; // Inverte e rebate!
+                    vel.current.vy *= -1; 
                     currentY = Math.max(0, Math.min(currentY, window.innerHeight - size));
                 }
 
                 setPos({ x: currentX, y: currentY });
-                setRot(currentRot);
-
                 requestRef.current = requestAnimationFrame(animate);
             };
             requestRef.current = requestAnimationFrame(animate);
@@ -74,13 +123,8 @@ export function MapaDadoAnimado() {
                     height: 150px;
                     z-index: 999999;
                     pointer-events: none;
-                    /* Quando aterrar, faz o movimento suave para o centro! */
+                    /* Voo para o centro quando para de rolar */
                     transition: ${isLanded ? 'all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275)' : 'none'};
-                }
-                .dado-svg {
-                    width: 100%;
-                    height: 100%;
-                    transition: ${isLanded ? 'transform 0.6s ease-out' : 'none'};
                 }
                 .dado-landed-text {
                     position: fixed;
@@ -109,37 +153,23 @@ export function MapaDadoAnimado() {
                     filter: `drop-shadow(0 0 ${isLanded ? '40px' : '15px'} ${dadoAnim.cor})`
                 }}
             >
-                <svg 
-                    className="dado-svg"
-                    viewBox="0 0 100 100" 
-                    style={{ transform: `rotate(${isLanded ? 0 : rot}deg)` }}
-                >
-                    {/* Arestas do D20 */}
-                    <polygon points="50,5 95,30 95,75 50,95 5,75 5,30" fill="rgba(10,10,15,0.95)" stroke={dadoAnim.cor} strokeWidth="4" strokeLinejoin="round" />
-                    <polygon points="50,85 20,35 80,35" fill="none" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
-                    <line x1="50" y1="5" x2="20" y2="35" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
-                    <line x1="50" y1="5" x2="80" y2="35" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
-                    <line x1="95" y1="30" x2="80" y2="35" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
-                    <line x1="95" y1="75" x2="80" y2="35" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
-                    <line x1="95" y1="75" x2="50" y2="85" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
-                    <line x1="50" y1="95" x2="50" y2="85" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
-                    <line x1="5" y1="75" x2="50" y2="85" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
-                    <line x1="5" y1="75" x2="20" y2="35" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
-                    <line x1="5" y1="30" x2="20" y2="35" stroke={dadoAnim.cor} strokeWidth="3" opacity="0.8" />
-                    
-                    {/* Número (O truque do -rot o mantém sempre de pé!) */}
-                    <text 
-                        x="50%" y="56%" 
-                        dominantBaseline="middle" textAnchor="middle" 
-                        fill="#fff" fontSize="32" fontWeight="bold" fontFamily="sans-serif"
-                        style={{ transform: `rotate(${isLanded ? 0 : -rot}deg)`, transformOrigin: '50% 50%' }} 
-                    >
-                        {dadoAnim.numero}
-                    </text>
-                </svg>
+                {/* RENDERIZADOR 3D FÍSICO (DREI/FIBER) */}
+                <Canvas camera={{ position: [0, 0, 8], fov: 50 }} style={{ width: '100%', height: '100%' }}>
+                    <DadoFisico3D isLanded={isLanded} cor={dadoAnim.cor} />
+                </Canvas>
+                
+                {/* O NÚMERO HOLOGRÁFICO QUE FICA DE PÉ FRENTE AO DADO */}
+                <div style={{
+                    position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                    color: '#fff', fontSize: '45px', fontWeight: '900', fontFamily: 'sans-serif',
+                    textShadow: `0 0 10px ${dadoAnim.cor}, 2px 2px 0 #000, -2px -2px 0 #000`,
+                    pointerEvents: 'none', zIndex: 10
+                }}>
+                    {dadoAnim.numero}
+                </div>
             </div>
 
-            {/* Texto Final (CRÍTICO, ROLADO, etc.) */}
+            {/* Texto Final de Impacto (CRÍTICO, ROLADO, etc.) */}
             {isLanded && (
                 <div className="dado-landed-text" style={{ color: dadoAnim.cor, fontSize: '3em', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '3px', textShadow: `0 0 30px ${dadoAnim.cor}` }}>
                     {dadoAnim.cor === '#ff003c' ? 'CRÍTICO FATAL!' : dadoAnim.cor === '#ffcc00' ? 'CRÍTICO!' : dadoAnim.cor === '#660000' ? 'FALHA CRÍTICA' : 'ROLADO!'}
@@ -149,6 +179,10 @@ export function MapaDadoAnimado() {
         document.body
     );
 }
+
+// ============================================================================
+// 🔥 O RESTO DO MÓDULO (INTACTO)
+// ============================================================================
 
 export function MapaEconomiaAcoes() {
     const ctx = useMapaForm();
@@ -237,7 +271,6 @@ export function MapaIniciativaTracker() {
         jogadores, dummies, cenaRenderId
     } = ctx;
 
-    // 🔥 BLINDAGEM: Recria o "todasEntidades" localmente para a barra renderizar corretamente! 🔥
     const todasEntidades = useMemo(() => {
         const js = Object.entries(jogadores || {}).filter(([n, f]) => (f.posicao?.cenaId || 'default') === cenaRenderId).map(([n, f]) => ({ id: n, nome: n, ficha: f, isDummie: false, init: f.iniciativa || 0 }));
         const ds = Object.entries(dummies || {}).filter(([id, d]) => (d.cenaId || 'default') === cenaRenderId).map(([id, d]) => ({ id, nome: d.nome, ficha: d, isDummie: true, init: d.iniciativa || 0 }));
@@ -368,7 +401,6 @@ export function MapaHologramaAcao() {
     if (!ctx) return null;
     const { ordemIniciativa, feedCombate, feedIndexTurnoAtual, jogadorDaVez, jogadores, overridesCompendio, getAvatarInfo, fmt, meuNome, minhaFicha } = ctx;
 
-    // 🔥 BLINDAGEM: Restaura a lógica de leitura do dano e da ação aqui dentro para não depender do Contexto e nunca "crashar"! 🔥
     const feedSeguro = feedCombate || [];
     const ordemSegura = ordemIniciativa || [];
     const emCombate = ordemSegura.length > 0;
