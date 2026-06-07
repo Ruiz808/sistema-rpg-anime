@@ -61,17 +61,41 @@ const NIVEIS_DOMINIO = {
     10: { nome: "Eterno", cor: "#ffcc00", desc: "Dano Incalculável | Apagamento Conceitual" }
 };
 
+// Adicionada a propriedade "cor" baseada no tema de cada quadrante
 const CATEGORIAS_DOMINIO = {
-    'elementais': { titulo: 'Manipulação Elemental', icone: '🔥' },
-    'mana': { titulo: 'Artes de Mana (Grimório)', icone: '🔮' },
-    'chakra': { titulo: 'Artes de Chakra (Shinobi)', icone: '🌀' },
-    'aura': { titulo: 'Artes de Aura (Manifestação)', icone: '✨' },
-    'primordiais': { titulo: 'Artes Primordiais Cósmicas', icone: '🌌' },
-    'astrais': { titulo: 'Artes Astrais (Vida/Morte)', icone: '👁️' },
-    'marciais': { titulo: 'Artes Marciais (Taijutsu)', icone: '🥋' },
-    'armas': { titulo: 'Maestria de Armas (Kenjutsu)', icone: '⚔️' },
-    'cura': { titulo: 'Atributos de Cura e Suporte', icone: '💚' },
-    'summons': { titulo: 'Contratos & Invocações', icone: '👹' }
+    'elementais': { titulo: 'Manipulação Elemental', icone: '🔥', cor: '#ff6600' },
+    'mana': { titulo: 'Artes de Mana (Grimório)', icone: '🔮', cor: '#0088ff' },
+    'chakra': { titulo: 'Artes de Chakra (Shinobi)', icone: '🌀', cor: '#00ffcc' },
+    'aura': { titulo: 'Artes de Aura (Manifestação)', icone: '✨', cor: '#ff00ff' },
+    'primordiais': { titulo: 'Artes Primordiais Cósmicas', icone: '🌌', cor: '#aa00ff' },
+    'astrais': { titulo: 'Artes Astrais (Vida/Morte)', icone: '👁️', cor: '#ffffff' },
+    'marciais': { titulo: 'Artes Marciais (Taijutsu)', icone: '🥋', cor: '#ff3333' },
+    'armas': { titulo: 'Maestria de Armas (Kenjutsu)', icone: '⚔️', cor: '#aaaaaa' },
+    'cura': { titulo: 'Atributos de Cura e Suporte', icone: '💚', cor: '#00ff00' },
+    'summons': { titulo: 'Contratos & Invocações', icone: '👹', cor: '#ffcc00' }
+};
+
+// Mapeamento dos predefinidos da Lore para o Dropdown
+const PREDEFINIDOS_LORE = {
+    elementais: [
+        { label: 'Elementos Básicos', itens: ['Fogo', 'Raio', 'Agua', 'Vento', 'Terra'] },
+        { label: 'Básicos Verdadeiros', itens: ['Fogo Verdadeiro', 'Raio Verdadeiro', 'Agua Verdadeira', 'Vento Verdadeiro', 'Terra Verdadeira'] },
+        { label: 'Elementos Avançados', itens: ['Solar', 'Energia', 'Gelo', 'Vacuo', 'Natureza', 'Cristal', 'Lava', 'Madeira'] },
+        { label: 'Avançados Verdadeiros', itens: ['Solar Verdadeiro', 'Energia Verdadeira', 'Gelo Verdadeiro', 'Vacuo Verdadeiro', 'Natureza Verdadeira'] }
+    ],
+    mana: [
+        { label: 'Artes Mágicas Básicas', itens: ['Magia Branca', 'Magia Negra', 'Magia de Sangue', 'Necromancia', 'Ilusão', 'Gravidade'] }
+    ],
+    chakra: [
+        { label: 'Naturezas de Chakra', itens: ['Katon (Fogo)', 'Suiton (Água)', 'Doton (Terra)', 'Fuuton (Vento)', 'Raiton (Raio)'] },
+        { label: 'Kekkei Genkai', itens: ['Mokuton', 'Hyouton', 'Youton', 'Jiton'] }
+    ],
+    aura: [
+        { label: 'Manifestações', itens: ['Aura de Combate', 'Instinto Assassino', 'Aura de Cura', 'Pressão Espiritual'] }
+    ],
+    primordiais: [
+        { label: 'Poderes Cósmicos', itens: ['Criação Constelar', 'Distorção Espacial', 'Manipulação do Tempo'] }
+    ]
 };
 
 // ==========================================
@@ -240,7 +264,9 @@ const RadarDesenhado = ({ ficha, isAtual, corTinta = "#000000" }) => {
 // ==========================================
 const DominiosPanel = ({ ficha, updateFicha }) => {
     const [inputs, setInputs] = useState({});
+    const [selects, setSelects] = useState({});
 
+    // Função para adicionar via Input customizado
     const handleAdd = (catKey) => {
         const val = inputs[catKey]?.trim();
         if (!val) return;
@@ -250,6 +276,19 @@ const DominiosPanel = ({ ficha, updateFicha }) => {
             f.dominios[catKey][val] = { nivel: 1 };
         });
         setInputs(prev => ({...prev, [catKey]: ''}));
+        callSave();
+    };
+
+    // Função para adicionar via Dropdown (Lore)
+    const handleAddSelect = (catKey) => {
+        const val = selects[catKey];
+        if (!val) return;
+        updateFicha(f => {
+            if (!f.dominios) f.dominios = {};
+            if (!f.dominios[catKey]) f.dominios[catKey] = {};
+            f.dominios[catKey][val] = { nivel: 1 };
+        });
+        setSelects(prev => ({...prev, [catKey]: ''}));
         callSave();
     };
 
@@ -281,68 +320,90 @@ const DominiosPanel = ({ ficha, updateFicha }) => {
                 <p style={{ opacity: 0.7, fontStyle: 'italic', marginTop: '5px' }}>O Conhecimento Absoluto das Artes Místicas e Marciais</p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '25px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '25px' }}>
                 {Object.entries(CATEGORIAS_DOMINIO).map(([catKey, catData]) => {
                     const listaDestaCategoria = dominiosSalvos[catKey] || {};
                     const nomes = Object.keys(listaDestaCategoria);
+                    const corTema = catData.cor;
 
                     return (
                         <div key={catKey} style={{ 
-                            border: '1px solid currentColor', borderStyle: 'double',
+                            border: `1px solid ${corTema}`, borderStyle: 'double',
                             padding: '20px', borderRadius: '8px', 
-                            background: 'rgba(0,0,0,0.03)', position: 'relative',
-                            boxShadow: 'inset 0 0 20px rgba(0,0,0,0.02)'
+                            background: 'rgba(0,0,0,0.05)', position: 'relative',
+                            boxShadow: `inset 0 0 20px ${corTema}10`
                         }}>
-                            <h3 style={{ margin: '0 0 15px 0', fontSize: '1.2em', borderBottom: '1px dotted currentColor', paddingBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <h3 style={{ margin: '0 0 15px 0', fontSize: '1.2em', borderBottom: `1px dotted ${corTema}`, paddingBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px', color: corTema }}>
                                 <span>{catData.icone}</span> {catData.titulo}
                             </h3>
 
-                            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-                                <input
-                                    type="text"
-                                    placeholder="Ex: Punho das Sombras..."
-                                    value={inputs[catKey] || ''}
-                                    onChange={e => setInputs({...inputs, [catKey]: e.target.value})}
-                                    style={{ flex: 1, background: 'transparent', border: 'none', borderBottom: '1px dashed currentColor', color: 'inherit', fontFamily: 'inherit', outline: 'none', fontSize: '0.9em' }}
-                                />
-                                <button onClick={() => handleAdd(catKey)} style={{ background: 'transparent', border: '1px solid currentColor', color: 'inherit', cursor: 'pointer', padding: '6px 12px', borderRadius: '4px', fontWeight: 'bold', fontSize: '0.85em', opacity: 0.8, textTransform: 'uppercase' }}>
-                                    + Forjar
+                            {/* DROPDOWN DE LORE */}
+                            <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                                <select
+                                    value={selects[catKey] || ''}
+                                    onChange={e => setSelects({...selects, [catKey]: e.target.value})}
+                                    style={{ flex: 1, background: 'rgba(0,0,0,0.7)', border: `1px solid ${corTema}`, color: '#fff', padding: '8px', borderRadius: '4px', outline: 'none', fontFamily: 'inherit' }}
+                                >
+                                    <option value="">-- Escolher da Lore --</option>
+                                    {(PREDEFINIDOS_LORE[catKey] || []).map(grupo => (
+                                        <optgroup key={grupo.label} label={`— ${grupo.label} —`} style={{ color: corTema }}>
+                                            {grupo.itens.map(item => <option key={item} value={item} style={{ color: '#fff' }}>{item}</option>)}
+                                        </optgroup>
+                                    ))}
+                                </select>
+                                <button onClick={() => handleAddSelect(catKey)} style={{ background: 'transparent', border: `1px solid ${corTema}`, color: corTema, cursor: 'pointer', padding: '8px 15px', borderRadius: '4px', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                                    Adicionar
                                 </button>
                             </div>
 
+                            {/* INPUT PARA CRIAR NOVO */}
+                            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                                <input
+                                    type="text"
+                                    placeholder="Criar novo (Ex: Punho das Sombras)"
+                                    value={inputs[catKey] || ''}
+                                    onChange={e => setInputs({...inputs, [catKey]: e.target.value})}
+                                    style={{ flex: 1, background: 'rgba(0,0,0,0.7)', border: '1px solid #ffcc00', color: '#fff', padding: '8px', borderRadius: '4px', outline: 'none', fontFamily: 'inherit' }}
+                                />
+                                <button onClick={() => handleAdd(catKey)} style={{ background: 'transparent', border: '1px solid #ffcc00', color: '#ffcc00', cursor: 'pointer', padding: '8px 15px', borderRadius: '4px', fontWeight: 'bold', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                    <span style={{ fontSize: '1.2em' }}>+</span> Criar
+                                </button>
+                            </div>
+
+                            {/* QUADRANTES / LISTA DE CARDS ADICIONADOS */}
                             {nomes.length === 0 ? (
                                 <div style={{ opacity: 0.4, fontStyle: 'italic', textAlign: 'center', padding: '10px 0', fontSize: '0.9em' }}>Nenhum registo ainda...</div>
                             ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                     {nomes.map(nomeDom => {
                                         const nivel = listaDestaCategoria[nomeDom]?.nivel || 1;
                                         const infoNivel = NIVEIS_DOMINIO[nivel] || NIVEIS_DOMINIO[1];
                                         return (
                                             <div key={nomeDom} style={{ 
                                                 padding: '12px', 
-                                                borderLeft: `4px solid ${infoNivel.cor}`, 
-                                                background: 'rgba(0,0,0,0.05)', 
-                                                borderRadius: '0 6px 6px 0',
+                                                border: `1px solid ${infoNivel.cor}`, 
+                                                background: 'rgba(0,0,0,0.85)', 
+                                                borderRadius: '6px',
                                                 position: 'relative'
                                             }}>
-                                                <button onClick={() => handleRemove(catKey, nomeDom)} style={{ position: 'absolute', top: '5px', right: '5px', background: 'transparent', border: 'none', color: 'currentColor', fontSize: '1em', cursor: 'pointer', opacity: 0.5, padding: 0 }} title="Apagar Registo">✖</button>
+                                                <button onClick={() => handleRemove(catKey, nomeDom)} style={{ position: 'absolute', top: '5px', right: '5px', background: 'transparent', border: 'none', color: '#ff003c', fontSize: '1.2em', cursor: 'pointer', padding: 0, fontWeight: 'bold' }} title="Apagar Registo">✖</button>
                                                 
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', paddingRight: '20px' }}>
-                                                    <strong style={{ fontSize: '1.1em', textTransform: 'uppercase', letterSpacing: '1px' }}>{nomeDom}</strong>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', paddingRight: '20px' }}>
+                                                    <strong style={{ fontSize: '1.1em', textTransform: 'uppercase', letterSpacing: '1px', color: '#fff' }}>{nomeDom}</strong>
                                                     
                                                     <select
                                                         value={nivel}
                                                         onChange={e => handleChangeNivel(catKey, nomeDom, e.target.value)}
-                                                        style={{ background: 'transparent', color: 'inherit', border: 'none', borderBottom: '1px dotted currentColor', fontFamily: 'inherit', outline: 'none', fontWeight: 'bold', fontSize: '0.9em', cursor: 'pointer' }}
+                                                        style={{ background: 'transparent', color: infoNivel.cor, border: `1px solid ${infoNivel.cor}`, borderRadius: '4px', padding: '2px 6px', fontFamily: 'inherit', outline: 'none', fontWeight: 'bold', fontSize: '0.85em', cursor: 'pointer' }}
                                                     >
                                                         {Object.entries(NIVEIS_DOMINIO).map(([n, d]) => (
-                                                            <option key={n} value={n} style={{ color: '#000' }}>Nv {n} - {d.nome}</option>
+                                                            <option key={n} value={n} style={{ background: '#111', color: '#fff' }}>Lv {n} - {d.nome}</option>
                                                         ))}
                                                     </select>
                                                 </div>
 
-                                                <div style={{ fontSize: '0.85em', fontStyle: 'italic', marginTop: '8px', opacity: 0.8, color: infoNivel.cor, textShadow: `0 0 3px ${infoNivel.cor}40` }}>
-                                                    ⚡ {infoNivel.desc}
+                                                <div style={{ fontSize: '0.85em', fontStyle: 'italic', color: '#ccc' }}>
+                                                    <span style={{ color: infoNivel.cor, fontWeight: 'bold' }}>⚡ :</span> {infoNivel.desc}
                                                 </div>
                                             </div>
                                         );
