@@ -74,12 +74,11 @@ const CATEGORIAS_DOMINIO = {
     'summons': { titulo: 'Contratos & Invocações', icone: '👹', cor: '#ffcc00' }
 };
 
-// 🔥 A SUA LORE DEFINITIVA E ATUALIZADA 🔥
 const PREDEFINIDOS_LORE = {
     elementais: [
         { label: "Elementos Básicos", itens: ["Fogo", "Raio", "Agua", "Vento", "Terra"] },
         { label: "Básicos Verdadeiros", itens: ["Fogo Verdadeiro", "Raio Verdadeiro", "Agua Verdadeira", "Vento Verdadeiro", "Terra Verdadeira"] },
-        { label: "Elementos Avançados", itens: ["Solar", "Energia", "Gelo", "Vacuo", "Natureza"] },
+        { label: "Elementos Avançados", itens: ["Solar", "Energia", "Gelo", "Vacuo", "Natureza", "Cristal", "Lava", "Madeira"] },
         { label: "Avançados Verdadeiros", itens: ["Solar Verdadeiro", "Energia Verdadeira", "Gelo Verdadeiro", "Vacuo Verdadeiro", "Natureza Verdadeira"] }
     ],
     mana: [
@@ -89,27 +88,30 @@ const PREDEFINIDOS_LORE = {
     ],
     chakra: [
         { label: "Kekkei Genkai", itens: ["Elemento Madeira", "Elemento Mineral", "Elemento Cinzas", "Elemento Igneo", "Elemento Lava", "Elemento Vapor", "Elemento Nevoa", "Elemento Tempestade", "Elemento Areia", "Elemento Tufao"] },
-        { label: "Kekkei Touta", itens: ["Elemento Velocidade", "Elemento Poeira", "Elemento Veneno", "Elemento Cal", "Elemento Carbono", "Elemento Calor", "Elemento Som", "Elemento Magnetismo"] }
+        { label: "Kekkei Touta", itens: ["Elemento Velocidade", "Elemento Poeira", "Elemento Veneno", "Elemento Cal", "Elemento Carbono", "Elemento Calor", "Elemento Som", "Elemento Magnetismo"] },
+        { label: "Artes Oculares (Doujutsu)", itens: ["Sharingan", "Mangekyou Sharingan", "Byakugan", "Rinnegan", "Tenseigan"] }
     ],
     aura: [
         { label: "Manifestação", itens: ["Aura Pura", "Projeção de Aura", "Reforço de Aura"] },
-        { label: "Fusões", itens: ["Fusões Básicas", "Fusões Avançadas"] }
+        { label: "Fusões", itens: ["Fusões Básicas", "Fusões Avançadas"] },
+        { label: "Categorias Especiais", itens: ["Haki da Observação", "Haki do Armamento", "Haki do Rei", "Ryuo"] }
     ],
     primordiais: [
         { label: "Primordiais Base", itens: ["Luz", "Trevas", "Ether"] },
         { label: "Primordiais Verdadeiros", itens: ["Celestial", "Infernal", "Caos"] },
-        { label: "Absolutos", itens: ["Criacao", "Destruicao", "Cosmos"] }
+        { label: "Absolutos", itens: ["Criacao", "Destruicao", "Cosmos", "Colapso Gravitacional", "Apagamento Conceitual"] }
     ],
     astrais: [
-        { label: "Domínios da Existência", itens: ["Vida", "Morte", "Vazio", "Neutro", "Energia Astral"] }
+        { label: "Domínios da Existência", itens: ["Vida", "Morte", "Vazio", "Neutro", "Energia Astral"] },
+        { label: "Artes Amaldiçoadas", itens: ["Energia Amaldiçoada", "Técnica Reversa", "Expansão de Domínio", "Restrição Celestial"] }
     ],
     marciais: [
         { label: "Fundamentos", itens: ["Artes Marciais (Combate Corpo-a-Corpo)", "Reforço Físico"] },
-        { label: "Estilos de Combate", itens: ["Punho do Dragão", "Palma Suave", "Caminho do Tigre", "Boxe Demoníaco", "Artes de Assassino", "Estilo Bêbado", "Punho de Ferro"] }
+        { label: "Estilos de Combate", itens: ["Punho do Dragão", "Palma Suave", "Caminho do Tigre", "Boxe Demoníaco", "Artes de Assassino", "Estilo Bêbado", "Punho de Ferro", "Oito Portões Internos"] }
     ],
     armas: [
-        { label: "Kenjutsu (Espadas)", itens: ["Ittouryu (1 Espada)", "Nitouryu (2 Espadas)", "Santouryu (3 Espadas)", "Iaido", "Kenjutsu"] },
-        { label: "Posturas de Combate", itens: ["Postura da Montanha", "Postura da Água", "Postura do Vento", "Postura do Trovão"] },
+        { label: "Kenjutsu (Espadas)", itens: ["Ittouryu (1 Espada)", "Nitouryu (2 Espadas)", "Santouryu (3 Espadas)", "Iaido", "Kenjutsu", "Shikai / Bankai"] },
+        { label: "Posturas de Combate", itens: ["Postura da Montanha", "Postura da Água", "Postura do Vento", "Postura do Trovão", "Respiração da Água", "Respiração do Fogo", "Respiração do Trovão"] },
         { label: "Outras Armas", itens: ["Maestria com Lança", "Maestria com Foice", "Maestria com Arco", "Maestria com Armas de Fogo", "Maestria com Escudo"] }
     ],
     cura: [
@@ -120,7 +122,6 @@ const PREDEFINIDOS_LORE = {
     ]
 };
 
-// Descobre o quadrante correto analisando as strings da Lore
 const encontrarCategoriaPorLore = (nome) => {
     const nomeClean = String(nome || '').trim().toLowerCase();
     for (const [catKey, grupos] of Object.entries(PREDEFINIDOS_LORE)) {
@@ -295,8 +296,16 @@ const RadarDesenhado = ({ ficha, isAtual, corTinta = "#000000" }) => {
 };
 
 // ==========================================
-// 📜 O COMPONENTE: HIERARQUIA DE DOMÍNIOS (ISOLADO E INTELIGENTE)
+// 📜 O COMPONENTE: HIERARQUIA DE DOMÍNIOS (ISOLADO E BLINDADO)
 // ==========================================
+
+// 🔥 A CHAVE PARA O MISTÉRIO DOS ZUMBIS!
+// Isso impede que as pastas do banco de dados (que guardavam as magias do layout antigo)
+// sejam lidas e renderizadas como se fossem "novas magias".
+const CHAVES_PROIBIDAS_LEGADO = [
+    'elementais', 'elementos', 'mana', 'chakra', 'aura', 
+    'primordiais', 'astrais', 'astral', 'marciais', 'armas', 'cura', 'summons'
+];
 
 function QuadranteCategoria({ catKey, catData, dominiosSalvos, updateFicha }) {
     const [selectValue, setSelectValue] = useState('');
@@ -304,14 +313,15 @@ function QuadranteCategoria({ catKey, catData, dominiosSalvos, updateFicha }) {
 
     const corTema = catData.cor || '#ffffff';
 
-    // Distribuidor Dinâmico: Lê a base plana, filtra e descobre a aba automaticamente
     const dominiosFiltrados = Object.entries(dominiosSalvos).filter(([nome, dados]) => {
         if (!dados || typeof dados !== 'object') return false;
         
-        const catAuto = encontrarCategoriaPorLore(nome);
-        if (catAuto) return catAuto === catKey; // Se encontrou na Lore, vai pra gaveta certa!
+        // MÁGICA: Bloqueia as pastas zumbis do Firebase!
+        if (CHAVES_PROIBIDAS_LEGADO.includes(nome.toLowerCase())) return false;
         
-        // Se for customizado por input livre, segue a chave gravada ou cai na padrão (Elementais)
+        const catAuto = encontrarCategoriaPorLore(nome);
+        if (catAuto) return catAuto === catKey; 
+        
         return dados.categoria === catKey || (!dados.categoria && catKey === 'elementais');
     });
 
@@ -323,7 +333,7 @@ function QuadranteCategoria({ catKey, catData, dominiosSalvos, updateFicha }) {
             if (!f.dominios[nome] || typeof f.dominios[nome] !== 'object') {
                 f.dominios[nome] = { nivel: 1, categoria: catKey };
             } else {
-                f.dominios[nome].categoria = catKey; // Apenas move se já existir, não reseta o nível
+                f.dominios[nome].categoria = catKey;
             }
         });
         callSave();
@@ -435,7 +445,7 @@ function QuadranteCategoria({ catKey, catData, dominiosSalvos, updateFicha }) {
                                     <strong style={{ fontSize: '1.2em', textTransform: 'uppercase', letterSpacing: '1px', color: '#fff' }}>{nomeDom}</strong>
                                     
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        {/* Dropdown de mover (SÓ aparece se for customizado e não vier da Lore Oficial) */}
+                                        {/* Dropdown de mover */}
                                         {!encontrarCategoriaPorLore(nomeDom) && (
                                             <select
                                                 value={dadosDom.categoria || catKey}
@@ -931,7 +941,7 @@ export default function MarcadosPanel() {
             </div>
 
             {/* 🔥 AS 5 PÁGINAS DA FICHA DEFINITIVA 🔥 */}
-            <div key={paginaAtual} className={`swoop-container ${animDirection === 'next' ? 'page-swoop-next' : 'page-swoop-prev'}`} style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '40px', paddingBottom: '30px' }}>
+            <div key={paginaAtual} className={`swoop-container ${animDirection === 'next' ? 'page-swoop-next' : 'page-swoop-next'}`} style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '40px', paddingBottom: '30px' }}>
                 
                 {/* ======================= PÁGINA 1: FICHA E AVATAR ======================= */}
                 {paginaAtual === 1 && (
