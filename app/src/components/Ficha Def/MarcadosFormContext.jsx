@@ -1,17 +1,18 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useCallback, useMemo } from 'react';
 import useStore from '../../stores/useStore';
-import { salvarFichaSilencioso, salvarFirebaseImediato } from '../../services/firebase-sync';
+import { salvarFichaSilencioso } from '../../services/firebase-sync';
 
-// ==========================================
-// 🌌 CONSTANTES EXPORTADAS
-// ==========================================
 export const NIVEIS_DOMINIO = {
     1: { nome: "Básico", cor: "#44ff44", desc: "+10% Dano Mágico" },
     2: { nome: "Intermediário", cor: "#44ff44", desc: "+25% Dano | -5% Custo" },
     3: { nome: "Avançado", cor: "#44ff44", desc: "+50% Dano | -10% Custo" },
     4: { nome: "Virtuoso", cor: "#0088ff", desc: "Dano x2 | Ignora Resistências Menores" },
-    5: { nome: "Maestria", cor: "#0088ff", desc: "Dano x3.5 | -25% Custo | -50% Dano Sofrido" }
-    // ... adicione os outros níveis até o 10 aqui ...
+    5: { nome: "Maestria", cor: "#0088ff", desc: "Dano x3.5 | -25% Custo | -50% Dano Sofrido" },
+    6: { nome: "Perfeito", cor: "#0088ff", desc: "Dano x6 | Imunidade Total | Incancelável" },
+    7: { nome: "Molecular", cor: "#aa00ff", desc: "Dano x10 | Ignora Imunidades | Dano Persistente" },
+    8: { nome: "Atômico", cor: "#aa00ff", desc: "Dano x50 | -50% Custo | Desintegração de Armadura" },
+    9: { nome: "Absoluto", cor: "#ff003c", desc: "Dano x100 | Custo ZERO | Silenciamento de Elemento" },
+    10: { nome: "Eterno", cor: "#ffcc00", desc: "Dano Incalculável | Apagamento Conceitual" }
 };
 
 export const CATEGORIAS_DOMINIO = {
@@ -19,25 +20,35 @@ export const CATEGORIAS_DOMINIO = {
     'mana': { titulo: 'Artes de Mana (Grimório)', icone: '🔮', cor: '#0088ff' },
     'chakra': { titulo: 'Artes de Chakra (Shinobi)', icone: '🌀', cor: '#00ffcc' },
     'aura': { titulo: 'Artes de Aura (Manifestação)', icone: '✨', cor: '#ff00ff' },
-    'primordiais': { titulo: 'Artes Primordiais Cósmicas', icone: '🌌', cor: '#aa00ff' }
-    // ... adicione o resto das categorias ...
+    'primordiais': { titulo: 'Artes Primordiais Cósmicas', icone: '🌌', cor: '#aa00ff' },
+    'astrais': { titulo: 'Artes Astrais (Vida/Morte)', icone: '👁️', cor: '#ffffff' },
+    'marciais': { titulo: 'Artes Marciais (Taijutsu)', icone: '🥋', cor: '#ff3333' },
+    'armas': { titulo: 'Maestria de Armas (Kenjutsu)', icone: '⚔️', cor: '#aaaaaa' },
+    'cura': { titulo: 'Atributos de Cura e Suporte', icone: '💚', cor: '#00ff00' },
+    'summons': { titulo: 'Contratos & Invocações', icone: '👹', cor: '#ffcc00' }
 };
 
 export const PREDEFINIDOS_LORE = {
     elementais: [
         { label: 'Elementos Básicos', itens: ['Fogo', 'Raio', 'Agua', 'Vento', 'Terra'] },
-        { label: 'Básicos Verdadeiros', itens: ['Fogo Verdadeiro', 'Raio Verdadeiro', 'Agua Verdadeira'] },
+        { label: 'Básicos Verdadeiros', itens: ['Fogo Verdadeiro', 'Raio Verdadeiro', 'Agua Verdadeira', 'Vento Verdadeiro', 'Terra Verdadeira'] },
         { label: 'Elementos Avançados', itens: ['Solar', 'Energia', 'Gelo', 'Vacuo', 'Natureza'] }
     ],
     mana: [
-        { label: 'Artes Mágicas Básicas', itens: ['Magia Branca', 'Magia Negra', 'Magia de Sangue'] }
+        { label: 'Artes Mágicas Básicas', itens: ['Magia Branca', 'Magia Negra', 'Magia de Sangue', 'Necromancia', 'Ilusão', 'Gravidade'] },
+        { label: 'Mágicas Avançadas', itens: ['Magia Espacial', 'Magia Temporal', 'Magia de Selamento'] }
+    ],
+    chakra: [
+        { label: 'Naturezas de Chakra', itens: ['Katon (Fogo)', 'Suiton (Água)', 'Doton (Terra)', 'Fuuton (Vento)', 'Raiton (Raio)'] }
+    ],
+    aura: [
+        { label: 'Manifestações', itens: ['Aura de Combate', 'Instinto Assassino', 'Aura de Cura', 'Pressão Espiritual'] }
+    ],
+    primordiais: [
+        { label: 'Poderes Cósmicos', itens: ['Criação Constelar', 'Distorção Espacial', 'Manipulação do Tempo'] }
     ]
-    // ... adicione o resto da lore ...
 };
 
-// ==========================================
-// 🛡️ CRIAÇÃO DO CONTEXTO
-// ==========================================
 const MarcadosFormContext = createContext(null);
 
 export function useMarcadosForm() {
@@ -48,38 +59,22 @@ export function MarcadosFormProvider({ children }) {
     const minhaFicha = useStore(s => s.minhaFicha);
     const updateFicha = useStore(s => s.updateFicha);
 
-    // 📌 Estados do Painel de Domínios
-    const [inputsDominios, setInputsDominios] = useState({});
-    const [selectsDominios, setSelectsDominios] = useState({});
+    const callSave = useCallback(() => { salvarFichaSilencioso(); }, []);
 
-    // 📌 Funções de Manipulação de Domínios
-    const callSave = useCallback(() => {
-        salvarFichaSilencioso();
-    }, []);
-
-    const handleAddDominioInput = useCallback((catKey) => {
-        const val = inputsDominios[catKey]?.trim();
-        if (!val) return;
+    // Função unificada e 100% isolada para adicionar
+    const handleAddDominio = useCallback((catKey, val) => {
+        const nome = val?.trim();
+        if (!nome) return;
         updateFicha(f => {
             if (!f.dominios) f.dominios = {};
             if (!f.dominios[catKey]) f.dominios[catKey] = {};
-            f.dominios[catKey][val] = { nivel: 1 };
+            // Só adiciona se não existir, evitando resetar o nível sem querer
+            if (!f.dominios[catKey][nome]) {
+                f.dominios[catKey][nome] = { nivel: 1 };
+            }
         });
-        setInputsDominios(prev => ({...prev, [catKey]: ''}));
         callSave();
-    }, [inputsDominios, updateFicha, callSave]);
-
-    const handleAddDominioSelect = useCallback((catKey) => {
-        const val = selectsDominios[catKey];
-        if (!val) return;
-        updateFicha(f => {
-            if (!f.dominios) f.dominios = {};
-            if (!f.dominios[catKey]) f.dominios[catKey] = {};
-            f.dominios[catKey][val] = { nivel: 1 };
-        });
-        setSelectsDominios(prev => ({...prev, [catKey]: ''}));
-        callSave();
-    }, [selectsDominios, updateFicha, callSave]);
+    }, [updateFicha, callSave]);
 
     const handleRemoveDominio = useCallback((catKey, nome) => {
         if (!window.confirm(`Riscar o domínio [${nome}] das suas páginas?`)) return;
@@ -98,16 +93,28 @@ export function MarcadosFormProvider({ children }) {
         callSave();
     }, [updateFicha, callSave]);
 
-    // 📦 O que o Provider exporta
+    // O "Santuário de Correção" - Move dados antigos para o lugar certo
+    const handleMoveDominio = useCallback((oldCat, newCat, nome) => {
+        if (!newCat || oldCat === newCat) return;
+        updateFicha(f => {
+            if (!f.dominios) f.dominios = {};
+            if (!f.dominios[newCat]) f.dominios[newCat] = {};
+            // Clona o status atual da magia para o novo quadrante
+            f.dominios[newCat][nome] = f.dominios[oldCat][nome];
+            // Remove do quadrante errado
+            delete f.dominios[oldCat][nome];
+        });
+        callSave();
+    }, [updateFicha, callSave]);
+
     const value = useMemo(() => ({
         minhaFicha, updateFicha,
-        inputsDominios, setInputsDominios,
-        selectsDominios, setSelectsDominios,
-        handleAddDominioInput, handleAddDominioSelect,
-        handleRemoveDominio, handleChangeNivelDominio
+        handleAddDominio, handleRemoveDominio, 
+        handleChangeNivelDominio, handleMoveDominio
     }), [
-        minhaFicha, updateFicha, inputsDominios, selectsDominios,
-        handleAddDominioInput, handleAddDominioSelect, handleRemoveDominio, handleChangeNivelDominio
+        minhaFicha, updateFicha,
+        handleAddDominio, handleRemoveDominio, 
+        handleChangeNivelDominio, handleMoveDominio
     ]);
 
     return (
