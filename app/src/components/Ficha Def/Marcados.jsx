@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import useStore from '../../stores/useStore';
 import { uploadImagem, salvarFichaSilencioso, salvarFirebaseImediato } from '../../services/firebase-sync';
-import { getMaximo, getRawBase, getBuffs } from '../../core/attributes';
+
+// Importação flexível para evitar o ReferenceError de "getMaximo is not defined"
+import * as AtributosCore from '../../core/attributes';
 import { getRank } from '../../core/prestige';
 
 // 🔥 IMPORTAÇÕES DAS PÁGINAS MÁGICAS EXTERNAS 🔥
@@ -9,8 +11,21 @@ import ClassificacaoPanel from './ClassificacaoPanel';
 import RelicarioPanel from './RelicarioPanel'; 
 
 // ==========================================
-// 🛡️ DADOS DO COMPÊNDIO (PARA O ÍCONE DA MOLDURA)
+// 🛡️ DADOS DO COMPÊNDIO E FUNÇÕES SEGURAS
 // ==========================================
+const safeGetRawBase = (f, k) => typeof AtributosCore.getRawBase === 'function' ? AtributosCore.getRawBase(f, k) : parseFloat(f[k]?.base) || 0;
+const safeGetBuffs = (f, k, t) => typeof AtributosCore.getBuffs === 'function' ? AtributosCore.getBuffs(f, k, t) : {};
+
+// Função blindada contra o erro da tela vermelha
+const safeGetMaximo = (ficha, key) => {
+    try {
+        if (AtributosCore && typeof AtributosCore.getMaximo === 'function') {
+            return AtributosCore.getMaximo(ficha, key);
+        }
+    } catch (e) { console.warn("Aviso: getMaximo falhou internamente."); }
+    return parseFloat(ficha[key]?.base) || 0;
+};
+
 const CLASSES_REGULARES_BASE = [
     { id: 'saber', nome: 'Saber', icone: '⚔️', cor: '#0088ff' },
     { id: 'archer', nome: 'Archer', icone: '🏹', cor: '#ff003c' },
@@ -62,23 +77,24 @@ const NIVEIS_DOMINIO = {
 };
 
 const CATEGORIAS_DOMINIO = {
-    'elementais': { titulo: 'Manipulação Elemental', icone: '🔥', cor: '#ff6600' },
+    'elementos': { titulo: 'Manipulação Elemental', icone: '🔥', cor: '#ff6600' },
     'mana': { titulo: 'Artes de Mana (Grimório)', icone: '🔮', cor: '#0088ff' },
     'chakra': { titulo: 'Artes de Chakra (Shinobi)', icone: '🌀', cor: '#00ffcc' },
     'aura': { titulo: 'Artes de Aura (Manifestação)', icone: '✨', cor: '#ff00ff' },
     'primordiais': { titulo: 'Artes Primordiais Cósmicas', icone: '🌌', cor: '#aa00ff' },
-    'astrais': { titulo: 'Artes Astrais (Vida/Morte)', icone: '👁️', cor: '#ffffff' },
+    'astral': { titulo: 'Artes Astrais (Vida/Morte)', icone: '👁️', cor: '#ffffff' },
     'marciais': { titulo: 'Artes Marciais (Taijutsu)', icone: '🥋', cor: '#ff3333' },
     'armas': { titulo: 'Maestria de Armas (Kenjutsu)', icone: '⚔️', cor: '#aaaaaa' },
     'cura': { titulo: 'Atributos de Cura e Suporte', icone: '💚', cor: '#00ff00' },
     'summons': { titulo: 'Contratos & Invocações', icone: '👹', cor: '#ffcc00' }
 };
 
+// 🔥 A SUA LORE OFICIAL E DEFINITIVA 🔥
 const PREDEFINIDOS_LORE = {
-    elementais: [
+    elementos: [
         { label: "Elementos Básicos", itens: ["Fogo", "Raio", "Agua", "Vento", "Terra"] },
         { label: "Básicos Verdadeiros", itens: ["Fogo Verdadeiro", "Raio Verdadeiro", "Agua Verdadeira", "Vento Verdadeiro", "Terra Verdadeira"] },
-        { label: "Elementos Avançados", itens: ["Solar", "Energia", "Gelo", "Vacuo", "Natureza", "Cristal", "Lava", "Madeira"] },
+        { label: "Elementos Avançados", itens: ["Solar", "Energia", "Gelo", "Vacuo", "Natureza"] },
         { label: "Avançados Verdadeiros", itens: ["Solar Verdadeiro", "Energia Verdadeira", "Gelo Verdadeiro", "Vacuo Verdadeiro", "Natureza Verdadeira"] }
     ],
     mana: [
@@ -88,30 +104,27 @@ const PREDEFINIDOS_LORE = {
     ],
     chakra: [
         { label: "Kekkei Genkai", itens: ["Elemento Madeira", "Elemento Mineral", "Elemento Cinzas", "Elemento Igneo", "Elemento Lava", "Elemento Vapor", "Elemento Nevoa", "Elemento Tempestade", "Elemento Areia", "Elemento Tufao"] },
-        { label: "Kekkei Touta", itens: ["Elemento Velocidade", "Elemento Poeira", "Elemento Veneno", "Elemento Cal", "Elemento Carbono", "Elemento Calor", "Elemento Som", "Elemento Magnetismo"] },
-        { label: "Artes Oculares (Doujutsu)", itens: ["Sharingan", "Mangekyou Sharingan", "Byakugan", "Rinnegan", "Tenseigan"] }
+        { label: "Kekkei Touta", itens: ["Elemento Velocidade", "Elemento Poeira", "Elemento Veneno", "Elemento Cal", "Elemento Carbono", "Elemento Calor", "Elemento Som", "Elemento Magnetismo"] }
     ],
     aura: [
         { label: "Manifestação", itens: ["Aura Pura", "Projeção de Aura", "Reforço de Aura"] },
-        { label: "Fusões", itens: ["Fusões Básicas", "Fusões Avançadas"] },
-        { label: "Categorias Especiais", itens: ["Haki da Observação", "Haki do Armamento", "Haki do Rei", "Ryuo"] }
+        { label: "Fusões", itens: ["Fusões Básicas", "Fusões Avançadas"] }
     ],
     primordiais: [
         { label: "Primordiais Base", itens: ["Luz", "Trevas", "Ether"] },
         { label: "Primordiais Verdadeiros", itens: ["Celestial", "Infernal", "Caos"] },
-        { label: "Absolutos", itens: ["Criacao", "Destruicao", "Cosmos", "Colapso Gravitacional", "Apagamento Conceitual"] }
+        { label: "Absolutos", itens: ["Criacao", "Destruicao", "Cosmos"] }
     ],
-    astrais: [
-        { label: "Domínios da Existência", itens: ["Vida", "Morte", "Vazio", "Neutro", "Energia Astral"] },
-        { label: "Artes Amaldiçoadas", itens: ["Energia Amaldiçoada", "Técnica Reversa", "Expansão de Domínio", "Restrição Celestial"] }
+    astral: [
+        { label: "Domínios da Existência", itens: ["Vida", "Morte", "Vazio", "Neutro", "Energia Astral"] }
     ],
     marciais: [
         { label: "Fundamentos", itens: ["Artes Marciais (Combate Corpo-a-Corpo)", "Reforço Físico"] },
-        { label: "Estilos de Combate", itens: ["Punho do Dragão", "Palma Suave", "Caminho do Tigre", "Boxe Demoníaco", "Artes de Assassino", "Estilo Bêbado", "Punho de Ferro", "Oito Portões Internos"] }
+        { label: "Estilos de Combate", itens: ["Punho do Dragão", "Palma Suave", "Caminho do Tigre", "Boxe Demoníaco", "Artes de Assassino", "Estilo Bêbado", "Punho de Ferro"] }
     ],
     armas: [
-        { label: "Kenjutsu (Espadas)", itens: ["Ittouryu (1 Espada)", "Nitouryu (2 Espadas)", "Santouryu (3 Espadas)", "Iaido", "Kenjutsu", "Shikai / Bankai"] },
-        { label: "Posturas de Combate", itens: ["Postura da Montanha", "Postura da Água", "Postura do Vento", "Postura do Trovão", "Respiração da Água", "Respiração do Fogo", "Respiração do Trovão"] },
+        { label: "Kenjutsu (Espadas)", itens: ["Ittouryu (1 Espada)", "Nitouryu (2 Espadas)", "Santouryu (3 Espadas)", "Iaido", "Kenjutsu"] },
+        { label: "Posturas de Combate", itens: ["Postura da Montanha", "Postura da Água", "Postura do Vento", "Postura do Trovão"] },
         { label: "Outras Armas", itens: ["Maestria com Lança", "Maestria com Foice", "Maestria com Arco", "Maestria com Armas de Fogo", "Maestria com Escudo"] }
     ],
     cura: [
@@ -135,12 +148,8 @@ const encontrarCategoriaPorLore = (nome) => {
 };
 
 // ==========================================
-// 🛡️ FUNÇÕES SEGURAS DA ENGINE E MATEMÁTICA
+// 🛡️ FUNÇÕES MATEMÁTICAS E CÁLCULO
 // ==========================================
-const safeGetRawBase = (f, k) => typeof getRawBase === 'function' ? getRawBase(f, k) : parseFloat(f[k]?.base) || 0;
-const safeGetRank = (prest, asc) => typeof getRank === 'function' ? getRank(prest, asc) : { l: 'F', c: '#ffffff', a: asc };
-const safeGetBuffs = (f, k, t) => typeof getBuffs === 'function' ? getBuffs(f, k, t) : {};
-
 const getBasePFor = (ficha, k) => {
     const mults = { vida: 1000000, mana: 10000000, aura: 10000000, chakra: 10000000, corpo: 10000000, status: 1000 };
     const div = parseFloat(ficha?.divisores?.[k]) || 1;
@@ -299,12 +308,10 @@ const RadarDesenhado = ({ ficha, isAtual, corTinta = "#000000" }) => {
 // 📜 O COMPONENTE: HIERARQUIA DE DOMÍNIOS (ISOLADO E BLINDADO)
 // ==========================================
 
-// 🔥 A CHAVE PARA O MISTÉRIO DOS ZUMBIS!
-// Isso impede que as pastas do banco de dados (que guardavam as magias do layout antigo)
-// sejam lidas e renderizadas como se fossem "novas magias".
+// 🔥 EXTERMINADOR DE ZUMBIS: Bloqueia pastas antigas do Firebase de renderizar
 const CHAVES_PROIBIDAS_LEGADO = [
-    'elementais', 'elementos', 'mana', 'chakra', 'aura', 
-    'primordiais', 'astrais', 'astral', 'marciais', 'armas', 'cura', 'summons'
+    'elementais', 'elementos', 'mana', 'chakra', 'aura', 'astrais', 'astral',
+    'primordiais', 'marciais', 'armas', 'cura', 'summons', 'inventario', 'arsenal'
 ];
 
 function QuadranteCategoria({ catKey, catData, dominiosSalvos, updateFicha }) {
@@ -314,15 +321,17 @@ function QuadranteCategoria({ catKey, catData, dominiosSalvos, updateFicha }) {
     const corTema = catData.cor || '#ffffff';
 
     const dominiosFiltrados = Object.entries(dominiosSalvos).filter(([nome, dados]) => {
-        if (!dados || typeof dados !== 'object') return false;
+        // Bloqueia qualquer item que não seja uma habilidade válida
+        if (!dados || typeof dados !== 'object' || !dados.nivel) return false;
         
-        // MÁGICA: Bloqueia as pastas zumbis do Firebase!
-        if (CHAVES_PROIBIDAS_LEGADO.includes(nome.toLowerCase())) return false;
+        // Bloqueia visualmente todas as gavetas fantasmas (zumbis)
+        const nomeLower = String(nome).trim().toLowerCase();
+        if (CHAVES_PROIBIDAS_LEGADO.includes(nomeLower)) return false;
         
         const catAuto = encontrarCategoriaPorLore(nome);
         if (catAuto) return catAuto === catKey; 
         
-        return dados.categoria === catKey || (!dados.categoria && catKey === 'elementais');
+        return dados.categoria === catKey || (!dados.categoria && catKey === 'elementos');
     });
 
     const handleAdd = (val) => {
@@ -633,7 +642,7 @@ export default function MarcadosPanel() {
         if (isNaN(numVal)) numVal = 0;
 
         const divAtual = parseFloat(minhaFicha.divisores?.[k]) || 1;
-        const prestAtual = getBasePFor(minhaFicha, k);
+        const prestAtual = safeGetMaximo(minhaFicha, k);
 
         let novoP = tipo === 'prestigio' ? numVal : prestAtual;
         let novoDiv = tipo === 'divisor' ? (numVal > 0 ? numVal : 1) : divAtual;
@@ -710,8 +719,7 @@ export default function MarcadosPanel() {
         if (!window.confirm('Recuperar toda a Vida, Energias, Pontos e Ações de Turno?')) return;
         updateFicha(f => {
             ['vida', 'mana', 'aura', 'chakra', 'corpo'].forEach(k => {
-                let mx = 0;
-                try { mx = getMaximo(minhaFicha, k); } catch(e) { mx = minhaFicha[k]?.base || 0; }
+                let mx = safeGetMaximo(minhaFicha, k);
                 const { mxDisplay } = calcularEscala(mx, k);
                 if (!f[k]) f[k] = {};
                 f[k].atual = isNaN(mxDisplay) ? 0 : mxDisplay;
@@ -731,9 +739,7 @@ export default function MarcadosPanel() {
 
     const LinhaVital = ({ labelKey, fallbackLabel, vitalKey, subItens, corBarra, corTextoBarra = '#fff' }) => {
         const [aberto, setAberta] = useState(false);
-        let rawMaximo = 0;
-        try { rawMaximo = getMaximo(minhaFicha, vitalKey); } catch(e) { rawMaximo = minhaFicha[vitalKey]?.base || 0; }
-        if (isNaN(rawMaximo)) rawMaximo = 0;
+        let rawMaximo = safeGetMaximo(minhaFicha, vitalKey);
         
         const { mxDisplay, pVit } = calcularEscala(rawMaximo, vitalKey);
         
@@ -767,9 +773,7 @@ export default function MarcadosPanel() {
 
     const LinhaAtributoCru = ({ labelKey, fallbackLabel, attrKey, isAtual }) => {
         const baseVal = minhaFicha[attrKey]?.base || '';
-        let maxVal = 0;
-        try { maxVal = getMaximo(minhaFicha, attrKey); } catch(e) { maxVal = baseVal; }
-        if (isNaN(maxVal)) maxVal = 0;
+        let maxVal = safeGetMaximo(minhaFicha, attrKey);
 
         return (
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted currentColor', padding: '6px 0', fontSize: '1.1em' }}>
@@ -941,7 +945,7 @@ export default function MarcadosPanel() {
             </div>
 
             {/* 🔥 AS 5 PÁGINAS DA FICHA DEFINITIVA 🔥 */}
-            <div key={paginaAtual} className={`swoop-container ${animDirection === 'next' ? 'page-swoop-next' : 'page-swoop-next'}`} style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '40px', paddingBottom: '30px' }}>
+            <div key={paginaAtual} className={`swoop-container ${animDirection === 'next' ? 'page-swoop-next' : 'page-swoop-prev'}`} style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '40px', paddingBottom: '30px' }}>
                 
                 {/* ======================= PÁGINA 1: FICHA E AVATAR ======================= */}
                 {paginaAtual === 1 && (
