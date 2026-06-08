@@ -26,6 +26,9 @@ const safeGetMaximo = (ficha, key) => {
     return parseFloat(ficha[key]?.base) || 0;
 };
 
+// 🔥 A FUNÇÃO CORRIGIDA AQUI 🔥
+const safeGetRank = (prest, asc) => typeof getRank === 'function' ? getRank(prest, asc) : { l: 'F', c: '#ffffff', a: asc };
+
 const CLASSES_REGULARES_BASE = [
     { id: 'saber', nome: 'Saber', icone: '⚔️', cor: '#0088ff' },
     { id: 'archer', nome: 'Archer', icone: '🏹', cor: '#ff003c' },
@@ -945,7 +948,7 @@ export default function MarcadosPanel() {
             </div>
 
             {/* 🔥 AS 5 PÁGINAS DA FICHA DEFINITIVA 🔥 */}
-            <div key={paginaAtual} className={`swoop-container ${animDirection === 'next' ? 'page-swoop-next' : 'page-swoop-prev'}`} style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '40px', paddingBottom: '30px' }}>
+            <div key={paginaAtual} className={`swoop-container ${animDirection === 'next' ? 'page-swoop-next' : 'page-swoop-next'}`} style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '40px', paddingBottom: '30px' }}>
                 
                 {/* ======================= PÁGINA 1: FICHA E AVATAR ======================= */}
                 {paginaAtual === 1 && (
