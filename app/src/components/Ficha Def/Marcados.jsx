@@ -26,7 +26,7 @@ const safeGetMaximo = (ficha, key) => {
     return parseFloat(ficha[key]?.base) || 0;
 };
 
-// 🔥 A FUNÇÃO CORRIGIDA AQUI 🔥
+// A LINHA DO RANK CORRIGIDA
 const safeGetRank = (prest, asc) => typeof getRank === 'function' ? getRank(prest, asc) : { l: 'F', c: '#ffffff', a: asc };
 
 const CLASSES_REGULARES_BASE = [
@@ -79,8 +79,13 @@ const NIVEIS_DOMINIO = {
     10: { nome: "Eterno", cor: "#ffcc00", desc: "Dano Incalculável | Apagamento Conceitual" }
 };
 
+// 🔥 CATEGORIAS SEPARADAS COMO PEDIDO 🔥
 const CATEGORIAS_DOMINIO = {
-    'elementos': { titulo: 'Manipulação Elemental', icone: '🔥', cor: '#ff6600' },
+    'elementos_basicos': { titulo: 'Elementos Básicos', icone: '🔥', cor: '#ff6600' },
+    'elementos_basicos_verdadeiros': { titulo: 'Básicos Verdadeiros', icone: '🌋', cor: '#ff3300' },
+    'elementos_avancados': { titulo: 'Elementos Avançados', icone: '☄️', cor: '#ffaa00' },
+    'elementos_avancados_verdadeiros': { titulo: 'Avançados Verdadeiros', icone: '☀️', cor: '#ffcc00' },
+    
     'mana': { titulo: 'Artes de Mana (Grimório)', icone: '🔮', cor: '#0088ff' },
     'chakra': { titulo: 'Artes de Chakra (Shinobi)', icone: '🌀', cor: '#00ffcc' },
     'aura': { titulo: 'Artes de Aura (Manifestação)', icone: '✨', cor: '#ff00ff' },
@@ -92,14 +97,21 @@ const CATEGORIAS_DOMINIO = {
     'summons': { titulo: 'Contratos & Invocações', icone: '👹', cor: '#ffcc00' }
 };
 
-// 🔥 A SUA LORE OFICIAL E DEFINITIVA 🔥
+// 🔥 LORE SEPARADA NAS 4 TABELAS ELEMENTAIS 🔥
 const PREDEFINIDOS_LORE = {
-    elementos: [
-        { label: "Elementos Básicos", itens: ["Fogo", "Raio", "Agua", "Vento", "Terra"] },
-        { label: "Básicos Verdadeiros", itens: ["Fogo Verdadeiro", "Raio Verdadeiro", "Agua Verdadeira", "Vento Verdadeiro", "Terra Verdadeira"] },
-        { label: "Elementos Avançados", itens: ["Solar", "Energia", "Gelo", "Vacuo", "Natureza"] },
+    elementos_basicos: [
+        { label: "Elementos Básicos", itens: ["Fogo", "Raio", "Agua", "Vento", "Terra"] }
+    ],
+    elementos_basicos_verdadeiros: [
+        { label: "Básicos Verdadeiros", itens: ["Fogo Verdadeiro", "Raio Verdadeiro", "Agua Verdadeira", "Vento Verdadeiro", "Terra Verdadeira"] }
+    ],
+    elementos_avancados: [
+        { label: "Elementos Avançados", itens: ["Solar", "Energia", "Gelo", "Vacuo", "Natureza"] }
+    ],
+    elementos_avancados_verdadeiros: [
         { label: "Avançados Verdadeiros", itens: ["Solar Verdadeiro", "Energia Verdadeira", "Gelo Verdadeiro", "Vacuo Verdadeiro", "Natureza Verdadeira"] }
     ],
+
     mana: [
         { label: "Magias de Ciclo", itens: ["Truques de Ciclo", "Magias de 1º a 10º Ciclo"] },
         { label: "Magias Arcanas/Negras", itens: ["Truques Arcanos/Negros", "Magias Arcanas/Negra de 1º a 10º Ciclo"] },
@@ -278,7 +290,7 @@ const RadarDesenhado = ({ ficha, isAtual, corTinta = "#000000" }) => {
         let valNorm = pAtual || 0;
         if (valNorm >= 100) { valNorm = valNorm % 100; if (valNorm === 0 && pAtual > 0) valNorm = 100; }
         const frac = Math.min(Math.max(valNorm / 100, 0.05), 1);
-        return `${100 + 75 * frac * Math.cos(angulos[i])},${100 + 75 * frac * Math.sin(angulos[i])}`;
+        return `${100 + 75 * frac * Math.cos(angulos[i])},${100 + 75 * Math.sin(angulos[i])}`;
     }).join(' ');
 
     const hexToRgba = (hex, alpha) => {
@@ -311,10 +323,10 @@ const RadarDesenhado = ({ ficha, isAtual, corTinta = "#000000" }) => {
 // 📜 O COMPONENTE: HIERARQUIA DE DOMÍNIOS (ISOLADO E BLINDADO)
 // ==========================================
 
-// 🔥 EXTERMINADOR DE ZUMBIS: Bloqueia pastas antigas do Firebase de renderizar
 const CHAVES_PROIBIDAS_LEGADO = [
     'elementais', 'elementos', 'mana', 'chakra', 'aura', 'astrais', 'astral',
-    'primordiais', 'marciais', 'armas', 'cura', 'summons', 'inventario', 'arsenal'
+    'primordiais', 'marciais', 'armas', 'cura', 'summons', 'inventario', 'arsenal',
+    'elementos_basicos', 'elementos_basicos_verdadeiros', 'elementos_avancados', 'elementos_avancados_verdadeiros'
 ];
 
 function QuadranteCategoria({ catKey, catData, dominiosSalvos, updateFicha }) {
@@ -324,17 +336,15 @@ function QuadranteCategoria({ catKey, catData, dominiosSalvos, updateFicha }) {
     const corTema = catData.cor || '#ffffff';
 
     const dominiosFiltrados = Object.entries(dominiosSalvos).filter(([nome, dados]) => {
-        // Bloqueia qualquer item que não seja uma habilidade válida
         if (!dados || typeof dados !== 'object' || !dados.nivel) return false;
         
-        // Bloqueia visualmente todas as gavetas fantasmas (zumbis)
         const nomeLower = String(nome).trim().toLowerCase();
         if (CHAVES_PROIBIDAS_LEGADO.includes(nomeLower)) return false;
         
         const catAuto = encontrarCategoriaPorLore(nome);
         if (catAuto) return catAuto === catKey; 
         
-        return dados.categoria === catKey || (!dados.categoria && catKey === 'elementos');
+        return dados.categoria === catKey; // Removido o fallback padrão para evitar vazamentos na gaveta
     });
 
     const handleAdd = (val) => {
@@ -350,6 +360,24 @@ function QuadranteCategoria({ catKey, catData, dominiosSalvos, updateFicha }) {
         });
         callSave();
         setSelectValue(''); setInputValue('');
+    };
+
+    // 🔥 NOVA FUNÇÃO: ADICIONAR TUDO 🔥
+    const handleAddTudo = () => {
+        if (!window.confirm(`Deseja preencher esta aba adicionando todos os itens oficiais de ${catData.titulo}?`)) return;
+        updateFicha(f => {
+            if (!f.dominios) f.dominios = {};
+            (PREDEFINIDOS_LORE[catKey] || []).forEach(grupo => {
+                grupo.itens.forEach(nome => {
+                    if (!f.dominios[nome] || typeof f.dominios[nome] !== 'object') {
+                        f.dominios[nome] = { nivel: 1, categoria: catKey };
+                    } else {
+                        f.dominios[nome].categoria = catKey;
+                    }
+                });
+            });
+        });
+        callSave();
     };
 
     const handleRemove = (nome) => {
@@ -380,7 +408,7 @@ function QuadranteCategoria({ catKey, catData, dominiosSalvos, updateFicha }) {
             </h3>
             <div style={{ width: '100%', borderBottom: '1px dotted currentColor', opacity: 0.2, marginBottom: '5px' }} />
 
-            {/* 1. SELETOR DA LORE */}
+            {/* 1. SELETOR DA LORE & BOTÃO ADICIONAR TUDO */}
             <div style={{ display: 'flex', gap: '10px' }}>
                 <select
                     value={selectValue}
@@ -397,15 +425,31 @@ function QuadranteCategoria({ catKey, catData, dominiosSalvos, updateFicha }) {
                         </optgroup>
                     ))}
                 </select>
-                <button 
-                    onClick={() => handleAdd(selectValue)} 
-                    style={{ 
-                        background: 'transparent', border: `1px solid ${corTema}`, color: corTema, cursor: 'pointer', 
-                        padding: '10px 20px', borderRadius: '4px', fontWeight: 'bold', textTransform: 'uppercase', fontFamily: 'inherit'
-                    }}
-                >
-                    ADICIONAR
-                </button>
+                <div style={{ display: 'flex', gap: '5px' }}>
+                    <button 
+                        onClick={() => handleAdd(selectValue)} 
+                        style={{ 
+                            background: 'transparent', border: `1px solid ${corTema}`, color: corTema, cursor: 'pointer', 
+                            padding: '10px 15px', borderRadius: '4px', fontWeight: 'bold', textTransform: 'uppercase', fontFamily: 'inherit'
+                        }}
+                    >
+                        ADICIONAR
+                    </button>
+                    {/* O NOVO BOTÃO DE ADICIONAR TUDO */}
+                    {(PREDEFINIDOS_LORE[catKey] && PREDEFINIDOS_LORE[catKey].length > 0) && (
+                        <button 
+                            onClick={handleAddTudo} 
+                            style={{ 
+                                background: `${corTema}22`, border: `1px solid ${corTema}`, color: corTema, cursor: 'pointer', 
+                                padding: '10px', borderRadius: '4px', fontWeight: 'bold', textTransform: 'uppercase', fontFamily: 'inherit',
+                                boxShadow: `0 0 10px ${corTema}44`
+                            }}
+                            title="Adicionar toda a Lore de uma vez"
+                        >
+                            + TUDO
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* 2. INPUT DE CRIAÇÃO LIVRE */}
@@ -948,7 +992,7 @@ export default function MarcadosPanel() {
             </div>
 
             {/* 🔥 AS 5 PÁGINAS DA FICHA DEFINITIVA 🔥 */}
-            <div key={paginaAtual} className={`swoop-container ${animDirection === 'next' ? 'page-swoop-next' : 'page-swoop-next'}`} style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '40px', paddingBottom: '30px' }}>
+            <div key={paginaAtual} className={`swoop-container ${animDirection === 'next' ? 'page-swoop-next' : 'page-swoop-prev'}`} style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '40px', paddingBottom: '30px' }}>
                 
                 {/* ======================= PÁGINA 1: FICHA E AVATAR ======================= */}
                 {paginaAtual === 1 && (
