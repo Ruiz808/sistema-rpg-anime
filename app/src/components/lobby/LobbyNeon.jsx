@@ -104,8 +104,7 @@ export default function LobbyNeon() {
 
     const [canInstall, setCanInstall] = useState(!!window.deferredPrompt);
 
-    // 🔥 PREVENÇÃO CONTRA VAZAMENTO: O estado inicia vazio.
-    // Apenas a Nuvem ou a "gaveta específica" do usuário vai preenchê-lo.
+    // O estado inicia vazio.
     const [minhasMesas, setMinhasMesas] = useState([]);
 
     useEffect(() => {
@@ -153,7 +152,7 @@ export default function LobbyNeon() {
         }
     };
 
-    // 🔥 O MOTOR DE FUSÃO ABSOLUTAMENTE ISOLADO 🔥
+    // 🔥 O MOTOR DE FUSÃO COM PROTOCOLO DE RESGATE 🔥
     useEffect(() => {
         if (!userLogado) {
             setMinhasMesas([]);
@@ -164,6 +163,7 @@ export default function LobbyNeon() {
             const nomeSanitizado = sanitizarNome(userLogado);
             const refHistorico = ref(db, `usuarios/${nomeSanitizado}/historicoMesas`);
             const chaveLocalIsolada = `rpg_historico_mesas_${nomeSanitizado}`;
+            const chaveLegado = 'rpg_historico_mesas'; // A gaveta antiga partilhada
             
             try {
                 const snap = await get(refHistorico);
@@ -173,23 +173,36 @@ export default function LobbyNeon() {
                 setMinhasMesas(prevLocal => {
                     const mapUnificado = new Map();
                     
-                    // Apenas lê da gaveta EXCLUSIVA do usuário que fez login.
+                    // 1. Tenta ler da gaveta EXCLUSIVA
                     let localIsolado = [];
-                    try { localIsolado = JSON.parse(localStorage.getItem(chaveLocalIsolada)) || []; } catch(e) {}
+                    try { 
+                        const dadosIsolados = localStorage.getItem(chaveLocalIsolada);
+                        if (dadosIsolados) {
+                            localIsolado = JSON.parse(dadosIsolados) || [];
+                        } else {
+                            // 🔥 2. PROTOCOLO DE RESGATE: A gaveta nova está vazia! Tentar salvar da gaveta antiga (legado)
+                            const dadosLegado = localStorage.getItem(chaveLegado);
+                            if (dadosLegado) {
+                                localIsolado = JSON.parse(dadosLegado) || [];
+                            }
+                        }
+                    } catch(e) {}
 
-                    // Funde a Nuvem e a Gaveta Local Isolada
+                    // 3. Funde a Nuvem com os dados Locais (seja da gaveta nova ou da resgatada)
                     [...nuvemLista, ...localIsolado].forEach(m => {
                         if (m && m.id && !mapUnificado.has(m.id)) mapUnificado.set(m.id, m);
                     });
                     
                     const listaUnificada = Array.from(mapUnificado.values()).slice(0, 10);
 
-                    // Atualiza a Nuvem silenciosamente se houver dados novos
+                    // 4. Se recuperamos dados antigos que não estavam na nuvem, faz o upload silencioso!
                     if (listaUnificada.length > nuvemLista.length) {
                         set(refHistorico, listaUnificada).catch(()=>{});
                     }
                     
+                    // 5. Salva na NOVA gaveta isolada de forma definitiva
                     localStorage.setItem(chaveLocalIsolada, JSON.stringify(listaUnificada));
+                    
                     return listaUnificada;
                 });
             } catch (error) {
