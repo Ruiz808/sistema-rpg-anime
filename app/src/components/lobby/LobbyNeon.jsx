@@ -104,7 +104,6 @@ export default function LobbyNeon() {
 
     const [canInstall, setCanInstall] = useState(!!window.deferredPrompt);
 
-    // O estado inicia vazio.
     const [minhasMesas, setMinhasMesas] = useState([]);
 
     useEffect(() => {
@@ -152,7 +151,7 @@ export default function LobbyNeon() {
         }
     };
 
-    // 🔥 O MOTOR DE FUSÃO COM PROTOCOLO DE RESGATE 🔥
+    // 🔥 O MOTOR DE FUSÃO COM PROTOCOLO DE RESGATE CORRIGIDO 🔥
     useEffect(() => {
         if (!userLogado) {
             setMinhasMesas([]);
@@ -173,14 +172,16 @@ export default function LobbyNeon() {
                 setMinhasMesas(prevLocal => {
                     const mapUnificado = new Map();
                     
-                    // 1. Tenta ler da gaveta EXCLUSIVA
                     let localIsolado = [];
                     try { 
                         const dadosIsolados = localStorage.getItem(chaveLocalIsolada);
                         if (dadosIsolados) {
                             localIsolado = JSON.parse(dadosIsolados) || [];
-                        } else {
-                            // 🔥 2. PROTOCOLO DE RESGATE: A gaveta nova está vazia! Tentar salvar da gaveta antiga (legado)
+                        }
+                        
+                        // 🔥 A CORREÇÃO DE OURO: Agora verificamos se a lista está realmente vazia (length === 0),
+                        // em vez de perguntar apenas se o ficheiro existe no disco!
+                        if (localIsolado.length === 0) {
                             const dadosLegado = localStorage.getItem(chaveLegado);
                             if (dadosLegado) {
                                 localIsolado = JSON.parse(dadosLegado) || [];
@@ -188,19 +189,19 @@ export default function LobbyNeon() {
                         }
                     } catch(e) {}
 
-                    // 3. Funde a Nuvem com os dados Locais (seja da gaveta nova ou da resgatada)
+                    // Funde a Nuvem com os dados Locais (seja da gaveta nova ou da resgatada)
                     [...nuvemLista, ...localIsolado].forEach(m => {
                         if (m && m.id && !mapUnificado.has(m.id)) mapUnificado.set(m.id, m);
                     });
                     
                     const listaUnificada = Array.from(mapUnificado.values()).slice(0, 10);
 
-                    // 4. Se recuperamos dados antigos que não estavam na nuvem, faz o upload silencioso!
+                    // Se recuperamos dados antigos que não estavam na nuvem, faz o upload silencioso!
                     if (listaUnificada.length > nuvemLista.length) {
                         set(refHistorico, listaUnificada).catch(()=>{});
                     }
                     
-                    // 5. Salva na NOVA gaveta isolada de forma definitiva
+                    // Salva na NOVA gaveta isolada de forma definitiva
                     localStorage.setItem(chaveLocalIsolada, JSON.stringify(listaUnificada));
                     
                     return listaUnificada;
