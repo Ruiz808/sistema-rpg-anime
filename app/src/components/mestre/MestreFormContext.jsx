@@ -3,6 +3,8 @@ import useStore from '../../stores/useStore';
 import { enviarParaFeed, salvarDummie, apagarFicha } from '../../services/firebase-sync';
 import { getMaximo } from '../../core/attributes';
 import { calcularCA } from '../../core/engine';
+import { ref, set, remove } from 'firebase/database';
+import { db } from '../../services/firebase-config'; 
 
 const MestreFormContext = createContext(null);
 
@@ -16,6 +18,11 @@ export function MestreFormProvider({ children }) {
     const personagens = useStore(s => s.personagens);
     const isMestre = useStore(s => s.isMestre);
     const meuNome = useStore(s => s.meuNome);
+
+    // Puxa as informações da Sala para o sistema de Patentes
+    const mesaId = useStore(s => s.mesaId);
+    const mesaCriador = useStore(s => s.mesaCriador);
+    const mesaMestres = useStore(s => s.mesaMestres) || {};
 
     const [msgSistema, setMsgSistema] = useState('');
     const [dNome, setDNome] = useState('Goblin Espiao');
@@ -63,6 +70,28 @@ export function MestreFormProvider({ children }) {
         }
     }, [meuNome]);
 
+    // 🔥 NOVA FUNÇÃO RESTAURADA: NOMEAR CO-MESTRES 🔥
+    const toggleCoMestre = useCallback(async (nomeAmigo) => {
+        if (meuNome !== mesaCriador) return alert("Apenas o Mestre Supremo (Dono da Sala) pode nomear Co-Mestres.");
+        if (nomeAmigo === mesaCriador) return alert("Esta pessoa já é o Dono da mesa!");
+        
+        const nickSanitizado = nomeAmigo.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const mestreRef = ref(db, `mesas/${mesaId}/mestres/${nickSanitizado}`);
+        
+        try {
+            if (mesaMestres[nickSanitizado]) {
+                await remove(mestreRef);
+                alert(`${nomeAmigo} foi rebaixado a Jogador comum.`);
+            } else {
+                await set(mestreRef, true);
+                alert(`${nomeAmigo} foi promovido a Co-Mestre!`);
+            }
+        } catch (err) {
+            console.error("Erro ao alterar Co-Mestre", err);
+            alert("Erro de permissão. Apenas o Dono da sala tem acesso a esta função no Firebase.");
+        }
+    }, [mesaId, mesaCriador, mesaMestres, meuNome]);
+
     const jogadoresList = useMemo(() => Object.entries(personagens || {}), [personagens]);
 
     const fmt = useCallback((n) => Number(n || 0).toLocaleString('pt-BR'), []);
@@ -88,6 +117,8 @@ export function MestreFormProvider({ children }) {
     const value = useMemo(() => ({
         isMestre,
         meuNome,
+        mesaCriador,
+        mesaMestres,
         msgSistema, setMsgSistema,
         dNome, setDNome,
         dHp, setDHp,
@@ -99,13 +130,14 @@ export function MestreFormProvider({ children }) {
         enviarAviso,
         injetarDummie,
         handleApagarJogador,
+        toggleCoMestre, // Exporta a função de promover!
         jogadoresList,
         jogadoresComStats,
         fmt,
     }), [
-        isMestre, meuNome,
+        isMestre, meuNome, mesaCriador, mesaMestres,
         msgSistema, dNome, dHp, dVit, dDefTipo, dDef, dVisivelHp, dOculto,
-        enviarAviso, injetarDummie, handleApagarJogador,
+        enviarAviso, injetarDummie, handleApagarJogador, toggleCoMestre,
         jogadoresList, jogadoresComStats, fmt,
     ]);
 
