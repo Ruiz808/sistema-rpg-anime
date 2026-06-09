@@ -290,7 +290,9 @@ const RadarDesenhado = ({ ficha, isAtual, corTinta = "#000000" }) => {
         let valNorm = pAtual || 0;
         if (valNorm >= 100) { valNorm = valNorm % 100; if (valNorm === 0 && pAtual > 0) valNorm = 100; }
         const frac = Math.min(Math.max(valNorm / 100, 0.05), 1);
-        return `${100 + 75 * frac * Math.cos(angulos[i])},${100 + 75 * Math.sin(angulos[i])}`;
+        
+        // 🔥 CORREÇÃO: Adicionado o '* frac' na fórmula do Math.sin(eixo Y)
+        return `${100 + 75 * frac * Math.cos(angulos[i])},${100 + 75 * frac * Math.sin(angulos[i])}`;
     }).join(' ');
 
     const hexToRgba = (hex, alpha) => {
