@@ -32,12 +32,18 @@ const CLASSES_EXTRA_BASE = [
 const getClasseInfo = (ficha) => {
     const nomeClasse = ficha?.bio?.classe;
     if (!nomeClasse) return null;
-    const nomeStr = String(nomeClasse).trim().toLowerCase();
+    
+    // 🔥 Inteligência extra: Ignora espaços, hífens e maiúsculas para nunca falhar o Match!
+    const normalizar = (txt) => String(txt).replace(/[^a-z0-9]/gi, '').toLowerCase();
+    const nomeStr = normalizar(nomeClasse);
+    
     const todasClasses = [...CLASSES_REGULARES_BASE, ...CLASSES_EXTRA_BASE];
     const overrides = ficha?.compendioOverrides?.classes || {};
-    const overrideMatch = Object.values(overrides).find(c => !c.deletado && c.nome && c.nome.toLowerCase() === nomeStr);
+    
+    const overrideMatch = Object.values(overrides).find(c => !c.deletado && c.nome && normalizar(c.nome) === nomeStr);
     if (overrideMatch) return overrideMatch;
-    return todasClasses.find(c => c.nome.toLowerCase() === nomeStr) || null;
+    
+    return todasClasses.find(c => normalizar(c.nome) === nomeStr) || null;
 };
 
 // ==========================================
