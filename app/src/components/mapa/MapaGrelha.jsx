@@ -1,21 +1,21 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { useMapaForm, urlSeguraParaCss, MAP_SIZE } from './MapaFormContext';
 import Tabuleiro3D from './Tabuleiro3D';
 import DummieToken from '../combat/DummieToken';
 import MapaMundi from './MapaMundi';
 import { MapaSessaoRP } from './MapaVoz';
-import { useVoiceChat } from '../../hooks/useVoiceChat';
+
+// 🔥 NOVO: CONSUMINDO A VOZ GLOBAL DO APP 🔥
+import { VoiceContext } from '../../App'; 
 
 const FALLBACK = <div style={{ color: '#888', padding: 10 }}>Mapa provider não encontrado</div>;
 
 export function MapaAreaCentral() {
     const ctx = useMapaForm();
+    const chatCtx = useContext(VoiceContext); // <-- Lendo a Voz Imortal!
+    
     if (!ctx) return FALLBACK;
     const { isModoRP, isMestre, mestreVendoRP, meuNome, cenario, isPresenteNaTaverna, minhaFicha, personagens, togglePresencaTaverna, getAvatarInfo, fmt } = ctx;
-    
-    // Inicia o contexto de voz de forma independente
-    const tavernaAtivos = Array.isArray(cenario?.tavernaAtivos) ? cenario.tavernaAtivos : [];
-    const chatCtx = useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna);
 
     if (isModoRP && (!isMestre || mestreVendoRP)) {
         return <MapaSessaoRP 

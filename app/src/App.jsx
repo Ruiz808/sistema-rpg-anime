@@ -1,8 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, createContext } from 'react';
 import { ref, get, set, onValue } from 'firebase/database';
 import { db } from './services/firebase-config';
 import useStore, { sanitizarNome } from './stores/useStore';
 import useFirebase from './hooks/useFirebase';
+
+// 🔥 NOVO: IMPORTANDO O MOTOR DE VOZ PARA O TOPO DO APP 🔥
+import { useVoiceChat } from './hooks/useVoiceChat';
 
 // 📂 Import de Layout e Componentes
 import Sidebar from './components/layout/Sidebar';
@@ -26,7 +29,7 @@ import AIPanel from './components/ia/AIPanel';
 import GravadorPanel from './components/ia/GravadorPanel';
 import MarcadosPanel from './components/Ficha Def/Marcados';
 
-// 🔥 IMPORTAÇÃO DO NOVO GRIMÓRIO!
+// IMPORTAÇÃO DO NOVO GRIMÓRIO!
 import GrimorioPanel from './components/Ficha Def/Grimorio';
 
 import MestrePanel from './components/mestre/MestrePanel';
@@ -40,6 +43,9 @@ import {
     iniciarSistemaDePresenca, iniciarListenerPresenca, removerPresencaImediata,
     iniciarListenerMestres
 } from './services/firebase-sync';
+
+// 🔥 NOVO: CRIANDO O CONTEXTO GLOBAL DA VOZ 🔥
+export const VoiceContext = createContext(null);
 
 window.deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -64,6 +70,9 @@ export default function App() {
     const setMeuNome = useStore(s => s.setMeuNome);
     const carregarDadosFicha = useStore(s => s.carregarDadosFicha);
     const abaAtiva = useStore(s => s.abaAtiva);
+    
+    // Puxando o cenário para o App para podermos ligar o Rádio
+    const cenario = useStore(s => s.cenario); 
     const setCenario = useStore(s => s.setCenario);
     const setDummies = useStore(s => s.setDummies);
     
@@ -84,9 +93,14 @@ export default function App() {
         catch(e) { return []; }
     });
 
+    // 🔥 O SEU RÁDIO IMORTAL NASCE AQUI! 🔥
+    const tavernaAtivos = Array.isArray(cenario?.tavernaAtivos) ? cenario.tavernaAtivos : [];
+    const isPresenteNaTaverna = tavernaAtivos.includes(meuNome);
+    const chatCtx = useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna);
+
     useEffect(() => { setTimeout(() => setThemeReady(true), 50); }, []);
 
-    // 🔥 ATALHO SECRETO (F5 / CTRL+R) PARA ATUALIZAR O APP 🔥
+    // ATALHO SECRETO (F5 / CTRL+R) PARA ATUALIZAR O APP
     useEffect(() => {
         const handleRefresh = (e) => {
             if (e.key === 'F5' || (e.ctrlKey && (e.key === 'r' || e.key === 'R' || e.key === 'f5' || e.key === 'F5'))) {
@@ -242,101 +256,103 @@ export default function App() {
     const isMapMode = abaAtiva === 'aba-mapa';
 
     return (
-        <div className="app-layout">
-            <div style={{ position: 'absolute', top: '10px', right: '15px', zIndex: 9999, display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(0,0,0,0.8)', padding: '5px 15px', borderRadius: '20px', border: '1px solid #333', boxShadow: '0 0 10px rgba(0,0,0,0.5)' }}>
-                
-                <div title={tooltipOnline} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0, 255, 170, 0.1)', border: '1px solid #00ffaa', padding: '2px 8px', borderRadius: '15px', cursor: 'help', whiteSpace: 'pre-wrap' }}>
-                    <span style={{ width: '8px', height: '8px', background: '#00ffaa', borderRadius: '50%', boxShadow: '0 0 8px #00ffaa' }}></span>
-                    <span style={{ color: '#00ffaa', fontSize: '0.75em', fontWeight: 'bold' }}>{jogadoresOnline.length} ON</span>
-                </div>
+        <VoiceContext.Provider value={chatCtx}>
+            <div className="app-layout">
+                <div style={{ position: 'absolute', top: '10px', right: '15px', zIndex: 9999, display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(0,0,0,0.8)', padding: '5px 15px', borderRadius: '20px', border: '1px solid #333', boxShadow: '0 0 10px rgba(0,0,0,0.5)' }}>
+                    
+                    <div title={tooltipOnline} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0, 255, 170, 0.1)', border: '1px solid #00ffaa', padding: '2px 8px', borderRadius: '15px', cursor: 'help', whiteSpace: 'pre-wrap' }}>
+                        <span style={{ width: '8px', height: '8px', background: '#00ffaa', borderRadius: '50%', boxShadow: '0 0 8px #00ffaa' }}></span>
+                        <span style={{ color: '#00ffaa', fontSize: '0.75em', fontWeight: 'bold' }}>{jogadoresOnline.length} ON</span>
+                    </div>
 
-                <div style={{ borderLeft: '1px solid #444', height: '15px' }}></div>
+                    <div style={{ borderLeft: '1px solid #444', height: '15px' }}></div>
 
-                <span style={{ color: '#00ffcc', fontSize: '0.8em', fontWeight: 'bold', letterSpacing: '1px' }}>SALA: {mesaId}</span>
-                
-                <div style={{ borderLeft: '1px solid #444', paddingLeft: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ color: '#aaa', fontSize: '0.85em', fontWeight: 'bold' }}>👤 {meuNome}</span>
-                    <button onClick={() => { if(window.confirm('Deseja sair desta ficha e escolher outro personagem?')) { localStorage.removeItem('rpgNome'); localStorage.removeItem('rpg_nome'); setMeuNome(''); setPronto(false); } }} style={{ background: 'none', border: 'none', color: '#ffcc00', cursor: 'pointer', fontSize: '0.8em', padding: '0', display: 'flex', alignItems: 'center', gap: '4px' }} title="Mudar o nome/ficha atual sem sair da mesa">✏️ Trocar</button>
-                </div>
+                    <span style={{ color: '#00ffcc', fontSize: '0.8em', fontWeight: 'bold', letterSpacing: '1px' }}>SALA: {mesaId}</span>
+                    
+                    <div style={{ borderLeft: '1px solid #444', paddingLeft: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ color: '#aaa', fontSize: '0.85em', fontWeight: 'bold' }}>👤 {meuNome}</span>
+                        <button onClick={() => { if(window.confirm('Deseja sair desta ficha e escolher outro personagem?')) { localStorage.removeItem('rpgNome'); localStorage.removeItem('rpg_nome'); setMeuNome(''); setPronto(false); } }} style={{ background: 'none', border: 'none', color: '#ffcc00', cursor: 'pointer', fontSize: '0.8em', padding: '0', display: 'flex', alignItems: 'center', gap: '4px' }} title="Mudar o nome/ficha atual sem sair da mesa">✏️ Trocar</button>
+                    </div>
 
-                {isMestre && (
-                    <button onClick={async () => {
-                            const matrizId = localStorage.getItem('rpg_mesa_principal') || 'Nenhuma';
-                            if (!matrizId || matrizId === 'Nenhuma') {
-                                return alert('⚠️ MESTRE: Defina primeiro o ID da sua Mesa Matriz usando o botão de lápis (✏️) no Hub Cósmico!');
-                            }
-                            if(!window.confirm(`⚠️ MESTRE: Deseja tentar copiar as estruturas da mesa matriz [${matrizId}] para a sala atual [${mesaId}]?\n\nNota: Se não for o Mestre Criador da Matriz, o Firebase pode bloquear a importação por segurança.`)) return;
-                            
-                            try {
-                                const oldPers = await get(ref(db, `mesas/${matrizId}/personagens`));
-                                if (oldPers.exists()) { 
-                                    const data = oldPers.val(); 
-                                    for (const key in data) {
-                                        await set(ref(db, `mesas/${mesaId}/personagens/${key}`), data[key]).catch(() => {}); 
-                                    }
+                    {isMestre && (
+                        <button onClick={async () => {
+                                const matrizId = localStorage.getItem('rpg_mesa_principal') || 'Nenhuma';
+                                if (!matrizId || matrizId === 'Nenhuma') {
+                                    return alert('⚠️ MESTRE: Defina primeiro o ID da sua Mesa Matriz usando o botão de lápis (✏️) no Hub Cósmico!');
                                 }
-                            } catch (err) { 
-                                console.warn("Leitura de personagens bloqueada pelo sandbox:", err.message); 
-                            }
-                            
-                            try {
-                                const oldArvore = await get(ref(db, `mesas/${matrizId}/arvore`));
-                                if (oldArvore.exists()) {
-                                    await set(ref(db, `mesas/${mesaId}/arvore`), oldArvore.val());
-                                    localStorage.setItem('rpgSextaFeira_arvore', JSON.stringify(oldArvore.val()));
-                                    alert(`✅ SUCESSO SUPREMO! Dados copiados da nuvem da Matriz com sucesso! Atualize a página (F5).`);
-                                } else {
-                                    throw new Error("Nó vazio");
-                                }
-                            } catch (err) { 
-                                console.warn("Acesso à nuvem da matriz negado. Tentando cache local de segurança...");
+                                if(!window.confirm(`⚠️ MESTRE: Deseja tentar copiar as estruturas da mesa matriz [${matrizId}] para a sala atual [${mesaId}]?\n\nNota: Se não for o Mestre Criador da Matriz, o Firebase pode bloquear a importação por segurança.`)) return;
                                 
-                                const arvorePonte = localStorage.getItem('rpgSextaFeira_arvore_MatrizBackup');
-                                if (arvorePonte && arvorePonte !== '{}') {
-                                    try {
-                                        await set(ref(db, `mesas/${mesaId}/arvore`), JSON.parse(arvorePonte));
-                                        localStorage.setItem('rpgSextaFeira_arvore', arvorePonte);
-                                        alert(`✅ PONTE LOCAL ATIVADA! O Firebase bloqueou a leitura externa, mas a árvore foi forjada a partir do seu cache local de segurança! Atualize a página (F5).`);
-                                    } catch (writeErr) {
-                                        alert(`❌ ACESSO NEGADO: O Firebase bloqueou a gravação da árvore para a sua conta nesta sala.\n\nDica: Peça ao dono da Matriz para fazer o resgate e selar as permissões!`);
+                                try {
+                                    const oldPers = await get(ref(db, `mesas/${matrizId}/personagens`));
+                                    if (oldPers.exists()) { 
+                                        const data = oldPers.val(); 
+                                        for (const key in data) {
+                                            await set(ref(db, `mesas/${mesaId}/personagens/${key}`), data[key]).catch(() => {}); 
+                                        }
                                     }
-                                } else {
-                                    alert(`❌ ACESSO BLOQUEADO: O Firebase protege salas externas contra leitura. Como o seu navegador não possui o cache original da Matriz, o resgate foi cancelado com segurança.\n\n👉 Peça ao dono da Matriz para fazer o resgate!`);
+                                } catch (err) { 
+                                    console.warn("Leitura de personagens bloqueada pelo sandbox:", err.message); 
                                 }
-                            }
-                        }} style={{ marginLeft: '5px', background: '#0088ff', border: '1px solid #fff', color: '#fff', fontSize: '0.7em', padding: '4px 8px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>🧲 RESGATAR TUDO</button>
-                )}
-                
-                <button onClick={() => { if(window.confirm('Tem a certeza que deseja sair da mesa?')) { limparFeedStore(); setMesaId(''); } }} style={{ marginLeft: '10px', background: 'none', border: 'none', color: '#ff003c', cursor: 'pointer', fontSize: '0.9em', fontWeight: 'bold', padding: 0 }} title="Desconectar do Servidor da Mesa">Sair 🚪</button>
-            </div>
+                                
+                                try {
+                                    const oldArvore = await get(ref(db, `mesas/${matrizId}/arvore`));
+                                    if (oldArvore.exists()) {
+                                        await set(ref(db, `mesas/${mesaId}/arvore`), oldArvore.val());
+                                        localStorage.setItem('rpgSextaFeira_arvore', JSON.stringify(oldArvore.val()));
+                                        alert(`✅ SUCESSO SUPREMO! Dados copiados da nuvem da Matriz com sucesso! Atualize a página (F5).`);
+                                    } else {
+                                        throw new Error("Nó vazio");
+                                    }
+                                } catch (err) { 
+                                    console.warn("Acesso à nuvem da matriz negado. Tentando cache local de segurança...");
+                                    
+                                    const arvorePonte = localStorage.getItem('rpgSextaFeira_arvore_MatrizBackup');
+                                    if (arvorePonte && arvorePonte !== '{}') {
+                                        try {
+                                            await set(ref(db, `mesas/${mesaId}/arvore`), JSON.parse(arvorePonte));
+                                            localStorage.setItem('rpgSextaFeira_arvore', arvorePonte);
+                                            alert(`✅ PONTE LOCAL ATIVADA! O Firebase bloqueou a leitura externa, mas a árvore foi forjada a partir do seu cache local de segurança! Atualize a página (F5).`);
+                                        } catch (writeErr) {
+                                            alert(`❌ ACESSO NEGADO: O Firebase bloqueou a gravação da árvore para a sua conta nesta sala.\n\nDica: Peça ao dono da Matriz para fazer o resgate e selar as permissões!`);
+                                        }
+                                    } else {
+                                        alert(`❌ ACESSO BLOQUEADO: O Firebase protege salas externas contra leitura. Como o seu navegador não possui o cache original da Matriz, o resgate foi cancelado com segurança.\n\n👉 Peça ao dono da Matriz para fazer o resgate!`);
+                                    }
+                                }
+                            }} style={{ marginLeft: '5px', background: '#0088ff', border: '1px solid #fff', color: '#fff', fontSize: '0.7em', padding: '4px 8px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>🧲 RESGATAR TUDO</button>
+                    )}
+                    
+                    <button onClick={() => { if(window.confirm('Tem a certeza que deseja sair da mesa?')) { limparFeedStore(); setMesaId(''); } }} style={{ marginLeft: '10px', background: 'none', border: 'none', color: '#ff003c', cursor: 'pointer', fontSize: '0.9em', fontWeight: 'bold', padding: 0 }} title="Desconectar do Servidor da Mesa">Sair 🚪</button>
+                </div>
 
-            <Sidebar onResetClick={() => setModalAberto(true)} />
-            
-            <div className={`main-content${isMapMode ? ' modo-mapa' : ''}`}>
-                {!isMapMode && <h1 className="title">RPG Anime System</h1>}
-                <TabPanel id="aba-perfil"><PerfilPanel /></TabPanel>
-                <TabPanel id="aba-mestre"><MestrePanel /></TabPanel> 
-                <TabPanel id="aba-status"><StatusPanel /></TabPanel>
-                <TabPanel id="aba-testes"><TestesPanel /></TabPanel>
-                <TabPanel id="aba-ataque"><AtaquePanel /></TabPanel>
-                <TabPanel id="aba-acerto"><AcertoPanel /></TabPanel>
-                <TabPanel id="aba-defesa"><DefesaPanel /></TabPanel>
-                <TabPanel id="aba-ficha"><FichaPanel /></TabPanel>
-                <TabPanel id="aba-poderes"><PoderesPanel /></TabPanel>
-                <TabPanel id="aba-arsenal"><ArsenalPanel /></TabPanel>
-                <TabPanel id="aba-elementos"><ElementosPanel /></TabPanel>
-                <TabPanel id="aba-log"><FeedCombate /></TabPanel>
-                <TabPanel id="aba-mapa"><MapaPanel /></TabPanel>
-                <TabPanel id="aba-musica"><Jukebox /></TabPanel>
-                <TabPanel id="aba-compendio"><CompendioPanel /></TabPanel>
-                <TabPanel id="aba-oraculo"><AIPanel /></TabPanel>
-                <TabPanel id="aba-gravador"><GravadorPanel /></TabPanel>
-                {/* 🔥 AS DUAS ABAS ÉPICAS! */}
-                <TabPanel id="aba-Ficha Def"><MarcadosPanel /></TabPanel>
-                <TabPanel id="aba-grimorio"><GrimorioPanel /></TabPanel>
+                <Sidebar onResetClick={() => setModalAberto(true)} />
+                
+                <div className={`main-content${isMapMode ? ' modo-mapa' : ''}`}>
+                    {!isMapMode && <h1 className="title">RPG Anime System</h1>}
+                    <TabPanel id="aba-perfil"><PerfilPanel /></TabPanel>
+                    <TabPanel id="aba-mestre"><MestrePanel /></TabPanel> 
+                    <TabPanel id="aba-status"><StatusPanel /></TabPanel>
+                    <TabPanel id="aba-testes"><TestesPanel /></TabPanel>
+                    <TabPanel id="aba-ataque"><AtaquePanel /></TabPanel>
+                    <TabPanel id="aba-acerto"><AcertoPanel /></TabPanel>
+                    <TabPanel id="aba-defesa"><DefesaPanel /></TabPanel>
+                    <TabPanel id="aba-ficha"><FichaPanel /></TabPanel>
+                    <TabPanel id="aba-poderes"><PoderesPanel /></TabPanel>
+                    <TabPanel id="aba-arsenal"><ArsenalPanel /></TabPanel>
+                    <TabPanel id="aba-elementos"><ElementosPanel /></TabPanel>
+                    <TabPanel id="aba-log"><FeedCombate /></TabPanel>
+                    <TabPanel id="aba-mapa"><MapaPanel /></TabPanel>
+                    <TabPanel id="aba-musica"><Jukebox /></TabPanel>
+                    <TabPanel id="aba-compendio"><CompendioPanel /></TabPanel>
+                    <TabPanel id="aba-oraculo"><AIPanel /></TabPanel>
+                    <TabPanel id="aba-gravador"><GravadorPanel /></TabPanel>
+                    {/* 🔥 AS DUAS ABAS ÉPICAS! */}
+                    <TabPanel id="aba-Ficha Def"><MarcadosPanel /></TabPanel>
+                    <TabPanel id="aba-grimorio"><GrimorioPanel /></TabPanel>
+                </div>
+                
+                <ModalConfirm isOpen={modalAberto} onClose={() => setModalAberto(false)} />
             </div>
-            
-            <ModalConfirm isOpen={modalAberto} onClose={() => setModalAberto(false)} />
-        </div>
+        </VoiceContext.Provider>
     );
 }
