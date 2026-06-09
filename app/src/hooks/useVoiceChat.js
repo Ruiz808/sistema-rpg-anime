@@ -42,6 +42,9 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
     const [mutado, setMutado] = useState(false);
     const [surdo, setSurdo] = useState(false);
     const [supressorAtivo, setSupressorAtivo] = useState(true);
+    
+    // 🔥 O SEGREDO DO NOISE GATE: Guarda a sensibilidade no navegador
+    const [sensibilidadeVoz, setSensibilidadeVoz] = useState(() => parseInt(localStorage.getItem('rpg_sensibilidade_voz')) || 10);
 
     const meuStreamRef = useRef(null);
     const conexoesRef = useRef([]);
@@ -53,12 +56,12 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
 
     useEffect(() => { conexoesRef.current = conexoes; }, [conexoes]);
     useEffect(() => { supressorAtivoRef.current = supressorAtivo; }, [supressorAtivo]);
+    useEffect(() => { localStorage.setItem('rpg_sensibilidade_voz', sensibilidadeVoz); }, [sensibilidadeVoz]);
 
-    // 1. INICIALIZA A ANTENA PEERJS (COM SERVIDORES TURN ANTI-OPERA GX)
+    // 1. INICIALIZA A ANTENA PEERJS
     useEffect(() => {
         if (!meuIDTelefone || peerObj) return;
 
-        // 🔥 ESCUDO ANTI-FIREWALL: O Opera GX precisa obrigatoriamente do TURN para funcionar
         const ICE_SERVERS = [
             { urls: 'stun:stun.l.google.com:19302' },
             { urls: 'stun:global.stun.twilio.com:3478' },
@@ -88,14 +91,9 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
                     call.answer(meuStreamRef.current);
                     
                     call.on('stream', (remoteStream) => {
-                        console.log(`[VOZ] Áudio recebido de ${call.peer}! Track ativada:`, remoteStream.getAudioTracks()[0]?.enabled);
-                        
                         setConexoes(prev => {
                             const exists = prev.find(c => c.id === call.peer);
-                            if (exists && exists.stream && exists.stream.active) {
-                                console.log(`[VOZ] 🛡️ Stream duplicada bloqueada.`);
-                                return prev;
-                            }
+                            if (exists && exists.stream && exists.stream.active) return prev;
                             return [...prev.filter(c => c.id !== call.peer), { id: call.peer, stream: remoteStream }];
                         });
                     });
@@ -103,30 +101,16 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
                     call.on('close', () => setConexoes(prev => prev.filter(c => c.id !== call.peer)));
                     call.on('error', (err) => console.error(`[VOZ] Erro na chamada de ${call.peer}:`, err));
                 } else {
-                    if (tentativas < 10) {
-                        setTimeout(() => attemptAnswer(tentativas + 1), 500);
-                    } else {
-                        console.error(`[VOZ] Falha ao atender ${call.peer}. O microfone nunca ligou.`);
-                    }
+                    if (tentativas < 10) setTimeout(() => attemptAnswer(tentativas + 1), 500);
                 }
             };
             attemptAnswer();
         });
 
-        novoPeer.on('disconnected', () => {
-            console.warn('[VOZ] Desconectado da Central! A tentar religar...');
-            novoPeer.reconnect();
-        });
+        novoPeer.on('disconnected', () => { novoPeer.reconnect(); });
+        novoPeer.on('error', (err) => { setVoiceStatus(`Erro de Ligação: ${err.type}`); });
 
-        novoPeer.on('error', (err) => {
-            console.error('[VOZ] Erro fatal no PeerJS:', err.type, err);
-            setVoiceStatus(`Erro de Ligação: ${err.type}`);
-        });
-
-        return () => {
-            console.log('[VOZ] A destruir a ligação WebRTC...');
-            novoPeer.destroy();
-        };
+        return () => { novoPeer.destroy(); };
     }, [meuIDTelefone]);
 
     // 2. LIGAR MICROFONE
@@ -161,8 +145,7 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
                 if (audioOutputs.length > 0) setSelectedSpeaker(audioOutputs[0].deviceId);
 
             }).catch((err) => {
-                console.error('[VOZ] Erro ao aceder ao microfone:', err);
-                setVoiceStatus('Microfone Bloqueado! Verifique o Opera GX.');
+                setVoiceStatus('Microfone Bloqueado!');
                 rtcLigado.current = false;
             });
 
@@ -187,35 +170,20 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
         if (chamadasEmAndamento.current.has(idFormatado)) return;
         chamadasEmAndamento.current.add(idFormatado);
 
-        console.log(`[VOZ] A tentar ligar ativamente para: ${idFormatado}`);
         const call = peerObj.call(idFormatado, meuStreamRef.current);
-        
-        if (!call) { 
-            chamadasEmAndamento.current.delete(idFormatado); 
-            return; 
-        }
+        if (!call) { chamadasEmAndamento.current.delete(idFormatado); return; }
 
         call.on('stream', (remoteStream) => {
-            console.log(`[VOZ] Áudio recebido de ${idFormatado} (Chamada Ativa)!`);
             setConexoes(prev => {
                 const exists = prev.find(c => c.id === idFormatado);
-                if (exists && exists.stream && exists.stream.active) {
-                    return prev;
-                }
+                if (exists && exists.stream && exists.stream.active) return prev;
                 return [...prev.filter(c => c.id !== idFormatado), { id: idFormatado, stream: remoteStream }];
             });
             chamadasEmAndamento.current.delete(idFormatado);
         });
         
-        call.on('close', () => { 
-            setConexoes(prev => prev.filter(c => c.id !== idFormatado)); 
-            chamadasEmAndamento.current.delete(idFormatado); 
-        });
-        
-        call.on('error', (err) => { 
-            setConexoes(prev => prev.filter(c => c.id !== idFormatado)); 
-            chamadasEmAndamento.current.delete(idFormatado); 
-        });
+        call.on('close', () => { setConexoes(prev => prev.filter(c => c.id !== idFormatado)); chamadasEmAndamento.current.delete(idFormatado); });
+        call.on('error', () => { setConexoes(prev => prev.filter(c => c.id !== idFormatado)); chamadasEmAndamento.current.delete(idFormatado); });
     }, [peerObj]);
 
     useEffect(() => {
@@ -237,6 +205,72 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
         }, 4000); 
         return () => clearInterval(interval);
     }, [tavernaAtivos, peerObj, isPresenteNaTaverna, meuNome, fazerChamada]);
+
+    // 🔥 4. O PODEROSO NOISE GATE (SUPRESSOR DE RUÍDO) 🔥
+    useEffect(() => {
+        if (!streamAnalisador || !meuStreamRef.current) return;
+        
+        // Se o supressor for desligado pelo jogador, garante que o mic fica sempre aberto
+        if (!supressorAtivo) {
+            const track = meuStreamRef.current.getAudioTracks()[0];
+            if (track && !mutado) track.enabled = true;
+            return;
+        }
+
+        let actx;
+        let raf;
+        let releaseTimeout;
+
+        try {
+            actx = new (window.AudioContext || window.webkitAudioContext)();
+            const source = actx.createMediaStreamSource(streamAnalisador);
+            const analyser = actx.createAnalyser();
+            analyser.fftSize = 256;
+            analyser.smoothingTimeConstant = 0.3; // Resposta super rápida aos picos de voz
+            source.connect(analyser);
+
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+            const noiseGateProcess = () => {
+                analyser.getByteFrequencyData(dataArray);
+                let sum = 0;
+                for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+                const avg = sum / dataArray.length;
+
+                const track = meuStreamRef.current.getAudioTracks()[0];
+                if (track && !mutado) { // Respeita o botão de Mute manual
+                    if (avg > sensibilidadeVoz) {
+                        // FALANDO: Abre o microfone na hora!
+                        track.enabled = true;
+                        if (releaseTimeout) {
+                            clearTimeout(releaseTimeout);
+                            releaseTimeout = null;
+                        }
+                    } else {
+                        // SILÊNCIO: Aguarda 500ms antes de cortar o áudio (Release Time) para não picotar o fim das palavras
+                        if (!releaseTimeout && track.enabled) {
+                            releaseTimeout = setTimeout(() => {
+                                if (meuStreamRef.current && !mutado) {
+                                    const t = meuStreamRef.current.getAudioTracks()[0];
+                                    if (t) t.enabled = false; // Muta fisicamente a faixa!
+                                }
+                            }, 500); 
+                        }
+                    }
+                }
+                raf = requestAnimationFrame(noiseGateProcess);
+            };
+            noiseGateProcess();
+        } catch (err) {
+            console.warn("[VOZ] Erro no Noise Gate:", err);
+        }
+
+        return () => {
+            if (raf) cancelAnimationFrame(raf);
+            if (releaseTimeout) clearTimeout(releaseTimeout);
+            if (actx && actx.state !== 'closed') actx.close().catch(()=>{});
+        };
+    }, [streamAnalisador, supressorAtivo, sensibilidadeVoz, mutado]);
 
     const trocarMicrofone = useCallback(async (deviceId) => {
         try {
@@ -288,6 +322,7 @@ export function useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna) {
         meuStream, streamAnalisador, conexoes, mutado, surdo, voiceStatus, 
         mics, selectedMic, trocarMicrofone, 
         speakers, selectedSpeaker, trocarSpeaker,
-        supressorAtivo, toggleMute, toggleDeafen, setSupressorAtivo, fazerChamada
+        supressorAtivo, toggleMute, toggleDeafen, setSupressorAtivo, fazerChamada,
+        sensibilidadeVoz, setSensibilidadeVoz // 🔥 EXPORTAÇÃO DO NOISE GATE PARA A UI
     };
 }

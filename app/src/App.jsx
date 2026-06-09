@@ -4,7 +4,7 @@ import { db } from './services/firebase-config';
 import useStore, { sanitizarNome } from './stores/useStore';
 import useFirebase from './hooks/useFirebase';
 
-// 🔥 NOVO: IMPORTANDO O MOTOR DE VOZ PARA O TOPO DO APP 🔥
+// 🔥 IMPORTANDO O MOTOR DE VOZ PARA O TOPO DO APP 🔥
 import { useVoiceChat } from './hooks/useVoiceChat';
 
 // 📂 Import de Layout e Componentes
@@ -44,8 +44,23 @@ import {
     iniciarListenerMestres
 } from './services/firebase-sync';
 
-// 🔥 NOVO: CRIANDO O CONTEXTO GLOBAL DA VOZ 🔥
+// 🔥 CRIANDO O CONTEXTO GLOBAL DA VOZ 🔥
 export const VoiceContext = createContext(null);
+
+// 🛡️ O GUARDIÃO DO RÁDIO: Só liga depois de você escolher o seu nome!
+function ProvedorDeVozGlobal({ meuNome, cenario, children }) {
+    const tavernaAtivos = Array.isArray(cenario?.tavernaAtivos) ? cenario.tavernaAtivos : [];
+    const isPresenteNaTaverna = tavernaAtivos.includes(meuNome);
+    
+    // O motor nasce aqui de forma segura com o ID correto (Ex: Natsu)
+    const chatCtx = useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna);
+
+    return (
+        <VoiceContext.Provider value={chatCtx}>
+            {children}
+        </VoiceContext.Provider>
+    );
+}
 
 window.deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -71,7 +86,6 @@ export default function App() {
     const carregarDadosFicha = useStore(s => s.carregarDadosFicha);
     const abaAtiva = useStore(s => s.abaAtiva);
     
-    // Puxando o cenário para o App para podermos ligar o Rádio
     const cenario = useStore(s => s.cenario); 
     const setCenario = useStore(s => s.setCenario);
     const setDummies = useStore(s => s.setDummies);
@@ -92,11 +106,6 @@ export default function App() {
         try { return JSON.parse(localStorage.getItem('rpg_historico_personagens')) || []; }
         catch(e) { return []; }
     });
-
-    // 🔥 O SEU RÁDIO IMORTAL NASCE AQUI! 🔥
-    const tavernaAtivos = Array.isArray(cenario?.tavernaAtivos) ? cenario.tavernaAtivos : [];
-    const isPresenteNaTaverna = tavernaAtivos.includes(meuNome);
-    const chatCtx = useVoiceChat(meuNome, tavernaAtivos, isPresenteNaTaverna);
 
     useEffect(() => { setTimeout(() => setThemeReady(true), 50); }, []);
 
@@ -255,8 +264,9 @@ export default function App() {
 
     const isMapMode = abaAtiva === 'aba-mapa';
 
+    // 🔥 O GUARDIÃO ENVOLVE TODO O SISTEMA AQUI 🔥
     return (
-        <VoiceContext.Provider value={chatCtx}>
+        <ProvedorDeVozGlobal meuNome={meuNome} cenario={cenario}>
             <div className="app-layout">
                 <div style={{ position: 'absolute', top: '10px', right: '15px', zIndex: 9999, display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(0,0,0,0.8)', padding: '5px 15px', borderRadius: '20px', border: '1px solid #333', boxShadow: '0 0 10px rgba(0,0,0,0.5)' }}>
                     
@@ -353,6 +363,6 @@ export default function App() {
                 
                 <ModalConfirm isOpen={modalAberto} onClose={() => setModalAberto(false)} />
             </div>
-        </VoiceContext.Provider>
+        </ProvedorDeVozGlobal>
     );
 }
